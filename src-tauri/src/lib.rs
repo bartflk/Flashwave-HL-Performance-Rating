@@ -1,7 +1,7 @@
 mod commands;
 mod error;
 
-use anyhow::Context;
+
 use hl_db::Db;
 use std::path::PathBuf;
 use tauri::Manager;
@@ -24,15 +24,19 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            // Errors are stringified rather than passed through as `anyhow`:
+            // Tauri's setup wants a `Box<dyn Error>`, and `{:#}` keeps the
+            // whole cause chain in the message.
             let db_path = app
                 .path()
                 .app_data_dir()
-                .context("resolving the application data directory")?
+                .map_err(|e| format!("resolving the application data directory: {e}"))?
                 .join("hl.sqlite3");
 
             // Blocking here is deliberate: the window should not appear until
             // migrations have applied, so no command can race an unmigrated db.
-            let db = tauri::async_runtime::block_on(Db::connect(&db_path))?;
+            let db = tauri::async_runtime::block_on(Db::connect(&db_path))
+                .map_err(|e| format!("{e:#}"))?;
 
             app.manage(AppState { db, db_path });
             Ok(())

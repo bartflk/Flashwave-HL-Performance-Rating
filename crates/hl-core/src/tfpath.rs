@@ -99,7 +99,10 @@ fn resolve(given: &Path, notes: &mut Vec<String>) -> PathBuf {
         return given.join("tf");
     }
     // `.../tf/demos` -> `.../tf`
-    if given.file_name().is_some_and(|n| n == "demos") {
+    if given
+        .file_name()
+        .is_some_and(|n| n.eq_ignore_ascii_case("demos"))
+    {
         if let Some(parent) = given.parent() {
             if TF_MARKERS.iter().any(|m| parent.join(m).exists()) {
                 notes.push("Adjusted up from `demos` to the `tf` directory.".to_string());

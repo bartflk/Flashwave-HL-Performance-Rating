@@ -131,7 +131,8 @@ impl serde::Serialize for SteamId {
 
 impl<'de> serde::Deserialize<'de> for SteamId {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Self, D::Error> {
-        let raw = String::deserialize(d)?;
+        // Fully qualified: the `Deserialize` trait is not in scope here.
+        let raw = <String as serde::Deserialize>::deserialize(d)?;
         SteamId::parse(&raw).map_err(serde::de::Error::custom)
     }
 }
