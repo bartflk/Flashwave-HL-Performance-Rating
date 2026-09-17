@@ -1,0 +1,17 @@
+{
+  "name": "hl-rating",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Team Fortress 2 Highlander performance rating system",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "ui": "npm --prefix ui run dev",
+    "ui:check": "npm --prefix ui run build",
+    "icons": "node scripts/generate-icons.mjs",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

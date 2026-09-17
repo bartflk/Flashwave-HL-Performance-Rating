@@ -1,0 +1,21 @@
+# Rust
+/target
+**/target
+
+# Node
+node_modules
+ui/dist
+
+# Tauri generated
+src-tauri/gen
+
+# Local data
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+
+# Editors / OS
+.vscode
+.idea
+Thumbs.db
+desktop.ini

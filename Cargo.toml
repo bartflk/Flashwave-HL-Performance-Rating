@@ -1,0 +1,32 @@
+[workspace]
+resolver = "2"
+members = ["crates/hl-core", "crates/hl-db", "crates/hl-cli", "src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+hl-core = { path = "crates/hl-core" }
+hl-db = { path = "crates/hl-db" }
+
+anyhow = "1"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs"] }
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "sqlite",
+    "migrate",
+    "chrono",
+] }
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true

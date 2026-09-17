@@ -1,0 +1,27 @@
+[package]
+name = "hl-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Team Fortress 2 Highlander performance rating system"
+
+[lib]
+name = "hl_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+hl-core.workspace = true
+hl-db.workspace = true
+
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

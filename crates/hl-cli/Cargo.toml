@@ -1,0 +1,19 @@
+[package]
+name = "hl-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Developer harness: drive the pipeline without the GUI"
+
+[[bin]]
+name = "hl"
+path = "src/main.rs"
+
+[dependencies]
+hl-core.workspace = true
+hl-db.workspace = true
+
+anyhow.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true
