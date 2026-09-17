@@ -1,310 +1,255 @@
-# HL Performance Rating System — Plan v0.2
+# HL Performance Rating System — Plan v0.3
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
-**v1 demo scope:** index only (header scan, log matching, in-game jump-back). No tick parsing until v2.
+**Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
+**TF2:** `D:\SteamLibrary\steamapps\common\Team Fortress 2\tf`
 
 ---
 
-## 1. Architecture
+## 1. What this is
 
-```
-┌────────────────────────────────────────────────┐
-│ React 18 + TypeScript + Vite                   │
-│ TanStack Query/Router · Recharts · Tailwind    │
-└───────────────┬────────────────────────────────┘
-                │ Tauri IPC (typed commands + events)
-┌───────────────┴────────────────────────────────┐
-│ Rust workspace                                 │
-│  hl-core      domain types, SteamID, errors    │
-│  hl-db        SQLite, migrations, queries      │
-│  hl-logstf    logs.tf client + normalizer      │
-│  hl-demos     header scan, watcher, matcher    │
-│  hl-rating    baselines, percentiles, scoring  │
-│  src-tauri    commands, state, background jobs │
-└───────────────┬────────────────────────────────┘
-                │
-        SQLite (WAL) + raw JSON blobs
-```
+A **post-match review tool for Highlander**, opened after a game.
 
-Rule: **every crate below `src-tauri` is a plain library with no Tauri dependency.** You can then drive the whole pipeline from a CLI or a test harness without the GUI — which is how you will actually iterate on the rating model.
+Three decisions shape everything below:
 
-### Key crates
+1. **The unit of analysis is the matchup, not the scoreboard.** Team vs team, and within that, class vs class — your Sniper against their Sniper. "Who won that matchup, and by how much" is the primary question the app answers. It is the thing logs.tf cannot tell you, and the reason the app exists.
+2. **Value is class-specific.** A Sniper's worth is high-impact picks (Medic, Demo, the enemy Sniper), not raw damage. Each of the nine classes gets its own model of what makes or breaks a performance. Sniper is built first and deepest.
+3. **Logs land first, demos enrich later.** The log is available within seconds of a match ending; the demo is local and slow. The match page renders from log data immediately, then fills in demo-derived detail when it is ready. Never block the first view on a parse.
 
-| Need | Crate |
+Scope: Highlander only. Sixes is detected, stored, and excluded from ratings — a later update, not a v1 feature.
+
+---
+
+## 2. Data sources
+
+Four sources, each with one job. This is the biggest change from v0.2, and it removes two problems that would otherwise have been hard.
+
+| Source | Role | Verified |
+|---|---|---|
+| **trends.tf** `/api/v1/logs` | **Index.** Per log: `format`, `league`, ETF2L `matchid`, demos.tf `demoid`, `duplicate_of`, duration, map, time | yes |
+| **logs.tf** `/api/v1/log/<id>` | **Detail.** Full box score, per-round events, per-class and per-weapon stats | yes |
+| **ETF2L** `api.etf2l.org` | **Context.** Division and tier, competition, season, opponent identity | yes |
+| **demos.tf** | **STV demos.** All 18 players, reachable via the `demoid` trends.tf already provides | via demoid |
+
+### Why trends.tf changes the plan
+
+v0.2 planned to classify format by player count and to identify officials from log titles. Both are now unnecessary:
+
+- **Format comes labelled.** The headcount heuristic was wrong anyway — 183 Highlander logs have 19-21 players because of mid-match subs.
+- **League comes labelled**, with the ETF2L `matchid` attached. Titles were useless for this: 1,157 of 1,492 are just `serveme.tf #1563599 RED vs BLU`.
+- **Duplicate logs come flagged.** 248 logs are per-round uploads of matches that also have a combined log. Counting both would double-count a fifth of the history, and nothing in logs.tf alone reveals it.
+- **demos.tf demo ids come attached**, which answers "find the demo if I don't have it locally" with no searching at all.
+
+The cost is a third-party dependency. Mitigations: cache their index permanently like any other raw source, keep a class-coverage heuristic as a fallback classifier, and make every classification overridable by hand. Their docs note format detection is based on player count and playtime, so it shares the failure modes above — a strong default, not gospel.
+
+### What the account actually contains
+
+Measured, not estimated (trends.tf indexes 1,280 of the 1,492 logs.tf logs):
+
+| | |
 |---|---|
-| HTTP | `reqwest` (rustls) + `governor` for rate limiting |
-| Async | `tokio` |
-| DB | `sqlx` (sqlite, compile-time checked queries) |
-| Serde | `serde`, `serde_json` |
-| Demo headers | `tf-demo-parser` (demostf/parser) — header-only for v1 |
-| File watching | `notify` + `notify-debouncer-full` |
-| Time | `time` or `chrono` |
-| Errors | `thiserror` (libs) + `anyhow` (app) |
-| Logging | `tracing` + `tracing-subscriber` |
-| Parallelism | `rayon` (demo scanning) |
+| Highlander | 1,105 |
+| Sixes | 146 |
+| Other / Prolander | 29 |
+| **ETF2L official (Highlander)** | **155** |
+| Logs with a demos.tf demo | **1,047** |
+| Duplicate-of-another logs | 248 |
+| Local POV demos | 101 |
+| Range | 2014-05-17 → 2026-09-17 |
+
+Two consequences worth stating plainly:
+
+- **Officials are a real corpus, not a rounding error.** 155 ETF2L Highlander logs is enough to rate officials separately from scrims. The ETF2L API's own player-results endpoint returns far fewer, because it reflects only current team rosters — trends.tf's league tagging is the better source.
+- **STV demos exist for 1,047 matches, against 101 local POV demos.** The demo story should lean on demos.tf, not the local folder. POV demos remain the only source for your own aim and viewangles, but for anything team-wide, STV is both richer and ten times more available.
 
 ---
 
-## 2. Repository layout
+## 3. The rating model
+
+### Layers
 
 ```
-/
-├── PLAN.md
-├── Cargo.toml                  # workspace
-├── crates/
-│   ├── hl-core/
-│   ├── hl-db/
-│   │   └── migrations/         # 0001_init.sql, ...
-│   ├── hl-logstf/
-│   ├── hl-demos/
-│   ├── hl-rating/
-│   └── hl-cli/                 # dev harness: sync, reprocess, dump
-├── src-tauri/
-│   ├── src/commands/
-│   └── tauri.conf.json
-└── ui/
-    ├── src/routes/
-    ├── src/components/
-    └── src/api/                # generated TS types from Rust
+raw stat
+  -> per-class, per-gamemode normalization (time-weighted)
+  -> impact weighting (who you killed matters more than how many)
+  -> class value score        -> the number on the match page
+  -> matchup differential     -> you vs your opposite number
+  -> percentile vs baseline   -> the profile
 ```
 
-Use `ts-rs` or `specta` to generate TypeScript types from the Rust structs. Hand-maintaining two copies of 40 stat fields is a guaranteed source of silent bugs.
+### Impact weighting — the core idea
+
+`classkills` in the log JSON breaks kills down by **victim class**, per player. Verified on a real log: as Sniper, `{"pyro":3,"sniper":4}`. So "high-impact kills" is directly computable — and so is the sniper duel, since `classkills.sniper` against `classdeaths.sniper` *is* the duel record.
+
+Victim weights are the first thing to tune, and live in TOML so tuning needs no recompile:
+
+```toml
+[victim_value]        # what killing this class is worth
+medic       = 3.0
+demoman     = 2.2
+sniper      = 1.8     # denying their picks
+heavy       = 1.4
+soldier     = 1.2
+engineer    = 1.1
+scout       = 1.0
+pyro        = 0.9
+spy         = 0.9
+```
+
+A starting point, not a claim. These get replaced by fitted weights once there is enough data — regress round outcome on per-round features and let the numbers argue.
+
+### Matchup scoring
+
+For each of the nine classes, compare the two players who played it:
+
+```
+matchup_score(class) = value(mine) - value(theirs)
+```
+
+Rendered as nine rows on the match page: who won each matchup, by how much, and which two or three were decisive. This is the headline view.
+
+Subtlety to handle early: with subs, a class can have more than one player per team (those 19-21 player logs). Weight by `class_stats.total_time` and treat the matchup as a time-weighted aggregate rather than a single pairing.
+
+### Sniper — built first and deepest
+
+All available from the log, no demo required:
+
+| Signal | Source | Why it matters |
+|---|---|---|
+| Impact picks / min | `classkills` × victim weights | The job |
+| Sniper duel differential | `classkills.sniper` − `classdeaths.sniper` | Winning the duel unlocks everyone else |
+| Headshot ratio | `headshots`, `headshots_hit` | Execution quality, independent of outcome |
+| Damage / min | `dapm` | Chip damage counts, weighted low |
+| Deaths / min | `deaths`, time | A dead Sniper holds nothing |
+| Time to first pick | `rounds[].events` | Opening a round vs reacting to it |
+| Assists | `classkillassists` | Damage that set up a teammate's kill |
+
+`rounds[].events` carries timestamped events (caps, charges, medic deaths), which makes time-to-first-pick and "picks immediately before an uber push" computable without touching a demo.
+
+### Deliberately deferred
+
+- **Baselines** — self-relative vs division vs global. Start self-relative; the 17 other players in every log provide a free division-ish pool later.
+- **Final weights** — hand-set now, fitted later.
+- **Cross-class comparability** — within-class only until baselines are settled.
 
 ---
 
-## 3. Data model
+## 4. Data model
 
-Raw-first: **store the source, derive everything else.** Normalization rules will be wrong at least twice; re-deriving from blobs costs seconds, re-fetching 500 logs costs an afternoon.
+Changes from v0.2 in **bold**.
 
 ```sql
--- SOURCE OF TRUTH
-log_raw(log_id INTEGER PK, fetched_at, etag, json TEXT)
+-- SOURCE OF TRUTH (never deleted; everything else derives from these)
+log_raw(log_id INTEGER PK, fetched_at, json TEXT)
+trends_raw(log_id INTEGER PK, fetched_at, json TEXT)          -- the index row
+etf2l_raw(kind, id, fetched_at, json TEXT, PK(kind, id))
 
 -- IDENTITY
-player(steamid64 PK, steamid3, display_name, is_me BOOL, etf2l_div, updated_at)
+player(account_id PK, steamid64, steamid3, display_name, is_me,
+       etf2l_id, etf2l_div, updated_at)
 
--- NORMALIZED MATCH DATA
+-- MATCH
 match(log_id PK, map, gamemode, played_at, duration_s,
-      blue_score, red_score, title, uploader, format)
+      blue_score, red_score, title, uploader,
+      format,                    -- highlander | sixes | other
+      league,                    -- etf2l | null
+      etf2l_match_id,            -- links to ETF2L context
+      demos_tf_id,               -- STV demo, when one exists
+      duplicate_of,              -- non-null: never count in aggregates
+      classified_by)             -- trends | heuristic | manual
 
-match_round(log_id, round_num, start_s, length_s, winner,
-            firstcap, blue_dmg, red_dmg, blue_ubers, red_ubers,
-            PK(log_id, round_num))
+match_round(log_id, round_num, start_s, length_s, winner, firstcap, ...)
+match_round_event(log_id, round_num, at_s, kind, actor, target, extra)
 
-match_player(log_id, steamid64, team, kills, deaths, assists, suicides,
-             dmg, dmg_real, dt, dt_real, hr, heal, ubers, drops,
-             headshots, headshots_hit, backstabs, medkits, medkits_hp,
-             sentries, cpc, ic, longest_killstreak, airshots,
-             PK(log_id, steamid64))
+match_player(log_id, account_id, team, kills, deaths, assists, dmg, dmg_real,
+             dt, hr, heal, ubers, drops, headshots, headshots_hit, backstabs,
+             medkits, medkits_hp, sentries, cpc, ic, longest_killstreak, ...)
+match_player_class(log_id, account_id, class, time_s, kills, assists, deaths, dmg)
+match_player_weapon(log_id, account_id, class, weapon, kills, dmg, shots, hits)
 
-match_player_class(log_id, steamid64, class, time_s, kills, assists,
-                   deaths, dmg, PK(log_id, steamid64, class))
+match_class_kills(log_id, account_id, victim_class, kills)
+match_class_deaths(log_id, account_id, killer_class, deaths)
+match_class_assists(log_id, account_id, victim_class, assists)
 
-match_player_weapon(log_id, steamid64, class, weapon,
-                    kills, dmg, avg_dmg, shots, hits)
-
-match_medic(log_id, steamid64, advantages_lost, biggest_advantage_lost_s,
-            deaths_with_95_uber, deaths_within_20s_after_uber,
-            avg_time_to_build_s, avg_time_before_using_s, avg_uber_length_s)
-
-match_ubertype(log_id, steamid64, medigun, count)
+match_medic(log_id, account_id, advantages_lost, biggest_advantage_lost_s,
+            deaths_with_95_uber, avg_time_to_build_s, avg_uber_length_s, ...)
 heal_spread(log_id, healer, target, heal)
 
--- DEMOS (v1: index only)
-demo(id PK, path, file_hash, filename, map, server, recorder_nick,
-     ticks, duration_s, recorded_at, file_mtime, size_bytes,
-     kind TEXT CHECK(kind IN ('pov','stv')), source, indexed_at)
+-- DEMOS
+demo(id PK, source, path, file_hash, map, server, recorder_nick, ticks,
+     duration_s, recorded_at, kind, demos_tf_id, indexed_at)
+demo_event(demo_id, at_tick, kind, value)       -- from the .json sidecars
+demo_link(demo_id, log_id, confidence, method, tick_offset, PK(demo_id, log_id))
 
-demo_link(demo_id, log_id, confidence REAL, method TEXT, tick_offset INTEGER,
-          PK(demo_id, log_id))
-
--- DERIVED (disposable, rebuildable)
-baseline(class, gamemode, stat, n, mean, sd, p10, p25, p50, p75, p90, computed_at)
-
-rating(log_id, steamid64, class, engine_version, score,
-       components JSON, computed_at, PK(log_id, steamid64, class, engine_version))
+-- DERIVED (droppable, rebuildable with one command)
+class_value(log_id, account_id, class, engine_version, score, components JSON)
+matchup(log_id, class, blue_account, red_account, blue_value, red_value, diff)
+baseline(class, gamemode, stat, n, mean, sd, p10, p25, p50, p75, p90)
 
 -- PLUMBING
 sync_state(source PK, cursor, last_run_at, last_error)
 app_config(key PK, value)
 ```
 
-Everything under `-- DERIVED` must be droppable and rebuildable with one command. Version the rating engine in the row so old ratings don't silently mix with new ones.
+`duplicate_of` must be respected by **every** aggregate query. 248 of 1,280 logs are duplicates; forgetting that filter inflates a fifth of the history.
 
 ---
 
-## 4. Ingest pipelines
-
-### 4.1 logs.tf
+## 5. Ingest
 
 ```
-GET https://logs.tf/api/v1/log?player=<steamid64>&limit=100&offset=N
-    -> { logs: [{ id, title, map, date, players, views }] }
-
-GET https://logs.tf/api/v1/log/<id>
-    -> full match JSON
+1. trends.tf index   ->  what matches exist, what they are, what they link to
+2. logs.tf detail    ->  full JSON for non-duplicate Highlander logs
+3. normalize         ->  a separate pass over stored blobs
+4. ETF2L context     ->  division/season for logs with an etf2l matchid
+5. demos             ->  local folder scan; demos.tf by demoid on demand
 ```
 
-- **Do not filter Highlander by `players == 18`.** Measured against the real account (1,492 logs): 1,020 have exactly 18 players, but 149 have 19, 27 have 20 and 7 have 21 — and sampling one of them (`pl_vigil_rc10`, 19 players) confirms it is ordinary Highlander where a sub swapped in mid-match, so both players appear in the log. That filter would silently discard ~180 real matches. Detect Highlander by **class coverage per team** (both teams fielding 8-9 distinct classes) rather than headcount, and treat 12-player logs as Sixes.
-- Format is genuinely mixed on this account: ~1,020 Highlander, ~218 Sixes, the rest ambiguous. Whatever the classifier does, it must be visible and overridable.
-- **Self-throttle to ~1 req/s.** No official rate limit is published; behave as if there is one.
-- Store the blob, then normalize in a separate pass. `sync` and `reprocess` are different commands.
-- Incremental: remember the highest log id seen in `sync_state`; a full backfill is a separate explicit action.
-- Manual add: paste a log URL or id. This is how you will test everything.
-
-### 4.2 Demos — v1 index only
-
-Confirmed against the real install at `D:\SteamLibrary\steamapps\common\Team Fortress 2\tf`:
-
-1. Configurable `tf/` path — TF2 is **not** at the default Steam location here, so the folder picker is the primary route and auto-detection is a convenience.
-2. **Scan both `tf/` and `tf/demos/`.** This install has 6 demos in the first and 95 in the second; picking one directory loses real data.
-3. `notify` watcher plus a full rescan on startup.
-4. Header-only parse: the Source demo header is a fixed 1072-byte prefix — `HL2DEMO\0`, demo/network protocol, then 260-byte fields for server, recorder nick, map and game directory, then playback time, tick count and frame count. Confirmed present on this install's files (e.g. server `169.254.116.243:7304`, nick `flashy`, map `pl_swiftwater_final1`). Cheap enough to parse directly; `tf-demo-parser` is only needed for the deep parse in v2.
-5. **Demo Support sidecars are already there** — 95 `.json` files, one per demo, plus `tf/demos/_events.txt` and `tf/KillStreaks.txt`. The JSON holds tick-stamped events:
-   ```json
-   { "events": [ { "name": "Killstreak", "value": "4", "tick": 33062 } ] }
-   ```
-   That is a free, pre-indexed list of "something happened here" markers with exact ticks — worth ingesting in M4 alongside the headers.
-6. Hash by (size + first 64KB) so renames don't force a re-index.
-
-### 4.3 Demo <-> log matching
-
-Score candidate pairs and take the best above a threshold:
-
-- map equal (**required**) — from the demo header, not the filename
-- **recording start time parsed from the filename** — Demo Support names files `<prefix><YYYY-MM-DD>_<HH-MM-SS>.dem` (e.g. `flashwav2026-09-17_21-00-24.dem`). This is the single strongest signal: an exact local start timestamp, far better than file mtime, which only tells you when recording *ended*.
-- demo duration (header playback time) ~ log duration
-- recorder nick from the header matches a player name in the log
-
-Note the filename timestamp is local time while logs.tf dates are UTC — resolve the offset once and store it, rather than widening the match window to paper over it.
-
-Store the confidence and the method. Surface low-confidence links in the UI as "probably this match?" with a manual confirm — never silently guess.
-
-### 4.4 Jump-back (the v1 demo payoff)
-
-Given a linked demo and a timestamp from the log (a round start, an uber, a death), emit:
-
-```
-playdemo <name>; demo_gototick <tick>
-```
-
-Copy to clipboard, and optionally write a `.cfg` into `tf/cfg/`. Log time -> demo tick needs the demo's start offset; derive it once per link from round-start alignment and store it on `demo_link.tick_offset`. This is the feature that makes the app part of your review routine instead of a stat page you look at once.
+- Self-throttle every source to ~1 req/s. None publishes a rate limit; behave as if they do.
+- Store raw, normalize separately. `sync` and `reprocess` stay different commands.
+- Incremental by `updated_since` / highest log id; full backfill is an explicit action.
+- Manual add by URL or id — the fastest way to test anything.
 
 ---
 
-## 5. Rating engine
+## 6. The match page
 
-```
-raw stat
-  -> per-minute / per-round normalization (time-weighted: stopwatch rounds vary wildly)
-  -> percentile vs baseline(class, gamemode)
-  -> weighted composite per class
-  -> opponent adjustment (ETF2L div, later)
-  -> shrinkage toward class mean by sample size
-  -> score + confidence interval
-```
+Two phases, because the demo is not ready when you want to look.
 
-**v1 = hand-set weights per class.** You know Highlander; encode that knowledge in a TOML file, not in Rust source, so you can tune without recompiling:
+**Phase 1 — instant, from the log:**
+- Nine class matchups, won or lost, with the decisive ones called out
+- Your class value score, and the same for all 17 other players
+- Round timeline with caps, ubers and picks
+- Impact-kill breakdown: who you killed, and what it was worth
 
-```toml
-[sniper]
-picks_per_min      = 0.30
-headshot_ratio     = 0.20
-dpm                = 0.15
-deaths_per_min     = -0.20
-time_to_first_pick = 0.15
-```
+**Phase 2 — once a demo is linked:**
+- Per-player detail from the demo where available
+- Jump-back: `playdemo <name>; demo_gototick <tick>` to any moment
+- Sidecar killstreak markers as timeline pins
 
-**v2 = fit the weights.** Once ~200+ logs are stored, run a logistic regression of round outcome on per-round player features and replace the hand weights with learned ones. Keep both engines available and versioned so you can compare.
-
-Hard rules:
-
-- Never show a rating from fewer than N matches without a visible confidence band.
-- Never compare across classes without saying you're comparing percentiles, not raw output.
-- Split by `class_stats`, never by "what they main" — HL players flex constantly and it will wreck your numbers.
-
-### Class metrics worth encoding
-
-| Class | Beyond dmg/kills |
-|---|---|
-| Scout | Time alive, cap contribution, 1v1 win rate |
-| Soldier | Damage during uber, airshots, self-damage economy |
-| Pyro | Airblast/uber denial, reflect kills, spy-check rate |
-| Demo | Pick rate, share of combo damage, sticky trap value |
-| Heavy | Damage in uber, survival post-uber, heal-received share |
-| Engineer | Sentry dmg/kills, uptime, tele usage |
-| Medic | Build time, drops, uber advantage won, heal distribution, deaths at >=95% |
-| Sniper | Headshot ratio, duel win rate, picks/min, time-to-first-pick |
-| Spy | Backstabs per life, value of targets picked, escape rate |
-
----
-
-## 6. IPC surface (first cut)
-
-```rust
-// config
-get_config() / set_config(key, value)
-detect_tf_path() -> Option<PathBuf>
-set_tf_path(path) -> Result<TfPathInfo>
-
-// sync
-sync_logs(full: bool) -> JobId          // emits progress events
-add_log_by_url(url: String) -> LogId
-reprocess_all() -> JobId
-scan_demos() -> JobId
-
-// read
-list_matches(filter) -> Vec<MatchSummary>
-get_match(log_id) -> MatchDetail
-get_player_profile(steamid64) -> Profile
-get_class_profile(steamid64, class) -> ClassProfile
-get_rating_trend(steamid64, class, range) -> Vec<RatingPoint>
-list_demos(filter) -> Vec<DemoSummary>
-get_demo_links(log_id) -> Vec<DemoLink>
-
-// actions
-confirm_demo_link(demo_id, log_id)
-build_jump_command(log_id, demo_id, at_seconds) -> String
-recompute_baselines() -> JobId
-```
-
-Long-running work returns a `JobId` and streams progress over a Tauri event channel. Do not block IPC on a 500-log backfill.
+POV demos only contain what your client received, so phase 2 is you-only for local demos. With an STV demo from demos.tf — available for 1,047 of your matches — it covers all 18 players. That difference is why STV is worth pulling.
 
 ---
 
 ## 7. Milestones
 
-**M0 — Skeleton**
-Tauri app boots, SQLite + migrations, config screen (steamid64 + `tf/` path with folder picker).
-*Done when:* the app remembers your settings across restarts.
+| | | |
+|---|---|---|
+| **M0** | Skeleton, database, first-run setup | **done** |
+| **M1** | trends.tf index + logs.tf sync + normalize; match list | next |
+| **M2** | Match page phase 1: matchups, round timeline, box score | |
+| **M3** | Rating v1: Sniper in full, other classes generic; profile page | |
+| **M4** | Demos: local index, demos.tf fetch by demoid, linking, jump-back | |
+| **M5** | ETF2L context, officials vs scrims split, teammate tracking | |
+| **v2** | Deep demo parse: positions, heatmaps, engagement ranges | |
 
-**M1 — logs.tf pipeline**
-Sync, store raw, normalize, match list UI.
-*Done when:* your full HL history is in the DB and listed, and `reprocess_all` rebuilds every derived table from blobs with zero refetches.
-
-**M2 — Match detail + class profile**
-Full box score per match, per-round timeline, per-class aggregates and raw trends.
-*Done when:* you'd genuinely rather open this than logs.tf for your own matches.
-
-**M3 — Rating v1**
-Baselines, percentiles, TOML-weighted composite, trend chart with confidence bands.
-*Done when:* a bad game and a good game land where your gut says they should.
-
-**M4 — Demo index + jump-back**
-Watcher, header index, log matching with manual confirm, clipboard jump command.
-*Done when:* you can go from "this round went badly" in the app to that moment in TF2 in under ten seconds.
-
-**M5 — Insights & team view**
-Auto-written observations, heal distribution, combo stats, opponent-adjusted rating, ETF2L context.
-
-**v2 (deferred):** deep demo parsing — positional heatmaps, death maps, distance-to-medic, engagement ranges, STV downloads from demos.tf.
+M1 acceptance: every Highlander log on the account stored, classified, deduplicated, and rebuildable from raw blobs with no refetching.
 
 ---
 
-## 8. Open questions
+## 8. Still open
 
-1. ~~Your SteamID64~~ — `76561198099396919` (`[U:1:139131191]`).
-2. ~~Where is your TF2 install?~~ — `D:\SteamLibrary\steamapps\common\Team Fortress 2	f`, 101 demos present.
-3. ~~Which league(s)?~~ — ETF2L (https://etf2l.org/forum/user/97913/).
-4. Do you already keep demos, and are they POV (your own recordings) or STV downloads? Changes what M4 can match against.
-5. Rating philosophy: should it measure **impact on winning**, or **execution quality regardless of outcome**? They diverge sharply for Medic and Engineer, and it's a design choice, not a technical one.
+1. **Baselines** — self, division, or global. Deferred deliberately until there is data to look at.
+2. **Final impact weights** — the TOML above is a first guess; expect to argue with it.
+3. **Linux demos** — a second machine holds more POV demos. Import path to be designed; the `demoid` route may make it unnecessary.
+4. **Sixes** — detected and stored, excluded from ratings. A later update.
