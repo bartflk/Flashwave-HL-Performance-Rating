@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react()],
   clearScreen: false,
   server: {
-    port: 5173,
+    port: 5174,
     strictPort: true,
     watch: {
       // Rust rebuilds are handled by Tauri; watching them just churns HMR.

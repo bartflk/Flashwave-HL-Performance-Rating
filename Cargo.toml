@@ -20,6 +20,10 @@ sqlx = { version = "0.8", default-features = false, features = [
     "runtime-tokio",
     "sqlite",
     "migrate",
+    # Needed for `migrate!`, which only reads the migrations directory at
+    # compile time. The query!/query_as! macros, which would require a live
+    # database at build time, are deliberately not used.
+    "macros",
     "chrono",
 ] }
 chrono = { version = "0.4", features = ["serde"] }
