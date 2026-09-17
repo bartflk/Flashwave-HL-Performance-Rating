@@ -153,20 +153,29 @@ GET https://logs.tf/api/v1/log/<id>
 
 ### 4.2 Demos — v1 index only
 
-1. Configurable `tf/` path. Your TF2 is **not** at the default Steam location — make this a required first-run setting with a folder picker, and validate that `<path>/demos` or `<path>/*.dem` exists.
-2. `notify` watcher plus a full rescan on startup.
-3. Header-only parse via `tf-demo-parser`: map, server, nick, tick count, duration. Milliseconds per file, no memory blowup.
-4. Also read P-REC / in-game killstreak `_events.txt` / `.json` bookmark files if present — free, high-signal "something happened here" markers.
-5. Hash by (size + first 64KB) so renames don't force a re-index.
+Confirmed against the real install at `D:\SteamLibrary\steamapps\common\Team Fortress 2\tf`:
+
+1. Configurable `tf/` path — TF2 is **not** at the default Steam location here, so the folder picker is the primary route and auto-detection is a convenience.
+2. **Scan both `tf/` and `tf/demos/`.** This install has 6 demos in the first and 95 in the second; picking one directory loses real data.
+3. `notify` watcher plus a full rescan on startup.
+4. Header-only parse: the Source demo header is a fixed 1072-byte prefix — `HL2DEMO\0`, demo/network protocol, then 260-byte fields for server, recorder nick, map and game directory, then playback time, tick count and frame count. Confirmed present on this install's files (e.g. server `169.254.116.243:7304`, nick `flashy`, map `pl_swiftwater_final1`). Cheap enough to parse directly; `tf-demo-parser` is only needed for the deep parse in v2.
+5. **Demo Support sidecars are already there** — 95 `.json` files, one per demo, plus `tf/demos/_events.txt` and `tf/KillStreaks.txt`. The JSON holds tick-stamped events:
+   ```json
+   { "events": [ { "name": "Killstreak", "value": "4", "tick": 33062 } ] }
+   ```
+   That is a free, pre-indexed list of "something happened here" markers with exact ticks — worth ingesting in M4 alongside the headers.
+6. Hash by (size + first 64KB) so renames don't force a re-index.
 
 ### 4.3 Demo <-> log matching
 
 Score candidate pairs and take the best above a threshold:
 
-- map equal (**required**)
-- `|demo_recorded_at − log.date|` within a window (demo file mtime ~ match end; log date ~ match start) — strongest signal
-- demo duration ~ log duration
-- recorder nick matches a player name in the log
+- map equal (**required**) — from the demo header, not the filename
+- **recording start time parsed from the filename** — Demo Support names files `<prefix><YYYY-MM-DD>_<HH-MM-SS>.dem` (e.g. `flashwav2026-09-17_21-00-24.dem`). This is the single strongest signal: an exact local start timestamp, far better than file mtime, which only tells you when recording *ended*.
+- demo duration (header playback time) ~ log duration
+- recorder nick from the header matches a player name in the log
+
+Note the filename timestamp is local time while logs.tf dates are UTC — resolve the offset once and store it, rather than widening the match window to paper over it.
 
 Store the confidence and the method. Surface low-confidence links in the UI as "probably this match?" with a manual confirm — never silently guess.
 
@@ -293,8 +302,8 @@ Auto-written observations, heal distribution, combo stats, opponent-adjusted rat
 
 ## 8. Open questions
 
-1. Your SteamID64 — needed before anything syncs.
-2. Where is your TF2 install? Not at the default Steam path.
+1. ~~Your SteamID64~~ — `76561198099396919` (`[U:1:139131191]`).
+2. ~~Where is your TF2 install?~~ — `D:\SteamLibrary\steamapps\common\Team Fortress 2	f`, 101 demos present.
 3. Which league(s)? Determines whether RGL API integration earns its place in M5.
 4. Do you already keep demos, and are they POV (your own recordings) or STV downloads? Changes what M4 can match against.
 5. Rating philosophy: should it measure **impact on winning**, or **execution quality regardless of outcome**? They diverge sharply for Medic and Engineer, and it's a design choice, not a technical one.

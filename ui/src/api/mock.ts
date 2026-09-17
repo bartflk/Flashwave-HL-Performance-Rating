@@ -11,16 +11,31 @@ const state: AppConfig = { steamid: null, tfPath: null };
 const delay = <T,>(value: T, ms = 120): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), ms));
 
+// Numbers taken from a real install, so browser-mode layout matches reality.
 function fakeTfPath(path: string, valid: boolean): TfPathInfo {
+  if (!valid) {
+    return {
+      path,
+      valid,
+      demoDirs: [],
+      cfgDir: null,
+      demoCount: 0,
+      notes: [
+        "No TF2 marker files found here (expected gameinfo.txt, tf2_misc_dir.vpk or cfg/).",
+      ],
+    };
+  }
+  const demoDirs = [
+    { path, demoCount: 6 },
+    { path: `${path}\\demos`, demoCount: 95 },
+  ];
   return {
     path,
     valid,
-    demosDir: valid ? `${path}\\demos` : null,
-    cfgDir: valid ? `${path}\\cfg` : null,
-    demoCount: valid ? 14 : 0,
-    notes: valid
-      ? [`Found 14 demo file(s) in \`${path}\\demos\`.`]
-      : ["No TF2 marker files found here (expected gameinfo.txt, tf2_misc_dir.vpk or cfg/)."],
+    demoDirs,
+    cfgDir: `${path}\\cfg`,
+    demoCount: demoDirs.reduce((n, d) => n + d.demoCount, 0),
+    notes: demoDirs.map((d) => `${d.demoCount} demo file(s) in \`${d.path}\`.`),
   };
 }
 
@@ -39,12 +54,15 @@ export const mockApi = {
     if (!/^\d{17}$|^\[?U:1:\d+\]?$|^STEAM_[0-5]:[01]:\d+$|profiles\/\d+/i.test(input.trim())) {
       return Promise.reject({ kind: "invalid_steamid", message: `unrecognised format \`${input}\`` });
     }
-    state.steamid = "76561198000000000";
+    // The real backend canonicalises to SteamID64; approximate that by keeping
+    // a SteamID64 as typed and standing in for any other format.
+    const trimmed = input.trim();
+    state.steamid = /^\d{17}$/.test(trimmed) ? trimmed : "76561198099396919";
     return delay({ ...state });
   },
 
   detectTfPath: (): Promise<TfPathInfo | null> =>
-    delay(fakeTfPath("C:\\Program Files (x86)\\Steam\\steamapps\\common\\Team Fortress 2\\tf", true)),
+    delay(fakeTfPath("D:\\SteamLibrary\\steamapps\\common\\Team Fortress 2\\tf", true)),
 
   inspectTfPath: (path: string): Promise<TfPathInfo> =>
     delay(fakeTfPath(path, path.toLowerCase().includes("tf"))),

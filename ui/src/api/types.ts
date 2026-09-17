@@ -12,11 +12,18 @@ export interface AppConfig {
   tfPath: string | null;
 }
 
+export interface DemoDir {
+  path: string;
+  demoCount: number;
+}
+
 export interface TfPathInfo {
   path: string;
   valid: boolean;
-  demosDir: string | null;
+  /** Both `tf` and `tf/demos` — real installs accumulate demos in each. */
+  demoDirs: DemoDir[];
   cfgDir: string | null;
+  /** Total across every entry in `demoDirs`. */
   demoCount: number;
   notes: string[];
 }

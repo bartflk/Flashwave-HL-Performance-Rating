@@ -8,6 +8,14 @@ use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+/// A directory holding `.dem` files.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoDir {
+    pub path: String,
+    pub demo_count: usize,
+}
+
 /// What we found at a candidate `tf` directory.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,10 +23,12 @@ pub struct TfPathInfo {
     pub path: String,
     /// True when this really looks like a TF2 `tf` directory.
     pub valid: bool,
-    /// Directory demos are read from (`tf/demos` when it exists, else `tf`).
-    pub demos_dir: Option<String>,
+    /// Every directory demos are read from. TF2 records into `tf/` by default
+    /// while Demo Support writes to `tf/demos`, and real installs accumulate
+    /// files in both — so both are scanned rather than picking a winner.
+    pub demo_dirs: Vec<DemoDir>,
     pub cfg_dir: Option<String>,
-    /// `.dem` files found directly in `demos_dir`.
+    /// Total `.dem` files across every directory in `demo_dirs`.
     pub demo_count: usize,
     /// Human-readable findings, shown under the picker in the UI.
     pub notes: Vec<String>,
@@ -55,23 +65,26 @@ pub fn inspect(path: impl AsRef<Path>) -> Result<TfPathInfo> {
         );
     }
 
-    let demos_dir = pick_demos_dir(&resolved);
-    let demo_count = demos_dir.as_deref().map(count_demos).unwrap_or(0);
+    let demo_dirs = demo_dirs(&resolved);
+    let demo_count = demo_dirs.iter().map(|d| d.demo_count).sum();
     let cfg_dir = Some(resolved.join("cfg")).filter(|p| p.is_dir());
 
-    match (&demos_dir, demo_count) {
-        (Some(d), 0) => notes.push(format!(
-            "No .dem files in `{}` yet — recordings will be picked up automatically.",
-            d.display()
-        )),
-        (Some(d), n) => notes.push(format!("Found {n} demo file(s) in `{}`.", d.display())),
-        (None, _) => notes.push("No demo directory found.".to_string()),
+    if demo_count == 0 {
+        notes.push(
+            "No .dem files found yet — new recordings will be picked up automatically.".to_string(),
+        );
+    } else {
+        for d in &demo_dirs {
+            if d.demo_count > 0 {
+                notes.push(format!("{} demo file(s) in `{}`.", d.demo_count, d.path));
+            }
+        }
     }
 
     Ok(TfPathInfo {
         path: resolved.to_string_lossy().into_owned(),
         valid,
-        demos_dir: demos_dir.map(|p| p.to_string_lossy().into_owned()),
+        demo_dirs,
         cfg_dir: cfg_dir.map(|p| p.to_string_lossy().into_owned()),
         demo_count,
         notes,
@@ -97,19 +110,18 @@ fn resolve(given: &Path, notes: &mut Vec<String>) -> PathBuf {
     given.to_path_buf()
 }
 
-/// TF2 writes demos into `tf/` by default; P-REC and the in-game recorder can
-/// be configured to use `tf/demos`. Prefer the subdirectory when it exists.
-fn pick_demos_dir(tf: &Path) -> Option<PathBuf> {
-    let sub = tf.join("demos");
-    if sub.is_dir() {
-        if count_demos(&sub) > 0 || count_demos(tf) == 0 {
-            return Some(sub);
-        }
-    }
-    if tf.is_dir() {
-        return Some(tf.to_path_buf());
-    }
-    None
+/// Every directory that can hold demos: `tf` itself (where the `record` command
+/// writes) and `tf/demos` (where Demo Support and P-REC write). Both are real
+/// on a used install, so both are reported.
+fn demo_dirs(tf: &Path) -> Vec<DemoDir> {
+    [tf.to_path_buf(), tf.join("demos")]
+        .into_iter()
+        .filter(|p| p.is_dir())
+        .map(|p| DemoDir {
+            demo_count: count_demos(&p),
+            path: p.to_string_lossy().into_owned(),
+        })
+        .collect()
 }
 
 fn count_demos(dir: &Path) -> usize {
@@ -205,6 +217,32 @@ mod tests {
     #[test]
     fn rejects_a_path_that_is_not_a_directory() {
         assert!(inspect("this-path-does-not-exist-12345").is_err());
+    }
+
+    /// Mirrors a real install: Demo Support files in `tf/demos`, plus a few
+    /// left over from the `record` command in `tf` itself. Both must count.
+    #[test]
+    fn counts_demos_in_both_directories() {
+        let tf = std::env::temp_dir().join("hl-test-tf/tf");
+        let demos = tf.join("demos");
+        std::fs::create_dir_all(&demos).unwrap();
+        std::fs::create_dir_all(tf.join("cfg")).unwrap();
+        std::fs::write(tf.join("gameinfo.txt"), "").unwrap();
+        std::fs::write(tf.join("root_one.dem"), "").unwrap();
+        std::fs::write(demos.join("ds_one.dem"), "").unwrap();
+        std::fs::write(demos.join("ds_two.dem"), "").unwrap();
+        // Sidecars and unrelated files must not be counted as demos.
+        std::fs::write(demos.join("ds_one.json"), "{}").unwrap();
+        std::fs::write(demos.join("_events.txt"), "").unwrap();
+
+        let info = inspect(&tf).unwrap();
+        assert!(info.valid);
+        assert_eq!(info.demo_count, 3);
+        assert_eq!(info.demo_dirs.len(), 2);
+
+        // Pointing at the parent resolves down to `tf`.
+        let info = inspect(tf.parent().unwrap()).unwrap();
+        assert_eq!(info.demo_count, 3);
     }
 
     #[test]

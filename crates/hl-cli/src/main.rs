@@ -119,9 +119,11 @@ async fn main() -> Result<()> {
 fn print_tf(info: &hl_core::TfPathInfo) {
     println!("path     : {}", info.path);
     println!("valid    : {}", info.valid);
-    println!("demos    : {}", info.demos_dir.as_deref().unwrap_or("-"));
     println!("cfg      : {}", info.cfg_dir.as_deref().unwrap_or("-"));
-    println!("count    : {}", info.demo_count);
+    println!("demos    : {} total", info.demo_count);
+    for d in &info.demo_dirs {
+        println!("           {:>5}  {}", d.demo_count, d.path);
+    }
     for note in &info.notes {
         println!("  - {note}");
     }
