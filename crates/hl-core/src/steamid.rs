@@ -1,7 +1,7 @@
 //! SteamID handling.
 //!
 //! This exists in exactly one place on purpose. logs.tf keys players by
-//! SteamID3 (`[U:1:12345]`), RGL and demos.tf use SteamID64, and players paste
+//! SteamID3 (`[U:1:12345]`), ETF2L and demos.tf use SteamID64, and players paste
 //! whatever their profile shows them. Every conversion in the app goes through
 //! here so the formats can never drift apart.
 
@@ -28,7 +28,7 @@ impl SteamId {
         STEAMID64_BASE + self.0 as u64
     }
 
-    /// `76561198000000000` — the form used by RGL, demos.tf and the logs.tf
+    /// `76561198000000000` — the form used by ETF2L, demos.tf and the logs.tf
     /// search endpoint.
     pub fn to_steamid64(self) -> String {
         self.as_u64().to_string()

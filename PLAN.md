@@ -81,7 +81,7 @@ Raw-first: **store the source, derive everything else.** Normalization rules wil
 log_raw(log_id INTEGER PK, fetched_at, etag, json TEXT)
 
 -- IDENTITY
-player(steamid64 PK, steamid3, display_name, is_me BOOL, rgl_div, updated_at)
+player(steamid64 PK, steamid3, display_name, is_me BOOL, etf2l_div, updated_at)
 
 -- NORMALIZED MATCH DATA
 match(log_id PK, map, gamemode, played_at, duration_s,
@@ -145,7 +145,8 @@ GET https://logs.tf/api/v1/log/<id>
     -> full match JSON
 ```
 
-- Filter to Highlander: `players == 18` (keep a manual override — pugs and ringers make this fuzzy).
+- **Do not filter Highlander by `players == 18`.** Measured against the real account (1,492 logs): 1,020 have exactly 18 players, but 149 have 19, 27 have 20 and 7 have 21 — and sampling one of them (`pl_vigil_rc10`, 19 players) confirms it is ordinary Highlander where a sub swapped in mid-match, so both players appear in the log. That filter would silently discard ~180 real matches. Detect Highlander by **class coverage per team** (both teams fielding 8-9 distinct classes) rather than headcount, and treat 12-player logs as Sixes.
+- Format is genuinely mixed on this account: ~1,020 Highlander, ~218 Sixes, the rest ambiguous. Whatever the classifier does, it must be visible and overridable.
 - **Self-throttle to ~1 req/s.** No official rate limit is published; behave as if there is one.
 - Store the blob, then normalize in a separate pass. `sync` and `reprocess` are different commands.
 - Incremental: remember the highest log id seen in `sync_state`; a full backfill is a separate explicit action.
@@ -198,7 +199,7 @@ raw stat
   -> per-minute / per-round normalization (time-weighted: stopwatch rounds vary wildly)
   -> percentile vs baseline(class, gamemode)
   -> weighted composite per class
-  -> opponent adjustment (RGL div, later)
+  -> opponent adjustment (ETF2L div, later)
   -> shrinkage toward class mean by sample size
   -> score + confidence interval
 ```
@@ -294,7 +295,7 @@ Watcher, header index, log matching with manual confirm, clipboard jump command.
 *Done when:* you can go from "this round went badly" in the app to that moment in TF2 in under ten seconds.
 
 **M5 — Insights & team view**
-Auto-written observations, heal distribution, combo stats, opponent-adjusted rating, RGL context.
+Auto-written observations, heal distribution, combo stats, opponent-adjusted rating, ETF2L context.
 
 **v2 (deferred):** deep demo parsing — positional heatmaps, death maps, distance-to-medic, engagement ranges, STV downloads from demos.tf.
 
@@ -304,6 +305,6 @@ Auto-written observations, heal distribution, combo stats, opponent-adjusted rat
 
 1. ~~Your SteamID64~~ — `76561198099396919` (`[U:1:139131191]`).
 2. ~~Where is your TF2 install?~~ — `D:\SteamLibrary\steamapps\common\Team Fortress 2	f`, 101 demos present.
-3. Which league(s)? Determines whether RGL API integration earns its place in M5.
+3. ~~Which league(s)?~~ — ETF2L (https://etf2l.org/forum/user/97913/).
 4. Do you already keep demos, and are they POV (your own recordings) or STV downloads? Changes what M4 can match against.
 5. Rating philosophy: should it measure **impact on winning**, or **execution quality regardless of outcome**? They diverge sharply for Medic and Engineer, and it's a design choice, not a technical one.
