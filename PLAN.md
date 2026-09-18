@@ -1,4 +1,4 @@
-# HL Performance Rating System — Plan v0.8
+# HL Performance Rating System — Plan v0.9
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
 **Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
@@ -30,6 +30,7 @@ Four sources, each with one job. This is the biggest change from v0.2, and it re
 | **logs.tf** `/api/v1/log/<id>` | **Detail.** Full box score, per-round events, per-class and per-weapon stats | yes |
 | **ETF2L** `api.etf2l.org` | **Context.** Division and tier, competition, season, opponent identity | yes |
 | **demos.tf** | **STV demos.** All 18 players, reachable via the `demoid` trends.tf already provides | via demoid |
+| **logs.tf raw logs** | **Per-kill events.** The server log behind every logs.tf page: each kill with time, both classes, weapon and both players' positions. See §9 | via more.tf, not yet first-hand |
 
 ### Why trends.tf changes the plan
 
@@ -144,7 +145,7 @@ Lookup order: map+side, then map, then mode+side, then mode, then general. The s
 
 **What the data allows. This decides the order of work:**
 - **Per map: possible now.** Every log has its map, and `classkills` gives victims per player per log.
-- **Per side: not possible from logs.tf.** `classkills` covers the whole log, not each round. The log cannot tell a kill made while defending from one made while attacking. The only timed kills are Medic deaths. Per-side values need per-kill events with victim class and time, which means v2 demo parsing, or reading the raw server log instead of the logs.tf summary.
+- **Per side: not possible from the logs.tf summary**, but possible from the raw log. `classkills` covers the whole log, not each round, and the only timed kills in the summary are Medic deaths. The raw server log has every kill with time and victim class; more.tf already parses it (§9). With it, each kill falls in a round, each round has a known attacking and defending side, and per-side values need no demos.
 - **Percentiles blunt a map-wide scale.** Ratings are percentiles against the pool. A multiplier that applies to every Sniper on Vigil only moves Vigil games relative to other maps. If the goal is "a good Vigil game is a good game", per-map baselines may be the better tool than a per-map multiplier. Decide when building it.
 
 **Effect on this account (re-rated after applying):** small. Sniper career stays at 48.8. Recent form goes from 45.0 to 45.2. The Impact kills percentile moves from 44.2 to 44.9, with raw impact up from 13.5 to 14.7 per 10 min. Officials read 51.6, down from 51.8; pugs 46.4, up from 46.2. No best or worst game changes place. Because the rating is a percentile, reweighting only moves you when your mix of victims differs from other Snipers'. Yours barely does.
@@ -152,7 +153,7 @@ Lookup order: map+side, then map, then mode+side, then mode, then general. The s
 **Order:**
 1. ~~Apply the v2 general table~~: done.
 2. Per-mode and per-map overrides.
-3. Per-side values once kill timing exists (v2 demos).
+3. Per-side values once per-kill events exist (M6, raw logs).
 
 ### Matchup scoring
 
@@ -375,7 +376,9 @@ POV demos only contain what your client received, so phase 2 is you-only for loc
 | **M3** | Rating v1: Sniper in full, other classes generic; profile page | **done** |
 | **M4** | Demos: local index, demos.tf fetch by demoid, linking, jump-back | **done** |
 | **M5** | ETF2L context, officials vs scrims split, teammate tracking | **done** |
-| **v2** | Deep demo parse: positions, heatmaps, engagement ranges | |
+| **M6** | Raw logs: every kill with time, classes and positions (§9); per-side victim values | |
+| **M7** | more.tf-style match views: kill map, heatmaps, damage and kill spread, timeline, play-by-play (§9) | |
+| **v2** | Deep demo parse: aim and viewangles, engagement ranges (positions largely come from M6 now) | |
 
 M1 acceptance: every Highlander log on the account stored, classified, deduplicated, and rebuildable from raw blobs with no refetching.
 
@@ -394,3 +397,87 @@ M1 acceptance: every Highlander log on the account stored, classified, deduplica
 9. **Teams with no officials.** Scrims are named from official rosters, so a team that never played an official (2 Blacked Up, March–August 2026) stays unnamed. The player's ETF2L transfer history (`/player/{id}/transfers`) could fill the gap; it is incomplete for older teams.
 10. **logs.tf-only combined logs.** Dedupe relies on trends.tf's `duplicate_of`. A combined log that only logs.tf knows (the 2018 S16 semi-final: `gullywash + badwater` plus both single-map logs) is counted alongside its parts.
 
+---
+
+## 9. Learning from more.tf
+
+more.tf (1.47 million matches parsed) reads the **raw server log** behind each logs.tf page, not just the logs.tf summary we use. That is why it can show where every kill happened. Checked on our own `pro vs noob scrim` (log 4121291, Swiftwater, 15 Sep 2026) through its page and its `/api/log/<id>` response.
+
+### What its data has that ours does not
+
+The logs.tf summary gives totals per player, plus timed events only for caps, ubers, drops and Medic deaths. more.tf's parse of the raw log adds:
+
+- **Every kill:** unix timestamp, killer and victim SteamID and class, weapon, and **the killer's and victim's x/y/z position**. That is 418 kills in this match.
+- **Per round, per player:** kills, deaths, assists, damage, heals, charges, time alive, and who each Medic healed.
+- **Per player:** kills, deaths and damage split by the other player and by the other class (a full who-killed-whom matrix). Also kills, deaths, damage and heals in 10-second intervals.
+- **Ubers:** start and end, length, deaths during and after, and high damage taken during.
+- **Per round:** first blood, first cap and who capped, and team kills, damage, ubers and drops.
+- **Deaths relative to uber:** each player's deaths before, during and after their Medic's uber.
+- **Killstreaks with their victims**, and **chat**.
+
+Timestamps are absolute unix times, so they need the same server-clock correction as round times (§3, trap 3).
+
+**Why this matters for the rating:**
+- **Per-side victim values** (§3) become possible without demos. Each kill has a time, so it falls in a round, and each round has a side.
+- **Time to first pick** and **picks before an uber push**, which M3 deferred to demos.
+- **Kill position** gives kill distance, and "was the Sniper holding a sightline or out of position when they died".
+- It does all this for all 18 players in every match, back to 2014, against 101 local demos.
+
+**Source decision.** Parse logs.tf's raw log ourselves, store it verbatim like every other source, and treat more.tf's JSON as a reference to check our parser against, not a dependency. Its API is undocumented, and our app must keep working if it changes. **Verify first** that logs.tf still serves raw logs for old matches, and at what size and rate.
+
+### The screenshots, feature by feature
+
+**1. Charts tab.** A player list on the left, grouped by team with class icons, drives every panel. One player is selected at a time.
+- **Damage spread:** diverging bars per enemy class. Damage taken extends left in red, damage dealt extends right in blue, and the class icon sits in the middle. This shows, for example, that a Sniper's damage went mostly to Scout and Heavy while the Demoman did most of the damage to them.
+- **Kill spread:** the same layout for deaths to and kills on each class. This is our `classkills`/`classdeaths` data, which we already store, drawn per class.
+- **Kill map:** the map overview with a dot per event. A green dot is a kill, placed at the victim. A red dot is a death. A yellow ring is where the shooter stood, joined to its dot by a line. Counts show in the header. Click to expand.
+- **Kills heatmap and deaths heatmap:** a density glow over the overview where the player got kills, and where they died.
+
+**2. Kill map, expanded.** The same kill map, full size, for one player (here, 39 kills and 28 deaths).
+- An enemy filter ("All Enemies" or a single player) shows one duel, such as flashy against the enemy Sniper.
+- A strip at the bottom shows a bar for every kill (green) and death (red) across the match's 39:44, so bursts and droughts stand out at a glance.
+
+**3. Timeline tab.** Cumulative kills per player over match time, one stepped line each.
+- Switches for Kills, Deaths, Damage and Heals.
+- A legend per team with each player's final total.
+- A hover crosshair lists every player's running total at that moment, ranked.
+- Time before the match (warmup) shows as negative minutes.
+
+**4. Play-by-play tab.** The match as a feed, with filters for Kills, Ubers, Caps, Chat and Streaks.
+- Kills read "killer → victim" with class icons and the weapon.
+- Ubers show who popped and the length in seconds.
+- Caps show the team and the players who capped.
+- Chat shows the lines themselves.
+- Killstreaks show the length and every victim.
+- Rows are timestamped, with the pre-match period marked before "Game starts".
+
+**Also on the log page** (from its text, not screenshotted):
+- A box score with damage per minute, damage taken per minute, KA/D and K/D.
+- Team totals, including **midfights won**.
+- A round table: length, kills per team, ubers per team, damage per team and **midfight winner**.
+- A Medic panel: charges by medigun type, average time to build, average time before using, deaths near full charge, average uber length, **major advantages lost** and the biggest one, **crossbow healing**, and a heal-target table.
+- A class-vs-class matrix of kills, kills plus assists, and deaths.
+- A round selector that filters the page to one round.
+
+**Site-wide:** profiles with win rate per map, class stats, teammates, and recent activity. Also seasonal player cards, weekly season summaries that compare you with peers, and leaderboards.
+
+### What we build, and where it goes
+
+We already have: class matchups, the round timeline with caps, ubers, drops and Medic picks, the box score, demo jump-back, teammates, and officials vs scrims. more.tf has no rating, no matchup view, no demo jumping and no ETF2L context, so the aim is to add its views inside our matchup-first match page, not to copy it.
+
+**M6: raw logs.**
+- Download and store each raw log.
+- Parse kills, damage, heals, ubers, caps and chat, with positions.
+- Correct times with the log clock.
+- Test the parser against more.tf's numbers on the same logs.
+- Then per-side victim values, time to first pick, and picks before an uber push.
+
+**M7: the views.** In order of use to a Sniper main:
+1. **Kill map with the duel filter.** Your kills and deaths on the map overview, filterable to one enemy (their Sniper). Clicking a dot jumps to that moment in the demo, which more.tf cannot do.
+2. **Play-by-play**, merged into our round timeline: every kill as a marker, each one jumpable.
+3. **Damage spread and kill spread** per player, in the diverging layout.
+4. **Timeline chart** (kills, deaths, damage, heals).
+5. **Heatmaps.**
+6. **Midfight winner** per round, and the **deaths before, during and after uber** split, as new rating inputs for every class.
+
+**Needed for the maps:** an overview image per map, and the transform from game coordinates to image pixels. more.tf has these. TF2's own overview files and community sets are the likely sources. Start with the competitive Highlander pool (Upward, Vigil, Swiftwater, Product, Proot, Ashville, Steel and the rest). Show a plain grid when a map has no overview.
