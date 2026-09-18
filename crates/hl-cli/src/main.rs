@@ -29,6 +29,7 @@ COMMANDS:
     match <LOG_ID> [--json]
                            Matchups for one stored match
     rate                   Rebuild baselines and rate every stored performance
+    demos                  Scan the TF2 folder for demos and link them to matches
     profile [CLASS] [--json]
                            Your rating profile (defaults to your most-rated class)
     matches [N] [--all] [--officials]
@@ -152,6 +153,22 @@ async fn main() -> Result<()> {
         ["rate"] => {
             let db = Db::connect(&db_path).await?;
             rate(&db, &db_path).await
+        }
+
+        ["demos"] => {
+            let db = Db::connect(&db_path).await?;
+            let tf = db
+                .get_config()
+                .await?
+                .tf_path
+                .context("no TF2 folder set: run `hl tf set <PATH>` first")?;
+            let started = std::time::Instant::now();
+            let s = hl_ingest::index_demos(&db, std::path::Path::new(&tf)).await?;
+            println!("scanned {} demos in {:.1}s ({} unreadable, {} removed)", s.scanned, started.elapsed().as_secs_f64(), s.unreadable, s.removed);
+            println!("logs placed on the real clock: {}", s.logs_placed);
+            println!("demos linked: {} ({} links) -> {} matches with a demo", s.demos_linked, s.links, s.matches_with_demo);
+            println!("sidecar markers: {}", s.markers);
+            Ok(())
         }
 
         ["profile", rest @ ..] => {

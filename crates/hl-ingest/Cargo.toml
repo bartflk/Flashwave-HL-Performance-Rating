@@ -9,11 +9,12 @@ description = "Fetching and normalizing match data from trends.tf and logs.tf"
 hl-core.workspace = true
 hl-db.workspace = true
 hl-rating.workspace = true
+hl-demos.workspace = true
 
 anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-tokio = { workspace = true, features = ["time", "sync"] }
+tokio = { workspace = true, features = ["time", "sync", "fs", "io-util"] }
 tracing.workspace = true
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip"] }
 

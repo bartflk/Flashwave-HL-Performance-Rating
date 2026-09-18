@@ -1,4 +1,4 @@
-# HL Performance Rating System — Plan v0.6
+# HL Performance Rating System — Plan v0.7
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
 **Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
@@ -136,6 +136,8 @@ Both affected almost the whole history, and both hid behind single-round logs, w
 1. **Event times are seconds since the log started, not since the round started.** Round 1 starts at zero, so it looks right; every later round is offset by its start. Affected 740 of 759 matches. Each round is now calibrated off its own `round_win` event, which lands exactly at `start + length`.
 2. **Stopwatch swaps team colours between halves, and the log writes each round in that round's colours.** A raw `winner: "Blue"` can mean either team. The log records each player's colour per round in `rounds[].players[id].team`; normalization maps every round back to the **stable teams** (a player's overall team) by majority vote, and records `colours_swapped`. Affected 508 of 2,540 rounds across 342 matches — before the fix, the round view mislabelled three of six rounds in the S36 official against TWS.
 
+3. **Round `start_time`s are the game server's local clock, written as if UTC** (found in M4). A CEST server's rounds read two hours early. Invisible until something else — a demo file — has a real timestamp to compare against. Measured offsets: 318 logs at +0h, 169 at +1h, 208 at +2h. The fix anchors each log to a true-UTC moment just after the match ended — its own upload, or for a combined log (often uploaded days later) the upload of its last per-round part — and takes `anchor − raw end` floored to a whole hour. Residual after the offset: 16 s median, 19 s at the 90th percentile.
+
 Also worth knowing: in stopwatch the match score is not rounds won. That official is 4–2 by ETF2L's scoring while the round split is 3–3.
 
 ### Model v1 (M3): percentiles against the players you face
@@ -162,6 +164,20 @@ Rating runs as its own pass at the end of every sync and every rebuild: all 758 
 **What it still does not do:** v1 measures individual execution, which is what you asked for, not who won. In the S36 official against TWS, a 4–2 stopwatch win, v1 still gives the opponents five of nine matchups (three even, one to you). That is a true reading, not a bug: stopwatch is decided on push time, and a team can win it while being out-played class for class. The match page says so explicitly.
 
 The **head-to-head** column remains different in kind: kills between the two players on a class, read straight from `classkills`, no model involved.
+
+### Demos (M4)
+
+**Index.** `tf/`, `tf/demos` and `tf/demos/stv` are scanned for `.dem` files at startup and after every sync; only the 1072-byte header is read (0.6 s for 101 demos). Demo Support `.json` sidecars supply 883 tick-stamped killstreak markers.
+
+**When a demo started.** File modified time minus the demo's own duration, which needs no timezone. Checked against the Demo Support filename timestamp on 95 real demos: median disagreement 0.9 s. (A downloaded STV demo's modified time is the download time, so its start comes from its demos.tf upload time instead, and its jumps are flagged approximate.)
+
+**Linking.** Same map (or the demo's base map name inside a multi-map label like `upward + steel`, or a log with no map on time alone at a stricter threshold), and the demo and the log overlap for at least half of the shorter of the two. One demo can hold several matches and one match can span several demos. Result on this machine: 25 of 101 demos linked, to 23 matches. The unlinked rest are pubs (badwater, pier, borneo), MvM, reviews of other people's games, reconnect fragments, and sessions with no logs.tf log containing the owner.
+
+An earlier approach — fitting the hour offset per demo — was tried and rejected: with a ±12 h search, a short log "fits" inside a long demo at a nonsense offset. The anchor method has no search at all.
+
+**Jumping.** TF2 cannot open a demo and seek in one console line (`demo_gototick` runs before the demo has loaded), so the flow is two steps: copy `playdemo <demo>` once, then click any timeline marker to copy its `demo_gototick <tick>`. Jumps land 5 s early to show the lead-up. Killstreak markers that fall outside every round (pre-match warmup) are left out rather than forced into round 1.
+
+**STV.** demos.tf holds SourceTV demos for 1,047 of these matches. The match page offers a download into `tf/demos/stv` and links the result by demos.tf id. Caveat: a stopwatch match's combined log usually spans several STV demos (one per half), and trends.tf links one of them, so an STV demo often covers part of the match. **Not yet exercised against a real download** — see open items.
 
 ### Still deliberately deferred
 
@@ -278,7 +294,7 @@ POV demos only contain what your client received, so phase 2 is you-only for loc
 | **M1** | trends.tf index + logs.tf sync + normalize; match list | **done** |
 | **M2** | Match page phase 1: matchups, round timeline, box score | **done** |
 | **M3** | Rating v1: Sniper in full, other classes generic; profile page | **done** |
-| **M4** | Demos: local index, demos.tf fetch by demoid, linking, jump-back | |
+| **M4** | Demos: local index, demos.tf fetch by demoid, linking, jump-back | **done** |
 | **M5** | ETF2L context, officials vs scrims split, teammate tracking | |
 | **v2** | Deep demo parse: positions, heatmaps, engagement ranges | |
 
@@ -288,7 +304,11 @@ M1 acceptance: every Highlander log on the account stored, classified, deduplica
 
 ## 8. Still open
 
-1. **Baselines** — self, division, or global. Deferred deliberately until there is data to look at.
+1. ~~Baselines~~ — settled in M3: the other players in your own matches, with you excluded.
 2. **Final impact weights** — the TOML above is a first guess; expect to argue with it.
 3. **Linux demos** — a second machine holds more POV demos. Import path to be designed; the `demoid` route may make it unnecessary.
 4. **Sixes** — detected and stored, excluded from ratings. A later update.
+5. **Verify jump ticks in-game.** The arithmetic is tested end to end (a sidecar killstreak at raw tick 51,212 lands at 50,879 after the 5 s lead), but only TF2 can confirm the demo shows the right moment.
+6. **One real STV download.** The fetch is built and its metadata step verified live; the multi-megabyte download and the upload-time alignment of STV demos are untested.
+7. **File watcher.** Demos are rescanned at startup, after every sync, and on demand; a live `notify` watcher was planned and is not built.
+

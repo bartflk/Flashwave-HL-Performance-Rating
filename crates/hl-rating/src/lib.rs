@@ -8,7 +8,7 @@ pub mod model;
 pub mod profile;
 pub mod weights;
 
-pub use detail::{build as build_detail, MatchDetail};
+pub use detail::{build as build_detail, DemoView, EventRow, Jump, MatchDetail};
 pub use model::{Baseline, Component, Performance, Rating, MODEL_VERSION};
 pub use profile::{HistoryRow, Profile};
 pub use weights::Weights;

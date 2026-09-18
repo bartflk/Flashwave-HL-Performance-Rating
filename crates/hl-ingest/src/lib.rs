@@ -16,4 +16,6 @@ pub use sync::{reprocess, sync, Progress, SyncOptions, SyncSummary};
 pub use detail::match_detail;
 mod detail;
 pub mod rating;
+pub mod demos;
+pub use demos::{fetch_stv, index_demos, DemoIndexSummary, StvFetched};
 pub use rating::{load_profile, rate_all, rated_classes, RateSummary};

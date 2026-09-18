@@ -4,9 +4,10 @@
 // browser), so UI work does not require a Rust rebuild. Inside the app window
 // this file is never used.
 
-import type { Api, SyncHandlers } from "./client";
+import type { Api, StvHandlers, SyncHandlers } from "./client";
 import match4109131 from "./fixtures/match_4109131.json";
 import match4114301 from "./fixtures/match_4114301.json";
+import match4111116 from "./fixtures/match_4111116.json";
 import profileSniper from "./fixtures/profile_sniper.json";
 import profileEngineer from "./fixtures/profile_engineer.json";
 import type {
@@ -68,7 +69,9 @@ function fakeTfPath(path: string, valid: boolean): TfPathInfo {
 // renders genuine matches rather than invented ones.
 // JSON imports widen tuples to arrays, so the cast goes through `unknown`. Safe
 // here: these files are the Rust serializer's own output.
-const FIXTURES: MatchDetail[] = [match4109131, match4114301].map((f) => f as unknown as MatchDetail);
+const FIXTURES: MatchDetail[] = [match4109131, match4114301, match4111116].map(
+  (f) => f as unknown as MatchDetail,
+);
 
 // ---- fake match history -----------------------------------------------------
 
@@ -100,6 +103,7 @@ const FIXTURE_ROWS: MatchSummary[] = FIXTURES.map((d) => {
     demosTfId: d.demosTfId,
     redScore: d.redScore,
     blueScore: d.blueScore,
+    hasDemo: d.demos.length > 0,
     me: me && d.result
       ? {
           team: me.team,
@@ -143,6 +147,7 @@ const FAKE_MATCHES: MatchSummary[] = (() => {
       demosTfId: r() < 0.82 ? 1_507_898 - i : null,
       redScore: red,
       blueScore: blue,
+      hasDemo: r() < 0.15,
       me: {
         team,
         mainClass: cls,
@@ -173,6 +178,7 @@ const fakeStats = (pending: number): IndexStats => ({
 });
 
 let handlers: SyncHandlers | null = null;
+let stvHandlers: StvHandlers | null = null;
 let busy = false;
 /** Logs still waiting to be fetched; a completed sync clears it. */
 let pending = 24;
@@ -268,6 +274,35 @@ export const mockApi: Api = {
 
   openExternal: async (url: string) => {
     window.open(url, "_blank", "noopener");
+  },
+
+  copyText: async (text: string) => {
+    await navigator.clipboard?.writeText(text).catch(() => undefined);
+    (window as unknown as { __lastCopied?: string }).__lastCopied = text;
+  },
+
+  scanDemos: () =>
+    delay({ scanned: 101, unreadable: 0, removed: 0, logsPlaced: 759, links: 26, demosLinked: 25, matchesWithDemo: 23, markers: 883 }),
+  demoStats: () => delay({ demos: 101, linked: 25, stv: 0, markers: 883, matchesWithDemo: 23 }),
+
+  // Simulates a download so the progress UI can be exercised in a browser.
+  fetchStv: async (logId: number) => {
+    const total = 48_000_000;
+    let bytes = 0;
+    const step = () => {
+      bytes = Math.min(total, bytes + 6_000_000);
+      stvHandlers?.onProgress({ logId, bytes, total });
+      if (bytes < total) setTimeout(step, 150);
+      else stvHandlers?.onDone({ demoId: 999, fileName: "match-20260823-1956-pl_upward_f12.dem", bytes, logShare: 0.37 });
+    };
+    setTimeout(step, 150);
+  },
+
+  onStv: async (h) => {
+    stvHandlers = h;
+    return () => {
+      if (stvHandlers === h) stvHandlers = null;
+    };
   },
 
   indexStats: () => delay(fakeStats(pending)),

@@ -3,6 +3,7 @@ import { api } from "../../api/client";
 import { errorMessage, type MatchDetail } from "../../api/types";
 import { formatDate, minutes, splitMap, teamLabel } from "../../lib/format";
 import { BoxScore } from "./BoxScore";
+import { DemoPanel } from "./DemoPanel";
 import { Matchups } from "./Matchups";
 import { RoundTimeline } from "./RoundTimeline";
 
@@ -24,6 +25,7 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
         <>
           <Header d={q.data} />
           <Matchups d={q.data} />
+          <DemoPanel d={q.data} />
           <RoundTimeline d={q.data} />
           <BoxScore d={q.data} />
         </>
@@ -77,6 +79,7 @@ function Header({ d }: { d: MatchDetail }) {
       <div className="mh-foot">
         <div>
           {d.league && <span className="badge badge-league">{d.league.toUpperCase()}</span>}
+          {d.demos.some((x) => x.kind === "pov") && <span className="badge badge-pov">POV demo</span>}
           {d.demosTfId && <span className="badge badge-demo">STV demo</span>}
           {d.format && d.format !== "highlander" && <span className="badge">{d.format}</span>}
         </div>

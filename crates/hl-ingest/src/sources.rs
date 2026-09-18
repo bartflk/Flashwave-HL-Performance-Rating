@@ -3,7 +3,7 @@
 //! Each returns both a typed view and the verbatim JSON, because the verbatim
 //! JSON is what gets stored: parsing rules change, source rows don't.
 
-use crate::http::Throttled;
+use crate::http::{download_client, download_to, Throttled};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use serde_json::Value;
@@ -38,6 +38,23 @@ pub struct LogsTfRow {
 pub struct Sources {
     trends: Throttled,
     logstf: Throttled,
+    demostf: Throttled,
+    downloads: reqwest::Client,
+}
+
+/// A demo's metadata on demos.tf.
+#[derive(Debug, Clone, Deserialize)]
+pub struct DemosTfMeta {
+    pub id: i64,
+    /// Where the file itself lives.
+    pub url: String,
+    /// e.g. `match-20260823-1956-pl_upward_f12.dem`
+    pub name: String,
+    pub map: Option<String>,
+    /// Seconds.
+    pub duration: Option<i64>,
+    /// Upload time, unix seconds UTC: moments after the recording ended.
+    pub time: Option<i64>,
 }
 
 impl Sources {
@@ -45,6 +62,8 @@ impl Sources {
         Ok(Sources {
             trends: Throttled::new(Duration::from_millis(1000))?,
             logstf: Throttled::new(Duration::from_millis(1000))?,
+            demostf: Throttled::new(Duration::from_millis(1000))?,
+            downloads: download_client()?,
         })
     }
 
@@ -114,5 +133,40 @@ impl Sources {
             anyhow::bail!("log {log_id}: response has no players");
         }
         Ok(body)
+    }
+}
+
+impl Sources {
+    pub async fn demostf_meta(&self, demo_id: i64) -> Result<DemosTfMeta> {
+        let body = self.demostf.get_text(&format!("https://api.demos.tf/demos/{demo_id}")).await?;
+        serde_json::from_str(&body).with_context(|| format!("parsing demos.tf metadata for {demo_id}"))
+    }
+
+    pub async fn download(
+        &self,
+        url: &str,
+        dest: &std::path::Path,
+        progress: impl FnMut(u64, Option<u64>),
+    ) -> Result<u64> {
+        download_to(&self.downloads, url, dest, progress).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The real response for the S36 official against TWS.
+    #[test]
+    fn parses_demostf_metadata() {
+        let json = r#"{"id":1497032,"url":"https://freezer.demos.tf/ff/e7/ffe7_match-20260823-1956-pl_upward_f12.dem",
+            "name":"match-20260823-1956-pl_upward_f12.dem","server":"serveme.tf #1559951","duration":1157,
+            "nick":"SourceTV Demo","map":"pl_upward_f12","time":1787516129,"red":"GOYDA","blue":"RED",
+            "redScore":0,"blueScore":2,"playerCount":18,"players":[]}"#;
+        let m: DemosTfMeta = serde_json::from_str(json).unwrap();
+        assert_eq!(m.id, 1497032);
+        assert_eq!(m.duration, Some(1157));
+        assert_eq!(m.time, Some(1787516129));
+        assert!(m.url.ends_with(".dem"));
     }
 }

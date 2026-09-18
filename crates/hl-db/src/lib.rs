@@ -4,9 +4,11 @@
 //! macros on purpose: the macros require a live database at build time, which
 //! would make a fresh clone fail to compile before it has ever been run.
 
+mod demos;
 mod matches;
 mod ratings;
 
+pub use demos::{ClockInput, ClockRow, DemoRow, DemoStats, LinkedDemo};
 pub use ratings::{HistoryDbRow, RatingRow, VsTotals};
 pub use matches::{
     IndexInfo, IndexStats, LogsTfIndexRow, MatchFilter, MatchPage, MatchSummary, MyLine,

@@ -46,6 +46,39 @@ pub struct MatchDetail {
     pub demos_tf_id: Option<i64>,
     /// Set when a user `weights.toml` exists but could not be used.
     pub weights_warning: Option<String>,
+    /// Demos linked to this match; filled in by the caller.
+    pub demos: Vec<DemoView>,
+}
+
+/// Where to jump in a demo: open it with `playdemo`, then `demo_gototick`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Jump {
+    pub demo_id: i64,
+    pub tick: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoView {
+    pub demo_id: i64,
+    pub file_name: String,
+    /// The argument to `playdemo`: relative to `tf`, no extension.
+    pub playdemo_arg: String,
+    /// `pov` (your own recording) or `stv` (SourceTV, all 18 players).
+    pub kind: String,
+    pub recorder: Option<String>,
+    pub duration_s: f64,
+    pub recorded_at: Option<i64>,
+    pub size_bytes: i64,
+    /// How the demo was matched to this log.
+    pub method: String,
+    /// Share of this match's rounds inside the demo.
+    pub log_share: f64,
+    pub markers: usize,
+    /// True when tick positions are estimated rather than derived from exact
+    /// file times (STV demos, placed from their upload time).
+    pub approximate: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -135,6 +168,8 @@ pub struct RoundRow {
     /// A stopwatch half: each team wore the other's colour. Teams above are
     /// still the stable teams; this is only for saying "you played RED".
     pub colours_swapped: bool,
+    /// The round's start in a linked demo.
+    pub jump: Option<Jump>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -148,6 +183,10 @@ pub struct EventRow {
     pub killer_is_me: bool,
     pub medigun: Option<String>,
     pub point: Option<i64>,
+    /// Event payload where the kind has one (a killstreak's length).
+    pub value: Option<String>,
+    /// This moment in a linked demo, a few seconds early to show the lead-up.
+    pub jump: Option<Jump>,
 }
 
 pub fn build(log: &NormalizedLog, me: Option<SteamId>, w: &Weights, baseline: &Baseline) -> MatchDetail {
@@ -194,6 +233,7 @@ pub fn build(log: &NormalizedLog, me: Option<SteamId>, w: &Weights, baseline: &B
         etf2l_match_id: None,
         demos_tf_id: None,
         weights_warning: None,
+        demos: Vec::new(),
     }
 }
 
@@ -413,9 +453,12 @@ fn rounds(log: &NormalizedLog, names: &HashMap<SteamId, String>, me: Option<Stea
                     killer_is_me: me.is_some() && e.killer == me,
                     medigun: e.medigun.clone(),
                     point: e.point,
+                    value: None,
+                    jump: None,
                 })
                 .collect(),
             colours_swapped: r.colours_swapped,
+            jump: None,
         })
         .collect()
 }

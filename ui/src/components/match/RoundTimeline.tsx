@@ -1,4 +1,5 @@
-import type { EventRow, MatchDetail, RoundRow, Team } from "../../api/types";
+import type { EventRow, Jump, MatchDetail, RoundRow, Team } from "../../api/types";
+import { copy } from "../../lib/toast";
 import { clock, teamLabel } from "../../lib/format";
 
 /**
@@ -27,6 +28,10 @@ export function RoundTimeline({ d }: { d: MatchDetail }) {
   const right: Team = left === "Red" ? "Blue" : "Red";
   const us = d.myTeam !== null;
   const anySwapped = d.rounds.some((r) => r.coloursSwapped);
+  // Only worth naming the demo in a copy confirmation when there are several.
+  const demoName = (j: Jump) =>
+    d.demos.length > 1 ? d.demos.find((x) => x.demoId === j.demoId)?.fileName : undefined;
+  const hasJumps = d.rounds.some((r) => r.jump !== null);
 
   return (
     <section className="panel rounds">
@@ -40,17 +45,23 @@ export function RoundTimeline({ d }: { d: MatchDetail }) {
             </p>
           )}
         </div>
-        <Legend />
+        <Legend jumps={hasJumps} />
       </header>
       {d.rounds.map((r) => (
-        <Round key={r.roundNum} r={r} left={left} right={right} us={us} />
+        <Round key={r.roundNum} r={r} left={left} right={right} us={us} demoName={demoName} />
       ))}
     </section>
   );
 }
 
-function Round(props: { r: RoundRow; left: Team; right: Team; us: boolean }) {
-  const { r, left, right, us } = props;
+function Round(props: {
+  r: RoundRow;
+  left: Team;
+  right: Team;
+  us: boolean;
+  demoName: (j: Jump) => string | undefined;
+}) {
+  const { r, left, right, us, demoName } = props;
   const len = r.lengthS ?? Math.max(1, ...r.events.map((e) => e.atS));
   const events = r.events.filter((e) => e.kind !== "round_win");
 
@@ -67,7 +78,17 @@ function Round(props: { r: RoundRow; left: Team; right: Team; us: boolean }) {
   return (
     <div className="round">
       <div className="round-meta">
-        <span className="round-num">R{r.roundNum}</span>
+        {r.jump ? (
+          <button
+            className="round-num jumpable"
+            title={`Copy demo_gototick ${r.jump.tick} (round start)`}
+            onClick={() => jumpTo(r.jump!, `round ${r.roundNum} start`, demoName)}
+          >
+            R{r.roundNum}
+          </button>
+        ) : (
+          <span className="round-num">R{r.roundNum}</span>
+        )}
         <span className={`round-outcome ${outcomeClass}`}>{outcome}</span>
         <span className="muted">{clock(r.lengthS)}</span>
         {us && (
@@ -85,7 +106,7 @@ function Round(props: { r: RoundRow; left: Team; right: Team; us: boolean }) {
           <span key={t} className="tick" style={{ left: `${(t / len) * 100}%` }} />
         ))}
         {events.map((e, i) => (
-          <Marker key={i} e={e} len={len} left={left} us={us} />
+          <Marker key={i} e={e} len={len} left={left} us={us} demoName={demoName} />
         ))}
       </div>
 
@@ -117,44 +138,87 @@ function Round(props: { r: RoundRow; left: Team; right: Team; us: boolean }) {
   );
 }
 
-function Marker(props: { e: EventRow; len: number; left: Team; us: boolean }) {
-  const { e, len, left, us } = props;
+function Marker(props: {
+  e: EventRow;
+  len: number;
+  left: Team;
+  us: boolean;
+  demoName: (j: Jump) => string | undefined;
+}) {
+  const { e, len, left, us, demoName } = props;
   const pos = `${Math.min(100, (e.atS / len) * 100)}%`;
   const team = e.team?.toLowerCase() ?? "none";
   const at = clock(e.atS);
   const who = e.team === null ? "" : us ? (e.team === left ? "Our" : "Their") : teamLabel(e.team);
 
+  // A marker with a jump is a button: clicking it copies the tick.
+  const jump = e.jump;
+  const act = jump
+    ? {
+        role: "button" as const,
+        tabIndex: 0,
+        onClick: () => jumpTo(jump, `${e.kind.replace("_", " ")} at ${at}`, demoName),
+        onKeyDown: (k: React.KeyboardEvent) => {
+          if (k.key === "Enter" || k.key === " ") {
+            k.preventDefault();
+            jumpTo(jump, `${e.kind.replace("_", " ")} at ${at}`, demoName);
+          }
+        },
+      }
+    : {};
+  const hint = jump ? " — click to copy demo_gototick" : "";
+  const jumpCls = jump ? " jumpable" : "";
+
   switch (e.kind) {
+    case "killstreak":
+      return (
+        <span
+          className={`mk mk-streak${jumpCls}`}
+          style={{ left: pos }}
+          title={`${at} — killstreak of ${e.value ?? "?"} (from your demo)${hint}`}
+          {...act}
+        >
+          {e.value ?? "K"}
+        </span>
+      );
     case "pointcap":
       return (
         <span
-          className={`mk mk-cap team-bg-${team}`}
+          className={`mk mk-cap team-bg-${team}${jumpCls}`}
           style={{ left: pos }}
-          title={`${at} — ${who} cap${e.point !== null ? `, point ${e.point}` : ""}`}
+          title={`${at} — ${who} cap${e.point !== null ? `, point ${e.point}` : ""}${hint}`}
+          {...act}
         />
       );
     case "charge":
       return (
         <span
-          className={`mk mk-uber team-border-${team}`}
+          className={`mk mk-uber team-border-${team}${jumpCls}`}
           style={{ left: pos }}
-          title={`${at} — ${who} uber${e.medigun && e.medigun !== "medigun" ? ` (${e.medigun})` : ""}${e.player ? `, ${e.player}` : ""}`}
+          title={`${at} — ${who} uber${e.medigun && e.medigun !== "medigun" ? ` (${e.medigun})` : ""}${e.player ? `, ${e.player}` : ""}${hint}`}
+          {...act}
         >
           U
         </span>
       );
     case "drop":
       return (
-        <span className="mk mk-drop" style={{ left: pos }} title={`${at} — ${who} drop: ${e.player ?? "medic"} died with uber ready`}>
+        <span
+          className={`mk mk-drop${jumpCls}`}
+          style={{ left: pos }}
+          title={`${at} — ${who} drop: ${e.player ?? "medic"} died with uber ready${hint}`}
+          {...act}
+        >
           D
         </span>
       );
     case "medic_death":
       return (
         <span
-          className={`mk mk-pick ${e.killerIsMe ? "by-me" : ""} team-border-${team}`}
+          className={`mk mk-pick ${e.killerIsMe ? "by-me" : ""} team-border-${team}${jumpCls}`}
           style={{ left: pos }}
-          title={`${at} — ${who} Medic ${e.player ?? ""} killed${e.killer ? ` by ${e.killer}` : ""}${e.killerIsMe ? " (you)" : ""}`}
+          title={`${at} — ${who} Medic ${e.player ?? ""} killed${e.killer ? ` by ${e.killer}` : ""}${e.killerIsMe ? " (you)" : ""}${hint}`}
+          {...act}
         >
           ✚
         </span>
@@ -176,9 +240,15 @@ function Pair(props: { label: string; a: number | null; b: number | null; left: 
   );
 }
 
-function Legend() {
+function jumpTo(j: Jump, what: string, demoName: (j: Jump) => string | undefined) {
+  const name = demoName(j);
+  void copy(`demo_gototick ${j.tick}`, name ? `${what} (in ${name})` : what);
+}
+
+function Legend({ jumps }: { jumps: boolean }) {
   return (
     <div className="legend">
+      {jumps && <span className="legend-note">click any marker to copy its tick</span>}
       <span>
         <span className="mk-demo mk-cap team-bg-none" /> cap
       </span>
@@ -194,6 +264,11 @@ function Legend() {
       <span>
         <span className="mk-demo mk-pick by-me">✚</span> by you
       </span>
+      {jumps && (
+        <span>
+          <span className="mk-demo mk-streak">4</span> your killstreak
+        </span>
+      )}
     </div>
   );
 }

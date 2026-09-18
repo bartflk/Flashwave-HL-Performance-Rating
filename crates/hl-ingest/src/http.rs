@@ -78,3 +78,68 @@ impl Throttled {
         Err(last_err.unwrap_or_else(|| anyhow::anyhow!("{url}: failed")))
     }
 }
+
+/// A client for large files: no overall timeout (a big demo can legitimately
+/// take minutes), but a read timeout so a stalled transfer still fails.
+pub fn download_client() -> Result<reqwest::Client> {
+    reqwest::Client::builder()
+        .user_agent(USER_AGENT)
+        .connect_timeout(Duration::from_secs(20))
+        .read_timeout(Duration::from_secs(60))
+        .build()
+        .context("building download client")
+}
+
+/// Stream `url` to `dest`, reporting `(bytes so far, total if known)`.
+///
+/// Written to `dest.part` and renamed only once complete, so an interrupted
+/// download never leaves a truncated file that looks like a finished demo.
+pub async fn download_to(
+    client: &reqwest::Client,
+    url: &str,
+    dest: &std::path::Path,
+    mut progress: impl FnMut(u64, Option<u64>),
+) -> Result<u64> {
+    use tokio::io::AsyncWriteExt;
+
+    let mut resp = client.get(url).send().await.with_context(|| format!("requesting {url}"))?;
+    if !resp.status().is_success() {
+        bail!("{url}: HTTP {}", resp.status());
+    }
+    let total = resp.content_length();
+    if let Some(parent) = dest.parent() {
+        tokio::fs::create_dir_all(parent).await?;
+    }
+    let part = dest.with_extension("dem.part");
+    let mut file = tokio::fs::File::create(&part)
+        .await
+        .with_context(|| format!("creating {}", part.display()))?;
+
+    let mut done: u64 = 0;
+    let result: Result<()> = async {
+        while let Some(chunk) = resp.chunk().await.context("reading download")? {
+            file.write_all(&chunk).await?;
+            done += chunk.len() as u64;
+            progress(done, total);
+        }
+        file.flush().await?;
+        Ok(())
+    }
+    .await;
+
+    drop(file);
+    if let Err(e) = result {
+        let _ = tokio::fs::remove_file(&part).await;
+        return Err(e);
+    }
+    if let Some(t) = total {
+        if done != t {
+            let _ = tokio::fs::remove_file(&part).await;
+            bail!("download incomplete: {done} of {t} bytes");
+        }
+    }
+    tokio::fs::rename(&part, dest)
+        .await
+        .with_context(|| format!("moving download into {}", dest.display()))?;
+    Ok(done)
+}

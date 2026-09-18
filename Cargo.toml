@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/hl-core", "crates/hl-db", "crates/hl-ingest", "crates/hl-rating", "crates/hl-cli", "src-tauri"]
+members = ["crates/hl-core", "crates/hl-db", "crates/hl-ingest", "crates/hl-rating", "crates/hl-demos", "crates/hl-cli", "src-tauri"]
 
 [workspace.package]
 version = "0.1.0"
@@ -12,6 +12,7 @@ hl-core = { path = "crates/hl-core" }
 hl-db = { path = "crates/hl-db" }
 hl-ingest = { path = "crates/hl-ingest" }
 hl-rating = { path = "crates/hl-rating" }
+hl-demos = { path = "crates/hl-demos" }
 
 anyhow = "1"
 thiserror = "2"

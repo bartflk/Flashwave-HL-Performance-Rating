@@ -1,22 +1,33 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import type {
   AppConfig,
   AppStatus,
   CmdError,
+  DemoIndexSummary,
+  DemoStats,
   IndexStats,
   MatchDetail,
   MatchPage,
   MatchQuery,
   ProfileResponse,
   Progress,
+  StvFetched,
+  StvProgress,
   SyncDone,
   TfPathInfo,
 } from "./types";
 
 /** True inside the Tauri window, false in a plain browser tab. */
 export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+export interface StvHandlers {
+  onProgress: (p: StvProgress) => void;
+  onDone: (d: StvFetched) => void;
+  onError: (e: CmdError & { logId: number }) => void;
+}
 
 export interface SyncHandlers {
   onProgress: (p: Progress) => void;
@@ -41,6 +52,21 @@ const realApi = {
   getProfile: (cls: string | null) => invoke<ProfileResponse>("get_profile", { class: cls }),
   /** Opens in the system browser, never inside the app window. */
   openExternal: (url: string) => openUrl(url),
+  copyText: (text: string) => writeText(text),
+
+  scanDemos: () => invoke<DemoIndexSummary>("scan_demos"),
+  demoStats: () => invoke<DemoStats>("demo_stats"),
+  fetchStv: (logId: number) => invoke<void>("fetch_stv", { logId }),
+
+  /** STV download events. Returns a function that unsubscribes all three. */
+  onStv: async (h: StvHandlers): Promise<UnlistenFn> => {
+    const offs = await Promise.all([
+      listen<StvProgress>("stv://progress", (e) => h.onProgress(e.payload)),
+      listen<StvFetched>("stv://done", (e) => h.onDone(e.payload)),
+      listen<CmdError & { logId: number }>("stv://error", (e) => h.onError(e.payload)),
+    ]);
+    return () => offs.forEach((off) => off());
+  },
 
   /** Subscribe to sync events. Returns a function that unsubscribes all three. */
   onSync: async (h: SyncHandlers): Promise<UnlistenFn> => {

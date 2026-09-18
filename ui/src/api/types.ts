@@ -76,6 +76,8 @@ export interface MatchSummary {
   demosTfId: number | null;
   redScore: number | null;
   blueScore: number | null;
+  /** A demo on this machine is linked to the match. */
+  hasDemo: boolean;
   /** Null when the owner does not appear in the log. */
   me: MyLine | null;
 }
@@ -220,6 +222,10 @@ export interface EventRow {
   killerIsMe: boolean;
   medigun: string | null;
   point: number | null;
+  /** A killstreak's length, for `killstreak` events. */
+  value: string | null;
+  /** This moment in a linked demo, 5 s early to show the lead-up. */
+  jump: Jump | null;
 }
 
 export interface RoundRow {
@@ -238,6 +244,8 @@ export interface RoundRow {
   /** A stopwatch half: each team wore the other's colour. Teams in this row
    *  are still the stable teams; this only says which colour they wore. */
   coloursSwapped: boolean;
+  /** The round's start in a linked demo. */
+  jump: Jump | null;
 }
 
 export interface MatchDetail {
@@ -263,6 +271,65 @@ export interface MatchDetail {
   etf2lMatchId: number | null;
   demosTfId: number | null;
   weightsWarning: string | null;
+  demos: DemoView[];
+}
+
+// ---- M4: demos --------------------------------------------------------------------
+
+/** Where to jump: open the demo with `playdemo`, then `demo_gototick`. */
+export interface Jump {
+  demoId: number;
+  tick: number;
+}
+
+export interface DemoView {
+  demoId: number;
+  fileName: string;
+  /** The argument to `playdemo`, relative to tf. */
+  playdemoArg: string;
+  kind: "pov" | "stv";
+  recorder: string | null;
+  durationS: number;
+  recordedAt: number | null;
+  sizeBytes: number;
+  method: string;
+  /** Share of this match's rounds inside the demo, 0-1. */
+  logShare: number;
+  markers: number;
+  /** Ticks are estimated (STV), not derived from exact file times. */
+  approximate: boolean;
+}
+
+export interface DemoStats {
+  demos: number;
+  linked: number;
+  stv: number;
+  markers: number;
+  matchesWithDemo: number;
+}
+
+export interface DemoIndexSummary {
+  scanned: number;
+  unreadable: number;
+  removed: number;
+  logsPlaced: number;
+  links: number;
+  demosLinked: number;
+  matchesWithDemo: number;
+  markers: number;
+}
+
+export interface StvProgress {
+  logId: number;
+  bytes: number;
+  total: number | null;
+}
+
+export interface StvFetched {
+  demoId: number;
+  fileName: string;
+  bytes: number;
+  logShare: number;
 }
 
 // ---- M3: profile ------------------------------------------------------------------

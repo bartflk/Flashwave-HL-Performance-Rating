@@ -79,6 +79,8 @@ pub struct MatchSummary {
     pub demos_tf_id: Option<i64>,
     pub red_score: Option<i64>,
     pub blue_score: Option<i64>,
+    /// A demo on this machine is linked to the match.
+    pub has_demo: bool,
     /// The owner's line, when they appear in the log.
     pub me: Option<MyLine>,
 }
@@ -534,6 +536,7 @@ impl Db {
             "SELECT m.log_id, m.played_at, m.map, m.title, m.duration_s,
                     {EFFECTIVE_FORMAT} AS format, i.league, i.etf2l_match_id, i.demos_tf_id,
                     m.red_score, m.blue_score,
+                    EXISTS (SELECT 1 FROM demo_link dl WHERE dl.log_id = m.log_id) AS has_demo,
                     p.team, p.main_class, p.kills, p.deaths, p.assists, p.dmg, p.time_s
              FROM match m
              JOIN log_index i ON i.log_id = m.log_id
@@ -586,6 +589,7 @@ impl Db {
                     demos_tf_id: r.get("demos_tf_id"),
                     red_score: red,
                     blue_score: blue,
+                    has_demo: r.get::<i64, _>("has_demo") != 0,
                     me,
                 }
             })

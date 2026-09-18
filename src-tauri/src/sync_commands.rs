@@ -78,6 +78,11 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                 let _ = emitter.emit(EV_PROGRESS, p);
             })
             .await?;
+            // New logs can link to demos already on disk.
+            if let Some(tf) = db.get_config().await?.tf_path {
+                let s = hl_ingest::index_demos(&db, std::path::Path::new(&tf)).await?;
+                let _ = emitter.emit(EV_DEMOS_INDEXED, &s);
+            }
             anyhow::Ok(summary)
         }
         .await;
@@ -207,4 +212,87 @@ pub async fn get_profile(
         None => None,
     };
     Ok(ProfileResponse { classes, profile })
+}
+
+// ---- demos -----------------------------------------------------------------
+
+const EV_DEMOS_INDEXED: &str = "demos://indexed";
+const EV_STV_PROGRESS: &str = "stv://progress";
+const EV_STV_DONE: &str = "stv://done";
+const EV_STV_ERROR: &str = "stv://error";
+
+async fn tf_path(state: &AppState) -> CmdResult<std::path::PathBuf> {
+    let tf = state
+        .db
+        .get_config()
+        .await?
+        .tf_path
+        .ok_or_else(|| CmdError::new("missing_config", "Set your TF2 folder first."))?;
+    Ok(std::path::PathBuf::from(tf))
+}
+
+/// Rescan the TF2 folder for demos and relink them. Header reads only, so
+/// this is quick (~0.6 s for 100 demos) and safe to run on every sync.
+#[tauri::command]
+pub async fn scan_demos(app: AppHandle, state: State<'_, AppState>) -> CmdResult<hl_ingest::DemoIndexSummary> {
+    let tf = tf_path(&state).await?;
+    let summary = hl_ingest::index_demos(&state.db, &tf).await?;
+    let _ = app.emit(EV_DEMOS_INDEXED, &summary);
+    Ok(summary)
+}
+
+#[tauri::command]
+pub async fn demo_stats(state: State<'_, AppState>) -> CmdResult<hl_db::DemoStats> {
+    Ok(state.db.demo_stats().await?)
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct StvProgress {
+    log_id: i64,
+    bytes: u64,
+    total: Option<u64>,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct StvError {
+    log_id: i64,
+    #[serde(flatten)]
+    error: CmdError,
+}
+
+/// Download the demos.tf STV demo for a match in the background, then index
+/// and link it. Progress streams on `stv://progress`.
+#[tauri::command]
+pub async fn fetch_stv(app: AppHandle, state: State<'_, AppState>, log_id: i64) -> CmdResult<()> {
+    let guard = BusyGuard::acquire(&state.downloading)
+        .ok_or_else(|| CmdError::new("busy", "A demo download is already running."))?;
+    let tf = tf_path(&state).await?;
+    let db = state.db.clone();
+    let sources = state.sources.clone();
+
+    tauri::async_runtime::spawn(async move {
+        let _guard = guard;
+        let emitter = app.clone();
+        // Progress events at most every ~1%, not per network chunk.
+        let mut last_pct = u64::MAX;
+        let result = hl_ingest::fetch_stv(&db, &sources, &tf, log_id, |bytes, total| {
+            let pct = total.map(|t| bytes * 100 / t.max(1)).unwrap_or(bytes / 1_000_000);
+            if pct != last_pct {
+                last_pct = pct;
+                let _ = emitter.emit(EV_STV_PROGRESS, StvProgress { log_id, bytes, total });
+            }
+        })
+        .await;
+        match result {
+            Ok(done) => {
+                let _ = app.emit(EV_STV_DONE, done);
+            }
+            Err(e) => {
+                let _ = app.emit(EV_STV_ERROR, StvError { log_id, error: CmdError::from(e) });
+            }
+        }
+    });
+    Ok(())
 }

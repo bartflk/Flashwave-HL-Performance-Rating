@@ -18,6 +18,8 @@ pub struct AppState {
     pub sources: Arc<Sources>,
     /// Set while a sync or reprocess is running; a second one is refused.
     pub busy: Arc<AtomicBool>,
+    /// Set while an STV demo is downloading.
+    pub downloading: Arc<AtomicBool>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -32,6 +34,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
             // Errors are stringified rather than passed through as `anyhow`:
             // Tauri's setup wants a `Box<dyn Error>`, and `{:#}` keeps the
@@ -48,11 +51,30 @@ pub fn run() {
                 .map_err(|e| format!("{e:#}"))?;
             let sources = Sources::new().map_err(|e| format!("{e:#}"))?;
 
+            // Index demos in the background at startup: the window should not
+            // wait on a folder scan, and a missing TF2 folder is not an error.
+            {
+                let db = db.clone();
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    let Ok(cfg) = db.get_config().await else { return };
+                    let Some(tf) = cfg.tf_path else { return };
+                    match hl_ingest::index_demos(&db, std::path::Path::new(&tf)).await {
+                        Ok(s) => {
+                            tracing::info!(demos = s.scanned, linked = s.demos_linked, "demos indexed");
+                            let _ = tauri::Emitter::emit(&handle, "demos://indexed", &s);
+                        }
+                        Err(e) => tracing::warn!(error = %format!("{e:#}"), "demo index failed"),
+                    }
+                });
+            }
+
             app.manage(AppState {
                 db,
                 db_path,
                 sources: Arc::new(sources),
                 busy: Arc::new(AtomicBool::new(false)),
+                downloading: Arc::new(AtomicBool::new(false)),
             });
             Ok(())
         })
@@ -70,6 +92,9 @@ pub fn run() {
             sync_commands::list_matches,
             sync_commands::get_match,
             sync_commands::get_profile,
+            sync_commands::scan_demos,
+            sync_commands::demo_stats,
+            sync_commands::fetch_stv,
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

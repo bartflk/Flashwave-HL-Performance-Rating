@@ -138,6 +138,11 @@ function MatchRow({ m, onOpen }: { m: MatchSummary; onOpen: (logId: number) => v
       <td className="num">{dpm ?? ""}</td>
       <td className="title-cell">
         {m.league && <span className="badge badge-league">{m.league.toUpperCase()}</span>}
+        {m.hasDemo && (
+          <span className="badge badge-pov" title="Your recording of this match is on this machine">
+            POV
+          </span>
+        )}
         {m.demosTfId && (
           <span className="badge badge-demo" title={`STV demo on demos.tf (#${m.demosTfId})`}>
             STV

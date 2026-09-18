@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { errorMessage, type AppStatus } from "../api/types";
+import { errorMessage, type AppStatus, type DemoIndexSummary } from "../api/types";
 
 export function Settings({
   status,
@@ -28,6 +29,7 @@ export function Settings({
 
   return (
     <div className="content">
+      <DemosPanel />
       <div className="panel">
         <h2>Setup</h2>
         <dl className="kv" style={{ marginTop: 14 }}>
@@ -66,6 +68,71 @@ export function Settings({
           <dd>{status.version}</dd>
         </dl>
       </div>
+    </div>
+  );
+}
+
+/** Demo index counts, and a rescan for when you have just recorded. */
+function DemosPanel() {
+  const qc = useQueryClient();
+  const stats = useQuery({ queryKey: ["demo_stats"], queryFn: api.demoStats });
+  const [scan, setScan] = useState<{ busy: boolean; result: DemoIndexSummary | null; error: string | null }>({
+    busy: false,
+    result: null,
+    error: null,
+  });
+
+  async function rescan() {
+    setScan({ busy: true, result: null, error: null });
+    try {
+      const result = await api.scanDemos();
+      setScan({ busy: false, result, error: null });
+      void qc.invalidateQueries({ queryKey: ["demo_stats"] });
+      void qc.invalidateQueries({ queryKey: ["matches"] });
+      void qc.invalidateQueries({ queryKey: ["match"] });
+    } catch (e) {
+      setScan({ busy: false, result: null, error: errorMessage(e) });
+    }
+  }
+
+  const s = stats.data;
+  return (
+    <div className="panel">
+      <h2>Demos</h2>
+      <p className="hint" style={{ marginTop: 6 }}>
+        Your recordings in <code>tf</code>, <code>tf/demos</code> and <code>tf/demos/stv</code> are
+        matched to logs by map and time. Scanned at startup and after every sync.
+      </p>
+      {s && (
+        <dl className="kv" style={{ marginTop: 14 }}>
+          <dt>Demos found</dt>
+          <dd>
+            {s.demos}
+            {s.stv > 0 && ` (${s.stv} STV)`}
+          </dd>
+          <dt>Linked</dt>
+          <dd>
+            {s.linked} demos, covering {s.matchesWithDemo} matches
+          </dd>
+          <dt>Markers</dt>
+          <dd>{s.markers} killstreak markers from Demo Support</dd>
+        </dl>
+      )}
+      <p className="hint" style={{ marginTop: 10 }}>
+        Unlinked demos are usually pubs, MvM, reviews of other people&apos;s games, or matches
+        with no logs.tf log that includes you.
+      </p>
+      <div className="row" style={{ marginTop: 14 }}>
+        <button onClick={() => void rescan()} disabled={scan.busy}>
+          {scan.busy ? "Scanning…" : "Rescan demos"}
+        </button>
+        {scan.result && (
+          <span className="hint">
+            Scanned {scan.result.scanned}, linked {scan.result.demosLinked}.
+          </span>
+        )}
+      </div>
+      {scan.error && <p className="error" style={{ marginTop: 10 }}>{scan.error}</p>}
     </div>
   );
 }

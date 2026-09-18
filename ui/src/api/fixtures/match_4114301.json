@@ -2660,7 +2660,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": "medigun",
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 64865
+          }
         },
         {
           "atS": 19,
@@ -2670,7 +2675,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": "kritzkrieg",
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 64931
+          }
         },
         {
           "atS": 38,
@@ -2680,7 +2690,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": "kritzkrieg",
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 66198
+          }
         },
         {
           "atS": 42,
@@ -2690,7 +2705,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": "medigun",
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 66465
+          }
         },
         {
           "atS": 134,
@@ -2700,7 +2720,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": null,
-          "point": 1
+          "point": 1,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 72598
+          }
         },
         {
           "atS": 155,
@@ -2710,7 +2735,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": null,
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 73998
+          }
         },
         {
           "atS": 155,
@@ -2720,7 +2750,12 @@
           "killer": "Dristoyar",
           "killerIsMe": false,
           "medigun": null,
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 73998
+          }
         },
         {
           "atS": 190,
@@ -2730,7 +2765,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": "medigun",
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 76331
+          }
         },
         {
           "atS": 203,
@@ -2740,7 +2780,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": null,
-          "point": 2
+          "point": 2,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 77198
+          }
         },
         {
           "atS": 272,
@@ -2750,7 +2795,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": "medigun",
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 81798
+          }
         },
         {
           "atS": 276,
@@ -2760,7 +2810,12 @@
           "killer": "tyal",
           "killerIsMe": false,
           "medigun": null,
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 82065
+          }
         },
         {
           "atS": 415,
@@ -2770,7 +2825,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": null,
-          "point": 3
+          "point": 3,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 91331
+          }
         },
         {
           "atS": 433,
@@ -2780,7 +2840,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": "medigun",
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 92531
+          }
         },
         {
           "atS": 436,
@@ -2790,7 +2855,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": "medigun",
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 92731
+          }
         },
         {
           "atS": 442,
@@ -2800,7 +2870,12 @@
           "killer": "rzeke",
           "killerIsMe": false,
           "medigun": null,
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 93131
+          }
         },
         {
           "atS": 500,
@@ -2810,7 +2885,12 @@
           "killer": "rzeke",
           "killerIsMe": false,
           "medigun": null,
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 96998
+          }
         },
         {
           "atS": 532,
@@ -2820,7 +2900,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": "medigun",
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 99131
+          }
         },
         {
           "atS": 624,
@@ -2830,7 +2915,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": null,
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 105265
+          }
         },
         {
           "atS": 624,
@@ -2840,7 +2930,12 @@
           "killer": "rzeke",
           "killerIsMe": false,
           "medigun": null,
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 105265
+          }
         },
         {
           "atS": 669,
@@ -2850,7 +2945,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": "medigun",
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 108265
+          }
         },
         {
           "atS": 673,
@@ -2860,7 +2960,12 @@
           "killer": "Lyvarkis",
           "killerIsMe": false,
           "medigun": null,
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 108531
+          }
         },
         {
           "atS": 772,
@@ -2870,7 +2975,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": "medigun",
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 115131
+          }
         },
         {
           "atS": 815,
@@ -2880,7 +2990,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": "medigun",
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 117998
+          }
         },
         {
           "atS": 833,
@@ -2890,7 +3005,12 @@
           "killer": "Lyvarkis",
           "killerIsMe": false,
           "medigun": null,
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 119198
+          }
         },
         {
           "atS": 852,
@@ -2900,7 +3020,12 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": "medigun",
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 120465
+          }
         },
         {
           "atS": 910,
@@ -2910,10 +3035,19 @@
           "killer": null,
           "killerIsMe": false,
           "medigun": null,
-          "point": null
+          "point": null,
+          "value": null,
+          "jump": {
+            "demoId": 80,
+            "tick": 124331
+          }
         }
       ],
-      "coloursSwapped": false
+      "coloursSwapped": false,
+      "jump": {
+        "demoId": 80,
+        "tick": 63998
+      }
     }
   ],
   "modelVersion": "v1",
@@ -2922,5 +3056,21 @@
   "league": null,
   "etf2lMatchId": null,
   "demosTfId": 1501235,
-  "weightsWarning": null
+  "weightsWarning": null,
+  "demos": [
+    {
+      "demoId": 80,
+      "fileName": "flashwav2026-09-02_20-08-56.dem",
+      "playdemoArg": "demos/flashwav2026-09-02_20-08-56",
+      "kind": "pov",
+      "recorder": "flashy",
+      "durationS": 1916.969970703125,
+      "recordedAt": 1788372536,
+      "sizeBytes": 50273592,
+      "method": "exact",
+      "logShare": 1.0,
+      "markers": 0,
+      "approximate": false
+    }
+  ]
 }

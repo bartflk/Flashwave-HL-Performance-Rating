@@ -558,3 +558,157 @@
 .mu-breakdown table {
   max-width: 640px;
 }
+
+/* --- demos (M4) --- */
+
+.badge-pov {
+  background: rgba(107, 156, 196, 0.16);
+  color: #9cc0dd;
+}
+
+.demo-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.demo-head .hint {
+  margin-top: 4px;
+}
+
+.demo-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.demo-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.demo-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.demo-name code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stv-fetch {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+.stv-fetch .hint {
+  margin-top: 4px;
+  max-width: 560px;
+}
+
+.dl-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 200px;
+}
+
+.dl-progress .progress-track {
+  width: 100%;
+}
+
+/* Markers that copy a jump tick. */
+.mk.jumpable {
+  cursor: pointer;
+}
+
+.mk.jumpable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  z-index: 3;
+}
+
+.round-num.jumpable {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 0 4px;
+  margin-left: -5px;
+  font: inherit;
+  font-weight: 700;
+  color: var(--text);
+  width: auto;
+  min-width: 26px;
+}
+
+.round-num.jumpable:hover:not(:disabled) {
+  background: var(--panel-2);
+  border-color: var(--border);
+}
+
+/* Killstreak from your own demo: sits in the upper half of the track so it
+   never hides the team markers it tends to coincide with. */
+.mk-streak {
+  background: var(--panel);
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  font-size: 0.62rem;
+  border-radius: 999px;
+  width: 15px;
+  height: 15px;
+  top: 30%;
+}
+
+.mk-demo.mk-streak {
+  position: static;
+}
+
+.legend-note {
+  color: var(--accent);
+}
+
+/* --- toast --- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--ok);
+  border-radius: 8px;
+  padding: 9px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.86rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+  max-width: calc(100vw - 32px);
+}
+
+.toast-error {
+  border-left-color: var(--bad);
+}
+
+.toast-detail {
+  white-space: nowrap;
+}

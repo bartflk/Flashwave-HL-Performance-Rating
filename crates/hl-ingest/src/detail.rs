@@ -26,6 +26,8 @@ pub async fn match_detail(
     let baseline = crate::rating::load_baseline(db).await?;
     let mut detail = build_detail(&log, me, weights, &baseline);
 
+    crate::demos::enrich(db, &log, &mut detail).await?;
+
     if let Some(info) = db.index_info(log_id).await? {
         detail.format = info.format;
         detail.league = info.league;

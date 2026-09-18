@@ -8,6 +8,7 @@ import { Matches } from "./components/Matches";
 import { SyncStrip } from "./components/SyncStrip";
 import { MatchPage } from "./components/match/MatchPage";
 import { ProfilePage } from "./components/profile/ProfilePage";
+import { ToastHost } from "./lib/toast";
 import "./App.css";
 import "./components/match/match.css";
 
@@ -124,6 +125,7 @@ export default function App() {
       )}
       {/* "Back" returns to whichever tab the match was opened from. */}
       {openLog !== null && <MatchPage logId={openLog} onBack={() => setOpenLog(null)} />}
+      <ToastHost />
     </div>
   );
 }
