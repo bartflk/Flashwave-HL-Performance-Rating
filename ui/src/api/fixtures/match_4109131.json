@@ -1,0 +1,2344 @@
+{
+  "logId": 4109131,
+  "title": "ETF2L HL S36 High - DD14 vs TWS",
+  "map": "pl_upward_f12",
+  "playedAt": 1787516257,
+  "durationS": 2816,
+  "redScore": 2,
+  "blueScore": 4,
+  "flags": {
+    "realDamage": true,
+    "accuracy": true,
+    "hs": true,
+    "hsHit": true,
+    "bs": true,
+    "cp": true,
+    "dt": true,
+    "airshots": true,
+    "hr": true
+  },
+  "myTeam": "Blue",
+  "result": "W",
+  "leftTeam": "Blue",
+  "matchups": [
+    {
+      "class": "scout",
+      "left": {
+        "accountId": 14220905,
+        "name": "SchmitShot",
+        "subs": [],
+        "timeS": 2816,
+        "kills": 46,
+        "deaths": 40,
+        "assists": 22,
+        "dmg": 14971,
+        "value": {
+          "score": 17.01,
+          "minutes": 46.93,
+          "impactKills": 12.55,
+          "impactAssists": 9.58,
+          "deathCost": 5.11,
+          "medicTerm": 0.0,
+          "approximate": false
+        }
+      },
+      "right": {
+        "accountId": 303280591,
+        "name": "cookie king",
+        "subs": [],
+        "timeS": 2816,
+        "kills": 38,
+        "deaths": 26,
+        "assists": 25,
+        "dmg": 11139,
+        "value": {
+          "score": 15.58,
+          "minutes": 46.93,
+          "impactKills": 10.25,
+          "impactAssists": 8.65,
+          "deathCost": 3.32,
+          "medicTerm": 0.0,
+          "approximate": false
+        }
+      },
+      "headToHead": [
+        9,
+        7
+      ],
+      "diff": 1.43,
+      "winner": "left",
+      "decisive": false,
+      "involvesMe": false
+    },
+    {
+      "class": "soldier",
+      "left": {
+        "accountId": 198698486,
+        "name": "zen",
+        "subs": [],
+        "timeS": 2816,
+        "kills": 45,
+        "deaths": 43,
+        "assists": 11,
+        "dmg": 16862,
+        "value": {
+          "score": 15.13,
+          "minutes": 46.93,
+          "impactKills": 13.68,
+          "impactAssists": 8.04,
+          "deathCost": 6.6,
+          "medicTerm": 0.0,
+          "approximate": false
+        }
+      },
+      "right": {
+        "accountId": 152045090,
+        "name": "screamtracker",
+        "subs": [],
+        "timeS": 2815,
+        "kills": 37,
+        "deaths": 37,
+        "assists": 13,
+        "dmg": 15283,
+        "value": {
+          "score": 13.48,
+          "minutes": 46.92,
+          "impactKills": 11.25,
+          "impactAssists": 7.91,
+          "deathCost": 5.68,
+          "medicTerm": 0.0,
+          "approximate": false
+        }
+      },
+      "headToHead": [
+        2,
+        0
+      ],
+      "diff": 1.65,
+      "winner": "left",
+      "decisive": false,
+      "involvesMe": false
+    },
+    {
+      "class": "pyro",
+      "left": {
+        "accountId": 279708566,
+        "name": "nepal",
+        "subs": [],
+        "timeS": 2816,
+        "kills": 27,
+        "deaths": 30,
+        "assists": 28,
+        "dmg": 8404,
+        "value": {
+          "score": 13.95,
+          "minutes": 46.93,
+          "impactKills": 9.01,
+          "impactAssists": 8.38,
+          "deathCost": 3.45,
+          "medicTerm": 0.0,
+          "approximate": false
+        }
+      },
+      "right": {
+        "accountId": 1223450353,
+        "name": "Tezzix",
+        "subs": [],
+        "timeS": 2816,
+        "kills": 42,
+        "deaths": 29,
+        "assists": 29,
+        "dmg": 9309,
+        "value": {
+          "score": 17.27,
+          "minutes": 46.93,
+          "impactKills": 11.14,
+          "impactAssists": 9.46,
+          "deathCost": 3.34,
+          "medicTerm": 0.0,
+          "approximate": false
+        }
+      },
+      "headToHead": [
+        2,
+        6
+      ],
+      "diff": -3.32,
+      "winner": "right",
+      "decisive": false,
+      "involvesMe": false
+    },
+    {
+      "class": "demoman",
+      "left": {
+        "accountId": 90819112,
+        "name": "K7",
+        "subs": [],
+        "timeS": 2816,
+        "kills": 42,
+        "deaths": 38,
+        "assists": 15,
+        "dmg": 18199,
+        "value": {
+          "score": 10.03,
+          "minutes": 46.93,
+          "impactKills": 12.46,
+          "impactAssists": 8.26,
+          "deathCost": 10.69,
+          "medicTerm": 0.0,
+          "approximate": false
+        }
+      },
+      "right": {
+        "accountId": 328592166,
+        "name": "kr4sava",
+        "subs": [],
+        "timeS": 2816,
+        "kills": 47,
+        "deaths": 33,
+        "assists": 13,
+        "dmg": 21212,
+        "value": {
+          "score": 15.46,
+          "minutes": 46.93,
+          "impactKills": 15.13,
+          "impactAssists": 9.61,
+          "deathCost": 9.28,
+          "medicTerm": 0.0,
+          "approximate": false
+        }
+      },
+      "headToHead": [
+        8,
+        6
+      ],
+      "diff": -5.43,
+      "winner": "right",
+      "decisive": true,
+      "involvesMe": false
+    },
+    {
+      "class": "heavy",
+      "left": {
+        "accountId": 1392784928,
+        "name": "阳",
+        "subs": [],
+        "timeS": 2816,
+        "kills": 34,
+        "deaths": 36,
+        "assists": 28,
+        "dmg": 14903,
+        "value": {
+          "score": 12.62,
+          "minutes": 46.93,
+          "impactKills": 9.57,
+          "impactAssists": 9.49,
+          "deathCost": 6.44,
+          "medicTerm": 0.0,
+          "approximate": false
+        }
+      },
+      "right": {
+        "accountId": 183577455,
+        "name": "chocolate",
+        "subs": [],
+        "timeS": 2816,
+        "kills": 49,
+        "deaths": 41,
+        "assists": 21,
+        "dmg": 14933,
+        "value": {
+          "score": 16.53,
+          "minutes": 46.93,
+          "impactKills": 14.0,
+          "impactAssists": 9.87,
+          "deathCost": 7.34,
+          "medicTerm": 0.0,
+          "approximate": false
+        }
+      },
+      "headToHead": [
+        6,
+        7
+      ],
+      "diff": -3.91,
+      "winner": "right",
+      "decisive": true,
+      "involvesMe": false
+    },
+    {
+      "class": "engineer",
+      "left": {
+        "accountId": 279623496,
+        "name": "boSe.",
+        "subs": [],
+        "timeS": 2816,
+        "kills": 17,
+        "deaths": 25,
+        "assists": 18,
+        "dmg": 7301,
+        "value": {
+          "score": 6.05,
+          "minutes": 46.93,
+          "impactKills": 4.67,
+          "impactAssists": 4.9,
+          "deathCost": 3.52,
+          "medicTerm": 0.0,
+          "approximate": false
+        }
+      },
+      "right": {
+        "accountId": 91882858,
+        "name": "sslony",
+        "subs": [],
+        "timeS": 2816,
+        "kills": 16,
+        "deaths": 26,
+        "assists": 15,
+        "dmg": 5797,
+        "value": {
+          "score": 5.23,
+          "minutes": 46.93,
+          "impactKills": 4.22,
+          "impactAssists": 4.67,
+          "deathCost": 3.66,
+          "medicTerm": 0.0,
+          "approximate": false
+        }
+      },
+      "headToHead": [
+        0,
+        0
+      ],
+      "diff": 0.82,
+      "winner": "even",
+      "decisive": false,
+      "involvesMe": false
+    },
+    {
+      "class": "medic",
+      "left": {
+        "accountId": 293084467,
+        "name": "Sossok",
+        "subs": [],
+        "timeS": 2816,
+        "kills": 1,
+        "deaths": 22,
+        "assists": 27,
+        "dmg": 546,
+        "value": {
+          "score": 13.25,
+          "minutes": 46.93,
+          "impactKills": 0.38,
+          "impactAssists": 4.57,
+          "deathCost": 8.44,
+          "medicTerm": 16.73,
+          "approximate": false
+        }
+      },
+      "right": {
+        "accountId": 70821887,
+        "name": "Yanki",
+        "subs": [],
+        "timeS": 2816,
+        "kills": 3,
+        "deaths": 15,
+        "assists": 31,
+        "dmg": 807,
+        "value": {
+          "score": 14.51,
+          "minutes": 46.93,
+          "impactKills": 0.68,
+          "impactAssists": 4.7,
+          "deathCost": 5.75,
+          "medicTerm": 14.89,
+          "approximate": false
+        }
+      },
+      "headToHead": [
+        0,
+        0
+      ],
+      "diff": -1.26,
+      "winner": "right",
+      "decisive": false,
+      "involvesMe": false
+    },
+    {
+      "class": "sniper",
+      "left": {
+        "accountId": 139131191,
+        "name": "flashy",
+        "subs": [],
+        "timeS": 2816,
+        "kills": 39,
+        "deaths": 31,
+        "assists": 7,
+        "dmg": 11997,
+        "value": {
+          "score": 12.46,
+          "minutes": 46.93,
+          "impactKills": 12.17,
+          "impactAssists": 7.43,
+          "deathCost": 7.13,
+          "medicTerm": 0.0,
+          "approximate": false
+        }
+      },
+      "right": {
+        "accountId": 188334083,
+        "name": "Nick",
+        "subs": [],
+        "timeS": 2810,
+        "kills": 43,
+        "deaths": 38,
+        "assists": 10,
+        "dmg": 15982,
+        "value": {
+          "score": 15.39,
+          "minutes": 46.83,
+          "impactKills": 15.2,
+          "impactAssists": 8.95,
+          "deathCost": 8.76,
+          "medicTerm": 0.0,
+          "approximate": false
+        }
+      },
+      "headToHead": [
+        10,
+        12
+      ],
+      "diff": -2.93,
+      "winner": "right",
+      "decisive": false,
+      "involvesMe": true
+    },
+    {
+      "class": "spy",
+      "left": {
+        "accountId": 134106724,
+        "name": "Spenga",
+        "subs": [],
+        "timeS": 2816,
+        "kills": 30,
+        "deaths": 48,
+        "assists": 1,
+        "dmg": 12056,
+        "value": {
+          "score": 11.06,
+          "minutes": 46.93,
+          "impactKills": 10.93,
+          "impactAssists": 5.66,
+          "deathCost": 5.52,
+          "medicTerm": 0.0,
+          "approximate": false
+        }
+      },
+      "right": {
+        "accountId": 201802911,
+        "name": "Temp0_",
+        "subs": [],
+        "timeS": 2816,
+        "kills": 35,
+        "deaths": 37,
+        "assists": 9,
+        "dmg": 11584,
+        "value": {
+          "score": 15.05,
+          "minutes": 46.93,
+          "impactKills": 11.85,
+          "impactAssists": 7.46,
+          "deathCost": 4.26,
+          "medicTerm": 0.0,
+          "approximate": false
+        }
+      },
+      "headToHead": [
+        1,
+        4
+      ],
+      "diff": -3.99,
+      "winner": "right",
+      "decisive": true,
+      "involvesMe": false
+    }
+  ],
+  "players": [
+    {
+      "accountId": 14220905,
+      "steamid64": "76561197974486633",
+      "name": "SchmitShot",
+      "team": "Blue",
+      "mainClass": "scout",
+      "classes": [
+        [
+          "scout",
+          2816
+        ]
+      ],
+      "timeS": 2816,
+      "kills": 46,
+      "deaths": 40,
+      "assists": 22,
+      "dmg": 14971,
+      "dpm": 318,
+      "dt": 11113,
+      "hr": 4621,
+      "heal": 193,
+      "ubers": 0,
+      "drops": 0,
+      "headshots": 0,
+      "headshotsHit": 0,
+      "backstabs": 0,
+      "airshots": 0,
+      "cpc": 7,
+      "value": {
+        "score": 17.01,
+        "minutes": 46.93,
+        "impactKills": 12.55,
+        "impactAssists": 9.58,
+        "deathCost": 5.11,
+        "medicTerm": 0.0,
+        "approximate": false
+      },
+      "isMe": false
+    },
+    {
+      "accountId": 198698486,
+      "steamid64": "76561198158964214",
+      "name": "zen",
+      "team": "Blue",
+      "mainClass": "soldier",
+      "classes": [
+        [
+          "soldier",
+          2816
+        ]
+      ],
+      "timeS": 2816,
+      "kills": 45,
+      "deaths": 43,
+      "assists": 11,
+      "dmg": 16862,
+      "dpm": 359,
+      "dt": 13317,
+      "hr": 9055,
+      "heal": 0,
+      "ubers": 0,
+      "drops": 0,
+      "headshots": 0,
+      "headshotsHit": 0,
+      "backstabs": 0,
+      "airshots": 0,
+      "cpc": 0,
+      "value": {
+        "score": 15.13,
+        "minutes": 46.93,
+        "impactKills": 13.68,
+        "impactAssists": 8.04,
+        "deathCost": 6.6,
+        "medicTerm": 0.0,
+        "approximate": false
+      },
+      "isMe": false
+    },
+    {
+      "accountId": 279708566,
+      "steamid64": "76561198239974294",
+      "name": "nepal",
+      "team": "Blue",
+      "mainClass": "pyro",
+      "classes": [
+        [
+          "pyro",
+          2816
+        ]
+      ],
+      "timeS": 2816,
+      "kills": 27,
+      "deaths": 30,
+      "assists": 28,
+      "dmg": 8404,
+      "dpm": 179,
+      "dt": 13159,
+      "hr": 10916,
+      "heal": 0,
+      "ubers": 0,
+      "drops": 0,
+      "headshots": 0,
+      "headshotsHit": 0,
+      "backstabs": 0,
+      "airshots": 0,
+      "cpc": 1,
+      "value": {
+        "score": 13.95,
+        "minutes": 46.93,
+        "impactKills": 9.01,
+        "impactAssists": 8.38,
+        "deathCost": 3.45,
+        "medicTerm": 0.0,
+        "approximate": false
+      },
+      "isMe": false
+    },
+    {
+      "accountId": 90819112,
+      "steamid64": "76561198051084840",
+      "name": "K7",
+      "team": "Blue",
+      "mainClass": "demoman",
+      "classes": [
+        [
+          "demoman",
+          2816
+        ]
+      ],
+      "timeS": 2816,
+      "kills": 42,
+      "deaths": 38,
+      "assists": 15,
+      "dmg": 18199,
+      "dpm": 387,
+      "dt": 16547,
+      "hr": 12237,
+      "heal": 0,
+      "ubers": 0,
+      "drops": 0,
+      "headshots": 0,
+      "headshotsHit": 0,
+      "backstabs": 0,
+      "airshots": 1,
+      "cpc": 0,
+      "value": {
+        "score": 10.03,
+        "minutes": 46.93,
+        "impactKills": 12.46,
+        "impactAssists": 8.26,
+        "deathCost": 10.69,
+        "medicTerm": 0.0,
+        "approximate": false
+      },
+      "isMe": false
+    },
+    {
+      "accountId": 1392784928,
+      "steamid64": "76561199353050656",
+      "name": "阳",
+      "team": "Blue",
+      "mainClass": "heavy",
+      "classes": [
+        [
+          "heavy",
+          2816
+        ]
+      ],
+      "timeS": 2816,
+      "kills": 34,
+      "deaths": 36,
+      "assists": 28,
+      "dmg": 14903,
+      "dpm": 317,
+      "dt": 21367,
+      "hr": 12025,
+      "heal": 100,
+      "ubers": 0,
+      "drops": 0,
+      "headshots": 0,
+      "headshotsHit": 0,
+      "backstabs": 0,
+      "airshots": 0,
+      "cpc": 1,
+      "value": {
+        "score": 12.62,
+        "minutes": 46.93,
+        "impactKills": 9.57,
+        "impactAssists": 9.49,
+        "deathCost": 6.44,
+        "medicTerm": 0.0,
+        "approximate": false
+      },
+      "isMe": false
+    },
+    {
+      "accountId": 279623496,
+      "steamid64": "76561198239889224",
+      "name": "boSe.",
+      "team": "Blue",
+      "mainClass": "engineer",
+      "classes": [
+        [
+          "engineer",
+          2816
+        ]
+      ],
+      "timeS": 2816,
+      "kills": 17,
+      "deaths": 25,
+      "assists": 18,
+      "dmg": 7301,
+      "dpm": 155,
+      "dt": 6534,
+      "hr": 3710,
+      "heal": 466,
+      "ubers": 0,
+      "drops": 0,
+      "headshots": 0,
+      "headshotsHit": 0,
+      "backstabs": 0,
+      "airshots": 0,
+      "cpc": 5,
+      "value": {
+        "score": 6.05,
+        "minutes": 46.93,
+        "impactKills": 4.67,
+        "impactAssists": 4.9,
+        "deathCost": 3.52,
+        "medicTerm": 0.0,
+        "approximate": false
+      },
+      "isMe": false
+    },
+    {
+      "accountId": 293084467,
+      "steamid64": "76561198253350195",
+      "name": "Sossok",
+      "team": "Blue",
+      "mainClass": "medic",
+      "classes": [
+        [
+          "medic",
+          2816
+        ]
+      ],
+      "timeS": 2816,
+      "kills": 1,
+      "deaths": 22,
+      "assists": 27,
+      "dmg": 546,
+      "dpm": 11,
+      "dt": 6112,
+      "hr": 67,
+      "heal": 57808,
+      "ubers": 22,
+      "drops": 1,
+      "headshots": 0,
+      "headshotsHit": 0,
+      "backstabs": 0,
+      "airshots": 0,
+      "cpc": 1,
+      "value": {
+        "score": 13.25,
+        "minutes": 46.93,
+        "impactKills": 0.38,
+        "impactAssists": 4.57,
+        "deathCost": 8.44,
+        "medicTerm": 16.73,
+        "approximate": false
+      },
+      "isMe": false
+    },
+    {
+      "accountId": 139131191,
+      "steamid64": "76561198099396919",
+      "name": "flashy",
+      "team": "Blue",
+      "mainClass": "sniper",
+      "classes": [
+        [
+          "sniper",
+          2816
+        ]
+      ],
+      "timeS": 2816,
+      "kills": 39,
+      "deaths": 31,
+      "assists": 7,
+      "dmg": 11997,
+      "dpm": 255,
+      "dt": 9319,
+      "hr": 5174,
+      "heal": 0,
+      "ubers": 0,
+      "drops": 0,
+      "headshots": 24,
+      "headshotsHit": 35,
+      "backstabs": 0,
+      "airshots": 0,
+      "cpc": 1,
+      "value": {
+        "score": 12.46,
+        "minutes": 46.93,
+        "impactKills": 12.17,
+        "impactAssists": 7.43,
+        "deathCost": 7.13,
+        "medicTerm": 0.0,
+        "approximate": false
+      },
+      "isMe": true
+    },
+    {
+      "accountId": 134106724,
+      "steamid64": "76561198094372452",
+      "name": "Spenga",
+      "team": "Blue",
+      "mainClass": "spy",
+      "classes": [
+        [
+          "spy",
+          2816
+        ]
+      ],
+      "timeS": 2816,
+      "kills": 30,
+      "deaths": 48,
+      "assists": 1,
+      "dmg": 12056,
+      "dpm": 256,
+      "dt": 8578,
+      "hr": 609,
+      "heal": 0,
+      "ubers": 0,
+      "drops": 0,
+      "headshots": 0,
+      "headshotsHit": 0,
+      "backstabs": 22,
+      "airshots": 0,
+      "cpc": 0,
+      "value": {
+        "score": 11.06,
+        "minutes": 46.93,
+        "impactKills": 10.93,
+        "impactAssists": 5.66,
+        "deathCost": 5.52,
+        "medicTerm": 0.0,
+        "approximate": false
+      },
+      "isMe": false
+    },
+    {
+      "accountId": 303280591,
+      "steamid64": "76561198263546319",
+      "name": "cookie king",
+      "team": "Red",
+      "mainClass": "scout",
+      "classes": [
+        [
+          "scout",
+          2816
+        ]
+      ],
+      "timeS": 2816,
+      "kills": 38,
+      "deaths": 26,
+      "assists": 25,
+      "dmg": 11139,
+      "dpm": 237,
+      "dt": 8653,
+      "hr": 7022,
+      "heal": 0,
+      "ubers": 0,
+      "drops": 0,
+      "headshots": 0,
+      "headshotsHit": 0,
+      "backstabs": 0,
+      "airshots": 0,
+      "cpc": 8,
+      "value": {
+        "score": 15.58,
+        "minutes": 46.93,
+        "impactKills": 10.25,
+        "impactAssists": 8.65,
+        "deathCost": 3.32,
+        "medicTerm": 0.0,
+        "approximate": false
+      },
+      "isMe": false
+    },
+    {
+      "accountId": 152045090,
+      "steamid64": "76561198112310818",
+      "name": "screamtracker",
+      "team": "Red",
+      "mainClass": "soldier",
+      "classes": [
+        [
+          "soldier",
+          2815
+        ]
+      ],
+      "timeS": 2815,
+      "kills": 37,
+      "deaths": 37,
+      "assists": 13,
+      "dmg": 15283,
+      "dpm": 325,
+      "dt": 12244,
+      "hr": 8799,
+      "heal": 1036,
+      "ubers": 0,
+      "drops": 0,
+      "headshots": 0,
+      "headshotsHit": 0,
+      "backstabs": 0,
+      "airshots": 1,
+      "cpc": 4,
+      "value": {
+        "score": 13.48,
+        "minutes": 46.92,
+        "impactKills": 11.25,
+        "impactAssists": 7.91,
+        "deathCost": 5.68,
+        "medicTerm": 0.0,
+        "approximate": false
+      },
+      "isMe": false
+    },
+    {
+      "accountId": 1223450353,
+      "steamid64": "76561199183716081",
+      "name": "Tezzix",
+      "team": "Red",
+      "mainClass": "pyro",
+      "classes": [
+        [
+          "pyro",
+          2816
+        ]
+      ],
+      "timeS": 2816,
+      "kills": 42,
+      "deaths": 29,
+      "assists": 29,
+      "dmg": 9309,
+      "dpm": 198,
+      "dt": 13828,
+      "hr": 9235,
+      "heal": 0,
+      "ubers": 0,
+      "drops": 0,
+      "headshots": 0,
+      "headshotsHit": 0,
+      "backstabs": 0,
+      "airshots": 0,
+      "cpc": 2,
+      "value": {
+        "score": 17.27,
+        "minutes": 46.93,
+        "impactKills": 11.14,
+        "impactAssists": 9.46,
+        "deathCost": 3.34,
+        "medicTerm": 0.0,
+        "approximate": false
+      },
+      "isMe": false
+    },
+    {
+      "accountId": 328592166,
+      "steamid64": "76561198288857894",
+      "name": "kr4sava",
+      "team": "Red",
+      "mainClass": "demoman",
+      "classes": [
+        [
+          "demoman",
+          2816
+        ]
+      ],
+      "timeS": 2816,
+      "kills": 47,
+      "deaths": 33,
+      "assists": 13,
+      "dmg": 21212,
+      "dpm": 451,
+      "dt": 13982,
+      "hr": 13543,
+      "heal": 0,
+      "ubers": 0,
+      "drops": 0,
+      "headshots": 0,
+      "headshotsHit": 0,
+      "backstabs": 0,
+      "airshots": 1,
+      "cpc": 3,
+      "value": {
+        "score": 15.46,
+        "minutes": 46.93,
+        "impactKills": 15.13,
+        "impactAssists": 9.61,
+        "deathCost": 9.28,
+        "medicTerm": 0.0,
+        "approximate": false
+      },
+      "isMe": false
+    },
+    {
+      "accountId": 183577455,
+      "steamid64": "76561198143843183",
+      "name": "chocolate",
+      "team": "Red",
+      "mainClass": "heavy",
+      "classes": [
+        [
+          "heavy",
+          2816
+        ]
+      ],
+      "timeS": 2816,
+      "kills": 49,
+      "deaths": 41,
+      "assists": 21,
+      "dmg": 14933,
+      "dpm": 318,
+      "dt": 23351,
+      "hr": 11549,
+      "heal": 396,
+      "ubers": 0,
+      "drops": 0,
+      "headshots": 0,
+      "headshotsHit": 0,
+      "backstabs": 0,
+      "airshots": 0,
+      "cpc": 1,
+      "value": {
+        "score": 16.53,
+        "minutes": 46.93,
+        "impactKills": 14.0,
+        "impactAssists": 9.87,
+        "deathCost": 7.34,
+        "medicTerm": 0.0,
+        "approximate": false
+      },
+      "isMe": false
+    },
+    {
+      "accountId": 91882858,
+      "steamid64": "76561198052148586",
+      "name": "sslony",
+      "team": "Red",
+      "mainClass": "engineer",
+      "classes": [
+        [
+          "engineer",
+          2816
+        ]
+      ],
+      "timeS": 2816,
+      "kills": 16,
+      "deaths": 26,
+      "assists": 15,
+      "dmg": 5797,
+      "dpm": 123,
+      "dt": 7125,
+      "hr": 3560,
+      "heal": 630,
+      "ubers": 0,
+      "drops": 0,
+      "headshots": 0,
+      "headshotsHit": 0,
+      "backstabs": 0,
+      "airshots": 0,
+      "cpc": 7,
+      "value": {
+        "score": 5.23,
+        "minutes": 46.93,
+        "impactKills": 4.22,
+        "impactAssists": 4.67,
+        "deathCost": 3.66,
+        "medicTerm": 0.0,
+        "approximate": false
+      },
+      "isMe": false
+    },
+    {
+      "accountId": 70821887,
+      "steamid64": "76561198031087615",
+      "name": "Yanki",
+      "team": "Red",
+      "mainClass": "medic",
+      "classes": [
+        [
+          "medic",
+          2816
+        ]
+      ],
+      "timeS": 2816,
+      "kills": 3,
+      "deaths": 15,
+      "assists": 31,
+      "dmg": 807,
+      "dpm": 17,
+      "dt": 6125,
+      "hr": 260,
+      "heal": 59805,
+      "ubers": 19,
+      "drops": 2,
+      "headshots": 0,
+      "headshotsHit": 0,
+      "backstabs": 0,
+      "airshots": 0,
+      "cpc": 0,
+      "value": {
+        "score": 14.51,
+        "minutes": 46.93,
+        "impactKills": 0.68,
+        "impactAssists": 4.7,
+        "deathCost": 5.75,
+        "medicTerm": 14.89,
+        "approximate": false
+      },
+      "isMe": false
+    },
+    {
+      "accountId": 188334083,
+      "steamid64": "76561198148599811",
+      "name": "Nick",
+      "team": "Red",
+      "mainClass": "sniper",
+      "classes": [
+        [
+          "sniper",
+          2810
+        ]
+      ],
+      "timeS": 2810,
+      "kills": 43,
+      "deaths": 38,
+      "assists": 10,
+      "dmg": 15982,
+      "dpm": 341,
+      "dt": 12494,
+      "hr": 5434,
+      "heal": 0,
+      "ubers": 0,
+      "drops": 0,
+      "headshots": 31,
+      "headshotsHit": 44,
+      "backstabs": 0,
+      "airshots": 0,
+      "cpc": 1,
+      "value": {
+        "score": 15.39,
+        "minutes": 46.83,
+        "impactKills": 15.2,
+        "impactAssists": 8.95,
+        "deathCost": 8.76,
+        "medicTerm": 0.0,
+        "approximate": false
+      },
+      "isMe": false
+    },
+    {
+      "accountId": 201802911,
+      "steamid64": "76561198162068639",
+      "name": "Temp0_",
+      "team": "Red",
+      "mainClass": "spy",
+      "classes": [
+        [
+          "spy",
+          2816
+        ]
+      ],
+      "timeS": 2816,
+      "kills": 35,
+      "deaths": 37,
+      "assists": 9,
+      "dmg": 11584,
+      "dpm": 246,
+      "dt": 7437,
+      "hr": 1389,
+      "heal": 0,
+      "ubers": 0,
+      "drops": 0,
+      "headshots": 0,
+      "headshotsHit": 0,
+      "backstabs": 17,
+      "airshots": 0,
+      "cpc": 0,
+      "value": {
+        "score": 15.05,
+        "minutes": 46.93,
+        "impactKills": 11.85,
+        "impactAssists": 7.46,
+        "deathCost": 4.26,
+        "medicTerm": 0.0,
+        "approximate": false
+      },
+      "isMe": false
+    }
+  ],
+  "rounds": [
+    {
+      "roundNum": 1,
+      "startOffsetS": 0,
+      "lengthS": 389,
+      "winner": "Blue",
+      "firstcap": "Blue",
+      "redKills": 32,
+      "blueKills": 30,
+      "redDmg": 12925,
+      "blueDmg": 12572,
+      "redUbers": 3,
+      "blueUbers": 3,
+      "events": [
+        {
+          "atS": 122,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 123,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 129,
+          "kind": "medic_death",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": "nepal",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 142,
+          "kind": "pointcap",
+          "team": "Blue",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 1
+        },
+        {
+          "atS": 195,
+          "kind": "pointcap",
+          "team": "Blue",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 2
+        },
+        {
+          "atS": 263,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 266,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 271,
+          "kind": "medic_death",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": "K7",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 272,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "Tezzix",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 281,
+          "kind": "pointcap",
+          "team": "Blue",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 3
+        },
+        {
+          "atS": 358,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 360,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 389,
+          "kind": "pointcap",
+          "team": "Blue",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 4
+        },
+        {
+          "atS": 389,
+          "kind": "round_win",
+          "team": "Blue",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        }
+      ],
+      "coloursSwapped": false
+    },
+    {
+      "roundNum": 2,
+      "startOffsetS": 404,
+      "lengthS": 389,
+      "winner": "Blue",
+      "firstcap": "Red",
+      "redKills": 38,
+      "blueKills": 43,
+      "redDmg": 14084,
+      "blueDmg": 14540,
+      "redUbers": 2,
+      "blueUbers": 4,
+      "events": [
+        {
+          "atS": 23,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "kritzkrieg",
+          "point": null
+        },
+        {
+          "atS": 49,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "kritzkrieg",
+          "point": null
+        },
+        {
+          "atS": 114,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 118,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 136,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "chocolate",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 142,
+          "kind": "medic_death",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 149,
+          "kind": "pointcap",
+          "team": "Red",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 1
+        },
+        {
+          "atS": 190,
+          "kind": "pointcap",
+          "team": "Red",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 2
+        },
+        {
+          "atS": 263,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 263,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 292,
+          "kind": "pointcap",
+          "team": "Red",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 3
+        },
+        {
+          "atS": 342,
+          "kind": "drop",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 342,
+          "kind": "medic_death",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": "Spenga",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 376,
+          "kind": "drop",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 376,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "kr4sava",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 389,
+          "kind": "round_win",
+          "team": "Blue",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        }
+      ],
+      "coloursSwapped": true
+    },
+    {
+      "roundNum": 3,
+      "startOffsetS": 906,
+      "lengthS": 458,
+      "winner": "Red",
+      "firstcap": "Red",
+      "redKills": 35,
+      "blueKills": 38,
+      "redDmg": 14265,
+      "blueDmg": 15904,
+      "redUbers": 4,
+      "blueUbers": 4,
+      "events": [
+        {
+          "atS": 22,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "kritzkrieg",
+          "point": null
+        },
+        {
+          "atS": 96,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 133,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "Nick",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 139,
+          "kind": "pointcap",
+          "team": "Red",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 1
+        },
+        {
+          "atS": 174,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 181,
+          "kind": "pointcap",
+          "team": "Red",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 2
+        },
+        {
+          "atS": 205,
+          "kind": "medic_death",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": "阳",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 302,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 314,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 356,
+          "kind": "pointcap",
+          "team": "Red",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 3
+        },
+        {
+          "atS": 383,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 433,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 446,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "cookie king",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 453,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 458,
+          "kind": "pointcap",
+          "team": "Red",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 4
+        },
+        {
+          "atS": 458,
+          "kind": "round_win",
+          "team": "Red",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        }
+      ],
+      "coloursSwapped": true
+    },
+    {
+      "roundNum": 4,
+      "startOffsetS": 1379,
+      "lengthS": 458,
+      "winner": "Red",
+      "firstcap": "Blue",
+      "redKills": 71,
+      "blueKills": 35,
+      "redDmg": 19623,
+      "blueDmg": 15300,
+      "redUbers": 4,
+      "blueUbers": 2,
+      "events": [
+        {
+          "atS": 123,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 125,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 133,
+          "kind": "medic_death",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 139,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "Nick",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 166,
+          "kind": "pointcap",
+          "team": "Blue",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 1
+        },
+        {
+          "atS": 178,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "Temp0_",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 210,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 237,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "screamtracker",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 287,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "Temp0_",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 316,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 353,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 370,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "screamtracker",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 376,
+          "kind": "pointcap",
+          "team": "Blue",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 2
+        },
+        {
+          "atS": 419,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "Temp0_",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 432,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 453,
+          "kind": "medic_death",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": "nepal",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 458,
+          "kind": "round_win",
+          "team": "Red",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        }
+      ],
+      "coloursSwapped": false
+    },
+    {
+      "roundNum": 5,
+      "startOffsetS": 1952,
+      "lengthS": 635,
+      "winner": "Red",
+      "firstcap": "Red",
+      "redKills": 73,
+      "blueKills": 90,
+      "redDmg": 25174,
+      "blueDmg": 28647,
+      "redUbers": 3,
+      "blueUbers": 5,
+      "events": [
+        {
+          "atS": 20,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "kritzkrieg",
+          "point": null
+        },
+        {
+          "atS": 111,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "kritzkrieg",
+          "point": null
+        },
+        {
+          "atS": 116,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 154,
+          "kind": "pointcap",
+          "team": "Red",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 1
+        },
+        {
+          "atS": 169,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "kr4sava",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 209,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 220,
+          "kind": "medic_death",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": "zen",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 254,
+          "kind": "medic_death",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": "zen",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 256,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 291,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "screamtracker",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 300,
+          "kind": "medic_death",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": "Spenga",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 338,
+          "kind": "pointcap",
+          "team": "Red",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 2
+        },
+        {
+          "atS": 379,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 380,
+          "kind": "drop",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 380,
+          "kind": "medic_death",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": "Spenga",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 389,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "screamtracker",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 414,
+          "kind": "pointcap",
+          "team": "Red",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 3
+        },
+        {
+          "atS": 436,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "Tezzix",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 438,
+          "kind": "medic_death",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": "zen",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 464,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "kr4sava",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 496,
+          "kind": "medic_death",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": "nepal",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 583,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 587,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 601,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "kr4sava",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 633,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "Nick",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 635,
+          "kind": "pointcap",
+          "team": "Red",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 4
+        },
+        {
+          "atS": 635,
+          "kind": "round_win",
+          "team": "Red",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        }
+      ],
+      "coloursSwapped": true
+    },
+    {
+      "roundNum": 6,
+      "startOffsetS": 2602,
+      "lengthS": 487,
+      "winner": "Blue",
+      "firstcap": "Blue",
+      "redKills": 61,
+      "blueKills": 45,
+      "redDmg": 19975,
+      "blueDmg": 18276,
+      "redUbers": 3,
+      "blueUbers": 4,
+      "events": [
+        {
+          "atS": 98,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 143,
+          "kind": "pointcap",
+          "team": "Blue",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 1
+        },
+        {
+          "atS": 144,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 157,
+          "kind": "medic_death",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": "zen",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 164,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "Temp0_",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 210,
+          "kind": "pointcap",
+          "team": "Blue",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 2
+        },
+        {
+          "atS": 244,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 247,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 277,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "kr4sava",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 298,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "Temp0_",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 326,
+          "kind": "pointcap",
+          "team": "Blue",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": 3
+        },
+        {
+          "atS": 343,
+          "kind": "medic_death",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "cookie king",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 385,
+          "kind": "charge",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 399,
+          "kind": "medic_death",
+          "team": "Red",
+          "player": "Yanki",
+          "killer": "SchmitShot",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        },
+        {
+          "atS": 419,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 486,
+          "kind": "charge",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": "medigun",
+          "point": null
+        },
+        {
+          "atS": 487,
+          "kind": "round_win",
+          "team": "Blue",
+          "player": null,
+          "killer": null,
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null
+        }
+      ],
+      "coloursSwapped": false
+    }
+  ],
+  "modelVersion": "v0-generic",
+  "format": "highlander",
+  "league": "etf2l",
+  "etf2lMatchId": 92883,
+  "demosTfId": 1497032,
+  "weightsWarning": null
+}

@@ -6,7 +6,9 @@ import { Setup } from "./components/Setup";
 import { Settings } from "./components/Settings";
 import { Matches } from "./components/Matches";
 import { SyncStrip } from "./components/SyncStrip";
+import { MatchPage } from "./components/match/MatchPage";
 import "./App.css";
+import "./components/match/match.css";
 
 type Tab = "matches" | "settings";
 
@@ -14,6 +16,7 @@ export default function App() {
   // Set when the user chooses to revisit setup after it is already complete.
   const [forceSetup, setForceSetup] = useState(false);
   const [tab, setTab] = useState<Tab>("matches");
+  const [openLog, setOpenLog] = useState<number | null>(null);
 
   const status = useQuery({
     queryKey: ["app_status"],
@@ -75,7 +78,10 @@ export default function App() {
               <button
                 key={t}
                 className={tab === t ? "tab active" : "tab"}
-                onClick={() => setTab(t)}
+                onClick={() => {
+                  setTab(t);
+                  setOpenLog(null);
+                }}
               >
                 {t === "matches" ? "Matches" : "Settings"}
               </button>
@@ -91,7 +97,14 @@ export default function App() {
       <SyncStrip />
 
       {tab === "matches" ? (
-        <Matches />
+        <>
+          {/* Kept mounted while a match is open, so the filter, page count and
+              scroll position are all still there on the way back. */}
+          <div hidden={openLog !== null}>
+            <Matches onOpen={setOpenLog} />
+          </div>
+          {openLog !== null && <MatchPage logId={openLog} onBack={() => setOpenLog(null)} />}
+        </>
       ) : (
         <Settings
           status={data}

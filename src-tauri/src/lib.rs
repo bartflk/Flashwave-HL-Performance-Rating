@@ -31,6 +31,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             // Errors are stringified rather than passed through as `anyhow`:
             // Tauri's setup wants a `Box<dyn Error>`, and `{:#}` keeps the
@@ -67,6 +68,7 @@ pub fn run() {
             sync_commands::sync_busy,
             sync_commands::index_stats,
             sync_commands::list_matches,
+            sync_commands::get_match,
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

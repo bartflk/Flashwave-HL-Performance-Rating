@@ -7,7 +7,8 @@
 mod matches;
 
 pub use matches::{
-    IndexStats, LogsTfIndexRow, MatchFilter, MatchPage, MatchSummary, MyLine, TrendsIndexRow,
+    IndexInfo, IndexStats, LogsTfIndexRow, MatchFilter, MatchPage, MatchSummary, MyLine,
+    TrendsIndexRow,
 };
 
 use anyhow::{Context, Result};

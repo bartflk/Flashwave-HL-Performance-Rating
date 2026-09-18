@@ -1,0 +1,35 @@
+# Rating weights.
+#
+# These are the defaults compiled into the app. To tune them, copy this file to
+#   %APPDATA%\gg.highlander.rating\weights.toml
+# and edit it there. The app reads that file on every match page load, so a
+# change shows up the next time a match is opened -- no rebuild needed.
+
+# What killing a player on each class is worth. Medic highest: a Medic pick
+# decides fights. Everything else is relative to a Scout at 1.0.
+[victim_value]
+medic    = 3.0
+demoman  = 2.2
+sniper   = 1.8   # denying the enemy Sniper's picks
+heavy    = 1.4
+soldier  = 1.2
+engineer = 1.1
+scout    = 1.0
+pyro     = 0.9
+spy      = 0.9
+
+[generic]
+# An assist counts for this share of the equivalent kill.
+assist_share = 0.5
+# Dying costs this share of your own class's victim value. Dying as Medic
+# hands the enemy their most valuable kill; dying as Pyro costs much less.
+death_cost_share = 0.6
+# Two players' scores closer than this (per 10 minutes) count as an even matchup.
+even_margin = 1.0
+
+[medic]
+# Medics rarely kill, so the generic formula alone would call every Medic a
+# loser. These terms replace most of it. Per 10 minutes of Medic time.
+heal_per_point = 1500   # this much healing is worth 1 point
+uber_value     = 2.0    # per uber used
+drop_cost      = 4.0    # per uber dropped (died with it ready)

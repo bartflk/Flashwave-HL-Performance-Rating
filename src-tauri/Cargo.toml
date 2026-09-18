@@ -16,9 +16,11 @@ tauri-build = { version = "2", features = [] }
 hl-core.workspace = true
 hl-db.workspace = true
 hl-ingest.workspace = true
+hl-rating.workspace = true
 
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
 
 anyhow.workspace = true
 serde.workspace = true

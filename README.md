@@ -6,8 +6,9 @@ per class against class-relative baselines.
 
 See [PLAN.md](PLAN.md) for the full design and milestone plan.
 
-**Status: M1** — syncs your full match history from trends.tf and logs.tf,
-deduplicates it, and lists every Highlander match with your line from it.
+**Status: M2** — syncs your full match history from trends.tf and logs.tf,
+deduplicates it, and opens any match on a page with the nine class matchups,
+a round timeline and the full scoreboard.
 
 ## Prerequisites
 
@@ -64,6 +65,7 @@ cargo run -p hl-cli -- tf detect
 cargo run -p hl-cli -- sync                # index + fetch new logs
 cargo run -p hl-cli -- reprocess           # rebuild from stored logs, no network
 cargo run -p hl-cli -- matches 30 --officials
+cargo run -p hl-cli -- match 4109131       # matchups for one match
 ```
 
 ## Layout
@@ -72,6 +74,7 @@ cargo run -p hl-cli -- matches 30 --officials
 crates/hl-core     domain types: SteamID, classes, config, tf path detection
 crates/hl-db       SQLite access and migrations
 crates/hl-ingest   trends.tf + logs.tf clients, normalizer, classifier, dedupe
+crates/hl-rating   class values, matchups, match detail; tunable weights.toml
 crates/hl-cli      developer harness
 src-tauri          Tauri shell: commands, state, window
 ui                 React + TypeScript frontend

@@ -13,6 +13,8 @@ path = "src/main.rs"
 hl-core.workspace = true
 hl-db.workspace = true
 hl-ingest.workspace = true
+hl-rating.workspace = true
+serde_json.workspace = true
 
 anyhow.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

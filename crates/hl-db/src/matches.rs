@@ -49,6 +49,14 @@ pub struct IndexStats {
 }
 
 #[derive(Debug, Clone, Default)]
+pub struct IndexInfo {
+    pub format: Option<String>,
+    pub league: Option<String>,
+    pub etf2l_match_id: Option<i64>,
+    pub demos_tf_id: Option<i64>,
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct MatchFilter {
     /// `None` means every format.
     pub format: Option<String>,
@@ -454,8 +462,9 @@ impl Db {
         for r in &log.rounds {
             sqlx::query(
                 "INSERT INTO match_round (log_id, round_num, start_time, length_s, winner,
-                    firstcap, red_kills, blue_kills, red_dmg, blue_dmg, red_ubers, blue_ubers)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                    firstcap, red_kills, blue_kills, red_dmg, blue_dmg, red_ubers, blue_ubers,
+                    colours_swapped)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
             )
             .bind(id)
             .bind(r.round_num)
@@ -469,6 +478,7 @@ impl Db {
             .bind(r.blue.dmg)
             .bind(r.red.ubers)
             .bind(r.blue.ubers)
+            .bind(r.colours_swapped)
             .execute(&mut *tx)
             .await?;
 
@@ -582,6 +592,23 @@ impl Db {
             .collect();
 
         Ok(MatchPage { total, items })
+    }
+
+    /// The index context for one log: what trends.tf knows about it.
+    pub async fn index_info(&self, log_id: i64) -> Result<Option<IndexInfo>> {
+        let row = sqlx::query(&format!(
+            "SELECT {EFFECTIVE_FORMAT} AS format, i.league, i.etf2l_match_id, i.demos_tf_id
+             FROM log_index i WHERE i.log_id = ?1"
+        ))
+        .bind(log_id)
+        .fetch_optional(self.pool())
+        .await?;
+        Ok(row.map(|r| IndexInfo {
+            format: r.get("format"),
+            league: r.get("league"),
+            etf2l_match_id: r.get("etf2l_match_id"),
+            demos_tf_id: r.get("demos_tf_id"),
+        }))
     }
 
     pub async fn index_stats(&self) -> Result<IndexStats> {

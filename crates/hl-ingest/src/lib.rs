@@ -12,3 +12,6 @@ pub mod sync;
 
 pub use sources::Sources;
 pub use sync::{reprocess, sync, Progress, SyncOptions, SyncSummary};
+
+pub use detail::match_detail;
+mod detail;

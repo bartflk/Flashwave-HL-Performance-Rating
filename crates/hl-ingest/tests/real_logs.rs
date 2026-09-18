@@ -83,6 +83,58 @@ fn medic_deaths_carry_their_killer() {
     assert_eq!(classify(&log), Format::Highlander);
 }
 
+/// logs.tf stamps round events in seconds since the *log* started, not the
+/// round. In a single-round log the two coincide, which hid this. In this
+/// six-round official every event after round 1 was offset by the round's
+/// start. Normalized `at_s` must be seconds into the round.
+#[test]
+fn round_events_are_relative_to_their_round() {
+    let log = normalize(4109131, &load("hl_combined_6rounds_4109131.json")).unwrap();
+    assert_eq!(log.rounds.len(), 6);
+    for r in &log.rounds {
+        let len = r.length_s.expect("every round has a length");
+        for e in &r.events {
+            assert!(
+                (0..=len).contains(&e.at_s),
+                "round {}: {} at {}s is outside 0..={len}s",
+                r.round_num, e.kind, e.at_s
+            );
+        }
+        // The round ends with its win, exactly at the round's length.
+        if let Some(win) = r.events.iter().find(|e| e.kind == "round_win") {
+            assert_eq!(win.at_s, len, "round {}", r.round_num);
+        }
+    }
+}
+
+/// Stopwatch swaps team colours between halves. The log records each round in
+/// that round's colours, so a raw `winner: "Blue"` can mean either team.
+/// Normalized rounds must speak in the stable teams (a player's overall
+/// team), with the swap recorded separately.
+///
+/// Worked out by hand from the raw log, via each round's per-player colours:
+/// the owner's team (overall Blue) won R1, R2 and R6 and lost R3, R4 and R5.
+#[test]
+fn stopwatch_colour_swaps_map_back_to_stable_teams() {
+    let log = normalize(4109131, &load("hl_combined_6rounds_4109131.json")).unwrap();
+    let me = log.players.iter().find(|p| p.id == SteamId::from_account_id(ME)).unwrap();
+    assert_eq!(me.team, Team::Blue);
+
+    let outcomes: Vec<bool> = log.rounds.iter().map(|r| r.winner == Some(me.team)).collect();
+    assert_eq!(outcomes, [true, true, false, false, false, true]);
+
+    let swapped: Vec<bool> = log.rounds.iter().map(|r| r.colours_swapped).collect();
+    assert_eq!(swapped, [false, true, true, false, true, false]);
+
+    // Every event names the medic's stable team, whatever colour they wore.
+    let yanki = log.players.iter().find(|p| p.name.as_deref() == Some("Yanki")).unwrap();
+    for e in log.rounds.iter().flat_map(|r| &r.events) {
+        if e.player == Some(yanki.id) {
+            assert_eq!(e.team, Some(yanki.team), "{} at {}s", e.kind, e.at_s);
+        }
+    }
+}
+
 #[test]
 fn sixes_is_classified_as_sixes() {
     let log = normalize(4115969, &load("sixes_4115969.json")).unwrap();

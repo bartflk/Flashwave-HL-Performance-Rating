@@ -26,6 +26,8 @@ COMMANDS:
                            Index trends.tf + logs.tf, fetch and normalize new logs
     reprocess              Rebuild every derived table from stored sources (no network)
     stats                  Index and fetch counts
+    match <LOG_ID> [--json]
+                           Matchups for one stored match
     matches [N] [--all] [--officials]
                            List recent matches (Highlander only unless --all)
 
@@ -162,10 +164,7 @@ async fn main() -> Result<()> {
             };
             let page = db.list_matches(me.map(|m| m.account_id()), &filter).await?;
             println!("{} match(es) total, showing {}\n", page.total, page.items.len());
-            println!(
-                "{:<9} {:<10} {:<20} {:<6} {:<9} {:<1} {:>8} {:>5}  {}",
-                "log", "date", "map", "league", "class", "", "K/D/A", "dmg", "title"
-            );
+            println!("log       date       map                  league class          K/D/A   dmg  title");
             for m in &page.items {
                 let (class, res, kda, dmg) = match &m.me {
                     Some(me) => (
@@ -187,6 +186,58 @@ async fn main() -> Result<()> {
                     kda,
                     dmg,
                     truncate(m.title.as_deref().unwrap_or(""), 40),
+                );
+            }
+            Ok(())
+        }
+
+        ["match", id, rest @ ..] => {
+            let log_id: i64 = id.parse().context("log id must be a number")?;
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?;
+            let weights_path = db_path.with_file_name("weights.toml");
+            let (weights, warning) = hl_rating::Weights::load(&weights_path);
+            if let Some(w) = &warning {
+                eprintln!("warning: {w}");
+            }
+            let detail = hl_ingest::match_detail(&db, log_id, me, &weights)
+                .await?
+                .with_context(|| format!("log {log_id} is not stored; run `hl sync` first"))?;
+
+            if rest.contains(&"--json") {
+                println!("{}", serde_json::to_string_pretty(&detail)?);
+                return Ok(());
+            }
+
+            println!(
+                "{}  {}  {}–{} {}",
+                detail.map.as_deref().unwrap_or("unknown map"),
+                detail.played_at.map(fmt_date).unwrap_or_default(),
+                detail.red_score,
+                detail.blue_score,
+                detail.result.unwrap_or(""),
+            );
+            println!("model {}\n", detail.model_version);
+            println!("{:<9} {:>7}  {:<18} {:>6}  {:>6}  {:<18} {:>7}", "class", "h2h", "us", "score", "score", "them", "winner");
+            for m in &detail.matchups {
+                let side = |s: &Option<hl_rating::detail::Side>| match s {
+                    Some(s) => (truncate(&s.name, 18), format!("{:.1}", s.value.score)),
+                    None => ("—".into(), String::new()),
+                };
+                let (ln, ls) = side(&m.left);
+                let (rn, rs) = side(&m.right);
+                let h2h = m.head_to_head.map(|(a, b)| format!("{a}–{b}")).unwrap_or_default();
+                let winner = match m.winner {
+                    Some("left") => "us",
+                    Some("right") => "them",
+                    Some(other) => other,
+                    None => "",
+                };
+                println!(
+                    "{:<9} {:>7}  {:<18} {:>6}  {:>6}  {:<18} {:>7}{}{}",
+                    m.class.as_str(), h2h, ln, ls, rs, rn, winner,
+                    if m.decisive { "  ◆ decisive" } else { "" },
+                    if m.involves_me { "  ← you" } else { "" },
                 );
             }
             Ok(())

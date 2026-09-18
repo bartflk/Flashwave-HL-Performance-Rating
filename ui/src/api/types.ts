@@ -121,3 +121,134 @@ export interface MatchQuery {
   limit: number;
   offset: number;
 }
+
+// ---- M2: match page -----------------------------------------------------------
+
+export type Team = "Red" | "Blue";
+
+export interface LogFlags {
+  realDamage: boolean;
+  accuracy: boolean;
+  hs: boolean;
+  hsHit: boolean;
+  bs: boolean;
+  cp: boolean;
+  dt: boolean;
+  airshots: boolean;
+  hr: boolean;
+}
+
+/** A class value with its working shown. Every term is per 10 minutes. */
+export interface Value {
+  score: number;
+  minutes: number;
+  impactKills: number;
+  impactAssists: number;
+  deathCost: number;
+  medicTerm: number;
+  /** Kills could not be split by victim class, so they were weighted as average. */
+  approximate: boolean;
+}
+
+export interface Side {
+  accountId: number;
+  name: string;
+  subs: string[];
+  timeS: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  dmg: number;
+  value: Value;
+}
+
+export interface Matchup {
+  class: string;
+  left: Side | null;
+  right: Side | null;
+  /** [left's kills on right, right's kills on left], when attributable. */
+  headToHead: [number, number] | null;
+  diff: number | null;
+  winner: "left" | "right" | "even" | null;
+  decisive: boolean;
+  involvesMe: boolean;
+}
+
+export interface PlayerRow {
+  accountId: number;
+  steamid64: string;
+  name: string;
+  team: Team;
+  mainClass: string | null;
+  classes: Array<[string, number]>;
+  timeS: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  dmg: number;
+  dpm: number;
+  dt: number;
+  hr: number;
+  heal: number;
+  ubers: number;
+  drops: number;
+  headshots: number;
+  headshotsHit: number;
+  backstabs: number;
+  airshots: number;
+  cpc: number;
+  value: Value | null;
+  isMe: boolean;
+}
+
+export interface EventRow {
+  atS: number;
+  kind: "pointcap" | "charge" | "drop" | "medic_death" | "round_win" | string;
+  team: Team | null;
+  player: string | null;
+  killer: string | null;
+  killerIsMe: boolean;
+  medigun: string | null;
+  point: number | null;
+}
+
+export interface RoundRow {
+  roundNum: number;
+  startOffsetS: number | null;
+  lengthS: number | null;
+  winner: Team | null;
+  firstcap: Team | null;
+  redKills: number | null;
+  blueKills: number | null;
+  redDmg: number | null;
+  blueDmg: number | null;
+  redUbers: number | null;
+  blueUbers: number | null;
+  events: EventRow[];
+  /** A stopwatch half: each team wore the other's colour. Teams in this row
+   *  are still the stable teams; this only says which colour they wore. */
+  coloursSwapped: boolean;
+}
+
+export interface MatchDetail {
+  logId: number;
+  title: string | null;
+  map: string | null;
+  playedAt: number | null;
+  durationS: number;
+  redScore: number;
+  blueScore: number;
+  flags: LogFlags;
+  myTeam: Team | null;
+  result: "W" | "L" | "T" | null;
+  leftTeam: Team;
+  matchups: Matchup[];
+  players: PlayerRow[];
+  rounds: RoundRow[];
+  modelVersion: string;
+  format: string | null;
+  league: string | null;
+  etf2lMatchId: number | null;
+  demosTfId: number | null;
+  weightsWarning: string | null;
+}

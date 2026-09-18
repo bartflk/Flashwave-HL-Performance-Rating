@@ -5,10 +5,13 @@
 // this file is never used.
 
 import type { Api, SyncHandlers } from "./client";
+import match4109131 from "./fixtures/match_4109131.json";
+import match4114301 from "./fixtures/match_4114301.json";
 import type {
   AppConfig,
   AppStatus,
   IndexStats,
+  MatchDetail,
   MatchPage,
   MatchQuery,
   MatchSummary,
@@ -56,6 +59,14 @@ function fakeTfPath(path: string, valid: boolean): TfPathInfo {
   };
 }
 
+// ---- real match fixtures -----------------------------------------------------
+
+// Exported from the real database with `hl match <id> --json`, so browser mode
+// renders genuine matches rather than invented ones.
+// JSON imports widen tuples to arrays, so the cast goes through `unknown`. Safe
+// here: these files are the Rust serializer's own output.
+const FIXTURES: MatchDetail[] = [match4109131, match4114301].map((f) => f as unknown as MatchDetail);
+
 // ---- fake match history -----------------------------------------------------
 
 /** Deterministic PRNG so the fake list is stable across reloads. */
@@ -70,6 +81,36 @@ function rng(seed: number) {
 const MAPS = ["koth_product_final", "pl_vigil_rc10", "pl_upward_f12", "koth_proot_b5b",
   "koth_ashville_final1", "cp_steel_f12", "pl_swiftwater_final1", null];
 const CLASSES = ["sniper", "sniper", "sniper", "sniper", "sniper", "engineer", "spy", "medic"];
+
+/** The two real fixtures, as list rows, ahead of the generated ones. */
+const FIXTURE_ROWS: MatchSummary[] = FIXTURES.map((d) => {
+  const me = d.players.find((p) => p.isMe) ?? null;
+  return {
+    logId: d.logId,
+    playedAt: d.playedAt,
+    map: d.map,
+    title: d.title,
+    durationS: d.durationS,
+    format: d.format,
+    league: d.league,
+    etf2lMatchId: d.etf2lMatchId,
+    demosTfId: d.demosTfId,
+    redScore: d.redScore,
+    blueScore: d.blueScore,
+    me: me && d.result
+      ? {
+          team: me.team,
+          mainClass: me.mainClass,
+          kills: me.kills,
+          deaths: me.deaths,
+          assists: me.assists,
+          dmg: me.dmg,
+          timeS: me.timeS,
+          result: d.result,
+        }
+      : null,
+  };
+});
 
 const FAKE_MATCHES: MatchSummary[] = (() => {
   const r = rng(42);
@@ -111,7 +152,7 @@ const FAKE_MATCHES: MatchSummary[] = (() => {
       },
     });
   }
-  return out;
+  return [...FIXTURE_ROWS, ...out].sort((a, b) => (b.playedAt ?? 0) - (a.playedAt ?? 0));
 })();
 
 const fakeStats = (pending: number): IndexStats => ({
@@ -202,6 +243,17 @@ export const mockApi: Api = {
       (m) => (q.format === null || m.format === q.format) && (!q.officialsOnly || m.league !== null),
     );
     return delay({ total: filtered.length, items: filtered.slice(q.offset, q.offset + q.limit) });
+  },
+
+  // Generated rows have no detail behind them; they open a real fixture,
+  // relabelled, so every row in browser mode leads somewhere.
+  getMatch: (logId: number) => {
+    const exact = FIXTURES.find((f) => f.logId === logId);
+    return delay(exact ?? { ...FIXTURES[0], logId });
+  },
+
+  openExternal: async (url: string) => {
+    window.open(url, "_blank", "noopener");
   },
 
   indexStats: () => delay(fakeStats(pending)),

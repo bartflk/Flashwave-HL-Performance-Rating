@@ -1,11 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { mockApi } from "./mock";
 import type {
   AppConfig,
   AppStatus,
   CmdError,
   IndexStats,
+  MatchDetail,
   MatchPage,
   MatchQuery,
   Progress,
@@ -35,6 +37,9 @@ const realApi = {
   syncBusy: () => invoke<boolean>("sync_busy"),
   syncStart: (full: boolean) => invoke<void>("sync_start", { full }),
   reprocessStart: () => invoke<void>("reprocess_start"),
+  getMatch: (logId: number) => invoke<MatchDetail | null>("get_match", { logId }),
+  /** Opens in the system browser, never inside the app window. */
+  openExternal: (url: string) => openUrl(url),
 
   /** Subscribe to sync events. Returns a function that unsubscribes all three. */
   onSync: async (h: SyncHandlers): Promise<UnlistenFn> => {

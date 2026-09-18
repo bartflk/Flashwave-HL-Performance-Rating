@@ -1,4 +1,4 @@
-# HL Performance Rating System — Plan v0.4
+# HL Performance Rating System — Plan v0.5
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
 **Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
@@ -129,6 +129,25 @@ All available from the log, no demo required:
 
 Logs also carry `has*` capability flags per log: 2014 logs predate airshot tracking, some lack accuracy. A stat whose flag is off is stored as **missing, not zero** — otherwise old matches would read as "never landed an airshot" and drag every average down.
 
+### Two traps in logs.tf round data (found in M2)
+
+Both affected almost the whole history, and both hid behind single-round logs, where they are invisible:
+
+1. **Event times are seconds since the log started, not since the round started.** Round 1 starts at zero, so it looks right; every later round is offset by its start. Affected 740 of 759 matches. Each round is now calibrated off its own `round_win` event, which lands exactly at `start + length`.
+2. **Stopwatch swaps team colours between halves, and the log writes each round in that round's colours.** A raw `winner: "Blue"` can mean either team. The log records each player's colour per round in `rounds[].players[id].team`; normalization maps every round back to the **stable teams** (a player's overall team) by majority vote, and records `colours_swapped`. Affected 508 of 2,540 rounds across 342 matches — before the fix, the round view mislabelled three of six rounds in the S36 official against TWS.
+
+Also worth knowing: in stopwatch the match score is not rounds won. That official is 4–2 by ETF2L's scoring while the round split is 3–3.
+
+### Model v0 (M2): provisional, and visibly so
+
+The match page's matchups need a winner before M3 builds real class models, so v0 is a generic formula: impact-weighted kills plus half-weight assists, minus deaths weighted by the player's own class, per 10 minutes; Medics get a healing/uber/drop term instead. Every term is shown on the page.
+
+Its known failing, visible on real data: it is kill-centric and blind to the objective. In the official against TWS, a 4–2 win, v0 hands the opponents 6 of 9 matchups. That is the argument for M3's class-specific models, not a bug in the display.
+
+The **head-to-head** column is different in kind: kills between the two players on a class, read straight from `classkills`. It involves no judgment and is the most trustworthy number on the page.
+
+Weights live in `crates/hl-rating/src/weights.default.toml`. Copy it to `%APPDATA%\gg.highlander.rating\weights.toml` to override; it is re-read every time a match is opened.
+
 ### Deliberately deferred
 
 - **Baselines** — self-relative vs division vs global. Start self-relative; the 17 other players in every log provide a free division-ish pool later.
@@ -242,7 +261,7 @@ POV demos only contain what your client received, so phase 2 is you-only for loc
 |---|---|---|
 | **M0** | Skeleton, database, first-run setup | **done** |
 | **M1** | trends.tf index + logs.tf sync + normalize; match list | **done** |
-| **M2** | Match page phase 1: matchups, round timeline, box score | |
+| **M2** | Match page phase 1: matchups, round timeline, box score | **done** |
 | **M3** | Rating v1: Sniper in full, other classes generic; profile page | |
 | **M4** | Demos: local index, demos.tf fetch by demoid, linking, jump-back | |
 | **M5** | ETF2L context, officials vs scrims split, teammate tracking | |

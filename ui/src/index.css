@@ -12,6 +12,10 @@
   --bad: #d05a5a;
   --radius: 10px;
 
+  /* TF2's team colours, lifted slightly for contrast on a dark ground. */
+  --red: #d0554f;
+  --blu: #6b9cc4;
+
   color-scheme: dark;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   font-size: 15px;

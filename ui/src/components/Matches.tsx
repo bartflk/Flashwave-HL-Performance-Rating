@@ -2,6 +2,7 @@ import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { errorMessage, type MatchSummary } from "../api/types";
+import { capitalize, formatDate, splitMap } from "../lib/format";
 
 const PAGE = 50;
 
@@ -13,7 +14,7 @@ const VIEWS: Array<{ id: View; label: string }> = [
   { id: "all", label: "All formats" },
 ];
 
-export function Matches() {
+export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
   const [view, setView] = useState<View>("highlander");
   const [pages, setPages] = useState(1);
 
@@ -85,7 +86,7 @@ export function Matches() {
             </thead>
             <tbody>
               {items.map((m) => (
-                <MatchRow key={m.logId} m={m} />
+                <MatchRow key={m.logId} m={m} onOpen={onOpen} />
               ))}
             </tbody>
           </table>
@@ -101,7 +102,7 @@ export function Matches() {
   );
 }
 
-function MatchRow({ m }: { m: MatchSummary }) {
+function MatchRow({ m, onOpen }: { m: MatchSummary; onOpen: (logId: number) => void }) {
   const me = m.me;
   const [mine, theirs] =
     me?.team === "Blue" ? [m.blueScore, m.redScore] : [m.redScore, m.blueScore];
@@ -109,7 +110,14 @@ function MatchRow({ m }: { m: MatchSummary }) {
   const { mode, name } = splitMap(m.map);
 
   return (
-    <tr>
+    <tr
+      className="clickable"
+      tabIndex={0}
+      onClick={() => onOpen(m.logId)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onOpen(m.logId);
+      }}
+    >
       <td className="muted nowrap">{formatDate(m.playedAt)}</td>
       <td className="nowrap" title={m.map ?? "Map not recorded in the log"}>
         {mode && <span className={`mode mode-${mode}`}>{mode}</span>}
@@ -139,28 +147,4 @@ function MatchRow({ m }: { m: MatchSummary }) {
       </td>
     </tr>
   );
-}
-
-/** `pl_swiftwater_final1` -> mode `pl`, name `swiftwater`. */
-function splitMap(map: string | null): { mode: string | null; name: string | null } {
-  if (!map) return { mode: null, name: null };
-  const m = /^(koth|pl|cp|ctf|plr|arena|tc)_(.+)$/i.exec(map);
-  if (!m) return { mode: null, name: map };
-  const name = m[2].replace(/_(final\d*|rc\d+[a-z]?|b\d+[a-z]?|f\d+|v\d+|a\d+|pro\d*)$/i, "");
-  return { mode: m[1].toLowerCase(), name };
-}
-
-function formatDate(unix: number | null): string {
-  if (unix === null) return "—";
-  const d = new Date(unix * 1000);
-  const sameYear = d.getFullYear() === new Date().getFullYear();
-  return d.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    ...(sameYear ? {} : { year: "numeric" }),
-  });
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
 }

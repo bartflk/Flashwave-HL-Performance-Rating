@@ -8,6 +8,7 @@ description = "Fetching and normalizing match data from trends.tf and logs.tf"
 [dependencies]
 hl-core.workspace = true
 hl-db.workspace = true
+hl-rating.workspace = true
 
 anyhow.workspace = true
 serde.workspace = true

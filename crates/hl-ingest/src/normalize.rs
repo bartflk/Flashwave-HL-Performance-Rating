@@ -9,7 +9,7 @@
 use hl_core::matchdata::*;
 use hl_core::{SteamId, TfClass};
 use serde_json::Value;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 pub fn normalize(log_id: i64, raw: &Value) -> anyhow::Result<NormalizedLog> {
     let info = raw.get("info").unwrap_or(&Value::Null);
@@ -160,11 +160,18 @@ fn rounds(raw: &Value) -> Vec<RoundLine> {
     let Some(rounds) = raw.get("rounds").and_then(Value::as_array) else {
         return Vec::new();
     };
+    let first_start = rounds.iter().filter_map(|r| r.get("start_time").and_then(as_i64)).min();
+    let overall = overall_teams(raw);
+
     rounds
         .iter()
         .enumerate()
         .map(|(i, r)| {
-            let team = |t: &str| {
+            let base = round_base(r, first_start);
+            let swapped = colours_swapped(r, &overall);
+            // A colour as written in this round -> the stable team wearing it.
+            let stable = |t: Team| if swapped { t.other() } else { t };
+            let colour_stats = |t: &str| {
                 let x = r.get("team").and_then(|x| x.get(t));
                 RoundTeam {
                     kills: x.and_then(|x| x.get("kills")).and_then(as_i64),
@@ -172,30 +179,100 @@ fn rounds(raw: &Value) -> Vec<RoundLine> {
                     ubers: x.and_then(|x| x.get("ubers")).and_then(as_i64),
                 }
             };
+            // The stable Red team's numbers sit under "Blue" in a swapped round.
+            let (red, blue) = if swapped {
+                (colour_stats("Blue"), colour_stats("Red"))
+            } else {
+                (colour_stats("Red"), colour_stats("Blue"))
+            };
+            let colour = |k: &str| r.get(k).and_then(Value::as_str).and_then(Team::parse);
+
             RoundLine {
                 round_num: i as i64 + 1,
                 start_time: r.get("start_time").and_then(as_i64),
                 length_s: r.get("length").and_then(as_i64),
-                winner: r.get("winner").and_then(Value::as_str).and_then(Team::parse),
-                firstcap: r.get("firstcap").and_then(Value::as_str).and_then(Team::parse),
-                red: team("Red"),
-                blue: team("Blue"),
+                winner: colour("winner").map(stable),
+                firstcap: colour("firstcap").map(stable),
+                red,
+                blue,
                 events: r
                     .get("events")
                     .and_then(Value::as_array)
                     .into_iter()
                     .flatten()
-                    .filter_map(event)
+                    .filter_map(|e| event(e, base))
+                    .map(|mut e| {
+                        e.team = e.team.map(stable);
+                        e
+                    })
                     .collect(),
+                colours_swapped: swapped,
             }
         })
         .collect()
 }
 
-fn event(e: &Value) -> Option<EventLine> {
+/// Each player's team for the log as a whole: their stable team identity.
+fn overall_teams(raw: &Value) -> HashMap<&str, Team> {
+    raw.get("players")
+        .and_then(Value::as_object)
+        .into_iter()
+        .flatten()
+        .filter_map(|(id, p)| Some((id.as_str(), p.get("team")?.as_str().and_then(Team::parse)?)))
+        .collect()
+}
+
+/// Did the teams wear each other's colours this round? Stopwatch swaps sides
+/// between halves, and the log writes each round in that round's colours.
+/// Decided by majority over `round.players[id].team`, so one mislabelled
+/// player cannot flip a round. Logs without per-round teams are never swapped.
+fn colours_swapped(r: &Value, overall: &HashMap<&str, Team>) -> bool {
+    let (mut same, mut flipped) = (0, 0);
+    for (id, p) in r.get("players").and_then(Value::as_object).into_iter().flatten() {
+        let Some(round_team) = p.get("team").and_then(Value::as_str).and_then(Team::parse) else {
+            continue;
+        };
+        match overall.get(id.as_str()) {
+            Some(&t) if t == round_team => same += 1,
+            Some(_) => flipped += 1,
+            None => {}
+        }
+    }
+    flipped > same
+}
+
+/// Where this round starts, in the log's own clock.
+///
+/// logs.tf stamps events in seconds since the log began, not since the round
+/// began. The round's `round_win` event lands exactly at `start + length`, so
+/// that pins the start without trusting anything else. Failing that, fall back
+/// to wall-clock start times, which assumes the log began with round 1.
+fn round_base(r: &Value, first_start: Option<i64>) -> i64 {
+    let length = r.get("length").and_then(as_i64);
+    let win_at = r
+        .get("events")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .find(|e| e.get("type").and_then(Value::as_str) == Some("round_win"))
+        .and_then(|e| e.get("time").and_then(as_i64));
+
+    match (win_at, length) {
+        (Some(t), Some(len)) if t >= len => t - len,
+        _ => r
+            .get("start_time")
+            .and_then(as_i64)
+            .zip(first_start)
+            .map(|(s, f)| (s - f).max(0))
+            .unwrap_or(0),
+    }
+}
+
+fn event(e: &Value, base: i64) -> Option<EventLine> {
     let id = |k: &str| e.get(k).and_then(Value::as_str).and_then(|s| SteamId::parse(s).ok());
     Some(EventLine {
-        at_s: e.get("time").and_then(as_i64)?,
+        // Seconds into the round; see `round_base`.
+        at_s: (e.get("time").and_then(as_i64)? - base).max(0),
         kind: e.get("type").and_then(Value::as_str)?.to_owned(),
         team: e.get("team").and_then(Value::as_str).and_then(Team::parse),
         player: id("steamid"),

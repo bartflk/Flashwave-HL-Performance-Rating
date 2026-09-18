@@ -137,3 +137,21 @@ pub async fn list_matches(
     };
     Ok(state.db.list_matches(me.map(|m| m.account_id()), &filter).await?)
 }
+
+/// Everything the match page shows. `None` when the log is not stored yet.
+///
+/// Weights are re-read on every call, so edits to `weights.toml` show up the
+/// next time a match is opened.
+#[tauri::command]
+pub async fn get_match(
+    state: State<'_, AppState>,
+    log_id: i64,
+) -> CmdResult<Option<hl_rating::MatchDetail>> {
+    let me = state.db.get_me().await?;
+    let (weights, warning) = hl_rating::Weights::load(&state.db_path.with_file_name("weights.toml"));
+    let mut detail = hl_ingest::match_detail(&state.db, log_id, me, &weights).await?;
+    if let Some(d) = detail.as_mut() {
+        d.weights_warning = warning;
+    }
+    Ok(detail)
+}

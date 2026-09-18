@@ -39,6 +39,7 @@ impl Team {
 /// Which stats a log actually recorded. A `false` flag means the matching
 /// field is missing, not zero.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LogFlags {
     pub real_damage: bool,
     pub accuracy: bool,
@@ -135,6 +136,9 @@ pub struct VsLine {
     pub assists: i64,
 }
 
+/// One round, expressed in **stable teams**: `Red` means the team whose
+/// overall colour in the log is Red, even in a stopwatch half where that team
+/// wore Blue. `colours_swapped` records whether it did.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoundLine {
     pub round_num: i64,
@@ -145,6 +149,8 @@ pub struct RoundLine {
     pub red: RoundTeam,
     pub blue: RoundTeam,
     pub events: Vec<EventLine>,
+    /// The teams wore each other's colours this round (a stopwatch half).
+    pub colours_swapped: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
