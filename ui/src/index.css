@@ -18,8 +18,21 @@
 
   color-scheme: dark;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-  font-size: 15px;
+  /* Text grows with the window, so a maximised app on a big monitor reads
+     like a website rather than a column of small print. */
+  font-size: clamp(15px, 0.35vw + 10px, 18px);
   line-height: 1.5;
+
+  /* Every page centres a column of this width; the bars above it stay
+     full-bleed but line their content up with it. */
+  --page-w: 1480px;
+  --gutter: 28px;
+}
+
+@media (max-width: 700px) {
+  :root {
+    --gutter: 16px;
+  }
 }
 
 * {

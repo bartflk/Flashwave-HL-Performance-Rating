@@ -1,4 +1,6 @@
 .shell {
+  /* Side padding that lines a full-width bar's content up with the page column. */
+  --bleed-pad: max(var(--gutter), calc((100% - var(--page-w)) / 2));
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -145,7 +147,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 22px;
+  padding: 16px var(--bleed-pad);
   border-bottom: 1px solid var(--border);
 }
 
@@ -156,11 +158,14 @@
 
 .content {
   flex: 1;
-  padding: 26px 22px;
+  padding: 26px var(--gutter);
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-width: 900px;
+  width: 100%;
+  /* Settings is a form; a full-width column would just stretch its lines. */
+  max-width: calc(1000px + 2 * var(--gutter));
+  margin-inline: auto;
 }
 
 .panel {
@@ -247,7 +252,7 @@
 
 .sync-strip {
   border-bottom: 1px solid var(--border);
-  padding: 12px 22px;
+  padding: 12px var(--bleed-pad);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -331,7 +336,10 @@
 /* --- match list --- */
 
 .matches {
-  padding: 18px 22px 28px;
+  padding: 18px var(--gutter) 28px;
+  width: 100%;
+  max-width: calc(var(--page-w) + 2 * var(--gutter));
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
   gap: 14px;
