@@ -4,6 +4,12 @@
 //! macros on purpose: the macros require a live database at build time, which
 //! would make a fresh clone fail to compile before it has ever been run.
 
+mod matches;
+
+pub use matches::{
+    IndexStats, LogsTfIndexRow, MatchFilter, MatchPage, MatchSummary, MyLine, TrendsIndexRow,
+};
+
 use anyhow::{Context, Result};
 use hl_core::config::{keys, AppConfig};
 use hl_core::SteamId;
@@ -14,6 +20,10 @@ use std::path::Path;
 
 /// Embedded at compile time, applied at startup. Adding a migration means
 /// dropping a file in `migrations/` and rebuilding.
+///
+/// **Never edit a migration once it has been applied anywhere** — not even a
+/// comment. sqlx stores each migration's checksum and refuses to open a
+/// database whose applied migrations no longer match. Changes go in a new file.
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 
 #[derive(Clone)]

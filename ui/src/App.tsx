@@ -3,12 +3,17 @@ import { useState } from "react";
 import { api } from "./api/client";
 import { errorMessage } from "./api/types";
 import { Setup } from "./components/Setup";
-import { Ready } from "./components/Ready";
+import { Settings } from "./components/Settings";
+import { Matches } from "./components/Matches";
+import { SyncStrip } from "./components/SyncStrip";
 import "./App.css";
+
+type Tab = "matches" | "settings";
 
 export default function App() {
   // Set when the user chooses to revisit setup after it is already complete.
   const [forceSetup, setForceSetup] = useState(false);
+  const [tab, setTab] = useState<Tab>("matches");
 
   const status = useQuery({
     queryKey: ["app_status"],
@@ -45,11 +50,10 @@ export default function App() {
   }
 
   const data = status.data;
-  const showSetup = !data.ready || forceSetup;
 
-  return (
-    <div className="shell">
-      {showSetup ? (
+  if (!data.ready || forceSetup) {
+    return (
+      <div className="shell">
         <Setup
           status={data}
           onDone={() => {
@@ -57,13 +61,46 @@ export default function App() {
             void status.refetch();
           }}
         />
+      </div>
+    );
+  }
+
+  return (
+    <div className="shell">
+      <header className="topbar">
+        <div className="brand">
+          <h1>HL Rating</h1>
+          <nav className="tabs">
+            {(["matches", "settings"] as const).map((t) => (
+              <button
+                key={t}
+                className={tab === t ? "tab active" : "tab"}
+                onClick={() => setTab(t)}
+              >
+                {t === "matches" ? "Matches" : "Settings"}
+              </button>
+            ))}
+          </nav>
+        </div>
+        <span className="who">
+          <code>{data.config.steamid}</code>
+        </span>
+      </header>
+
+      {/* The strip stays mounted on every tab so sync progress is never lost. */}
+      <SyncStrip />
+
+      {tab === "matches" ? (
+        <Matches />
       ) : (
-        <Ready status={data} onReconfigure={() => setForceSetup(true)} />
+        <Settings
+          status={data}
+          onReconfigure={() => {
+            setForceSetup(true);
+            setTab("matches");
+          }}
+        />
       )}
-      <footer className="footer">
-        <span>HL Rating {data.version} — M0</span>
-        <code>{data.dbPath}</code>
-      </footer>
     </div>
   );
 }

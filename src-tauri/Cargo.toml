@@ -15,6 +15,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 hl-core.workspace = true
 hl-db.workspace = true
+hl-ingest.workspace = true
 
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"

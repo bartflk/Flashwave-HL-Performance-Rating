@@ -12,6 +12,7 @@ path = "src/main.rs"
 [dependencies]
 hl-core.workspace = true
 hl-db.workspace = true
+hl-ingest.workspace = true
 
 anyhow.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

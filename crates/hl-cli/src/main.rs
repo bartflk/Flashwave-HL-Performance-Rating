@@ -5,7 +5,8 @@
 
 use anyhow::{bail, Context, Result};
 use hl_core::{tfpath, SteamId};
-use hl_db::Db;
+use hl_db::{Db, MatchFilter};
+use hl_ingest::{Progress, Sources, SyncOptions};
 use std::path::PathBuf;
 
 const USAGE: &str = "\
@@ -20,6 +21,13 @@ COMMANDS:
     tf detect              Scan the usual Steam locations for a TF2 install
     tf inspect <PATH>      Validate a candidate `tf` directory
     tf set <PATH>          Validate and store the `tf` directory
+
+    sync [--full] [--max N]
+                           Index trends.tf + logs.tf, fetch and normalize new logs
+    reprocess              Rebuild every derived table from stored sources (no network)
+    stats                  Index and fetch counts
+    matches [N] [--all] [--officials]
+                           List recent matches (Highlander only unless --all)
 
 OPTIONS:
     --db <PATH>            Override the database location
@@ -108,6 +116,82 @@ async fn main() -> Result<()> {
             Ok(())
         }
 
+        ["sync", rest @ ..] => {
+            let opts = SyncOptions {
+                full: rest.contains(&"--full"),
+                max_fetch: flag_value(rest, "--max")?,
+            };
+            let db = Db::connect(&db_path).await?;
+            let me = db
+                .get_me()
+                .await?
+                .context("no owner set: run `hl set-steamid <ID>` first")?;
+            let sources = Sources::new()?;
+            let summary = hl_ingest::sync(&db, &sources, me, &opts, print_progress).await?;
+            println!();
+            println!("fetched {} log(s), {} failed", summary.fetched, summary.failed);
+            print_stats(&summary.stats);
+            Ok(())
+        }
+
+        ["reprocess"] => {
+            let db = Db::connect(&db_path).await?;
+            let started = std::time::Instant::now();
+            let stats = hl_ingest::reprocess(&db, print_progress).await?;
+            println!();
+            println!("rebuilt in {:.1}s", started.elapsed().as_secs_f64());
+            print_stats(&stats);
+            Ok(())
+        }
+
+        ["stats"] => {
+            let db = Db::connect(&db_path).await?;
+            print_stats(&db.index_stats().await?);
+            Ok(())
+        }
+
+        ["matches", rest @ ..] => {
+            let limit = rest.iter().find_map(|a| a.parse::<i64>().ok()).unwrap_or(20);
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?;
+            let filter = MatchFilter {
+                format: (!rest.contains(&"--all")).then(|| "highlander".to_string()),
+                officials_only: rest.contains(&"--officials"),
+                limit,
+                offset: 0,
+            };
+            let page = db.list_matches(me.map(|m| m.account_id()), &filter).await?;
+            println!("{} match(es) total, showing {}\n", page.total, page.items.len());
+            println!(
+                "{:<9} {:<10} {:<20} {:<6} {:<9} {:<1} {:>8} {:>5}  {}",
+                "log", "date", "map", "league", "class", "", "K/D/A", "dmg", "title"
+            );
+            for m in &page.items {
+                let (class, res, kda, dmg) = match &m.me {
+                    Some(me) => (
+                        me.main_class.clone().unwrap_or_default(),
+                        me.result.clone(),
+                        format!("{}/{}/{}", me.kills, me.deaths, me.assists),
+                        me.dmg.to_string(),
+                    ),
+                    None => ("-".into(), String::new(), String::new(), String::new()),
+                };
+                println!(
+                    "{:<9} {:<10} {:<20} {:<6} {:<9} {:<1} {:>8} {:>5}  {}",
+                    m.log_id,
+                    m.played_at.map(fmt_date).unwrap_or_default(),
+                    truncate(m.map.as_deref().unwrap_or(""), 20),
+                    m.league.as_deref().unwrap_or(""),
+                    class,
+                    res,
+                    kda,
+                    dmg,
+                    truncate(m.title.as_deref().unwrap_or(""), 40),
+                );
+            }
+            Ok(())
+        }
+
         other => {
             eprintln!("unknown command: {}\n", other.join(" "));
             print!("{USAGE}");
@@ -142,4 +226,67 @@ fn default_db_path() -> Result<PathBuf> {
     Ok(PathBuf::from(base)
         .join("gg.highlander.rating")
         .join("hl.sqlite3"))
+}
+
+fn flag_value<T: std::str::FromStr>(args: &[&str], flag: &str) -> Result<Option<T>> {
+    match args.iter().position(|a| *a == flag) {
+        Some(i) => match args.get(i + 1).and_then(|v| v.parse().ok()) {
+            Some(v) => Ok(Some(v)),
+            None => bail!("{flag} needs a value"),
+        },
+        None => Ok(None),
+    }
+}
+
+/// Overwrites one terminal line so a thousand-log sync stays readable.
+fn print_progress(p: Progress) {
+    use std::io::Write;
+    match p {
+        Progress::Indexing { source, rows } => print!("\rindexing {source}: {rows} rows          "),
+        Progress::Indexed { trends_rows, logstf_rows, superseded } => println!(
+            "\rindexed {trends_rows} trends.tf + {logstf_rows} logs.tf rows; {superseded} superseded by combined logs"
+        ),
+        Progress::Fetching { done, total, log_id } => {
+            print!("\rfetching {done}/{total}  (log {log_id})          ")
+        }
+        Progress::FetchFailed { log_id, error } => println!("\n  ! log {log_id}: {error}"),
+        Progress::Reprocessing { done, total } => print!("\rreprocessing {done}/{total}          "),
+    }
+    let _ = std::io::stdout().flush();
+}
+
+fn print_stats(s: &hl_db::IndexStats) {
+    println!("indexed       {:>6}", s.indexed);
+    println!("  superseded  {:>6}  (per-round parts of a combined log)", s.superseded);
+    println!("  highlander  {:>6}  ({} ETF2L official)", s.highlander, s.officials);
+    println!("  sixes       {:>6}", s.sixes);
+    println!("  other       {:>6}", s.other);
+    println!("  unknown     {:>6}", s.unclassified);
+    println!("fetched       {:>6}", s.fetched);
+    println!("normalized    {:>6}", s.normalized);
+    println!("pending       {:>6}", s.pending);
+    println!("failed        {:>6}", s.failed);
+}
+
+fn fmt_date(unix: i64) -> String {
+    // Civil-from-days, to avoid pulling in a date crate for one column.
+    let days = unix.div_euclid(86_400);
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = yoe + era * 400 + i64::from(m <= 2);
+    format!("{y:04}-{m:02}-{d:02}")
+}
+
+fn truncate(s: &str, n: usize) -> String {
+    if s.chars().count() <= n {
+        s.to_string()
+    } else {
+        s.chars().take(n - 1).collect::<String>() + "…"
+    }
 }

@@ -1,4 +1,4 @@
-# HL Performance Rating System — Plan v0.3
+# HL Performance Rating System — Plan v0.4
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
 **Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
@@ -37,29 +37,30 @@ v0.2 planned to classify format by player count and to identify officials from l
 
 - **Format comes labelled.** The headcount heuristic was wrong anyway — 183 Highlander logs have 19-21 players because of mid-match subs.
 - **League comes labelled**, with the ETF2L `matchid` attached. Titles were useless for this: 1,157 of 1,492 are just `serveme.tf #1563599 RED vs BLU`.
-- **Duplicate logs come flagged.** 248 logs are per-round uploads of matches that also have a combined log. Counting both would double-count a fifth of the history, and nothing in logs.tf alone reveals it.
+- **Duplicate logs come flagged.** Note the direction, which is easy to get backwards: `duplicate_of` sits on the **combined** log and lists the per-round **parts** it was built from. The combined log is the one to keep. On this account 480 part logs are superseded that way; counting them alongside their combined log would double-count over a third of the history, and nothing in logs.tf alone reveals it. Overlapping combines also exist (49 parts claimed by more than one combined log), so dedupe groups every log connected through a shared part and keeps exactly one — the longest.
 - **demos.tf demo ids come attached**, which answers "find the demo if I don't have it locally" with no searching at all.
 
 The cost is a third-party dependency. Mitigations: cache their index permanently like any other raw source, keep a class-coverage heuristic as a fallback classifier, and make every classification overridable by hand. Their docs note format detection is based on player count and playtime, so it shares the failure modes above — a strong default, not gospel.
 
 ### What the account actually contains
 
-Measured, not estimated (trends.tf indexes 1,280 of the 1,492 logs.tf logs):
+Measured by the M1 sync, after deduplication (1,494 logs indexed across both sources):
 
 | | |
 |---|---|
-| Highlander | 1,105 |
-| Sixes | 146 |
-| Other / Prolander | 29 |
-| **ETF2L official (Highlander)** | **155** |
-| Logs with a demos.tf demo | **1,047** |
-| Duplicate-of-another logs | 248 |
+| **Highlander matches** | **666** (from 1,105 Highlander logs) |
+| **ETF2L official matches** | **43** (155 logs before folding in per-round parts) |
+| Sixes | 117 |
+| Per-round parts superseded | 480 |
+| Only on logs.tf, classified locally | 214 (mostly 2014-2019) |
+| Logs with a demos.tf demo | 1,047 |
+| Logs with no map recorded | 43 |
 | Local POV demos | 101 |
 | Range | 2014-05-17 → 2026-09-17 |
 
 Two consequences worth stating plainly:
 
-- **Officials are a real corpus, not a rounding error.** 155 ETF2L Highlander logs is enough to rate officials separately from scrims. The ETF2L API's own player-results endpoint returns far fewer, because it reflects only current team rosters — trends.tf's league tagging is the better source.
+- **Officials are a small but real corpus.** 43 matches is enough to show officials separately from scrims, not yet enough to build statistics on alone — expect officials to be a filter and a badge for a while, with ratings drawn from all Highlander play. The ETF2L API's own player-results endpoint returns fewer still, because it reflects only current team rosters; trends.tf's league tagging is the better source.
 - **STV demos exist for 1,047 matches, against 101 local POV demos.** The demo story should lean on demos.tf, not the local folder. POV demos remain the only source for your own aim and viewangles, but for anything team-wide, STV is both richer and ten times more available.
 
 ---
@@ -121,10 +122,12 @@ All available from the log, no demo required:
 | Headshot ratio | `headshots`, `headshots_hit` | Execution quality, independent of outcome |
 | Damage / min | `dapm` | Chip damage counts, weighted low |
 | Deaths / min | `deaths`, time | A dead Sniper holds nothing |
-| Time to first pick | `rounds[].events` | Opening a round vs reacting to it |
+| Medic picks, timed | `rounds[].events` `medic_death` | When in the round you took their Medic, and whether it was before their uber |
 | Assists | `classkillassists` | Damage that set up a teammate's kill |
 
-`rounds[].events` carries timestamped events (caps, charges, medic deaths), which makes time-to-first-pick and "picks immediately before an uber push" computable without touching a demo.
+**Correction from v0.3:** `rounds[].events` only contains `pointcap`, `charge`, `drop`, `medic_death` and `round_win`. Medic deaths are the **only** kills with a timestamp and a killer. So "picks immediately before an uber push" is computable from the log for Medic picks specifically, but a general time-to-first-pick needs the demo. It moves to M4.
+
+Logs also carry `has*` capability flags per log: 2014 logs predate airshot tracking, some lack accuracy. A stat whose flag is off is stored as **missing, not zero** — otherwise old matches would read as "never landed an airshot" and drag every average down.
 
 ### Deliberately deferred
 
@@ -191,7 +194,9 @@ sync_state(source PK, cursor, last_run_at, last_error)
 app_config(key PK, value)
 ```
 
-`duplicate_of` must be respected by **every** aggregate query. 248 of 1,280 logs are duplicates; forgetting that filter inflates a fifth of the history.
+As built in M1, the index lives in `log_index` with a derived `superseded_by` column. Every aggregate query must filter `superseded_by IS NULL`; 480 superseded parts would otherwise inflate over a third of the history.
+
+**Never edit an applied migration** — not even a comment. sqlx checksums them and refuses to open a database whose history no longer matches. `.gitattributes` pins `*.sql` to LF for the same reason: a CRLF checkout on Windows changes the bytes.
 
 ---
 
@@ -236,7 +241,7 @@ POV demos only contain what your client received, so phase 2 is you-only for loc
 | | | |
 |---|---|---|
 | **M0** | Skeleton, database, first-run setup | **done** |
-| **M1** | trends.tf index + logs.tf sync + normalize; match list | next |
+| **M1** | trends.tf index + logs.tf sync + normalize; match list | **done** |
 | **M2** | Match page phase 1: matchups, round timeline, box score | |
 | **M3** | Rating v1: Sniper in full, other classes generic; profile page | |
 | **M4** | Demos: local index, demos.tf fetch by demoid, linking, jump-back | |

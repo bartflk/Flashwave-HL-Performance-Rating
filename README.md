@@ -6,21 +6,26 @@ per class against class-relative baselines.
 
 See [PLAN.md](PLAN.md) for the full design and milestone plan.
 
-**Status: M0** — the app boots, the database migrates, and configuration
-persists. No match data yet.
+**Status: M1** — syncs your full match history from trends.tf and logs.tf,
+deduplicates it, and lists every Highlander match with your line from it.
 
 ## Prerequisites
 
 | | |
 |---|---|
-| Node.js 20+ | installed |
-| **Rust (stable)** | **not installed** — https://rustup.rs |
-| **MSVC C++ build tools** | **not installed** — see below |
-| WebView2 runtime | installed |
+| Node.js 20+ | https://nodejs.org |
+| Rust (stable) | https://rustup.rs |
+| MSVC C++ build tools | see below |
+| WebView2 runtime | ships with Windows 10/11 |
 
-Rust needs the MSVC linker. Visual Studio Build Tools 2019 is present on this
-machine but without the C++ workload, so install it from the Visual Studio
-Installer: *Modify* → **Desktop development with C++** → Install. Then:
+Rust on Windows needs the MSVC linker and the Windows SDK. Install the
+**Desktop development with C++** workload from the Visual Studio Installer, or:
+
+```
+winget install Microsoft.VisualStudio.2022.BuildTools --override "--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+```
+
+Then Rust:
 
 ```
 winget install Rustlang.Rustup
@@ -56,6 +61,9 @@ reproducing bugs without a window:
 cargo run -p hl-cli -- status
 cargo run -p hl-cli -- set-steamid 76561198000000000
 cargo run -p hl-cli -- tf detect
+cargo run -p hl-cli -- sync                # index + fetch new logs
+cargo run -p hl-cli -- reprocess           # rebuild from stored logs, no network
+cargo run -p hl-cli -- matches 30 --officials
 ```
 
 ## Layout
@@ -63,6 +71,7 @@ cargo run -p hl-cli -- tf detect
 ```
 crates/hl-core     domain types: SteamID, classes, config, tf path detection
 crates/hl-db       SQLite access and migrations
+crates/hl-ingest   trends.tf + logs.tf clients, normalizer, classifier, dedupe
 crates/hl-cli      developer harness
 src-tauri          Tauri shell: commands, state, window
 ui                 React + TypeScript frontend

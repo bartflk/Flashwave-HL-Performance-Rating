@@ -6,6 +6,7 @@
 
 pub mod config;
 pub mod error;
+pub mod matchdata;
 pub mod steamid;
 pub mod tfclass;
 pub mod tfpath;

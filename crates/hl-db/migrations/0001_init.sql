@@ -25,7 +25,7 @@ CREATE TABLE player (
 -- rather than in application code.
 CREATE UNIQUE INDEX player_single_me ON player (is_me) WHERE is_me = 1;
 
--- Cursors and error state for each ingest source (logs.tf, demos, ETF2L).
+-- Cursors and error state for each ingest source (logs.tf, demos, RGL).
 CREATE TABLE sync_state (
     source       TEXT PRIMARY KEY,
     cursor       TEXT,
