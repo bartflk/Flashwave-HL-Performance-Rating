@@ -99,6 +99,59 @@ spy         = 0.9
 
 A starting point, not a claim. These get replaced by fitted weights once there is enough data — regress round outcome on per-round features and let the numbers argue.
 
+### Victim values v2: input from a Premiership Sniper
+
+Reviewed with function, a Premiership Sniper. The flat table above undervalues two classes, and the real answer depends on the map and the side.
+
+**General table: agreed changes.** This stays the default until the per-map layer exists.
+
+| Class | v1 | v2 | Why |
+|---|---|---|---|
+| Pyro | 0.9 | **1.5** | With their Pyro dead, your team can spam projectiles freely. That changes the fight. |
+| Spy | 0.9 | **1.3** | An important kill, above Soldier, but it rarely decides a teamfight. |
+| Scout | 1.0 | **1.15** (proposed) | Should sit above Engineer, except on stopwatch defence (below). The exact number is ours, not agreed. |
+| Engineer | 1.1 | 1.1 | Fine as a default. It needs to go up on stopwatch defence. |
+
+Medic, Demoman, Sniper, Heavy and Soldier are unchanged.
+
+**Per map.** A kill's worth depends on the map:
+- An Engineer on Vigil last is worth far more than one on Product mid.
+- A Sniper pick on Upward is worth more than one on Vigil.
+
+So the model becomes a general table plus per-map overrides.
+
+**Per side.** In stopwatch, killing RED's (defending) Engineer matters much more than killing BLU's. The side changes the value, not just the map.
+
+**Proposed shape.** Layered, with each layer optional and falling back to the one above:
+
+```toml
+[victim_value]                       # general, as today
+pyro = 1.5
+spy = 1.3
+
+[victim_value.mode.pl.defense]       # all payload maps, defending side
+engineer = 1.6
+scout = 1.0
+
+[victim_value.map.pl_vigil]          # one map, both sides
+sniper_pick_scale = 0.85             # a pick here is worth less
+
+[victim_value.map.pl_vigil.defense]  # one map, one side
+engineer = 1.8
+```
+
+Lookup order: map+side, then map, then mode+side, then mode, then general. The same validation as today applies, so a typo is an error.
+
+**What the data allows. This decides the order of work:**
+- **Per map: possible now.** Every log has its map, and `classkills` gives victims per player per log.
+- **Per side: not possible from logs.tf.** `classkills` covers the whole log, not each round. The log cannot tell a kill made while defending from one made while attacking. The only timed kills are Medic deaths. Per-side values need per-kill events with victim class and time, which means v2 demo parsing, or reading the raw server log instead of the logs.tf summary.
+- **Percentiles blunt a map-wide scale.** Ratings are percentiles against the pool. A multiplier that applies to every Sniper on Vigil only moves Vigil games relative to other maps. If the goal is "a good Vigil game is a good game", per-map baselines may be the better tool than a per-map multiplier. Decide when building it.
+
+**Order:**
+1. Apply the v2 general table (a TOML change).
+2. Per-mode and per-map overrides.
+3. Per-side values once kill timing exists (v2 demos).
+
 ### Matchup scoring
 
 For each of the nine classes, compare the two players who played it:
@@ -329,7 +382,7 @@ M1 acceptance: every Highlander log on the account stored, classified, deduplica
 ## 8. Still open
 
 1. ~~Baselines~~ — settled in M3: the other players in your own matches, with you excluded.
-2. **Final impact weights** — the TOML above is a first guess; expect to argue with it.
+2. **Final impact weights** — the TOML above is a first guess; expect to argue with it. Victim values v2 (Pyro 1.5, Spy 1.3, Scout above Engineer) are agreed but not yet applied; per-map and per-side values are designed in §3.
 3. **Linux demos** — a second machine holds more POV demos. Import path to be designed; the `demoid` route may make it unnecessary.
 4. **Sixes** — detected and stored, excluded from ratings. A later update.
 5. **Verify jump ticks in-game.** The arithmetic is tested end to end (a sidecar killstreak at raw tick 51,212 lands at 50,879 after the 5 s lead), but only TF2 can confirm the demo shows the right moment.
