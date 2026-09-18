@@ -8,15 +8,17 @@ import { Matches } from "./components/Matches";
 import { SyncStrip } from "./components/SyncStrip";
 import { MatchPage } from "./components/match/MatchPage";
 import { ProfilePage } from "./components/profile/ProfilePage";
+import { TeammatesPage } from "./components/teammates/TeammatesPage";
 import { ToastHost } from "./lib/toast";
 import "./App.css";
 import "./components/match/match.css";
 
-type Tab = "matches" | "profile" | "settings";
+type Tab = "matches" | "profile" | "teammates" | "settings";
 
 const TABS: Array<[Tab, string]> = [
   ["matches", "Matches"],
   ["profile", "Profile"],
+  ["teammates", "Teammates"],
   ["settings", "Settings"],
 ];
 
@@ -112,6 +114,11 @@ export default function App() {
       {visited.has("profile") && (
         <div hidden={tab !== "profile" || openLog !== null}>
           <ProfilePage onOpenMatch={setOpenLog} />
+        </div>
+      )}
+      {visited.has("teammates") && (
+        <div hidden={tab !== "teammates" || openLog !== null}>
+          <TeammatesPage />
         </div>
       )}
       {tab === "settings" && openLog === null && (

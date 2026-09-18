@@ -4,7 +4,8 @@ import { formatDate, splitMap } from "../../lib/format";
 
 /**
  * Rating over time, as an emphasis chart: the rolling average is the story
- * (accent line), single games are context (grey dots). Games sit at equal
+ * (accent line), single games are context (grey dots), and officials stand
+ * out from the grey as light dots. Games sit at equal
  * spacing, oldest to newest — this account has years with a handful of games
  * and years with hundreds, and a date axis would crush the busy years flat.
  *
@@ -90,6 +91,7 @@ export function TrendChart(props: {
   const last = [...shown].reverse().find((p) => p.rolling !== null) ?? null;
   const lastIdx = last ? shown.lastIndexOf(last) : -1;
   const dotR = shown.length > 250 ? 3 : 4;
+  const hasOfficials = shown.some((p) => p.kind === "official");
 
   function nearest(clientX: number, svg: SVGSVGElement): number {
     const rect = svg.getBoundingClientRect();
@@ -142,6 +144,14 @@ export function TrendChart(props: {
           </svg>
           single game
         </span>
+        {hasOfficials && (
+          <span>
+            <svg width="10" height="10" aria-hidden>
+              <circle cx="5" cy="5" r="4" className="tl-dot official" />
+            </svg>
+            ETF2L official
+          </span>
+        )}
         <span>
           <svg width="18" height="8" aria-hidden>
             <line x1="1" y1="4" x2="17" y2="4" className="tl-median" />
@@ -196,9 +206,17 @@ export function TrendChart(props: {
               </text>
             ))}
 
-            {shown.map((p, i) => (
-              <circle key={p.logId} cx={x(i)} cy={y(p.score)} r={dotR} className="tl-dot" />
-            ))}
+            {shown.map((p, i) =>
+              p.kind === "official" ? null : (
+                <circle key={p.logId} cx={x(i)} cy={y(p.score)} r={dotR} className="tl-dot" />
+              ),
+            )}
+            {/* Drawn last so no grey dot covers one. */}
+            {shown.map((p, i) =>
+              p.kind === "official" ? (
+                <circle key={p.logId} cx={x(i)} cy={y(p.score)} r={dotR + 0.5} className="tl-dot official" />
+              ) : null,
+            )}
 
             <path d={linePath} className="tl-line" />
 
@@ -247,6 +265,7 @@ export function TrendChart(props: {
               <div className="tip-meta">
                 {formatDate(h.playedAt, true)} · {splitMap(h.map).name ?? "unknown map"}
                 {h.result && <span className={`result-${h.result}`}> · {h.result}</span>}
+                {h.kind && <span> · {h.kind}</span>}
               </div>
             </div>
           )}

@@ -45,6 +45,12 @@ pub enum Progress {
     Reprocessing { done: usize, total: usize },
     #[serde(rename_all = "camelCase")]
     Rating { done: usize, total: usize },
+    /// ETF2L match fetches.
+    #[serde(rename_all = "camelCase")]
+    Etf2l { done: usize, total: usize },
+    /// ETF2L could not be reached; the rest of the sync carries on.
+    #[serde(rename_all = "camelCase")]
+    Etf2lFailed { error: String },
 }
 
 #[derive(Debug, Clone, Serialize)]

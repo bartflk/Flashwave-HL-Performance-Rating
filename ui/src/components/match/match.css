@@ -713,3 +713,24 @@
 .toast-detail {
   white-space: nowrap;
 }
+
+/* --- M5: what kind of game --- */
+
+.mh-context {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 0.92rem;
+}
+
+.mh-context .badge {
+  margin-right: 0;
+}
+
+.mh-sides {
+  font-weight: 600;
+}

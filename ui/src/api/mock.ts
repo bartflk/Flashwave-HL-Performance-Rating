@@ -10,15 +10,20 @@ import match4114301 from "./fixtures/match_4114301.json";
 import match4111116 from "./fixtures/match_4111116.json";
 import profileSniper from "./fixtures/profile_sniper.json";
 import profileEngineer from "./fixtures/profile_engineer.json";
+import teammatesTeam from "./fixtures/teammates_team.json";
+import teammatesAll from "./fixtures/teammates_all.json";
 import type {
   AppConfig,
   AppStatus,
+  ContextKind,
   IndexStats,
+  MatchContext,
   MatchDetail,
   MatchPage,
   MatchQuery,
   MatchSummary,
   ProfileResponse,
+  Teammates,
   TfPathInfo,
 } from "./types";
 
@@ -69,9 +74,34 @@ function fakeTfPath(path: string, valid: boolean): TfPathInfo {
 // renders genuine matches rather than invented ones.
 // JSON imports widen tuples to arrays, so the cast goes through `unknown`. Safe
 // here: these files are the Rust serializer's own output.
-const FIXTURES: MatchDetail[] = [match4109131, match4114301, match4111116].map(
-  (f) => f as unknown as MatchDetail,
-);
+// Contexts as the real context pass classified these three.
+const FIXTURE_CONTEXT: Record<number, MatchContext> = {
+  4109131: {
+    kind: "official",
+    etf2lMatchId: 92883,
+    linkMethod: "trends",
+    teamName: "DD14",
+    oppName: "ЭТО МОЁ БОЛОТО",
+    regulars: 3,
+    official: {
+      competition: "Highlander Season 36 (Autumn 2026): High",
+      category: "Highlander Season",
+      division: "High",
+      tier: 1,
+      week: 1,
+      round: "Round 1",
+      score: [4, 2],
+      defaultWin: false,
+    },
+  },
+  4111116: { kind: "pug", etf2lMatchId: null, linkMethod: null, teamName: null, oppName: null, regulars: 2, official: null },
+  4114301: { kind: "pug", etf2lMatchId: null, linkMethod: null, teamName: null, oppName: null, regulars: 0, official: null },
+};
+
+const FIXTURES: MatchDetail[] = [match4109131, match4114301, match4111116].map((f) => {
+  const d = f as unknown as MatchDetail;
+  return { ...d, context: FIXTURE_CONTEXT[d.logId] ?? null };
+});
 
 // ---- fake match history -----------------------------------------------------
 
@@ -104,6 +134,7 @@ const FIXTURE_ROWS: MatchSummary[] = FIXTURES.map((d) => {
     redScore: d.redScore,
     blueScore: d.blueScore,
     hasDemo: d.demos.length > 0,
+    context: d.context,
     me: me && d.result
       ? {
           team: me.team,
@@ -127,7 +158,9 @@ const FAKE_MATCHES: MatchSummary[] = (() => {
   for (let i = 0; i < 180; i++) {
     t -= Math.floor(3_600 * (4 + r() * 60));
     const official = r() < 0.07;
+    const kind: ContextKind = official ? "official" : r() < 0.75 ? "scrim" : "pug";
     const cls = pick(CLASSES);
+    const opp = pick(["Valhalla", "Olutlaatikko", "The Openhatters", "BLEU", null]);
     const dur = Math.floor(1_200 + r() * 1_800);
     const [red, blue] = [Math.floor(r() * 4), Math.floor(r() * 4)];
     const team: "Red" | "Blue" = r() < 0.5 ? "Red" : "Blue";
@@ -148,6 +181,26 @@ const FAKE_MATCHES: MatchSummary[] = (() => {
       redScore: red,
       blueScore: blue,
       hasDemo: r() < 0.15,
+      context: {
+        kind,
+        etf2lMatchId: official ? 92_883 - i : null,
+        linkMethod: official ? "trends" : null,
+        teamName: kind === "pug" ? null : "SBQRRA",
+        oppName: kind === "pug" ? null : opp,
+        regulars: kind === "pug" ? Math.floor(r() * 3) : 5 + Math.floor(r() * 4),
+        official: official
+          ? {
+              competition: "Highlander Season 35 (Spring 2026): Division 2",
+              category: "Highlander Season",
+              division: "Division 2",
+              tier: 2,
+              week: 1 + (i % 7),
+              round: `Week ${1 + (i % 7)}`,
+              score: mine > theirs ? [2, 0] : [0, 2],
+              defaultWin: false,
+            }
+          : null,
+      },
       me: {
         team,
         mainClass: cls,
@@ -170,7 +223,7 @@ const fakeStats = (pending: number): IndexStats => ({
   sixes: 117,
   other: 17,
   unclassified: 214,
-  officials: 43,
+  officials: 58,
   fetched: 759 - pending,
   normalized: 759 - pending,
   pending,
@@ -199,6 +252,9 @@ function simulateSync(kind: "sync" | "reprocess") {
       steps.push(() =>
         handlers?.onProgress({ kind: "fetching", done, total: 24, logId: 4_122_234 - done }),
       );
+    }
+    for (let done = 0; done <= 3; done++) {
+      steps.push(() => handlers?.onProgress({ kind: "etf2l", done, total: 3 }));
     }
   } else {
     for (let done = 0; done <= 759; done += 69) {
@@ -249,7 +305,7 @@ export const mockApi: Api = {
 
   listMatches: (q: MatchQuery): Promise<MatchPage> => {
     const filtered = FAKE_MATCHES.filter(
-      (m) => (q.format === null || m.format === q.format) && (!q.officialsOnly || m.league !== null),
+      (m) => (q.format === null || m.format === q.format) && (q.kind === null || m.context?.kind === q.kind),
     );
     return delay({ total: filtered.length, items: filtered.slice(q.offset, q.offset + q.limit) });
   },
@@ -263,14 +319,28 @@ export const mockApi: Api = {
 
   // Real profiles exported with `hl profile <class> --json`. Classes without
   // a fixture come back empty, like a class with no rated games.
-  getProfile: (cls: string | null) => {
+  // A filtered profile keeps the fixture's numbers but narrows its game lists,
+  // which is enough to exercise the layout.
+  getProfile: (cls: string | null, kind: ContextKind | null = null) => {
     const byClass: Record<string, ProfileResponse> = {
       sniper: profileSniper as unknown as ProfileResponse,
       engineer: profileEngineer as unknown as ProfileResponse,
     };
     const hit = byClass[cls ?? "sniper"];
-    return delay(hit ?? { classes: byClass.sniper.classes, profile: null });
+    if (!hit?.profile || kind === null) return delay(hit ?? { classes: byClass.sniper.classes, profile: null });
+    const p = hit.profile;
+    const trend = p.trend.filter((t) => t.kind === kind);
+    const only = <T extends { kind: ContextKind | null }>(xs: T[]) => xs.filter((x) => x.kind === kind);
+    return delay({
+      ...hit,
+      profile: trend.length === 0 ? null : { ...p, filter: kind, games: trend.length, trend, best: only(p.best), worst: only(p.worst) },
+    });
   },
+
+  getTeammates: (all: boolean) => delay((all ? teammatesAll : teammatesTeam) as unknown as Teammates),
+
+  contextCounts: () =>
+    delay({ officials: 58, scrims: 544, pugs: 156, rosterOfficials: 15, etf2lMatches: 46, etf2lPlayer: 97913, lastFetch: 1_789_700_000 }),
 
   openExternal: async (url: string) => {
     window.open(url, "_blank", "noopener");

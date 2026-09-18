@@ -106,7 +106,13 @@ pub async fn rated_classes(db: &Db, me: SteamId) -> Result<Vec<(String, i64)>> {
     db.rated_classes(me.account_id(), MODEL_VERSION).await
 }
 
-pub async fn load_profile(db: &Db, me: SteamId, class: TfClass) -> Result<Option<Profile>> {
+/// The owner's profile on one class; `kind` narrows it to officials, scrims or pugs.
+pub async fn load_profile(
+    db: &Db,
+    me: SteamId,
+    class: TfClass,
+    kind: Option<&str>,
+) -> Result<Option<Profile>> {
     let rows = db.rating_history(me.account_id(), class.as_str(), MODEL_VERSION).await?;
     let history: Vec<HistoryRow> = rows
         .into_iter()
@@ -129,15 +135,23 @@ pub async fn load_profile(db: &Db, me: SteamId, class: TfClass) -> Result<Option
                 map: r.map,
                 title: r.title,
                 league: r.league,
+                kind: r.kind,
                 result: result.map(str::to_string),
                 rating: Rating { class, score: r.score, minutes: r.minutes, parts },
             })
         })
         .collect::<Result<_>>()?;
 
+    let contexts = profile::context_splits(&history);
+    let history: Vec<HistoryRow> = match kind {
+        Some(k) => history.into_iter().filter(|r| r.kind.as_deref() == Some(k)).collect(),
+        None => history,
+    };
     let Some(mut p) = profile::build(class, history) else {
         return Ok(None);
     };
+    p.contexts = contexts;
+    p.filter = kind.map(str::to_string);
 
     // Career records that read straight off the logs, no model involved.
     let mirror = db.vs_totals(me.account_id(), class.as_str(), class.as_str(), MODEL_VERSION).await?;

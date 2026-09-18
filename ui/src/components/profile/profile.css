@@ -380,3 +380,108 @@
   font-weight: 600;
   width: 38px;
 }
+
+/* --- M5: officials on the trend, kind filter and split --- */
+
+/* Light, not accent: the accent belongs to the rolling average. */
+.tl-dot.official {
+  fill: var(--text);
+  opacity: 0.85;
+  stroke: var(--panel);
+  stroke-width: 1;
+}
+
+.kind-filter {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.kind-filter .count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.kind-split header {
+  margin-bottom: 12px;
+}
+
+.ks-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ks-row {
+  display: grid;
+  grid-template-columns: 110px minmax(120px, 1fr) 44px 190px;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px solid transparent;
+  padding: 8px 10px;
+}
+
+.ks-row:hover:not(:disabled) {
+  background: var(--panel-2);
+  border-color: transparent;
+}
+
+.ks-row.active {
+  background: var(--panel-2);
+  border-color: var(--border);
+}
+
+.ks-label {
+  font-weight: 600;
+}
+
+.ks-track {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.ks-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 5px;
+  background: var(--muted);
+}
+
+.ks-fill.ks-official {
+  background: var(--accent);
+}
+
+.ks-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.ks-meta {
+  font-size: 0.86rem;
+}
+
+@media (max-width: 700px) {
+  .ks-row {
+    grid-template-columns: 80px minmax(80px, 1fr) 36px;
+  }
+  .ks-meta {
+    grid-column: 1 / -1;
+  }
+}
+
+/* The 50 line sits above the fill so it reads on both sides. */
+.ks-track .comp-mid {
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  background: var(--panel);
+}

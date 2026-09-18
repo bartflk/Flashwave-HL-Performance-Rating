@@ -512,3 +512,25 @@ th.num {
 .load-more {
   align-self: center;
 }
+
+/* --- M5: kinds of game --- */
+
+.badge-official {
+  background: rgba(207, 106, 50, 0.16);
+  color: #e89464;
+}
+
+.badge-scrim {
+  background: rgba(107, 156, 196, 0.16);
+  color: #8fb6d8;
+}
+
+.badge-pug {
+  background: rgba(139, 146, 159, 0.14);
+  color: var(--muted);
+}
+
+.badge-sub {
+  font-weight: 500;
+  opacity: 0.85;
+}

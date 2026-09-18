@@ -1,5 +1,6 @@
 //! The log index, raw log storage, normalized matches, and the match list.
 
+use crate::context::{context_from_row, MatchContext, CONTEXT_COLUMNS};
 use crate::Db;
 use anyhow::{Context, Result};
 use hl_core::matchdata::{Format, NormalizedLog, Team};
@@ -60,7 +61,8 @@ pub struct IndexInfo {
 pub struct MatchFilter {
     /// `None` means every format.
     pub format: Option<String>,
-    pub officials_only: bool,
+    /// `official`, `scrim` or `pug`; `None` means every kind.
+    pub kind: Option<String>,
     pub limit: i64,
     pub offset: i64,
 }
@@ -83,6 +85,9 @@ pub struct MatchSummary {
     pub has_demo: bool,
     /// The owner's line, when they appear in the log.
     pub me: Option<MyLine>,
+    /// Official, scrim or pug; `None` for matches outside the context pass
+    /// (other formats, or ones the owner did not play).
+    pub context: Option<MatchContext>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -514,20 +519,21 @@ impl Db {
     pub async fn list_matches(&self, me: Option<u32>, filter: &MatchFilter) -> Result<MatchPage> {
         // Placeholder numbers are parameters so the count query and the page
         // query can share one WHERE clause with different binding layouts.
-        let where_sql = |fmt: u8, officials: u8| {
+        let where_sql = |fmt: u8, kind: u8| {
             format!(
                 "WHERE i.superseded_by IS NULL
                    AND (?{fmt} IS NULL OR {EFFECTIVE_FORMAT} = ?{fmt})
-                   AND (?{officials} = 0 OR i.league IS NOT NULL)"
+                   AND (?{kind} IS NULL OR c.kind = ?{kind})"
             )
         };
 
         let total: i64 = sqlx::query_scalar(&format!(
-            "SELECT COUNT(*) FROM match m JOIN log_index i ON i.log_id = m.log_id {}",
+            "SELECT COUNT(*) FROM match m JOIN log_index i ON i.log_id = m.log_id
+             LEFT JOIN match_context c ON c.log_id = m.log_id {}",
             where_sql(1, 2)
         ))
         .bind(&filter.format)
-        .bind(filter.officials_only)
+        .bind(&filter.kind)
         .fetch_one(self.pool())
         .await?;
 
@@ -537,17 +543,20 @@ impl Db {
                     {EFFECTIVE_FORMAT} AS format, i.league, i.etf2l_match_id, i.demos_tf_id,
                     m.red_score, m.blue_score,
                     EXISTS (SELECT 1 FROM demo_link dl WHERE dl.log_id = m.log_id) AS has_demo,
-                    p.team, p.main_class, p.kills, p.deaths, p.assists, p.dmg, p.time_s
+                    p.team, p.main_class, p.kills, p.deaths, p.assists, p.dmg, p.time_s,
+                    {CONTEXT_COLUMNS}
              FROM match m
              JOIN log_index i ON i.log_id = m.log_id
              LEFT JOIN match_player p ON p.log_id = m.log_id AND p.account_id = ?1
+             LEFT JOIN match_context c ON c.log_id = m.log_id
+             LEFT JOIN etf2l_match e ON e.match_id = c.etf2l_match_id
              {where_sql}
              ORDER BY m.played_at DESC, m.log_id DESC
              LIMIT ?4 OFFSET ?5"
         ))
         .bind(me.map(i64::from))
         .bind(&filter.format)
-        .bind(filter.officials_only)
+        .bind(&filter.kind)
         .bind(filter.limit)
         .bind(filter.offset)
         .fetch_all(self.pool())
@@ -590,6 +599,7 @@ impl Db {
                     red_score: red,
                     blue_score: blue,
                     has_demo: r.get::<i64, _>("has_demo") != 0,
+                    context: context_from_row(&r),
                     me,
                 }
             })
@@ -627,7 +637,8 @@ impl Db {
             sixes: q(format!("SELECT COUNT(*) FROM log_index i WHERE {kept} AND {EFFECTIVE_FORMAT} = 'sixes'")).await?,
             other: q(format!("SELECT COUNT(*) FROM log_index i WHERE {kept} AND {EFFECTIVE_FORMAT} NOT IN ('highlander','sixes')")).await?,
             unclassified: q(format!("SELECT COUNT(*) FROM log_index i WHERE {kept} AND {EFFECTIVE_FORMAT} IS NULL")).await?,
-            officials: q(format!("SELECT COUNT(*) FROM log_index i WHERE {kept} AND {EFFECTIVE_FORMAT} = 'highlander' AND i.league IS NOT NULL")).await?,
+            // Officials the owner played, counted once per log like the match list.
+            officials: q("SELECT COUNT(*) FROM match_context WHERE kind = 'official'".into()).await?,
             fetched: q("SELECT COUNT(*) FROM log_raw".into()).await?,
             normalized: q("SELECT COUNT(*) FROM match".into()).await?,
             pending: self.fetch_queue(3).await?.len() as i64,

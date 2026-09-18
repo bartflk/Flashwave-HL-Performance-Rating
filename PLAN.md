@@ -1,4 +1,4 @@
-# HL Performance Rating System — Plan v0.7
+# HL Performance Rating System — Plan v0.8
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
 **Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
@@ -179,6 +179,22 @@ An earlier approach — fitting the hour offset per demo — was tried and rejec
 
 **STV.** demos.tf holds SourceTV demos for 1,047 of these matches. The match page offers a download into `tf/demos/stv` and links the result by demos.tf id. Caveat: a stopwatch match's combined log usually spans several STV demos (one per half), and trends.tf links one of them, so an STV demo often covers part of the match. **Not yet exercised against a real download** — see open items.
 
+### Officials, scrims and pugs (M5)
+
+**ETF2L.** Every sync looks the owner up by SteamID (`/player/{steamid64}`), pages through their results, and fetches each Highlander match: competition, division and tier, week, both clans, ETF2L's score, and **both rosters** (every registered player's SteamID and team; mercs appear with no team). ETF2L publishes a limit of 60 requests a minute; the client runs at one per 1.5 s and honours `Retry-After`. Matches are refetched only while they are under two weeks old when last fetched.
+
+**Officials.** trends.tf tags most. The rest are found by roster: a log within −4 h/+10 h of the scheduled time where the owner's side holds five or more of one clan's roster and the other side five or more of the other's. On this account that rule matched trends.tf on **all 35** officials trends.tf tagged, without a single disagreement, and found **7 more** (16 logs: the 2018 seasons with Undercover Prodigies, bik is ti and Amicitia, and one 2023 Open match). The pre-official warm-up on the same server is correctly left out: its other side is not the opponent's roster. Rosters also say which side the owner played for, so a merc appearance is attributed to the team actually played for.
+
+**Scrims vs pugs.** A *regular* is a teammate who was on the owner's side at least six times within 45 days either way. A game with five or more regulars (of eight) is a team game. The split is sharp: 560 games have five or more, 150 have two or fewer, 14 sit between. A second rule covers what regulars cannot: the first scrims with a newly joined team, before anyone has six games. If five or more of the owner's side are on the owner's own ETF2L roster (from an official within 150 days), it is a scrim. That caught four DD14 scrims in the week after joining.
+
+**Naming.** A scrim's team is the owner's clan from the nearest official whose roster holds four or more of the side. The opponent is named the same way from any official's roster, both sides. 505 of 538 scrims get a team name; 124 get an opponent.
+
+Result on this account: **58 officials, 544 scrims, 156 pugs**. The context pass has no network, runs at startup, after every sync and on rebuild, and takes well under a second.
+
+**What it says:** Sniper rating 52 in officials (51 games, 70% won), 49 in scrims (532), 46 in pugs (80). The profile can be filtered to any of the three; its career records (duel, medic picks) are hidden while filtered because they count every game.
+
+**Teammates.** Per ETF2L team: games, officials, record, the owner's average rating, and the nine most frequent teammates. Per teammate with five or more shared games: games, officials, record, first and last game together, their usual class, and the owner's average rating with them against the owner's other games. That comparison needs ten rated games on each side and is labelled as a correlation: it says who you played well alongside, not who made you play well.
+
 ### Still deliberately deferred
 
 - **Fitted weights.** Hand-set now; regress round outcome on components once there is reason to trust a fit.
@@ -233,6 +249,14 @@ demo(id PK, source, path, file_hash, map, server, recorder_nick, ticks,
      duration_s, recorded_at, kind, demos_tf_id, indexed_at)
 demo_event(demo_id, at_tick, kind, value)       -- from the .json sidecars
 demo_link(demo_id, log_id, confidence, method, tick_offset, PK(demo_id, log_id))
+
+-- CONTEXT (M5; etf2l_raw above is the source, these are derived)
+etf2l_match(match_id PK, competition, comp_type, division, tier, week, round, time,
+            clan1_id, clan1_name, clan2_id, clan2_name, r1, r2, default_win, maps)
+etf2l_roster(match_id, account_id, team_id, name)     -- team_id NULL for mercs
+match_context(log_id PK, kind,                        -- official | scrim | pug
+              etf2l_match_id, link_method,            -- trends | roster
+              team_id, team_name, opp_team_id, opp_team_name, regulars)
 
 -- DERIVED (droppable, rebuildable with one command)
 class_value(log_id, account_id, class, engine_version, score, components JSON)
@@ -295,7 +319,7 @@ POV demos only contain what your client received, so phase 2 is you-only for loc
 | **M2** | Match page phase 1: matchups, round timeline, box score | **done** |
 | **M3** | Rating v1: Sniper in full, other classes generic; profile page | **done** |
 | **M4** | Demos: local index, demos.tf fetch by demoid, linking, jump-back | **done** |
-| **M5** | ETF2L context, officials vs scrims split, teammate tracking | |
+| **M5** | ETF2L context, officials vs scrims split, teammate tracking | **done** |
 | **v2** | Deep demo parse: positions, heatmaps, engagement ranges | |
 
 M1 acceptance: every Highlander log on the account stored, classified, deduplicated, and rebuildable from raw blobs with no refetching.
@@ -311,4 +335,7 @@ M1 acceptance: every Highlander log on the account stored, classified, deduplica
 5. **Verify jump ticks in-game.** The arithmetic is tested end to end (a sidecar killstreak at raw tick 51,212 lands at 50,879 after the 5 s lead), but only TF2 can confirm the demo shows the right moment.
 6. **One real STV download.** The fetch is built and its metadata step verified live; the multi-megabyte download and the upload-time alignment of STV demos are untested.
 7. **File watcher.** Demos are rescanned at startup, after every sync, and on demand; a live `notify` watcher was planned and is not built.
+8. **Opponent strength.** ETF2L division and tier are now stored for every official, and scrim opponents are often named. The rating pool still weighs every performance equally. Weighting by the opponent's division is the natural next step.
+9. **Teams with no officials.** Scrims are named from official rosters, so a team that never played an official (2 Blacked Up, March–August 2026) stays unnamed. The player's ETF2L transfer history (`/player/{id}/transfers`) could fill the gap; it is incomplete for older teams.
+10. **logs.tf-only combined logs.** Dedupe relies on trends.tf's `duplicate_of`. A combined log that only logs.tf knows (the 2018 S16 semi-final: `gullywash + badwater` plus both single-map logs) is counted alongside its parts.
 

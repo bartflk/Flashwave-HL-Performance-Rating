@@ -80,6 +80,8 @@ export interface MatchSummary {
   hasDemo: boolean;
   /** Null when the owner does not appear in the log. */
   me: MyLine | null;
+  /** Official, scrim or pug. Null outside Highlander, or when you did not play. */
+  context: MatchContext | null;
 }
 
 export interface MatchPage {
@@ -108,7 +110,9 @@ export type Progress =
   | { kind: "fetching"; done: number; total: number; logId: number }
   | { kind: "fetchFailed"; logId: number; error: string }
   | { kind: "reprocessing"; done: number; total: number }
-  | { kind: "rating"; done: number; total: number };
+  | { kind: "rating"; done: number; total: number }
+  | { kind: "etf2l"; done: number; total: number }
+  | { kind: "etf2lFailed"; error: string };
 
 /** Sent once on `sync://done`. */
 export interface SyncDone {
@@ -120,7 +124,7 @@ export interface SyncDone {
 
 export interface MatchQuery {
   format: string | null;
-  officialsOnly: boolean;
+  kind: ContextKind | null;
   limit: number;
   offset: number;
 }
@@ -272,6 +276,7 @@ export interface MatchDetail {
   demosTfId: number | null;
   weightsWarning: string | null;
   demos: DemoView[];
+  context: MatchContext | null;
 }
 
 // ---- M4: demos --------------------------------------------------------------------
@@ -342,6 +347,7 @@ export interface TrendPoint {
   /** Rolling average ending at this game; null until the window fills. */
   rolling: number | null;
   result: "W" | "L" | "T" | null;
+  kind: ContextKind | null;
 }
 
 export interface ComponentSummary {
@@ -360,6 +366,7 @@ export interface GameRef {
   map: string | null;
   title: string | null;
   league: string | null;
+  kind: ContextKind | null;
   result: "W" | "L" | "T" | null;
   score: number;
 }
@@ -387,10 +394,106 @@ export interface Profile {
   formWindow: number;
   rollingWindow: number;
   extras: Extra[];
+  /** Every game, split by kind, whatever the profile is filtered to. */
+  contexts: ContextSplit[];
+  /** The kind the rest of the profile is filtered to. */
+  filter: ContextKind | null;
+}
+
+export interface ContextSplit {
+  kind: ContextKind;
+  games: number;
+  avg: number;
+  winRate: number | null;
 }
 
 export interface ProfileResponse {
   /** [class, rated games], most played first. */
   classes: Array<[string, number]>;
   profile: Profile | null;
+}
+
+// ---- M5: context and teammates ----------------------------------------------------
+
+export type ContextKind = "official" | "scrim" | "pug";
+
+export interface OfficialInfo {
+  competition: string | null;
+  category: string | null;
+  division: string | null;
+  /** 1 is the top tier. */
+  tier: number | null;
+  week: number | null;
+  round: string | null;
+  /** ETF2L's score from your side, when your side is known. */
+  score: [number, number] | null;
+  defaultWin: boolean;
+}
+
+export interface MatchContext {
+  kind: ContextKind;
+  etf2lMatchId: number | null;
+  /** How an official was recognised: tagged by trends.tf, or found by roster. */
+  linkMethod: "trends" | "roster" | null;
+  teamName: string | null;
+  oppName: string | null;
+  /** Teammates who played with you regularly around then. */
+  regulars: number;
+  official: OfficialInfo | null;
+}
+
+export interface ContextCounts {
+  officials: number;
+  scrims: number;
+  pugs: number;
+  rosterOfficials: number;
+  etf2lMatches: number;
+  etf2lPlayer: number | null;
+  lastFetch: number | null;
+}
+
+export interface Teammate {
+  accountId: number;
+  steamid64: string;
+  name: string;
+  games: number;
+  officials: number;
+  wins: number;
+  losses: number;
+  firstPlayed: number;
+  lastPlayed: number;
+  mainClass: string | null;
+  current: boolean;
+  teams: string[];
+  /** Your average rating in games with them; null with too few rated games. */
+  myAvgWith: number | null;
+  /** That, minus your average in the other games. */
+  myAvgDelta: number | null;
+}
+
+export interface CoreMate {
+  accountId: number;
+  name: string;
+  mainClass: string | null;
+  games: number;
+}
+
+export interface TeamEra {
+  teamId: number;
+  name: string;
+  firstPlayed: number;
+  lastPlayed: number;
+  games: number;
+  officials: number;
+  wins: number;
+  losses: number;
+  myAvg: number | null;
+  core: CoreMate[];
+}
+
+export interface Teammates {
+  games: number;
+  teams: TeamEra[];
+  teammates: Teammate[];
+  minGames: number;
 }

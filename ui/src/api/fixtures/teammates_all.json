@@ -1,0 +1,2822 @@
+{
+  "games": 758,
+  "teams": [
+    {
+      "teamId": 37805,
+      "name": "DD14",
+      "firstPlayed": 1787511795,
+      "lastPlayed": 1788117280,
+      "games": 5,
+      "officials": 1,
+      "wins": 4,
+      "losses": 1,
+      "myAvg": 39.4,
+      "core": [
+        {
+          "accountId": 134106724,
+          "name": "Farter",
+          "mainClass": "spy",
+          "games": 5
+        },
+        {
+          "accountId": 90819112,
+          "name": "K7",
+          "mainClass": "demoman",
+          "games": 5
+        },
+        {
+          "accountId": 14220905,
+          "name": "SchmitShot",
+          "mainClass": "scout",
+          "games": 5
+        },
+        {
+          "accountId": 293084467,
+          "name": "Sossok",
+          "mainClass": "medic",
+          "games": 5
+        },
+        {
+          "accountId": 279623496,
+          "name": "boSe.",
+          "mainClass": "engineer",
+          "games": 5
+        },
+        {
+          "accountId": 279708566,
+          "name": "nepal",
+          "mainClass": "pyro",
+          "games": 5
+        },
+        {
+          "accountId": 198698486,
+          "name": "zen",
+          "mainClass": "soldier",
+          "games": 4
+        },
+        {
+          "accountId": 1392784928,
+          "name": "阳",
+          "mainClass": "heavy",
+          "games": 4
+        },
+        {
+          "accountId": 137154322,
+          "name": "W.",
+          "mainClass": "soldier",
+          "games": 1
+        }
+      ]
+    },
+    {
+      "teamId": 35600,
+      "name": "SBQRRA",
+      "firstPlayed": 1689017910,
+      "lastPlayed": 1773522109,
+      "games": 530,
+      "officials": 44,
+      "wins": 277,
+      "losses": 229,
+      "myAvg": 49.1,
+      "core": [
+        {
+          "accountId": 139431148,
+          "name": "mob",
+          "mainClass": "pyro",
+          "games": 509
+        },
+        {
+          "accountId": 288145794,
+          "name": "Coordinati Coglione",
+          "mainClass": "engineer",
+          "games": 485
+        },
+        {
+          "accountId": 177761417,
+          "name": "bad",
+          "mainClass": "demoman",
+          "games": 345
+        },
+        {
+          "accountId": 114651287,
+          "name": "yarostonhugepc",
+          "mainClass": "soldier",
+          "games": 319
+        },
+        {
+          "accountId": 335061281,
+          "name": "Nozomi",
+          "mainClass": "spy",
+          "games": 249
+        },
+        {
+          "accountId": 207562627,
+          "name": "zer0",
+          "mainClass": "medic",
+          "games": 184
+        },
+        {
+          "accountId": 333479718,
+          "name": "duff",
+          "mainClass": "heavy",
+          "games": 170
+        },
+        {
+          "accountId": 84558776,
+          "name": "opped",
+          "mainClass": "spy",
+          "games": 156
+        },
+        {
+          "accountId": 294594853,
+          "name": "steko",
+          "mainClass": "demoman",
+          "games": 154
+        }
+      ]
+    },
+    {
+      "teamId": 30801,
+      "name": "Amicitia",
+      "firstPlayed": 1541532505,
+      "lastPlayed": 1544816615,
+      "games": 27,
+      "officials": 8,
+      "wins": 16,
+      "losses": 10,
+      "myAvg": 47.3,
+      "core": [
+        {
+          "accountId": 219019757,
+          "name": "MetalCloud",
+          "mainClass": "medic",
+          "games": 27
+        },
+        {
+          "accountId": 195105626,
+          "name": "Retro_",
+          "mainClass": "heavy",
+          "games": 27
+        },
+        {
+          "accountId": 210807329,
+          "name": "WheatPig (Vetegrisen)",
+          "mainClass": "engineer",
+          "games": 27
+        },
+        {
+          "accountId": 138380504,
+          "name": "drdn",
+          "mainClass": "demoman",
+          "games": 27
+        },
+        {
+          "accountId": 67905517,
+          "name": "Faust",
+          "mainClass": "soldier",
+          "games": 23
+        },
+        {
+          "accountId": 93350099,
+          "name": "0mger",
+          "mainClass": "pyro",
+          "games": 21
+        },
+        {
+          "accountId": 90900287,
+          "name": "fishska",
+          "mainClass": "spy",
+          "games": 16
+        },
+        {
+          "accountId": 159002083,
+          "name": "moonfate",
+          "mainClass": "scout",
+          "games": 8
+        },
+        {
+          "accountId": 388111534,
+          "name": "Salty",
+          "mainClass": "spy",
+          "games": 7
+        }
+      ]
+    },
+    {
+      "teamId": 30764,
+      "name": "bik is ti",
+      "firstPlayed": 1535572621,
+      "lastPlayed": 1536265033,
+      "games": 5,
+      "officials": 3,
+      "wins": 2,
+      "losses": 3,
+      "myAvg": 26.7,
+      "core": [
+        {
+          "accountId": 231026021,
+          "name": "3once",
+          "mainClass": "spy",
+          "games": 5
+        },
+        {
+          "accountId": 82499273,
+          "name": "Kai",
+          "mainClass": "scout",
+          "games": 5
+        },
+        {
+          "accountId": 82123920,
+          "name": "Strawb",
+          "mainClass": "medic",
+          "games": 5
+        },
+        {
+          "accountId": 119136085,
+          "name": "ZapZoinked",
+          "mainClass": "soldier",
+          "games": 5
+        },
+        {
+          "accountId": 280035632,
+          "name": "http://logs.tf/2096331",
+          "mainClass": "sniper",
+          "games": 5
+        },
+        {
+          "accountId": 76238486,
+          "name": "juni",
+          "mainClass": "engineer",
+          "games": 5
+        },
+        {
+          "accountId": 292904834,
+          "name": "shock",
+          "mainClass": "demoman",
+          "games": 5
+        },
+        {
+          "accountId": 86511469,
+          "name": "mad",
+          "mainClass": "heavy",
+          "games": 3
+        },
+        {
+          "accountId": 87287196,
+          "name": "Minigun Mike",
+          "mainClass": "heavy",
+          "games": 2
+        }
+      ]
+    },
+    {
+      "teamId": 30175,
+      "name": "Undercover Prodigies",
+      "firstPlayed": 1524167309,
+      "lastPlayed": 1524168042,
+      "games": 2,
+      "officials": 2,
+      "wins": 2,
+      "losses": 0,
+      "myAvg": 86.6,
+      "core": [
+        {
+          "accountId": 131572900,
+          "name": "Julezz_",
+          "mainClass": "soldier",
+          "games": 2
+        },
+        {
+          "accountId": 85832363,
+          "name": "Krizl",
+          "mainClass": "scout",
+          "games": 2
+        },
+        {
+          "accountId": 110994472,
+          "name": "Pr0p3r?! | KritzKast",
+          "mainClass": "demoman",
+          "games": 2
+        },
+        {
+          "accountId": 87287196,
+          "name": "Rootin Tootin Vladimir Pootin",
+          "mainClass": "heavy",
+          "games": 2
+        },
+        {
+          "accountId": 132006253,
+          "name": "all brain no aim",
+          "mainClass": "sniper",
+          "games": 2
+        },
+        {
+          "accountId": 383405469,
+          "name": "magistr lft silver s25",
+          "mainClass": "spy",
+          "games": 2
+        },
+        {
+          "accountId": 82123920,
+          "name": "nivlaK",
+          "mainClass": "medic",
+          "games": 2
+        },
+        {
+          "accountId": 51584462,
+          "name": "Ｇｕｎｓｌｉｎｇｅｒ",
+          "mainClass": "engineer",
+          "games": 2
+        }
+      ]
+    }
+  ],
+  "teammates": [
+    {
+      "accountId": 139431148,
+      "steamid64": "76561198099696876",
+      "name": "twentytwo",
+      "games": 547,
+      "officials": 44,
+      "wins": 276,
+      "losses": 245,
+      "firstPlayed": 1689017910,
+      "lastPlayed": 1785098507,
+      "mainClass": "pyro",
+      "current": true,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 48.8,
+      "myAvgDelta": -0.9
+    },
+    {
+      "accountId": 288145794,
+      "steamid64": "76561198248411522",
+      "name": "Coordinati Coglione",
+      "games": 498,
+      "officials": 43,
+      "wins": 250,
+      "losses": 224,
+      "firstPlayed": 1689017910,
+      "lastPlayed": 1785098507,
+      "mainClass": "engineer",
+      "current": true,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 49.0,
+      "myAvgDelta": -0.3
+    },
+    {
+      "accountId": 177761417,
+      "steamid64": "76561198138027145",
+      "name": "bad",
+      "games": 356,
+      "officials": 35,
+      "wins": 187,
+      "losses": 151,
+      "firstPlayed": 1689190347,
+      "lastPlayed": 1783282305,
+      "mainClass": "demoman",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 49.6,
+      "myAvgDelta": 1.0
+    },
+    {
+      "accountId": 114651287,
+      "steamid64": "76561198074917015",
+      "name": "The Backrooms Movie Analysis",
+      "games": 326,
+      "officials": 21,
+      "wins": 163,
+      "losses": 148,
+      "firstPlayed": 1705406475,
+      "lastPlayed": 1785098507,
+      "mainClass": "soldier",
+      "current": true,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 48.1,
+      "myAvgDelta": -1.7
+    },
+    {
+      "accountId": 335061281,
+      "steamid64": "76561198295327009",
+      "name": "Nozomi",
+      "games": 252,
+      "officials": 18,
+      "wins": 104,
+      "losses": 134,
+      "firstPlayed": 1739307807,
+      "lastPlayed": 1773522109,
+      "mainClass": "spy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 46.7,
+      "myAvgDelta": -3.6
+    },
+    {
+      "accountId": 207562627,
+      "steamid64": "76561198167828355",
+      "name": "zer0",
+      "games": 188,
+      "officials": 20,
+      "wins": 98,
+      "losses": 83,
+      "firstPlayed": 1689017910,
+      "lastPlayed": 1747594178,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 50.7,
+      "myAvgDelta": 2.1
+    },
+    {
+      "accountId": 333479718,
+      "steamid64": "76561198293745446",
+      "name": "duff",
+      "games": 174,
+      "officials": 9,
+      "wins": 93,
+      "losses": 74,
+      "firstPlayed": 1731445149,
+      "lastPlayed": 1750019099,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 51.5,
+      "myAvgDelta": 3.1
+    },
+    {
+      "accountId": 84558776,
+      "steamid64": "76561198044824504",
+      "name": "mata",
+      "games": 162,
+      "officials": 24,
+      "wins": 107,
+      "losses": 48,
+      "firstPlayed": 1689017910,
+      "lastPlayed": 1783282305,
+      "mainClass": "spy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 52.8,
+      "myAvgDelta": 4.8
+    },
+    {
+      "accountId": 294594853,
+      "steamid64": "76561198254860581",
+      "name": "steko",
+      "games": 155,
+      "officials": 20,
+      "wins": 102,
+      "losses": 48,
+      "firstPlayed": 1689017910,
+      "lastPlayed": 1737493089,
+      "mainClass": "demoman",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 51.1,
+      "myAvgDelta": 2.6
+    },
+    {
+      "accountId": 279623496,
+      "steamid64": "76561198239889224",
+      "name": "boSe.",
+      "games": 151,
+      "officials": 16,
+      "wins": 99,
+      "losses": 46,
+      "firstPlayed": 1704314644,
+      "lastPlayed": 1788117280,
+      "mainClass": "scout",
+      "current": true,
+      "teams": [
+        "SBQRRA",
+        "DD14"
+      ],
+      "myAvgWith": 52.2,
+      "myAvgDelta": 3.9
+    },
+    {
+      "accountId": 323155729,
+      "steamid64": "76561198283421457",
+      "name": "Tiad",
+      "games": 109,
+      "officials": 17,
+      "wins": 73,
+      "losses": 31,
+      "firstPlayed": 1693852410,
+      "lastPlayed": 1709409904,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 52.2,
+      "myAvgDelta": 3.6
+    },
+    {
+      "accountId": 138485346,
+      "steamid64": "76561198098751074",
+      "name": "Sabesaroo",
+      "games": 93,
+      "officials": 8,
+      "wins": 38,
+      "losses": 49,
+      "firstPlayed": 1761418379,
+      "lastPlayed": 1787858128,
+      "mainClass": "demoman",
+      "current": true,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 45.4,
+      "myAvgDelta": -4.2
+    },
+    {
+      "accountId": 895262774,
+      "steamid64": "76561198855528502",
+      "name": "SlipperyLemon",
+      "games": 91,
+      "officials": 5,
+      "wins": 47,
+      "losses": 39,
+      "firstPlayed": 1744308191,
+      "lastPlayed": 1763581455,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 51.0,
+      "myAvgDelta": 2.2
+    },
+    {
+      "accountId": 1392784928,
+      "steamid64": "76561199353050656",
+      "name": "阳",
+      "games": 78,
+      "officials": 6,
+      "wins": 32,
+      "losses": 43,
+      "firstPlayed": 1729626335,
+      "lastPlayed": 1787602485,
+      "mainClass": "heavy",
+      "current": true,
+      "teams": [
+        "SBQRRA",
+        "DD14"
+      ],
+      "myAvgWith": 42.8,
+      "myAvgDelta": -7.1
+    },
+    {
+      "accountId": 103369113,
+      "steamid64": "76561198063634841",
+      "name": "thighsocks.eron",
+      "games": 71,
+      "officials": 6,
+      "wins": 35,
+      "losses": 33,
+      "firstPlayed": 1750012296,
+      "lastPlayed": 1767992569,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 45.0,
+      "myAvgDelta": -4.5
+    },
+    {
+      "accountId": 158510613,
+      "steamid64": "76561198118776341",
+      "name": "STREETPASS MILLIONAIRE",
+      "games": 67,
+      "officials": 3,
+      "wins": 46,
+      "losses": 20,
+      "firstPlayed": 1692819547,
+      "lastPlayed": 1769630796,
+      "mainClass": "spy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 54.1,
+      "myAvgDelta": 5.5
+    },
+    {
+      "accountId": 145784226,
+      "steamid64": "76561198106049954",
+      "name": "breakfast",
+      "games": 67,
+      "officials": 5,
+      "wins": 20,
+      "losses": 43,
+      "firstPlayed": 1753554643,
+      "lastPlayed": 1764882452,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 41.9,
+      "myAvgDelta": -7.9
+    },
+    {
+      "accountId": 424899657,
+      "steamid64": "76561198385165385",
+      "name": "SBQR Kosta",
+      "games": 46,
+      "officials": 5,
+      "wins": 18,
+      "losses": 27,
+      "firstPlayed": 1755715740,
+      "lastPlayed": 1758663985,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 42.0,
+      "myAvgDelta": -7.5
+    },
+    {
+      "accountId": 1273713998,
+      "steamid64": "76561199233979726",
+      "name": "Ipertensione",
+      "games": 46,
+      "officials": 9,
+      "wins": 31,
+      "losses": 14,
+      "firstPlayed": 1689017910,
+      "lastPlayed": 1697228282,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 53.5,
+      "myAvgDelta": 4.7
+    },
+    {
+      "accountId": 422332781,
+      "steamid64": "76561198382598509",
+      "name": "Tung Tung Tung Sahur",
+      "games": 41,
+      "officials": 1,
+      "wins": 14,
+      "losses": 25,
+      "firstPlayed": 1730659968,
+      "lastPlayed": 1747684724,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 47.1,
+      "myAvgDelta": -2.1
+    },
+    {
+      "accountId": 130976609,
+      "steamid64": "76561198091242337",
+      "name": "astrya",
+      "games": 40,
+      "officials": 3,
+      "wins": 10,
+      "losses": 28,
+      "firstPlayed": 1760729690,
+      "lastPlayed": 1770665942,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 40.6,
+      "myAvgDelta": -9.0
+    },
+    {
+      "accountId": 297570966,
+      "steamid64": "76561198257836694",
+      "name": "GG",
+      "games": 40,
+      "officials": 0,
+      "wins": 20,
+      "losses": 18,
+      "firstPlayed": 1689017910,
+      "lastPlayed": 1756671384,
+      "mainClass": "soldier",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 51.7,
+      "myAvgDelta": 2.8
+    },
+    {
+      "accountId": 81083162,
+      "steamid64": "76561198041348890",
+      "name": "zefir",
+      "games": 39,
+      "officials": 0,
+      "wins": 19,
+      "losses": 19,
+      "firstPlayed": 1689190347,
+      "lastPlayed": 1705406475,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 53.2,
+      "myAvgDelta": 4.4
+    },
+    {
+      "accountId": 67500577,
+      "steamid64": "76561198027766305",
+      "name": "Bolzer.",
+      "games": 38,
+      "officials": 0,
+      "wins": 18,
+      "losses": 19,
+      "firstPlayed": 1692561419,
+      "lastPlayed": 1697228282,
+      "mainClass": "spy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 48.4,
+      "myAvgDelta": -0.8
+    },
+    {
+      "accountId": 63123057,
+      "steamid64": "76561198023388785",
+      "name": "tobi ^︿^",
+      "games": 34,
+      "officials": 4,
+      "wins": 14,
+      "losses": 20,
+      "firstPlayed": 1749930574,
+      "lastPlayed": 1773522109,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 43.5,
+      "myAvgDelta": -5.8
+    },
+    {
+      "accountId": 65771489,
+      "steamid64": "76561198026037217",
+      "name": "dove 666 hand",
+      "games": 32,
+      "officials": 3,
+      "wins": 8,
+      "losses": 23,
+      "firstPlayed": 1762374374,
+      "lastPlayed": 1764771550,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 45.5,
+      "myAvgDelta": -3.7
+    },
+    {
+      "accountId": 311972513,
+      "steamid64": "76561198272238241",
+      "name": "Sodium Chloride",
+      "games": 31,
+      "officials": 5,
+      "wins": 22,
+      "losses": 8,
+      "firstPlayed": 1692561419,
+      "lastPlayed": 1696795297,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 51.4,
+      "myAvgDelta": 2.4
+    },
+    {
+      "accountId": 138380504,
+      "steamid64": "76561198098646232",
+      "name": "It's not gay, it's manly",
+      "games": 31,
+      "officials": 8,
+      "wins": 18,
+      "losses": 11,
+      "firstPlayed": 1541532505,
+      "lastPlayed": 1566936258,
+      "mainClass": "demoman",
+      "current": false,
+      "teams": [
+        "Amicitia"
+      ],
+      "myAvgWith": 48.7,
+      "myAvgDelta": -0.4
+    },
+    {
+      "accountId": 213870269,
+      "steamid64": "76561198174135997",
+      "name": "Tonton Flairix LFT",
+      "games": 30,
+      "officials": 4,
+      "wins": 21,
+      "losses": 8,
+      "firstPlayed": 1692561419,
+      "lastPlayed": 1745862836,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 54.4,
+      "myAvgDelta": 5.5
+    },
+    {
+      "accountId": 195105626,
+      "steamid64": "76561198155371354",
+      "name": "Retro_",
+      "games": 30,
+      "officials": 8,
+      "wins": 17,
+      "losses": 12,
+      "firstPlayed": 1541532505,
+      "lastPlayed": 1549309479,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "Amicitia"
+      ],
+      "myAvgWith": 46.2,
+      "myAvgDelta": -3.0
+    },
+    {
+      "accountId": 67905517,
+      "steamid64": "76561198028171245",
+      "name": "Faust",
+      "games": 29,
+      "officials": 6,
+      "wins": 14,
+      "losses": 13,
+      "firstPlayed": 1541532505,
+      "lastPlayed": 1565292912,
+      "mainClass": "soldier",
+      "current": false,
+      "teams": [
+        "Amicitia"
+      ],
+      "myAvgWith": 47.8,
+      "myAvgDelta": -1.3
+    },
+    {
+      "accountId": 93350099,
+      "steamid64": "76561198053615827",
+      "name": "Pluto = RETARDGOOFY",
+      "games": 28,
+      "officials": 8,
+      "wins": 16,
+      "losses": 10,
+      "firstPlayed": 1541532505,
+      "lastPlayed": 1566936258,
+      "mainClass": "pyro",
+      "current": false,
+      "teams": [
+        "Amicitia"
+      ],
+      "myAvgWith": 49.2,
+      "myAvgDelta": 0.1
+    },
+    {
+      "accountId": 79888733,
+      "steamid64": "76561198040154461",
+      "name": "joe bingus (dingus)",
+      "games": 27,
+      "officials": 0,
+      "wins": 17,
+      "losses": 10,
+      "firstPlayed": 1694979951,
+      "lastPlayed": 1787858128,
+      "mainClass": "spy",
+      "current": true,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 43.3,
+      "myAvgDelta": -6.0
+    },
+    {
+      "accountId": 416877169,
+      "steamid64": "76561198377142897",
+      "name": "EMENDaTIO VkS",
+      "games": 27,
+      "officials": 0,
+      "wins": 14,
+      "losses": 10,
+      "firstPlayed": 1701213803,
+      "lastPlayed": 1768306281,
+      "mainClass": "pyro",
+      "current": false,
+      "teams": [],
+      "myAvgWith": 57.2,
+      "myAvgDelta": 8.4
+    },
+    {
+      "accountId": 1128456352,
+      "steamid64": "76561199088722080",
+      "name": "bigtitftr_2011",
+      "games": 27,
+      "officials": 0,
+      "wins": 15,
+      "losses": 12,
+      "firstPlayed": 1692644394,
+      "lastPlayed": 1746903930,
+      "mainClass": "engineer",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 49.5,
+      "myAvgDelta": 0.4
+    },
+    {
+      "accountId": 219019757,
+      "steamid64": "76561198179285485",
+      "name": "MetalCloud",
+      "games": 27,
+      "officials": 8,
+      "wins": 16,
+      "losses": 10,
+      "firstPlayed": 1541532505,
+      "lastPlayed": 1544816615,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [
+        "Amicitia"
+      ],
+      "myAvgWith": 47.3,
+      "myAvgDelta": -1.9
+    },
+    {
+      "accountId": 210807329,
+      "steamid64": "76561198171073057",
+      "name": "WheatPig (Vetegrisen)",
+      "games": 27,
+      "officials": 8,
+      "wins": 16,
+      "losses": 10,
+      "firstPlayed": 1541532505,
+      "lastPlayed": 1544816615,
+      "mainClass": "engineer",
+      "current": false,
+      "teams": [
+        "Amicitia"
+      ],
+      "myAvgWith": 47.3,
+      "myAvgDelta": -1.9
+    },
+    {
+      "accountId": 254738923,
+      "steamid64": "76561198215004651",
+      "name": "Yupsilon",
+      "games": 26,
+      "officials": 0,
+      "wins": 13,
+      "losses": 11,
+      "firstPlayed": 1692561419,
+      "lastPlayed": 1783282305,
+      "mainClass": "demoman",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 46.0,
+      "myAvgDelta": -3.2
+    },
+    {
+      "accountId": 441563150,
+      "steamid64": "76561198401828878",
+      "name": "Jus_bruh",
+      "games": 26,
+      "officials": 3,
+      "wins": 13,
+      "losses": 11,
+      "firstPlayed": 1744136601,
+      "lastPlayed": 1747339349,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 55.7,
+      "myAvgDelta": 6.9
+    },
+    {
+      "accountId": 383062580,
+      "steamid64": "76561198343328308",
+      "name": "THUGMONKEY",
+      "games": 25,
+      "officials": 0,
+      "wins": 18,
+      "losses": 7,
+      "firstPlayed": 1700684977,
+      "lastPlayed": 1784405677,
+      "mainClass": "demoman",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 52.9,
+      "myAvgDelta": 4.0
+    },
+    {
+      "accountId": 1114019411,
+      "steamid64": "76561199074285139",
+      "name": "❤ Elisio ❤",
+      "games": 25,
+      "officials": 0,
+      "wins": 6,
+      "losses": 14,
+      "firstPlayed": 1695503238,
+      "lastPlayed": 1758485247,
+      "mainClass": "demoman",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 47.5,
+      "myAvgDelta": -1.7
+    },
+    {
+      "accountId": 203015372,
+      "steamid64": "76561198163281100",
+      "name": "embe 33",
+      "games": 25,
+      "officials": 0,
+      "wins": 14,
+      "losses": 9,
+      "firstPlayed": 1692992076,
+      "lastPlayed": 1732913699,
+      "mainClass": "spy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 55.7,
+      "myAvgDelta": 6.8
+    },
+    {
+      "accountId": 909443993,
+      "steamid64": "76561198869709721",
+      "name": "pablo",
+      "games": 23,
+      "officials": 0,
+      "wins": 12,
+      "losses": 8,
+      "firstPlayed": 1701213803,
+      "lastPlayed": 1768306281,
+      "mainClass": "soldier",
+      "current": false,
+      "teams": [],
+      "myAvgWith": 54.3,
+      "myAvgDelta": 5.4
+    },
+    {
+      "accountId": 1185016329,
+      "steamid64": "76561199145282057",
+      "name": "wrench przeciwnie",
+      "games": 23,
+      "officials": 0,
+      "wins": 11,
+      "losses": 9,
+      "firstPlayed": 1701213803,
+      "lastPlayed": 1724177257,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [],
+      "myAvgWith": 53.1,
+      "myAvgDelta": 4.2
+    },
+    {
+      "accountId": 190113798,
+      "steamid64": "76561198150379526",
+      "name": "D-Kay",
+      "games": 20,
+      "officials": 2,
+      "wins": 10,
+      "losses": 9,
+      "firstPlayed": 1756925759,
+      "lastPlayed": 1772482248,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 49.6,
+      "myAvgDelta": 0.5
+    },
+    {
+      "accountId": 835892855,
+      "steamid64": "76561198796158583",
+      "name": "MXtreme",
+      "games": 20,
+      "officials": 2,
+      "wins": 13,
+      "losses": 6,
+      "firstPlayed": 1701213803,
+      "lastPlayed": 1772310140,
+      "mainClass": "spy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 53.4,
+      "myAvgDelta": 4.4
+    },
+    {
+      "accountId": 294853651,
+      "steamid64": "76561198255119379",
+      "name": "Turbopenis69",
+      "games": 19,
+      "officials": 3,
+      "wins": 9,
+      "losses": 9,
+      "firstPlayed": 1769370278,
+      "lastPlayed": 1784405677,
+      "mainClass": "soldier",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 49.5,
+      "myAvgDelta": 0.4
+    },
+    {
+      "accountId": 860852017,
+      "steamid64": "76561198821117745",
+      "name": "♱ vxmp",
+      "games": 19,
+      "officials": 0,
+      "wins": 13,
+      "losses": 4,
+      "firstPlayed": 1720465411,
+      "lastPlayed": 1768306281,
+      "mainClass": "pyro",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 49.3,
+      "myAvgDelta": 0.2
+    },
+    {
+      "accountId": 240331975,
+      "steamid64": "76561198200597703",
+      "name": "a musician swine",
+      "games": 18,
+      "officials": 2,
+      "wins": 9,
+      "losses": 7,
+      "firstPlayed": 1768764449,
+      "lastPlayed": 1772482248,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 57.7,
+      "myAvgDelta": 8.9
+    },
+    {
+      "accountId": 240487583,
+      "steamid64": "76561198200753311",
+      "name": "Kebe",
+      "games": 18,
+      "officials": 0,
+      "wins": 11,
+      "losses": 6,
+      "firstPlayed": 1731789620,
+      "lastPlayed": 1756235139,
+      "mainClass": "engineer",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 51.9,
+      "myAvgDelta": 2.9
+    },
+    {
+      "accountId": 322753362,
+      "steamid64": "76561198283019090",
+      "name": "I have fucking rabies",
+      "games": 17,
+      "officials": 2,
+      "wins": 8,
+      "losses": 7,
+      "firstPlayed": 1768426659,
+      "lastPlayed": 1783282305,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 52.0,
+      "myAvgDelta": 3.0
+    },
+    {
+      "accountId": 87984987,
+      "steamid64": "76561198048250715",
+      "name": "green fn",
+      "games": 17,
+      "officials": 0,
+      "wins": 9,
+      "losses": 7,
+      "firstPlayed": 1689363673,
+      "lastPlayed": 1709491967,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 49.2,
+      "myAvgDelta": 0.2
+    },
+    {
+      "accountId": 282134566,
+      "steamid64": "76561198242400294",
+      "name": "Zaphiel",
+      "games": 16,
+      "officials": 0,
+      "wins": 8,
+      "losses": 6,
+      "firstPlayed": 1701213803,
+      "lastPlayed": 1748640719,
+      "mainClass": "spy",
+      "current": false,
+      "teams": [],
+      "myAvgWith": 59.5,
+      "myAvgDelta": 10.6
+    },
+    {
+      "accountId": 90900287,
+      "steamid64": "76561198051166015",
+      "name": "fishska",
+      "games": 16,
+      "officials": 6,
+      "wins": 13,
+      "losses": 2,
+      "firstPlayed": 1542137446,
+      "lastPlayed": 1544035198,
+      "mainClass": "spy",
+      "current": false,
+      "teams": [
+        "Amicitia"
+      ],
+      "myAvgWith": 54.7,
+      "myAvgDelta": 5.8
+    },
+    {
+      "accountId": 145082321,
+      "steamid64": "76561198105348049",
+      "name": "Scary Shaddow",
+      "games": 15,
+      "officials": 1,
+      "wins": 7,
+      "losses": 7,
+      "firstPlayed": 1754422827,
+      "lastPlayed": 1761770156,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 45.4,
+      "myAvgDelta": -3.8
+    },
+    {
+      "accountId": 1081348750,
+      "steamid64": "76561199041614478",
+      "name": "Sorig",
+      "games": 15,
+      "officials": 0,
+      "wins": 7,
+      "losses": 6,
+      "firstPlayed": 1701213803,
+      "lastPlayed": 1702264708,
+      "mainClass": "demoman",
+      "current": false,
+      "teams": [],
+      "myAvgWith": 58.4,
+      "myAvgDelta": 9.5
+    },
+    {
+      "accountId": 137154322,
+      "steamid64": "76561198097420050",
+      "name": "W.",
+      "games": 14,
+      "officials": 0,
+      "wins": 4,
+      "losses": 8,
+      "firstPlayed": 1701553287,
+      "lastPlayed": 1788028625,
+      "mainClass": "scout",
+      "current": true,
+      "teams": [
+        "SBQRRA",
+        "DD14"
+      ],
+      "myAvgWith": 52.4,
+      "myAvgDelta": 3.4
+    },
+    {
+      "accountId": 330517268,
+      "steamid64": "76561198290782996",
+      "name": "Genuine Bear",
+      "games": 14,
+      "officials": 1,
+      "wins": 3,
+      "losses": 10,
+      "firstPlayed": 1761943043,
+      "lastPlayed": 1764882452,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 37.4,
+      "myAvgDelta": -11.9
+    },
+    {
+      "accountId": 85803721,
+      "steamid64": "76561198046069449",
+      "name": "Burbie",
+      "games": 14,
+      "officials": 0,
+      "wins": 5,
+      "losses": 9,
+      "firstPlayed": 1748799129,
+      "lastPlayed": 1751747203,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 47.2,
+      "myAvgDelta": -1.9
+    },
+    {
+      "accountId": 312023592,
+      "steamid64": "76561198272289320",
+      "name": "ROX",
+      "games": 14,
+      "officials": 0,
+      "wins": 7,
+      "losses": 5,
+      "firstPlayed": 1701213803,
+      "lastPlayed": 1702264708,
+      "mainClass": "engineer",
+      "current": false,
+      "teams": [],
+      "myAvgWith": 57.5,
+      "myAvgDelta": 8.6
+    },
+    {
+      "accountId": 236778486,
+      "steamid64": "76561198197044214",
+      "name": "GEORGE \"DROID\" CUBE",
+      "games": 13,
+      "officials": 3,
+      "wins": 2,
+      "losses": 10,
+      "firstPlayed": 1707681667,
+      "lastPlayed": 1773522109,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 41.4,
+      "myAvgDelta": -7.9
+    },
+    {
+      "accountId": 91882858,
+      "steamid64": "76561198052148586",
+      "name": "sslony",
+      "games": 13,
+      "officials": 0,
+      "wins": 7,
+      "losses": 6,
+      "firstPlayed": 1706360251,
+      "lastPlayed": 1768765560,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 48.7,
+      "myAvgDelta": -0.4
+    },
+    {
+      "accountId": 107108814,
+      "steamid64": "76561198067374542",
+      "name": "Ninjachompah132",
+      "games": 13,
+      "officials": 0,
+      "wins": 4,
+      "losses": 7,
+      "firstPlayed": 1408907444,
+      "lastPlayed": 1417037190,
+      "mainClass": "soldier",
+      "current": false,
+      "teams": [],
+      "myAvgWith": 39.5,
+      "myAvgDelta": -9.7
+    },
+    {
+      "accountId": 285837700,
+      "steamid64": "76561198246103428",
+      "name": "free2bekind",
+      "games": 12,
+      "officials": 0,
+      "wins": 6,
+      "losses": 6,
+      "firstPlayed": 1706915498,
+      "lastPlayed": 1789229173,
+      "mainClass": "scout",
+      "current": true,
+      "teams": [],
+      "myAvgWith": 45.8,
+      "myAvgDelta": -3.3
+    },
+    {
+      "accountId": 130582892,
+      "steamid64": "76561198090848620",
+      "name": "hwleo",
+      "games": 12,
+      "officials": 2,
+      "wins": 7,
+      "losses": 5,
+      "firstPlayed": 1694370265,
+      "lastPlayed": 1707681667,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 49.4,
+      "myAvgDelta": 0.3
+    },
+    {
+      "accountId": 82123920,
+      "steamid64": "76561198042389648",
+      "name": "Strawb",
+      "games": 12,
+      "officials": 5,
+      "wins": 6,
+      "losses": 6,
+      "firstPlayed": 1467213474,
+      "lastPlayed": 1536265033,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [
+        "bik is ti",
+        "Undercover Prodigies"
+      ],
+      "myAvgWith": 48.3,
+      "myAvgDelta": -0.8
+    },
+    {
+      "accountId": 158962796,
+      "steamid64": "76561198119228524",
+      "name": "a c e",
+      "games": 12,
+      "officials": 0,
+      "wins": 2,
+      "losses": 8,
+      "firstPlayed": 1415388889,
+      "lastPlayed": 1417207601,
+      "mainClass": "spy",
+      "current": false,
+      "teams": [],
+      "myAvgWith": 49.4,
+      "myAvgDelta": 0.3
+    },
+    {
+      "accountId": 435117887,
+      "steamid64": "76561198395383615",
+      "name": "bogus ben",
+      "games": 11,
+      "officials": 0,
+      "wins": 7,
+      "losses": 4,
+      "firstPlayed": 1739994699,
+      "lastPlayed": 1767812819,
+      "mainClass": "spy",
+      "current": false,
+      "teams": [],
+      "myAvgWith": 56.1,
+      "myAvgDelta": 7.1
+    },
+    {
+      "accountId": 34044692,
+      "steamid64": "76561197994310420",
+      "name": "花",
+      "games": 11,
+      "officials": 0,
+      "wins": 11,
+      "losses": 0,
+      "firstPlayed": 1699994375,
+      "lastPlayed": 1748113717,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 52.7,
+      "myAvgDelta": 3.7
+    },
+    {
+      "accountId": 178408897,
+      "steamid64": "76561198138674625",
+      "name": "fionna",
+      "games": 11,
+      "officials": 0,
+      "wins": 6,
+      "losses": 4,
+      "firstPlayed": 1693596700,
+      "lastPlayed": 1696359660,
+      "mainClass": "soldier",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 50.3,
+      "myAvgDelta": 1.2
+    },
+    {
+      "accountId": 131984023,
+      "steamid64": "76561198092249751",
+      "name": "horse with no name",
+      "games": 10,
+      "officials": 0,
+      "wins": 5,
+      "losses": 5,
+      "firstPlayed": 1729367291,
+      "lastPlayed": 1788625946,
+      "mainClass": "engineer",
+      "current": true,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 49.2,
+      "myAvgDelta": 0.1
+    },
+    {
+      "accountId": 843944788,
+      "steamid64": "76561198804210516",
+      "name": "q64",
+      "games": 10,
+      "officials": 0,
+      "wins": 6,
+      "losses": 4,
+      "firstPlayed": 1701213803,
+      "lastPlayed": 1745956643,
+      "mainClass": "soldier",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": 58.1,
+      "myAvgDelta": 9.1
+    },
+    {
+      "accountId": 279708566,
+      "steamid64": "76561198239974294",
+      "name": "nepal",
+      "games": 9,
+      "officials": 1,
+      "wins": 8,
+      "losses": 1,
+      "firstPlayed": 1706915498,
+      "lastPlayed": 1788117280,
+      "mainClass": "pyro",
+      "current": true,
+      "teams": [
+        "DD14"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 298451818,
+      "steamid64": "76561198258717546",
+      "name": "Morbus",
+      "games": 9,
+      "officials": 0,
+      "wins": 5,
+      "losses": 4,
+      "firstPlayed": 1771271620,
+      "lastPlayed": 1787858128,
+      "mainClass": "demoman",
+      "current": true,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 1015531455,
+      "steamid64": "76561198975797183",
+      "name": "pigeonsarecut",
+      "games": 9,
+      "officials": 0,
+      "wins": 6,
+      "losses": 3,
+      "firstPlayed": 1765823038,
+      "lastPlayed": 1772135788,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 1013127103,
+      "steamid64": "76561198973392831",
+      "name": "писькаду",
+      "games": 9,
+      "officials": 0,
+      "wins": 7,
+      "losses": 2,
+      "firstPlayed": 1767472692,
+      "lastPlayed": 1771271620,
+      "mainClass": "soldier",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 224408445,
+      "steamid64": "76561198184674173",
+      "name": "3AM snacks",
+      "games": 9,
+      "officials": 0,
+      "wins": 5,
+      "losses": 4,
+      "firstPlayed": 1702063762,
+      "lastPlayed": 1767812819,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 116228306,
+      "steamid64": "76561198076494034",
+      "name": "xavier",
+      "games": 9,
+      "officials": 0,
+      "wins": 4,
+      "losses": 4,
+      "firstPlayed": 1742244743,
+      "lastPlayed": 1764795833,
+      "mainClass": "soldier",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 159002083,
+      "steamid64": "76561198119267811",
+      "name": "kiiob",
+      "games": 9,
+      "officials": 4,
+      "wins": 5,
+      "losses": 3,
+      "firstPlayed": 1542998399,
+      "lastPlayed": 1748799129,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "Amicitia"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 353099257,
+      "steamid64": "76561198313364985",
+      "name": "the pencil",
+      "games": 9,
+      "officials": 0,
+      "wins": 3,
+      "losses": 4,
+      "firstPlayed": 1705871976,
+      "lastPlayed": 1709324004,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 87417612,
+      "steamid64": "76561198047683340",
+      "name": "VoT | Quartoch",
+      "games": 9,
+      "officials": 0,
+      "wins": 1,
+      "losses": 5,
+      "firstPlayed": 1419192403,
+      "lastPlayed": 1621113228,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 239700174,
+      "steamid64": "76561198199965902",
+      "name": "h",
+      "games": 8,
+      "officials": 0,
+      "wins": 4,
+      "losses": 4,
+      "firstPlayed": 1706912305,
+      "lastPlayed": 1771275306,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 121293941,
+      "steamid64": "76561198081559669",
+      "name": "coco",
+      "games": 8,
+      "officials": 1,
+      "wins": 3,
+      "losses": 4,
+      "firstPlayed": 1692907123,
+      "lastPlayed": 1723948538,
+      "mainClass": "engineer",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 294728258,
+      "steamid64": "76561198254993986",
+      "name": "Plank ∞",
+      "games": 8,
+      "officials": 2,
+      "wins": 5,
+      "losses": 2,
+      "firstPlayed": 1542393072,
+      "lastPlayed": 1565292912,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "Amicitia"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 351458163,
+      "steamid64": "76561198311723891",
+      "name": "Samael",
+      "games": 7,
+      "officials": 0,
+      "wins": 6,
+      "losses": 1,
+      "firstPlayed": 1746815825,
+      "lastPlayed": 1769980224,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 77961906,
+      "steamid64": "76561198038227634",
+      "name": "Pooper",
+      "games": 7,
+      "officials": 0,
+      "wins": 3,
+      "losses": 4,
+      "firstPlayed": 1751999280,
+      "lastPlayed": 1763546046,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 271204552,
+      "steamid64": "76561198231470280",
+      "name": "Tony Flipper",
+      "games": 7,
+      "officials": 0,
+      "wins": 4,
+      "losses": 3,
+      "firstPlayed": 1737491754,
+      "lastPlayed": 1753560222,
+      "mainClass": "spy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 96265858,
+      "steamid64": "76561198056531586",
+      "name": "chando",
+      "games": 7,
+      "officials": 0,
+      "wins": 4,
+      "losses": 2,
+      "firstPlayed": 1742587370,
+      "lastPlayed": 1751742311,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 908996199,
+      "steamid64": "76561198869261927",
+      "name": "evil juice injection",
+      "games": 7,
+      "officials": 0,
+      "wins": 2,
+      "losses": 3,
+      "firstPlayed": 1720465411,
+      "lastPlayed": 1748807062,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 198691364,
+      "steamid64": "76561198158957092",
+      "name": "carwex",
+      "games": 7,
+      "officials": 0,
+      "wins": 1,
+      "losses": 6,
+      "firstPlayed": 1729276595,
+      "lastPlayed": 1730659968,
+      "mainClass": "spy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 161960689,
+      "steamid64": "76561198122226417",
+      "name": "Borat",
+      "games": 7,
+      "officials": 0,
+      "wins": 4,
+      "losses": 2,
+      "firstPlayed": 1695505830,
+      "lastPlayed": 1706915498,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 1003333697,
+      "steamid64": "76561198963599425",
+      "name": "shirtokiya",
+      "games": 7,
+      "officials": 0,
+      "wins": 4,
+      "losses": 2,
+      "firstPlayed": 1701484187,
+      "lastPlayed": 1702264708,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 170240092,
+      "steamid64": "76561198130505820",
+      "name": "Robi",
+      "games": 7,
+      "officials": 0,
+      "wins": 2,
+      "losses": 3,
+      "firstPlayed": 1701370062,
+      "lastPlayed": 1702151239,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 388111534,
+      "steamid64": "76561198348377262",
+      "name": "Salty",
+      "games": 7,
+      "officials": 0,
+      "wins": 3,
+      "losses": 4,
+      "firstPlayed": 1543953737,
+      "lastPlayed": 1544814111,
+      "mainClass": "spy",
+      "current": false,
+      "teams": [
+        "Amicitia"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 281514802,
+      "steamid64": "76561198241780530",
+      "name": "サイモン！",
+      "games": 7,
+      "officials": 0,
+      "wins": 3,
+      "losses": 4,
+      "firstPlayed": 1541532505,
+      "lastPlayed": 1543953737,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "Amicitia"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 119136085,
+      "steamid64": "76561198079401813",
+      "name": "ZapZoinked",
+      "games": 7,
+      "officials": 3,
+      "wins": 3,
+      "losses": 4,
+      "firstPlayed": 1525722441,
+      "lastPlayed": 1536265033,
+      "mainClass": "soldier",
+      "current": false,
+      "teams": [
+        "bik is ti"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 292904834,
+      "steamid64": "76561198253170562",
+      "name": "shock",
+      "games": 7,
+      "officials": 3,
+      "wins": 3,
+      "losses": 4,
+      "firstPlayed": 1525722441,
+      "lastPlayed": 1536265033,
+      "mainClass": "demoman",
+      "current": false,
+      "teams": [
+        "bik is ti"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 87287196,
+      "steamid64": "76561198047552924",
+      "name": "Minigun Mike",
+      "games": 7,
+      "officials": 2,
+      "wins": 5,
+      "losses": 2,
+      "firstPlayed": 1523994830,
+      "lastPlayed": 1535579659,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "Undercover Prodigies",
+        "bik is ti"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 90819112,
+      "steamid64": "76561198051084840",
+      "name": "K7",
+      "games": 6,
+      "officials": 1,
+      "wins": 4,
+      "losses": 2,
+      "firstPlayed": 1787511795,
+      "lastPlayed": 1789229173,
+      "mainClass": "demoman",
+      "current": true,
+      "teams": [
+        "DD14"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 1110702759,
+      "steamid64": "76561199070968487",
+      "name": "Antonom",
+      "games": 6,
+      "officials": 0,
+      "wins": 5,
+      "losses": 1,
+      "firstPlayed": 1764705192,
+      "lastPlayed": 1785098507,
+      "mainClass": "spy",
+      "current": true,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 1173037816,
+      "steamid64": "76561199133303544",
+      "name": "seeker",
+      "games": 6,
+      "officials": 0,
+      "wins": 2,
+      "losses": 3,
+      "firstPlayed": 1758734717,
+      "lastPlayed": 1764795833,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 92061586,
+      "steamid64": "76561198052327314",
+      "name": "tenno",
+      "games": 6,
+      "officials": 0,
+      "wins": 3,
+      "losses": 3,
+      "firstPlayed": 1762544024,
+      "lastPlayed": 1762549268,
+      "mainClass": "soldier",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 160404615,
+      "steamid64": "76561198120670343",
+      "name": "agarthian lloyd",
+      "games": 6,
+      "officials": 0,
+      "wins": 5,
+      "losses": 1,
+      "firstPlayed": 1747081263,
+      "lastPlayed": 1748113717,
+      "mainClass": "demoman",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 487784807,
+      "steamid64": "76561198448050535",
+      "name": "i need more weed.com",
+      "games": 6,
+      "officials": 0,
+      "wins": 3,
+      "losses": 3,
+      "firstPlayed": 1701213803,
+      "lastPlayed": 1739996232,
+      "mainClass": "demoman",
+      "current": false,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 119443628,
+      "steamid64": "76561198079709356",
+      "name": "milk",
+      "games": 6,
+      "officials": 0,
+      "wins": 3,
+      "losses": 1,
+      "firstPlayed": 1720465411,
+      "lastPlayed": 1726425968,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 274119836,
+      "steamid64": "76561198234385564",
+      "name": "Falkonze",
+      "games": 6,
+      "officials": 0,
+      "wins": 6,
+      "losses": 0,
+      "firstPlayed": 1702496554,
+      "lastPlayed": 1703188457,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 94102766,
+      "steamid64": "76561198054368494",
+      "name": "sterco",
+      "games": 6,
+      "officials": 0,
+      "wins": 3,
+      "losses": 3,
+      "firstPlayed": 1697052783,
+      "lastPlayed": 1697228282,
+      "mainClass": "demoman",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 116345685,
+      "steamid64": "76561198076611413",
+      "name": "Hat Kid",
+      "games": 6,
+      "officials": 2,
+      "wins": 2,
+      "losses": 4,
+      "firstPlayed": 1544556642,
+      "lastPlayed": 1544816615,
+      "mainClass": "demoman",
+      "current": false,
+      "teams": [
+        "Amicitia"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 136515133,
+      "steamid64": "76561198096780861",
+      "name": ".:RSG:. Mecha858",
+      "games": 6,
+      "officials": 0,
+      "wins": 0,
+      "losses": 5,
+      "firstPlayed": 1414960632,
+      "lastPlayed": 1417207601,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 1165277293,
+      "steamid64": "76561199125543021",
+      "name": "mawi",
+      "games": 5,
+      "officials": 0,
+      "wins": 1,
+      "losses": 4,
+      "firstPlayed": 1783795346,
+      "lastPlayed": 1789229173,
+      "mainClass": "medic",
+      "current": true,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 143626373,
+      "steamid64": "76561198103892101",
+      "name": "Pndulum",
+      "games": 5,
+      "officials": 0,
+      "wins": 1,
+      "losses": 4,
+      "firstPlayed": 1748796191,
+      "lastPlayed": 1789229173,
+      "mainClass": "heavy",
+      "current": true,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 134106724,
+      "steamid64": "76561198094372452",
+      "name": "Farter",
+      "games": 5,
+      "officials": 1,
+      "wins": 4,
+      "losses": 1,
+      "firstPlayed": 1787511795,
+      "lastPlayed": 1788117280,
+      "mainClass": "spy",
+      "current": true,
+      "teams": [
+        "DD14"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 293084467,
+      "steamid64": "76561198253350195",
+      "name": "Sossok",
+      "games": 5,
+      "officials": 1,
+      "wins": 4,
+      "losses": 1,
+      "firstPlayed": 1787511795,
+      "lastPlayed": 1788117280,
+      "mainClass": "medic",
+      "current": true,
+      "teams": [
+        "DD14"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 14220905,
+      "steamid64": "76561197974486633",
+      "name": "SchmitShot",
+      "games": 5,
+      "officials": 1,
+      "wins": 4,
+      "losses": 1,
+      "firstPlayed": 1787511795,
+      "lastPlayed": 1788117280,
+      "mainClass": "scout",
+      "current": true,
+      "teams": [
+        "DD14"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 115276492,
+      "steamid64": "76561198075542220",
+      "name": "Mc Big Bucks",
+      "games": 5,
+      "officials": 0,
+      "wins": 3,
+      "losses": 2,
+      "firstPlayed": 1748796191,
+      "lastPlayed": 1788034399,
+      "mainClass": "medic",
+      "current": true,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 1125999949,
+      "steamid64": "76561199086265677",
+      "name": "SomEe_one",
+      "games": 5,
+      "officials": 0,
+      "wins": 5,
+      "losses": 0,
+      "firstPlayed": 1706910777,
+      "lastPlayed": 1767992569,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 22958903,
+      "steamid64": "76561197983224631",
+      "name": "Vinegar",
+      "games": 5,
+      "officials": 0,
+      "wins": 2,
+      "losses": 3,
+      "firstPlayed": 1737064503,
+      "lastPlayed": 1767812819,
+      "mainClass": "engineer",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 177521089,
+      "steamid64": "76561198137786817",
+      "name": "war",
+      "games": 5,
+      "officials": 0,
+      "wins": 0,
+      "losses": 3,
+      "firstPlayed": 1719428728,
+      "lastPlayed": 1767485041,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 86633992,
+      "steamid64": "76561198046899720",
+      "name": "Harry",
+      "games": 5,
+      "officials": 0,
+      "wins": 2,
+      "losses": 2,
+      "firstPlayed": 1409069286,
+      "lastPlayed": 1767485041,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 1077483947,
+      "steamid64": "76561199037749675",
+      "name": "leh wewe shoton watr",
+      "games": 5,
+      "officials": 0,
+      "wins": 1,
+      "losses": 3,
+      "firstPlayed": 1764531354,
+      "lastPlayed": 1767042416,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 209877367,
+      "steamid64": "76561198170143095",
+      "name": "sparkii",
+      "games": 5,
+      "officials": 0,
+      "wins": 3,
+      "losses": 1,
+      "firstPlayed": 1720551546,
+      "lastPlayed": 1759264779,
+      "mainClass": "soldier",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 47869503,
+      "steamid64": "76561198008135231",
+      "name": "CbIHoK",
+      "games": 5,
+      "officials": 0,
+      "wins": 2,
+      "losses": 3,
+      "firstPlayed": 1748468311,
+      "lastPlayed": 1759261296,
+      "mainClass": "demoman",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 281182146,
+      "steamid64": "76561198241447874",
+      "name": "mugen",
+      "games": 5,
+      "officials": 0,
+      "wins": 3,
+      "losses": 2,
+      "firstPlayed": 1749930574,
+      "lastPlayed": 1757876560,
+      "mainClass": "heavy",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 328664426,
+      "steamid64": "76561198288930154",
+      "name": "arf arf type shi",
+      "games": 5,
+      "officials": 0,
+      "wins": 3,
+      "losses": 2,
+      "firstPlayed": 1750106551,
+      "lastPlayed": 1754242946,
+      "mainClass": "pyro",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 117340001,
+      "steamid64": "76561198077605729",
+      "name": "kevin",
+      "games": 5,
+      "officials": 0,
+      "wins": 2,
+      "losses": 3,
+      "firstPlayed": 1416266061,
+      "lastPlayed": 1752617424,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 69488888,
+      "steamid64": "76561198029754616",
+      "name": "haze",
+      "games": 5,
+      "officials": 0,
+      "wins": 1,
+      "losses": 4,
+      "firstPlayed": 1748472554,
+      "lastPlayed": 1748807062,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 110845773,
+      "steamid64": "76561198071111501",
+      "name": "Gold",
+      "games": 5,
+      "officials": 0,
+      "wins": 5,
+      "losses": 0,
+      "firstPlayed": 1720722797,
+      "lastPlayed": 1726425968,
+      "mainClass": "engineer",
+      "current": false,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 194448970,
+      "steamid64": "76561198154714698",
+      "name": "Shogi",
+      "games": 5,
+      "officials": 0,
+      "wins": 5,
+      "losses": 0,
+      "firstPlayed": 1720722797,
+      "lastPlayed": 1726425968,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 449478665,
+      "steamid64": "76561198409744393",
+      "name": "underdog ･ᴗ･",
+      "games": 5,
+      "officials": 0,
+      "wins": 3,
+      "losses": 1,
+      "firstPlayed": 1717619053,
+      "lastPlayed": 1720723784,
+      "mainClass": "soldier",
+      "current": false,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 117912413,
+      "steamid64": "76561198078178141",
+      "name": "strix",
+      "games": 5,
+      "officials": 0,
+      "wins": 4,
+      "losses": 1,
+      "firstPlayed": 1704918424,
+      "lastPlayed": 1708807877,
+      "mainClass": "medic",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 277533966,
+      "steamid64": "76561198237799694",
+      "name": "404 Slippy",
+      "games": 5,
+      "officials": 0,
+      "wins": 4,
+      "losses": 1,
+      "firstPlayed": 1701894946,
+      "lastPlayed": 1707945111,
+      "mainClass": "pyro",
+      "current": false,
+      "teams": [
+        "SBQRRA"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 471379881,
+      "steamid64": "76561198431645609",
+      "name": "meganoj",
+      "games": 5,
+      "officials": 0,
+      "wins": 3,
+      "losses": 1,
+      "firstPlayed": 1695501706,
+      "lastPlayed": 1706915498,
+      "mainClass": "soldier",
+      "current": false,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 318758519,
+      "steamid64": "76561198279024247",
+      "name": "Justice",
+      "games": 5,
+      "officials": 0,
+      "wins": 1,
+      "losses": 2,
+      "firstPlayed": 1695501706,
+      "lastPlayed": 1702264708,
+      "mainClass": "pyro",
+      "current": false,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 59848334,
+      "steamid64": "76561198020114062",
+      "name": "h_raze",
+      "games": 5,
+      "officials": 0,
+      "wins": 1,
+      "losses": 2,
+      "firstPlayed": 1404842173,
+      "lastPlayed": 1621113228,
+      "mainClass": "demoman",
+      "current": false,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 132722230,
+      "steamid64": "76561198092987958",
+      "name": "Frobisher",
+      "games": 5,
+      "officials": 0,
+      "wins": 1,
+      "losses": 3,
+      "firstPlayed": 1523994830,
+      "lastPlayed": 1621113228,
+      "mainClass": "engineer",
+      "current": false,
+      "teams": [],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 343328687,
+      "steamid64": "76561198303594415",
+      "name": "Basil's Creed",
+      "games": 5,
+      "officials": 2,
+      "wins": 1,
+      "losses": 4,
+      "firstPlayed": 1544556642,
+      "lastPlayed": 1544816615,
+      "mainClass": "pyro",
+      "current": false,
+      "teams": [
+        "Amicitia"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 76238486,
+      "steamid64": "76561198036504214",
+      "name": "juni",
+      "games": 5,
+      "officials": 3,
+      "wins": 2,
+      "losses": 3,
+      "firstPlayed": 1535572621,
+      "lastPlayed": 1536265033,
+      "mainClass": "engineer",
+      "current": false,
+      "teams": [
+        "bik is ti"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 231026021,
+      "steamid64": "76561198191291749",
+      "name": "3once",
+      "games": 5,
+      "officials": 3,
+      "wins": 2,
+      "losses": 3,
+      "firstPlayed": 1535572621,
+      "lastPlayed": 1536265033,
+      "mainClass": "spy",
+      "current": false,
+      "teams": [
+        "bik is ti"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 280035632,
+      "steamid64": "76561198240301360",
+      "name": "http://logs.tf/2096331",
+      "games": 5,
+      "officials": 3,
+      "wins": 2,
+      "losses": 3,
+      "firstPlayed": 1535572621,
+      "lastPlayed": 1536265033,
+      "mainClass": "sniper",
+      "current": false,
+      "teams": [
+        "bik is ti"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 82499273,
+      "steamid64": "76561198042765001",
+      "name": "Kai",
+      "games": 5,
+      "officials": 3,
+      "wins": 2,
+      "losses": 3,
+      "firstPlayed": 1535572621,
+      "lastPlayed": 1536265033,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "bik is ti"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    },
+    {
+      "accountId": 85832363,
+      "steamid64": "76561198046098091",
+      "name": "Krizl",
+      "games": 5,
+      "officials": 2,
+      "wins": 4,
+      "losses": 1,
+      "firstPlayed": 1523994830,
+      "lastPlayed": 1525723890,
+      "mainClass": "scout",
+      "current": false,
+      "teams": [
+        "Undercover Prodigies"
+      ],
+      "myAvgWith": null,
+      "myAvgDelta": null
+    }
+  ],
+  "minGames": 5
+}

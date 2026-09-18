@@ -1,8 +1,16 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type ComponentSummary, type GameRef, type Profile } from "../../api/types";
+import {
+  errorMessage,
+  type ComponentSummary,
+  type ContextKind,
+  type ContextSplit,
+  type GameRef,
+  type Profile,
+} from "../../api/types";
 import { capitalize, formatDate, splitMap } from "../../lib/format";
+import { KIND_LABEL, KIND_PLURAL } from "../ContextBadge";
 import { TrendChart } from "./TrendChart";
 import "./profile.css";
 
@@ -11,11 +19,16 @@ const THIN_SAMPLE = 20;
 
 export function ProfilePage({ onOpenMatch }: { onOpenMatch: (logId: number) => void }) {
   const [cls, setCls] = useState<string | null>(null);
+  const [kind, setKind] = useState<ContextKind | null>(null);
   const q = useQuery({
-    queryKey: ["profile", cls],
-    queryFn: () => api.getProfile(cls),
+    queryKey: ["profile", cls, kind],
+    queryFn: () => api.getProfile(cls, kind),
     placeholderData: keepPreviousData,
   });
+  // The split is over every game, so the last one seen stays valid while a
+  // filter with no games (no Engineer officials, say) shows an empty profile.
+  const lastSplit = useRef<ContextSplit[]>([]);
+  if (q.data?.profile) lastSplit.current = q.data.profile.contexts;
 
   if (q.isPending) return <div className="profile-page"><p className="hint">Loading profile…</p></div>;
   if (q.isError) return <div className="profile-page"><p className="error">{errorMessage(q.error)}</p></div>;
@@ -43,7 +56,10 @@ export function ProfilePage({ onOpenMatch }: { onOpenMatch: (logId: number) => v
           <button
             key={c}
             className={c === active ? "class-tab active" : "class-tab"}
-            onClick={() => setCls(c)}
+            onClick={() => {
+              setCls(c);
+              lastSplit.current = [];
+            }}
             title={n < THIN_SAMPLE ? `Only ${n} rated games — read with care` : undefined}
           >
             {capitalize(c)} <span className="count">{n}</span>
@@ -51,33 +67,114 @@ export function ProfilePage({ onOpenMatch }: { onOpenMatch: (logId: number) => v
         ))}
       </nav>
 
+      <KindFilter kind={kind} onChange={setKind} split={lastSplit.current} />
+
       {profile ? (
-        <ProfileBody p={profile} onOpenMatch={onOpenMatch} />
+        <ProfileBody p={profile} onOpenMatch={onOpenMatch} onKind={setKind} />
       ) : (
         <div className="panel">
-          <p className="hint">No rated {active} games.</p>
+          <p className="hint">
+            No rated {active} {kind ? KIND_PLURAL[kind].toLowerCase() : "games"}.
+          </p>
         </div>
       )}
     </div>
   );
 }
 
-function ProfileBody({ p, onOpenMatch }: { p: Profile; onOpenMatch: (logId: number) => void }) {
+/** All games, or one kind. Counts come from the unfiltered split. */
+function KindFilter(props: { kind: ContextKind | null; onChange: (k: ContextKind | null) => void; split: ContextSplit[] }) {
+  const { kind, onChange, split } = props;
+  const count = (k: ContextKind) => split.find((s) => s.kind === k)?.games;
+  const total = split.reduce((n, s) => n + s.games, 0);
+  const opts: Array<[ContextKind | null, string, number | undefined]> = [
+    [null, "All games", total || undefined],
+    ["official", KIND_PLURAL.official, count("official")],
+    ["scrim", KIND_PLURAL.scrim, count("scrim")],
+    ["pug", KIND_PLURAL.pug, count("pug")],
+  ];
+  return (
+    <div className="kind-filter">
+      <div className="segmented" role="tablist" aria-label="Kind of game">
+        {opts.map(([k, label, n]) => (
+          <button
+            key={label}
+            role="tab"
+            aria-selected={kind === k}
+            className={kind === k ? "seg active" : "seg"}
+            onClick={() => onChange(k)}
+          >
+            {label}
+            {n !== undefined && <span className="count"> {n}</span>}
+          </button>
+        ))}
+      </div>
+      {kind && <span className="hint">Everything below counts {KIND_PLURAL[kind].toLowerCase()} only.</span>}
+    </div>
+  );
+}
+
+/**
+ * The same class across officials, scrims and pugs: one row each, average
+ * rating on a 0-100 track with the 50 line, games and win rate beside it.
+ * Always over every game, whatever the filter.
+ */
+function KindSplit(props: { split: ContextSplit[]; active: ContextKind | null; onKind: (k: ContextKind | null) => void }) {
+  const { split, active, onKind } = props;
+  if (split.length < 2) return null;
+  return (
+    <section className="panel kind-split">
+      <header>
+        <h2>Officials, scrims and pugs</h2>
+        <p className="hint">Average rating by kind of game, over every game on this class. Click one to filter.</p>
+      </header>
+      <div className="ks-rows">
+        {split.map((s) => (
+          <button
+            key={s.kind}
+            className={active === s.kind ? "ks-row active" : "ks-row"}
+            onClick={() => onKind(active === s.kind ? null : s.kind)}
+            aria-pressed={active === s.kind}
+          >
+            <span className="ks-label">{KIND_PLURAL[s.kind]}</span>
+            <span className="ks-track" aria-hidden>
+              <span className="comp-mid" />
+              <span className={`ks-fill ks-${s.kind}`} style={{ width: `${s.avg}%` }} />
+            </span>
+            <span className="ks-value">{s.avg.toFixed(0)}</span>
+            <span className="ks-meta muted">
+              {s.games} game{s.games === 1 ? "" : "s"}
+              {s.winRate !== null && ` · ${s.winRate.toFixed(0)}% won`}
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ProfileBody(props: {
+  p: Profile;
+  onOpenMatch: (logId: number) => void;
+  onKind: (k: ContextKind | null) => void;
+}) {
+  const { p, onOpenMatch, onKind } = props;
   const delta = p.prevFormAvg === null ? null : p.formAvg - p.prevFormAvg;
   const thin = p.games < THIN_SAMPLE;
+  const scope = p.filter ? KIND_PLURAL[p.filter].toLowerCase() : "games";
 
   return (
     <>
       {thin && (
         <p className="thin-note">
-          Only {p.games} rated {capitalize(p.class)} games. Treat these numbers as a rough sketch, not a
+          Only {p.games} rated {capitalize(p.class)} {scope}. Treat these numbers as a rough sketch, not a
           verdict.
         </p>
       )}
 
       <section className="kpis">
         <div className="kpi hero">
-          <span className="kpi-label">Form · last {Math.min(p.formWindow, p.games)} games</span>
+          <span className="kpi-label">Form · last {Math.min(p.formWindow, p.games)} {scope}</span>
           <span className="kpi-value">{p.formAvg.toFixed(0)}</span>
           {delta !== null && (
             <span className={delta >= 0 ? "kpi-delta up" : "kpi-delta down"}>
@@ -88,7 +185,9 @@ function ProfileBody({ p, onOpenMatch }: { p: Profile; onOpenMatch: (logId: numb
         <div className="kpi">
           <span className="kpi-label">Career</span>
           <span className="kpi-value">{p.careerAvg.toFixed(0)}</span>
-          <span className="kpi-sub">{p.games} rated games</span>
+          <span className="kpi-sub">
+            {p.games} rated {scope}
+          </span>
         </div>
         {p.winRate !== null && (
           <div className="kpi">
@@ -97,7 +196,8 @@ function ProfileBody({ p, onOpenMatch }: { p: Profile; onOpenMatch: (logId: numb
             <span className="kpi-sub">ties excluded</span>
           </div>
         )}
-        {p.extras.map((e) => (
+        {/* Career records span every kind of game, so they only show unfiltered. */}
+        {p.filter === null && p.extras.map((e) => (
           <div className="kpi" key={e.label} title={e.hint ?? undefined}>
             <span className="kpi-label">{e.label}</span>
             <span className="kpi-value">{e.value}</span>
@@ -105,6 +205,8 @@ function ProfileBody({ p, onOpenMatch }: { p: Profile; onOpenMatch: (logId: numb
           </div>
         ))}
       </section>
+
+      <KindSplit split={p.contexts} active={p.filter} onKind={onKind} />
 
       <Components items={p.components} formWindow={Math.min(p.formWindow, p.games)} />
 
@@ -195,7 +297,13 @@ function GameList(props: { title: string; games: GameRef[]; onOpen: (logId: numb
                     {name ?? <span className="muted">unknown</span>}
                   </td>
                   <td>{g.result && <span className={`result result-${g.result}`}>{g.result}</span>}</td>
-                  <td>{g.league && <span className="badge badge-league">{g.league.toUpperCase()}</span>}</td>
+                  <td>
+                    {g.kind ? (
+                      <span className={`badge badge-${g.kind}`}>{g.kind === "official" ? "ETF2L" : KIND_LABEL[g.kind].toUpperCase()}</span>
+                    ) : (
+                      g.league && <span className="badge badge-league">{g.league.toUpperCase()}</span>
+                    )}
+                  </td>
                 </tr>
               );
             })}

@@ -1,0 +1,165 @@
+.mates-page {
+  padding: 18px var(--gutter) 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: calc(var(--page-w) + 2 * var(--gutter));
+  margin-inline: auto;
+  transition: opacity 120ms ease;
+}
+
+.mates-page.refetching {
+  opacity: 0.6;
+}
+
+.mates-head,
+.mates-table-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.mates-table-head .hint {
+  max-width: 720px;
+  margin-top: 4px;
+}
+
+/* --- teams --- */
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 14px;
+}
+
+.team-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.team-card header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.team-card h3 {
+  font-size: 1.15rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-card header .muted {
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
+.team-stats {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  justify-content: start;
+  gap: 4px 28px;
+  margin: 0;
+}
+
+.team-stats dt {
+  font-size: 0.76rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.team-stats dd {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.team-stats dd .muted {
+  font-weight: 400;
+  font-size: 0.86rem;
+}
+
+.core {
+  list-style: none;
+  margin: 0;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 0.86rem;
+}
+
+.core-name {
+  font-weight: 500;
+}
+
+/* --- teammates table --- */
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.87rem;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.check input {
+  accent-color: var(--accent);
+}
+
+th .sort {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+th .sort:hover:not(:disabled) {
+  background: none;
+  color: var(--text);
+}
+
+th .sort.active {
+  color: var(--text);
+}
+
+.mate-name {
+  font-weight: 500;
+}
+
+.mate-name .dot {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: 1px;
+}
+
+.mate-teams {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delta.up {
+  color: var(--ok);
+}
+
+.delta.down {
+  color: var(--bad);
+}

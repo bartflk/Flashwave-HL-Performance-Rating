@@ -20,6 +20,7 @@ export function SyncStrip() {
   const qc = useQueryClient();
   const [status, setStatus] = useState<Status>({ state: "idle" });
   const [failures, setFailures] = useState(0);
+  const [etf2lError, setEtf2lError] = useState<string | null>(null);
 
   const stats = useQuery({ queryKey: ["index_stats"], queryFn: api.indexStats });
 
@@ -38,6 +39,7 @@ export function SyncStrip() {
         onProgress: (p) => {
           setStatus({ state: "running", progress: p });
           if (p.kind === "fetchFailed") setFailures((n) => n + 1);
+          if (p.kind === "etf2lFailed") setEtf2lError(p.error);
           if (p.kind === "fetching" && p.done > 0 && p.done % REFRESH_EVERY_N_FETCHES === 0) {
             void qc.invalidateQueries({ queryKey: ["matches"] });
           }
@@ -48,6 +50,8 @@ export function SyncStrip() {
           void qc.invalidateQueries({ queryKey: ["index_stats"] });
           void qc.invalidateQueries({ queryKey: ["profile"] });
           void qc.invalidateQueries({ queryKey: ["match"] });
+          void qc.invalidateQueries({ queryKey: ["teammates"] });
+          void qc.invalidateQueries({ queryKey: ["context_counts"] });
         },
         onError: (e) => setStatus({ state: "error", message: e.message }),
       })
@@ -64,6 +68,7 @@ export function SyncStrip() {
 
   async function start() {
     setFailures(0);
+    setEtf2lError(null);
     setStatus({ state: "running", progress: null });
     try {
       await api.syncStart(false);
@@ -86,7 +91,7 @@ export function SyncStrip() {
               </span>
               <span className="sep">·</span>
               <span>
-                <strong>{s.officials}</strong> ETF2L official
+                <strong>{s.officials}</strong> official{s.officials === 1 ? "" : "s"}
               </span>
               {s.pending > 0 && !running && (
                 <>
@@ -117,6 +122,11 @@ export function SyncStrip() {
               : `Fetched ${status.result.fetched} match${status.result.fetched === 1 ? "" : "es"}.`}
           {status.result.failed > 0 && (
             <span className="error"> {status.result.failed} failed and will be retried next sync.</span>
+          )}
+          {etf2lError && (
+            <span className="warn-text" title={etf2lError}>
+              {" "}ETF2L could not be reached; officials were classified from what is already stored.
+            </span>
           )}
         </p>
       )}
@@ -159,6 +169,16 @@ function ProgressLine({ progress, failures }: { progress: Progress | null; failu
       case "rating":
         fraction = progress.total > 0 ? progress.done / progress.total : 1;
         label = `Rating ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()} matches`;
+        break;
+      case "etf2l":
+        fraction = progress.total > 0 ? progress.done / progress.total : null;
+        label =
+          progress.total === 0
+            ? "Checking ETF2L…"
+            : `ETF2L officials ${progress.done} of ${progress.total}`;
+        break;
+      case "etf2lFailed":
+        label = "ETF2L could not be reached; carrying on without it.";
         break;
     }
   }

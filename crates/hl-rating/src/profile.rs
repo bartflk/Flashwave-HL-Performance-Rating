@@ -20,6 +20,8 @@ pub struct HistoryRow {
     pub map: Option<String>,
     pub title: Option<String>,
     pub league: Option<String>,
+    /// `official`, `scrim` or `pug`.
+    pub kind: Option<String>,
     pub result: Option<String>,
     pub rating: Rating,
 }
@@ -45,6 +47,20 @@ pub struct Profile {
     pub rolling_window: usize,
     /// Class-specific totals the caller fills in (the sniper duel record, ...).
     pub extras: Vec<Extra>,
+    /// The same class split by kind of game, always over every game, so the
+    /// split stays visible while the rest of the profile is filtered.
+    pub contexts: Vec<ContextSplit>,
+    /// The kind of game the profile is filtered to, if any.
+    pub filter: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContextSplit {
+    pub kind: String,
+    pub games: usize,
+    pub avg: f64,
+    pub win_rate: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -57,6 +73,7 @@ pub struct TrendPoint {
     /// Rolling average ending at this game; `None` until the window fills.
     pub rolling: Option<f64>,
     pub result: Option<String>,
+    pub kind: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -81,6 +98,7 @@ pub struct GameRef {
     pub map: Option<String>,
     pub title: Option<String>,
     pub league: Option<String>,
+    pub kind: Option<String>,
     pub result: Option<String>,
     pub score: f64,
 }
@@ -119,13 +137,11 @@ pub fn build(class: TfClass, mut rows: Vec<HistoryRow>) -> Option<Profile> {
             rolling: (i + 1 >= ROLLING_WINDOW)
                 .then(|| round1(mean(&scores[i + 1 - ROLLING_WINDOW..=i]))),
             result: r.result.clone(),
+            kind: r.kind.clone(),
         })
         .collect();
 
-    let decided: Vec<&HistoryRow> = rows.iter().filter(|r| matches!(r.result.as_deref(), Some("W" | "L"))).collect();
-    let win_rate = (!decided.is_empty()).then(|| {
-        round1(decided.iter().filter(|r| r.result.as_deref() == Some("W")).count() as f64 / decided.len() as f64 * 100.0)
-    });
+    let win_rate = win_rate(&rows);
 
     let mut by_score: Vec<&HistoryRow> = rows.iter().collect();
     by_score.sort_by(|a, b| b.rating.score.total_cmp(&a.rating.score));
@@ -145,7 +161,32 @@ pub fn build(class: TfClass, mut rows: Vec<HistoryRow>) -> Option<Profile> {
         form_window: FORM_WINDOW,
         rolling_window: ROLLING_WINDOW,
         extras: Vec::new(),
+        contexts: Vec::new(),
+        filter: None,
     })
+}
+
+/// Ties do not count towards a win rate; `None` with no decided games.
+fn win_rate(rows: &[HistoryRow]) -> Option<f64> {
+    let decided = rows.iter().filter(|r| matches!(r.result.as_deref(), Some("W" | "L"))).count();
+    let won = rows.iter().filter(|r| r.result.as_deref() == Some("W")).count();
+    (decided > 0).then(|| round1(won as f64 / decided as f64 * 100.0))
+}
+
+/// Games, average and win rate per kind of game, in a fixed order.
+pub fn context_splits(rows: &[HistoryRow]) -> Vec<ContextSplit> {
+    ["official", "scrim", "pug"]
+        .into_iter()
+        .filter_map(|kind| {
+            let of: Vec<HistoryRow> = rows.iter().filter(|r| r.kind.as_deref() == Some(kind)).cloned().collect();
+            (!of.is_empty()).then(|| ContextSplit {
+                kind: kind.to_string(),
+                games: of.len(),
+                avg: round1(mean(&of.iter().map(|r| r.rating.score).collect::<Vec<_>>())),
+                win_rate: win_rate(&of),
+            })
+        })
+        .collect()
 }
 
 /// Per component: where the player sits recently and over their career.
@@ -204,6 +245,7 @@ fn game_ref(r: &HistoryRow) -> GameRef {
         map: r.map.clone(),
         title: r.title.clone(),
         league: r.league.clone(),
+        kind: r.kind.clone(),
         result: r.result.clone(),
         score: r.rating.score,
     }
@@ -237,6 +279,7 @@ mod tests {
             map: None,
             title: None,
             league: None,
+            kind: Some(if i % 2 == 0 { "scrim" } else { "pug" }.to_string()),
             result: Some(result.to_string()),
             rating: Rating {
                 class: TfClass::Sniper,
@@ -276,6 +319,15 @@ mod tests {
     fn ties_do_not_count_towards_win_rate() {
         let rows = vec![row(1, 50.0, "W"), row(2, 50.0, "L"), row(3, 50.0, "T")];
         assert_eq!(build(TfClass::Sniper, rows).unwrap().win_rate, Some(50.0));
+    }
+
+    #[test]
+    fn splits_by_kind_in_a_fixed_order() {
+        let rows = vec![row(1, 40.0, "L"), row(2, 80.0, "W"), row(3, 60.0, "W"), row(4, 60.0, "T")];
+        let s = context_splits(&rows);
+        assert_eq!(s.iter().map(|c| c.kind.as_str()).collect::<Vec<_>>(), ["scrim", "pug"]);
+        assert_eq!((s[0].games, s[0].avg, s[0].win_rate), (2, 70.0, Some(100.0)));
+        assert_eq!((s[1].games, s[1].avg, s[1].win_rate), (2, 50.0, Some(50.0)));
     }
 
     #[test]

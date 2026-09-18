@@ -49,10 +49,16 @@ impl Throttled {
 
     /// GET a URL and return the body as text, retrying transient failures.
     pub async fn get_text(&self, url: &str) -> Result<String> {
+        self.get_text_opt(url).await?.with_context(|| format!("{url}: HTTP 404 Not Found"))
+    }
+
+    /// As [`get_text`](Self::get_text), but a 404 is `None` rather than an error.
+    pub async fn get_text_opt(&self, url: &str) -> Result<Option<String>> {
         let mut last_err = None;
+        let mut wait = Duration::ZERO;
         for attempt in 0..=RETRY_DELAYS.len() {
             if attempt > 0 {
-                tokio::time::sleep(RETRY_DELAYS[attempt - 1]).await;
+                tokio::time::sleep(wait.max(RETRY_DELAYS[attempt - 1])).await;
             }
             self.wait_turn().await;
 
@@ -60,12 +66,22 @@ impl Throttled {
                 Ok(resp) => {
                     let status = resp.status();
                     if status.is_success() {
-                        return resp.text().await.with_context(|| format!("reading body of {url}"));
+                        return resp.text().await.map(Some).with_context(|| format!("reading body of {url}"));
                     }
-                    // 404 and friends will not improve on retry.
+                    if status.as_u16() == 404 {
+                        return Ok(None);
+                    }
+                    // 400s other than rate limiting will not improve on retry.
                     if status.is_client_error() && status.as_u16() != 429 {
                         bail!("{url}: HTTP {status}");
                     }
+                    // A rate limit says how long to back off; honour it, within reason.
+                    wait = resp
+                        .headers()
+                        .get(reqwest::header::RETRY_AFTER)
+                        .and_then(|v| v.to_str().ok()?.parse::<u64>().ok())
+                        .map(|s| Duration::from_secs(s.min(90)))
+                        .unwrap_or(Duration::ZERO);
                     tracing::warn!(url, %status, attempt, "transient HTTP failure");
                     last_err = Some(anyhow::anyhow!("{url}: HTTP {status}"));
                 }

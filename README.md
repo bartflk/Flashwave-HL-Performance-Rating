@@ -6,12 +6,14 @@ per class against class-relative baselines.
 
 See [PLAN.md](PLAN.md) for the full design and milestone plan.
 
-**Status: M4** — syncs your full match history from trends.tf and logs.tf,
+**Status: M5** — syncs your full match history from trends.tf and logs.tf,
 rates every performance against the players you actually face, and shows it
 two ways: a match page with the nine class matchups, a round timeline and the
 scoreboard; and a profile per class with form, trend, and which parts of your
 game are strong or weak. Your demos are linked to their matches, and any moment on
-a match's timeline can be jumped to in TF2.
+a match's timeline can be jumped to in TF2. Every match is sorted into an
+ETF2L official, a scrim or a pug, the profile splits by the three, and a
+Teammates page shows your ETF2L teams and who you play with most.
 
 ## Prerequisites
 

@@ -6,6 +6,8 @@ import type {
   AppConfig,
   AppStatus,
   CmdError,
+  ContextCounts,
+  ContextKind,
   DemoIndexSummary,
   DemoStats,
   IndexStats,
@@ -17,6 +19,7 @@ import type {
   StvFetched,
   StvProgress,
   SyncDone,
+  Teammates,
   TfPathInfo,
 } from "./types";
 
@@ -49,7 +52,11 @@ const realApi = {
   syncStart: (full: boolean) => invoke<void>("sync_start", { full }),
   reprocessStart: () => invoke<void>("reprocess_start"),
   getMatch: (logId: number) => invoke<MatchDetail | null>("get_match", { logId }),
-  getProfile: (cls: string | null) => invoke<ProfileResponse>("get_profile", { class: cls }),
+  getProfile: (cls: string | null, kind: ContextKind | null = null) =>
+    invoke<ProfileResponse>("get_profile", { class: cls, kind }),
+  /** `all` includes pugs; otherwise officials and scrims only. */
+  getTeammates: (all: boolean) => invoke<Teammates>("get_teammates", { all }),
+  contextCounts: () => invoke<ContextCounts>("context_counts"),
   /** Opens in the system browser, never inside the app window. */
   openExternal: (url: string) => openUrl(url),
   copyText: (text: string) => writeText(text),

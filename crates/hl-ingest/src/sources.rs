@@ -1,4 +1,4 @@
-//! Clients for trends.tf and logs.tf.
+//! Clients for trends.tf, logs.tf, demos.tf and ETF2L.
 //!
 //! Each returns both a typed view and the verbatim JSON, because the verbatim
 //! JSON is what gets stored: parsing rules change, source rows don't.
@@ -39,6 +39,7 @@ pub struct Sources {
     trends: Throttled,
     logstf: Throttled,
     demostf: Throttled,
+    etf2l: Throttled,
     downloads: reqwest::Client,
 }
 
@@ -63,6 +64,8 @@ impl Sources {
             trends: Throttled::new(Duration::from_millis(1000))?,
             logstf: Throttled::new(Duration::from_millis(1000))?,
             demostf: Throttled::new(Duration::from_millis(1000))?,
+            // ETF2L does publish a limit: 60 requests a minute. Stay under it.
+            etf2l: Throttled::new(Duration::from_millis(1500))?,
             downloads: download_client()?,
         })
     }
@@ -137,6 +140,11 @@ impl Sources {
 }
 
 impl Sources {
+    /// GET a path on the ETF2L v2 API; `None` when it does not exist.
+    pub async fn etf2l_get(&self, path: &str) -> Result<Option<String>> {
+        self.etf2l.get_text_opt(&format!("https://api-v2.etf2l.org{path}")).await
+    }
+
     pub async fn demostf_meta(&self, demo_id: i64) -> Result<DemosTfMeta> {
         let body = self.demostf.get_text(&format!("https://api.demos.tf/demos/{demo_id}")).await?;
         serde_json::from_str(&body).with_context(|| format!("parsing demos.tf metadata for {demo_id}"))

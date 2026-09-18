@@ -58,6 +58,14 @@ pub fn run() {
                 let handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
                     let Ok(cfg) = db.get_config().await else { return };
+                    // Classify matches from stored data first: instant, and it
+                    // brings a database from before M5 up to date without a sync.
+                    if let Some(me) = cfg.steamid {
+                        match hl_ingest::etf2l::derive_context(&db, me).await {
+                            Ok(s) => tracing::info!(officials = s.officials, scrims = s.scrims, pugs = s.pugs, "matches classified"),
+                            Err(e) => tracing::warn!(error = %format!("{e:#}"), "context pass failed"),
+                        }
+                    }
                     let Some(tf) = cfg.tf_path else { return };
                     match hl_ingest::index_demos(&db, std::path::Path::new(&tf)).await {
                         Ok(s) => {
@@ -92,6 +100,8 @@ pub fn run() {
             sync_commands::list_matches,
             sync_commands::get_match,
             sync_commands::get_profile,
+            sync_commands::get_teammates,
+            sync_commands::context_counts,
             sync_commands::scan_demos,
             sync_commands::demo_stats,
             sync_commands::fetch_stv,

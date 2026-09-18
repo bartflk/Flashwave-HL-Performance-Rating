@@ -22,6 +22,8 @@ pub struct HistoryDbRow {
     pub title: Option<String>,
     pub league: Option<String>,
     pub team: String,
+    /// `official`, `scrim` or `pug`; `None` before the context pass has run.
+    pub kind: Option<String>,
     pub red_score: Option<i64>,
     pub blue_score: Option<i64>,
     pub score: f64,
@@ -144,12 +146,13 @@ impl Db {
         version: &str,
     ) -> Result<Vec<HistoryDbRow>> {
         let rows = sqlx::query(
-            "SELECT r.log_id, m.played_at, m.map, m.title, i.league, p.team,
+            "SELECT r.log_id, m.played_at, m.map, m.title, i.league, p.team, c.kind,
                     m.red_score, m.blue_score, r.score, r.minutes, r.parts
              FROM rating r
              JOIN match m        ON m.log_id = r.log_id
              JOIN log_index i    ON i.log_id = r.log_id
              JOIN match_player p ON p.log_id = r.log_id AND p.account_id = r.account_id
+             LEFT JOIN match_context c ON c.log_id = r.log_id
              WHERE r.account_id = ?1 AND r.class = ?2 AND r.model_version = ?3
                AND i.superseded_by IS NULL",
         )
@@ -167,6 +170,7 @@ impl Db {
                 title: r.get("title"),
                 league: r.get("league"),
                 team: r.get("team"),
+                kind: r.get("kind"),
                 red_score: r.get("red_score"),
                 blue_score: r.get("blue_score"),
                 score: r.get("score"),

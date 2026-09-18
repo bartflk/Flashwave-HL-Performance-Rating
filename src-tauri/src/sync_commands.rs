@@ -72,6 +72,17 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                 let _ = emitter.emit(EV_PROGRESS, p);
             })
             .await?;
+            // ETF2L is context, not the core: if it is down, the sync still succeeds.
+            let etf2l = hl_ingest::etf2l::fetch(&db, &sources, me, |done, total| {
+                let _ = emitter.emit(EV_PROGRESS, Progress::Etf2l { done, total });
+            })
+            .await;
+            if let Err(e) = etf2l {
+                let error = format!("{e:#}");
+                tracing::warn!(%error, "ETF2L fetch failed");
+                let _ = emitter.emit(EV_PROGRESS, Progress::Etf2lFailed { error });
+            }
+            hl_ingest::etf2l::derive_context(&db, me).await?;
             // Every sync ends by re-rating: new matches shift the baselines.
             let (weights, _) = hl_rating::Weights::load(&weights_path);
             hl_ingest::rate_all(&db, Some(me), &weights, |p: Progress| {
@@ -115,6 +126,9 @@ pub async fn reprocess_start(app: AppHandle, state: State<'_, AppState>) -> CmdR
             })
             .await?;
             let me = db.get_me().await?;
+            if let Some(me) = me {
+                hl_ingest::etf2l::derive_context(&db, me).await?;
+            }
             let (weights, _) = hl_rating::Weights::load(&weights_path);
             hl_ingest::rate_all(&db, me, &weights, |p: Progress| {
                 let _ = emitter.emit(EV_PROGRESS, p);
@@ -150,14 +164,14 @@ pub async fn index_stats(state: State<'_, AppState>) -> CmdResult<IndexStats> {
 pub async fn list_matches(
     state: State<'_, AppState>,
     format: Option<String>,
-    officials_only: bool,
+    kind: Option<String>,
     limit: i64,
     offset: i64,
 ) -> CmdResult<MatchPage> {
     let me = state.db.get_me().await?;
     let filter = MatchFilter {
         format,
-        officials_only,
+        kind,
         // Bound the page size so a bad argument cannot pull the whole table.
         limit: limit.clamp(1, 500),
         offset: offset.max(0),
@@ -169,18 +183,25 @@ pub async fn list_matches(
 ///
 /// Weights are re-read on every call, so edits to `weights.toml` show up the
 /// next time a match is opened.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MatchResponse {
+    #[serde(flatten)]
+    detail: hl_rating::MatchDetail,
+    /// Official, scrim or pug, with the ETF2L side of an official.
+    context: Option<hl_db::MatchContext>,
+}
+
 #[tauri::command]
-pub async fn get_match(
-    state: State<'_, AppState>,
-    log_id: i64,
-) -> CmdResult<Option<hl_rating::MatchDetail>> {
+pub async fn get_match(state: State<'_, AppState>, log_id: i64) -> CmdResult<Option<MatchResponse>> {
     let me = state.db.get_me().await?;
     let (weights, warning) = hl_rating::Weights::load(&state.db_path.with_file_name("weights.toml"));
-    let mut detail = hl_ingest::match_detail(&state.db, log_id, me, &weights).await?;
-    if let Some(d) = detail.as_mut() {
-        d.weights_warning = warning;
-    }
-    Ok(detail)
+    let Some(mut detail) = hl_ingest::match_detail(&state.db, log_id, me, &weights).await? else {
+        return Ok(None);
+    };
+    detail.weights_warning = warning;
+    let context = state.db.match_context(log_id).await?;
+    Ok(Some(MatchResponse { detail, context }))
 }
 
 #[derive(Serialize)]
@@ -196,6 +217,7 @@ pub struct ProfileResponse {
 pub async fn get_profile(
     state: State<'_, AppState>,
     class: Option<String>,
+    kind: Option<String>,
 ) -> CmdResult<ProfileResponse> {
     let me = state
         .db
@@ -208,10 +230,29 @@ pub async fn get_profile(
         None => None,
     };
     let profile = match chosen {
-        Some(c) => hl_ingest::load_profile(&state.db, me, c).await?,
+        Some(c) => hl_ingest::load_profile(&state.db, me, c, kind.as_deref()).await?,
         None => None,
     };
     Ok(ProfileResponse { classes, profile })
+}
+
+// ---- teammates and context ---------------------------------------------------
+
+/// Your ETF2L teams and regular teammates. `all` includes pugs.
+#[tauri::command]
+pub async fn get_teammates(state: State<'_, AppState>, all: bool) -> CmdResult<hl_ingest::teammates::Teammates> {
+    let me = state
+        .db
+        .get_me()
+        .await?
+        .ok_or_else(|| CmdError::new("missing_config", "Set your SteamID first."))?;
+    let scope = if all { hl_ingest::teammates::Scope::All } else { hl_ingest::teammates::Scope::Team };
+    Ok(hl_ingest::teammates::load(&state.db, me, scope).await?)
+}
+
+#[tauri::command]
+pub async fn context_counts(state: State<'_, AppState>) -> CmdResult<hl_db::ContextCounts> {
+    Ok(state.db.context_counts(hl_ingest::etf2l::PLAYER_KEY).await?)
 }
 
 // ---- demos -----------------------------------------------------------------

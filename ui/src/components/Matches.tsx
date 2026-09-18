@@ -1,16 +1,19 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { errorMessage, type MatchSummary } from "../api/types";
+import { errorMessage, type ContextKind, type MatchSummary } from "../api/types";
 import { capitalize, formatDate, splitMap } from "../lib/format";
+import { ContextBadge } from "./ContextBadge";
 
 const PAGE = 50;
 
-type View = "highlander" | "officials" | "all";
+type View = "highlander" | ContextKind | "all";
 
-const VIEWS: Array<{ id: View; label: string }> = [
+const VIEWS: Array<{ id: View; label: string; hint?: string }> = [
   { id: "highlander", label: "Highlander" },
-  { id: "officials", label: "ETF2L officials" },
+  { id: "official", label: "Officials", hint: "ETF2L officials" },
+  { id: "scrim", label: "Scrims", hint: "Team games: most of your side are regular teammates or your ETF2L roster" },
+  { id: "pug", label: "Pugs", hint: "Pugs, lobbies and mixes: a different team every game" },
   { id: "all", label: "All formats" },
 ];
 
@@ -18,9 +21,10 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
   const [view, setView] = useState<View>("highlander");
   const [pages, setPages] = useState(1);
 
+  const kind = view === "official" || view === "scrim" || view === "pug" ? view : null;
   const query = {
     format: view === "all" ? null : "highlander",
-    officialsOnly: view === "officials",
+    kind,
     limit: PAGE * pages,
     offset: 0,
   };
@@ -45,6 +49,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
               key={v.id}
               role="tab"
               aria-selected={view === v.id}
+              title={v.hint}
               className={view === v.id ? "seg active" : "seg"}
               onClick={() => {
                 setView(v.id);
@@ -137,7 +142,11 @@ function MatchRow({ m, onOpen }: { m: MatchSummary; onOpen: (logId: number) => v
       <td className="num">{me ? me.dmg.toLocaleString() : ""}</td>
       <td className="num">{dpm ?? ""}</td>
       <td className="title-cell">
-        {m.league && <span className="badge badge-league">{m.league.toUpperCase()}</span>}
+        {m.context ? (
+          <ContextBadge c={m.context} />
+        ) : (
+          m.league && <span className="badge badge-league">{m.league.toUpperCase()}</span>
+        )}
         {m.hasDemo && (
           <span className="badge badge-pov" title="Your recording of this match is on this machine">
             POV
@@ -148,7 +157,13 @@ function MatchRow({ m, onOpen }: { m: MatchSummary; onOpen: (logId: number) => v
             STV
           </span>
         )}
-        <span className="muted">{m.title ?? `log ${m.logId}`}</span>
+        {m.context?.oppName ? (
+          <span title={m.title ?? undefined}>
+            <span className="muted">vs</span> {m.context.oppName}
+          </span>
+        ) : (
+          <span className="muted">{m.title ?? `log ${m.logId}`}</span>
+        )}
       </td>
     </tr>
   );

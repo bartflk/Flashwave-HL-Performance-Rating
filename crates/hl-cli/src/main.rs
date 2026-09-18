@@ -30,9 +30,12 @@ COMMANDS:
                            Matchups for one stored match
     rate                   Rebuild baselines and rate every stored performance
     demos                  Scan the TF2 folder for demos and link them to matches
-    profile [CLASS] [--json]
+    etf2l [--offline]      Fetch ETF2L officials and classify every match (official/scrim/pug)
+    teammates [--all] [--json]
+                           Your teams and regular teammates (officials and scrims unless --all)
+    profile [CLASS] [--official|--scrim|--pug] [--json]
                            Your rating profile (defaults to your most-rated class)
-    matches [N] [--all] [--officials]
+    matches [N] [--all] [--official|--scrim|--pug]
                            List recent matches (Highlander only unless --all)
 
 OPTIONS:
@@ -136,7 +139,11 @@ async fn main() -> Result<()> {
             let summary = hl_ingest::sync(&db, &sources, me, &opts, print_progress).await?;
             println!();
             println!("fetched {} log(s), {} failed", summary.fetched, summary.failed);
-            print_stats(&summary.stats);
+            if let Err(e) = hl_ingest::etf2l::fetch(&db, &sources, me, |_, _| {}).await {
+                println!("ETF2L unavailable, classifying from stored data: {e:#}");
+            }
+            classify(&db, me).await?;
+            print_stats(&db.index_stats().await?);
             rate(&db, &db_path).await
         }
 
@@ -146,6 +153,9 @@ async fn main() -> Result<()> {
             let stats = hl_ingest::reprocess(&db, print_progress).await?;
             println!();
             println!("rebuilt in {:.1}s", started.elapsed().as_secs_f64());
+            if let Some(me) = db.get_me().await? {
+                classify(&db, me).await?;
+            }
             print_stats(&stats);
             rate(&db, &db_path).await
         }
@@ -183,7 +193,8 @@ async fn main() -> Result<()> {
                     TfClass::parse(&top.0)?
                 }
             };
-            let Some(p) = hl_ingest::load_profile(&db, me, class).await? else {
+            let kind = kind_flag(rest);
+            let Some(p) = hl_ingest::load_profile(&db, me, class, kind).await? else {
                 println!("No rated {} games.", class.display_name());
                 return Ok(());
             };
@@ -211,6 +222,15 @@ async fn main() -> Result<()> {
             for e in &p.extras {
                 println!("{:<24} {}", e.label, e.value);
             }
+            for c in &p.contexts {
+                println!(
+                    "{:<24} {:>5.1}   {} games{}",
+                    format!("{}s", c.kind),
+                    c.avg,
+                    c.games,
+                    c.win_rate.map(|w| format!(", {w:.0}% won")).unwrap_or_default()
+                );
+            }
             println!("\ncomponent         weight    form    career  recent avg");
             for c in &p.components {
                 println!(
@@ -229,6 +249,69 @@ async fn main() -> Result<()> {
             Ok(())
         }
 
+        ["etf2l", rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?.context("no owner set")?;
+            if !rest.contains(&"--offline") {
+                let sources = Sources::new()?;
+                let s = hl_ingest::etf2l::fetch(&db, &sources, me, |done, total| {
+                    if total > 0 && (done % 10 == 0 || done == total) {
+                        eprintln!("  ETF2L matches {done}/{total}");
+                    }
+                })
+                .await?;
+                println!("ETF2L player {:?}: fetched {} matches, {} failed", s.player_id, s.fetched, s.failed);
+            }
+            classify(&db, me).await
+        }
+
+        ["teammates", rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?.context("no owner set")?;
+            let scope = if rest.contains(&"--all") { hl_ingest::teammates::Scope::All } else { hl_ingest::teammates::Scope::Team };
+            let t = hl_ingest::teammates::load(&db, me, scope).await?;
+            if rest.contains(&"--json") {
+                println!("{}", serde_json::to_string_pretty(&t)?);
+                return Ok(());
+            }
+            println!("{} games
+
+teams", t.games);
+            for team in &t.teams {
+                println!(
+                    "  {:<28} {} – {}  {:>3} games ({} official)  {}-{}  you {}",
+                    team.name,
+                    fmt_date(team.first_played),
+                    fmt_date(team.last_played),
+                    team.games,
+                    team.officials,
+                    team.wins,
+                    team.losses,
+                    team.my_avg.map(|a| format!("{a:.1}")).unwrap_or("-".into())
+                );
+                let core: Vec<String> = team.core.iter().map(|m| format!("{} ({})", m.name, m.games)).collect();
+                println!("      {}", core.join(", "));
+            }
+            println!("
+teammates (≥{} games)", t.min_games);
+            for m in t.teammates.iter().take(40) {
+                println!(
+                    "  {:<22} {:<9} {:>4} games {:>3} off  {:>3}-{:<3} last {}  with {:>5} ({:>5}) {}",
+                    m.name.chars().take(22).collect::<String>(),
+                    m.main_class.as_deref().unwrap_or("-"),
+                    m.games,
+                    m.officials,
+                    m.wins,
+                    m.losses,
+                    fmt_date(m.last_played),
+                    m.my_avg_with.map(|a| format!("{a:.1}")).unwrap_or("-".into()),
+                    m.my_avg_delta.map(|a| format!("{a:+.1}")).unwrap_or("-".into()),
+                    m.teams.join("/")
+                );
+            }
+            Ok(())
+        }
+
         ["stats"] => {
             let db = Db::connect(&db_path).await?;
             print_stats(&db.index_stats().await?);
@@ -241,7 +324,7 @@ async fn main() -> Result<()> {
             let me = db.get_me().await?;
             let filter = MatchFilter {
                 format: (!rest.contains(&"--all")).then(|| "highlander".to_string()),
-                officials_only: rest.contains(&"--officials"),
+                kind: kind_flag(rest).map(str::to_string),
                 limit,
                 offset: 0,
             };
@@ -389,6 +472,8 @@ fn print_progress(p: Progress) {
         Progress::FetchFailed { log_id, error } => println!("\n  ! log {log_id}: {error}"),
         Progress::Reprocessing { done, total } => print!("\rreprocessing {done}/{total}          "),
         Progress::Rating { done, total } => print!("\rrating {done}/{total}          "),
+        Progress::Etf2l { done, total } => print!("\rETF2L matches {done}/{total}          "),
+        Progress::Etf2lFailed { error } => println!("\n  ! ETF2L: {error}"),
     }
     let _ = std::io::stdout().flush();
 }
@@ -444,6 +529,21 @@ async fn rate(db: &Db, db_path: &std::path::Path) -> Result<()> {
         s.logs,
         s.mine,
         started.elapsed().as_secs_f64()
+    );
+    Ok(())
+}
+
+/// `--official`, `--scrim` or `--pug`, as a match context kind.
+fn kind_flag<'a>(args: &[&str]) -> Option<&'a str> {
+    ["official", "scrim", "pug"].into_iter().find(|k| args.iter().any(|a| a.strip_prefix("--") == Some(*k)))
+}
+
+/// Run the context pass and say what it found.
+async fn classify(db: &Db, me: SteamId) -> Result<()> {
+    let c = hl_ingest::etf2l::derive_context(db, me).await?;
+    println!(
+        "officials {} ({} found by roster), scrims {}, pugs {}",
+        c.officials, c.roster_officials, c.scrims, c.pugs
     );
     Ok(())
 }

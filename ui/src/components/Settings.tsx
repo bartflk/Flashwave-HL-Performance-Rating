@@ -29,6 +29,7 @@ export function Settings({
 
   return (
     <div className="content">
+      <Etf2lPanel />
       <DemosPanel />
       <div className="panel">
         <h2>Setup</h2>
@@ -133,6 +134,57 @@ function DemosPanel() {
         )}
       </div>
       {scan.error && <p className="error" style={{ marginTop: 10 }}>{scan.error}</p>}
+    </div>
+  );
+}
+
+/** What ETF2L added: officials, and how every match was classified. */
+function Etf2lPanel() {
+  const q = useQuery({ queryKey: ["context_counts"], queryFn: api.contextCounts });
+  const c = q.data;
+  return (
+    <div className="panel">
+      <h2>ETF2L and match types</h2>
+      <p className="hint" style={{ marginTop: 6 }}>
+        Your ETF2L results are fetched on every sync. Each Highlander match you played is then sorted into an
+        official, a scrim (most of your side are regular teammates or your ETF2L roster) or a pug.
+      </p>
+      {c && (
+        <dl className="kv" style={{ marginTop: 14 }}>
+          <dt>ETF2L player</dt>
+          <dd>
+            {c.etf2lPlayer ? (
+              <button className="linkish" onClick={() => void api.openExternal(`https://etf2l.org/forum/user/${c.etf2lPlayer}/`)}>
+                #{c.etf2lPlayer} ↗
+              </button>
+            ) : (
+              <span className="muted">not found yet — sync to look it up</span>
+            )}
+          </dd>
+          <dt>Officials</dt>
+          <dd>
+            {c.officials} logs
+            {c.rosterOfficials > 0 && (
+              <span className="muted"> · {c.rosterOfficials} found by roster that trends.tf had not tagged</span>
+            )}
+          </dd>
+          <dt>Scrims</dt>
+          <dd>{c.scrims}</dd>
+          <dt>Pugs</dt>
+          <dd>{c.pugs}</dd>
+          <dt>Last fetched</dt>
+          <dd>
+            {c.lastFetch ? (
+              <>
+                {new Date(c.lastFetch * 1000).toLocaleString()}{" "}
+                <span className="muted">({c.etf2lMatches} ETF2L matches stored)</span>
+              </>
+            ) : (
+              <span className="muted">never</span>
+            )}
+          </dd>
+        </dl>
+      )}
     </div>
   );
 }
