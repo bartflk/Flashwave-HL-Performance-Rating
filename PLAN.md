@@ -85,16 +85,16 @@ raw stat
 Victim weights are the first thing to tune, and live in TOML so tuning needs no recompile:
 
 ```toml
-[victim_value]        # what killing this class is worth
+[victim_value]        # what killing this class is worth (v2, applied)
 medic       = 3.0
 demoman     = 2.2
 sniper      = 1.8     # denying their picks
+pyro        = 1.5
 heavy       = 1.4
+spy         = 1.3
 soldier     = 1.2
+scout       = 1.15
 engineer    = 1.1
-scout       = 1.0
-pyro        = 0.9
-spy         = 0.9
 ```
 
 A starting point, not a claim. These get replaced by fitted weights once there is enough data — regress round outcome on per-round features and let the numbers argue.
@@ -103,7 +103,7 @@ A starting point, not a claim. These get replaced by fitted weights once there i
 
 Reviewed with function, a Premiership Sniper. The flat table above undervalues two classes, and the real answer depends on the map and the side.
 
-**General table: agreed changes.** This stays the default until the per-map layer exists.
+**General table: applied.** This is now the default in `weights.default.toml`, and it stays the default until the per-map layer exists.
 
 | Class | v1 | v2 | Why |
 |---|---|---|---|
@@ -147,8 +147,10 @@ Lookup order: map+side, then map, then mode+side, then mode, then general. The s
 - **Per side: not possible from logs.tf.** `classkills` covers the whole log, not each round. The log cannot tell a kill made while defending from one made while attacking. The only timed kills are Medic deaths. Per-side values need per-kill events with victim class and time, which means v2 demo parsing, or reading the raw server log instead of the logs.tf summary.
 - **Percentiles blunt a map-wide scale.** Ratings are percentiles against the pool. A multiplier that applies to every Sniper on Vigil only moves Vigil games relative to other maps. If the goal is "a good Vigil game is a good game", per-map baselines may be the better tool than a per-map multiplier. Decide when building it.
 
+**Effect on this account (re-rated after applying):** small. Sniper career stays at 48.8. Recent form goes from 45.0 to 45.2. The Impact kills percentile moves from 44.2 to 44.9, with raw impact up from 13.5 to 14.7 per 10 min. Officials read 51.6, down from 51.8; pugs 46.4, up from 46.2. No best or worst game changes place. Because the rating is a percentile, reweighting only moves you when your mix of victims differs from other Snipers'. Yours barely does.
+
 **Order:**
-1. Apply the v2 general table (a TOML change).
+1. ~~Apply the v2 general table~~: done.
 2. Per-mode and per-map overrides.
 3. Per-side values once kill timing exists (v2 demos).
 
@@ -382,7 +384,7 @@ M1 acceptance: every Highlander log on the account stored, classified, deduplica
 ## 8. Still open
 
 1. ~~Baselines~~ — settled in M3: the other players in your own matches, with you excluded.
-2. **Final impact weights** — the TOML above is a first guess; expect to argue with it. Victim values v2 (Pyro 1.5, Spy 1.3, Scout above Engineer) are agreed but not yet applied; per-map and per-side values are designed in §3.
+2. **Final impact weights** — the TOML above is a first guess; expect to argue with it. Victim values v2 (Pyro 1.5, Spy 1.3, Scout 1.15 above Engineer) are applied; per-map and per-side values are designed in §3.
 3. **Linux demos** — a second machine holds more POV demos. Import path to be designed; the `demoid` route may make it unnecessary.
 4. **Sixes** — detected and stored, excluded from ratings. A later update.
 5. **Verify jump ticks in-game.** The arithmetic is tested end to end (a sidecar killstreak at raw tick 51,212 lands at 50,879 after the 5 s lead), but only TF2 can confirm the demo shows the right moment.

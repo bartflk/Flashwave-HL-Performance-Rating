@@ -153,8 +153,17 @@ mod tests {
     }
 
     #[test]
+    fn v2_values_are_the_defaults() {
+        let w = Weights::default_weights();
+        assert_eq!(w.victim(TfClass::Pyro), 1.5);
+        assert_eq!(w.victim(TfClass::Spy), 1.3);
+        assert!(w.victim(TfClass::Scout) > w.victim(TfClass::Engineer));
+    }
+
+    #[test]
     fn a_missing_class_is_an_error_not_a_zero() {
-        let broken = DEFAULT_TOML.replace("spy      = 0.9", "");
+        let line = DEFAULT_TOML.lines().find(|l| l.starts_with("spy ")).expect("spy has a victim value");
+        let broken = DEFAULT_TOML.replace(line, "");
         assert!(Weights::parse(&broken).is_err());
     }
 
