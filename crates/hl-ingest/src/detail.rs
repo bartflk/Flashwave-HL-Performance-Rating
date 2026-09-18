@@ -23,7 +23,8 @@ pub async fn match_detail(
     let value: serde_json::Value =
         serde_json::from_str(&json).with_context(|| format!("log {log_id} is not valid JSON"))?;
     let log = normalize(log_id, &value)?;
-    let mut detail = build_detail(&log, me, weights);
+    let baseline = crate::rating::load_baseline(db).await?;
+    let mut detail = build_detail(&log, me, weights, &baseline);
 
     if let Some(info) = db.index_info(log_id).await? {
         detail.format = info.format;

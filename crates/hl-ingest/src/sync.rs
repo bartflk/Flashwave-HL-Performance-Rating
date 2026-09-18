@@ -43,6 +43,8 @@ pub enum Progress {
     FetchFailed { log_id: i64, error: String },
     #[serde(rename_all = "camelCase")]
     Reprocessing { done: usize, total: usize },
+    #[serde(rename_all = "camelCase")]
+    Rating { done: usize, total: usize },
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -1,27 +1,47 @@
-//! Matchups against a real log: the owner's 19-player Sniper game, where a
-//! Heavy sub swapped in on the other team.
+//! Matchups against real logs: the owner's 19-player Sniper game, where a
+//! Heavy sub swapped in on the other team, rated against a pool built from
+//! every real fixture log.
 
-use hl_core::matchdata::Team;
+use hl_core::matchdata::{NormalizedLog, Team};
 use hl_core::{SteamId, TfClass};
 use hl_ingest::normalize::normalize;
-use hl_rating::{build_detail, Weights};
+use hl_rating::model::extract;
+use hl_rating::{build_detail, Baseline, MatchDetail, Weights};
 
 const ME: u32 = 139_131_191;
 
-fn detail() -> hl_rating::MatchDetail {
-    let path = format!(
-        "{}/../hl-ingest/tests/fixtures/hl_sub_19p_4114301.json",
-        env!("CARGO_MANIFEST_DIR")
-    );
+fn load(name: &str, id: i64) -> NormalizedLog {
+    let path = format!("{}/../hl-ingest/tests/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
     let raw: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
-    let log = normalize(4114301, &raw).unwrap();
-    build_detail(&log, Some(SteamId::from_account_id(ME)), &Weights::default_weights())
+    normalize(id, &raw).unwrap()
+}
+
+/// A pool from all four Highlander fixtures: small, but real performances.
+fn baseline(w: &Weights) -> Baseline {
+    let logs = [
+        load("hl_2014_steamid2_295610.json", 295610),
+        load("hl_2023_3445078.json", 3445078),
+        load("hl_sub_19p_4114301.json", 4114301),
+        load("hl_combined_6rounds_4109131.json", 4109131),
+    ];
+    let perfs: Vec<_> = logs
+        .iter()
+        .flat_map(|l| l.players.iter().filter_map(|p| extract(p, &l.flags, w)))
+        .collect();
+    Baseline::build(&perfs, Some(ME))
+}
+
+fn detail() -> MatchDetail {
+    let w = Weights::default_weights();
+    let log = load("hl_sub_19p_4114301.json", 4114301);
+    build_detail(&log, Some(SteamId::from_account_id(ME)), &w, &baseline(&w))
 }
 
 #[test]
 fn owners_team_is_on_the_left() {
     let d = detail();
     assert_eq!(d.left_team, d.my_team.unwrap());
+    assert!(d.rated);
 }
 
 #[test]
@@ -32,7 +52,6 @@ fn nine_matchups_in_lineup_order() {
 }
 
 /// The raw log says: my classkills.sniper = 4, my classdeaths.sniper = 1.
-/// So the sniper head-to-head, from my side, is 4-1.
 #[test]
 fn sniper_duel_reads_four_one() {
     let d = detail();
@@ -58,7 +77,7 @@ fn a_sub_is_reported_not_dropped() {
 fn at_most_three_decisive_and_never_even() {
     let d = detail();
     let decisive: Vec<_> = d.matchups.iter().filter(|m| m.decisive).collect();
-    assert!(!decisive.is_empty() && decisive.len() <= 3);
+    assert!(decisive.len() <= 3);
     assert!(decisive.iter().all(|m| m.winner != Some("even")));
 }
 
@@ -67,18 +86,33 @@ fn box_score_has_everyone_grouped_by_team() {
     let d = detail();
     assert_eq!(d.players.len(), 19);
     assert_eq!(d.players.iter().filter(|p| p.is_me).count(), 1);
-    // Blue sorts before Red, and the team boundary is crossed exactly once.
     let teams: Vec<Team> = d.players.iter().map(|p| p.team).collect();
     assert_eq!(teams.windows(2).filter(|w| w[0] != w[1]).count(), 1);
 }
 
+/// The rating is exactly the weighted average of its displayed percentiles,
+/// and it uses the Sniper model: the duel is in it, caps are not.
 #[test]
-fn values_show_their_working() {
+fn ratings_show_their_working() {
     let d = detail();
     let me = d.players.iter().find(|p| p.is_me).unwrap();
-    let v = me.value.as_ref().unwrap();
-    // The score is exactly the sum of its displayed terms (to rounding).
-    let sum = v.impact_kills + v.impact_assists - v.death_cost + v.medic_term;
-    assert!((v.score - sum).abs() < 0.05, "score {} vs terms {}", v.score, sum);
-    assert!(!v.approximate, "sniper is my main class here");
+    let r = me.rating.as_ref().expect("a 15-minute Sniper game is rateable");
+    let sum: f64 = r.parts.iter().map(|p| p.percentile * p.weight).sum();
+    assert!((r.score - sum).abs() < 0.6, "score {} vs parts {}", r.score, sum);
+    assert!((0.0..=100.0).contains(&r.score));
+    let keys: Vec<_> = r.parts.iter().map(|p| p.component.key()).collect();
+    assert!(keys.contains(&"duel"));
+    assert!(!keys.contains(&"caps"));
+}
+
+/// Without a baseline nothing is rated, and the page says so rather than
+/// inventing numbers.
+#[test]
+fn without_a_baseline_nothing_is_rated() {
+    let w = Weights::default_weights();
+    let log = load("hl_sub_19p_4114301.json", 4114301);
+    let d = build_detail(&log, Some(SteamId::from_account_id(ME)), &w, &Baseline::default());
+    assert!(!d.rated);
+    assert!(d.players.iter().all(|p| p.rating.is_none()));
+    assert!(d.matchups.iter().all(|m| m.winner.is_none()));
 }

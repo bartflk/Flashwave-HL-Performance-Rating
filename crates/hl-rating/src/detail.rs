@@ -3,7 +3,7 @@
 //! Orientation: when the owner played, their team is always on the left, so
 //! every matchup reads "us vs them". Otherwise Red is on the left.
 
-use crate::value::{value, Value, MODEL_VERSION};
+use crate::model::{extract, rate, Baseline, Rating, MODEL_VERSION};
 use crate::weights::Weights;
 use hl_core::matchdata::{EventLine, LogFlags, NormalizedLog, PlayerLine, Team};
 use hl_core::{SteamId, TfClass};
@@ -37,6 +37,8 @@ pub struct MatchDetail {
     pub players: Vec<PlayerRow>,
     pub rounds: Vec<RoundRow>,
     pub model_version: &'static str,
+    /// False until baselines exist (first sync or rebuild not yet run).
+    pub rated: bool,
     // Index context, filled in by the caller from `log_index`.
     pub format: Option<String>,
     pub league: Option<String>,
@@ -77,8 +79,10 @@ pub struct Side {
     pub deaths: i64,
     pub assists: i64,
     pub dmg: i64,
-    /// Time-weighted across everyone who played the class for this team.
-    pub value: Value,
+    /// The starter's rating, with its score replaced by the time-weighted
+    /// average across everyone rated on this class for the team. `None` when
+    /// nobody on this class had it as their main class long enough to rate.
+    pub rating: Option<Rating>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -107,7 +111,8 @@ pub struct PlayerRow {
     pub backstabs: i64,
     pub airshots: i64,
     pub cpc: i64,
-    pub value: Option<Value>,
+    /// Rating on the player's main class; `None` if too short to rate.
+    pub rating: Option<Rating>,
     pub is_me: bool,
 }
 
@@ -145,7 +150,7 @@ pub struct EventRow {
     pub point: Option<i64>,
 }
 
-pub fn build(log: &NormalizedLog, me: Option<SteamId>, w: &Weights) -> MatchDetail {
+pub fn build(log: &NormalizedLog, me: Option<SteamId>, w: &Weights, baseline: &Baseline) -> MatchDetail {
     let my_team = me.and_then(|m| log.players.iter().find(|p| p.id == m)).map(|p| p.team);
     let left_team = my_team.unwrap_or(Team::Red);
 
@@ -179,10 +184,11 @@ pub fn build(log: &NormalizedLog, me: Option<SteamId>, w: &Weights) -> MatchDeta
         my_team,
         result,
         left_team,
-        matchups: matchups(log, left_team, me, w),
-        players: players(log, me, w),
+        matchups: matchups(log, left_team, me, w, baseline),
+        players: players(log, me, w, baseline),
         rounds: rounds(log, &names, me),
         model_version: MODEL_VERSION,
+        rated: !baseline.is_empty(),
         format: None,
         league: None,
         etf2l_match_id: None,
@@ -191,18 +197,25 @@ pub fn build(log: &NormalizedLog, me: Option<SteamId>, w: &Weights) -> MatchDeta
     }
 }
 
-fn matchups(log: &NormalizedLog, left: Team, me: Option<SteamId>, w: &Weights) -> Vec<Matchup> {
+fn matchups(
+    log: &NormalizedLog,
+    left: Team,
+    me: Option<SteamId>,
+    w: &Weights,
+    baseline: &Baseline,
+) -> Vec<Matchup> {
     let mut rows: Vec<Matchup> = TfClass::ALL
         .iter()
         .map(|&class| {
-            let l = side(log, left, class, w);
-            let r = side(log, left.other(), class, w);
-            let diff = match (&l, &r) {
-                (Some(l), Some(r)) => Some(round2(l.value.score - r.value.score)),
+            let l = side(log, left, class, w, baseline);
+            let r = side(log, left.other(), class, w, baseline);
+            let score = |s: &Option<Side>| s.as_ref().and_then(|s| s.rating.as_ref()).map(|r| r.score);
+            let diff = match (score(&l), score(&r)) {
+                (Some(a), Some(b)) => Some(round2(a - b)),
                 _ => None,
             };
             let winner = diff.map(|d| {
-                if d.abs() < w.generic.even_margin {
+                if d.abs() < w.general.even_margin {
                     "even"
                 } else if d > 0.0 {
                     "left"
@@ -258,7 +271,7 @@ fn on_class(log: &NormalizedLog, team: Team, class: TfClass) -> Vec<(&PlayerLine
     v
 }
 
-fn side(log: &NormalizedLog, team: Team, class: TfClass, w: &Weights) -> Option<Side> {
+fn side(log: &NormalizedLog, team: Team, class: TfClass, w: &Weights, baseline: &Baseline) -> Option<Side> {
     let players = on_class(log, team, class);
     let (primary, _) = *players.first()?;
 
@@ -271,12 +284,11 @@ fn side(log: &NormalizedLog, team: Team, class: TfClass, w: &Weights) -> Option<
         deaths: 0,
         assists: 0,
         dmg: 0,
-        value: Value::default(),
+        rating: None,
     };
 
-    let mut weighted = 0.0;
-    let mut any_approx = false;
-    let mut first_value: Option<Value> = None;
+    // Everyone rated on this class, weighted by their time on it.
+    let mut rated: Vec<(Rating, i64)> = Vec::new();
     for (p, _) in &players {
         let line = p.classes.iter().find(|c| c.class == class).expect("filtered on class");
         s.time_s += line.time_s;
@@ -284,21 +296,21 @@ fn side(log: &NormalizedLog, team: Team, class: TfClass, w: &Weights) -> Option<
         s.deaths += line.deaths;
         s.assists += line.assists;
         s.dmg += line.dmg;
-        let v = value(p, line, w);
-        weighted += v.score * line.time_s as f64;
-        any_approx |= v.approximate;
-        first_value.get_or_insert(v);
+        if p.main_class() == Some(class) {
+            if let Some(r) = extract(p, &log.flags, w).and_then(|perf| rate(&perf, baseline, w)) {
+                rated.push((r, line.time_s));
+            }
+        }
     }
 
-    // With one player the breakdown is theirs exactly. With subs, keep the
-    // starter's breakdown for display but the time-weighted score for ranking.
-    let mut v = first_value.unwrap_or_default();
-    if players.len() > 1 && s.time_s > 0 {
-        v.score = round2(weighted / s.time_s as f64);
-        v.minutes = round2(s.time_s as f64 / 60.0);
+    let total_t: i64 = rated.iter().map(|(_, t)| t).sum();
+    if total_t > 0 {
+        let weighted = rated.iter().map(|(r, t)| r.score * *t as f64).sum::<f64>() / total_t as f64;
+        // Show the starter's breakdown; rank on the team's time-weighted score.
+        let mut r = rated.into_iter().next().expect("total_t > 0").0;
+        r.score = round1(weighted);
+        s.rating = Some(r);
     }
-    v.approximate |= any_approx;
-    s.value = v;
     Some(s)
 }
 
@@ -323,7 +335,7 @@ fn head_to_head(log: &NormalizedLog, left: Team, class: TfClass) -> Option<(i64,
     Some((count(left)?, count(left.other())?))
 }
 
-fn players(log: &NormalizedLog, me: Option<SteamId>, w: &Weights) -> Vec<PlayerRow> {
+fn players(log: &NormalizedLog, me: Option<SteamId>, w: &Weights, baseline: &Baseline) -> Vec<PlayerRow> {
     let class_order = |c: Option<TfClass>| {
         c.and_then(|c| TfClass::ALL.iter().position(|x| *x == c)).unwrap_or(99)
     };
@@ -361,9 +373,7 @@ fn players(log: &NormalizedLog, me: Option<SteamId>, w: &Weights) -> Vec<PlayerR
                 backstabs: s.backstabs,
                 airshots: s.airshots,
                 cpc: s.cpc,
-                value: main.and_then(|m| {
-                    p.classes.iter().find(|c| c.class == m).map(|line| value(p, line, w))
-                }),
+                rating: extract(p, &log.flags, w).and_then(|perf| rate(&perf, baseline, w)),
                 is_me: me == Some(p.id),
             }
         })
@@ -412,6 +422,10 @@ fn rounds(log: &NormalizedLog, names: &HashMap<SteamId, String>, me: Option<Stea
 
 fn display_name(p: &PlayerLine) -> String {
     p.name.clone().unwrap_or_else(|| p.id.to_steamid3())
+}
+
+fn round1(x: f64) -> f64 {
+    (x * 10.0).round() / 10.0
 }
 
 fn round2(x: f64) -> f64 {

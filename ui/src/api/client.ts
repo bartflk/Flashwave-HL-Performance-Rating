@@ -1,7 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { mockApi } from "./mock";
 import type {
   AppConfig,
   AppStatus,
@@ -10,6 +9,7 @@ import type {
   MatchDetail,
   MatchPage,
   MatchQuery,
+  ProfileResponse,
   Progress,
   SyncDone,
   TfPathInfo,
@@ -38,6 +38,7 @@ const realApi = {
   syncStart: (full: boolean) => invoke<void>("sync_start", { full }),
   reprocessStart: () => invoke<void>("reprocess_start"),
   getMatch: (logId: number) => invoke<MatchDetail | null>("get_match", { logId }),
+  getProfile: (cls: string | null) => invoke<ProfileResponse>("get_profile", { class: cls }),
   /** Opens in the system browser, never inside the app window. */
   openExternal: (url: string) => openUrl(url),
 
@@ -54,4 +55,6 @@ const realApi = {
 
 export type Api = typeof realApi;
 
-export const api: Api = inTauri ? realApi : mockApi;
+// The mock, and the real-match fixtures it carries, load only in a plain
+// browser. Imported dynamically so none of it ships inside the app.
+export const api: Api = inTauri ? realApi : (await import("./mock")).mockApi;

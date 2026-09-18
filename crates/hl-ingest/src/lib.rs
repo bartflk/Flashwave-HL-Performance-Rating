@@ -15,3 +15,5 @@ pub use sync::{reprocess, sync, Progress, SyncOptions, SyncSummary};
 
 pub use detail::match_detail;
 mod detail;
+pub mod rating;
+pub use rating::{load_profile, rate_all, rated_classes, RateSummary};

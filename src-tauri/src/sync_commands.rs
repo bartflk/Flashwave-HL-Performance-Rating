@@ -61,14 +61,25 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
 
     let db = state.db.clone();
     let sources = state.sources.clone();
+    let weights_path = state.db_path.with_file_name("weights.toml");
 
     tauri::async_runtime::spawn(async move {
         let _guard = guard;
         let emitter = app.clone();
         let opts = SyncOptions { full, max_fetch: None };
-        let result = hl_ingest::sync(&db, &sources, me, &opts, |p: Progress| {
-            let _ = emitter.emit(EV_PROGRESS, p);
-        })
+        let result = async {
+            let summary = hl_ingest::sync(&db, &sources, me, &opts, |p: Progress| {
+                let _ = emitter.emit(EV_PROGRESS, p);
+            })
+            .await?;
+            // Every sync ends by re-rating: new matches shift the baselines.
+            let (weights, _) = hl_rating::Weights::load(&weights_path);
+            hl_ingest::rate_all(&db, Some(me), &weights, |p: Progress| {
+                let _ = emitter.emit(EV_PROGRESS, p);
+            })
+            .await?;
+            anyhow::Ok(summary)
+        }
         .await;
 
         match result {
@@ -88,13 +99,24 @@ pub async fn reprocess_start(app: AppHandle, state: State<'_, AppState>) -> CmdR
     let guard = BusyGuard::acquire(&state.busy)
         .ok_or_else(|| CmdError::new("busy", "A sync is already running."))?;
     let db = state.db.clone();
+    let weights_path = state.db_path.with_file_name("weights.toml");
 
     tauri::async_runtime::spawn(async move {
         let _guard = guard;
         let emitter = app.clone();
-        let result = hl_ingest::reprocess(&db, |p: Progress| {
-            let _ = emitter.emit(EV_PROGRESS, p);
-        })
+        let result = async {
+            let stats = hl_ingest::reprocess(&db, |p: Progress| {
+                let _ = emitter.emit(EV_PROGRESS, p);
+            })
+            .await?;
+            let me = db.get_me().await?;
+            let (weights, _) = hl_rating::Weights::load(&weights_path);
+            hl_ingest::rate_all(&db, me, &weights, |p: Progress| {
+                let _ = emitter.emit(EV_PROGRESS, p);
+            })
+            .await?;
+            anyhow::Ok(stats)
+        }
         .await;
 
         match result {
@@ -154,4 +176,35 @@ pub async fn get_match(
         d.weights_warning = warning;
     }
     Ok(detail)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProfileResponse {
+    /// Classes with rated games, most played first: `(class, games)`.
+    pub classes: Vec<(String, i64)>,
+    pub profile: Option<hl_rating::Profile>,
+}
+
+/// The owner's profile on one class, defaulting to their most-rated class.
+#[tauri::command]
+pub async fn get_profile(
+    state: State<'_, AppState>,
+    class: Option<String>,
+) -> CmdResult<ProfileResponse> {
+    let me = state
+        .db
+        .get_me()
+        .await?
+        .ok_or_else(|| CmdError::new("missing_config", "Set your SteamID first."))?;
+    let classes = hl_ingest::rated_classes(&state.db, me).await?;
+    let chosen = match class.or_else(|| classes.first().map(|(c, _)| c.clone())) {
+        Some(c) => Some(hl_core::TfClass::parse(&c)?),
+        None => None,
+    };
+    let profile = match chosen {
+        Some(c) => hl_ingest::load_profile(&state.db, me, c).await?,
+        None => None,
+    };
+    Ok(ProfileResponse { classes, profile })
 }

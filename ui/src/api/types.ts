@@ -105,7 +105,8 @@ export type Progress =
   | { kind: "indexed"; trendsRows: number; logstfRows: number; superseded: number }
   | { kind: "fetching"; done: number; total: number; logId: number }
   | { kind: "fetchFailed"; logId: number; error: string }
-  | { kind: "reprocessing"; done: number; total: number };
+  | { kind: "reprocessing"; done: number; total: number }
+  | { kind: "rating"; done: number; total: number };
 
 /** Sent once on `sync://done`. */
 export interface SyncDone {
@@ -138,16 +139,25 @@ export interface LogFlags {
   hr: boolean;
 }
 
-/** A class value with its working shown. Every term is per 10 minutes. */
-export interface Value {
+/** One component of a rating. `percentile` is already flipped for
+ *  lower-is-better components, so higher is always better. */
+export interface Part {
+  component: string;
+  label: string;
+  unit: string;
+  raw: number;
+  percentile: number;
+  /** Share of the rating, 0-1. */
+  weight: number;
+}
+
+/** 0-100: the weighted average of the component percentiles, measured against
+ *  every other player's performances on the class in your stored matches. */
+export interface Rating {
+  class: string;
   score: number;
   minutes: number;
-  impactKills: number;
-  impactAssists: number;
-  deathCost: number;
-  medicTerm: number;
-  /** Kills could not be split by victim class, so they were weighted as average. */
-  approximate: boolean;
+  parts: Part[];
 }
 
 export interface Side {
@@ -159,7 +169,7 @@ export interface Side {
   deaths: number;
   assists: number;
   dmg: number;
-  value: Value;
+  rating: Rating | null;
 }
 
 export interface Matchup {
@@ -197,7 +207,7 @@ export interface PlayerRow {
   backstabs: number;
   airshots: number;
   cpc: number;
-  value: Value | null;
+  rating: Rating | null;
   isMe: boolean;
 }
 
@@ -246,9 +256,74 @@ export interface MatchDetail {
   players: PlayerRow[];
   rounds: RoundRow[];
   modelVersion: string;
+  /** False until the first rating pass has built the baselines. */
+  rated: boolean;
   format: string | null;
   league: string | null;
   etf2lMatchId: number | null;
   demosTfId: number | null;
   weightsWarning: string | null;
+}
+
+// ---- M3: profile ------------------------------------------------------------------
+
+export interface TrendPoint {
+  logId: number;
+  playedAt: number | null;
+  map: string | null;
+  score: number;
+  /** Rolling average ending at this game; null until the window fills. */
+  rolling: number | null;
+  result: "W" | "L" | "T" | null;
+}
+
+export interface ComponentSummary {
+  component: string;
+  label: string;
+  unit: string;
+  weight: number;
+  formPct: number;
+  careerPct: number;
+  formRaw: number;
+}
+
+export interface GameRef {
+  logId: number;
+  playedAt: number | null;
+  map: string | null;
+  title: string | null;
+  league: string | null;
+  result: "W" | "L" | "T" | null;
+  score: number;
+}
+
+export interface Extra {
+  label: string;
+  value: string;
+  detail: string | null;
+  hint: string | null;
+}
+
+export interface Profile {
+  class: string;
+  games: number;
+  careerAvg: number;
+  formAvg: number;
+  prevFormAvg: number | null;
+  winRate: number | null;
+  /** Oldest first. */
+  trend: TrendPoint[];
+  components: ComponentSummary[];
+  best: GameRef[];
+  worst: GameRef[];
+  recent: GameRef[];
+  formWindow: number;
+  rollingWindow: number;
+  extras: Extra[];
+}
+
+export interface ProfileResponse {
+  /** [class, rated games], most played first. */
+  classes: Array<[string, number]>;
+  profile: Profile | null;
 }

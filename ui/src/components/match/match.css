@@ -540,3 +540,21 @@
   outline: none;
   background: #1f2330;
 }
+
+.mu-breakdown .unit {
+  color: #5d6472;
+  font-size: 0.72rem;
+  margin-left: 4px;
+}
+
+.mu-breakdown td.pct {
+  color: var(--muted);
+  font-size: 0.74rem;
+  min-width: 44px;
+  text-align: left;
+  padding-left: 6px;
+}
+
+.mu-breakdown table {
+  max-width: 640px;
+}

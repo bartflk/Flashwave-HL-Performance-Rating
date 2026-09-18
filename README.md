@@ -6,9 +6,11 @@ per class against class-relative baselines.
 
 See [PLAN.md](PLAN.md) for the full design and milestone plan.
 
-**Status: M2** — syncs your full match history from trends.tf and logs.tf,
-deduplicates it, and opens any match on a page with the nine class matchups,
-a round timeline and the full scoreboard.
+**Status: M3** — syncs your full match history from trends.tf and logs.tf,
+rates every performance against the players you actually face, and shows it
+two ways: a match page with the nine class matchups, a round timeline and the
+scoreboard; and a profile per class with form, trend, and which parts of your
+game are strong or weak.
 
 ## Prerequisites
 
@@ -66,6 +68,8 @@ cargo run -p hl-cli -- sync                # index + fetch new logs
 cargo run -p hl-cli -- reprocess           # rebuild from stored logs, no network
 cargo run -p hl-cli -- matches 30 --officials
 cargo run -p hl-cli -- match 4109131       # matchups for one match
+cargo run -p hl-cli -- rate                # rebuild baselines and ratings
+cargo run -p hl-cli -- profile sniper      # your profile on a class
 ```
 
 ## Layout
@@ -74,7 +78,7 @@ cargo run -p hl-cli -- match 4109131       # matchups for one match
 crates/hl-core     domain types: SteamID, classes, config, tf path detection
 crates/hl-db       SQLite access and migrations
 crates/hl-ingest   trends.tf + logs.tf clients, normalizer, classifier, dedupe
-crates/hl-rating   class values, matchups, match detail; tunable weights.toml
+crates/hl-rating   rating model v1, matchups, match detail, profile; tunable weights.toml
 crates/hl-cli      developer harness
 src-tauri          Tauri shell: commands, state, window
 ui                 React + TypeScript frontend

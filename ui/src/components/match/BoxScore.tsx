@@ -34,8 +34,8 @@ function TeamTable(props: { team: Team; label: string | null; players: PlayerRow
             <th className="num">DPM</th>
             <th className="num">DT</th>
             <th>Class detail</th>
-            <th className="num" title="Provisional value score (v0), per 10 minutes on the main class">
-              Value
+            <th className="num" title="Rating on the main class, 0-100 against the players you face. Not rated under 5 minutes.">
+              Rating
             </th>
           </tr>
         </thead>
@@ -57,7 +57,9 @@ function TeamTable(props: { team: Team; label: string | null; players: PlayerRow
               <td className="num">{p.dpm}</td>
               <td className="num">{flags.dt ? p.dt.toLocaleString() : "—"}</td>
               <td className="muted nowrap">{classDetail(p, flags)}</td>
-              <td className="num">{p.value ? p.value.score.toFixed(1) : "—"}</td>
+              <td className="num" title={p.rating ? undefined : "Under 5 minutes on their main class"}>
+                {p.rating ? p.rating.score.toFixed(0) : "—"}
+              </td>
             </tr>
           ))}
         </tbody>

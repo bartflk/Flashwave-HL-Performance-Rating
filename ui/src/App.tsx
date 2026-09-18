@@ -7,16 +7,32 @@ import { Settings } from "./components/Settings";
 import { Matches } from "./components/Matches";
 import { SyncStrip } from "./components/SyncStrip";
 import { MatchPage } from "./components/match/MatchPage";
+import { ProfilePage } from "./components/profile/ProfilePage";
 import "./App.css";
 import "./components/match/match.css";
 
-type Tab = "matches" | "settings";
+type Tab = "matches" | "profile" | "settings";
+
+const TABS: Array<[Tab, string]> = [
+  ["matches", "Matches"],
+  ["profile", "Profile"],
+  ["settings", "Settings"],
+];
 
 export default function App() {
   // Set when the user chooses to revisit setup after it is already complete.
   const [forceSetup, setForceSetup] = useState(false);
   const [tab, setTab] = useState<Tab>("matches");
   const [openLog, setOpenLog] = useState<number | null>(null);
+  // Pages stay mounted once visited, so their filters and scroll survive a
+  // trip to a match and back.
+  const [visited, setVisited] = useState<Set<Tab>>(new Set(["matches"]));
+
+  const go = (t: Tab) => {
+    setTab(t);
+    setOpenLog(null);
+    setVisited((v) => (v.has(t) ? v : new Set(v).add(t)));
+  };
 
   const status = useQuery({
     queryKey: ["app_status"],
@@ -74,16 +90,9 @@ export default function App() {
         <div className="brand">
           <h1>HL Rating</h1>
           <nav className="tabs">
-            {(["matches", "settings"] as const).map((t) => (
-              <button
-                key={t}
-                className={tab === t ? "tab active" : "tab"}
-                onClick={() => {
-                  setTab(t);
-                  setOpenLog(null);
-                }}
-              >
-                {t === "matches" ? "Matches" : "Settings"}
+            {TABS.map(([t, label]) => (
+              <button key={t} className={tab === t ? "tab active" : "tab"} onClick={() => go(t)}>
+                {label}
               </button>
             ))}
           </nav>
@@ -96,24 +105,25 @@ export default function App() {
       {/* The strip stays mounted on every tab so sync progress is never lost. */}
       <SyncStrip />
 
-      {tab === "matches" ? (
-        <>
-          {/* Kept mounted while a match is open, so the filter, page count and
-              scroll position are all still there on the way back. */}
-          <div hidden={openLog !== null}>
-            <Matches onOpen={setOpenLog} />
-          </div>
-          {openLog !== null && <MatchPage logId={openLog} onBack={() => setOpenLog(null)} />}
-        </>
-      ) : (
+      <div hidden={tab !== "matches" || openLog !== null}>
+        <Matches onOpen={setOpenLog} />
+      </div>
+      {visited.has("profile") && (
+        <div hidden={tab !== "profile" || openLog !== null}>
+          <ProfilePage onOpenMatch={setOpenLog} />
+        </div>
+      )}
+      {tab === "settings" && openLog === null && (
         <Settings
           status={data}
           onReconfigure={() => {
             setForceSetup(true);
-            setTab("matches");
+            go("matches");
           }}
         />
       )}
+      {/* "Back" returns to whichever tab the match was opened from. */}
+      {openLog !== null && <MatchPage logId={openLog} onBack={() => setOpenLog(null)} />}
     </div>
   );
 }

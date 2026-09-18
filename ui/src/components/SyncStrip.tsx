@@ -46,6 +46,8 @@ export function SyncStrip() {
           setStatus({ state: "done", result });
           void qc.invalidateQueries({ queryKey: ["matches"] });
           void qc.invalidateQueries({ queryKey: ["index_stats"] });
+          void qc.invalidateQueries({ queryKey: ["profile"] });
+          void qc.invalidateQueries({ queryKey: ["match"] });
         },
         onError: (e) => setStatus({ state: "error", message: e.message }),
       })
@@ -153,6 +155,10 @@ function ProgressLine({ progress, failures }: { progress: Progress | null; failu
       case "reprocessing":
         fraction = progress.total > 0 ? progress.done / progress.total : 1;
         label = `Rebuilding ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()}`;
+        break;
+      case "rating":
+        fraction = progress.total > 0 ? progress.done / progress.total : 1;
+        label = `Rating ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()} matches`;
         break;
     }
   }

@@ -5,7 +5,9 @@
 //! would make a fresh clone fail to compile before it has ever been run.
 
 mod matches;
+mod ratings;
 
+pub use ratings::{HistoryDbRow, RatingRow, VsTotals};
 pub use matches::{
     IndexInfo, IndexStats, LogsTfIndexRow, MatchFilter, MatchPage, MatchSummary, MyLine,
     TrendsIndexRow,

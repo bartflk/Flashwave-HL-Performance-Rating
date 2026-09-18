@@ -7,6 +7,8 @@
 import type { Api, SyncHandlers } from "./client";
 import match4109131 from "./fixtures/match_4109131.json";
 import match4114301 from "./fixtures/match_4114301.json";
+import profileSniper from "./fixtures/profile_sniper.json";
+import profileEngineer from "./fixtures/profile_engineer.json";
 import type {
   AppConfig,
   AppStatus,
@@ -15,6 +17,7 @@ import type {
   MatchPage,
   MatchQuery,
   MatchSummary,
+  ProfileResponse,
   TfPathInfo,
 } from "./types";
 
@@ -250,6 +253,17 @@ export const mockApi: Api = {
   getMatch: (logId: number) => {
     const exact = FIXTURES.find((f) => f.logId === logId);
     return delay(exact ?? { ...FIXTURES[0], logId });
+  },
+
+  // Real profiles exported with `hl profile <class> --json`. Classes without
+  // a fixture come back empty, like a class with no rated games.
+  getProfile: (cls: string | null) => {
+    const byClass: Record<string, ProfileResponse> = {
+      sniper: profileSniper as unknown as ProfileResponse,
+      engineer: profileEngineer as unknown as ProfileResponse,
+    };
+    const hit = byClass[cls ?? "sniper"];
+    return delay(hit ?? { classes: byClass.sniper.classes, profile: null });
   },
 
   openExternal: async (url: string) => {

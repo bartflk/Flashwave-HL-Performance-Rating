@@ -1,0 +1,5621 @@
+{
+  "classes": [
+    [
+      "sniper",
+      663
+    ],
+    [
+      "engineer",
+      29
+    ],
+    [
+      "demoman",
+      15
+    ],
+    [
+      "scout",
+      15
+    ],
+    [
+      "soldier",
+      10
+    ],
+    [
+      "pyro",
+      8
+    ],
+    [
+      "heavy",
+      5
+    ],
+    [
+      "medic",
+      3
+    ],
+    [
+      "spy",
+      1
+    ]
+  ],
+  "profile": {
+    "best": [
+      {
+        "league": null,
+        "logId": 4007244,
+        "map": "koth_product_final",
+        "playedAt": 1769980224,
+        "result": "W",
+        "score": 94.3,
+        "title": "serveme.tf #1530161"
+      },
+      {
+        "league": null,
+        "logId": 3485066,
+        "map": "pl_upward_f10",
+        "playedAt": 1693419002,
+        "result": "W",
+        "score": 92.6,
+        "title": "serveme.tf #1356055"
+      },
+      {
+        "league": "etf2l",
+        "logId": 3557460,
+        "map": "koth_cornyard_b3a",
+        "playedAt": 1704568764,
+        "result": "W",
+        "score": 91.5,
+        "title": "serveme.tf #1383065"
+      },
+      {
+        "league": null,
+        "logId": 3845341,
+        "map": "koth_ashville_final1",
+        "playedAt": 1745952016,
+        "result": "W",
+        "score": 89.7,
+        "title": "serveme.tf #1480898"
+      },
+      {
+        "league": null,
+        "logId": 3567896,
+        "map": "proot-product",
+        "playedAt": 1706129857,
+        "result": "W",
+        "score": 88.6,
+        "title": "scrim"
+      }
+    ],
+    "careerAvg": 48.8,
+    "class": "sniper",
+    "components": [
+      {
+        "careerPct": 50.0,
+        "component": "impact_kills",
+        "formPct": 44.2,
+        "formRaw": 13.54,
+        "label": "Impact kills",
+        "unit": "per 10 min",
+        "weight": 0.3
+      },
+      {
+        "careerPct": 39.8,
+        "component": "duel",
+        "formPct": 35.7,
+        "formRaw": -0.47,
+        "label": "Sniper duel",
+        "unit": "per 10 min",
+        "weight": 0.2
+      },
+      {
+        "careerPct": 47.2,
+        "component": "medic_picks",
+        "formPct": 44.8,
+        "formRaw": 0.5,
+        "label": "Medic picks",
+        "unit": "per 10 min",
+        "weight": 0.15
+      },
+      {
+        "careerPct": 55.3,
+        "component": "deaths",
+        "formPct": 55.0,
+        "formRaw": 6.84,
+        "label": "Deaths",
+        "unit": "per 10 min",
+        "weight": 0.15
+      },
+      {
+        "careerPct": 52.6,
+        "component": "headshot_share",
+        "formPct": 48.4,
+        "formRaw": 69.1,
+        "label": "Headshot share",
+        "unit": "% of kills",
+        "weight": 0.1
+      },
+      {
+        "careerPct": 49.8,
+        "component": "impact_assists",
+        "formPct": 43.7,
+        "formRaw": 7.63,
+        "label": "Impact assists",
+        "unit": "per 10 min",
+        "weight": 0.05
+      },
+      {
+        "careerPct": 54.4,
+        "component": "dpm",
+        "formPct": 50.7,
+        "formRaw": 319.07,
+        "label": "Damage / min",
+        "unit": "per min",
+        "weight": 0.05
+      }
+    ],
+    "extras": [
+      {
+        "detail": "-499 net",
+        "hint": "Your kills on the enemy Sniper against their kills on you, across every rated game as Sniper.",
+        "label": "Sniper duel, career",
+        "value": "3069 – 3568"
+      },
+      {
+        "detail": "1.24 per game",
+        "hint": "Enemy Medics you killed, across every rated game on this class.",
+        "label": "Medic picks, career",
+        "value": "821"
+      }
+    ],
+    "formAvg": 45.0,
+    "formWindow": 20,
+    "games": 663,
+    "prevFormAvg": 48.6,
+    "recent": [
+      {
+        "league": null,
+        "logId": 4122234,
+        "map": "pl_swiftwater_final1",
+        "playedAt": 1789675330,
+        "result": "L",
+        "score": 31.9,
+        "title": "serveme.tf #1563599 RED vs BLU"
+      },
+      {
+        "league": null,
+        "logId": 4122209,
+        "map": "pl_swiftwater_final1",
+        "playedAt": 1789673414,
+        "result": "W",
+        "score": 57.4,
+        "title": "serveme.tf #1563599 BLU vs RED"
+      },
+      {
+        "league": null,
+        "logId": 4121291,
+        "map": null,
+        "playedAt": 1789502845,
+        "result": "W",
+        "score": 32.7,
+        "title": "pro vs noob scrim"
+      },
+      {
+        "league": null,
+        "logId": 4114301,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1788374428,
+        "result": "W",
+        "score": 44.4,
+        "title": "serveme.tf #1561394 pedik vs plate"
+      },
+      {
+        "league": null,
+        "logId": 4112795,
+        "map": "koth_product_final",
+        "playedAt": 1788117280,
+        "result": "W",
+        "score": 59.2,
+        "title": "Combined Log"
+      },
+      {
+        "league": null,
+        "logId": 4112136,
+        "map": "koth_warmtic_f10",
+        "playedAt": 1788028625,
+        "result": "W",
+        "score": 74.4,
+        "title": "TF2Center Lobby #1328986"
+      },
+      {
+        "league": null,
+        "logId": 4111116,
+        "map": "cp_steel_f12",
+        "playedAt": 1787858128,
+        "result": "L",
+        "score": 50.3,
+        "title": "Combined Log"
+      },
+      {
+        "league": null,
+        "logId": 4109635,
+        "map": "product + steel",
+        "playedAt": 1787602485,
+        "result": "W",
+        "score": 40.1,
+        "title": "Combined Log"
+      },
+      {
+        "league": null,
+        "logId": 4109576,
+        "map": "upward + steel",
+        "playedAt": 1787598270,
+        "result": "L",
+        "score": 24.0,
+        "title": "Combined Log"
+      },
+      {
+        "league": "etf2l",
+        "logId": 4109131,
+        "map": "pl_upward_f12",
+        "playedAt": 1787516257,
+        "result": "W",
+        "score": 39.4,
+        "title": "ETF2L HL S36 High - DD14 vs TWS"
+      }
+    ],
+    "rollingWindow": 10,
+    "trend": [
+      {
+        "logId": 295610,
+        "map": "koth_pro_viaduct_rc4",
+        "playedAt": 1401360755,
+        "result": "L",
+        "rolling": null,
+        "score": 36.4
+      },
+      {
+        "logId": 295612,
+        "map": "koth_pro_viaduct_rc4",
+        "playedAt": 1401360757,
+        "result": "L",
+        "rolling": null,
+        "score": 36.4
+      },
+      {
+        "logId": 306029,
+        "map": "pl_upward",
+        "playedAt": 1402063010,
+        "result": "L",
+        "rolling": null,
+        "score": 20.5
+      },
+      {
+        "logId": 306030,
+        "map": "pl_upward",
+        "playedAt": 1402063011,
+        "result": "L",
+        "rolling": null,
+        "score": 20.5
+      },
+      {
+        "logId": 340159,
+        "map": "cp_process_final",
+        "playedAt": 1403981135,
+        "result": "W",
+        "rolling": null,
+        "score": 32.9
+      },
+      {
+        "logId": 340164,
+        "map": "cp_process_final",
+        "playedAt": 1403981351,
+        "result": "W",
+        "rolling": null,
+        "score": 32.6
+      },
+      {
+        "logId": 356442,
+        "map": "pl_upward",
+        "playedAt": 1404842173,
+        "result": "T",
+        "rolling": null,
+        "score": 13.5
+      },
+      {
+        "logId": 428621,
+        "map": "koth_lakeside_final",
+        "playedAt": 1408903668,
+        "result": "L",
+        "rolling": null,
+        "score": 28.2
+      },
+      {
+        "logId": 428622,
+        "map": "koth_lakeside_final",
+        "playedAt": 1408903669,
+        "result": "L",
+        "rolling": null,
+        "score": 28.2
+      },
+      {
+        "logId": 428769,
+        "map": "cp_gullywash_final1",
+        "playedAt": 1408907444,
+        "result": "W",
+        "rolling": 27.1,
+        "score": 22.1
+      },
+      {
+        "logId": 428770,
+        "map": "cp_gullywash_final1",
+        "playedAt": 1408907445,
+        "result": "W",
+        "rolling": 25.7,
+        "score": 22.1
+      },
+      {
+        "logId": 431937,
+        "map": "pl_upward",
+        "playedAt": 1409069286,
+        "result": "T",
+        "rolling": 24.2,
+        "score": 21.9
+      },
+      {
+        "logId": 438204,
+        "map": "koth_lakeside_final",
+        "playedAt": 1409404477,
+        "result": "L",
+        "rolling": 24.9,
+        "score": 27.1
+      },
+      {
+        "logId": 438205,
+        "map": "koth_lakeside_final",
+        "playedAt": 1409404478,
+        "result": "L",
+        "rolling": 25.6,
+        "score": 27.1
+      },
+      {
+        "logId": 513611,
+        "map": "pl_badwater",
+        "playedAt": 1414159702,
+        "result": "T",
+        "rolling": 23.4,
+        "score": 11.5
+      },
+      {
+        "logId": 1450442,
+        "map": "koth_product_rc8",
+        "playedAt": 1467213474,
+        "result": "L",
+        "rolling": 25.5,
+        "score": 52.8
+      },
+      {
+        "logId": 1450443,
+        "map": "koth_product_rc8",
+        "playedAt": 1467213475,
+        "result": "L",
+        "rolling": 29.4,
+        "score": 52.8
+      },
+      {
+        "logId": 2006791,
+        "map": "pl_upward",
+        "playedAt": 1523994830,
+        "result": "W",
+        "rolling": 31.2,
+        "score": 46.6
+      },
+      {
+        "logId": 2020315,
+        "map": "pl_upward",
+        "playedAt": 1525722441,
+        "result": "L",
+        "rolling": 33.6,
+        "score": 52.4
+      },
+      {
+        "logId": 2020340,
+        "map": "koth_product_rc8",
+        "playedAt": 1525723890,
+        "result": "W",
+        "rolling": 38.3,
+        "score": 68.2
+      },
+      {
+        "logId": 2153142,
+        "map": "pl_upward",
+        "playedAt": 1541532505,
+        "result": "W",
+        "rolling": 41.9,
+        "score": 58.5
+      },
+      {
+        "logId": 2153171,
+        "map": "koth_product_rc9",
+        "playedAt": 1541533846,
+        "result": "L",
+        "rolling": 41.2,
+        "score": 15.3
+      },
+      {
+        "logId": 2157756,
+        "map": "pl_upward",
+        "playedAt": 1542137446,
+        "result": "L",
+        "rolling": 43.0,
+        "score": 44.9
+      },
+      {
+        "logId": 2157769,
+        "map": "koth_product_rc9",
+        "playedAt": 1542138227,
+        "result": "L",
+        "rolling": 44.5,
+        "score": 41.8
+      },
+      {
+        "logId": 2163856,
+        "map": "koth_product_rc9",
+        "playedAt": 1542998399,
+        "result": "W",
+        "rolling": 47.2,
+        "score": 38.6
+      },
+      {
+        "logId": 2163874,
+        "map": "koth_warmtic_b6",
+        "playedAt": 1542999697,
+        "result": "W",
+        "rolling": 48.3,
+        "score": 63.5
+      },
+      {
+        "logId": 2163899,
+        "map": "koth_warmtic_b6",
+        "playedAt": 1543001385,
+        "result": "W",
+        "rolling": 49.1,
+        "score": 61.3
+      },
+      {
+        "logId": 2163926,
+        "map": "koth_product_rc9",
+        "playedAt": 1543002734,
+        "result": "W",
+        "rolling": 50.3,
+        "score": 58.1
+      },
+      {
+        "logId": 2167025,
+        "map": "cp_steel",
+        "playedAt": 1543429919,
+        "result": "W",
+        "rolling": 51.6,
+        "score": 65.6
+      },
+      {
+        "logId": 2167045,
+        "map": "cp_steel",
+        "playedAt": 1543431601,
+        "result": "W",
+        "rolling": 48.9,
+        "score": 41.2
+      },
+      {
+        "logId": 2167587,
+        "map": "cp_steel",
+        "playedAt": 1543516492,
+        "result": "L",
+        "rolling": 49.0,
+        "score": 60.0
+      },
+      {
+        "logId": 2167593,
+        "map": "cp_steel",
+        "playedAt": 1543517138,
+        "result": "L",
+        "rolling": 50.3,
+        "score": 27.6
+      },
+      {
+        "logId": 2167610,
+        "map": "cp_steel",
+        "playedAt": 1543519308,
+        "result": "T",
+        "rolling": 54.1,
+        "score": 83.6
+      },
+      {
+        "logId": 2167638,
+        "map": "cp_steel",
+        "playedAt": 1543520577,
+        "result": "W",
+        "rolling": 53.1,
+        "score": 31.2
+      },
+      {
+        "logId": 2170914,
+        "map": "cp_gullywash_final1",
+        "playedAt": 1543953737,
+        "result": "L",
+        "rolling": 51.8,
+        "score": 26.0
+      },
+      {
+        "logId": 2171395,
+        "map": "cp_gullywash_final1",
+        "playedAt": 1544033863,
+        "result": "W",
+        "rolling": 52.3,
+        "score": 68.5
+      },
+      {
+        "logId": 2171404,
+        "map": "cp_gullywash_final1",
+        "playedAt": 1544035198,
+        "result": "W",
+        "rolling": 52.3,
+        "score": 61.2
+      },
+      {
+        "logId": 2175129,
+        "map": "pl_badwater",
+        "playedAt": 1544556642,
+        "result": "L",
+        "rolling": 48.6,
+        "score": 20.6
+      },
+      {
+        "logId": 2175150,
+        "map": "pl_badwater",
+        "playedAt": 1544557878,
+        "result": "L",
+        "rolling": 43.6,
+        "score": 16.3
+      },
+      {
+        "logId": 2176763,
+        "map": "pl_badwater",
+        "playedAt": 1544812786,
+        "result": "L",
+        "rolling": 42.9,
+        "score": 34.3
+      },
+      {
+        "logId": 2176775,
+        "map": "pl_badwater",
+        "playedAt": 1544814111,
+        "result": "W",
+        "rolling": 41.3,
+        "score": 43.2
+      },
+      {
+        "logId": 2176784,
+        "map": "PL_BADWATER",
+        "playedAt": 1544815047,
+        "result": "W",
+        "rolling": 43.4,
+        "score": 48.6
+      },
+      {
+        "logId": 2176804,
+        "map": "PL_BADWATER",
+        "playedAt": 1544816615,
+        "result": "L",
+        "rolling": 40.0,
+        "score": 50.2
+      },
+      {
+        "logId": 2211184,
+        "map": "koth_lakeside_final",
+        "playedAt": 1549306180,
+        "result": "W",
+        "rolling": 41.0,
+        "score": 41.4
+      },
+      {
+        "logId": 2211223,
+        "map": "koth_lakeside_final",
+        "playedAt": 1549308917,
+        "result": "L",
+        "rolling": 43.9,
+        "score": 54.4
+      },
+      {
+        "logId": 2211245,
+        "map": "koth_lakeside_final",
+        "playedAt": 1549309479,
+        "result": "L",
+        "rolling": 38.5,
+        "score": 14.3
+      },
+      {
+        "logId": 2742648,
+        "map": "pl_upward",
+        "playedAt": 1604783177,
+        "result": "W",
+        "rolling": 38.4,
+        "score": 61.1
+      },
+      {
+        "logId": 2742714,
+        "map": "koth_ashville_rc2b",
+        "playedAt": 1604785826,
+        "result": "W",
+        "rolling": 43.5,
+        "score": 70.7
+      },
+      {
+        "logId": 3445078,
+        "map": "koth_proot_b5b",
+        "playedAt": 1687986299,
+        "result": "W",
+        "rolling": 46.2,
+        "score": 43.6
+      },
+      {
+        "logId": 3452863,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1689017910,
+        "result": "L",
+        "rolling": 46.9,
+        "score": 41.7
+      },
+      {
+        "logId": 3452904,
+        "map": "koth_product_rcx",
+        "playedAt": 1689019873,
+        "result": "W",
+        "rolling": 49.0,
+        "score": 63.7
+      },
+      {
+        "logId": 3454305,
+        "map": "koth_proplant_v8",
+        "playedAt": 1689190347,
+        "result": "W",
+        "rolling": 48.7,
+        "score": 45.8
+      },
+      {
+        "logId": 3454354,
+        "map": "koth_proot_b5b",
+        "playedAt": 1689192878,
+        "result": "W",
+        "rolling": 49.3,
+        "score": 56.5
+      },
+      {
+        "logId": 3455477,
+        "map": "koth_product_final",
+        "playedAt": 1689363673,
+        "result": "L",
+        "rolling": 48.8,
+        "score": 36.4
+      },
+      {
+        "logId": 3455498,
+        "map": "pl_upward_f10",
+        "playedAt": 1689365257,
+        "result": "L",
+        "rolling": 48.3,
+        "score": 48.7
+      },
+      {
+        "logId": 3478981,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1692561419,
+        "result": "T",
+        "rolling": 49.8,
+        "score": 29.9
+      },
+      {
+        "logId": 3479466,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1692642192,
+        "result": "L",
+        "rolling": 47.0,
+        "score": 33.3
+      },
+      {
+        "logId": 3479500,
+        "map": "koth_proot_b5b",
+        "playedAt": 1692644394,
+        "result": "W",
+        "rolling": 43.8,
+        "score": 38.2
+      },
+      {
+        "logId": 3480099,
+        "map": "cp_steel_f12",
+        "playedAt": 1692732785,
+        "result": "W",
+        "rolling": 45.4,
+        "score": 60.0
+      },
+      {
+        "logId": 3480127,
+        "map": "koth_proot_b6b",
+        "playedAt": 1692734122,
+        "result": "L",
+        "rolling": 47.9,
+        "score": 66.4
+      },
+      {
+        "logId": 3480694,
+        "map": "koth_product_final",
+        "playedAt": 1692819547,
+        "result": "W",
+        "rolling": 45.2,
+        "score": 36.5
+      },
+      {
+        "logId": 3480711,
+        "map": "koth_proot_b5b",
+        "playedAt": 1692820796,
+        "result": "W",
+        "rolling": 45.7,
+        "score": 51.3
+      },
+      {
+        "logId": 3481284,
+        "map": "pl_upward_f9",
+        "playedAt": 1692907123,
+        "result": "L",
+        "rolling": 44.1,
+        "score": 40.0
+      },
+      {
+        "logId": 3481315,
+        "map": "koth_proot",
+        "playedAt": 1692909440,
+        "result": "W",
+        "rolling": 45.2,
+        "score": 47.3
+      },
+      {
+        "logId": 3481836,
+        "map": "pl_upward_f10",
+        "playedAt": 1692992076,
+        "result": "L",
+        "rolling": 44.1,
+        "score": 38.5
+      },
+      {
+        "logId": 3481859,
+        "map": "koth_product_final",
+        "playedAt": 1692993571,
+        "result": "L",
+        "rolling": 45.9,
+        "score": 47.0
+      },
+      {
+        "logId": 3484576,
+        "map": "pl_upward_f10",
+        "playedAt": 1693338191,
+        "result": "W",
+        "rolling": 47.6,
+        "score": 50.8
+      },
+      {
+        "logId": 3484610,
+        "map": "koth_cascade",
+        "playedAt": 1693339935,
+        "result": "W",
+        "rolling": 50.8,
+        "score": 70.0
+      },
+      {
+        "logId": 3485066,
+        "map": "pl_upward_f10",
+        "playedAt": 1693419002,
+        "result": "W",
+        "rolling": 54.0,
+        "score": 92.6
+      },
+      {
+        "logId": 3485072,
+        "map": "pl_upward_f10",
+        "playedAt": 1693419678,
+        "result": "W",
+        "rolling": 54.8,
+        "score": 74.3
+      },
+      {
+        "logId": 3485905,
+        "map": "vigil + cascade",
+        "playedAt": 1693512564,
+        "result": "W",
+        "rolling": 58.4,
+        "score": 72.3
+      },
+      {
+        "logId": 3486503,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1693596700,
+        "result": "L",
+        "rolling": 57.4,
+        "score": 40.9
+      },
+      {
+        "logId": 3486523,
+        "map": "koth_cascade",
+        "playedAt": 1693598269,
+        "result": "L",
+        "rolling": 55.9,
+        "score": 25.7
+      },
+      {
+        "logId": 3488460,
+        "map": "koth_product_final",
+        "playedAt": 1693852410,
+        "result": "W",
+        "rolling": 55.4,
+        "score": 42.0
+      },
+      {
+        "logId": 3488482,
+        "map": "koth_cascade",
+        "playedAt": 1693853433,
+        "result": "W",
+        "rolling": 59.7,
+        "score": 81.5
+      },
+      {
+        "logId": 3489112,
+        "map": "koth_product_final",
+        "playedAt": 1693943314,
+        "result": "W",
+        "rolling": 62.4,
+        "score": 74.2
+      },
+      {
+        "logId": 3489126,
+        "map": "koth_cascade",
+        "playedAt": 1693944417,
+        "result": "W",
+        "rolling": 64.2,
+        "score": 68.5
+      },
+      {
+        "logId": 3489644,
+        "map": "koth_product_final",
+        "playedAt": 1694028450,
+        "result": "W",
+        "rolling": 63.5,
+        "score": 63.0
+      },
+      {
+        "logId": 3489659,
+        "map": "koth_cascade",
+        "playedAt": 1694029489,
+        "result": "W",
+        "rolling": 57.6,
+        "score": 33.9
+      },
+      {
+        "logId": 3490140,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1694111972,
+        "result": "W",
+        "rolling": 55.3,
+        "score": 51.4
+      },
+      {
+        "logId": 3490161,
+        "map": "koth_proplant_v8",
+        "playedAt": 1694113292,
+        "result": "L",
+        "rolling": 52.8,
+        "score": 46.6
+      },
+      {
+        "logId": 3492013,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1694370265,
+        "result": "W",
+        "rolling": 54.2,
+        "score": 55.0
+      },
+      {
+        "logId": 3492026,
+        "map": "koth_proplant_v8",
+        "playedAt": 1694371039,
+        "result": "W",
+        "rolling": 55.5,
+        "score": 39.3
+      },
+      {
+        "logId": 3493283,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1694547076,
+        "result": "L",
+        "rolling": 54.6,
+        "score": 32.4
+      },
+      {
+        "logId": 3493307,
+        "map": "koth_proplant_v8",
+        "playedAt": 1694548550,
+        "result": "W",
+        "rolling": 51.2,
+        "score": 47.8
+      },
+      {
+        "logId": 3493878,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1694633539,
+        "result": "W",
+        "rolling": 47.2,
+        "score": 34.5
+      },
+      {
+        "logId": 3493891,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1694634451,
+        "result": "W",
+        "rolling": 44.1,
+        "score": 37.2
+      },
+      {
+        "logId": 3496228,
+        "map": "koth_proot_b5b",
+        "playedAt": 1694979951,
+        "result": "L",
+        "rolling": 40.8,
+        "score": 29.9
+      },
+      {
+        "logId": 3496256,
+        "map": "koth_proplant_v8",
+        "playedAt": 1694981427,
+        "result": "L",
+        "rolling": 41.7,
+        "score": 42.7
+      },
+      {
+        "logId": 3497401,
+        "map": "koth_proot_b5b",
+        "playedAt": 1695151937,
+        "result": "W",
+        "rolling": 42.5,
+        "score": 59.2
+      },
+      {
+        "logId": 3497433,
+        "map": "koth_proplant_v8",
+        "playedAt": 1695153973,
+        "result": "W",
+        "rolling": 43.2,
+        "score": 53.9
+      },
+      {
+        "logId": 3497946,
+        "map": "koth_proot_b5b",
+        "playedAt": 1695238469,
+        "result": "W",
+        "rolling": 42.5,
+        "score": 48.0
+      },
+      {
+        "logId": 3497965,
+        "map": "koth_proplant_v8",
+        "playedAt": 1695240094,
+        "result": "W",
+        "rolling": 46.7,
+        "score": 80.9
+      },
+      {
+        "logId": 3499078,
+        "map": "proot + proplant",
+        "playedAt": 1695419062,
+        "result": "W",
+        "rolling": 47.7,
+        "score": 43.1
+      },
+      {
+        "logId": 3499585,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1695501706,
+        "result": "W",
+        "rolling": 51.5,
+        "score": 85.4
+      },
+      {
+        "logId": 3502583,
+        "map": "cp_steel_f12",
+        "playedAt": 1695930090,
+        "result": "L",
+        "rolling": 51.2,
+        "score": 31.7
+      },
+      {
+        "logId": 3502599,
+        "map": "cp_steel_f12",
+        "playedAt": 1695930854,
+        "result": "L",
+        "rolling": 52.5,
+        "score": 50.2
+      },
+      {
+        "logId": 3502999,
+        "map": "pl_upward_f10",
+        "playedAt": 1696012402,
+        "result": "W",
+        "rolling": 57.9,
+        "score": 83.9
+      },
+      {
+        "logId": 3503030,
+        "map": "pl_upward_f10",
+        "playedAt": 1696013680,
+        "result": "W",
+        "rolling": 60.2,
+        "score": 65.9
+      },
+      {
+        "logId": 3503622,
+        "map": "cp_steel_f12",
+        "playedAt": 1696103807,
+        "result": "L",
+        "rolling": 58.9,
+        "score": 45.5
+      },
+      {
+        "logId": 3503647,
+        "map": "pl_upward_f10",
+        "playedAt": 1696105631,
+        "result": "L",
+        "rolling": 58.7,
+        "score": 52.9
+      },
+      {
+        "logId": 3504352,
+        "map": "cascade-proplant",
+        "playedAt": 1696191643,
+        "result": "T",
+        "rolling": 59.0,
+        "score": 50.7
+      },
+      {
+        "logId": 3505459,
+        "map": "pl_upward_f10",
+        "playedAt": 1696357974,
+        "result": "L",
+        "rolling": 53.8,
+        "score": 29.2
+      },
+      {
+        "logId": 3505490,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1696359660,
+        "result": "L",
+        "rolling": 53.5,
+        "score": 39.3
+      },
+      {
+        "logId": 3506369,
+        "map": "proplant-cascade",
+        "playedAt": 1696451763,
+        "result": "W",
+        "rolling": 51.5,
+        "score": 65.9
+      },
+      {
+        "logId": 3507427,
+        "map": "pl_upward_f10",
+        "playedAt": 1696621013,
+        "result": "W",
+        "rolling": 53.2,
+        "score": 48.1
+      },
+      {
+        "logId": 3507443,
+        "map": "cp_steel_f12",
+        "playedAt": 1696622247,
+        "result": "L",
+        "rolling": 50.4,
+        "score": 22.8
+      },
+      {
+        "logId": 3508028,
+        "map": "koth_proplant_v8",
+        "playedAt": 1696703551,
+        "result": "L",
+        "rolling": 46.1,
+        "score": 41.1
+      },
+      {
+        "logId": 3508067,
+        "map": "koth_proot_b5b",
+        "playedAt": 1696705861,
+        "result": "L",
+        "rolling": 44.0,
+        "score": 44.5
+      },
+      {
+        "logId": 3508109,
+        "map": "pl_upward_f10",
+        "playedAt": 1696707885,
+        "result": "W",
+        "rolling": 46.0,
+        "score": 65.8
+      },
+      {
+        "logId": 3508128,
+        "map": "koth_cascade",
+        "playedAt": 1696709211,
+        "result": "W",
+        "rolling": 47.7,
+        "score": 69.8
+      },
+      {
+        "logId": 3508792,
+        "map": "koth_proplant_v8",
+        "playedAt": 1696793768,
+        "result": "W",
+        "rolling": 48.1,
+        "score": 54.0
+      },
+      {
+        "logId": 3508826,
+        "map": "pl_upward_f10",
+        "playedAt": 1696795297,
+        "result": "W",
+        "rolling": 50.0,
+        "score": 49.1
+      },
+      {
+        "logId": 3509370,
+        "map": "koth_proplant_v8",
+        "playedAt": 1696873129,
+        "result": "W",
+        "rolling": 51.9,
+        "score": 57.5
+      },
+      {
+        "logId": 3509381,
+        "map": "pl_upward_f10",
+        "playedAt": 1696874566,
+        "result": "L",
+        "rolling": 49.1,
+        "score": 38.0
+      },
+      {
+        "logId": 3509535,
+        "map": "koth_proplant_v8",
+        "playedAt": 1696887972,
+        "result": "W",
+        "rolling": 49.7,
+        "score": 53.9
+      },
+      {
+        "logId": 3509536,
+        "map": "pl_upward_f10",
+        "playedAt": 1696888086,
+        "result": "L",
+        "rolling": 51.4,
+        "score": 40.4
+      },
+      {
+        "logId": 3510539,
+        "map": "koth_product_final",
+        "playedAt": 1697052783,
+        "result": "L",
+        "rolling": 51.7,
+        "score": 43.8
+      },
+      {
+        "logId": 3510552,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1697053941,
+        "result": "L",
+        "rolling": 52.1,
+        "score": 48.4
+      },
+      {
+        "logId": 3510568,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1697054896,
+        "result": "L",
+        "rolling": 49.0,
+        "score": 35.0
+      },
+      {
+        "logId": 3511053,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1697138995,
+        "result": "W",
+        "rolling": 46.4,
+        "score": 44.4
+      },
+      {
+        "logId": 3511063,
+        "map": "cp_steel_f12",
+        "playedAt": 1697139754,
+        "result": "L",
+        "rolling": 44.6,
+        "score": 35.8
+      },
+      {
+        "logId": 3511074,
+        "map": "cp_steel_f12",
+        "playedAt": 1697140467,
+        "result": "L",
+        "rolling": 43.2,
+        "score": 34.8
+      },
+      {
+        "logId": 3511574,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1697225437,
+        "result": "W",
+        "rolling": 41.9,
+        "score": 44.1
+      },
+      {
+        "logId": 3511593,
+        "map": "cp_steel_f12",
+        "playedAt": 1697226740,
+        "result": "W",
+        "rolling": 43.5,
+        "score": 54.7
+      },
+      {
+        "logId": 3511619,
+        "map": "koth_cascade",
+        "playedAt": 1697228282,
+        "result": "W",
+        "rolling": 44.5,
+        "score": 63.8
+      },
+      {
+        "logId": 3512120,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1697314689,
+        "result": "W",
+        "rolling": 44.6,
+        "score": 41.6
+      },
+      {
+        "logId": 3512123,
+        "map": "cp_steel_f12",
+        "playedAt": 1697314749,
+        "result": "L",
+        "rolling": 44.7,
+        "score": 44.0
+      },
+      {
+        "logId": 3526810,
+        "map": "koth_product_final",
+        "playedAt": 1699475930,
+        "result": "W",
+        "rolling": 45.6,
+        "score": 57.7
+      },
+      {
+        "logId": 3526831,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1699477002,
+        "result": "W",
+        "rolling": 46.7,
+        "score": 46.1
+      },
+      {
+        "logId": 3529157,
+        "map": "koth_product_final",
+        "playedAt": 1699822167,
+        "result": "W",
+        "rolling": 46.6,
+        "score": 43.4
+      },
+      {
+        "logId": 3530449,
+        "map": "koth_proplant_v8",
+        "playedAt": 1699994375,
+        "result": "W",
+        "rolling": 48.9,
+        "score": 58.8
+      },
+      {
+        "logId": 3530466,
+        "map": "pl_upward_f10",
+        "playedAt": 1699995284,
+        "result": "W",
+        "rolling": 52.5,
+        "score": 70.9
+      },
+      {
+        "logId": 3530933,
+        "map": "koth_proot_b5b",
+        "playedAt": 1700074859,
+        "result": "L",
+        "rolling": 52.7,
+        "score": 45.7
+      },
+      {
+        "logId": 3530935,
+        "map": null,
+        "playedAt": 1700074944,
+        "result": "L",
+        "rolling": 49.8,
+        "score": 26.1
+      },
+      {
+        "logId": 3535028,
+        "map": "cp_steel_f12",
+        "playedAt": 1700684977,
+        "result": "W",
+        "rolling": 47.0,
+        "score": 35.4
+      },
+      {
+        "logId": 3535050,
+        "map": "koth_proplant_v8",
+        "playedAt": 1700686422,
+        "result": "W",
+        "rolling": 49.1,
+        "score": 62.4
+      },
+      {
+        "logId": 3536590,
+        "map": "koth_proplant_v8",
+        "playedAt": 1700944318,
+        "result": "W",
+        "rolling": 51.3,
+        "score": 66.2
+      },
+      {
+        "logId": 3538364,
+        "map": "Product & Upward",
+        "playedAt": 1701213803,
+        "result": "L",
+        "rolling": 50.5,
+        "score": 49.9
+      },
+      {
+        "logId": 3538798,
+        "map": "pl_upward_f10",
+        "playedAt": 1701289342,
+        "result": "L",
+        "rolling": 50.0,
+        "score": 41.4
+      },
+      {
+        "logId": 3538825,
+        "map": "koth_cascade",
+        "playedAt": 1701291564,
+        "result": "L",
+        "rolling": 49.5,
+        "score": 37.9
+      },
+      {
+        "logId": 3539229,
+        "map": "koth_cascade",
+        "playedAt": 1701370062,
+        "result": "W",
+        "rolling": 48.3,
+        "score": 47.3
+      },
+      {
+        "logId": 3539239,
+        "map": "pl_upward_f10",
+        "playedAt": 1701370900,
+        "result": "L",
+        "rolling": 45.1,
+        "score": 38.5
+      },
+      {
+        "logId": 3540034,
+        "map": null,
+        "playedAt": 1701484187,
+        "result": "T",
+        "rolling": 46.3,
+        "score": 58.0
+      },
+      {
+        "logId": 3540337,
+        "map": "cp_steel_f12",
+        "playedAt": 1701541874,
+        "result": "W",
+        "rolling": 50.3,
+        "score": 65.8
+      },
+      {
+        "logId": 3540357,
+        "map": "cp_steel_f12",
+        "playedAt": 1701543437,
+        "result": "W",
+        "rolling": 53.1,
+        "score": 63.3
+      },
+      {
+        "logId": 3540374,
+        "map": "koth_cascade",
+        "playedAt": 1701544678,
+        "result": "W",
+        "rolling": 53.1,
+        "score": 62.3
+      },
+      {
+        "logId": 3540480,
+        "map": "upw/casc",
+        "playedAt": 1701553287,
+        "result": "L",
+        "rolling": 51.9,
+        "score": 54.2
+      },
+      {
+        "logId": 3540987,
+        "map": null,
+        "playedAt": 1701632674,
+        "result": "W",
+        "rolling": 52.8,
+        "score": 59.4
+      },
+      {
+        "logId": 3541063,
+        "map": null,
+        "playedAt": 1701638132,
+        "result": "W",
+        "rolling": 55.2,
+        "score": 65.7
+      },
+      {
+        "logId": 3542662,
+        "map": "koth_proot_b5b",
+        "playedAt": 1701894946,
+        "result": "W",
+        "rolling": 57.4,
+        "score": 59.5
+      },
+      {
+        "logId": 3542672,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1701895662,
+        "result": "W",
+        "rolling": 56.9,
+        "score": 42.7
+      },
+      {
+        "logId": 3542687,
+        "map": "pl_upward_f10",
+        "playedAt": 1701896746,
+        "result": "L",
+        "rolling": 59.9,
+        "score": 68.0
+      },
+      {
+        "logId": 3543581,
+        "map": "pl_upward_f10",
+        "playedAt": 1702063762,
+        "result": "W",
+        "rolling": 59.7,
+        "score": 56.3
+      },
+      {
+        "logId": 3543609,
+        "map": "koth_product_final",
+        "playedAt": 1702065438,
+        "result": "L",
+        "rolling": 58.7,
+        "score": 55.2
+      },
+      {
+        "logId": 3543663,
+        "map": null,
+        "playedAt": 1702069585,
+        "result": "L",
+        "rolling": 59.5,
+        "score": 71.2
+      },
+      {
+        "logId": 3544093,
+        "map": "pl_upward_f10",
+        "playedAt": 1702151239,
+        "result": "T",
+        "rolling": 60.6,
+        "score": 73.5
+      },
+      {
+        "logId": 3544916,
+        "map": "BORAT CUP",
+        "playedAt": 1702264708,
+        "result": "L",
+        "rolling": 60.7,
+        "score": 55.4
+      },
+      {
+        "logId": 3546093,
+        "map": "pl_upward_f10",
+        "playedAt": 1702496554,
+        "result": "W",
+        "rolling": 61.3,
+        "score": 65.7
+      },
+      {
+        "logId": 3547579,
+        "map": "koth_proplant_v8",
+        "playedAt": 1702759368,
+        "result": "W",
+        "rolling": 59.7,
+        "score": 49.2
+      },
+      {
+        "logId": 3547594,
+        "map": "koth_proot_b5b",
+        "playedAt": 1702760583,
+        "result": "W",
+        "rolling": 58.5,
+        "score": 48.2
+      },
+      {
+        "logId": 3548183,
+        "map": "pl_upward_f10",
+        "playedAt": 1702842704,
+        "result": "L",
+        "rolling": 57.6,
+        "score": 32.9
+      },
+      {
+        "logId": 3548204,
+        "map": "koth_proplant_v8",
+        "playedAt": 1702844032,
+        "result": "W",
+        "rolling": 57.2,
+        "score": 64.0
+      },
+      {
+        "logId": 3549695,
+        "map": null,
+        "playedAt": 1703102580,
+        "result": "W",
+        "rolling": 54.9,
+        "score": 33.8
+      },
+      {
+        "logId": 3550143,
+        "map": "koth_product_final",
+        "playedAt": 1703186572,
+        "result": "W",
+        "rolling": 57.4,
+        "score": 79.6
+      },
+      {
+        "logId": 3550167,
+        "map": "pl_upward_f10",
+        "playedAt": 1703188457,
+        "result": "W",
+        "rolling": 58.2,
+        "score": 80.0
+      },
+      {
+        "logId": 3555858,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1704314644,
+        "result": "W",
+        "rolling": 55.8,
+        "score": 49.5
+      },
+      {
+        "logId": 3555878,
+        "map": "koth_proot_b5b",
+        "playedAt": 1704316049,
+        "result": "W",
+        "rolling": 58.4,
+        "score": 80.8
+      },
+      {
+        "logId": 3556422,
+        "map": "koth_cascade",
+        "playedAt": 1704400984,
+        "result": "W",
+        "rolling": 55.7,
+        "score": 38.7
+      },
+      {
+        "logId": 3556442,
+        "map": "pl_upward_f10",
+        "playedAt": 1704401932,
+        "result": "T",
+        "rolling": 58.9,
+        "score": 81.0
+      },
+      {
+        "logId": 3557434,
+        "map": "koth_valor_rc1",
+        "playedAt": 1704566237,
+        "result": "W",
+        "rolling": 57.1,
+        "score": 30.2
+      },
+      {
+        "logId": 3557460,
+        "map": "koth_cornyard_b3a",
+        "playedAt": 1704568764,
+        "result": "W",
+        "rolling": 62.9,
+        "score": 91.5
+      },
+      {
+        "logId": 3558080,
+        "map": "koth_valor_rc1",
+        "playedAt": 1704656246,
+        "result": "W",
+        "rolling": 63.4,
+        "score": 68.7
+      },
+      {
+        "logId": 3558142,
+        "map": "cornyard-valor",
+        "playedAt": 1704660793,
+        "result": "W",
+        "rolling": 67.2,
+        "score": 71.7
+      },
+      {
+        "logId": 3559658,
+        "map": "koth_proot_b5b",
+        "playedAt": 1704918424,
+        "result": "W",
+        "rolling": 65.3,
+        "score": 60.7
+      },
+      {
+        "logId": 3560517,
+        "map": "upward+proot",
+        "playedAt": 1705091036,
+        "result": "L",
+        "rolling": 63.8,
+        "score": 64.8
+      },
+      {
+        "logId": 3562855,
+        "map": "upward+product",
+        "playedAt": 1705406475,
+        "result": "L",
+        "rolling": 66.0,
+        "score": 71.9
+      },
+      {
+        "logId": 3563041,
+        "map": "upward+proot",
+        "playedAt": 1705438618,
+        "result": "W",
+        "rolling": 62.8,
+        "score": 48.4
+      },
+      {
+        "logId": 3563604,
+        "map": "pl_upward_f10",
+        "playedAt": 1705523824,
+        "result": "W",
+        "rolling": 66.5,
+        "score": 75.6
+      },
+      {
+        "logId": 3563624,
+        "map": "koth_product_final",
+        "playedAt": 1705525118,
+        "result": "W",
+        "rolling": 63.4,
+        "score": 50.4
+      },
+      {
+        "logId": 3564061,
+        "map": "pl_upward_f10",
+        "playedAt": 1705602169,
+        "result": "T",
+        "rolling": 66.1,
+        "score": 57.5
+      },
+      {
+        "logId": 3564071,
+        "map": "pl_upward_f10",
+        "playedAt": 1705603781,
+        "result": "W",
+        "rolling": 64.4,
+        "score": 74.6
+      },
+      {
+        "logId": 3564124,
+        "map": "pl_upward_f10",
+        "playedAt": 1705608477,
+        "result": "L",
+        "rolling": 60.5,
+        "score": 29.8
+      },
+      {
+        "logId": 3565231,
+        "map": "pl_upward_f10",
+        "playedAt": 1705776951,
+        "result": "L",
+        "rolling": 56.7,
+        "score": 33.6
+      },
+      {
+        "logId": 3565248,
+        "map": "koth_proot_b5b",
+        "playedAt": 1705779035,
+        "result": "W",
+        "rolling": 54.5,
+        "score": 38.1
+      },
+      {
+        "logId": 3565273,
+        "map": "koth_product_final",
+        "playedAt": 1705780120,
+        "result": "L",
+        "rolling": 53.8,
+        "score": 58.3
+      },
+      {
+        "logId": 3566132,
+        "map": "proot-product",
+        "playedAt": 1705871976,
+        "result": "W",
+        "rolling": 54.1,
+        "score": 74.6
+      },
+      {
+        "logId": 3566753,
+        "map": "proot-vigil",
+        "playedAt": 1705958799,
+        "result": "L",
+        "rolling": 53.9,
+        "score": 46.5
+      },
+      {
+        "logId": 3567360,
+        "map": "vigil-product",
+        "playedAt": 1706044784,
+        "result": "T",
+        "rolling": 51.0,
+        "score": 46.4
+      },
+      {
+        "logId": 3567896,
+        "map": "proot-product",
+        "playedAt": 1706129857,
+        "result": "W",
+        "rolling": 54.8,
+        "score": 88.6
+      },
+      {
+        "logId": 3568420,
+        "map": "proot-product",
+        "playedAt": 1706212706,
+        "result": "T",
+        "rolling": 56.5,
+        "score": 74.7
+      },
+      {
+        "logId": 3569083,
+        "map": "vigil+warmtic",
+        "playedAt": 1706302842,
+        "result": "W",
+        "rolling": 55.1,
+        "score": 59.9
+      },
+      {
+        "logId": 3569517,
+        "map": "koth_product_rcx",
+        "playedAt": 1706362835,
+        "result": "L",
+        "rolling": 60.5,
+        "score": 84.3
+      },
+      {
+        "logId": 3569722,
+        "map": "vigilx2",
+        "playedAt": 1706389051,
+        "result": "L",
+        "rolling": 60.4,
+        "score": 32.2
+      },
+      {
+        "logId": 3571084,
+        "map": "vigilx2",
+        "playedAt": 1706558140,
+        "result": "W",
+        "rolling": 58.9,
+        "score": 23.4
+      },
+      {
+        "logId": 3572337,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1706727444,
+        "result": "L",
+        "rolling": 55.8,
+        "score": 27.8
+      },
+      {
+        "logId": 3573058,
+        "map": "koth_warmtic_b6",
+        "playedAt": 1706819595,
+        "result": "W",
+        "rolling": 56.6,
+        "score": 81.9
+      },
+      {
+        "logId": 3573080,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1706820816,
+        "result": "L",
+        "rolling": 55.7,
+        "score": 37.9
+      },
+      {
+        "logId": 3575208,
+        "map": "koth_warmtic_f10",
+        "playedAt": 1707079623,
+        "result": "L",
+        "rolling": 55.0,
+        "score": 39.2
+      },
+      {
+        "logId": 3575241,
+        "map": "koth_proplant_v8",
+        "playedAt": 1707081803,
+        "result": "W",
+        "rolling": 50.8,
+        "score": 46.6
+      },
+      {
+        "logId": 3575849,
+        "map": "proplant-warmtic",
+        "playedAt": 1707163367,
+        "result": "W",
+        "rolling": 50.8,
+        "score": 74.7
+      },
+      {
+        "logId": 3577200,
+        "map": "proplant-warmtic",
+        "playedAt": 1707335552,
+        "result": "W",
+        "rolling": 53.2,
+        "score": 83.8
+      },
+      {
+        "logId": 3577280,
+        "map": "proplant-warmtic",
+        "playedAt": 1707340294,
+        "result": "W",
+        "rolling": 51.0,
+        "score": 62.4
+      },
+      {
+        "logId": 3577899,
+        "map": "proplant-warmtic",
+        "playedAt": 1707426713,
+        "result": "W",
+        "rolling": 54.6,
+        "score": 68.6
+      },
+      {
+        "logId": 3579023,
+        "map": "cp_steel_f12",
+        "playedAt": 1707594538,
+        "result": "L",
+        "rolling": 59.0,
+        "score": 67.1
+      },
+      {
+        "logId": 3579153,
+        "map": "steward",
+        "playedAt": 1707607069,
+        "result": "T",
+        "rolling": 60.5,
+        "score": 42.9
+      },
+      {
+        "logId": 3579769,
+        "map": "steel",
+        "playedAt": 1707681667,
+        "result": "L",
+        "rolling": 56.5,
+        "score": 41.4
+      },
+      {
+        "logId": 3581151,
+        "map": "cp_steel_f12",
+        "playedAt": 1707852658,
+        "result": "W",
+        "rolling": 57.3,
+        "score": 45.9
+      },
+      {
+        "logId": 3581177,
+        "map": "cp_steel_f12",
+        "playedAt": 1707853739,
+        "result": "W",
+        "rolling": 55.5,
+        "score": 21.6
+      },
+      {
+        "logId": 3581222,
+        "map": "cp_steel_f12",
+        "playedAt": 1707856168,
+        "result": "L",
+        "rolling": 55.4,
+        "score": 45.5
+      },
+      {
+        "logId": 3581239,
+        "map": "cp_steel_f12",
+        "playedAt": 1707856890,
+        "result": "W",
+        "rolling": 50.0,
+        "score": 20.8
+      },
+      {
+        "logId": 3581823,
+        "map": "cp_steel_f12",
+        "playedAt": 1707942995,
+        "result": "W",
+        "rolling": 47.5,
+        "score": 59.2
+      },
+      {
+        "logId": 3581846,
+        "map": "cp_steel_f12",
+        "playedAt": 1707945111,
+        "result": "W",
+        "rolling": 46.0,
+        "score": 46.8
+      },
+      {
+        "logId": 3582410,
+        "map": "steel",
+        "playedAt": 1708027053,
+        "result": "L",
+        "rolling": 44.7,
+        "score": 55.9
+      },
+      {
+        "logId": 3585132,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1708374538,
+        "result": "W",
+        "rolling": 42.1,
+        "score": 40.9
+      },
+      {
+        "logId": 3585153,
+        "map": "koth_product_final",
+        "playedAt": 1708376046,
+        "result": "L",
+        "rolling": 44.7,
+        "score": 68.7
+      },
+      {
+        "logId": 3585934,
+        "map": "cp_steel_f12",
+        "playedAt": 1708461709,
+        "result": "L",
+        "rolling": 45.8,
+        "score": 52.8
+      },
+      {
+        "logId": 3585949,
+        "map": "koth_proplant_v8",
+        "playedAt": 1708463881,
+        "result": "W",
+        "rolling": 48.0,
+        "score": 67.7
+      },
+      {
+        "logId": 3586539,
+        "map": "koth_warmtic_f10",
+        "playedAt": 1708548635,
+        "result": "W",
+        "rolling": 49.8,
+        "score": 39.7
+      },
+      {
+        "logId": 3586555,
+        "map": "pl_upward_f10",
+        "playedAt": 1708549843,
+        "result": "W",
+        "rolling": 50.3,
+        "score": 50.1
+      },
+      {
+        "logId": 3587027,
+        "map": "koth_product_final",
+        "playedAt": 1708627077,
+        "result": "L",
+        "rolling": 54.2,
+        "score": 59.7
+      },
+      {
+        "logId": 3587041,
+        "map": "koth_proplant_v8",
+        "playedAt": 1708628403,
+        "result": "L",
+        "rolling": 50.3,
+        "score": 20.4
+      },
+      {
+        "logId": 3587086,
+        "map": "proplant-warmtic",
+        "playedAt": 1708631906,
+        "result": "W",
+        "rolling": 51.5,
+        "score": 59.0
+      },
+      {
+        "logId": 3588444,
+        "map": "vigil+proot",
+        "playedAt": 1708807877,
+        "result": "W",
+        "rolling": 52.1,
+        "score": 62.1
+      },
+      {
+        "logId": 3589768,
+        "map": "koth_proplant_v8",
+        "playedAt": 1708975538,
+        "result": "W",
+        "rolling": 54.6,
+        "score": 65.5
+      },
+      {
+        "logId": 3589790,
+        "map": "koth_proot_b5b",
+        "playedAt": 1708976819,
+        "result": "W",
+        "rolling": 55.7,
+        "score": 80.2
+      },
+      {
+        "logId": 3589819,
+        "map": "koth_proplant_v8",
+        "playedAt": 1708979567,
+        "result": "W",
+        "rolling": 57.8,
+        "score": 73.3
+      },
+      {
+        "logId": 3589833,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1708980519,
+        "result": "W",
+        "rolling": 53.8,
+        "score": 27.7
+      },
+      {
+        "logId": 3589845,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1708981390,
+        "result": "W",
+        "rolling": 56.7,
+        "score": 69.1
+      },
+      {
+        "logId": 3590482,
+        "map": "koth_proplant_v8",
+        "playedAt": 1709059101,
+        "result": "W",
+        "rolling": 60.3,
+        "score": 86.3
+      },
+      {
+        "logId": 3590494,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1709060422,
+        "result": "W",
+        "rolling": 58.2,
+        "score": 38.9
+      },
+      {
+        "logId": 3590576,
+        "map": "vigil-proplant",
+        "playedAt": 1709065718,
+        "result": "L",
+        "rolling": 60.8,
+        "score": 45.9
+      },
+      {
+        "logId": 3591111,
+        "map": "pl_upward_f11",
+        "playedAt": 1709148923,
+        "result": "L",
+        "rolling": 57.9,
+        "score": 30.0
+      },
+      {
+        "logId": 3591144,
+        "map": "koth_proplant_v8",
+        "playedAt": 1709150522,
+        "result": "W",
+        "rolling": 56.0,
+        "score": 43.4
+      },
+      {
+        "logId": 3591870,
+        "map": "proot + upward",
+        "playedAt": 1709241699,
+        "result": "W",
+        "rolling": 52.6,
+        "score": 31.1
+      },
+      {
+        "logId": 3592414,
+        "map": null,
+        "playedAt": 1709324004,
+        "result": "L",
+        "rolling": 47.1,
+        "score": 24.9
+      },
+      {
+        "logId": 3593196,
+        "map": "koth_proot_b5b",
+        "playedAt": 1709408362,
+        "result": "W",
+        "rolling": 46.3,
+        "score": 65.9
+      },
+      {
+        "logId": 3593218,
+        "map": "cp_steel_f12",
+        "playedAt": 1709409904,
+        "result": "W",
+        "rolling": 48.5,
+        "score": 49.4
+      },
+      {
+        "logId": 3593242,
+        "map": "koth_proplant_v8",
+        "playedAt": 1709411315,
+        "result": "W",
+        "rolling": 43.7,
+        "score": 21.0
+      },
+      {
+        "logId": 3594043,
+        "map": "koth_proplant_v8",
+        "playedAt": 1709490946,
+        "result": "W",
+        "rolling": 41.4,
+        "score": 63.3
+      },
+      {
+        "logId": 3594055,
+        "map": "koth_proot_b5b",
+        "playedAt": 1709491967,
+        "result": "W",
+        "rolling": 42.3,
+        "score": 47.8
+      },
+      {
+        "logId": 3596169,
+        "map": "proplant proot",
+        "playedAt": 1709758510,
+        "result": "L",
+        "rolling": 42.4,
+        "score": 47.5
+      },
+      {
+        "logId": 3601496,
+        "map": "upward + vigil",
+        "playedAt": 1710445963,
+        "result": "L",
+        "rolling": 42.5,
+        "score": 30.5
+      },
+      {
+        "logId": 3654549,
+        "map": "vigil + product",
+        "playedAt": 1717526891,
+        "result": "L",
+        "rolling": 39.1,
+        "score": 9.6
+      },
+      {
+        "logId": 3655225,
+        "map": "vigil + proplant",
+        "playedAt": 1717619053,
+        "result": "L",
+        "rolling": 40.7,
+        "score": 47.4
+      },
+      {
+        "logId": 3656319,
+        "map": "upward proplant",
+        "playedAt": 1717787191,
+        "result": "W",
+        "rolling": 41.6,
+        "score": 33.1
+      },
+      {
+        "logId": 3667893,
+        "map": "proot / vigil",
+        "playedAt": 1719428728,
+        "result": "T",
+        "rolling": 39.6,
+        "score": 46.7
+      },
+      {
+        "logId": 3674768,
+        "map": "koth_product_rcx",
+        "playedAt": 1720465411,
+        "result": "T",
+        "rolling": 42.4,
+        "score": 77.0
+      },
+      {
+        "logId": 3675404,
+        "map": "Vigil / Product",
+        "playedAt": 1720551546,
+        "result": "T",
+        "rolling": 43.6,
+        "score": 33.0
+      },
+      {
+        "logId": 3676495,
+        "map": "koth_product_final",
+        "playedAt": 1720722797,
+        "result": "W",
+        "rolling": 45.3,
+        "score": 80.6
+      },
+      {
+        "logId": 3676524,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1720723784,
+        "result": "W",
+        "rolling": 44.5,
+        "score": 39.1
+      },
+      {
+        "logId": 3700076,
+        "map": "koth_product_final",
+        "playedAt": 1723947083,
+        "result": "W",
+        "rolling": 45.3,
+        "score": 55.8
+      },
+      {
+        "logId": 3700103,
+        "map": "koth_ashville_final1",
+        "playedAt": 1723948538,
+        "result": "L",
+        "rolling": 48.7,
+        "score": 65.0
+      },
+      {
+        "logId": 3701626,
+        "map": "koth_proot_b5b",
+        "playedAt": 1724175629,
+        "result": "L",
+        "rolling": 51.4,
+        "score": 36.6
+      },
+      {
+        "logId": 3701635,
+        "map": "koth_proplant_v8",
+        "playedAt": 1724177257,
+        "result": "T",
+        "rolling": 51.7,
+        "score": 50.4
+      },
+      {
+        "logId": 3717359,
+        "map": "product, vigil",
+        "playedAt": 1726423598,
+        "result": "W",
+        "rolling": 53.5,
+        "score": 51.0
+      },
+      {
+        "logId": 3717373,
+        "map": "pl_upward_f12",
+        "playedAt": 1726425103,
+        "result": "W",
+        "rolling": 56.3,
+        "score": 74.1
+      },
+      {
+        "logId": 3717389,
+        "map": "koth_product_final",
+        "playedAt": 1726425968,
+        "result": "W",
+        "rolling": 54.9,
+        "score": 63.4
+      },
+      {
+        "logId": 3736914,
+        "map": "koth_product_final",
+        "playedAt": 1729276595,
+        "result": "W",
+        "rolling": 57.1,
+        "score": 55.1
+      },
+      {
+        "logId": 3736936,
+        "map": "koth_proplant_v8",
+        "playedAt": 1729278083,
+        "result": "L",
+        "rolling": 52.3,
+        "score": 32.3
+      },
+      {
+        "logId": 3737785,
+        "map": "koth_proot_b5b",
+        "playedAt": 1729367291,
+        "result": "L",
+        "rolling": 53.4,
+        "score": 50.6
+      },
+      {
+        "logId": 3737803,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1729368396,
+        "result": "L",
+        "rolling": 49.8,
+        "score": 19.0
+      },
+      {
+        "logId": 3739926,
+        "map": "koth_proot_b5b",
+        "playedAt": 1729626335,
+        "result": "L",
+        "rolling": 48.4,
+        "score": 51.3
+      },
+      {
+        "logId": 3739943,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1729627142,
+        "result": "L",
+        "rolling": 47.3,
+        "score": 26.2
+      },
+      {
+        "logId": 3747550,
+        "map": "Product, Upward",
+        "playedAt": 1730659968,
+        "result": "L",
+        "rolling": 47.2,
+        "score": 49.3
+      },
+      {
+        "logId": 3748824,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1730838938,
+        "result": "L",
+        "rolling": 45.4,
+        "score": 32.8
+      },
+      {
+        "logId": 3748845,
+        "map": "koth_proot_b5b",
+        "playedAt": 1730840934,
+        "result": "L",
+        "rolling": 43.7,
+        "score": 56.5
+      },
+      {
+        "logId": 3749271,
+        "map": "koth_product_final",
+        "playedAt": 1730922023,
+        "result": "W",
+        "rolling": 45.2,
+        "score": 78.7
+      },
+      {
+        "logId": 3749291,
+        "map": "koth_ashville_final1",
+        "playedAt": 1730923736,
+        "result": "W",
+        "rolling": 42.5,
+        "score": 28.0
+      },
+      {
+        "logId": 3749789,
+        "map": null,
+        "playedAt": 1731009347,
+        "result": "L",
+        "rolling": 43.4,
+        "score": 41.5
+      },
+      {
+        "logId": 3752940,
+        "map": "upward proot",
+        "playedAt": 1731445149,
+        "result": "L",
+        "rolling": 42.3,
+        "score": 39.4
+      },
+      {
+        "logId": 3753992,
+        "map": "koth_lakeside_f5",
+        "playedAt": 1731616828,
+        "result": "W",
+        "rolling": 45.6,
+        "score": 51.9
+      },
+      {
+        "logId": 3754015,
+        "map": "koth_product_rcx",
+        "playedAt": 1731618274,
+        "result": "W",
+        "rolling": 45.5,
+        "score": 51.1
+      },
+      {
+        "logId": 3754467,
+        "map": "koth_proot_b5b",
+        "playedAt": 1731699772,
+        "result": "W",
+        "rolling": 49.0,
+        "score": 60.3
+      },
+      {
+        "logId": 3754479,
+        "map": "pl_upward_f12",
+        "playedAt": 1731700907,
+        "result": "W",
+        "rolling": 51.0,
+        "score": 69.6
+      },
+      {
+        "logId": 3755092,
+        "map": "koth_proot_b5b",
+        "playedAt": 1731789620,
+        "result": "W",
+        "rolling": 53.7,
+        "score": 60.1
+      },
+      {
+        "logId": 3755127,
+        "map": "koth_ashville_final1",
+        "playedAt": 1731791704,
+        "result": "W",
+        "rolling": 53.3,
+        "score": 52.5
+      },
+      {
+        "logId": 3758079,
+        "map": "koth_lakeside_f5",
+        "playedAt": 1732221829,
+        "result": "W",
+        "rolling": 54.0,
+        "score": 85.1
+      },
+      {
+        "logId": 3758098,
+        "map": "koth_proot_b5b",
+        "playedAt": 1732223298,
+        "result": "W",
+        "rolling": 56.9,
+        "score": 57.7
+      },
+      {
+        "logId": 3758518,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1732308084,
+        "result": "L",
+        "rolling": 57.6,
+        "score": 47.8
+      },
+      {
+        "logId": 3758530,
+        "map": "koth_ashville_final1",
+        "playedAt": 1732309084,
+        "result": "T",
+        "rolling": 57.9,
+        "score": 43.1
+      },
+      {
+        "logId": 3761057,
+        "map": "koth_lakeside_f5",
+        "playedAt": 1732654290,
+        "result": "W",
+        "rolling": 60.4,
+        "score": 76.2
+      },
+      {
+        "logId": 3761074,
+        "map": "pl_upward_f12",
+        "playedAt": 1732655492,
+        "result": "W",
+        "rolling": 60.5,
+        "score": 52.1
+      },
+      {
+        "logId": 3761297,
+        "map": "proot/ashville",
+        "playedAt": 1732686485,
+        "result": "L",
+        "rolling": 60.3,
+        "score": 59.0
+      },
+      {
+        "logId": 3762321,
+        "map": "proot - vigil",
+        "playedAt": 1732909990,
+        "result": "L",
+        "rolling": 57.8,
+        "score": 44.8
+      },
+      {
+        "logId": 3762353,
+        "map": "koth_lakeside, koth_ashv",
+        "playedAt": 1732913699,
+        "result": "L",
+        "rolling": 56.2,
+        "score": 43.6
+      },
+      {
+        "logId": 3763490,
+        "map": "koth_product_final",
+        "playedAt": 1733081439,
+        "result": "L",
+        "rolling": 53.7,
+        "score": 27.6
+      },
+      {
+        "logId": 3764511,
+        "map": "koth_product_final",
+        "playedAt": 1733254386,
+        "result": "L",
+        "rolling": 50.2,
+        "score": 49.6
+      },
+      {
+        "logId": 3766028,
+        "map": "Proot",
+        "playedAt": 1733518907,
+        "result": "L",
+        "rolling": 47.7,
+        "score": 32.9
+      },
+      {
+        "logId": 3768604,
+        "map": "koth_ashville_final1",
+        "playedAt": 1733950234,
+        "result": "L",
+        "rolling": 45.9,
+        "score": 30.0
+      },
+      {
+        "logId": 3786255,
+        "map": "Poot/prod",
+        "playedAt": 1737064503,
+        "result": "L",
+        "rolling": 47.0,
+        "score": 54.3
+      },
+      {
+        "logId": 3787991,
+        "map": "prod + ash",
+        "playedAt": 1737317775,
+        "result": "L",
+        "rolling": 44.3,
+        "score": 49.2
+      },
+      {
+        "logId": 3789228,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1737491754,
+        "result": "W",
+        "rolling": 44.9,
+        "score": 57.9
+      },
+      {
+        "logId": 3789255,
+        "map": "koth_proot_b5b",
+        "playedAt": 1737493089,
+        "result": "W",
+        "rolling": 46.8,
+        "score": 77.6
+      },
+      {
+        "logId": 3790194,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1737661212,
+        "result": "L",
+        "rolling": 44.7,
+        "score": 24.6
+      },
+      {
+        "logId": 3790217,
+        "map": "koth_ashville_final1",
+        "playedAt": 1737662353,
+        "result": "L",
+        "rolling": 42.4,
+        "score": 20.5
+      },
+      {
+        "logId": 3792992,
+        "map": "pl_upward_f12",
+        "playedAt": 1738092772,
+        "result": "L",
+        "rolling": 42.8,
+        "score": 31.0
+      },
+      {
+        "logId": 3793039,
+        "map": "koth_ashville_final1",
+        "playedAt": 1738094991,
+        "result": "L",
+        "rolling": 40.8,
+        "score": 30.0
+      },
+      {
+        "logId": 3793084,
+        "map": "koth_product_final",
+        "playedAt": 1738097624,
+        "result": "W",
+        "rolling": 43.2,
+        "score": 57.3
+      },
+      {
+        "logId": 3794168,
+        "map": "Proot + Product",
+        "playedAt": 1738267869,
+        "result": "L",
+        "rolling": 44.5,
+        "score": 42.4
+      },
+      {
+        "logId": 3797248,
+        "map": "koth_ashville_final1",
+        "playedAt": 1738702246,
+        "result": "L",
+        "rolling": 42.4,
+        "score": 33.1
+      },
+      {
+        "logId": 3798291,
+        "map": "koth_proot_b5b",
+        "playedAt": 1738870254,
+        "result": "W",
+        "rolling": 46.2,
+        "score": 87.1
+      },
+      {
+        "logId": 3798327,
+        "map": "koth_product_final",
+        "playedAt": 1738871967,
+        "result": "W",
+        "rolling": 47.7,
+        "score": 72.9
+      },
+      {
+        "logId": 3801445,
+        "map": "koth_product_final",
+        "playedAt": 1739307807,
+        "result": "L",
+        "rolling": 46.4,
+        "score": 64.9
+      },
+      {
+        "logId": 3801464,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1739309179,
+        "result": "W",
+        "rolling": 47.4,
+        "score": 34.8
+      },
+      {
+        "logId": 3805665,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1739912795,
+        "result": "L",
+        "rolling": 50.0,
+        "score": 46.5
+      },
+      {
+        "logId": 3805666,
+        "map": "koth_proot_b5b",
+        "playedAt": 1739912821,
+        "result": "W",
+        "rolling": 54.6,
+        "score": 77.0
+      },
+      {
+        "logId": 3806093,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1739994699,
+        "result": "L",
+        "rolling": 57.5,
+        "score": 58.8
+      },
+      {
+        "logId": 3806122,
+        "map": "koth_product_final",
+        "playedAt": 1739996232,
+        "result": "W",
+        "rolling": 58.5,
+        "score": 67.0
+      },
+      {
+        "logId": 3806605,
+        "map": "koth_product_final",
+        "playedAt": 1740080051,
+        "result": "L",
+        "rolling": 57.0,
+        "score": 27.8
+      },
+      {
+        "logId": 3806645,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1740081682,
+        "result": "L",
+        "rolling": 56.8,
+        "score": 30.9
+      },
+      {
+        "logId": 3807207,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1740166617,
+        "result": "L",
+        "rolling": 54.4,
+        "score": 63.7
+      },
+      {
+        "logId": 3807237,
+        "map": "koth_ashville_final1",
+        "playedAt": 1740168550,
+        "result": "L",
+        "rolling": 52.1,
+        "score": 49.5
+      },
+      {
+        "logId": 3809817,
+        "map": "Proot + Upward",
+        "playedAt": 1740518622,
+        "result": "T",
+        "rolling": 49.9,
+        "score": 43.2
+      },
+      {
+        "logId": 3811427,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1740772369,
+        "result": "L",
+        "rolling": 50.0,
+        "score": 35.7
+      },
+      {
+        "logId": 3811459,
+        "map": "koth_product_final",
+        "playedAt": 1740774794,
+        "result": "W",
+        "rolling": 53.3,
+        "score": 79.4
+      },
+      {
+        "logId": 3813900,
+        "map": "pl_upward_f12",
+        "playedAt": 1741121449,
+        "result": "W",
+        "rolling": 49.1,
+        "score": 35.2
+      },
+      {
+        "logId": 3813921,
+        "map": "koth_proot_b5b",
+        "playedAt": 1741122785,
+        "result": "W",
+        "rolling": 47.5,
+        "score": 42.7
+      },
+      {
+        "logId": 3814960,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1741293585,
+        "result": "W",
+        "rolling": 45.3,
+        "score": 45.1
+      },
+      {
+        "logId": 3814981,
+        "map": "pl_upward_f12",
+        "playedAt": 1741294904,
+        "result": "W",
+        "rolling": 48.9,
+        "score": 63.9
+      },
+      {
+        "logId": 3817823,
+        "map": "koth_ashville_final1",
+        "playedAt": 1741721885,
+        "result": "L",
+        "rolling": 52.3,
+        "score": 64.1
+      },
+      {
+        "logId": 3817846,
+        "map": "pl_upward",
+        "playedAt": 1741723439,
+        "result": "L",
+        "rolling": 52.8,
+        "score": 69.0
+      },
+      {
+        "logId": 3817869,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1741725055,
+        "result": "L",
+        "rolling": 49.2,
+        "score": 13.7
+      },
+      {
+        "logId": 3817908,
+        "map": "koth_product_final",
+        "playedAt": 1741727696,
+        "result": "W",
+        "rolling": 50.7,
+        "score": 58.0
+      },
+      {
+        "logId": 3821126,
+        "map": "koth_ashville_final1",
+        "playedAt": 1742244743,
+        "result": "W",
+        "rolling": 53.7,
+        "score": 65.7
+      },
+      {
+        "logId": 3821135,
+        "map": "pl_upward_f12",
+        "playedAt": 1742245945,
+        "result": "W",
+        "rolling": 50.6,
+        "score": 48.6
+      },
+      {
+        "logId": 3821705,
+        "map": "koth_product_final",
+        "playedAt": 1742329708,
+        "result": "W",
+        "rolling": 50.2,
+        "score": 31.1
+      },
+      {
+        "logId": 3821719,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1742330720,
+        "result": "W",
+        "rolling": 50.2,
+        "score": 42.8
+      },
+      {
+        "logId": 3822741,
+        "map": null,
+        "playedAt": 1742504436,
+        "result": "W",
+        "rolling": 52.5,
+        "score": 68.1
+      },
+      {
+        "logId": 3823261,
+        "map": "product product",
+        "playedAt": 1742587370,
+        "result": "L",
+        "rolling": 50.4,
+        "score": 42.5
+      },
+      {
+        "logId": 3824591,
+        "map": "koth_product_final",
+        "playedAt": 1742761375,
+        "result": "W",
+        "rolling": 50.6,
+        "score": 66.0
+      },
+      {
+        "logId": 3825767,
+        "map": null,
+        "playedAt": 1742932275,
+        "result": "W",
+        "rolling": 50.5,
+        "score": 68.5
+      },
+      {
+        "logId": 3826954,
+        "map": "Product - Vigil",
+        "playedAt": 1743108988,
+        "result": "W",
+        "rolling": 54.5,
+        "score": 53.3
+      },
+      {
+        "logId": 3829921,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1743532720,
+        "result": "L",
+        "rolling": 54.9,
+        "score": 62.0
+      },
+      {
+        "logId": 3829941,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1743533687,
+        "result": "L",
+        "rolling": 50.7,
+        "score": 24.4
+      },
+      {
+        "logId": 3830944,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1743702199,
+        "result": "L",
+        "rolling": 52.7,
+        "score": 68.2
+      },
+      {
+        "logId": 3830955,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1743703184,
+        "result": "L",
+        "rolling": 53.4,
+        "score": 37.9
+      },
+      {
+        "logId": 3831016,
+        "map": null,
+        "playedAt": 1743707470,
+        "result": "L",
+        "rolling": 52.9,
+        "score": 38.4
+      },
+      {
+        "logId": 3831485,
+        "map": "koth_proot_b5b",
+        "playedAt": 1743791047,
+        "result": "W",
+        "rolling": 53.6,
+        "score": 74.7
+      },
+      {
+        "logId": 3831492,
+        "map": "koth_proot_b5b",
+        "playedAt": 1743791892,
+        "result": "T",
+        "rolling": 55.4,
+        "score": 60.4
+      },
+      {
+        "logId": 3831508,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1743792921,
+        "result": "W",
+        "rolling": 51.0,
+        "score": 22.4
+      },
+      {
+        "logId": 3833934,
+        "map": "koth_proot",
+        "playedAt": 1744136601,
+        "result": "L",
+        "rolling": 50.2,
+        "score": 60.1
+      },
+      {
+        "logId": 3834013,
+        "map": "koth_proot_b5b",
+        "playedAt": 1744140861,
+        "result": "W",
+        "rolling": 51.8,
+        "score": 69.0
+      },
+      {
+        "logId": 3834041,
+        "map": "koth_proot_b5b",
+        "playedAt": 1744142577,
+        "result": "W",
+        "rolling": 49.6,
+        "score": 40.5
+      },
+      {
+        "logId": 3834930,
+        "map": null,
+        "playedAt": 1744308191,
+        "result": "L",
+        "rolling": 52.9,
+        "score": 57.4
+      },
+      {
+        "logId": 3836043,
+        "map": "koth_proot_b5b",
+        "playedAt": 1744483971,
+        "result": "T",
+        "rolling": 49.5,
+        "score": 34.1
+      },
+      {
+        "logId": 3836068,
+        "map": null,
+        "playedAt": 1744486283,
+        "result": "W",
+        "rolling": 52.3,
+        "score": 65.8
+      },
+      {
+        "logId": 3836605,
+        "map": "koth_ashville_final1",
+        "playedAt": 1744565606,
+        "result": "W",
+        "rolling": 54.9,
+        "score": 64.7
+      },
+      {
+        "logId": 3838797,
+        "map": "cp_steel_f12",
+        "playedAt": 1744914417,
+        "result": "L",
+        "rolling": 49.7,
+        "score": 22.3
+      },
+      {
+        "logId": 3838818,
+        "map": "cp_steel_f12",
+        "playedAt": 1744915656,
+        "result": "L",
+        "rolling": 47.4,
+        "score": 37.2
+      },
+      {
+        "logId": 3839360,
+        "map": "koth_ashville_final1",
+        "playedAt": 1745001348,
+        "result": "L",
+        "rolling": 49.6,
+        "score": 44.4
+      },
+      {
+        "logId": 3839377,
+        "map": "cp_steel_f12",
+        "playedAt": 1745002608,
+        "result": "W",
+        "rolling": 49.7,
+        "score": 61.5
+      },
+      {
+        "logId": 3841510,
+        "map": "steel ",
+        "playedAt": 1745348013,
+        "result": "T",
+        "rolling": 45.0,
+        "score": 22.3
+      },
+      {
+        "logId": 3841558,
+        "map": "koth_ashville_final1",
+        "playedAt": 1745350910,
+        "result": "L",
+        "rolling": 47.8,
+        "score": 68.7
+      },
+      {
+        "logId": 3842463,
+        "map": "cp_steel_f12",
+        "playedAt": 1745520913,
+        "result": "L",
+        "rolling": 45.5,
+        "score": 34.2
+      },
+      {
+        "logId": 3842507,
+        "map": "cp_steel_f12",
+        "playedAt": 1745523528,
+        "result": "L",
+        "rolling": 44.9,
+        "score": 28.1
+      },
+      {
+        "logId": 3842533,
+        "map": "koth_ashville_final1",
+        "playedAt": 1745525733,
+        "result": "W",
+        "rolling": 44.4,
+        "score": 61.0
+      },
+      {
+        "logId": 3842994,
+        "map": null,
+        "playedAt": 1745606761,
+        "result": "L",
+        "rolling": 42.8,
+        "score": 48.7
+      },
+      {
+        "logId": 3844699,
+        "map": "koth_ashville_final1",
+        "playedAt": 1745861907,
+        "result": "L",
+        "rolling": 44.6,
+        "score": 39.8
+      },
+      {
+        "logId": 3844710,
+        "map": "koth_ashville_final1",
+        "playedAt": 1745862836,
+        "result": "L",
+        "rolling": 42.8,
+        "score": 19.4
+      },
+      {
+        "logId": 3845341,
+        "map": "koth_ashville_final1",
+        "playedAt": 1745952016,
+        "result": "W",
+        "rolling": 47.3,
+        "score": 89.7
+      },
+      {
+        "logId": 3845366,
+        "map": "koth_ashville_final1",
+        "playedAt": 1745953305,
+        "result": "L",
+        "rolling": 48.3,
+        "score": 70.8
+      },
+      {
+        "logId": 3845420,
+        "map": "upward ashville",
+        "playedAt": 1745956643,
+        "result": "L",
+        "rolling": 50.8,
+        "score": 47.9
+      },
+      {
+        "logId": 3847144,
+        "map": null,
+        "playedAt": 1746207811,
+        "result": "W",
+        "rolling": 49.8,
+        "score": 58.2
+      },
+      {
+        "logId": 3847208,
+        "map": null,
+        "playedAt": 1746212931,
+        "result": "W",
+        "rolling": 53.8,
+        "score": 74.5
+      },
+      {
+        "logId": 3849344,
+        "map": "pl_upward_f12",
+        "playedAt": 1746470535,
+        "result": "L",
+        "rolling": 54.8,
+        "score": 38.4
+      },
+      {
+        "logId": 3849367,
+        "map": "pl_upward_f12",
+        "playedAt": 1746472084,
+        "result": "W",
+        "rolling": 54.2,
+        "score": 54.7
+      },
+      {
+        "logId": 3850050,
+        "map": "upward 2x",
+        "playedAt": 1746561183,
+        "result": "T",
+        "rolling": 55.9,
+        "score": 65.7
+      },
+      {
+        "logId": 3851098,
+        "map": "pl_upward_f12",
+        "playedAt": 1746727145,
+        "result": "W",
+        "rolling": 60.6,
+        "score": 86.7
+      },
+      {
+        "logId": 3851156,
+        "map": " \t(〃＞＿＜;〃)",
+        "playedAt": 1746730738,
+        "result": "T",
+        "rolling": 61.6,
+        "score": 29.7
+      },
+      {
+        "logId": 3851693,
+        "map": null,
+        "playedAt": 1746815825,
+        "result": "W",
+        "rolling": 60.3,
+        "score": 76.4
+      },
+      {
+        "logId": 3851711,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1746817118,
+        "result": "W",
+        "rolling": 57.7,
+        "score": 45.1
+      },
+      {
+        "logId": 3851722,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1746817813,
+        "result": "W",
+        "rolling": 58.9,
+        "score": 59.6
+      },
+      {
+        "logId": 3852484,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1746901913,
+        "result": "W",
+        "rolling": 56.1,
+        "score": 30.1
+      },
+      {
+        "logId": 3852498,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1746902765,
+        "result": "W",
+        "rolling": 54.2,
+        "score": 55.3
+      },
+      {
+        "logId": 3852520,
+        "map": "koth_product_final",
+        "playedAt": 1746903930,
+        "result": "W",
+        "rolling": 57.2,
+        "score": 68.8
+      },
+      {
+        "logId": 3852551,
+        "map": null,
+        "playedAt": 1746906037,
+        "result": "W",
+        "rolling": 57.8,
+        "score": 60.5
+      },
+      {
+        "logId": 3852578,
+        "map": "koth_ashville_final1",
+        "playedAt": 1746907768,
+        "result": "W",
+        "rolling": 56.7,
+        "score": 55.0
+      },
+      {
+        "logId": 3853148,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1746987902,
+        "result": "W",
+        "rolling": 56.7,
+        "score": 86.9
+      },
+      {
+        "logId": 3853176,
+        "map": "koth_product_final",
+        "playedAt": 1746989214,
+        "result": "L",
+        "rolling": 60.2,
+        "score": 64.1
+      },
+      {
+        "logId": 3853232,
+        "map": "Ashville, Vigil",
+        "playedAt": 1746993175,
+        "result": "L",
+        "rolling": 56.4,
+        "score": 38.1
+      },
+      {
+        "logId": 3853797,
+        "map": "vigil ashville",
+        "playedAt": 1747081263,
+        "result": "L",
+        "rolling": 58.7,
+        "score": 68.5
+      },
+      {
+        "logId": 3853799,
+        "map": "proot vigil",
+        "playedAt": 1747081316,
+        "result": "L",
+        "rolling": 57.3,
+        "score": 45.3
+      },
+      {
+        "logId": 3854371,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1747164838,
+        "result": "W",
+        "rolling": 57.6,
+        "score": 33.9
+      },
+      {
+        "logId": 3854394,
+        "map": "koth_product_final",
+        "playedAt": 1747166235,
+        "result": "L",
+        "rolling": 57.2,
+        "score": 51.1
+      },
+      {
+        "logId": 3854410,
+        "map": "koth_product_final",
+        "playedAt": 1747167398,
+        "result": "W",
+        "rolling": 55.8,
+        "score": 55.0
+      },
+      {
+        "logId": 3854830,
+        "map": "koth_ashville_final1",
+        "playedAt": 1747246892,
+        "result": "W",
+        "rolling": 55.9,
+        "score": 60.8
+      },
+      {
+        "logId": 3854848,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1747247795,
+        "result": "W",
+        "rolling": 56.1,
+        "score": 57.5
+      },
+      {
+        "logId": 3855397,
+        "map": "koth_ashville_final1",
+        "playedAt": 1747330465,
+        "result": "L",
+        "rolling": 53.5,
+        "score": 60.2
+      },
+      {
+        "logId": 3855404,
+        "map": "koth_product_final",
+        "playedAt": 1747331380,
+        "result": "W",
+        "rolling": 52.1,
+        "score": 50.9
+      },
+      {
+        "logId": 3855486,
+        "map": "koth_product_final",
+        "playedAt": 1747337832,
+        "result": "W",
+        "rolling": 56.2,
+        "score": 78.9
+      },
+      {
+        "logId": 3855497,
+        "map": "koth_product_final",
+        "playedAt": 1747338511,
+        "result": "W",
+        "rolling": 54.3,
+        "score": 49.6
+      },
+      {
+        "logId": 3855514,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1747339349,
+        "result": "W",
+        "rolling": 54.0,
+        "score": 42.1
+      },
+      {
+        "logId": 3855989,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1747416752,
+        "result": "W",
+        "rolling": 54.5,
+        "score": 38.5
+      },
+      {
+        "logId": 3855995,
+        "map": "koth_product_final",
+        "playedAt": 1747417514,
+        "result": "W",
+        "rolling": 55.6,
+        "score": 62.4
+      },
+      {
+        "logId": 3856000,
+        "map": "koth_product_final",
+        "playedAt": 1747417920,
+        "result": "W",
+        "rolling": 55.8,
+        "score": 57.1
+      },
+      {
+        "logId": 3856117,
+        "map": "prod,vigil,ash",
+        "playedAt": 1747426979,
+        "result": "W",
+        "rolling": 56.0,
+        "score": 63.1
+      },
+      {
+        "logId": 3857334,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1747593297,
+        "result": "W",
+        "rolling": 56.1,
+        "score": 58.4
+      },
+      {
+        "logId": 3857357,
+        "map": "koth_ashville_final1",
+        "playedAt": 1747594178,
+        "result": "W",
+        "rolling": 56.8,
+        "score": 66.5
+      },
+      {
+        "logId": 3857367,
+        "map": "koth_ashville_final1",
+        "playedAt": 1747594871,
+        "result": "W",
+        "rolling": 57.3,
+        "score": 56.0
+      },
+      {
+        "logId": 3857995,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1747683750,
+        "result": "L",
+        "rolling": 52.8,
+        "score": 34.3
+      },
+      {
+        "logId": 3858009,
+        "map": "koth_ashville_final1",
+        "playedAt": 1747684724,
+        "result": "L",
+        "rolling": 53.5,
+        "score": 56.1
+      },
+      {
+        "logId": 3858562,
+        "map": "koth_product_final",
+        "playedAt": 1747766157,
+        "result": "L",
+        "rolling": 54.4,
+        "score": 51.9
+      },
+      {
+        "logId": 3858584,
+        "map": "koth_product_final",
+        "playedAt": 1747767317,
+        "result": "W",
+        "rolling": 58.2,
+        "score": 75.9
+      },
+      {
+        "logId": 3858603,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1747768032,
+        "result": "W",
+        "rolling": 55.6,
+        "score": 37.1
+      },
+      {
+        "logId": 3858622,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1747769375,
+        "result": "W",
+        "rolling": 55.5,
+        "score": 55.5
+      },
+      {
+        "logId": 3858638,
+        "map": "koth_ashville_final1",
+        "playedAt": 1747770754,
+        "result": "W",
+        "rolling": 54.0,
+        "score": 48.3
+      },
+      {
+        "logId": 3859116,
+        "map": "koth_ashville_final1",
+        "playedAt": 1747852613,
+        "result": "W",
+        "rolling": 53.2,
+        "score": 50.6
+      },
+      {
+        "logId": 3859148,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1747854008,
+        "result": "W",
+        "rolling": 49.5,
+        "score": 29.5
+      },
+      {
+        "logId": 3859176,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1747855589,
+        "result": "W",
+        "rolling": 50.1,
+        "score": 61.9
+      },
+      {
+        "logId": 3859191,
+        "map": "koth_product_final",
+        "playedAt": 1747856797,
+        "result": "W",
+        "rolling": 54.5,
+        "score": 77.9
+      },
+      {
+        "logId": 3859696,
+        "map": "koth_ashville_final1",
+        "playedAt": 1747935965,
+        "result": "W",
+        "rolling": 56.7,
+        "score": 78.4
+      },
+      {
+        "logId": 3859701,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1747936759,
+        "result": "L",
+        "rolling": 56.4,
+        "score": 49.2
+      },
+      {
+        "logId": 3859799,
+        "map": " + ashville",
+        "playedAt": 1747943049,
+        "result": "W",
+        "rolling": 55.0,
+        "score": 61.8
+      },
+      {
+        "logId": 3861179,
+        "map": "koth_proot_b5b",
+        "playedAt": 1748111700,
+        "result": "W",
+        "rolling": 55.7,
+        "score": 43.4
+      },
+      {
+        "logId": 3861191,
+        "map": "koth_proot_b5b",
+        "playedAt": 1748112338,
+        "result": "W",
+        "rolling": 51.4,
+        "score": 12.7
+      },
+      {
+        "logId": 3861205,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1748113717,
+        "result": "W",
+        "rolling": 52.9,
+        "score": 63.2
+      },
+      {
+        "logId": 3861924,
+        "map": "proot vigil",
+        "playedAt": 1748200150,
+        "result": "L",
+        "rolling": 52.8,
+        "score": 50.3
+      },
+      {
+        "logId": 3862502,
+        "map": "koth_ashville_final1",
+        "playedAt": 1748283837,
+        "result": "W",
+        "rolling": 57.3,
+        "score": 74.3
+      },
+      {
+        "logId": 3862512,
+        "map": "koth_ashville_final1",
+        "playedAt": 1748284610,
+        "result": "W",
+        "rolling": 57.1,
+        "score": 59.3
+      },
+      {
+        "logId": 3862526,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1748285493,
+        "result": "L",
+        "rolling": 52.3,
+        "score": 30.0
+      },
+      {
+        "logId": 3863145,
+        "map": "koth_ashville_final1",
+        "playedAt": 1748367918,
+        "result": "W",
+        "rolling": 50.4,
+        "score": 59.7
+      },
+      {
+        "logId": 3863147,
+        "map": "koth_ashville_final1",
+        "playedAt": 1748368278,
+        "result": "W",
+        "rolling": 54.0,
+        "score": 85.6
+      },
+      {
+        "logId": 3863290,
+        "map": "русские не победили :(",
+        "playedAt": 1748377746,
+        "result": "W",
+        "rolling": 52.8,
+        "score": 49.4
+      },
+      {
+        "logId": 3863984,
+        "map": "koth_product_final",
+        "playedAt": 1748472554,
+        "result": "L",
+        "rolling": 56.3,
+        "score": 78.2
+      },
+      {
+        "logId": 3865931,
+        "map": "koth_proot_b5b",
+        "playedAt": 1748733367,
+        "result": "L",
+        "rolling": 57.8,
+        "score": 28.0
+      },
+      {
+        "logId": 3867141,
+        "map": "koth_proot_b5b",
+        "playedAt": 1748888870,
+        "result": "L",
+        "rolling": 55.6,
+        "score": 40.7
+      },
+      {
+        "logId": 3867153,
+        "map": "koth_proot_b5b",
+        "playedAt": 1748889868,
+        "result": "L",
+        "rolling": 56.6,
+        "score": 60.7
+      },
+      {
+        "logId": 3867168,
+        "map": "pl_upward_f12",
+        "playedAt": 1748890891,
+        "result": "L",
+        "rolling": 51.4,
+        "score": 22.1
+      },
+      {
+        "logId": 3867181,
+        "map": "pl_upward_f12",
+        "playedAt": 1748891894,
+        "result": "L",
+        "rolling": 52.2,
+        "score": 67.2
+      },
+      {
+        "logId": 3867897,
+        "map": null,
+        "playedAt": 1748977062,
+        "result": "W",
+        "rolling": 55.1,
+        "score": 59.8
+      },
+      {
+        "logId": 3867915,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1748978116,
+        "result": "W",
+        "rolling": 54.1,
+        "score": 49.7
+      },
+      {
+        "logId": 3872496,
+        "map": "koth_ashville_final1",
+        "playedAt": 1749584528,
+        "result": "W",
+        "rolling": 47.5,
+        "score": 18.9
+      },
+      {
+        "logId": 3872509,
+        "map": "koth_ashville_final1",
+        "playedAt": 1749585301,
+        "result": "L",
+        "rolling": 46.3,
+        "score": 37.5
+      },
+      {
+        "logId": 3872536,
+        "map": "pl_upward_f12",
+        "playedAt": 1749586595,
+        "result": "L",
+        "rolling": 41.0,
+        "score": 25.0
+      },
+      {
+        "logId": 3873686,
+        "map": "koth_ashville_final1",
+        "playedAt": 1749753464,
+        "result": "L",
+        "rolling": 44.3,
+        "score": 61.8
+      },
+      {
+        "logId": 3873714,
+        "map": "pl_upward_f12",
+        "playedAt": 1749754903,
+        "result": "L",
+        "rolling": 44.0,
+        "score": 37.5
+      },
+      {
+        "logId": 3873756,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1749757760,
+        "result": "W",
+        "rolling": 42.1,
+        "score": 41.4
+      },
+      {
+        "logId": 3873779,
+        "map": "koth_product_final",
+        "playedAt": 1749759046,
+        "result": "L",
+        "rolling": 43.4,
+        "score": 35.6
+      },
+      {
+        "logId": 3875003,
+        "map": "koth_ashville_final1",
+        "playedAt": 1749930574,
+        "result": "W",
+        "rolling": 43.5,
+        "score": 67.4
+      },
+      {
+        "logId": 3875014,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1749931659,
+        "result": "W",
+        "rolling": 40.0,
+        "score": 25.6
+      },
+      {
+        "logId": 3875106,
+        "map": "koth_product_final",
+        "playedAt": 1749939701,
+        "result": "L",
+        "rolling": 43.1,
+        "score": 80.2
+      },
+      {
+        "logId": 3875684,
+        "map": "koth_proot_b5b",
+        "playedAt": 1750012296,
+        "result": "L",
+        "rolling": 48.0,
+        "score": 67.5
+      },
+      {
+        "logId": 3875698,
+        "map": "koth_proot_b5b",
+        "playedAt": 1750013056,
+        "result": "L",
+        "rolling": 47.1,
+        "score": 28.8
+      },
+      {
+        "logId": 3875722,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1750014407,
+        "result": "L",
+        "rolling": 47.2,
+        "score": 26.6
+      },
+      {
+        "logId": 3875751,
+        "map": "koth_product_final",
+        "playedAt": 1750016261,
+        "result": "W",
+        "rolling": 47.9,
+        "score": 68.8
+      },
+      {
+        "logId": 3875767,
+        "map": "koth_product_final",
+        "playedAt": 1750017334,
+        "result": "W",
+        "rolling": 46.9,
+        "score": 26.9
+      },
+      {
+        "logId": 3875797,
+        "map": "pl_upward_f12",
+        "playedAt": 1750019099,
+        "result": "W",
+        "rolling": 50.7,
+        "score": 79.5
+      },
+      {
+        "logId": 3876457,
+        "map": "koth_ashville_final1",
+        "playedAt": 1750104765,
+        "result": "L",
+        "rolling": 50.8,
+        "score": 36.4
+      },
+      {
+        "logId": 3888080,
+        "map": "ash+upward",
+        "playedAt": 1751742311,
+        "result": "L",
+        "rolling": 50.3,
+        "score": 62.3
+      },
+      {
+        "logId": 3888132,
+        "map": "product",
+        "playedAt": 1751747203,
+        "result": "L",
+        "rolling": 53.8,
+        "score": 61.0
+      },
+      {
+        "logId": 3889936,
+        "map": "koth_product_final",
+        "playedAt": 1751999280,
+        "result": "W",
+        "rolling": 51.3,
+        "score": 55.3
+      },
+      {
+        "logId": 3889968,
+        "map": "pl_upward_f10",
+        "playedAt": 1752001511,
+        "result": "W",
+        "rolling": 50.6,
+        "score": 60.6
+      },
+      {
+        "logId": 3891682,
+        "map": "koth_ashville_final",
+        "playedAt": 1752259914,
+        "result": "L",
+        "rolling": 50.8,
+        "score": 30.5
+      },
+      {
+        "logId": 3893703,
+        "map": "koth_product_final",
+        "playedAt": 1752528483,
+        "result": "W",
+        "rolling": 53.7,
+        "score": 55.9
+      },
+      {
+        "logId": 3894379,
+        "map": "koth_ashville_final1",
+        "playedAt": 1752615423,
+        "result": "L",
+        "rolling": 51.9,
+        "score": 50.4
+      },
+      {
+        "logId": 3894395,
+        "map": "koth_proot_b5b",
+        "playedAt": 1752617424,
+        "result": "L",
+        "rolling": 54.2,
+        "score": 50.5
+      },
+      {
+        "logId": 3898282,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1753208994,
+        "result": "W",
+        "rolling": 50.8,
+        "score": 45.3
+      },
+      {
+        "logId": 3898331,
+        "map": null,
+        "playedAt": 1753212580,
+        "result": "W",
+        "rolling": 53.5,
+        "score": 63.3
+      },
+      {
+        "logId": 3900602,
+        "map": "koth_product_final",
+        "playedAt": 1753554643,
+        "result": "W",
+        "rolling": 50.1,
+        "score": 27.8
+      },
+      {
+        "logId": 3900620,
+        "map": "koth_product_final",
+        "playedAt": 1753555581,
+        "result": "L",
+        "rolling": 49.7,
+        "score": 57.0
+      },
+      {
+        "logId": 3900654,
+        "map": null,
+        "playedAt": 1753557393,
+        "result": "W",
+        "rolling": 48.6,
+        "score": 44.8
+      },
+      {
+        "logId": 3900705,
+        "map": "ashville + product",
+        "playedAt": 1753560222,
+        "result": "W",
+        "rolling": 50.7,
+        "score": 81.7
+      },
+      {
+        "logId": 3905622,
+        "map": "koth_ashville_final",
+        "playedAt": 1754242946,
+        "result": "W",
+        "rolling": 49.1,
+        "score": 13.8
+      },
+      {
+        "logId": 3907063,
+        "map": "koth_ashville_final1",
+        "playedAt": 1754422827,
+        "result": "W",
+        "rolling": 47.2,
+        "score": 37.4
+      },
+      {
+        "logId": 3907087,
+        "map": "koth_ashville_final1",
+        "playedAt": 1754424143,
+        "result": "W",
+        "rolling": 45.3,
+        "score": 31.4
+      },
+      {
+        "logId": 3907100,
+        "map": "pl_upward_f12",
+        "playedAt": 1754425116,
+        "result": "L",
+        "rolling": 43.4,
+        "score": 31.5
+      },
+      {
+        "logId": 3908258,
+        "map": "pl_upward_f12",
+        "playedAt": 1754596551,
+        "result": "L",
+        "rolling": 44.6,
+        "score": 57.0
+      },
+      {
+        "logId": 3908283,
+        "map": null,
+        "playedAt": 1754597828,
+        "result": "W",
+        "rolling": 46.4,
+        "score": 81.6
+      },
+      {
+        "logId": 3911402,
+        "map": "koth_ashville_final1",
+        "playedAt": 1755023457,
+        "result": "W",
+        "rolling": 46.5,
+        "score": 29.2
+      },
+      {
+        "logId": 3911434,
+        "map": "pl_upward_f12",
+        "playedAt": 1755024793,
+        "result": "L",
+        "rolling": 47.0,
+        "score": 61.7
+      },
+      {
+        "logId": 3911474,
+        "map": "pl_upward_f12",
+        "playedAt": 1755027251,
+        "result": "T",
+        "rolling": 46.4,
+        "score": 38.3
+      },
+      {
+        "logId": 3911510,
+        "map": "pl_upward_f12",
+        "playedAt": 1755028726,
+        "result": "L",
+        "rolling": 44.6,
+        "score": 64.4
+      },
+      {
+        "logId": 3912690,
+        "map": "pl_upward",
+        "playedAt": 1755202200,
+        "result": "W",
+        "rolling": 50.0,
+        "score": 67.7
+      },
+      {
+        "logId": 3916643,
+        "map": "koth_ashville",
+        "playedAt": 1755715740,
+        "result": "L",
+        "rolling": 49.0,
+        "score": 27.1
+      },
+      {
+        "logId": 3920056,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1756150566,
+        "result": "W",
+        "rolling": 49.6,
+        "score": 37.8
+      },
+      {
+        "logId": 3920094,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1756152375,
+        "result": "L",
+        "rolling": 49.2,
+        "score": 26.9
+      },
+      {
+        "logId": 3920717,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1756235139,
+        "result": "L",
+        "rolling": 47.1,
+        "score": 36.7
+      },
+      {
+        "logId": 3921319,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1756321236,
+        "result": "L",
+        "rolling": 41.9,
+        "score": 29.4
+      },
+      {
+        "logId": 3921385,
+        "map": "vigil",
+        "playedAt": 1756324594,
+        "result": "L",
+        "rolling": 41.3,
+        "score": 23.1
+      },
+      {
+        "logId": 3922061,
+        "map": null,
+        "playedAt": 1756411493,
+        "result": "L",
+        "rolling": 39.6,
+        "score": 44.3
+      },
+      {
+        "logId": 3922065,
+        "map": null,
+        "playedAt": 1756411588,
+        "result": "L",
+        "rolling": 40.0,
+        "score": 42.7
+      },
+      {
+        "logId": 3922599,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1756492228,
+        "result": "W",
+        "rolling": 36.9,
+        "score": 33.2
+      },
+      {
+        "logId": 3922626,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1756493718,
+        "result": "W",
+        "rolling": 35.1,
+        "score": 49.3
+      },
+      {
+        "logId": 3922702,
+        "map": null,
+        "playedAt": 1756498706,
+        "result": "L",
+        "rolling": 36.1,
+        "score": 38.0
+      },
+      {
+        "logId": 3923978,
+        "map": "koth_product_final",
+        "playedAt": 1756664631,
+        "result": "T",
+        "rolling": 34.7,
+        "score": 23.2
+      },
+      {
+        "logId": 3923998,
+        "map": "koth_product_final",
+        "playedAt": 1756665726,
+        "result": "L",
+        "rolling": 34.5,
+        "score": 24.9
+      },
+      {
+        "logId": 3924094,
+        "map": "product 3x",
+        "playedAt": 1756671384,
+        "result": "W",
+        "rolling": 37.2,
+        "score": 64.0
+      },
+      {
+        "logId": 3924728,
+        "map": null,
+        "playedAt": 1756757526,
+        "result": "L",
+        "rolling": 39.0,
+        "score": 46.8
+      },
+      {
+        "logId": 3925283,
+        "map": "koth_product",
+        "playedAt": 1756839962,
+        "result": "L",
+        "rolling": 43.0,
+        "score": 63.6
+      },
+      {
+        "logId": 3925304,
+        "map": "koth_product_final",
+        "playedAt": 1756841311,
+        "result": "L",
+        "rolling": 40.0,
+        "score": 14.6
+      },
+      {
+        "logId": 3925319,
+        "map": "koth_product_final",
+        "playedAt": 1756842244,
+        "result": "L",
+        "rolling": 37.6,
+        "score": 18.7
+      },
+      {
+        "logId": 3925865,
+        "map": "Product x2",
+        "playedAt": 1756925759,
+        "result": "L",
+        "rolling": 39.3,
+        "score": 49.8
+      },
+      {
+        "logId": 3925930,
+        "map": "product 3x",
+        "playedAt": 1756929594,
+        "result": "L",
+        "rolling": 37.7,
+        "score": 33.3
+      },
+      {
+        "logId": 3926359,
+        "map": "koth_product_final",
+        "playedAt": 1757010660,
+        "result": "W",
+        "rolling": 40.7,
+        "score": 67.9
+      },
+      {
+        "logId": 3926380,
+        "map": "koth_product_final",
+        "playedAt": 1757011512,
+        "result": "W",
+        "rolling": 43.6,
+        "score": 52.6
+      },
+      {
+        "logId": 3926439,
+        "map": "koth_product_final",
+        "playedAt": 1757014992,
+        "result": "W",
+        "rolling": 47.8,
+        "score": 66.4
+      },
+      {
+        "logId": 3927685,
+        "map": "cp_steel",
+        "playedAt": 1757186822,
+        "result": "W",
+        "rolling": 45.3,
+        "score": 39.1
+      },
+      {
+        "logId": 3928970,
+        "map": "cp_steel_f12",
+        "playedAt": 1757356109,
+        "result": "L",
+        "rolling": 44.2,
+        "score": 35.6
+      },
+      {
+        "logId": 3928997,
+        "map": "cp_steel_f12",
+        "playedAt": 1757357521,
+        "result": "L",
+        "rolling": 43.4,
+        "score": 55.9
+      },
+      {
+        "logId": 3929571,
+        "map": "cp_steel_f12",
+        "playedAt": 1757443109,
+        "result": "W",
+        "rolling": 49.0,
+        "score": 70.3
+      },
+      {
+        "logId": 3929662,
+        "map": null,
+        "playedAt": 1757448418,
+        "result": "T",
+        "rolling": 50.4,
+        "score": 32.8
+      },
+      {
+        "logId": 3930120,
+        "map": "cp_steel_f12",
+        "playedAt": 1757529656,
+        "result": "L",
+        "rolling": 52.1,
+        "score": 67.2
+      },
+      {
+        "logId": 3930141,
+        "map": "cp_steel_f12",
+        "playedAt": 1757530744,
+        "result": "W",
+        "rolling": 54.4,
+        "score": 56.4
+      },
+      {
+        "logId": 3930176,
+        "map": "cp_steel_f12",
+        "playedAt": 1757533238,
+        "result": "L",
+        "rolling": 51.4,
+        "score": 37.4
+      },
+      {
+        "logId": 3930193,
+        "map": "cp_steel_f12",
+        "playedAt": 1757534282,
+        "result": "L",
+        "rolling": 52.0,
+        "score": 58.8
+      },
+      {
+        "logId": 3930663,
+        "map": "cp_steel_f12",
+        "playedAt": 1757616033,
+        "result": "L",
+        "rolling": 49.6,
+        "score": 42.9
+      },
+      {
+        "logId": 3930693,
+        "map": "cp_steel_f12",
+        "playedAt": 1757617117,
+        "result": "W",
+        "rolling": 49.9,
+        "score": 41.9
+      },
+      {
+        "logId": 3930763,
+        "map": null,
+        "playedAt": 1757621570,
+        "result": "W",
+        "rolling": 50.9,
+        "score": 45.8
+      },
+      {
+        "logId": 3931866,
+        "map": "koth_product_final",
+        "playedAt": 1757792225,
+        "result": "L",
+        "rolling": 47.2,
+        "score": 18.8
+      },
+      {
+        "logId": 3931889,
+        "map": "pl_upward_f12",
+        "playedAt": 1757793617,
+        "result": "W",
+        "rolling": 44.6,
+        "score": 44.4
+      },
+      {
+        "logId": 3932513,
+        "map": "koth_ashville_final1",
+        "playedAt": 1757875087,
+        "result": "L",
+        "rolling": 46.2,
+        "score": 48.6
+      },
+      {
+        "logId": 3932545,
+        "map": "pl_upward_f12",
+        "playedAt": 1757876560,
+        "result": "L",
+        "rolling": 44.2,
+        "score": 47.4
+      },
+      {
+        "logId": 3933146,
+        "map": "koth_ashville_final1",
+        "playedAt": 1757962152,
+        "result": "L",
+        "rolling": 44.7,
+        "score": 60.5
+      },
+      {
+        "logId": 3933169,
+        "map": "cp_steel_f12",
+        "playedAt": 1757963467,
+        "result": "W",
+        "rolling": 45.6,
+        "score": 46.8
+      },
+      {
+        "logId": 3933199,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1757965165,
+        "result": "L",
+        "rolling": 43.0,
+        "score": 32.5
+      },
+      {
+        "logId": 3933217,
+        "map": "koth_product_final",
+        "playedAt": 1757966656,
+        "result": "L",
+        "rolling": 42.5,
+        "score": 38.1
+      },
+      {
+        "logId": 3934875,
+        "map": "koth_ashville_final1",
+        "playedAt": 1758220846,
+        "result": "L",
+        "rolling": 43.0,
+        "score": 47.1
+      },
+      {
+        "logId": 3934893,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1758221746,
+        "result": "W",
+        "rolling": 43.9,
+        "score": 54.8
+      },
+      {
+        "logId": 3934934,
+        "map": "koth_ashville_final1",
+        "playedAt": 1758224235,
+        "result": "L",
+        "rolling": 43.7,
+        "score": 17.0
+      },
+      {
+        "logId": 3934960,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1758225653,
+        "result": "L",
+        "rolling": 40.8,
+        "score": 15.1
+      },
+      {
+        "logId": 3935462,
+        "map": "koth_ashville_final1",
+        "playedAt": 1758308079,
+        "result": "L",
+        "rolling": 42.1,
+        "score": 61.9
+      },
+      {
+        "logId": 3935479,
+        "map": "pl_upward_f12",
+        "playedAt": 1758309408,
+        "result": "L",
+        "rolling": 41.3,
+        "score": 39.5
+      },
+      {
+        "logId": 3935522,
+        "map": "koth_product, pl_upward",
+        "playedAt": 1758312931,
+        "result": "W",
+        "rolling": 39.6,
+        "score": 43.1
+      },
+      {
+        "logId": 3936821,
+        "map": "koth_product_final",
+        "playedAt": 1758483030,
+        "result": "W",
+        "rolling": 40.4,
+        "score": 55.1
+      },
+      {
+        "logId": 3936837,
+        "map": "cp_steel_f12",
+        "playedAt": 1758483978,
+        "result": "W",
+        "rolling": 41.9,
+        "score": 47.1
+      },
+      {
+        "logId": 3936861,
+        "map": "pl_upward_f12",
+        "playedAt": 1758485247,
+        "result": "W",
+        "rolling": 41.3,
+        "score": 32.4
+      },
+      {
+        "logId": 3937428,
+        "map": "pl_vigil_rc10 2x",
+        "playedAt": 1758567348,
+        "result": "W",
+        "rolling": 39.2,
+        "score": 26.2
+      },
+      {
+        "logId": 3937464,
+        "map": "pl_upward_f12",
+        "playedAt": 1758570155,
+        "result": "W",
+        "rolling": 41.3,
+        "score": 75.6
+      },
+      {
+        "logId": 3937484,
+        "map": "cp_steel_f12",
+        "playedAt": 1758571242,
+        "result": "L",
+        "rolling": 43.3,
+        "score": 36.7
+      },
+      {
+        "logId": 3937994,
+        "map": "cp_steel_f12",
+        "playedAt": 1758652495,
+        "result": "L",
+        "rolling": 45.5,
+        "score": 37.6
+      },
+      {
+        "logId": 3938024,
+        "map": "pl_upward_f12",
+        "playedAt": 1758654144,
+        "result": "W",
+        "rolling": 46.1,
+        "score": 67.7
+      },
+      {
+        "logId": 3938156,
+        "map": null,
+        "playedAt": 1758663985,
+        "result": "W",
+        "rolling": 45.7,
+        "score": 35.6
+      },
+      {
+        "logId": 3938547,
+        "map": "koth_ashville_final1",
+        "playedAt": 1758734717,
+        "result": "W",
+        "rolling": 47.9,
+        "score": 64.7
+      },
+      {
+        "logId": 3938553,
+        "map": "cp_steel_f12",
+        "playedAt": 1758735822,
+        "result": "L",
+        "rolling": 45.7,
+        "score": 33.6
+      },
+      {
+        "logId": 3942910,
+        "map": "ashville, vigil",
+        "playedAt": 1759348898,
+        "result": "W",
+        "rolling": 44.2,
+        "score": 32.2
+      },
+      {
+        "logId": 3945845,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1759779338,
+        "result": "L",
+        "rolling": 43.5,
+        "score": 25.4
+      },
+      {
+        "logId": 3945851,
+        "map": "koth_ashville_final1",
+        "playedAt": 1759780103,
+        "result": "L",
+        "rolling": 45.8,
+        "score": 48.5
+      },
+      {
+        "logId": 3949699,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1760382309,
+        "result": "L",
+        "rolling": 40.5,
+        "score": 23.3
+      },
+      {
+        "logId": 3949702,
+        "map": null,
+        "playedAt": 1760382376,
+        "result": "T",
+        "rolling": 40.9,
+        "score": 40.7
+      },
+      {
+        "logId": 3951970,
+        "map": "koth_product_final",
+        "playedAt": 1760729690,
+        "result": "L",
+        "rolling": 42.0,
+        "score": 48.1
+      },
+      {
+        "logId": 3951995,
+        "map": "koth_ashville_final1",
+        "playedAt": 1760731279,
+        "result": "L",
+        "rolling": 39.5,
+        "score": 43.3
+      },
+      {
+        "logId": 3956423,
+        "map": "pl_upward_f12",
+        "playedAt": 1761418379,
+        "result": "W",
+        "rolling": 38.5,
+        "score": 25.6
+      },
+      {
+        "logId": 3956437,
+        "map": "pl_upward_f12",
+        "playedAt": 1761419267,
+        "result": "L",
+        "rolling": 34.9,
+        "score": 28.1
+      },
+      {
+        "logId": 3956445,
+        "map": null,
+        "playedAt": 1761419678,
+        "result": "L",
+        "rolling": 38.1,
+        "score": 66.1
+      },
+      {
+        "logId": 3958905,
+        "map": "koth_govan_rc1",
+        "playedAt": 1761768082,
+        "result": "L",
+        "rolling": 38.1,
+        "score": 32.0
+      },
+      {
+        "logId": 3958927,
+        "map": "koth_product_final",
+        "playedAt": 1761769224,
+        "result": "T",
+        "rolling": 39.4,
+        "score": 37.9
+      },
+      {
+        "logId": 3958936,
+        "map": "koth_govan_rc1",
+        "playedAt": 1761770156,
+        "result": "W",
+        "rolling": 39.9,
+        "score": 54.1
+      },
+      {
+        "logId": 3959971,
+        "map": "koth_product_final",
+        "playedAt": 1761943043,
+        "result": "L",
+        "rolling": 39.6,
+        "score": 20.5
+      },
+      {
+        "logId": 3959980,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1761943986,
+        "result": "L",
+        "rolling": 37.5,
+        "score": 19.3
+      },
+      {
+        "logId": 3959997,
+        "map": "vigil, govan",
+        "playedAt": 1761945379,
+        "result": "L",
+        "rolling": 36.3,
+        "score": 35.9
+      },
+      {
+        "logId": 3962947,
+        "map": "koth_product_final",
+        "playedAt": 1762374374,
+        "result": "W",
+        "rolling": 38.8,
+        "score": 68.9
+      },
+      {
+        "logId": 3962958,
+        "map": "cp_steel_f12",
+        "playedAt": 1762375393,
+        "result": "W",
+        "rolling": 43.4,
+        "score": 71.7
+      },
+      {
+        "logId": 3963884,
+        "map": "koth_govan_rc1",
+        "playedAt": 1762544024,
+        "result": "L",
+        "rolling": 46.6,
+        "score": 59.9
+      },
+      {
+        "logId": 3963900,
+        "map": "koth_govan_rc1",
+        "playedAt": 1762544835,
+        "result": "L",
+        "rolling": 42.3,
+        "score": 22.5
+      },
+      {
+        "logId": 3963911,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1762545717,
+        "result": "W",
+        "rolling": 41.6,
+        "score": 24.8
+      },
+      {
+        "logId": 3963936,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1762547963,
+        "result": "L",
+        "rolling": 39.6,
+        "score": 18.7
+      },
+      {
+        "logId": 3963949,
+        "map": "koth_product_final",
+        "playedAt": 1762548822,
+        "result": "W",
+        "rolling": 38.4,
+        "score": 42.2
+      },
+      {
+        "logId": 3963956,
+        "map": "koth_product_final",
+        "playedAt": 1762549268,
+        "result": "W",
+        "rolling": 41.9,
+        "score": 54.8
+      },
+      {
+        "logId": 3965012,
+        "map": "koth_govan_rc1",
+        "playedAt": 1762716335,
+        "result": "L",
+        "rolling": 42.0,
+        "score": 21.0
+      },
+      {
+        "logId": 3965029,
+        "map": "koth_govan_rc1",
+        "playedAt": 1762717092,
+        "result": "L",
+        "rolling": 47.3,
+        "score": 88.3
+      },
+      {
+        "logId": 3965052,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1762718427,
+        "result": "L",
+        "rolling": 42.8,
+        "score": 24.1
+      },
+      {
+        "logId": 3965090,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1762720359,
+        "result": "L",
+        "rolling": 38.4,
+        "score": 27.4
+      },
+      {
+        "logId": 3965110,
+        "map": "cp_steel_f12",
+        "playedAt": 1762721731,
+        "result": "L",
+        "rolling": 34.3,
+        "score": 19.0
+      },
+      {
+        "logId": 3965578,
+        "map": "pl_vigil",
+        "playedAt": 1762804447,
+        "result": "L",
+        "rolling": 36.1,
+        "score": 40.5
+      },
+      {
+        "logId": 3965592,
+        "map": "koth_govan_rc1",
+        "playedAt": 1762805170,
+        "result": "L",
+        "rolling": 37.0,
+        "score": 34.1
+      },
+      {
+        "logId": 3966262,
+        "map": "vigil govan",
+        "playedAt": 1762895589,
+        "result": "L",
+        "rolling": 40.1,
+        "score": 49.8
+      },
+      {
+        "logId": 3966790,
+        "map": "vigil",
+        "playedAt": 1762981290,
+        "result": "T",
+        "rolling": 38.9,
+        "score": 30.2
+      },
+      {
+        "logId": 3967196,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1763062132,
+        "result": "L",
+        "rolling": 36.2,
+        "score": 27.8
+      },
+      {
+        "logId": 3967219,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1763063262,
+        "result": "W",
+        "rolling": 39.7,
+        "score": 55.4
+      },
+      {
+        "logId": 3967287,
+        "map": "Vigil",
+        "playedAt": 1763067439,
+        "result": "T",
+        "rolling": 33.7,
+        "score": 29.2
+      },
+      {
+        "logId": 3967685,
+        "map": "cp_steel_f12",
+        "playedAt": 1763148597,
+        "result": "L",
+        "rolling": 34.2,
+        "score": 28.6
+      },
+      {
+        "logId": 3967704,
+        "map": "koth_govan_rc1",
+        "playedAt": 1763149454,
+        "result": "L",
+        "rolling": 32.8,
+        "score": 13.1
+      },
+      {
+        "logId": 3968995,
+        "map": "cp_steel_f12",
+        "playedAt": 1763326549,
+        "result": "W",
+        "rolling": 33.6,
+        "score": 27.2
+      },
+      {
+        "logId": 3969968,
+        "map": "cp_steel_f12",
+        "playedAt": 1763494212,
+        "result": "L",
+        "rolling": 33.2,
+        "score": 36.1
+      },
+      {
+        "logId": 3970009,
+        "map": "koth_govan_rc1",
+        "playedAt": 1763496114,
+        "result": "W",
+        "rolling": 37.1,
+        "score": 73.7
+      },
+      {
+        "logId": 3970310,
+        "map": "steel + govan",
+        "playedAt": 1763546046,
+        "result": "L",
+        "rolling": 36.6,
+        "score": 44.3
+      },
+      {
+        "logId": 3970483,
+        "map": "cp_steel_f12",
+        "playedAt": 1763581455,
+        "result": "L",
+        "rolling": 38.9,
+        "score": 54.0
+      },
+      {
+        "logId": 3970541,
+        "map": "cp_steel_f12",
+        "playedAt": 1763585874,
+        "result": "W",
+        "rolling": 39.6,
+        "score": 34.1
+      },
+      {
+        "logId": 3971512,
+        "map": "⚔",
+        "playedAt": 1763760513,
+        "result": "W",
+        "rolling": 38.9,
+        "score": 48.5
+      },
+      {
+        "logId": 3972091,
+        "map": "cp_gullywash_f9",
+        "playedAt": 1763845896,
+        "result": "L",
+        "rolling": 40.0,
+        "score": 40.7
+      },
+      {
+        "logId": 3972123,
+        "map": null,
+        "playedAt": 1763850819,
+        "result": "W",
+        "rolling": 44.5,
+        "score": 72.9
+      },
+      {
+        "logId": 3973143,
+        "map": "koth_govan_rc1",
+        "playedAt": 1764013548,
+        "result": "L",
+        "rolling": 46.6,
+        "score": 34.4
+      },
+      {
+        "logId": 3973169,
+        "map": "cp_gullywash_f9",
+        "playedAt": 1764015409,
+        "result": "L",
+        "rolling": 50.5,
+        "score": 65.8
+      },
+      {
+        "logId": 3973186,
+        "map": "koth_govan_rc1",
+        "playedAt": 1764017157,
+        "result": "L",
+        "rolling": 51.3,
+        "score": 44.7
+      },
+      {
+        "logId": 3973197,
+        "map": "cp_gullywash_f9",
+        "playedAt": 1764018546,
+        "result": "L",
+        "rolling": 46.5,
+        "score": 25.6
+      },
+      {
+        "logId": 3973652,
+        "map": "cp_gullywash_f9",
+        "playedAt": 1764099652,
+        "result": "L",
+        "rolling": 45.2,
+        "score": 31.5
+      },
+      {
+        "logId": 3973671,
+        "map": "koth_govan_rc1",
+        "playedAt": 1764100787,
+        "result": "L",
+        "rolling": 48.0,
+        "score": 81.8
+      },
+      {
+        "logId": 3973934,
+        "map": "govan + gully",
+        "playedAt": 1764150955,
+        "result": "L",
+        "rolling": 45.6,
+        "score": 10.5
+      },
+      {
+        "logId": 3974108,
+        "map": "koth_govan_rc1",
+        "playedAt": 1764189474,
+        "result": "L",
+        "rolling": 45.7,
+        "score": 48.8
+      },
+      {
+        "logId": 3974129,
+        "map": "cp_gullywash_f9",
+        "playedAt": 1764191624,
+        "result": "L",
+        "rolling": 47.0,
+        "score": 53.9
+      },
+      {
+        "logId": 3974909,
+        "map": "cp_gullywash_f9",
+        "playedAt": 1764362869,
+        "result": "L",
+        "rolling": 43.1,
+        "score": 33.9
+      },
+      {
+        "logId": 3974931,
+        "map": "koth_govan_rc1",
+        "playedAt": 1764365253,
+        "result": "W",
+        "rolling": 45.4,
+        "score": 57.8
+      },
+      {
+        "logId": 3975944,
+        "map": "pl_borneo_f2",
+        "playedAt": 1764531354,
+        "result": "L",
+        "rolling": 47.3,
+        "score": 84.6
+      },
+      {
+        "logId": 3975964,
+        "map": "pl_upward_f12",
+        "playedAt": 1764532464,
+        "result": "L",
+        "rolling": 46.6,
+        "score": 37.2
+      },
+      {
+        "logId": 3975988,
+        "map": "pl_upward_f12",
+        "playedAt": 1764534269,
+        "result": "L",
+        "rolling": 49.8,
+        "score": 57.7
+      },
+      {
+        "logId": 3976491,
+        "map": "pl_upward_f12",
+        "playedAt": 1764622048,
+        "result": "W",
+        "rolling": 52.2,
+        "score": 55.6
+      },
+      {
+        "logId": 3976507,
+        "map": "pl_borneo_f2",
+        "playedAt": 1764623810,
+        "result": "L",
+        "rolling": 46.2,
+        "score": 22.3
+      },
+      {
+        "logId": 3976957,
+        "map": "pl_upward_f12",
+        "playedAt": 1764705192,
+        "result": "W",
+        "rolling": 47.8,
+        "score": 26.6
+      },
+      {
+        "logId": 3976970,
+        "map": "pl_upward_f12",
+        "playedAt": 1764706075,
+        "result": "L",
+        "rolling": 45.6,
+        "score": 26.2
+      },
+      {
+        "logId": 3977326,
+        "map": "borneo/upward",
+        "playedAt": 1764771550,
+        "result": "W",
+        "rolling": 44.5,
+        "score": 42.8
+      },
+      {
+        "logId": 3977475,
+        "map": "upward borneo",
+        "playedAt": 1764795833,
+        "result": "T",
+        "rolling": 44.4,
+        "score": 33.1
+      },
+      {
+        "logId": 3977847,
+        "map": "pl_upward",
+        "playedAt": 1764878447,
+        "result": "T",
+        "rolling": 45.0,
+        "score": 64.0
+      },
+      {
+        "logId": 3977902,
+        "map": "pl_upward_f12",
+        "playedAt": 1764882452,
+        "result": "L",
+        "rolling": 39.3,
+        "score": 27.2
+      },
+      {
+        "logId": 3983109,
+        "map": "koth_ashville_final1",
+        "playedAt": 1765823038,
+        "result": "W",
+        "rolling": 41.9,
+        "score": 63.6
+      },
+      {
+        "logId": 3983114,
+        "map": "pl_upward_f12",
+        "playedAt": 1765824343,
+        "result": "W",
+        "rolling": 38.4,
+        "score": 22.9
+      },
+      {
+        "logId": 3989273,
+        "map": "product + vigil",
+        "playedAt": 1767042416,
+        "result": "W",
+        "rolling": 35.2,
+        "score": 23.1
+      },
+      {
+        "logId": 3991566,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1767472692,
+        "result": "W",
+        "rolling": 38.0,
+        "score": 50.7
+      },
+      {
+        "logId": 3991578,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1767473796,
+        "result": "W",
+        "rolling": 40.5,
+        "score": 51.5
+      },
+      {
+        "logId": 3991588,
+        "map": "koth_product_final",
+        "playedAt": 1767474636,
+        "result": "W",
+        "rolling": 45.7,
+        "score": 78.3
+      },
+      {
+        "logId": 3991639,
+        "map": "koth_product_final",
+        "playedAt": 1767483541,
+        "result": "W",
+        "rolling": 47.9,
+        "score": 64.8
+      },
+      {
+        "logId": 3993511,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1767810628,
+        "result": "L",
+        "rolling": 48.7,
+        "score": 41.2
+      },
+      {
+        "logId": 3993520,
+        "map": "koth_product_final",
+        "playedAt": 1767811560,
+        "result": "W",
+        "rolling": 48.2,
+        "score": 58.9
+      },
+      {
+        "logId": 3993525,
+        "map": "koth_product_final",
+        "playedAt": 1767812819,
+        "result": "W",
+        "rolling": 51.8,
+        "score": 63.4
+      },
+      {
+        "logId": 3994057,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1767904130,
+        "result": "W",
+        "rolling": 50.5,
+        "score": 50.0
+      },
+      {
+        "logId": 3994080,
+        "map": "cp_product",
+        "playedAt": 1767905914,
+        "result": "W",
+        "rolling": 56.1,
+        "score": 79.1
+      },
+      {
+        "logId": 3994555,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1767990600,
+        "result": "W",
+        "rolling": 57.2,
+        "score": 34.4
+      },
+      {
+        "logId": 3994576,
+        "map": "koth_product",
+        "playedAt": 1767992569,
+        "result": "W",
+        "rolling": 57.7,
+        "score": 55.6
+      },
+      {
+        "logId": 3996669,
+        "map": "vigil2x + product",
+        "playedAt": 1768306281,
+        "result": "L",
+        "rolling": 55.6,
+        "score": 30.4
+      },
+      {
+        "logId": 3997414,
+        "map": "product + vigil",
+        "playedAt": 1768426659,
+        "result": "L",
+        "rolling": 51.9,
+        "score": 41.4
+      },
+      {
+        "logId": 3999510,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1768764449,
+        "result": "W",
+        "rolling": 53.7,
+        "score": 83.0
+      },
+      {
+        "logId": 3999533,
+        "map": "koth_product_final",
+        "playedAt": 1768765560,
+        "result": "W",
+        "rolling": 57.1,
+        "score": 75.2
+      },
+      {
+        "logId": 4003372,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1769370278,
+        "result": "W",
+        "rolling": 58.1,
+        "score": 68.9
+      },
+      {
+        "logId": 4003387,
+        "map": "koth_product_final",
+        "playedAt": 1769371331,
+        "result": "W",
+        "rolling": 55.0,
+        "score": 32.1
+      },
+      {
+        "logId": 4005040,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1769630668,
+        "result": "L",
+        "rolling": 53.7,
+        "score": 36.6
+      },
+      {
+        "logId": 4005045,
+        "map": "product",
+        "playedAt": 1769630796,
+        "result": "T",
+        "rolling": 53.7,
+        "score": 79.2
+      },
+      {
+        "logId": 4007234,
+        "map": "tow_tetsudo_b10a",
+        "playedAt": 1769979284,
+        "result": "L",
+        "rolling": 53.2,
+        "score": 29.6
+      },
+      {
+        "logId": 4007244,
+        "map": "koth_product_final",
+        "playedAt": 1769980224,
+        "result": "W",
+        "rolling": 57.1,
+        "score": 94.3
+      },
+      {
+        "logId": 4011339,
+        "map": "pl_eruption_b15",
+        "playedAt": 1770665942,
+        "result": "L",
+        "rolling": 59.9,
+        "score": 59.0
+      },
+      {
+        "logId": 4014861,
+        "map": "pl_eruption_b15",
+        "playedAt": 1771271620,
+        "result": "L",
+        "rolling": 58.0,
+        "score": 22.3
+      },
+      {
+        "logId": 4014886,
+        "map": "pl_eruption_b15",
+        "playedAt": 1771273745,
+        "result": "L",
+        "rolling": 52.2,
+        "score": 24.5
+      },
+      {
+        "logId": 4014901,
+        "map": "koth_product_final",
+        "playedAt": 1771275306,
+        "result": "L",
+        "rolling": 48.6,
+        "score": 39.8
+      },
+      {
+        "logId": 4015469,
+        "map": "⚔",
+        "playedAt": 1771363430,
+        "result": "L",
+        "rolling": 45.0,
+        "score": 32.4
+      },
+      {
+        "logId": 4015898,
+        "map": "pl_eruption_b15",
+        "playedAt": 1771447166,
+        "result": "L",
+        "rolling": 47.9,
+        "score": 61.5
+      },
+      {
+        "logId": 4019786,
+        "map": "pl_downfall_b13",
+        "playedAt": 1772134468,
+        "result": "W",
+        "rolling": 50.3,
+        "score": 60.0
+      },
+      {
+        "logId": 4019808,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1772135788,
+        "result": "W",
+        "rolling": 46.1,
+        "score": 37.9
+      },
+      {
+        "logId": 4020229,
+        "map": "pl_downfall_b13",
+        "playedAt": 1772221384,
+        "result": "L",
+        "rolling": 48.7,
+        "score": 54.9
+      },
+      {
+        "logId": 4020245,
+        "map": "pl_downfall_b13",
+        "playedAt": 1772222908,
+        "result": "L",
+        "rolling": 45.5,
+        "score": 62.4
+      },
+      {
+        "logId": 4020677,
+        "map": "⚔",
+        "playedAt": 1772310140,
+        "result": "T",
+        "rolling": 44.6,
+        "score": 50.8
+      },
+      {
+        "logId": 4021212,
+        "map": "pl_downfall_b13",
+        "playedAt": 1772396053,
+        "result": "W",
+        "rolling": 49.0,
+        "score": 66.2
+      },
+      {
+        "logId": 4021702,
+        "map": "pl_romania",
+        "playedAt": 1772482248,
+        "result": "W",
+        "rolling": 52.1,
+        "score": 55.1
+      },
+      {
+        "logId": 4027372,
+        "map": "DF/DVLG",
+        "playedAt": 1773522109,
+        "result": "L",
+        "rolling": 51.4,
+        "score": 33.2
+      },
+      {
+        "logId": 4082135,
+        "map": "koth_product_final",
+        "playedAt": 1783280890,
+        "result": "W",
+        "rolling": 52.2,
+        "score": 39.6
+      },
+      {
+        "logId": 4082158,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1783282305,
+        "result": "W",
+        "rolling": 48.6,
+        "score": 26.1
+      },
+      {
+        "logId": 4085147,
+        "map": "koth_ashville_final1",
+        "playedAt": 1783795346,
+        "result": "L",
+        "rolling": 48.6,
+        "score": 59.5
+      },
+      {
+        "logId": 4085223,
+        "map": "koth_proot_b5b",
+        "playedAt": 1783802771,
+        "result": "W",
+        "rolling": 48.1,
+        "score": 33.4
+      },
+      {
+        "logId": 4093326,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1785095282,
+        "result": "W",
+        "rolling": 46.9,
+        "score": 42.2
+      },
+      {
+        "logId": 4093340,
+        "map": "pl_upward_f12",
+        "playedAt": 1785096670,
+        "result": "W",
+        "rolling": 47.3,
+        "score": 66.7
+      },
+      {
+        "logId": 4093364,
+        "map": "product/upward",
+        "playedAt": 1785098507,
+        "result": "W",
+        "rolling": 44.7,
+        "score": 25.0
+      },
+      {
+        "logId": 4108276,
+        "map": "koth_product_final",
+        "playedAt": 1787398289,
+        "result": "L",
+        "rolling": 43.4,
+        "score": 53.5
+      },
+      {
+        "logId": 4108291,
+        "map": "pl_badwater_pro_v12",
+        "playedAt": 1787400461,
+        "result": "L",
+        "rolling": 41.9,
+        "score": 39.6
+      },
+      {
+        "logId": 4108301,
+        "map": "koth_proot_b5b",
+        "playedAt": 1787401928,
+        "result": "L",
+        "rolling": 45.1,
+        "score": 65.0
+      },
+      {
+        "logId": 4109062,
+        "map": "pl_upward_f12",
+        "playedAt": 1787511795,
+        "result": "W",
+        "rolling": 44.5,
+        "score": 34.3
+      },
+      {
+        "logId": 4109131,
+        "map": "pl_upward_f12",
+        "playedAt": 1787516257,
+        "result": "W",
+        "rolling": 45.9,
+        "score": 39.4
+      },
+      {
+        "logId": 4109576,
+        "map": "upward + steel",
+        "playedAt": 1787598270,
+        "result": "L",
+        "rolling": 42.3,
+        "score": 24.0
+      },
+      {
+        "logId": 4109635,
+        "map": "product + steel",
+        "playedAt": 1787602485,
+        "result": "W",
+        "rolling": 43.0,
+        "score": 40.1
+      },
+      {
+        "logId": 4111116,
+        "map": "cp_steel_f12",
+        "playedAt": 1787858128,
+        "result": "L",
+        "rolling": 43.8,
+        "score": 50.3
+      },
+      {
+        "logId": 4112136,
+        "map": "koth_warmtic_f10",
+        "playedAt": 1788028625,
+        "result": "W",
+        "rolling": 44.6,
+        "score": 74.4
+      },
+      {
+        "logId": 4112795,
+        "map": "koth_product_final",
+        "playedAt": 1788117280,
+        "result": "W",
+        "rolling": 48.0,
+        "score": 59.2
+      },
+      {
+        "logId": 4114301,
+        "map": "pl_vigil_rc10",
+        "playedAt": 1788374428,
+        "result": "W",
+        "rolling": 47.1,
+        "score": 44.4
+      },
+      {
+        "logId": 4121291,
+        "map": null,
+        "playedAt": 1789502845,
+        "result": "W",
+        "rolling": 46.4,
+        "score": 32.7
+      },
+      {
+        "logId": 4122209,
+        "map": "pl_swiftwater_final1",
+        "playedAt": 1789673414,
+        "result": "W",
+        "rolling": 45.6,
+        "score": 57.4
+      },
+      {
+        "logId": 4122234,
+        "map": "pl_swiftwater_final1",
+        "playedAt": 1789675330,
+        "result": "L",
+        "rolling": 45.4,
+        "score": 31.9
+      }
+    ],
+    "winRate": 53.8,
+    "worst": [
+      {
+        "league": null,
+        "logId": 3654549,
+        "map": "vigil + product",
+        "playedAt": 1717526891,
+        "result": "L",
+        "score": 9.6,
+        "title": "aaaaaaaaaaaaa"
+      },
+      {
+        "league": null,
+        "logId": 3973934,
+        "map": "govan + gully",
+        "playedAt": 1764150955,
+        "result": "L",
+        "score": 10.5,
+        "title": "Valhalla vs SBQRRA"
+      },
+      {
+        "league": null,
+        "logId": 513611,
+        "map": "pl_badwater",
+        "playedAt": 1414159702,
+        "result": "T",
+        "score": 11.5,
+        "title": "TF2Center Lobby #242834"
+      },
+      {
+        "league": null,
+        "logId": 3861191,
+        "map": "koth_proot_b5b",
+        "playedAt": 1748112338,
+        "result": "W",
+        "score": 12.7,
+        "title": "serveme.tf #1485982"
+      },
+      {
+        "league": null,
+        "logId": 3967704,
+        "map": "koth_govan_rc1",
+        "playedAt": 1763149454,
+        "result": "L",
+        "score": 13.1,
+        "title": "serveme.tf #1517944"
+      }
+    ]
+  }
+}

@@ -69,6 +69,7 @@ pub fn run() {
             sync_commands::index_stats,
             sync_commands::list_matches,
             sync_commands::get_match,
+            sync_commands::get_profile,
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

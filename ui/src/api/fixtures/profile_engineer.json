@@ -1,0 +1,531 @@
+{
+  "classes": [
+    [
+      "sniper",
+      663
+    ],
+    [
+      "engineer",
+      29
+    ],
+    [
+      "demoman",
+      15
+    ],
+    [
+      "scout",
+      15
+    ],
+    [
+      "soldier",
+      10
+    ],
+    [
+      "pyro",
+      8
+    ],
+    [
+      "heavy",
+      5
+    ],
+    [
+      "medic",
+      3
+    ],
+    [
+      "spy",
+      1
+    ]
+  ],
+  "profile": {
+    "best": [
+      {
+        "league": null,
+        "logId": 602515,
+        "map": "pl_badwater",
+        "playedAt": 1419969612,
+        "result": "T",
+        "score": 85.2,
+        "title": "serveme.tf - RE4DY vs BLU"
+      },
+      {
+        "league": null,
+        "logId": 3573717,
+        "map": "koth_warmtic_f10",
+        "playedAt": 1706910777,
+        "result": "W",
+        "score": 79.9,
+        "title": "serveme.tf #1389112"
+      },
+      {
+        "league": null,
+        "logId": 4113410,
+        "map": "koth_product_final",
+        "playedAt": 1788210707,
+        "result": "W",
+        "score": 79.0,
+        "title": "TF2Center Lobby #1329180"
+      },
+      {
+        "league": null,
+        "logId": 4112294,
+        "map": "koth_warmtic_f10",
+        "playedAt": 1788044995,
+        "result": "W",
+        "score": 75.6,
+        "title": "TF2Center Lobby #1329018"
+      },
+      {
+        "league": null,
+        "logId": 4112313,
+        "map": "koth_product_final",
+        "playedAt": 1788047514,
+        "result": "W",
+        "score": 75.0,
+        "title": "TF2Center Lobby #1329026"
+      }
+    ],
+    "careerAvg": 58.6,
+    "class": "engineer",
+    "components": [
+      {
+        "careerPct": 67.1,
+        "component": "impact_kills",
+        "formPct": 72.9,
+        "formRaw": 7.96,
+        "label": "Impact kills",
+        "unit": "per 10 min",
+        "weight": 0.35
+      },
+      {
+        "careerPct": 64.4,
+        "component": "dpm",
+        "formPct": 71.8,
+        "formRaw": 232.43,
+        "label": "Damage / min",
+        "unit": "per min",
+        "weight": 0.2
+      },
+      {
+        "careerPct": 50.7,
+        "component": "deaths",
+        "formPct": 43.1,
+        "formRaw": 5.04,
+        "label": "Deaths",
+        "unit": "per 10 min",
+        "weight": 0.2
+      },
+      {
+        "careerPct": 64.9,
+        "component": "impact_assists",
+        "formPct": 68.4,
+        "formRaw": 6.86,
+        "label": "Impact assists",
+        "unit": "per 10 min",
+        "weight": 0.15
+      },
+      {
+        "careerPct": 24.1,
+        "component": "caps",
+        "formPct": 29.8,
+        "formRaw": 0.58,
+        "label": "Caps",
+        "unit": "per 10 min",
+        "weight": 0.1
+      }
+    ],
+    "extras": [
+      {
+        "detail": "+10 net",
+        "hint": "Your kills on the enemy Engineer against their kills on you, across every rated game as Engineer.",
+        "label": "vs enemy Engineer, career",
+        "value": "29 – 19"
+      },
+      {
+        "detail": "0.28 per game",
+        "hint": "Enemy Medics you killed, across every rated game on this class.",
+        "label": "Medic picks, career",
+        "value": "8"
+      }
+    ],
+    "formAvg": 61.7,
+    "formWindow": 20,
+    "games": 29,
+    "prevFormAvg": null,
+    "recent": [
+      {
+        "league": null,
+        "logId": 4115749,
+        "map": "koth_product_final",
+        "playedAt": 1788625946,
+        "result": "W",
+        "score": 71.3,
+        "title": "TF2Center Lobby #1329563"
+      },
+      {
+        "league": null,
+        "logId": 4113410,
+        "map": "koth_product_final",
+        "playedAt": 1788210707,
+        "result": "W",
+        "score": 79.0,
+        "title": "TF2Center Lobby #1329180"
+      },
+      {
+        "league": null,
+        "logId": 4112313,
+        "map": "koth_product_final",
+        "playedAt": 1788047514,
+        "result": "W",
+        "score": 75.0,
+        "title": "TF2Center Lobby #1329026"
+      },
+      {
+        "league": null,
+        "logId": 4112294,
+        "map": "koth_warmtic_f10",
+        "playedAt": 1788044995,
+        "result": "W",
+        "score": 75.6,
+        "title": "TF2Center Lobby #1329018"
+      },
+      {
+        "league": null,
+        "logId": 4112106,
+        "map": "koth_product_final",
+        "playedAt": 1788025318,
+        "result": "W",
+        "score": 73.9,
+        "title": "TF2Center Lobby #1328982"
+      },
+      {
+        "league": null,
+        "logId": 4112065,
+        "map": "koth_product_final",
+        "playedAt": 1788018744,
+        "result": "W",
+        "score": 58.2,
+        "title": "TF2Center Lobby #1328975"
+      },
+      {
+        "league": null,
+        "logId": 3991629,
+        "map": "koth_proot_b5b",
+        "playedAt": 1767481477,
+        "result": "W",
+        "score": 70.9,
+        "title": "serveme.tf #1525328"
+      },
+      {
+        "league": null,
+        "logId": 3942324,
+        "map": "koth_proot_b5b",
+        "playedAt": 1759261296,
+        "result": "W",
+        "score": 73.3,
+        "title": "serveme.tf #1510269"
+      },
+      {
+        "league": null,
+        "logId": 3865192,
+        "map": "pl_upward_f12",
+        "playedAt": 1748640719,
+        "result": "W",
+        "score": 64.5,
+        "title": "TF2Center Lobby #1297637"
+      },
+      {
+        "league": null,
+        "logId": 3573717,
+        "map": "koth_warmtic_f10",
+        "playedAt": 1706910777,
+        "result": "W",
+        "score": 79.9,
+        "title": "serveme.tf #1389112"
+      }
+    ],
+    "rollingWindow": 10,
+    "trend": [
+      {
+        "logId": 527552,
+        "map": "cp_process_final",
+        "playedAt": 1415035008,
+        "result": "L",
+        "rolling": null,
+        "score": 66.5
+      },
+      {
+        "logId": 527553,
+        "map": "cp_process_final",
+        "playedAt": 1415035009,
+        "result": "L",
+        "rolling": null,
+        "score": 66.5
+      },
+      {
+        "logId": 531065,
+        "map": "koth_lakeside_final",
+        "playedAt": 1415297755,
+        "result": "W",
+        "rolling": null,
+        "score": 68.5
+      },
+      {
+        "logId": 532470,
+        "map": "koth_lakeside_final",
+        "playedAt": 1415388889,
+        "result": "W",
+        "rolling": null,
+        "score": 52.8
+      },
+      {
+        "logId": 532471,
+        "map": "koth_lakeside_final",
+        "playedAt": 1415388890,
+        "result": "W",
+        "rolling": null,
+        "score": 52.8
+      },
+      {
+        "logId": 534300,
+        "map": "pl_badwater",
+        "playedAt": 1415477542,
+        "result": "T",
+        "rolling": null,
+        "score": 46.5
+      },
+      {
+        "logId": 534301,
+        "map": "pl_badwater",
+        "playedAt": 1415477546,
+        "result": "T",
+        "rolling": null,
+        "score": 46.5
+      },
+      {
+        "logId": 536159,
+        "map": "pl_upward",
+        "playedAt": 1415561915,
+        "result": "L",
+        "rolling": null,
+        "score": 32.9
+      },
+      {
+        "logId": 536160,
+        "map": "pl_upward",
+        "playedAt": 1415561916,
+        "result": "L",
+        "rolling": null,
+        "score": 32.9
+      },
+      {
+        "logId": 537640,
+        "map": "koth_pro_viaduct_rc4",
+        "playedAt": 1415651885,
+        "result": "L",
+        "rolling": 52.6,
+        "score": 60.2
+      },
+      {
+        "logId": 537641,
+        "map": "koth_pro_viaduct_rc4",
+        "playedAt": 1415651886,
+        "result": "L",
+        "rolling": 52.0,
+        "score": 60.2
+      },
+      {
+        "logId": 544959,
+        "map": "pl_badwater",
+        "playedAt": 1416139087,
+        "result": "W",
+        "rolling": 47.6,
+        "score": 22.3
+      },
+      {
+        "logId": 544960,
+        "map": "pl_badwater",
+        "playedAt": 1416139088,
+        "result": "W",
+        "rolling": 42.9,
+        "score": 22.3
+      },
+      {
+        "logId": 559108,
+        "map": "koth_lakeside_final",
+        "playedAt": 1417037189,
+        "result": "L",
+        "rolling": 41.8,
+        "score": 41.1
+      },
+      {
+        "logId": 559109,
+        "map": "koth_lakeside_final",
+        "playedAt": 1417037190,
+        "result": "L",
+        "rolling": 40.6,
+        "score": 41.1
+      },
+      {
+        "logId": 561377,
+        "map": "koth_lakeside_final",
+        "playedAt": 1417207600,
+        "result": "L",
+        "rolling": 42.3,
+        "score": 63.0
+      },
+      {
+        "logId": 561378,
+        "map": "koth_lakeside_final",
+        "playedAt": 1417207601,
+        "result": "L",
+        "rolling": 43.9,
+        "score": 63.0
+      },
+      {
+        "logId": 602515,
+        "map": "pl_badwater",
+        "playedAt": 1419969612,
+        "result": "T",
+        "rolling": 49.1,
+        "score": 85.2
+      },
+      {
+        "logId": 2921904,
+        "map": "cp_gullywash_f3",
+        "playedAt": 1621110583,
+        "result": "W",
+        "rolling": 51.3,
+        "score": 54.4
+      },
+      {
+        "logId": 3573717,
+        "map": "koth_warmtic_f10",
+        "playedAt": 1706910777,
+        "result": "W",
+        "rolling": 53.3,
+        "score": 79.9
+      },
+      {
+        "logId": 3865192,
+        "map": "pl_upward_f12",
+        "playedAt": 1748640719,
+        "result": "W",
+        "rolling": 53.7,
+        "score": 64.5
+      },
+      {
+        "logId": 3942324,
+        "map": "koth_proot_b5b",
+        "playedAt": 1759261296,
+        "result": "W",
+        "rolling": 58.8,
+        "score": 73.3
+      },
+      {
+        "logId": 3991629,
+        "map": "koth_proot_b5b",
+        "playedAt": 1767481477,
+        "result": "W",
+        "rolling": 63.6,
+        "score": 70.9
+      },
+      {
+        "logId": 4112065,
+        "map": "koth_product_final",
+        "playedAt": 1788018744,
+        "result": "W",
+        "rolling": 65.4,
+        "score": 58.2
+      },
+      {
+        "logId": 4112106,
+        "map": "koth_product_final",
+        "playedAt": 1788025318,
+        "result": "W",
+        "rolling": 68.6,
+        "score": 73.9
+      },
+      {
+        "logId": 4112294,
+        "map": "koth_warmtic_f10",
+        "playedAt": 1788044995,
+        "result": "W",
+        "rolling": 69.9,
+        "score": 75.6
+      },
+      {
+        "logId": 4112313,
+        "map": "koth_product_final",
+        "playedAt": 1788047514,
+        "result": "W",
+        "rolling": 71.1,
+        "score": 75.0
+      },
+      {
+        "logId": 4113410,
+        "map": "koth_product_final",
+        "playedAt": 1788210707,
+        "result": "W",
+        "rolling": 70.5,
+        "score": 79.0
+      },
+      {
+        "logId": 4115749,
+        "map": "koth_product_final",
+        "playedAt": 1788625946,
+        "result": "W",
+        "rolling": 72.2,
+        "score": 71.3
+      }
+    ],
+    "winRate": 61.5,
+    "worst": [
+      {
+        "league": null,
+        "logId": 544960,
+        "map": "pl_badwater",
+        "playedAt": 1416139088,
+        "result": "W",
+        "score": 22.3,
+        "title": "TF2Center Lobby #260009"
+      },
+      {
+        "league": null,
+        "logId": 544959,
+        "map": "pl_badwater",
+        "playedAt": 1416139087,
+        "result": "W",
+        "score": 22.3,
+        "title": "serveme.tf - yelow vs lel"
+      },
+      {
+        "league": null,
+        "logId": 536160,
+        "map": "pl_upward",
+        "playedAt": 1415561916,
+        "result": "L",
+        "score": 32.9,
+        "title": "TF2Center Lobby #255174"
+      },
+      {
+        "league": null,
+        "logId": 536159,
+        "map": "pl_upward",
+        "playedAt": 1415561915,
+        "result": "L",
+        "score": 32.9,
+        "title": "GFM PCW Server #3 niggas vs BLU"
+      },
+      {
+        "league": null,
+        "logId": 559109,
+        "map": "koth_lakeside_final",
+        "playedAt": 1417037190,
+        "result": "L",
+        "score": 41.1,
+        "title": "TF2Center Lobby #267805"
+      }
+    ]
+  }
+}

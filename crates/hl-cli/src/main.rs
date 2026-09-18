@@ -4,7 +4,7 @@
 //! reproduce bugs and (from M1 on) run syncs without launching a window.
 
 use anyhow::{bail, Context, Result};
-use hl_core::{tfpath, SteamId};
+use hl_core::{tfpath, SteamId, TfClass};
 use hl_db::{Db, MatchFilter};
 use hl_ingest::{Progress, Sources, SyncOptions};
 use std::path::PathBuf;
@@ -28,6 +28,9 @@ COMMANDS:
     stats                  Index and fetch counts
     match <LOG_ID> [--json]
                            Matchups for one stored match
+    rate                   Rebuild baselines and rate every stored performance
+    profile [CLASS] [--json]
+                           Your rating profile (defaults to your most-rated class)
     matches [N] [--all] [--officials]
                            List recent matches (Highlander only unless --all)
 
@@ -133,7 +136,7 @@ async fn main() -> Result<()> {
             println!();
             println!("fetched {} log(s), {} failed", summary.fetched, summary.failed);
             print_stats(&summary.stats);
-            Ok(())
+            rate(&db, &db_path).await
         }
 
         ["reprocess"] => {
@@ -143,6 +146,69 @@ async fn main() -> Result<()> {
             println!();
             println!("rebuilt in {:.1}s", started.elapsed().as_secs_f64());
             print_stats(&stats);
+            rate(&db, &db_path).await
+        }
+
+        ["rate"] => {
+            let db = Db::connect(&db_path).await?;
+            rate(&db, &db_path).await
+        }
+
+        ["profile", rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?.context("no owner set")?;
+            let json = rest.contains(&"--json");
+            let class = match rest.iter().find(|a| !a.starts_with("--")) {
+                Some(c) => TfClass::parse(c)?,
+                None => {
+                    let classes = hl_ingest::rated_classes(&db, me).await?;
+                    let top = classes.first().context("nothing rated yet: run `hl rate`")?;
+                    TfClass::parse(&top.0)?
+                }
+            };
+            let Some(p) = hl_ingest::load_profile(&db, me, class).await? else {
+                println!("No rated {} games.", class.display_name());
+                return Ok(());
+            };
+            if json {
+                let classes = hl_ingest::rated_classes(&db, me).await?;
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({ "classes": classes, "profile": p }))?
+                );
+                return Ok(());
+            }
+            println!("{} — {} rated games\n", class.display_name(), p.games);
+            println!("career     {:>5.1}", p.career_avg);
+            println!(
+                "form       {:>5.1}   (last {}{})",
+                p.form_avg,
+                p.form_window,
+                p.prev_form_avg
+                    .map(|prev| format!(", {:+.1} on the {} before", p.form_avg - prev, p.form_window))
+                    .unwrap_or_default()
+            );
+            if let Some(wr) = p.win_rate {
+                println!("win rate   {:>5.1}%", wr);
+            }
+            for e in &p.extras {
+                println!("{:<24} {}", e.label, e.value);
+            }
+            println!("\ncomponent         weight    form    career  recent avg");
+            for c in &p.components {
+                println!(
+                    "{:<16} {:>6.0}% {:>7.1} {:>9.1}  {:.2} {}",
+                    c.label, c.weight * 100.0, c.form_pct, c.career_pct, c.form_raw, c.unit
+                );
+            }
+            println!("\nbest");
+            for g in &p.best {
+                println!("  {:>5.1}  {}  {}  {}", g.score, g.log_id, g.played_at.map(fmt_date).unwrap_or_default(), g.map.as_deref().unwrap_or("?"));
+            }
+            println!("worst");
+            for g in &p.worst {
+                println!("  {:>5.1}  {}  {}  {}", g.score, g.log_id, g.played_at.map(fmt_date).unwrap_or_default(), g.map.as_deref().unwrap_or("?"));
+            }
             Ok(())
         }
 
@@ -221,7 +287,10 @@ async fn main() -> Result<()> {
             println!("{:<9} {:>7}  {:<18} {:>6}  {:>6}  {:<18} {:>7}", "class", "h2h", "us", "score", "score", "them", "winner");
             for m in &detail.matchups {
                 let side = |s: &Option<hl_rating::detail::Side>| match s {
-                    Some(s) => (truncate(&s.name, 18), format!("{:.1}", s.value.score)),
+                    Some(s) => (
+                        truncate(&s.name, 18),
+                        s.rating.as_ref().map(|r| format!("{:.1}", r.score)).unwrap_or_else(|| "—".into()),
+                    ),
                     None => ("—".into(), String::new()),
                 };
                 let (ln, ls) = side(&m.left);
@@ -302,6 +371,7 @@ fn print_progress(p: Progress) {
         }
         Progress::FetchFailed { log_id, error } => println!("\n  ! log {log_id}: {error}"),
         Progress::Reprocessing { done, total } => print!("\rreprocessing {done}/{total}          "),
+        Progress::Rating { done, total } => print!("\rrating {done}/{total}          "),
     }
     let _ = std::io::stdout().flush();
 }
@@ -340,4 +410,23 @@ fn truncate(s: &str, n: usize) -> String {
     } else {
         s.chars().take(n - 1).collect::<String>() + "…"
     }
+}
+
+/// Rate everything with the current weights, printing a one-line summary.
+async fn rate(db: &Db, db_path: &std::path::Path) -> Result<()> {
+    let (weights, warning) = hl_rating::Weights::load(&db_path.with_file_name("weights.toml"));
+    if let Some(w) = warning {
+        eprintln!("warning: {w}");
+    }
+    let me = db.get_me().await?;
+    let started = std::time::Instant::now();
+    let s = hl_ingest::rate_all(db, me, &weights, print_progress).await?;
+    println!(
+        "\rrated {} performances from {} logs ({} yours) in {:.1}s",
+        s.rated,
+        s.logs,
+        s.mine,
+        started.elapsed().as_secs_f64()
+    );
+    Ok(())
 }

@@ -1,0 +1,381 @@
+.profile-page {
+  padding: 18px 22px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1100px;
+  width: 100%;
+  transition: opacity 120ms ease;
+}
+
+/* Refetch keeps the frame: the previous render stays, dimmed. */
+.profile-page.refetching {
+  opacity: 0.6;
+}
+
+/* --- class tabs --- */
+
+.class-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.class-tab {
+  padding: 5px 12px;
+  font-size: 0.86rem;
+  background: var(--panel);
+}
+
+.class-tab .count {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-left: 4px;
+}
+
+.class-tab.active {
+  border-color: var(--accent-dim);
+  background: var(--panel-2);
+}
+
+.thin-note {
+  font-size: 0.86rem;
+  color: var(--warn);
+}
+
+/* --- KPI row --- */
+
+/* Equal auto-fit columns with the hero spanning two. (repeat(auto-fit) cannot
+   share a template with an fr track, so the hero widens by spanning instead.)
+   Unlike flex-wrap, this never leaves one tile stretched across a row alone. */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.kpi {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.kpi-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Proportional figures for standalone numbers; tabular only in columns. */
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.kpi-value.small {
+  font-size: 1.25rem;
+  margin-top: 6px;
+}
+
+.kpi.hero {
+  grid-column: span 2;
+}
+
+.kpi.hero .kpi-value {
+  font-size: 3rem;
+}
+
+.kpi-sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.kpi-delta {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.kpi-delta.up { color: var(--ok); }
+.kpi-delta.down { color: var(--bad); }
+
+/* --- components --- */
+
+.comps-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.comps-head .hint {
+  margin-top: 4px;
+}
+
+.swatch-bar {
+  display: inline-block;
+  width: 14px;
+  height: 8px;
+  border-radius: 0 4px 4px 0;
+  background: var(--accent);
+}
+
+.swatch-tick {
+  display: inline-block;
+  width: 2px;
+  height: 12px;
+  background: var(--text);
+}
+
+.comp-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.comp-row {
+  display: grid;
+  grid-template-columns: 210px 40px minmax(120px, 1fr) 34px 190px;
+  align-items: center;
+  column-gap: 12px;
+  padding: 6px 0;
+  font-size: 0.88rem;
+}
+
+.comp-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tag {
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+  padding: 0 5px;
+  border: 1px solid currentColor;
+}
+
+.tag.weak { color: var(--bad); }
+.tag.strong { color: var(--ok); }
+
+.comp-weight {
+  font-size: 0.78rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.comp-track {
+  position: relative;
+  height: 10px;
+  background: var(--panel-2);
+  border-radius: 0 5px 5px 0;
+}
+
+/* 50: the typical player you face. */
+.comp-mid {
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: #3a4152;
+}
+
+/* Thin mark, 4px rounded data-end, square at the baseline. */
+.comp-fill {
+  position: absolute;
+  left: 0;
+  top: 1px;
+  bottom: 1px;
+  background: var(--accent);
+  border-radius: 0 4px 4px 0;
+}
+
+.comp-career {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text);
+  box-shadow: 0 0 0 2px var(--panel);
+}
+
+.comp-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.comp-raw {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.comp-raw .unit {
+  color: #5d6472;
+}
+
+/* --- trend chart --- */
+
+.trend-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.trend-head .hint {
+  margin-top: 4px;
+}
+
+.trend-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.trend-legend {
+  margin: 12px 0 4px;
+}
+
+.trend-legend svg {
+  overflow: visible;
+}
+
+.trend-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.trend-svg {
+  display: block;
+  cursor: crosshair;
+  outline: none;
+}
+
+.trend-svg:focus-visible {
+  outline: 2px solid var(--accent-dim);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.tl-grid {
+  stroke: #262a34;
+  stroke-width: 1;
+}
+
+.tl-median {
+  stroke: #454c5c;
+  stroke-width: 1;
+}
+
+.tl-axis {
+  fill: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tl-dot {
+  fill: var(--muted);
+  opacity: 0.3;
+}
+
+.tl-dot.solid {
+  opacity: 1;
+}
+
+.tl-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* End-dot with a 2px surface ring. */
+.tl-end {
+  fill: var(--accent);
+  stroke: var(--panel);
+  stroke-width: 2;
+}
+
+.tl-endlabel {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tl-cross {
+  stroke: #5d6472;
+  stroke-width: 1;
+}
+
+.tl-hover-dot {
+  fill: var(--muted);
+  stroke: var(--panel);
+  stroke-width: 2;
+}
+
+.tl-tip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 178px;
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.tip-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tip-row strong {
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tip-meta {
+  color: var(--muted);
+  font-size: 0.76rem;
+  margin-top: 2px;
+}
+
+.trend-table {
+  max-height: 420px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+/* --- best / worst --- */
+
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.game-score {
+  font-weight: 600;
+  width: 38px;
+}

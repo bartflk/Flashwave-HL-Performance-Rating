@@ -1,4 +1,4 @@
-# HL Performance Rating System — Plan v0.5
+# HL Performance Rating System — Plan v0.6
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
 **Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
@@ -138,21 +138,36 @@ Both affected almost the whole history, and both hid behind single-round logs, w
 
 Also worth knowing: in stopwatch the match score is not rounds won. That official is 4–2 by ETF2L's scoring while the round split is 3–3.
 
-### Model v0 (M2): provisional, and visibly so
+### Model v1 (M3): percentiles against the players you face
 
-The match page's matchups need a winner before M3 builds real class models, so v0 is a generic formula: impact-weighted kills plus half-weight assists, minus deaths weighted by the player's own class, per 10 minutes; Medics get a healing/uber/drop term instead. Every term is shown on the page.
+v0 (M2) was a generic absolute formula, kept only until real class models existed. v1 replaces it.
 
-Its known failing, visible on real data: it is kill-centric and blind to the objective. In the official against TWS, a 4–2 win, v0 hands the opponents 6 of 9 matchups. That is the argument for M3's class-specific models, not a bug in the display.
+**The baseline is the other players in your own matches.** Every stored Highlander log holds 17 other players, so each class already has a pool of ~1,500 performances with no crawling. **You are excluded from it**: 663 of the 1,510 Sniper performances are yours, and rating you against a pool that is 44% you would drag your median to 50 by construction. So a Sniper rating of 72 means "better than 72% of the Sniper performances you have faced". This settles the "self vs division vs global" baseline question for now: it is division-ish, free, and grows with every sync.
 
-The **head-to-head** column is different in kind: kills between the two players on a class, read straight from `classkills`. It involves no judgment and is the most trustworthy number on the page.
+**How a rating is built:**
 
-Weights live in `crates/hl-rating/src/weights.default.toml`. Copy it to `%APPDATA%\gg.highlander.rating\weights.toml` to override; it is re-read every time a match is opened.
+1. A *performance* is one player's time on their **main class** in one match, if it is at least 5 minutes. Only the main class is rated, because `classkills` is recorded per player, not per class played; a flexer's kills cannot be split honestly.
+2. Each **component** (impact kills, sniper duel, deaths, ...) is looked up as a mid-rank percentile in that class's pool. Lower-is-better components (deaths, drops) are flipped, so higher is always better.
+3. The rating is the **weighted average of the percentiles**, 0–100. A component the log did not record (headshots on an old log) is dropped and the weights renormalised, never scored as zero.
 
-### Deliberately deferred
+Class models: **Sniper** (impact kills 30%, duel 20%, medic picks 15%, deaths 15%, headshot share 10%, damage 5%, assists 5%), **Medic** (healing, ubers, drops, deaths, assists), **Spy** (impact kills, backstabs, deaths, damage, assists), and a **generic** model for the other six classes (impact kills, damage, deaths, assists, caps). All in `weights.default.toml`, overridable, validated on load so a typo is an error rather than a silently missing component.
 
-- **Baselines** — self-relative vs division vs global. Start self-relative; the 17 other players in every log provide a free division-ish pool later.
-- **Final weights** — hand-set now, fitted later.
-- **Cross-class comparability** — within-class only until baselines are settled.
+Rating runs as its own pass at the end of every sync and every rebuild: all 758 matches, 13,641 performances, in about 3 seconds.
+
+**What it says about you, on first run (663 Sniper games):**
+
+- Career 49, recent form 45 (−3.6 on the 20 games before): a median Sniper against the Snipers you face, currently in a dip.
+- **The Sniper duel is the weakest component**: 3,069 kills to 3,568 deaths against enemy Snipers over your career (−499), lowest percentile of anything in your rating. Deaths are the strongest: you die less than the typical Sniper you face.
+
+**What it still does not do:** v1 measures individual execution, which is what you asked for, not who won. In the S36 official against TWS, a 4–2 stopwatch win, v1 still gives the opponents five of nine matchups (three even, one to you). That is a true reading, not a bug: stopwatch is decided on push time, and a team can win it while being out-played class for class. The match page says so explicitly.
+
+The **head-to-head** column remains different in kind: kills between the two players on a class, read straight from `classkills`, no model involved.
+
+### Still deliberately deferred
+
+- **Fitted weights.** Hand-set now; regress round outcome on components once there is reason to trust a fit.
+- **Opponent strength.** Every performance counts equally in the pool today; a lobby Sniper and an ETF2L High Sniper weigh the same. ETF2L division context (M5) is the fix.
+- **Cross-class comparability.** A Sniper 60 and an Engineer 60 are each "60th percentile of their class's pool" — comparable in meaning, but the pools differ in who is in them.
 
 ---
 
@@ -262,7 +277,7 @@ POV demos only contain what your client received, so phase 2 is you-only for loc
 | **M0** | Skeleton, database, first-run setup | **done** |
 | **M1** | trends.tf index + logs.tf sync + normalize; match list | **done** |
 | **M2** | Match page phase 1: matchups, round timeline, box score | **done** |
-| **M3** | Rating v1: Sniper in full, other classes generic; profile page | |
+| **M3** | Rating v1: Sniper in full, other classes generic; profile page | **done** |
 | **M4** | Demos: local index, demos.tf fetch by demoid, linking, jump-back | |
 | **M5** | ETF2L context, officials vs scrims split, teammate tracking | |
 | **v2** | Deep demo parse: positions, heatmaps, engagement ranges | |
