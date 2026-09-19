@@ -173,6 +173,15 @@ pub fn impacts_for(kills: &[StoredKill], windows: &[RoundWindow], log_map: Optio
     impacts(kills.iter().map(|k| (ctx(k), map_at(windows, k.at_raw).or(log_map))), w)
 }
 
+/// Add each player's fight counts (from `Db::fight_counts`) to their impact,
+/// creating an entry for players with no kills.
+pub fn attach_fights(impacts: &mut HashMap<u32, Impact>, rows: &[(u32, [u32; 4])]) {
+    for &(account, [opening_kills, opening_deaths, kills, traded_kills]) in rows {
+        impacts.entry(account).or_default().fights =
+            Some(hl_rating::FightCounts { opening_kills, opening_deaths, kills, traded_kills });
+    }
+}
+
 /// The map of the round holding `t` (logs.tf's round-time frame).
 pub fn map_at(windows: &[RoundWindow], t: i64) -> Option<&str> {
     windows

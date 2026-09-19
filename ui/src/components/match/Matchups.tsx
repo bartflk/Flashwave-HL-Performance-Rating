@@ -239,7 +239,7 @@ function Breakdown({ m, left, right }: { m: Matchup; left: Team; right: Team }) 
 }
 
 function fmtRaw(p: Part): string {
-  if (p.component === "headshot_share") return `${p.raw.toFixed(0)}%`;
+  if (p.component === "headshot_share" || p.component === "untraded") return `${p.raw.toFixed(0)}%`;
   if (p.component === "heal" || p.component === "dpm") return p.raw.toFixed(0);
   return p.raw.toFixed(2);
 }

@@ -16,7 +16,9 @@ use hl_core::TfClass;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-pub const MODEL_VERSION: &str = "v1";
+/// v2: Sniper reweighted against match results (DPM up, the duel and
+/// headshot share down), with opening duels and untraded kills added.
+pub const MODEL_VERSION: &str = "v2";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -33,10 +35,14 @@ pub enum Component {
     Caps,
     Deaths,
     Dpm,
+    /// Opening duels: first kills of fights got, less those died to.
+    Opening,
+    /// Share of kills not traded straight back.
+    Untraded,
 }
 
 impl Component {
-    pub const ALL: [Component; 12] = [
+    pub const ALL: [Component; 14] = [
         Component::ImpactKills,
         Component::ImpactAssists,
         Component::MedicPicks,
@@ -49,6 +55,8 @@ impl Component {
         Component::Caps,
         Component::Deaths,
         Component::Dpm,
+        Component::Opening,
+        Component::Untraded,
     ];
 
     pub fn key(self) -> &'static str {
@@ -65,6 +73,8 @@ impl Component {
             Component::Caps => "caps",
             Component::Deaths => "deaths",
             Component::Dpm => "dpm",
+            Component::Opening => "opening",
+            Component::Untraded => "untraded",
         }
     }
 
@@ -86,14 +96,17 @@ impl Component {
             Component::Caps => "Caps",
             Component::Deaths => "Deaths",
             Component::Dpm => "Damage / min",
+            Component::Opening => "Opening duels",
+            Component::Untraded => "Kills not traded",
         }
     }
 
     /// The unit the raw value is shown in.
     pub fn unit(self) -> &'static str {
         match self {
-            Component::HeadshotShare => "% of kills",
+            Component::HeadshotShare | Component::Untraded => "% of kills",
             Component::Heal | Component::Dpm => "per min",
+            Component::Opening => "net per 10 min",
             _ => "per 10 min",
         }
     }
@@ -162,6 +175,15 @@ pub fn extract(player: &PlayerLine, flags: &LogFlags, w: &Weights, impact: Optio
             Component::Caps => flags.cp.then_some(s.cpc as f64 * per10),
             Component::Deaths => Some(line.deaths as f64 * per10),
             Component::Dpm => Some(line.dmg as f64 / minutes),
+            // Both need the fights pass, so a log without a raw log skips
+            // them and the other weights take up the slack.
+            Component::Opening => {
+                impact.and_then(|i| i.fights).map(|f| (f64::from(f.opening_kills) - f64::from(f.opening_deaths)) * per10)
+            }
+            Component::Untraded => impact
+                .and_then(|i| i.fights)
+                .filter(|f| f.kills > 0)
+                .map(|f| (1.0 - f64::from(f.traded_kills) / f64::from(f.kills)) * 100.0),
         };
         if let Some(v) = v {
             values.push((*component, v));

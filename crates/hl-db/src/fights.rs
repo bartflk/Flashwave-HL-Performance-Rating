@@ -150,6 +150,27 @@ impl Db {
         Ok((mine, pool))
     }
 
+    /// `(account, opening kills, opening deaths, kills, traded kills)` per
+    /// player, for every log the fights pass has read, or for one log.
+    pub async fn fight_counts(&self, log_id: Option<i64>) -> Result<std::collections::HashMap<i64, Vec<(u32, [u32; 4])>>> {
+        let rows = sqlx::query(
+            "SELECT log_id, account_id, opening_kills, opening_deaths, kills, traded_kills FROM fight_stat
+             WHERE ?1 IS NULL OR log_id = ?1",
+        )
+        .bind(log_id)
+        .fetch_all(self.pool())
+        .await?;
+        let mut out: std::collections::HashMap<i64, Vec<(u32, [u32; 4])>> = std::collections::HashMap::new();
+        for r in rows {
+            let n = |c: &str| r.get::<i64, _>(c) as u32;
+            out.entry(r.get("log_id")).or_default().push((
+                r.get::<i64, _>("account_id") as u32,
+                [n("opening_kills"), n("opening_deaths"), n("kills"), n("traded_kills")],
+            ));
+        }
+        Ok(out)
+    }
+
     /// The owner's Highlander officials with a time, oldest first.
     pub async fn officials_played(&self) -> Result<Vec<SeasonOfficial>> {
         let rows = sqlx::query(

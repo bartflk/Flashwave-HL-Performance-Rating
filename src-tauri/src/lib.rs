@@ -56,6 +56,7 @@ pub fn run() {
             {
                 let db = db.clone();
                 let handle = app.handle().clone();
+                let weights_path = db_path.with_file_name("weights.toml");
                 tauri::async_runtime::spawn(async move {
                     let Ok(cfg) = db.get_config().await else { return };
                     // Classify matches from stored data first: instant, and it
@@ -82,6 +83,15 @@ pub fn run() {
                     match hl_ingest::fights::derive_all(&db, false).await {
                         Ok(s) => tracing::info!(derived = s.derived, total = s.total, "fights derived"),
                         Err(e) => tracing::warn!(error = %format!("{e:#}"), "fights pass failed"),
+                    }
+                    // A new rating model has no ratings until something rates:
+                    // do it now rather than leave the profile empty until a sync.
+                    if db.rating_count(hl_rating::MODEL_VERSION).await.unwrap_or(1) == 0 {
+                        let (weights, _) = hl_rating::Weights::load(&weights_path);
+                        match hl_ingest::rate_all(&db, cfg.steamid, &weights, |_| {}).await {
+                            Ok(s) => tracing::info!(rated = s.rated, model = hl_rating::MODEL_VERSION, "rated for a new model"),
+                            Err(e) => tracing::warn!(error = %format!("{e:#}"), "rating pass failed"),
+                        }
                     }
                 });
             }

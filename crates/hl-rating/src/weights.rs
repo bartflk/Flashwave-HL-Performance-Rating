@@ -324,7 +324,8 @@ engineer = 3.0
 
     #[test]
     fn a_typo_in_a_component_is_an_error() {
-        let broken = DEFAULT_TOML.replace("duel           = 0.20", "dual = 0.20");
+        let broken = DEFAULT_TOML.replace("duel           = 0.05", "dual = 0.05");
+        assert_ne!(broken, DEFAULT_TOML, "the test must break something");
         let err = Weights::parse(&broken).unwrap_err();
         assert!(format!("{err:#}").contains("dual"));
     }

@@ -329,7 +329,7 @@ function GameList(props: { title: string; games: GameRef[]; onOpen: (logId: numb
 }
 
 function fmtRaw(c: ComponentSummary): string {
-  if (c.component === "headshot_share") return `${c.formRaw.toFixed(0)}%`;
+  if (c.component === "headshot_share" || c.component === "untraded") return `${c.formRaw.toFixed(0)}%`;
   if (c.component === "heal" || c.component === "dpm") return c.formRaw.toFixed(0);
   return c.formRaw.toFixed(2);
 }

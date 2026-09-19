@@ -30,6 +30,20 @@ pub struct KillCtx {
 pub struct Impact {
     pub kills: f64,
     pub assists: f64,
+    /// The player's kills in context (PLAN §11 B), where the fights pass has
+    /// read the log. `None` without a raw log.
+    pub fights: Option<FightCounts>,
+}
+
+/// What the rating uses from the fights pass.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct FightCounts {
+    /// First kills of fights: got them, and died to them.
+    pub opening_kills: u32,
+    pub opening_deaths: u32,
+    pub kills: u32,
+    /// Kills after which the killer's team lost someone within 3 s.
+    pub traded_kills: u32,
 }
 
 /// A victim whose class the log never named is valued like a Scout, the

@@ -1,4 +1,4 @@
-# HL Performance Rating System — Plan v1.6
+# HL Performance Rating System — Plan v1.7
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
 **Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
@@ -157,6 +157,73 @@ Lookup order: map and side, then map, then side, then general. Map keys match th
 1. ~~Apply the v2 general table~~: done.
 2. Per-mode and per-map overrides.
 3. Per-side values once per-kill events exist (M6, raw logs).
+
+### Model v2: Sniper weights checked against who won
+
+**Why.** In the S33 Low grand final against Champions of Light (log 3863290), v1 rated angel complex's Sniper 56.5 and yours 50.6. You both got 110 kills. You did 388 DPM to their 310, and they said themselves that you were the more impactful Sniper. You, function and the other Sniper agreed:
+- **DPM** at 5% is far too low.
+- **The Sniper duel** at 20% is far too high. A Spy or a flank kills the enemy Sniper as well as you can, and on some maps (Vigil second, the hill) a Sniper is forced into bad peeks as a suicide entry.
+
+**What the community writes.** It is split. A teamfortress.tv thread on reading logs calls DPM "mostly meaningless without context". Others answer that you cannot do damage without hitting shots. The wiki's Sniper page is about picks and target priority; it names no stat. Nobody offers numbers, so this account's own matches decided.
+
+**The test.** 693 decided matches have one rated Sniper a side. For each stat, how often did the team whose Sniper was better at it win?
+
+| Better Sniper at | Their team won |
+|---|---|
+| Deaths (fewer) | 75.6% |
+| Impact kills | 70.2% |
+| Kills not traded back | 65.1% |
+| DPM | 64.3% |
+| Medic picks | 63.6% |
+| Opening kills | 61.6% |
+| Sniper duel | 59.1% |
+| First picks of the round | 52.0% |
+| Picks into a ready charge | 50.1% |
+| Headshot share | 46.8% |
+
+Fitted together (a logistic model on the two Snipers' percentile differences, bootstrapped):
+- **Kills and deaths** carry nearly all of it.
+- **Kills not traded back** add real signal on top.
+- **The duel and headshot share point the wrong way** once kills and deaths are known, both clearly below zero across the bootstrap.
+- **DPM and opening duels** add about nothing beyond kills, but cost nothing either.
+
+**How often each weighting picks the winning Sniper's team:**
+
+| Weighting | Picks the winner |
+|---|---|
+| v1 | 67.5% |
+| function's "duel 10, DPM 15" | 68.3% |
+| **v2** (below) | **71.4%** |
+| fitted on this data | 75.7% |
+
+The fitted weighting is in-sample and leans almost entirely on deaths, and deaths are partly the team losing. So it is a check, not the model.
+
+**v2, applied:**
+
+| Sniper | v1 | v2 |
+|---|---|---|
+| Impact kills | 30% | 25% |
+| Damage / min | 5% | **20%** |
+| Deaths | 15% | 15% |
+| Opening duels (new): opening kills less opening deaths, per 10 min | – | **15%** |
+| Medic picks | 15% | 10% |
+| Impact assists | 5% | 5% |
+| Sniper duel | 20% | **5%** |
+| Kills not traded (new): share of kills not traded back within 3 s | – | **5%** |
+| Headshot share | 10% | **0%** |
+
+**Why opening duels are in despite predicting little.** They are what separated the two Snipers in the grand final: 22–5 for you against 15–14. The theory (§11) says the first kill of a fight is the Sniper's job. Adding them cost no accuracy.
+
+**Mechanics.** The two new components come from the fights pass, so logs without a raw log skip them and the other weights take up the slack. The model version is now `v2`: ratings are stored per version and never mix, and the app re-rates at startup when the current version has none.
+
+**Effect:**
+- **The grand final:** you 60.8, angel complex 55.8.
+- **Your Sniper career:** 48.8 → 51.7. Form 49.0. Officials 55.2, scrims 51.9, pugs 48.0.
+- **Your components:** your weakest is still the duel (36th percentile on form). It now moves the rating a quarter as much.
+
+**Open:**
+- Other classes still use v1's weights; the same test can be run for each.
+- The duel may belong in the profile as information only, not in the rating.
 
 ### Matchup scoring
 

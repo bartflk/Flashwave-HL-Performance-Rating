@@ -2,7 +2,7 @@
   "classes": [
     [
       "sniper",
-      663
+      661
     ],
     [
       "engineer",
@@ -21,11 +21,11 @@
       10
     ],
     [
-      "pyro",
-      8
+      "heavy",
+      5
     ],
     [
-      "heavy",
+      "pyro",
       5
     ],
     [
@@ -40,24 +40,34 @@
   "profile": {
     "best": [
       {
-        "kind": "scrim",
-        "league": null,
-        "logId": 4007244,
-        "map": "koth_product_final",
-        "playedAt": 1769980224,
-        "result": "W",
-        "score": 93.9,
-        "title": "serveme.tf #1530161"
-      },
-      {
         "kind": "official",
         "league": null,
         "logId": 3485066,
         "map": "pl_upward_f10",
         "playedAt": 1693419002,
         "result": "W",
-        "score": 92.5,
+        "score": 97.1,
         "title": "serveme.tf #1356055"
+      },
+      {
+        "kind": "scrim",
+        "league": null,
+        "logId": 3798291,
+        "map": "koth_proot_b5b",
+        "playedAt": 1738870254,
+        "result": "W",
+        "score": 94.2,
+        "title": "serveme.tf #1465811"
+      },
+      {
+        "kind": "scrim",
+        "league": null,
+        "logId": 3994080,
+        "map": "cp_product",
+        "playedAt": 1767905914,
+        "result": "W",
+        "score": 91.0,
+        "title": "product scrim"
       },
       {
         "kind": "official",
@@ -66,55 +76,54 @@
         "map": "koth_cornyard_b3a",
         "playedAt": 1704568764,
         "result": "W",
-        "score": 91.7,
+        "score": 89.9,
         "title": "serveme.tf #1383065"
       },
       {
         "kind": "scrim",
         "league": null,
-        "logId": 3845341,
-        "map": "koth_ashville_final1",
-        "playedAt": 1745952016,
+        "logId": 3851098,
+        "map": "pl_upward_f12",
+        "playedAt": 1746727145,
         "result": "W",
-        "score": 89.4,
-        "title": "serveme.tf #1480898"
-      },
-      {
-        "kind": "scrim",
-        "league": null,
-        "logId": 3567896,
-        "map": "proot-product",
-        "playedAt": 1706129857,
-        "result": "W",
-        "score": 88.7,
-        "title": "scrim"
+        "score": 89.2,
+        "title": "serveme.tf #1482864"
       }
     ],
-    "careerAvg": 48.8,
+    "careerAvg": 51.7,
     "class": "sniper",
     "components": [
       {
         "careerPct": 50.0,
         "component": "impact_kills",
-        "formPct": 44.9,
-        "formRaw": 14.65,
+        "formPct": 45.0,
+        "formRaw": 14.73,
         "label": "Impact kills",
         "unit": "per 10 min",
-        "weight": 0.3
+        "weight": 0.25
       },
       {
-        "careerPct": 39.8,
-        "component": "duel",
-        "formPct": 35.7,
-        "formRaw": -0.47,
-        "label": "Sniper duel",
-        "unit": "per 10 min",
+        "careerPct": 54.2,
+        "component": "dpm",
+        "formPct": 50.5,
+        "formRaw": 319.07,
+        "label": "Damage / min",
+        "unit": "per min",
         "weight": 0.2
       },
       {
-        "careerPct": 55.3,
+        "careerPct": 54.2,
+        "component": "opening",
+        "formPct": 52.1,
+        "formRaw": 0.65,
+        "label": "Opening duels",
+        "unit": "net per 10 min",
+        "weight": 0.15
+      },
+      {
+        "careerPct": 55.5,
         "component": "deaths",
-        "formPct": 55.0,
+        "formPct": 55.2,
         "formRaw": 6.84,
         "label": "Deaths",
         "unit": "per 10 min",
@@ -127,54 +136,54 @@
         "formRaw": 0.5,
         "label": "Medic picks",
         "unit": "per 10 min",
-        "weight": 0.15
-      },
-      {
-        "careerPct": 52.6,
-        "component": "headshot_share",
-        "formPct": 48.4,
-        "formRaw": 69.1,
-        "label": "Headshot share",
-        "unit": "% of kills",
         "weight": 0.1
       },
       {
-        "careerPct": 54.4,
-        "component": "dpm",
-        "formPct": 50.7,
-        "formRaw": 319.07,
-        "label": "Damage / min",
-        "unit": "per min",
+        "careerPct": 39.8,
+        "component": "duel",
+        "formPct": 35.7,
+        "formRaw": -0.47,
+        "label": "Sniper duel",
+        "unit": "per 10 min",
         "weight": 0.05
       },
       {
-        "careerPct": 49.8,
+        "careerPct": 49.9,
         "component": "impact_assists",
-        "formPct": 44.3,
-        "formRaw": 8.31,
+        "formPct": 50.2,
+        "formRaw": 0.99,
         "label": "Impact assists",
         "unit": "per 10 min",
+        "weight": 0.05
+      },
+      {
+        "careerPct": 56.0,
+        "component": "untraded",
+        "formPct": 56.7,
+        "formRaw": 71.3,
+        "label": "Kills not traded",
+        "unit": "% of kills",
         "weight": 0.05
       }
     ],
     "contexts": [
       {
-        "avg": 51.6,
+        "avg": 55.2,
         "games": 51,
         "kind": "official",
         "winRate": 70.2
       },
       {
-        "avg": 48.9,
-        "games": 532,
+        "avg": 51.9,
+        "games": 531,
         "kind": "scrim",
-        "winRate": 53.0
+        "winRate": 53.1
       },
       {
-        "avg": 46.4,
-        "games": 80,
+        "avg": 48.0,
+        "games": 79,
         "kind": "pug",
-        "winRate": 48.6
+        "winRate": 47.9
       }
     ],
     "extras": [
@@ -182,20 +191,20 @@
         "detail": "-499 net",
         "hint": "Your kills on the enemy Sniper against their kills on you, across every rated game as Sniper.",
         "label": "Sniper duel, career",
-        "value": "3069 – 3568"
+        "value": "3062 – 3561"
       },
       {
         "detail": "1.24 per game",
         "hint": "Enemy Medics you killed, across every rated game on this class.",
         "label": "Medic picks, career",
-        "value": "821"
+        "value": "819"
       }
     ],
     "filter": null,
-    "formAvg": 45.2,
+    "formAvg": 49.0,
     "formWindow": 20,
-    "games": 663,
-    "prevFormAvg": 48.9,
+    "games": 661,
+    "prevFormAvg": 49.7,
     "recent": [
       {
         "kind": "pug",
@@ -204,7 +213,7 @@
         "map": "pl_swiftwater_final1",
         "playedAt": 1789675330,
         "result": "L",
-        "score": 33.2,
+        "score": 41.6,
         "title": "serveme.tf #1563599 RED vs BLU"
       },
       {
@@ -214,7 +223,7 @@
         "map": "pl_swiftwater_final1",
         "playedAt": 1789673414,
         "result": "W",
-        "score": 56.9,
+        "score": 65.1,
         "title": "serveme.tf #1563599 BLU vs RED"
       },
       {
@@ -224,7 +233,7 @@
         "map": null,
         "playedAt": 1789502845,
         "result": "W",
-        "score": 33.1,
+        "score": 43.0,
         "title": "pro vs noob scrim"
       },
       {
@@ -234,7 +243,7 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1788374428,
         "result": "W",
-        "score": 45.2,
+        "score": 42.1,
         "title": "serveme.tf #1561394 pedik vs plate"
       },
       {
@@ -244,7 +253,7 @@
         "map": "koth_product_final",
         "playedAt": 1788117280,
         "result": "W",
-        "score": 58.3,
+        "score": 60.8,
         "title": "Combined Log"
       },
       {
@@ -254,7 +263,7 @@
         "map": "koth_warmtic_f10",
         "playedAt": 1788028625,
         "result": "W",
-        "score": 74.8,
+        "score": 71.0,
         "title": "TF2Center Lobby #1328986"
       },
       {
@@ -264,7 +273,7 @@
         "map": "cp_steel_f12",
         "playedAt": 1787858128,
         "result": "L",
-        "score": 50.7,
+        "score": 52.4,
         "title": "Combined Log"
       },
       {
@@ -274,7 +283,7 @@
         "map": "product + steel",
         "playedAt": 1787602485,
         "result": "W",
-        "score": 40.1,
+        "score": 34.2,
         "title": "Combined Log"
       },
       {
@@ -284,7 +293,7 @@
         "map": "upward + steel",
         "playedAt": 1787598270,
         "result": "L",
-        "score": 25.1,
+        "score": 30.1,
         "title": "Combined Log"
       },
       {
@@ -294,7 +303,7 @@
         "map": "pl_upward_f12",
         "playedAt": 1787516257,
         "result": "W",
-        "score": 39.0,
+        "score": 43.9,
         "title": "ETF2L HL S36 High - DD14 vs TWS"
       }
     ],
@@ -307,7 +316,7 @@
         "playedAt": 1401360755,
         "result": "L",
         "rolling": null,
-        "score": 34.8
+        "score": 30.5
       },
       {
         "kind": "pug",
@@ -316,7 +325,7 @@
         "playedAt": 1401360757,
         "result": "L",
         "rolling": null,
-        "score": 34.8
+        "score": 30.5
       },
       {
         "kind": "pug",
@@ -325,7 +334,7 @@
         "playedAt": 1402063010,
         "result": "L",
         "rolling": null,
-        "score": 21.7
+        "score": 22.6
       },
       {
         "kind": "pug",
@@ -334,16 +343,7 @@
         "playedAt": 1402063011,
         "result": "L",
         "rolling": null,
-        "score": 21.7
-      },
-      {
-        "kind": "pug",
-        "logId": 340159,
-        "map": "cp_process_final",
-        "playedAt": 1403981135,
-        "result": "W",
-        "rolling": null,
-        "score": 32.2
+        "score": 22.6
       },
       {
         "kind": "pug",
@@ -352,7 +352,7 @@
         "playedAt": 1403981351,
         "result": "W",
         "rolling": null,
-        "score": 32.3
+        "score": 28.4
       },
       {
         "kind": "pug",
@@ -361,7 +361,7 @@
         "playedAt": 1404842173,
         "result": "T",
         "rolling": null,
-        "score": 13.4
+        "score": 15.6
       },
       {
         "kind": "pug",
@@ -370,7 +370,7 @@
         "playedAt": 1408903668,
         "result": "L",
         "rolling": null,
-        "score": 27.7
+        "score": 23.4
       },
       {
         "kind": "pug",
@@ -379,7 +379,7 @@
         "playedAt": 1408903669,
         "result": "L",
         "rolling": null,
-        "score": 27.7
+        "score": 23.4
       },
       {
         "kind": "pug",
@@ -387,8 +387,8 @@
         "map": "cp_gullywash_final1",
         "playedAt": 1408907444,
         "result": "W",
-        "rolling": 26.9,
-        "score": 22.2
+        "rolling": null,
+        "score": 20.3
       },
       {
         "kind": "pug",
@@ -396,8 +396,8 @@
         "map": "cp_gullywash_final1",
         "playedAt": 1408907445,
         "result": "W",
-        "rolling": 25.6,
-        "score": 22.2
+        "rolling": 23.8,
+        "score": 20.3
       },
       {
         "kind": "pug",
@@ -405,8 +405,8 @@
         "map": "pl_upward",
         "playedAt": 1409069286,
         "result": "T",
-        "rolling": 24.3,
-        "score": 21.6
+        "rolling": 22.0,
+        "score": 12.6
       },
       {
         "kind": "pug",
@@ -414,8 +414,8 @@
         "map": "koth_lakeside_final",
         "playedAt": 1409404477,
         "result": "L",
-        "rolling": 24.8,
-        "score": 26.8
+        "rolling": 20.4,
+        "score": 14.5
       },
       {
         "kind": "pug",
@@ -423,8 +423,8 @@
         "map": "koth_lakeside_final",
         "playedAt": 1409404478,
         "result": "L",
-        "rolling": 25.3,
-        "score": 26.8
+        "rolling": 19.6,
+        "score": 14.5
       },
       {
         "kind": "pug",
@@ -432,8 +432,8 @@
         "map": "pl_badwater",
         "playedAt": 1414159702,
         "result": "T",
-        "rolling": 23.2,
-        "score": 11.6
+        "rolling": 19.1,
+        "score": 18.0
       },
       {
         "kind": "pug",
@@ -441,8 +441,8 @@
         "map": "koth_product_rc8",
         "playedAt": 1467213474,
         "result": "L",
-        "rolling": 25.3,
-        "score": 52.5
+        "rolling": 20.9,
+        "score": 46.4
       },
       {
         "kind": "pug",
@@ -450,8 +450,8 @@
         "map": "koth_product_rc8",
         "playedAt": 1467213475,
         "result": "L",
-        "rolling": 29.2,
-        "score": 52.5
+        "rolling": 24.0,
+        "score": 46.4
       },
       {
         "kind": "pug",
@@ -459,8 +459,8 @@
         "map": "pl_upward",
         "playedAt": 1523994830,
         "result": "W",
-        "rolling": 31.1,
-        "score": 46.8
+        "rolling": 26.2,
+        "score": 45.2
       },
       {
         "kind": "pug",
@@ -468,8 +468,8 @@
         "map": "pl_upward",
         "playedAt": 1525722441,
         "result": "L",
-        "rolling": 33.5,
-        "score": 52.0
+        "rolling": 28.6,
+        "score": 47.9
       },
       {
         "kind": "pug",
@@ -477,8 +477,8 @@
         "map": "koth_product_rc8",
         "playedAt": 1525723890,
         "result": "W",
-        "rolling": 38.2,
-        "score": 68.9
+        "rolling": 33.9,
+        "score": 72.9
       },
       {
         "kind": "scrim",
@@ -486,8 +486,8 @@
         "map": "pl_upward",
         "playedAt": 1541532505,
         "result": "W",
-        "rolling": 41.7,
-        "score": 57.8
+        "rolling": 37.8,
+        "score": 59.6
       },
       {
         "kind": "scrim",
@@ -495,8 +495,8 @@
         "map": "koth_product_rc9",
         "playedAt": 1541533846,
         "result": "L",
-        "rolling": 41.1,
-        "score": 15.3
+        "rolling": 38.6,
+        "score": 20.7
       },
       {
         "kind": "scrim",
@@ -504,8 +504,8 @@
         "map": "pl_upward",
         "playedAt": 1542137446,
         "result": "L",
-        "rolling": 42.7,
-        "score": 42.9
+        "rolling": 40.8,
+        "score": 36.7
       },
       {
         "kind": "scrim",
@@ -513,8 +513,8 @@
         "map": "koth_product_rc9",
         "playedAt": 1542138227,
         "result": "L",
-        "rolling": 44.0,
-        "score": 40.0
+        "rolling": 42.2,
+        "score": 28.4
       },
       {
         "kind": "scrim",
@@ -522,8 +522,8 @@
         "map": "koth_product_rc9",
         "playedAt": 1542998399,
         "result": "W",
-        "rolling": 46.7,
-        "score": 38.4
+        "rolling": 44.9,
+        "score": 45.1
       },
       {
         "kind": "scrim",
@@ -531,8 +531,8 @@
         "map": "koth_warmtic_b6",
         "playedAt": 1542999697,
         "result": "W",
-        "rolling": 47.8,
-        "score": 63.3
+        "rolling": 47.7,
+        "score": 73.6
       },
       {
         "kind": "official",
@@ -540,8 +540,8 @@
         "map": "koth_warmtic_b6",
         "playedAt": 1543001385,
         "result": "W",
-        "rolling": 48.6,
-        "score": 60.4
+        "rolling": 49.2,
+        "score": 61.6
       },
       {
         "kind": "official",
@@ -549,8 +549,8 @@
         "map": "koth_product_rc9",
         "playedAt": 1543002734,
         "result": "W",
-        "rolling": 49.6,
-        "score": 57.1
+        "rolling": 51.1,
+        "score": 64.8
       },
       {
         "kind": "scrim",
@@ -558,8 +558,8 @@
         "map": "cp_steel",
         "playedAt": 1543429919,
         "result": "W",
-        "rolling": 51.2,
-        "score": 68.3
+        "rolling": 53.8,
+        "score": 74.9
       },
       {
         "kind": "scrim",
@@ -567,8 +567,8 @@
         "map": "cp_steel",
         "playedAt": 1543431601,
         "result": "W",
-        "rolling": 48.6,
-        "score": 42.0
+        "rolling": 50.9,
+        "score": 43.2
       },
       {
         "kind": "scrim",
@@ -576,8 +576,8 @@
         "map": "cp_steel",
         "playedAt": 1543516492,
         "result": "L",
-        "rolling": 48.7,
-        "score": 59.3
+        "rolling": 50.0,
+        "score": 51.0
       },
       {
         "kind": "scrim",
@@ -585,8 +585,8 @@
         "map": "cp_steel",
         "playedAt": 1543517138,
         "result": "L",
-        "rolling": 50.0,
-        "score": 28.7
+        "rolling": 51.2,
+        "score": 32.8
       },
       {
         "kind": "official",
@@ -594,8 +594,8 @@
         "map": "cp_steel",
         "playedAt": 1543519308,
         "result": "T",
-        "rolling": 54.0,
-        "score": 82.8
+        "rolling": 55.5,
+        "score": 79.2
       },
       {
         "kind": "official",
@@ -603,8 +603,8 @@
         "map": "cp_steel",
         "playedAt": 1543520577,
         "result": "W",
-        "rolling": 53.2,
-        "score": 32.0
+        "rolling": 56.8,
+        "score": 41.8
       },
       {
         "kind": "scrim",
@@ -612,8 +612,8 @@
         "map": "cp_gullywash_final1",
         "playedAt": 1543953737,
         "result": "L",
-        "rolling": 51.9,
-        "score": 25.5
+        "rolling": 55.6,
+        "score": 33.0
       },
       {
         "kind": "scrim",
@@ -621,8 +621,8 @@
         "map": "cp_gullywash_final1",
         "playedAt": 1544033863,
         "result": "W",
-        "rolling": 52.7,
-        "score": 70.7
+        "rolling": 54.9,
+        "score": 66.9
       },
       {
         "kind": "scrim",
@@ -630,8 +630,8 @@
         "map": "cp_gullywash_final1",
         "playedAt": 1544035198,
         "result": "W",
-        "rolling": 52.8,
-        "score": 61.4
+        "rolling": 55.0,
+        "score": 62.0
       },
       {
         "kind": "scrim",
@@ -639,8 +639,8 @@
         "map": "pl_badwater",
         "playedAt": 1544556642,
         "result": "L",
-        "rolling": 49.1,
-        "score": 20.6
+        "rolling": 50.0,
+        "score": 15.1
       },
       {
         "kind": "scrim",
@@ -648,8 +648,8 @@
         "map": "pl_badwater",
         "playedAt": 1544557878,
         "result": "L",
-        "rolling": 43.9,
-        "score": 16.3
+        "rolling": 44.0,
+        "score": 14.6
       },
       {
         "kind": "scrim",
@@ -657,8 +657,8 @@
         "map": "pl_badwater",
         "playedAt": 1544812786,
         "result": "L",
-        "rolling": 43.3,
-        "score": 35.3
+        "rolling": 43.8,
+        "score": 41.5
       },
       {
         "kind": "scrim",
@@ -666,8 +666,8 @@
         "map": "pl_badwater",
         "playedAt": 1544814111,
         "result": "W",
-        "rolling": 41.7,
-        "score": 44.0
+        "rolling": 44.6,
+        "score": 59.2
       },
       {
         "kind": "official",
@@ -675,8 +675,8 @@
         "map": "PL_BADWATER",
         "playedAt": 1544815047,
         "result": "W",
-        "rolling": 43.6,
-        "score": 47.3
+        "rolling": 46.7,
+        "score": 53.5
       },
       {
         "kind": "official",
@@ -684,8 +684,8 @@
         "map": "PL_BADWATER",
         "playedAt": 1544816615,
         "result": "L",
-        "rolling": 40.3,
-        "score": 49.7
+        "rolling": 43.6,
+        "score": 48.4
       },
       {
         "kind": "pug",
@@ -693,8 +693,8 @@
         "map": "koth_lakeside_final",
         "playedAt": 1549306180,
         "result": "W",
-        "rolling": 41.3,
-        "score": 42.3
+        "rolling": 45.0,
+        "score": 55.4
       },
       {
         "kind": "pug",
@@ -702,8 +702,8 @@
         "map": "koth_lakeside_final",
         "playedAt": 1549308917,
         "result": "L",
-        "rolling": 44.2,
-        "score": 54.8
+        "rolling": 46.8,
+        "score": 51.3
       },
       {
         "kind": "pug",
@@ -711,8 +711,8 @@
         "map": "koth_lakeside_final",
         "playedAt": 1549309479,
         "result": "L",
-        "rolling": 38.6,
-        "score": 14.3
+        "rolling": 42.0,
+        "score": 18.9
       },
       {
         "kind": "pug",
@@ -720,8 +720,8 @@
         "map": "pl_upward",
         "playedAt": 1604783177,
         "result": "W",
-        "rolling": 38.6,
-        "score": 61.3
+        "rolling": 41.6,
+        "score": 58.3
       },
       {
         "kind": "pug",
@@ -729,8 +729,8 @@
         "map": "koth_ashville_rc2b",
         "playedAt": 1604785826,
         "result": "W",
-        "rolling": 43.6,
-        "score": 70.4
+        "rolling": 46.9,
+        "score": 68.1
       },
       {
         "kind": "pug",
@@ -738,8 +738,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1687986299,
         "result": "W",
-        "rolling": 46.4,
-        "score": 44.4
+        "rolling": 49.4,
+        "score": 39.4
       },
       {
         "kind": "scrim",
@@ -747,8 +747,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1689017910,
         "result": "L",
-        "rolling": 46.9,
-        "score": 40.9
+        "rolling": 50.1,
+        "score": 48.9
       },
       {
         "kind": "scrim",
@@ -756,8 +756,8 @@
         "map": "koth_product_rcx",
         "playedAt": 1689019873,
         "result": "W",
-        "rolling": 48.9,
-        "score": 63.7
+        "rolling": 50.8,
+        "score": 66.2
       },
       {
         "kind": "scrim",
@@ -765,8 +765,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1689190347,
         "result": "W",
-        "rolling": 48.7,
-        "score": 45.5
+        "rolling": 51.0,
+        "score": 55.0
       },
       {
         "kind": "scrim",
@@ -774,8 +774,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1689192878,
         "result": "W",
-        "rolling": 49.4,
-        "score": 56.6
+        "rolling": 51.2,
+        "score": 50.5
       },
       {
         "kind": "scrim",
@@ -783,8 +783,8 @@
         "map": "koth_product_final",
         "playedAt": 1689363673,
         "result": "L",
-        "rolling": 48.8,
-        "score": 35.8
+        "rolling": 49.9,
+        "score": 42.7
       },
       {
         "kind": "scrim",
@@ -792,8 +792,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1689365257,
         "result": "L",
-        "rolling": 48.3,
-        "score": 49.6
+        "rolling": 50.7,
+        "score": 58.9
       },
       {
         "kind": "scrim",
@@ -801,8 +801,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1692561419,
         "result": "T",
-        "rolling": 49.7,
-        "score": 29.0
+        "rolling": 51.3,
+        "score": 25.4
       },
       {
         "kind": "scrim",
@@ -810,8 +810,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1692642192,
         "result": "L",
-        "rolling": 47.0,
-        "score": 34.2
+        "rolling": 48.9,
+        "score": 33.6
       },
       {
         "kind": "scrim",
@@ -819,8 +819,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1692644394,
         "result": "W",
-        "rolling": 43.8,
-        "score": 38.3
+        "rolling": 46.7,
+        "score": 46.6
       },
       {
         "kind": "scrim",
@@ -828,8 +828,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1692732785,
         "result": "W",
-        "rolling": 45.4,
-        "score": 59.9
+        "rolling": 49.5,
+        "score": 66.7
       },
       {
         "kind": "scrim",
@@ -837,8 +837,8 @@
         "map": "koth_proot_b6b",
         "playedAt": 1692734122,
         "result": "L",
-        "rolling": 47.7,
-        "score": 64.6
+        "rolling": 51.1,
+        "score": 65.6
       },
       {
         "kind": "scrim",
@@ -846,8 +846,8 @@
         "map": "koth_product_final",
         "playedAt": 1692819547,
         "result": "W",
-        "rolling": 45.0,
-        "score": 36.4
+        "rolling": 49.0,
+        "score": 44.6
       },
       {
         "kind": "scrim",
@@ -855,8 +855,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1692820796,
         "result": "W",
-        "rolling": 45.6,
-        "score": 51.4
+        "rolling": 49.7,
+        "score": 62.5
       },
       {
         "kind": "scrim",
@@ -864,8 +864,8 @@
         "map": "pl_upward_f9",
         "playedAt": 1692907123,
         "result": "L",
-        "rolling": 43.9,
-        "score": 40.1
+        "rolling": 48.3,
+        "score": 36.2
       },
       {
         "kind": "scrim",
@@ -873,8 +873,8 @@
         "map": "koth_proot",
         "playedAt": 1692909440,
         "result": "W",
-        "rolling": 45.2,
-        "score": 48.3
+        "rolling": 47.7,
+        "score": 36.9
       },
       {
         "kind": "scrim",
@@ -882,8 +882,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1692992076,
         "result": "L",
-        "rolling": 44.0,
-        "score": 37.6
+        "rolling": 45.7,
+        "score": 39.1
       },
       {
         "kind": "scrim",
@@ -891,8 +891,8 @@
         "map": "koth_product_final",
         "playedAt": 1692993571,
         "result": "L",
-        "rolling": 45.8,
-        "score": 47.2
+        "rolling": 49.3,
+        "score": 61.6
       },
       {
         "kind": "scrim",
@@ -900,8 +900,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1693338191,
         "result": "W",
-        "rolling": 47.4,
-        "score": 50.1
+        "rolling": 51.2,
+        "score": 52.3
       },
       {
         "kind": "scrim",
@@ -909,8 +909,8 @@
         "map": "koth_cascade",
         "playedAt": 1693339935,
         "result": "W",
-        "rolling": 50.6,
-        "score": 70.0
+        "rolling": 54.2,
+        "score": 76.1
       },
       {
         "kind": "official",
@@ -918,8 +918,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1693419002,
         "result": "W",
-        "rolling": 53.8,
-        "score": 92.5
+        "rolling": 57.2,
+        "score": 97.1
       },
       {
         "kind": "official",
@@ -927,8 +927,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1693419678,
         "result": "W",
-        "rolling": 54.8,
-        "score": 74.8
+        "rolling": 58.9,
+        "score": 82.6
       },
       {
         "kind": "scrim",
@@ -936,8 +936,8 @@
         "map": "vigil + cascade",
         "playedAt": 1693512564,
         "result": "W",
-        "rolling": 58.4,
-        "score": 72.3
+        "rolling": 61.6,
+        "score": 72.0
       },
       {
         "kind": "scrim",
@@ -945,8 +945,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1693596700,
         "result": "L",
-        "rolling": 57.4,
-        "score": 40.8
+        "rolling": 59.7,
+        "score": 43.1
       },
       {
         "kind": "scrim",
@@ -954,8 +954,8 @@
         "map": "koth_cascade",
         "playedAt": 1693598269,
         "result": "L",
-        "rolling": 55.9,
-        "score": 25.6
+        "rolling": 58.8,
+        "score": 27.4
       },
       {
         "kind": "scrim",
@@ -963,8 +963,8 @@
         "map": "koth_product_final",
         "playedAt": 1693852410,
         "result": "W",
-        "rolling": 55.3,
-        "score": 42.0
+        "rolling": 60.1,
+        "score": 49.8
       },
       {
         "kind": "scrim",
@@ -972,8 +972,8 @@
         "map": "koth_cascade",
         "playedAt": 1693853433,
         "result": "W",
-        "rolling": 59.7,
-        "score": 81.4
+        "rolling": 63.8,
+        "score": 76.4
       },
       {
         "kind": "scrim",
@@ -981,8 +981,8 @@
         "map": "koth_product_final",
         "playedAt": 1693943314,
         "result": "W",
-        "rolling": 62.4,
-        "score": 74.3
+        "rolling": 65.0,
+        "score": 72.7
       },
       {
         "kind": "scrim",
@@ -990,8 +990,8 @@
         "map": "koth_cascade",
         "playedAt": 1693944417,
         "result": "W",
-        "rolling": 64.2,
-        "score": 68.7
+        "rolling": 67.2,
+        "score": 75.2
       },
       {
         "kind": "official",
@@ -999,8 +999,8 @@
         "map": "koth_product_final",
         "playedAt": 1694028450,
         "result": "W",
-        "rolling": 63.3,
-        "score": 60.7
+        "rolling": 66.2,
+        "score": 65.9
       },
       {
         "kind": "official",
@@ -1008,8 +1008,8 @@
         "map": "koth_cascade",
         "playedAt": 1694029489,
         "result": "W",
-        "rolling": 57.5,
-        "score": 34.6
+        "rolling": 61.3,
+        "score": 47.6
       },
       {
         "kind": "scrim",
@@ -1017,8 +1017,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1694111972,
         "result": "W",
-        "rolling": 55.3,
-        "score": 52.2
+        "rolling": 58.8,
+        "score": 58.2
       },
       {
         "kind": "scrim",
@@ -1026,8 +1026,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1694113292,
         "result": "L",
-        "rolling": 52.7,
-        "score": 46.7
+        "rolling": 57.8,
+        "score": 61.9
       },
       {
         "kind": "scrim",
@@ -1035,8 +1035,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1694370265,
         "result": "W",
-        "rolling": 54.3,
-        "score": 57.0
+        "rolling": 58.4,
+        "score": 48.5
       },
       {
         "kind": "scrim",
@@ -1044,8 +1044,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1694371039,
         "result": "W",
-        "rolling": 55.6,
-        "score": 38.9
+        "rolling": 60.3,
+        "score": 46.5
       },
       {
         "kind": "scrim",
@@ -1053,8 +1053,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1694547076,
         "result": "L",
-        "rolling": 54.6,
-        "score": 31.7
+        "rolling": 57.8,
+        "score": 24.8
       },
       {
         "kind": "scrim",
@@ -1062,8 +1062,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1694548550,
         "result": "W",
-        "rolling": 51.0,
-        "score": 45.3
+        "rolling": 53.7,
+        "score": 35.4
       },
       {
         "kind": "official",
@@ -1071,8 +1071,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1694633539,
         "result": "W",
-        "rolling": 46.9,
-        "score": 33.4
+        "rolling": 50.1,
+        "score": 36.8
       },
       {
         "kind": "official",
@@ -1080,8 +1080,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1694634451,
         "result": "W",
-        "rolling": 43.7,
-        "score": 36.3
+        "rolling": 46.4,
+        "score": 38.4
       },
       {
         "kind": "scrim",
@@ -1089,8 +1089,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1694979951,
         "result": "L",
-        "rolling": 40.5,
-        "score": 28.7
+        "rolling": 43.5,
+        "score": 37.3
       },
       {
         "kind": "scrim",
@@ -1098,8 +1098,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1694981427,
         "result": "L",
-        "rolling": 41.3,
-        "score": 43.0
+        "rolling": 43.9,
+        "score": 50.7
       },
       {
         "kind": "scrim",
@@ -1107,8 +1107,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1695151937,
         "result": "W",
-        "rolling": 42.1,
-        "score": 59.6
+        "rolling": 44.9,
+        "score": 69.1
       },
       {
         "kind": "scrim",
@@ -1116,8 +1116,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1695153973,
         "result": "W",
-        "rolling": 42.6,
-        "score": 52.4
+        "rolling": 45.0,
+        "score": 62.8
       },
       {
         "kind": "scrim",
@@ -1125,8 +1125,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1695238469,
         "result": "W",
-        "rolling": 41.6,
-        "score": 46.5
+        "rolling": 45.6,
+        "score": 53.8
       },
       {
         "kind": "scrim",
@@ -1134,8 +1134,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1695240094,
         "result": "W",
-        "rolling": 45.8,
-        "score": 80.7
+        "rolling": 49.3,
+        "score": 84.0
       },
       {
         "kind": "official",
@@ -1143,8 +1143,8 @@
         "map": "proot + proplant",
         "playedAt": 1695419062,
         "result": "W",
-        "rolling": 46.9,
-        "score": 43.4
+        "rolling": 52.0,
+        "score": 51.4
       },
       {
         "kind": "scrim",
@@ -1152,8 +1152,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1695501706,
         "result": "W",
-        "rolling": 50.9,
-        "score": 84.9
+        "rolling": 56.6,
+        "score": 82.0
       },
       {
         "kind": "scrim",
@@ -1161,8 +1161,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1695930090,
         "result": "L",
-        "rolling": 50.6,
-        "score": 30.4
+        "rolling": 55.7,
+        "score": 27.3
       },
       {
         "kind": "scrim",
@@ -1170,8 +1170,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1695930854,
         "result": "L",
-        "rolling": 51.9,
-        "score": 49.8
+        "rolling": 56.2,
+        "score": 43.1
       },
       {
         "kind": "scrim",
@@ -1179,8 +1179,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1696012402,
         "result": "W",
-        "rolling": 57.4,
-        "score": 83.6
+        "rolling": 61.2,
+        "score": 87.7
       },
       {
         "kind": "scrim",
@@ -1188,8 +1188,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1696013680,
         "result": "W",
-        "rolling": 59.8,
-        "score": 66.3
+        "rolling": 63.1,
+        "score": 70.0
       },
       {
         "kind": "scrim",
@@ -1197,8 +1197,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1696103807,
         "result": "L",
-        "rolling": 58.2,
-        "score": 44.3
+        "rolling": 60.4,
+        "score": 42.2
       },
       {
         "kind": "scrim",
@@ -1206,8 +1206,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1696105631,
         "result": "L",
-        "rolling": 58.6,
-        "score": 55.9
+        "rolling": 60.5,
+        "score": 63.9
       },
       {
         "kind": "scrim",
@@ -1215,8 +1215,8 @@
         "map": "cascade-proplant",
         "playedAt": 1696191643,
         "result": "T",
-        "rolling": 59.0,
-        "score": 50.6
+        "rolling": 61.4,
+        "score": 62.0
       },
       {
         "kind": "scrim",
@@ -1224,8 +1224,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1696357974,
         "result": "L",
-        "rolling": 53.9,
-        "score": 29.3
+        "rolling": 55.1,
+        "score": 21.5
       },
       {
         "kind": "scrim",
@@ -1233,8 +1233,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1696359660,
         "result": "L",
-        "rolling": 53.5,
-        "score": 40.3
+        "rolling": 54.1,
+        "score": 41.6
       },
       {
         "kind": "scrim",
@@ -1242,8 +1242,8 @@
         "map": "proplant-cascade",
         "playedAt": 1696451763,
         "result": "W",
-        "rolling": 51.6,
-        "score": 65.9
+        "rolling": 52.9,
+        "score": 69.5
       },
       {
         "kind": "scrim",
@@ -1251,8 +1251,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1696621013,
         "result": "W",
-        "rolling": 53.4,
-        "score": 48.4
+        "rolling": 55.9,
+        "score": 57.6
       },
       {
         "kind": "scrim",
@@ -1260,8 +1260,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1696622247,
         "result": "L",
-        "rolling": 50.7,
-        "score": 22.4
+        "rolling": 53.3,
+        "score": 17.2
       },
       {
         "kind": "scrim",
@@ -1269,8 +1269,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1696703551,
         "result": "L",
-        "rolling": 46.6,
-        "score": 42.6
+        "rolling": 48.0,
+        "score": 34.4
       },
       {
         "kind": "scrim",
@@ -1278,8 +1278,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1696705861,
         "result": "L",
-        "rolling": 44.5,
-        "score": 45.1
+        "rolling": 45.6,
+        "score": 46.1
       },
       {
         "kind": "scrim",
@@ -1287,8 +1287,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1696707885,
         "result": "W",
-        "rolling": 46.7,
-        "score": 66.8
+        "rolling": 48.8,
+        "score": 73.9
       },
       {
         "kind": "scrim",
@@ -1296,8 +1296,8 @@
         "map": "koth_cascade",
         "playedAt": 1696709211,
         "result": "W",
-        "rolling": 48.1,
-        "score": 69.8
+        "rolling": 49.1,
+        "score": 66.7
       },
       {
         "kind": "scrim",
@@ -1305,8 +1305,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1696793768,
         "result": "W",
-        "rolling": 48.2,
-        "score": 51.7
+        "rolling": 47.4,
+        "score": 45.4
       },
       {
         "kind": "scrim",
@@ -1314,8 +1314,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1696795297,
         "result": "W",
-        "rolling": 50.5,
-        "score": 51.5
+        "rolling": 51.1,
+        "score": 59.0
       },
       {
         "kind": "scrim",
@@ -1323,8 +1323,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1696873129,
         "result": "W",
-        "rolling": 52.2,
-        "score": 57.3
+        "rolling": 53.4,
+        "score": 64.6
       },
       {
         "kind": "scrim",
@@ -1332,8 +1332,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1696874566,
         "result": "L",
-        "rolling": 49.4,
-        "score": 38.6
+        "rolling": 51.8,
+        "score": 52.8
       },
       {
         "kind": "official",
@@ -1341,8 +1341,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1696887972,
         "result": "W",
-        "rolling": 49.9,
-        "score": 53.1
+        "rolling": 51.1,
+        "score": 51.3
       },
       {
         "kind": "official",
@@ -1350,8 +1350,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1696888086,
         "result": "L",
-        "rolling": 51.6,
-        "score": 39.5
+        "rolling": 54.3,
+        "score": 49.0
       },
       {
         "kind": "scrim",
@@ -1359,8 +1359,8 @@
         "map": "koth_product_final",
         "playedAt": 1697052783,
         "result": "L",
-        "rolling": 51.9,
-        "score": 46.0
+        "rolling": 57.1,
+        "score": 61.9
       },
       {
         "kind": "scrim",
@@ -1368,8 +1368,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1697053941,
         "result": "L",
-        "rolling": 52.1,
-        "score": 47.1
+        "rolling": 57.4,
+        "score": 49.6
       },
       {
         "kind": "scrim",
@@ -1377,8 +1377,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1697054896,
         "result": "L",
-        "rolling": 49.0,
-        "score": 35.8
+        "rolling": 53.5,
+        "score": 34.5
       },
       {
         "kind": "scrim",
@@ -1386,8 +1386,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1697138995,
         "result": "W",
-        "rolling": 46.5,
-        "score": 44.6
+        "rolling": 51.5,
+        "score": 46.9
       },
       {
         "kind": "scrim",
@@ -1395,8 +1395,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1697139754,
         "result": "L",
-        "rolling": 44.9,
-        "score": 35.4
+        "rolling": 50.3,
+        "score": 33.3
       },
       {
         "kind": "scrim",
@@ -1404,8 +1404,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1697140467,
         "result": "L",
-        "rolling": 43.2,
-        "score": 34.7
+        "rolling": 47.8,
+        "score": 34.0
       },
       {
         "kind": "scrim",
@@ -1413,8 +1413,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1697225437,
         "result": "W",
-        "rolling": 41.7,
-        "score": 42.5
+        "rolling": 46.1,
+        "score": 48.0
       },
       {
         "kind": "scrim",
@@ -1422,8 +1422,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1697226740,
         "result": "W",
-        "rolling": 43.5,
-        "score": 56.2
+        "rolling": 46.2,
+        "score": 53.7
       },
       {
         "kind": "scrim",
@@ -1431,8 +1431,8 @@
         "map": "koth_cascade",
         "playedAt": 1697228282,
         "result": "W",
-        "rolling": 44.6,
-        "score": 63.7
+        "rolling": 47.5,
+        "score": 63.9
       },
       {
         "kind": "official",
@@ -1440,8 +1440,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1697314689,
         "result": "W",
-        "rolling": 44.8,
-        "score": 41.6
+        "rolling": 46.9,
+        "score": 42.8
       },
       {
         "kind": "official",
@@ -1449,8 +1449,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1697314749,
         "result": "L",
-        "rolling": 44.6,
-        "score": 44.6
+        "rolling": 45.5,
+        "score": 48.3
       },
       {
         "kind": "scrim",
@@ -1458,8 +1458,8 @@
         "map": "koth_product_final",
         "playedAt": 1699475930,
         "result": "W",
-        "rolling": 45.8,
-        "score": 58.9
+        "rolling": 46.2,
+        "score": 57.0
       },
       {
         "kind": "scrim",
@@ -1467,8 +1467,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1699477002,
         "result": "W",
-        "rolling": 46.8,
-        "score": 46.0
+        "rolling": 47.3,
+        "score": 45.0
       },
       {
         "kind": "scrim",
@@ -1476,8 +1476,8 @@
         "map": "koth_product_final",
         "playedAt": 1699822167,
         "result": "W",
-        "rolling": 46.7,
-        "score": 43.1
+        "rolling": 47.6,
+        "score": 50.2
       },
       {
         "kind": "scrim",
@@ -1485,8 +1485,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1699994375,
         "result": "W",
-        "rolling": 49.0,
-        "score": 58.7
+        "rolling": 50.8,
+        "score": 65.2
       },
       {
         "kind": "scrim",
@@ -1494,17 +1494,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1699995284,
         "result": "W",
-        "rolling": 52.7,
-        "score": 71.5
-      },
-      {
-        "kind": "scrim",
-        "logId": 3530933,
-        "map": "koth_proot_b5b",
-        "playedAt": 1700074859,
-        "result": "L",
-        "rolling": 53.0,
-        "score": 45.3
+        "rolling": 55.7,
+        "score": 82.8
       },
       {
         "kind": "scrim",
@@ -1512,8 +1503,8 @@
         "map": null,
         "playedAt": 1700074944,
         "result": "L",
-        "rolling": 50.0,
-        "score": 26.2
+        "rolling": 53.3,
+        "score": 24.0
       },
       {
         "kind": "scrim",
@@ -1521,8 +1512,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1700684977,
         "result": "W",
-        "rolling": 47.1,
-        "score": 35.0
+        "rolling": 51.5,
+        "score": 35.5
       },
       {
         "kind": "scrim",
@@ -1530,8 +1521,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1700686422,
         "result": "W",
-        "rolling": 49.1,
-        "score": 62.1
+        "rolling": 51.8,
+        "score": 67.2
       },
       {
         "kind": "scrim",
@@ -1539,7 +1530,7 @@
         "map": "koth_proplant_v8",
         "playedAt": 1700944318,
         "result": "W",
-        "rolling": 51.3,
+        "rolling": 54.1,
         "score": 65.7
       },
       {
@@ -1548,8 +1539,8 @@
         "map": "Product & Upward",
         "playedAt": 1701213803,
         "result": "L",
-        "rolling": 50.4,
-        "score": 50.3
+        "rolling": 54.7,
+        "score": 54.6
       },
       {
         "kind": "scrim",
@@ -1557,8 +1548,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1701289342,
         "result": "L",
-        "rolling": 49.9,
-        "score": 41.0
+        "rolling": 53.0,
+        "score": 39.8
       },
       {
         "kind": "scrim",
@@ -1566,8 +1557,8 @@
         "map": "koth_cascade",
         "playedAt": 1701291564,
         "result": "L",
-        "rolling": 49.3,
-        "score": 37.3
+        "rolling": 52.7,
+        "score": 42.1
       },
       {
         "kind": "scrim",
@@ -1575,8 +1566,8 @@
         "map": "koth_cascade",
         "playedAt": 1701370062,
         "result": "W",
-        "rolling": 48.4,
-        "score": 49.1
+        "rolling": 53.2,
+        "score": 55.2
       },
       {
         "kind": "scrim",
@@ -1584,8 +1575,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1701370900,
         "result": "L",
-        "rolling": 45.1,
-        "score": 39.2
+        "rolling": 50.0,
+        "score": 33.5
       },
       {
         "kind": "scrim",
@@ -1593,8 +1584,8 @@
         "map": null,
         "playedAt": 1701484187,
         "result": "T",
-        "rolling": 46.3,
-        "score": 57.0
+        "rolling": 47.5,
+        "score": 57.4
       },
       {
         "kind": "scrim",
@@ -1602,8 +1593,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1701541874,
         "result": "W",
-        "rolling": 50.3,
-        "score": 66.3
+        "rolling": 53.0,
+        "score": 78.7
       },
       {
         "kind": "scrim",
@@ -1611,8 +1602,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1701543437,
         "result": "W",
-        "rolling": 53.1,
-        "score": 63.4
+        "rolling": 56.9,
+        "score": 74.5
       },
       {
         "kind": "scrim",
@@ -1620,8 +1611,8 @@
         "map": "koth_cascade",
         "playedAt": 1701544678,
         "result": "W",
-        "rolling": 53.1,
-        "score": 62.1
+        "rolling": 57.3,
+        "score": 71.6
       },
       {
         "kind": "scrim",
@@ -1629,8 +1620,8 @@
         "map": "upw/casc",
         "playedAt": 1701553287,
         "result": "L",
-        "rolling": 52.0,
-        "score": 53.9
+        "rolling": 56.0,
+        "score": 52.7
       },
       {
         "kind": "scrim",
@@ -1638,8 +1629,8 @@
         "map": null,
         "playedAt": 1701632674,
         "result": "W",
-        "rolling": 52.9,
-        "score": 59.2
+        "rolling": 57.1,
+        "score": 65.4
       },
       {
         "kind": "scrim",
@@ -1647,8 +1638,8 @@
         "map": null,
         "playedAt": 1701638132,
         "result": "W",
-        "rolling": 55.4,
-        "score": 66.6
+        "rolling": 60.3,
+        "score": 71.5
       },
       {
         "kind": "scrim",
@@ -1656,8 +1647,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1701894946,
         "result": "W",
-        "rolling": 57.7,
-        "score": 59.8
+        "rolling": 62.0,
+        "score": 59.3
       },
       {
         "kind": "scrim",
@@ -1665,8 +1656,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1701895662,
         "result": "W",
-        "rolling": 57.0,
-        "score": 43.0
+        "rolling": 62.0,
+        "score": 55.2
       },
       {
         "kind": "scrim",
@@ -1674,8 +1665,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1701896746,
         "result": "L",
-        "rolling": 60.0,
-        "score": 68.2
+        "rolling": 64.4,
+        "score": 58.1
       },
       {
         "kind": "scrim",
@@ -1683,8 +1674,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1702063762,
         "result": "W",
-        "rolling": 59.8,
-        "score": 55.4
+        "rolling": 66.0,
+        "score": 73.0
       },
       {
         "kind": "scrim",
@@ -1692,8 +1683,8 @@
         "map": "koth_product_final",
         "playedAt": 1702065438,
         "result": "L",
-        "rolling": 58.7,
-        "score": 55.5
+        "rolling": 63.7,
+        "score": 56.1
       },
       {
         "kind": "scrim",
@@ -1701,8 +1692,8 @@
         "map": null,
         "playedAt": 1702069585,
         "result": "L",
-        "rolling": 59.5,
-        "score": 71.2
+        "rolling": 63.4,
+        "score": 71.5
       },
       {
         "kind": "scrim",
@@ -1710,8 +1701,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1702151239,
         "result": "T",
-        "rolling": 60.4,
-        "score": 71.2
+        "rolling": 63.2,
+        "score": 69.0
       },
       {
         "kind": "scrim",
@@ -1719,8 +1710,8 @@
         "map": "BORAT CUP",
         "playedAt": 1702264708,
         "result": "L",
-        "rolling": 60.6,
-        "score": 55.6
+        "rolling": 63.2,
+        "score": 52.9
       },
       {
         "kind": "scrim",
@@ -1728,8 +1719,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1702496554,
         "result": "W",
-        "rolling": 61.2,
-        "score": 65.4
+        "rolling": 63.6,
+        "score": 69.3
       },
       {
         "kind": "scrim",
@@ -1737,8 +1728,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1702759368,
         "result": "W",
-        "rolling": 59.3,
-        "score": 47.3
+        "rolling": 61.2,
+        "score": 47.2
       },
       {
         "kind": "scrim",
@@ -1746,8 +1737,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1702760583,
         "result": "W",
-        "rolling": 58.2,
-        "score": 49.5
+        "rolling": 60.5,
+        "score": 53.0
       },
       {
         "kind": "pug",
@@ -1755,8 +1746,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1702842704,
         "result": "L",
-        "rolling": 57.2,
-        "score": 33.1
+        "rolling": 58.4,
+        "score": 34.1
       },
       {
         "kind": "pug",
@@ -1764,8 +1755,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1702844032,
         "result": "W",
-        "rolling": 56.7,
-        "score": 62.7
+        "rolling": 58.8,
+        "score": 61.8
       },
       {
         "kind": "scrim",
@@ -1773,8 +1764,8 @@
         "map": null,
         "playedAt": 1703102580,
         "result": "W",
-        "rolling": 54.6,
-        "score": 34.5
+        "rolling": 55.6,
+        "score": 40.7
       },
       {
         "kind": "scrim",
@@ -1782,8 +1773,8 @@
         "map": "koth_product_final",
         "playedAt": 1703186572,
         "result": "W",
-        "rolling": 57.1,
-        "score": 80.3
+        "rolling": 58.5,
+        "score": 85.9
       },
       {
         "kind": "scrim",
@@ -1791,8 +1782,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1703188457,
         "result": "W",
-        "rolling": 57.9,
-        "score": 79.3
+        "rolling": 58.7,
+        "score": 73.2
       },
       {
         "kind": "scrim",
@@ -1801,7 +1792,7 @@
         "playedAt": 1704314644,
         "result": "W",
         "rolling": 55.7,
-        "score": 49.4
+        "score": 39.1
       },
       {
         "kind": "scrim",
@@ -1809,8 +1800,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1704316049,
         "result": "W",
-        "rolling": 58.2,
-        "score": 80.4
+        "rolling": 57.8,
+        "score": 73.4
       },
       {
         "kind": "scrim",
@@ -1818,8 +1809,8 @@
         "map": "koth_cascade",
         "playedAt": 1704400984,
         "result": "W",
-        "rolling": 55.4,
-        "score": 37.1
+        "rolling": 54.6,
+        "score": 37.4
       },
       {
         "kind": "scrim",
@@ -1827,8 +1818,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1704401932,
         "result": "T",
-        "rolling": 58.7,
-        "score": 80.5
+        "rolling": 58.6,
+        "score": 87.5
       },
       {
         "kind": "official",
@@ -1836,8 +1827,8 @@
         "map": "koth_valor_rc1",
         "playedAt": 1704566237,
         "result": "W",
-        "rolling": 56.8,
-        "score": 30.3
+        "rolling": 56.7,
+        "score": 33.4
       },
       {
         "kind": "official",
@@ -1845,8 +1836,8 @@
         "map": "koth_cornyard_b3a",
         "playedAt": 1704568764,
         "result": "W",
-        "rolling": 62.6,
-        "score": 91.7
+        "rolling": 62.2,
+        "score": 89.9
       },
       {
         "kind": "official",
@@ -1854,8 +1845,8 @@
         "map": "koth_valor_rc1",
         "playedAt": 1704656246,
         "result": "W",
-        "rolling": 63.2,
-        "score": 68.3
+        "rolling": 62.1,
+        "score": 60.7
       },
       {
         "kind": "official",
@@ -1863,8 +1854,8 @@
         "map": "cornyard-valor",
         "playedAt": 1704660793,
         "result": "W",
-        "rolling": 66.8,
-        "score": 71.0
+        "rolling": 65.4,
+        "score": 73.4
       },
       {
         "kind": "scrim",
@@ -1872,8 +1863,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1704918424,
         "result": "W",
-        "rolling": 64.9,
-        "score": 61.4
+        "rolling": 62.6,
+        "score": 58.4
       },
       {
         "kind": "scrim",
@@ -1881,8 +1872,8 @@
         "map": "upward+proot",
         "playedAt": 1705091036,
         "result": "L",
-        "rolling": 63.4,
-        "score": 64.1
+        "rolling": 62.4,
+        "score": 70.4
       },
       {
         "kind": "scrim",
@@ -1890,8 +1881,8 @@
         "map": "upward+product",
         "playedAt": 1705406475,
         "result": "L",
-        "rolling": 65.7,
-        "score": 71.9
+        "rolling": 65.8,
+        "score": 73.2
       },
       {
         "kind": "scrim",
@@ -1899,8 +1890,8 @@
         "map": "upward+proot",
         "playedAt": 1705438618,
         "result": "W",
-        "rolling": 62.5,
-        "score": 48.6
+        "rolling": 64.4,
+        "score": 59.5
       },
       {
         "kind": "scrim",
@@ -1908,8 +1899,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1705523824,
         "result": "W",
-        "rolling": 66.3,
-        "score": 75.3
+        "rolling": 68.2,
+        "score": 75.2
       },
       {
         "kind": "scrim",
@@ -1917,8 +1908,8 @@
         "map": "koth_product_final",
         "playedAt": 1705525118,
         "result": "W",
-        "rolling": 63.3,
-        "score": 50.3
+        "rolling": 65.1,
+        "score": 57.3
       },
       {
         "kind": "scrim",
@@ -1926,8 +1917,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1705602169,
         "result": "T",
-        "rolling": 66.2,
-        "score": 59.1
+        "rolling": 67.9,
+        "score": 60.9
       },
       {
         "kind": "scrim",
@@ -1935,8 +1926,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1705603781,
         "result": "W",
-        "rolling": 64.4,
-        "score": 74.4
+        "rolling": 66.3,
+        "score": 74.2
       },
       {
         "kind": "official",
@@ -1944,8 +1935,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1705608477,
         "result": "L",
-        "rolling": 60.6,
-        "score": 29.6
+        "rolling": 64.0,
+        "score": 37.1
       },
       {
         "kind": "scrim",
@@ -1953,8 +1944,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1705776951,
         "result": "L",
-        "rolling": 56.7,
-        "score": 32.6
+        "rolling": 59.7,
+        "score": 31.1
       },
       {
         "kind": "scrim",
@@ -1962,8 +1953,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1705779035,
         "result": "W",
-        "rolling": 54.5,
-        "score": 38.7
+        "rolling": 58.8,
+        "score": 49.3
       },
       {
         "kind": "scrim",
@@ -1971,8 +1962,8 @@
         "map": "koth_product_final",
         "playedAt": 1705780120,
         "result": "L",
-        "rolling": 53.8,
-        "score": 57.2
+        "rolling": 57.7,
+        "score": 58.9
       },
       {
         "kind": "scrim",
@@ -1980,8 +1971,8 @@
         "map": "proot-product",
         "playedAt": 1705871976,
         "result": "W",
-        "rolling": 54.0,
-        "score": 74.1
+        "rolling": 57.4,
+        "score": 70.5
       },
       {
         "kind": "scrim",
@@ -1989,8 +1980,8 @@
         "map": "proot-vigil",
         "playedAt": 1705958799,
         "result": "L",
-        "rolling": 53.8,
-        "score": 46.3
+        "rolling": 57.0,
+        "score": 55.6
       },
       {
         "kind": "scrim",
@@ -1998,8 +1989,8 @@
         "map": "vigil-product",
         "playedAt": 1706044784,
         "result": "T",
-        "rolling": 50.8,
-        "score": 45.5
+        "rolling": 54.5,
+        "score": 50.4
       },
       {
         "kind": "scrim",
@@ -2007,8 +1998,8 @@
         "map": "proot-product",
         "playedAt": 1706129857,
         "result": "W",
-        "rolling": 54.6,
-        "score": 88.7
+        "rolling": 57.3,
+        "score": 84.5
       },
       {
         "kind": "official",
@@ -2016,8 +2007,8 @@
         "map": "proot-product",
         "playedAt": 1706212706,
         "result": "T",
-        "rolling": 56.2,
-        "score": 75.3
+        "rolling": 59.2,
+        "score": 80.4
       },
       {
         "kind": "scrim",
@@ -2025,8 +2016,8 @@
         "map": "vigil+warmtic",
         "playedAt": 1706302842,
         "result": "W",
-        "rolling": 54.7,
-        "score": 59.1
+        "rolling": 57.4,
+        "score": 56.1
       },
       {
         "kind": "pug",
@@ -2034,8 +2025,8 @@
         "map": "koth_product_rcx",
         "playedAt": 1706362835,
         "result": "L",
-        "rolling": 60.2,
-        "score": 84.7
+        "rolling": 60.7,
+        "score": 70.5
       },
       {
         "kind": "scrim",
@@ -2043,8 +2034,8 @@
         "map": "vigilx2",
         "playedAt": 1706389051,
         "result": "L",
-        "rolling": 60.1,
-        "score": 31.4
+        "rolling": 61.4,
+        "score": 38.2
       },
       {
         "kind": "scrim",
@@ -2052,8 +2043,8 @@
         "map": "vigilx2",
         "playedAt": 1706558140,
         "result": "W",
-        "rolling": 58.5,
-        "score": 23.1
+        "rolling": 59.4,
+        "score": 29.0
       },
       {
         "kind": "scrim",
@@ -2061,8 +2052,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1706727444,
         "result": "L",
-        "rolling": 55.6,
-        "score": 27.6
+        "rolling": 57.3,
+        "score": 37.3
       },
       {
         "kind": "scrim",
@@ -2070,8 +2061,8 @@
         "map": "koth_warmtic_b6",
         "playedAt": 1706819595,
         "result": "W",
-        "rolling": 56.3,
-        "score": 81.1
+        "rolling": 58.7,
+        "score": 85.3
       },
       {
         "kind": "scrim",
@@ -2079,8 +2070,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1706820816,
         "result": "L",
-        "rolling": 55.4,
-        "score": 37.5
+        "rolling": 56.6,
+        "score": 34.0
       },
       {
         "kind": "scrim",
@@ -2088,8 +2079,8 @@
         "map": "koth_warmtic_f10",
         "playedAt": 1707079623,
         "result": "L",
-        "rolling": 54.7,
-        "score": 38.6
+        "rolling": 55.7,
+        "score": 41.4
       },
       {
         "kind": "scrim",
@@ -2097,8 +2088,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1707081803,
         "result": "W",
-        "rolling": 50.4,
-        "score": 45.9
+        "rolling": 52.2,
+        "score": 49.5
       },
       {
         "kind": "scrim",
@@ -2106,8 +2097,8 @@
         "map": "proplant-warmtic",
         "playedAt": 1707163367,
         "result": "W",
-        "rolling": 50.4,
-        "score": 74.6
+        "rolling": 52.8,
+        "score": 86.5
       },
       {
         "kind": "scrim",
@@ -2115,8 +2106,8 @@
         "map": "proplant-warmtic",
         "playedAt": 1707335552,
         "result": "W",
-        "rolling": 52.7,
-        "score": 82.8
+        "rolling": 55.9,
+        "score": 87.3
       },
       {
         "kind": "scrim",
@@ -2124,8 +2115,8 @@
         "map": "proplant-warmtic",
         "playedAt": 1707340294,
         "result": "W",
-        "rolling": 50.4,
-        "score": 61.7
+        "rolling": 55.8,
+        "score": 69.6
       },
       {
         "kind": "official",
@@ -2133,8 +2124,8 @@
         "map": "proplant-warmtic",
         "playedAt": 1707426713,
         "result": "W",
-        "rolling": 54.2,
-        "score": 68.8
+        "rolling": 59.7,
+        "score": 77.1
       },
       {
         "kind": "pug",
@@ -2142,8 +2133,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1707594538,
         "result": "L",
-        "rolling": 58.6,
-        "score": 67.7
+        "rolling": 64.5,
+        "score": 76.5
       },
       {
         "kind": "scrim",
@@ -2151,8 +2142,8 @@
         "map": "steward",
         "playedAt": 1707607069,
         "result": "T",
-        "rolling": 60.3,
-        "score": 43.9
+        "rolling": 65.0,
+        "score": 43.1
       },
       {
         "kind": "scrim",
@@ -2160,8 +2151,8 @@
         "map": "steel",
         "playedAt": 1707681667,
         "result": "L",
-        "rolling": 56.3,
-        "score": 41.5
+        "rolling": 60.7,
+        "score": 42.4
       },
       {
         "kind": "scrim",
@@ -2169,8 +2160,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1707852658,
         "result": "W",
-        "rolling": 57.3,
-        "score": 47.8
+        "rolling": 62.6,
+        "score": 52.9
       },
       {
         "kind": "scrim",
@@ -2178,8 +2169,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1707853739,
         "result": "W",
-        "rolling": 55.6,
-        "score": 21.8
+        "rolling": 61.1,
+        "score": 26.3
       },
       {
         "kind": "scrim",
@@ -2187,8 +2178,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1707856168,
         "result": "L",
-        "rolling": 55.5,
-        "score": 44.5
+        "rolling": 59.5,
+        "score": 32.9
       },
       {
         "kind": "scrim",
@@ -2196,8 +2187,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1707856890,
         "result": "W",
-        "rolling": 50.1,
-        "score": 20.8
+        "rolling": 53.2,
+        "score": 24.1
       },
       {
         "kind": "scrim",
@@ -2205,8 +2196,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1707942995,
         "result": "W",
-        "rolling": 47.9,
-        "score": 60.4
+        "rolling": 50.6,
+        "score": 61.4
       },
       {
         "kind": "scrim",
@@ -2214,8 +2205,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1707945111,
         "result": "W",
-        "rolling": 46.5,
-        "score": 47.4
+        "rolling": 48.3,
+        "score": 46.6
       },
       {
         "kind": "official",
@@ -2223,8 +2214,8 @@
         "map": "steel",
         "playedAt": 1708027053,
         "result": "L",
-        "rolling": 45.0,
-        "score": 54.6
+        "rolling": 46.8,
+        "score": 61.5
       },
       {
         "kind": "scrim",
@@ -2233,7 +2224,7 @@
         "playedAt": 1708374538,
         "result": "W",
         "rolling": 42.3,
-        "score": 40.3
+        "score": 31.6
       },
       {
         "kind": "scrim",
@@ -2241,8 +2232,8 @@
         "map": "koth_product_final",
         "playedAt": 1708376046,
         "result": "L",
-        "rolling": 44.8,
-        "score": 68.6
+        "rolling": 44.6,
+        "score": 66.6
       },
       {
         "kind": "scrim",
@@ -2250,8 +2241,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1708461709,
         "result": "L",
-        "rolling": 45.9,
-        "score": 52.4
+        "rolling": 45.6,
+        "score": 51.7
       },
       {
         "kind": "scrim",
@@ -2259,8 +2250,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1708463881,
         "result": "W",
-        "rolling": 47.8,
-        "score": 67.4
+        "rolling": 47.3,
+        "score": 70.1
       },
       {
         "kind": "scrim",
@@ -2268,8 +2259,8 @@
         "map": "koth_warmtic_f10",
         "playedAt": 1708548635,
         "result": "W",
-        "rolling": 49.7,
-        "score": 40.4
+        "rolling": 48.8,
+        "score": 41.4
       },
       {
         "kind": "scrim",
@@ -2277,8 +2268,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1708549843,
         "result": "W",
-        "rolling": 50.4,
-        "score": 51.3
+        "rolling": 51.4,
+        "score": 58.9
       },
       {
         "kind": "scrim",
@@ -2286,8 +2277,8 @@
         "map": "koth_product_final",
         "playedAt": 1708627077,
         "result": "L",
-        "rolling": 54.2,
-        "score": 59.5
+        "rolling": 56.3,
+        "score": 73.2
       },
       {
         "kind": "scrim",
@@ -2295,8 +2286,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1708628403,
         "result": "L",
-        "rolling": 50.2,
-        "score": 20.0
+        "rolling": 53.0,
+        "score": 28.0
       },
       {
         "kind": "official",
@@ -2304,8 +2295,8 @@
         "map": "proplant-warmtic",
         "playedAt": 1708631906,
         "result": "W",
-        "rolling": 51.4,
-        "score": 59.3
+        "rolling": 54.9,
+        "score": 65.5
       },
       {
         "kind": "scrim",
@@ -2313,8 +2304,8 @@
         "map": "vigil+proot",
         "playedAt": 1708807877,
         "result": "W",
-        "rolling": 52.2,
-        "score": 63.1
+        "rolling": 55.9,
+        "score": 71.7
       },
       {
         "kind": "scrim",
@@ -2322,8 +2313,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1708975538,
         "result": "W",
-        "rolling": 54.7,
-        "score": 65.3
+        "rolling": 60.4,
+        "score": 77.1
       },
       {
         "kind": "scrim",
@@ -2331,8 +2322,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1708976819,
         "result": "W",
-        "rolling": 55.8,
-        "score": 79.5
+        "rolling": 62.2,
+        "score": 84.4
       },
       {
         "kind": "scrim",
@@ -2340,8 +2331,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1708979567,
         "result": "W",
-        "rolling": 58.0,
-        "score": 73.9
+        "rolling": 64.9,
+        "score": 79.0
       },
       {
         "kind": "scrim",
@@ -2349,8 +2340,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1708980519,
         "result": "W",
-        "rolling": 54.2,
-        "score": 29.8
+        "rolling": 61.2,
+        "score": 32.5
       },
       {
         "kind": "scrim",
@@ -2358,8 +2349,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1708981390,
         "result": "W",
-        "rolling": 57.0,
-        "score": 68.6
+        "rolling": 63.3,
+        "score": 62.4
       },
       {
         "kind": "scrim",
@@ -2367,8 +2358,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1709059101,
         "result": "W",
-        "rolling": 60.5,
-        "score": 86.0
+        "rolling": 65.7,
+        "score": 83.4
       },
       {
         "kind": "scrim",
@@ -2376,7 +2367,7 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1709060422,
         "result": "W",
-        "rolling": 58.4,
+        "rolling": 62.3,
         "score": 38.6
       },
       {
@@ -2385,8 +2376,8 @@
         "map": "vigil-proplant",
         "playedAt": 1709065718,
         "result": "L",
-        "rolling": 60.9,
-        "score": 44.9
+        "rolling": 64.8,
+        "score": 53.8
       },
       {
         "kind": "scrim",
@@ -2394,8 +2385,8 @@
         "map": "pl_upward_f11",
         "playedAt": 1709148923,
         "result": "L",
-        "rolling": 58.0,
-        "score": 30.3
+        "rolling": 61.2,
+        "score": 28.6
       },
       {
         "kind": "scrim",
@@ -2403,8 +2394,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1709150522,
         "result": "W",
-        "rolling": 56.0,
-        "score": 42.6
+        "rolling": 59.3,
+        "score": 53.1
       },
       {
         "kind": "scrim",
@@ -2412,8 +2403,8 @@
         "map": "proot + upward",
         "playedAt": 1709241699,
         "result": "W",
-        "rolling": 52.5,
-        "score": 30.6
+        "rolling": 55.5,
+        "score": 39.3
       },
       {
         "kind": "scrim",
@@ -2421,8 +2412,8 @@
         "map": null,
         "playedAt": 1709324004,
         "result": "L",
-        "rolling": 47.0,
-        "score": 25.0
+        "rolling": 49.1,
+        "score": 19.8
       },
       {
         "kind": "scrim",
@@ -2430,8 +2421,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1709408362,
         "result": "W",
-        "rolling": 46.2,
-        "score": 65.9
+        "rolling": 47.9,
+        "score": 67.8
       },
       {
         "kind": "scrim",
@@ -2439,8 +2430,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1709409904,
         "result": "W",
-        "rolling": 48.3,
-        "score": 50.1
+        "rolling": 50.5,
+        "score": 57.9
       },
       {
         "kind": "scrim",
@@ -2448,8 +2439,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1709411315,
         "result": "W",
-        "rolling": 43.4,
-        "score": 19.9
+        "rolling": 47.4,
+        "score": 31.9
       },
       {
         "kind": "scrim",
@@ -2457,8 +2448,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1709490946,
         "result": "W",
-        "rolling": 41.2,
-        "score": 63.8
+        "rolling": 46.2,
+        "score": 70.9
       },
       {
         "kind": "scrim",
@@ -2466,8 +2457,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1709491967,
         "result": "W",
-        "rolling": 42.3,
-        "score": 50.1
+        "rolling": 48.2,
+        "score": 58.6
       },
       {
         "kind": "pug",
@@ -2475,8 +2466,8 @@
         "map": "proplant proot",
         "playedAt": 1709758510,
         "result": "L",
-        "rolling": 42.5,
-        "score": 46.6
+        "rolling": 48.0,
+        "score": 51.7
       },
       {
         "kind": "pug",
@@ -2484,8 +2475,8 @@
         "map": "upward + vigil",
         "playedAt": 1710445963,
         "result": "L",
-        "rolling": 42.5,
-        "score": 30.5
+        "rolling": 48.3,
+        "score": 31.9
       },
       {
         "kind": "pug",
@@ -2493,8 +2484,8 @@
         "map": "vigil + product",
         "playedAt": 1717526891,
         "result": "L",
-        "rolling": 39.3,
-        "score": 10.0
+        "rolling": 44.3,
+        "score": 13.3
       },
       {
         "kind": "pug",
@@ -2502,8 +2493,8 @@
         "map": "vigil + proplant",
         "playedAt": 1717619053,
         "result": "L",
-        "rolling": 41.0,
-        "score": 48.4
+        "rolling": 45.9,
+        "score": 55.0
       },
       {
         "kind": "pug",
@@ -2511,8 +2502,8 @@
         "map": "upward proplant",
         "playedAt": 1717787191,
         "result": "W",
-        "rolling": 41.9,
-        "score": 34.1
+        "rolling": 47.6,
+        "score": 37.4
       },
       {
         "kind": "pug",
@@ -2520,8 +2511,8 @@
         "map": "proot / vigil",
         "playedAt": 1719428728,
         "result": "T",
-        "rolling": 40.0,
-        "score": 46.4
+        "rolling": 45.6,
+        "score": 47.2
       },
       {
         "kind": "pug",
@@ -2529,8 +2520,8 @@
         "map": "koth_product_rcx",
         "playedAt": 1720465411,
         "result": "T",
-        "rolling": 42.7,
-        "score": 77.6
+        "rolling": 48.3,
+        "score": 84.9
       },
       {
         "kind": "pug",
@@ -2538,8 +2529,8 @@
         "map": "Vigil / Product",
         "playedAt": 1720551546,
         "result": "T",
-        "rolling": 44.1,
-        "score": 33.8
+        "rolling": 48.2,
+        "score": 31.1
       },
       {
         "kind": "pug",
@@ -2547,8 +2538,8 @@
         "map": "koth_product_final",
         "playedAt": 1720722797,
         "result": "W",
-        "rolling": 45.8,
-        "score": 80.8
+        "rolling": 49.9,
+        "score": 87.4
       },
       {
         "kind": "pug",
@@ -2556,8 +2547,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1720723784,
         "result": "W",
-        "rolling": 44.8,
-        "score": 40.2
+        "rolling": 48.8,
+        "score": 48.2
       },
       {
         "kind": "pug",
@@ -2565,8 +2556,8 @@
         "map": "koth_product_final",
         "playedAt": 1723947083,
         "result": "W",
-        "rolling": 45.7,
-        "score": 55.5
+        "rolling": 50.1,
+        "score": 64.9
       },
       {
         "kind": "pug",
@@ -2574,8 +2565,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1723948538,
         "result": "L",
-        "rolling": 49.3,
-        "score": 66.4
+        "rolling": 52.4,
+        "score": 54.2
       },
       {
         "kind": "pug",
@@ -2583,8 +2574,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1724175629,
         "result": "L",
-        "rolling": 52.1,
-        "score": 37.6
+        "rolling": 55.8,
+        "score": 47.8
       },
       {
         "kind": "pug",
@@ -2592,8 +2583,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1724177257,
         "result": "T",
-        "rolling": 52.1,
-        "score": 48.9
+        "rolling": 55.7,
+        "score": 54.0
       },
       {
         "kind": "pug",
@@ -2601,8 +2592,8 @@
         "map": "product, vigil",
         "playedAt": 1726423598,
         "result": "W",
-        "rolling": 53.9,
-        "score": 51.6
+        "rolling": 57.3,
+        "score": 52.8
       },
       {
         "kind": "pug",
@@ -2610,8 +2601,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1726425103,
         "result": "W",
-        "rolling": 56.8,
-        "score": 75.1
+        "rolling": 59.2,
+        "score": 66.6
       },
       {
         "kind": "pug",
@@ -2619,8 +2610,8 @@
         "map": "koth_product_final",
         "playedAt": 1726425968,
         "result": "W",
-        "rolling": 55.5,
-        "score": 64.6
+        "rolling": 57.5,
+        "score": 67.5
       },
       {
         "kind": "scrim",
@@ -2628,8 +2619,8 @@
         "map": "koth_product_final",
         "playedAt": 1729276595,
         "result": "W",
-        "rolling": 57.5,
-        "score": 54.2
+        "rolling": 60.9,
+        "score": 65.6
       },
       {
         "kind": "scrim",
@@ -2637,8 +2628,8 @@
         "map": "koth_proplant_v8",
         "playedAt": 1729278083,
         "result": "L",
-        "rolling": 52.8,
-        "score": 33.7
+        "rolling": 57.6,
+        "score": 53.9
       },
       {
         "kind": "scrim",
@@ -2646,8 +2637,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1729367291,
         "result": "L",
-        "rolling": 54.0,
-        "score": 51.9
+        "rolling": 57.7,
+        "score": 49.6
       },
       {
         "kind": "scrim",
@@ -2655,8 +2646,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1729368396,
         "result": "L",
-        "rolling": 50.4,
-        "score": 20.2
+        "rolling": 53.1,
+        "score": 19.1
       },
       {
         "kind": "scrim",
@@ -2664,8 +2655,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1729626335,
         "result": "L",
-        "rolling": 48.8,
-        "score": 50.5
+        "rolling": 51.7,
+        "score": 39.8
       },
       {
         "kind": "scrim",
@@ -2673,8 +2664,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1729627142,
         "result": "L",
-        "rolling": 47.7,
-        "score": 26.7
+        "rolling": 49.1,
+        "score": 22.0
       },
       {
         "kind": "scrim",
@@ -2682,8 +2673,8 @@
         "map": "Product, Upward",
         "playedAt": 1730659968,
         "result": "L",
-        "rolling": 47.7,
-        "score": 49.0
+        "rolling": 48.7,
+        "score": 50.2
       },
       {
         "kind": "scrim",
@@ -2691,8 +2682,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1730838938,
         "result": "L",
-        "rolling": 45.7,
-        "score": 31.0
+        "rolling": 46.1,
+        "score": 26.5
       },
       {
         "kind": "scrim",
@@ -2700,8 +2691,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1730840934,
         "result": "L",
-        "rolling": 43.7,
-        "score": 55.6
+        "rolling": 45.4,
+        "score": 60.1
       },
       {
         "kind": "scrim",
@@ -2709,8 +2700,8 @@
         "map": "koth_product_final",
         "playedAt": 1730922023,
         "result": "W",
-        "rolling": 45.2,
-        "score": 78.8
+        "rolling": 46.5,
+        "score": 77.9
       },
       {
         "kind": "scrim",
@@ -2718,7 +2709,7 @@
         "map": "koth_ashville_final1",
         "playedAt": 1730923736,
         "result": "W",
-        "rolling": 42.7,
+        "rolling": 42.9,
         "score": 29.7
       },
       {
@@ -2727,8 +2718,8 @@
         "map": null,
         "playedAt": 1731009347,
         "result": "L",
-        "rolling": 43.4,
-        "score": 40.7
+        "rolling": 42.6,
+        "score": 51.3
       },
       {
         "kind": "scrim",
@@ -2736,8 +2727,8 @@
         "map": "upward proot",
         "playedAt": 1731445149,
         "result": "L",
-        "rolling": 42.1,
-        "score": 38.9
+        "rolling": 40.9,
+        "score": 31.9
       },
       {
         "kind": "scrim",
@@ -2745,8 +2736,8 @@
         "map": "koth_lakeside_f5",
         "playedAt": 1731616828,
         "result": "W",
-        "rolling": 45.5,
-        "score": 54.2
+        "rolling": 44.5,
+        "score": 55.6
       },
       {
         "kind": "scrim",
@@ -2754,8 +2745,8 @@
         "map": "koth_product_rcx",
         "playedAt": 1731618274,
         "result": "W",
-        "rolling": 45.7,
-        "score": 52.1
+        "rolling": 47.3,
+        "score": 67.3
       },
       {
         "kind": "scrim",
@@ -2763,8 +2754,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1731699772,
         "result": "W",
-        "rolling": 49.0,
-        "score": 59.6
+        "rolling": 51.7,
+        "score": 66.5
       },
       {
         "kind": "scrim",
@@ -2772,8 +2763,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1731700907,
         "result": "W",
-        "rolling": 51.0,
-        "score": 69.6
+        "rolling": 53.1,
+        "score": 64.3
       },
       {
         "kind": "scrim",
@@ -2781,8 +2772,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1731789620,
         "result": "W",
-        "rolling": 54.0,
-        "score": 60.8
+        "rolling": 57.7,
+        "score": 72.1
       },
       {
         "kind": "scrim",
@@ -2790,8 +2781,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1731791704,
         "result": "W",
-        "rolling": 53.9,
-        "score": 54.4
+        "rolling": 58.4,
+        "score": 67.8
       },
       {
         "kind": "scrim",
@@ -2799,8 +2790,8 @@
         "map": "koth_lakeside_f5",
         "playedAt": 1732221829,
         "result": "W",
-        "rolling": 54.5,
-        "score": 85.3
+        "rolling": 59.3,
+        "score": 86.4
       },
       {
         "kind": "scrim",
@@ -2808,8 +2799,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1732223298,
         "result": "W",
-        "rolling": 57.5,
-        "score": 59.8
+        "rolling": 63.6,
+        "score": 72.6
       },
       {
         "kind": "scrim",
@@ -2817,8 +2808,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1732308084,
         "result": "L",
-        "rolling": 58.1,
-        "score": 46.8
+        "rolling": 62.3,
+        "score": 38.2
       },
       {
         "kind": "scrim",
@@ -2826,8 +2817,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1732309084,
         "result": "T",
-        "rolling": 58.6,
-        "score": 43.5
+        "rolling": 63.9,
+        "score": 48.3
       },
       {
         "kind": "scrim",
@@ -2835,8 +2826,8 @@
         "map": "koth_lakeside_f5",
         "playedAt": 1732654290,
         "result": "W",
-        "rolling": 60.8,
-        "score": 75.6
+        "rolling": 66.3,
+        "score": 79.8
       },
       {
         "kind": "scrim",
@@ -2844,8 +2835,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1732655492,
         "result": "W",
-        "rolling": 60.7,
-        "score": 52.0
+        "rolling": 64.7,
+        "score": 50.5
       },
       {
         "kind": "scrim",
@@ -2853,8 +2844,8 @@
         "map": "proot/ashville",
         "playedAt": 1732686485,
         "result": "L",
-        "rolling": 60.7,
-        "score": 59.5
+        "rolling": 64.1,
+        "score": 60.6
       },
       {
         "kind": "scrim",
@@ -2862,8 +2853,8 @@
         "map": "proot - vigil",
         "playedAt": 1732909990,
         "result": "L",
-        "rolling": 58.4,
-        "score": 45.8
+        "rolling": 63.0,
+        "score": 53.5
       },
       {
         "kind": "scrim",
@@ -2871,8 +2862,8 @@
         "map": "koth_lakeside, koth_ashv",
         "playedAt": 1732913699,
         "result": "L",
-        "rolling": 56.7,
-        "score": 44.0
+        "rolling": 59.9,
+        "score": 41.6
       },
       {
         "kind": "scrim",
@@ -2880,8 +2871,8 @@
         "map": "koth_product_final",
         "playedAt": 1733081439,
         "result": "L",
-        "rolling": 54.0,
-        "score": 27.6
+        "rolling": 57.1,
+        "score": 39.7
       },
       {
         "kind": "scrim",
@@ -2889,8 +2880,8 @@
         "map": "koth_product_final",
         "playedAt": 1733254386,
         "result": "L",
-        "rolling": 50.4,
-        "score": 49.7
+        "rolling": 53.8,
+        "score": 53.4
       },
       {
         "kind": "scrim",
@@ -2898,8 +2889,8 @@
         "map": "Proot",
         "playedAt": 1733518907,
         "result": "L",
-        "rolling": 47.9,
-        "score": 34.0
+        "rolling": 51.0,
+        "score": 44.2
       },
       {
         "kind": "scrim",
@@ -2907,8 +2898,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1733950234,
         "result": "L",
-        "rolling": 46.1,
-        "score": 28.8
+        "rolling": 50.1,
+        "score": 29.5
       },
       {
         "kind": "scrim",
@@ -2916,8 +2907,8 @@
         "map": "Poot/prod",
         "playedAt": 1737064503,
         "result": "L",
-        "rolling": 47.2,
-        "score": 54.8
+        "rolling": 50.7,
+        "score": 54.6
       },
       {
         "kind": "scrim",
@@ -2925,8 +2916,8 @@
         "map": "prod + ash",
         "playedAt": 1737317775,
         "result": "L",
-        "rolling": 44.4,
-        "score": 47.4
+        "rolling": 48.6,
+        "score": 58.1
       },
       {
         "kind": "scrim",
@@ -2934,8 +2925,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1737491754,
         "result": "W",
-        "rolling": 44.9,
-        "score": 57.6
+        "rolling": 50.8,
+        "score": 73.1
       },
       {
         "kind": "scrim",
@@ -2943,8 +2934,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1737493089,
         "result": "W",
-        "rolling": 46.8,
-        "score": 78.7
+        "rolling": 53.6,
+        "score": 88.5
       },
       {
         "kind": "scrim",
@@ -2952,8 +2943,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1737661212,
         "result": "L",
-        "rolling": 44.7,
-        "score": 24.4
+        "rolling": 50.3,
+        "score": 19.9
       },
       {
         "kind": "scrim",
@@ -2961,8 +2952,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1737662353,
         "result": "L",
-        "rolling": 42.4,
-        "score": 21.1
+        "rolling": 49.0,
+        "score": 29.1
       },
       {
         "kind": "scrim",
@@ -2970,8 +2961,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1738092772,
         "result": "L",
-        "rolling": 42.7,
-        "score": 30.9
+        "rolling": 47.4,
+        "score": 23.1
       },
       {
         "kind": "scrim",
@@ -2979,8 +2970,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1738094991,
         "result": "L",
-        "rolling": 40.9,
-        "score": 30.9
+        "rolling": 45.5,
+        "score": 35.2
       },
       {
         "kind": "scrim",
@@ -2988,8 +2979,8 @@
         "map": "koth_product_final",
         "playedAt": 1738097624,
         "result": "W",
-        "rolling": 43.2,
-        "score": 57.4
+        "rolling": 47.7,
+        "score": 66.3
       },
       {
         "kind": "scrim",
@@ -2997,8 +2988,8 @@
         "map": "Proot + Product",
         "playedAt": 1738267869,
         "result": "L",
-        "rolling": 44.6,
-        "score": 42.7
+        "rolling": 49.4,
+        "score": 46.2
       },
       {
         "kind": "scrim",
@@ -3006,8 +2997,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1738702246,
         "result": "L",
-        "rolling": 42.3,
-        "score": 32.1
+        "rolling": 46.8,
+        "score": 28.8
       },
       {
         "kind": "scrim",
@@ -3015,8 +3006,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1738870254,
         "result": "W",
-        "rolling": 46.3,
-        "score": 87.4
+        "rolling": 50.4,
+        "score": 94.2
       },
       {
         "kind": "scrim",
@@ -3024,8 +3015,8 @@
         "map": "koth_product_final",
         "playedAt": 1738871967,
         "result": "W",
-        "rolling": 47.8,
-        "score": 72.2
+        "rolling": 51.2,
+        "score": 80.9
       },
       {
         "kind": "scrim",
@@ -3033,8 +3024,8 @@
         "map": "koth_product_final",
         "playedAt": 1739307807,
         "result": "L",
-        "rolling": 46.4,
-        "score": 65.1
+        "rolling": 50.2,
+        "score": 78.5
       },
       {
         "kind": "scrim",
@@ -3042,8 +3033,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1739309179,
         "result": "W",
-        "rolling": 47.4,
-        "score": 34.1
+        "rolling": 52.1,
+        "score": 38.9
       },
       {
         "kind": "scrim",
@@ -3051,8 +3042,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1739912795,
         "result": "L",
-        "rolling": 49.9,
-        "score": 45.8
+        "rolling": 53.2,
+        "score": 40.0
       },
       {
         "kind": "scrim",
@@ -3060,8 +3051,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1739912821,
         "result": "W",
-        "rolling": 54.5,
-        "score": 77.4
+        "rolling": 56.5,
+        "score": 55.6
       },
       {
         "kind": "pug",
@@ -3069,8 +3060,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1739994699,
         "result": "L",
-        "rolling": 57.5,
-        "score": 60.3
+        "rolling": 58.7,
+        "score": 57.2
       },
       {
         "kind": "pug",
@@ -3078,8 +3069,8 @@
         "map": "koth_product_final",
         "playedAt": 1739996232,
         "result": "W",
-        "rolling": 58.6,
-        "score": 68.4
+        "rolling": 59.7,
+        "score": 77.1
       },
       {
         "kind": "scrim",
@@ -3087,8 +3078,8 @@
         "map": "koth_product_final",
         "playedAt": 1740080051,
         "result": "L",
-        "rolling": 57.0,
-        "score": 27.1
+        "rolling": 58.5,
+        "score": 34.2
       },
       {
         "kind": "scrim",
@@ -3096,8 +3087,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1740081682,
         "result": "L",
-        "rolling": 56.9,
-        "score": 31.1
+        "rolling": 58.3,
+        "score": 25.9
       },
       {
         "kind": "scrim",
@@ -3105,8 +3096,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1740166617,
         "result": "L",
-        "rolling": 54.4,
-        "score": 62.9
+        "rolling": 54.8,
+        "score": 59.8
       },
       {
         "kind": "scrim",
@@ -3114,7 +3105,7 @@
         "map": "koth_ashville_final1",
         "playedAt": 1740168550,
         "result": "L",
-        "rolling": 52.1,
+        "rolling": 51.6,
         "score": 49.2
       },
       {
@@ -3123,8 +3114,8 @@
         "map": "Proot + Upward",
         "playedAt": 1740518622,
         "result": "T",
-        "rolling": 50.0,
-        "score": 43.3
+        "rolling": 48.6,
+        "score": 48.4
       },
       {
         "kind": "scrim",
@@ -3132,8 +3123,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1740772369,
         "result": "L",
-        "rolling": 50.1,
-        "score": 35.0
+        "rolling": 48.1,
+        "score": 33.9
       },
       {
         "kind": "scrim",
@@ -3141,8 +3132,8 @@
         "map": "koth_product_final",
         "playedAt": 1740774794,
         "result": "W",
-        "rolling": 53.4,
-        "score": 79.2
+        "rolling": 51.9,
+        "score": 78.0
       },
       {
         "kind": "scrim",
@@ -3150,8 +3141,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1741121449,
         "result": "W",
-        "rolling": 49.4,
-        "score": 37.3
+        "rolling": 51.8,
+        "score": 54.4
       },
       {
         "kind": "scrim",
@@ -3159,8 +3150,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1741122785,
         "result": "W",
-        "rolling": 47.8,
-        "score": 44.3
+        "rolling": 51.8,
+        "score": 56.8
       },
       {
         "kind": "scrim",
@@ -3168,8 +3159,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1741293585,
         "result": "W",
-        "rolling": 45.3,
-        "score": 43.7
+        "rolling": 48.8,
+        "score": 47.8
       },
       {
         "kind": "scrim",
@@ -3177,8 +3168,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1741294904,
         "result": "W",
-        "rolling": 48.8,
-        "score": 62.4
+        "rolling": 51.5,
+        "score": 60.8
       },
       {
         "kind": "scrim",
@@ -3186,8 +3177,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1741721885,
         "result": "L",
-        "rolling": 52.2,
-        "score": 64.4
+        "rolling": 55.1,
+        "score": 62.2
       },
       {
         "kind": "scrim",
@@ -3195,8 +3186,8 @@
         "map": "pl_upward",
         "playedAt": 1741723439,
         "result": "L",
-        "rolling": 52.9,
-        "score": 70.2
+        "rolling": 56.3,
+        "score": 71.6
       },
       {
         "kind": "scrim",
@@ -3204,8 +3195,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1741725055,
         "result": "L",
-        "rolling": 49.3,
-        "score": 13.0
+        "rolling": 53.6,
+        "score": 22.1
       },
       {
         "kind": "scrim",
@@ -3213,8 +3204,8 @@
         "map": "koth_product_final",
         "playedAt": 1741727696,
         "result": "W",
-        "rolling": 50.8,
-        "score": 58.8
+        "rolling": 55.8,
+        "score": 70.6
       },
       {
         "kind": "scrim",
@@ -3222,8 +3213,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1742244743,
         "result": "W",
-        "rolling": 53.9,
-        "score": 65.2
+        "rolling": 60.0,
+        "score": 75.5
       },
       {
         "kind": "scrim",
@@ -3231,8 +3222,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1742245945,
         "result": "W",
-        "rolling": 50.9,
-        "score": 49.6
+        "rolling": 58.0,
+        "score": 58.4
       },
       {
         "kind": "scrim",
@@ -3240,8 +3231,8 @@
         "map": "koth_product_final",
         "playedAt": 1742329708,
         "result": "W",
-        "rolling": 50.4,
-        "score": 32.8
+        "rolling": 56.9,
+        "score": 43.3
       },
       {
         "kind": "scrim",
@@ -3249,8 +3240,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1742330720,
         "result": "W",
-        "rolling": 50.3,
-        "score": 42.8
+        "rolling": 55.7,
+        "score": 44.5
       },
       {
         "kind": "scrim",
@@ -3258,8 +3249,8 @@
         "map": null,
         "playedAt": 1742504436,
         "result": "W",
-        "rolling": 52.7,
-        "score": 67.7
+        "rolling": 58.7,
+        "score": 78.1
       },
       {
         "kind": "scrim",
@@ -3267,8 +3258,8 @@
         "map": "product product",
         "playedAt": 1742587370,
         "result": "L",
-        "rolling": 50.7,
-        "score": 42.8
+        "rolling": 58.2,
+        "score": 55.3
       },
       {
         "kind": "scrim",
@@ -3276,8 +3267,8 @@
         "map": "koth_product_final",
         "playedAt": 1742761375,
         "result": "W",
-        "rolling": 50.9,
-        "score": 66.1
+        "rolling": 59.1,
+        "score": 71.8
       },
       {
         "kind": "official",
@@ -3285,8 +3276,8 @@
         "map": null,
         "playedAt": 1742932275,
         "result": "W",
-        "rolling": 50.7,
-        "score": 67.9
+        "rolling": 59.9,
+        "score": 79.3
       },
       {
         "kind": "scrim",
@@ -3294,8 +3285,8 @@
         "map": "Product - Vigil",
         "playedAt": 1743108988,
         "result": "W",
-        "rolling": 54.7,
-        "score": 53.7
+        "rolling": 62.9,
+        "score": 52.3
       },
       {
         "kind": "scrim",
@@ -3303,8 +3294,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1743532720,
         "result": "L",
-        "rolling": 55.0,
-        "score": 61.7
+        "rolling": 63.1,
+        "score": 72.0
       },
       {
         "kind": "scrim",
@@ -3312,8 +3303,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1743533687,
         "result": "L",
-        "rolling": 50.9,
-        "score": 23.9
+        "rolling": 57.1,
+        "score": 16.1
       },
       {
         "kind": "scrim",
@@ -3321,8 +3312,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1743702199,
         "result": "L",
-        "rolling": 52.7,
-        "score": 67.7
+        "rolling": 57.1,
+        "score": 57.8
       },
       {
         "kind": "scrim",
@@ -3330,8 +3321,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1743703184,
         "result": "L",
-        "rolling": 53.3,
-        "score": 38.7
+        "rolling": 57.4,
+        "score": 46.9
       },
       {
         "kind": "official",
@@ -3339,8 +3330,8 @@
         "map": null,
         "playedAt": 1743707470,
         "result": "L",
-        "rolling": 52.8,
-        "score": 38.3
+        "rolling": 57.2,
+        "score": 41.9
       },
       {
         "kind": "scrim",
@@ -3348,8 +3339,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1743791047,
         "result": "W",
-        "rolling": 53.6,
-        "score": 75.0
+        "rolling": 57.9,
+        "score": 85.9
       },
       {
         "kind": "scrim",
@@ -3357,8 +3348,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1743791892,
         "result": "T",
-        "rolling": 55.3,
-        "score": 60.3
+        "rolling": 60.2,
+        "score": 77.6
       },
       {
         "kind": "scrim",
@@ -3366,8 +3357,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1743792921,
         "result": "W",
-        "rolling": 51.0,
-        "score": 22.6
+        "rolling": 56.3,
+        "score": 33.3
       },
       {
         "kind": "scrim",
@@ -3375,8 +3366,8 @@
         "map": "koth_proot",
         "playedAt": 1744136601,
         "result": "L",
-        "rolling": 50.1,
-        "score": 59.4
+        "rolling": 55.4,
+        "score": 70.0
       },
       {
         "kind": "scrim",
@@ -3384,8 +3375,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1744140861,
         "result": "W",
-        "rolling": 51.7,
-        "score": 69.2
+        "rolling": 56.1,
+        "score": 59.3
       },
       {
         "kind": "scrim",
@@ -3393,8 +3384,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1744142577,
         "result": "W",
-        "rolling": 49.6,
-        "score": 40.8
+        "rolling": 53.6,
+        "score": 47.4
       },
       {
         "kind": "scrim",
@@ -3402,8 +3393,8 @@
         "map": null,
         "playedAt": 1744308191,
         "result": "L",
-        "rolling": 52.9,
-        "score": 57.3
+        "rolling": 58.5,
+        "score": 65.3
       },
       {
         "kind": "scrim",
@@ -3411,8 +3402,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1744483971,
         "result": "T",
-        "rolling": 49.6,
-        "score": 34.4
+        "rolling": 56.8,
+        "score": 40.7
       },
       {
         "kind": "official",
@@ -3420,8 +3411,8 @@
         "map": null,
         "playedAt": 1744486283,
         "result": "W",
-        "rolling": 52.4,
-        "score": 66.6
+        "rolling": 59.6,
+        "score": 74.9
       },
       {
         "kind": "pug",
@@ -3429,8 +3420,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1744565606,
         "result": "W",
-        "rolling": 55.0,
-        "score": 64.0
+        "rolling": 62.1,
+        "score": 66.7
       },
       {
         "kind": "scrim",
@@ -3438,8 +3429,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1744914417,
         "result": "L",
-        "rolling": 49.7,
-        "score": 22.3
+        "rolling": 54.7,
+        "score": 11.5
       },
       {
         "kind": "scrim",
@@ -3447,8 +3438,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1744915656,
         "result": "L",
-        "rolling": 47.4,
-        "score": 37.3
+        "rolling": 50.1,
+        "score": 32.0
       },
       {
         "kind": "scrim",
@@ -3456,8 +3447,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1745001348,
         "result": "L",
-        "rolling": 49.5,
-        "score": 44.1
+        "rolling": 51.4,
+        "score": 45.7
       },
       {
         "kind": "scrim",
@@ -3465,8 +3456,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1745002608,
         "result": "W",
-        "rolling": 49.7,
-        "score": 60.8
+        "rolling": 50.7,
+        "score": 63.4
       },
       {
         "kind": "scrim",
@@ -3474,8 +3465,8 @@
         "map": "steel ",
         "playedAt": 1745348013,
         "result": "T",
-        "rolling": 45.1,
-        "score": 23.3
+        "rolling": 47.3,
+        "score": 25.8
       },
       {
         "kind": "scrim",
@@ -3483,8 +3474,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1745350910,
         "result": "L",
-        "rolling": 47.8,
-        "score": 67.6
+        "rolling": 49.2,
+        "score": 66.1
       },
       {
         "kind": "scrim",
@@ -3492,8 +3483,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1745520913,
         "result": "L",
-        "rolling": 45.5,
-        "score": 34.4
+        "rolling": 45.7,
+        "score": 29.8
       },
       {
         "kind": "scrim",
@@ -3501,8 +3492,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1745523528,
         "result": "L",
-        "rolling": 44.7,
-        "score": 26.7
+        "rolling": 44.9,
+        "score": 32.7
       },
       {
         "kind": "scrim",
@@ -3510,8 +3501,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1745525733,
         "result": "W",
-        "rolling": 44.2,
-        "score": 61.1
+        "rolling": 43.9,
+        "score": 64.8
       },
       {
         "kind": "official",
@@ -3519,8 +3510,8 @@
         "map": null,
         "playedAt": 1745606761,
         "result": "L",
-        "rolling": 42.6,
-        "score": 48.4
+        "rolling": 42.3,
+        "score": 51.6
       },
       {
         "kind": "scrim",
@@ -3528,8 +3519,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1745861907,
         "result": "L",
-        "rolling": 44.2,
-        "score": 38.4
+        "rolling": 45.6,
+        "score": 44.1
       },
       {
         "kind": "scrim",
@@ -3537,8 +3528,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1745862836,
         "result": "L",
-        "rolling": 42.5,
-        "score": 20.0
+        "rolling": 44.9,
+        "score": 25.0
       },
       {
         "kind": "scrim",
@@ -3546,8 +3537,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1745952016,
         "result": "W",
-        "rolling": 47.0,
-        "score": 89.4
+        "rolling": 48.1,
+        "score": 78.1
       },
       {
         "kind": "scrim",
@@ -3555,8 +3546,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1745953305,
         "result": "L",
-        "rolling": 47.9,
-        "score": 69.7
+        "rolling": 48.4,
+        "score": 65.7
       },
       {
         "kind": "scrim",
@@ -3564,8 +3555,8 @@
         "map": "upward ashville",
         "playedAt": 1745956643,
         "result": "L",
-        "rolling": 50.3,
-        "score": 46.8
+        "rolling": 50.0,
+        "score": 42.1
       },
       {
         "kind": "scrim",
@@ -3573,8 +3564,8 @@
         "map": null,
         "playedAt": 1746207811,
         "result": "W",
-        "rolling": 49.3,
-        "score": 58.4
+        "rolling": 49.8,
+        "score": 64.2
       },
       {
         "kind": "official",
@@ -3582,8 +3573,8 @@
         "map": null,
         "playedAt": 1746212931,
         "result": "W",
-        "rolling": 53.3,
-        "score": 73.9
+        "rolling": 54.9,
+        "score": 80.6
       },
       {
         "kind": "scrim",
@@ -3591,8 +3582,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1746470535,
         "result": "L",
-        "rolling": 54.4,
-        "score": 37.7
+        "rolling": 55.3,
+        "score": 36.7
       },
       {
         "kind": "scrim",
@@ -3600,8 +3591,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1746472084,
         "result": "W",
-        "rolling": 53.7,
-        "score": 54.3
+        "rolling": 54.1,
+        "score": 52.5
       },
       {
         "kind": "scrim",
@@ -3609,8 +3600,8 @@
         "map": "upward 2x",
         "playedAt": 1746561183,
         "result": "T",
-        "rolling": 55.4,
-        "score": 65.8
+        "rolling": 55.5,
+        "score": 66.2
       },
       {
         "kind": "scrim",
@@ -3618,8 +3609,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1746727145,
         "result": "W",
-        "rolling": 60.3,
-        "score": 86.7
+        "rolling": 60.0,
+        "score": 89.2
       },
       {
         "kind": "official",
@@ -3627,8 +3618,8 @@
         "map": " \t(〃＞＿＜;〃)",
         "playedAt": 1746730738,
         "result": "T",
-        "rolling": 61.3,
-        "score": 29.8
+        "rolling": 60.7,
+        "score": 31.9
       },
       {
         "kind": "scrim",
@@ -3636,8 +3627,8 @@
         "map": null,
         "playedAt": 1746815825,
         "result": "W",
-        "rolling": 59.9,
-        "score": 76.3
+        "rolling": 61.3,
+        "score": 83.8
       },
       {
         "kind": "scrim",
@@ -3645,8 +3636,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1746817118,
         "result": "W",
-        "rolling": 57.4,
-        "score": 44.6
+        "rolling": 60.2,
+        "score": 55.3
       },
       {
         "kind": "scrim",
@@ -3654,8 +3645,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1746817813,
         "result": "W",
-        "rolling": 58.6,
-        "score": 58.8
+        "rolling": 63.0,
+        "score": 69.2
       },
       {
         "kind": "scrim",
@@ -3663,8 +3654,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1746901913,
         "result": "W",
-        "rolling": 55.7,
-        "score": 28.6
+        "rolling": 60.3,
+        "score": 37.2
       },
       {
         "kind": "scrim",
@@ -3672,8 +3663,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1746902765,
         "result": "W",
-        "rolling": 53.8,
-        "score": 55.8
+        "rolling": 58.3,
+        "score": 61.3
       },
       {
         "kind": "scrim",
@@ -3681,8 +3672,8 @@
         "map": "koth_product_final",
         "playedAt": 1746903930,
         "result": "W",
-        "rolling": 56.8,
-        "score": 67.7
+        "rolling": 62.0,
+        "score": 73.2
       },
       {
         "kind": "scrim",
@@ -3690,8 +3681,8 @@
         "map": null,
         "playedAt": 1746906037,
         "result": "W",
-        "rolling": 57.5,
-        "score": 61.2
+        "rolling": 62.3,
+        "score": 55.3
       },
       {
         "kind": "scrim",
@@ -3699,8 +3690,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1746907768,
         "result": "W",
-        "rolling": 56.5,
-        "score": 55.0
+        "rolling": 60.8,
+        "score": 51.1
       },
       {
         "kind": "scrim",
@@ -3708,8 +3699,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1746987902,
         "result": "W",
-        "rolling": 56.4,
-        "score": 85.8
+        "rolling": 60.4,
+        "score": 85.9
       },
       {
         "kind": "scrim",
@@ -3717,8 +3708,8 @@
         "map": "koth_product_final",
         "playedAt": 1746989214,
         "result": "L",
-        "rolling": 59.8,
-        "score": 64.6
+        "rolling": 64.7,
+        "score": 74.4
       },
       {
         "kind": "scrim",
@@ -3726,8 +3717,8 @@
         "map": "Ashville, Vigil",
         "playedAt": 1746993175,
         "result": "L",
-        "rolling": 56.1,
-        "score": 38.8
+        "rolling": 60.4,
+        "score": 40.8
       },
       {
         "kind": "scrim",
@@ -3735,8 +3726,8 @@
         "map": "vigil ashville",
         "playedAt": 1747081263,
         "result": "L",
-        "rolling": 58.5,
-        "score": 68.6
+        "rolling": 62.0,
+        "score": 71.2
       },
       {
         "kind": "scrim",
@@ -3744,8 +3735,8 @@
         "map": "proot vigil",
         "playedAt": 1747081316,
         "result": "L",
-        "rolling": 57.1,
-        "score": 44.6
+        "rolling": 59.6,
+        "score": 45.9
       },
       {
         "kind": "scrim",
@@ -3753,8 +3744,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1747164838,
         "result": "W",
-        "rolling": 57.9,
-        "score": 36.4
+        "rolling": 59.8,
+        "score": 38.7
       },
       {
         "kind": "scrim",
@@ -3762,8 +3753,8 @@
         "map": "koth_product_final",
         "playedAt": 1747166235,
         "result": "L",
-        "rolling": 57.6,
-        "score": 53.8
+        "rolling": 59.7,
+        "score": 60.4
       },
       {
         "kind": "scrim",
@@ -3771,8 +3762,8 @@
         "map": "koth_product_final",
         "playedAt": 1747167398,
         "result": "W",
-        "rolling": 56.4,
-        "score": 55.3
+        "rolling": 59.4,
+        "score": 69.9
       },
       {
         "kind": "scrim",
@@ -3780,8 +3771,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1747246892,
         "result": "W",
-        "rolling": 56.1,
-        "score": 58.5
+        "rolling": 60.1,
+        "score": 62.2
       },
       {
         "kind": "scrim",
@@ -3789,8 +3780,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1747247795,
         "result": "W",
-        "rolling": 56.4,
-        "score": 57.5
+        "rolling": 60.3,
+        "score": 53.6
       },
       {
         "kind": "scrim",
@@ -3798,8 +3789,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1747330465,
         "result": "L",
-        "rolling": 53.8,
-        "score": 59.7
+        "rolling": 57.1,
+        "score": 54.1
       },
       {
         "kind": "scrim",
@@ -3807,8 +3798,8 @@
         "map": "koth_product_final",
         "playedAt": 1747331380,
         "result": "W",
-        "rolling": 52.8,
-        "score": 54.6
+        "rolling": 56.9,
+        "score": 72.5
       },
       {
         "kind": "scrim",
@@ -3816,8 +3807,8 @@
         "map": "koth_product_final",
         "playedAt": 1747337832,
         "result": "W",
-        "rolling": 56.7,
-        "score": 78.0
+        "rolling": 60.2,
+        "score": 73.0
       },
       {
         "kind": "scrim",
@@ -3825,8 +3816,8 @@
         "map": "koth_product_final",
         "playedAt": 1747338511,
         "result": "W",
-        "rolling": 55.1,
-        "score": 52.9
+        "rolling": 58.7,
+        "score": 56.2
       },
       {
         "kind": "scrim",
@@ -3834,8 +3825,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1747339349,
         "result": "W",
-        "rolling": 55.0,
-        "score": 43.0
+        "rolling": 59.3,
+        "score": 52.8
       },
       {
         "kind": "scrim",
@@ -3843,8 +3834,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1747416752,
         "result": "W",
-        "rolling": 55.0,
-        "score": 37.1
+        "rolling": 59.7,
+        "score": 42.3
       },
       {
         "kind": "scrim",
@@ -3852,8 +3843,8 @@
         "map": "koth_product_final",
         "playedAt": 1747417514,
         "result": "W",
-        "rolling": 55.8,
-        "score": 61.3
+        "rolling": 61.0,
+        "score": 73.8
       },
       {
         "kind": "scrim",
@@ -3861,8 +3852,8 @@
         "map": "koth_product_final",
         "playedAt": 1747417920,
         "result": "W",
-        "rolling": 55.9,
-        "score": 56.3
+        "rolling": 60.5,
+        "score": 64.3
       },
       {
         "kind": "official",
@@ -3870,8 +3861,8 @@
         "map": "prod,vigil,ash",
         "playedAt": 1747426979,
         "result": "W",
-        "rolling": 56.3,
-        "score": 62.5
+        "rolling": 60.6,
+        "score": 63.5
       },
       {
         "kind": "scrim",
@@ -3879,8 +3870,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1747593297,
         "result": "W",
-        "rolling": 56.4,
-        "score": 58.5
+        "rolling": 61.4,
+        "score": 61.7
       },
       {
         "kind": "scrim",
@@ -3888,8 +3879,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1747594178,
         "result": "W",
-        "rolling": 56.9,
-        "score": 65.0
+        "rolling": 62.1,
+        "score": 61.2
       },
       {
         "kind": "scrim",
@@ -3897,8 +3888,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1747594871,
         "result": "W",
-        "rolling": 57.2,
-        "score": 57.5
+        "rolling": 60.9,
+        "score": 59.7
       },
       {
         "kind": "scrim",
@@ -3906,8 +3897,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1747683750,
         "result": "L",
-        "rolling": 52.9,
-        "score": 34.4
+        "rolling": 56.4,
+        "score": 28.8
       },
       {
         "kind": "scrim",
@@ -3915,8 +3906,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1747684724,
         "result": "L",
-        "rolling": 53.2,
-        "score": 56.2
+        "rolling": 55.2,
+        "score": 44.1
       },
       {
         "kind": "scrim",
@@ -3924,8 +3915,8 @@
         "map": "koth_product_final",
         "playedAt": 1747766157,
         "result": "L",
-        "rolling": 54.2,
-        "score": 53.5
+        "rolling": 55.9,
+        "score": 59.6
       },
       {
         "kind": "scrim",
@@ -3933,8 +3924,8 @@
         "map": "koth_product_final",
         "playedAt": 1747767317,
         "result": "W",
-        "rolling": 58.1,
-        "score": 75.5
+        "rolling": 59.8,
+        "score": 81.1
       },
       {
         "kind": "scrim",
@@ -3942,8 +3933,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1747768032,
         "result": "W",
-        "rolling": 55.7,
-        "score": 37.3
+        "rolling": 56.1,
+        "score": 37.4
       },
       {
         "kind": "scrim",
@@ -3951,8 +3942,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1747769375,
         "result": "W",
-        "rolling": 55.6,
-        "score": 55.2
+        "rolling": 55.1,
+        "score": 54.3
       },
       {
         "kind": "scrim",
@@ -3960,8 +3951,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1747770754,
         "result": "W",
-        "rolling": 54.2,
-        "score": 48.6
+        "rolling": 54.0,
+        "score": 52.4
       },
       {
         "kind": "scrim",
@@ -3969,8 +3960,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1747852613,
         "result": "W",
-        "rolling": 53.4,
-        "score": 50.8
+        "rolling": 52.8,
+        "score": 49.8
       },
       {
         "kind": "scrim",
@@ -3978,8 +3969,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1747854008,
         "result": "W",
-        "rolling": 49.9,
-        "score": 29.8
+        "rolling": 50.7,
+        "score": 40.0
       },
       {
         "kind": "scrim",
@@ -3987,8 +3978,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1747855589,
         "result": "W",
-        "rolling": 50.2,
-        "score": 60.2
+        "rolling": 51.4,
+        "score": 66.8
       },
       {
         "kind": "scrim",
@@ -3996,8 +3987,8 @@
         "map": "koth_product_final",
         "playedAt": 1747856797,
         "result": "W",
-        "rolling": 54.5,
-        "score": 77.8
+        "rolling": 56.8,
+        "score": 82.2
       },
       {
         "kind": "scrim",
@@ -4005,8 +3996,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1747935965,
         "result": "W",
-        "rolling": 56.7,
-        "score": 78.6
+        "rolling": 60.1,
+        "score": 76.9
       },
       {
         "kind": "scrim",
@@ -4014,8 +4005,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1747936759,
         "result": "L",
-        "rolling": 56.3,
-        "score": 49.3
+        "rolling": 59.4,
+        "score": 52.6
       },
       {
         "kind": "official",
@@ -4023,8 +4014,8 @@
         "map": " + ashville",
         "playedAt": 1747943049,
         "result": "W",
-        "rolling": 54.9,
-        "score": 61.7
+        "rolling": 57.6,
+        "score": 63.3
       },
       {
         "kind": "scrim",
@@ -4032,8 +4023,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1748111700,
         "result": "W",
-        "rolling": 55.6,
-        "score": 43.5
+        "rolling": 59.1,
+        "score": 52.7
       },
       {
         "kind": "scrim",
@@ -4041,8 +4032,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1748112338,
         "result": "W",
-        "rolling": 51.3,
-        "score": 12.7
+        "rolling": 56.2,
+        "score": 25.7
       },
       {
         "kind": "scrim",
@@ -4050,8 +4041,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1748113717,
         "result": "W",
-        "rolling": 52.8,
-        "score": 63.5
+        "rolling": 57.4,
+        "score": 64.4
       },
       {
         "kind": "scrim",
@@ -4059,8 +4050,8 @@
         "map": "proot vigil",
         "playedAt": 1748200150,
         "result": "L",
-        "rolling": 52.6,
-        "score": 49.0
+        "rolling": 57.9,
+        "score": 54.5
       },
       {
         "kind": "scrim",
@@ -4068,8 +4059,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1748283837,
         "result": "W",
-        "rolling": 57.1,
-        "score": 74.5
+        "rolling": 62.5,
+        "score": 85.4
       },
       {
         "kind": "scrim",
@@ -4077,8 +4068,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1748284610,
         "result": "W",
-        "rolling": 56.9,
-        "score": 57.9
+        "rolling": 61.9,
+        "score": 61.4
       },
       {
         "kind": "scrim",
@@ -4086,8 +4077,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1748285493,
         "result": "L",
-        "rolling": 52.1,
-        "score": 30.2
+        "rolling": 55.8,
+        "score": 20.8
       },
       {
         "kind": "scrim",
@@ -4095,8 +4086,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1748367918,
         "result": "W",
-        "rolling": 50.2,
-        "score": 59.8
+        "rolling": 54.4,
+        "score": 63.2
       },
       {
         "kind": "scrim",
@@ -4104,8 +4095,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1748368278,
         "result": "W",
-        "rolling": 53.9,
-        "score": 85.8
+        "rolling": 57.2,
+        "score": 80.8
       },
       {
         "kind": "official",
@@ -4113,8 +4104,8 @@
         "map": "русские не победили :(",
         "playedAt": 1748377746,
         "result": "W",
-        "rolling": 52.6,
-        "score": 49.3
+        "rolling": 57.0,
+        "score": 60.8
       },
       {
         "kind": "pug",
@@ -4122,8 +4113,8 @@
         "map": "koth_product_final",
         "playedAt": 1748472554,
         "result": "L",
-        "rolling": 56.1,
-        "score": 78.2
+        "rolling": 59.7,
+        "score": 80.2
       },
       {
         "kind": "pug",
@@ -4131,8 +4122,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1748733367,
         "result": "L",
-        "rolling": 57.7,
-        "score": 29.1
+        "rolling": 60.8,
+        "score": 36.2
       },
       {
         "kind": "scrim",
@@ -4140,8 +4131,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1748888870,
         "result": "L",
-        "rolling": 55.4,
-        "score": 39.7
+        "rolling": 58.9,
+        "score": 45.6
       },
       {
         "kind": "scrim",
@@ -4149,8 +4140,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1748889868,
         "result": "L",
-        "rolling": 56.4,
-        "score": 59.4
+        "rolling": 58.7,
+        "score": 52.8
       },
       {
         "kind": "scrim",
@@ -4158,8 +4149,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1748890891,
         "result": "L",
-        "rolling": 51.2,
-        "score": 22.4
+        "rolling": 52.9,
+        "score": 26.7
       },
       {
         "kind": "scrim",
@@ -4167,8 +4158,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1748891894,
         "result": "L",
-        "rolling": 52.1,
-        "score": 67.5
+        "rolling": 53.6,
+        "score": 68.9
       },
       {
         "kind": "scrim",
@@ -4176,8 +4167,8 @@
         "map": null,
         "playedAt": 1748977062,
         "result": "W",
-        "rolling": 55.0,
-        "score": 59.2
+        "rolling": 57.5,
+        "score": 59.5
       },
       {
         "kind": "scrim",
@@ -4185,8 +4176,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1748978116,
         "result": "W",
-        "rolling": 54.0,
-        "score": 49.2
+        "rolling": 56.6,
+        "score": 54.3
       },
       {
         "kind": "scrim",
@@ -4194,8 +4185,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1749584528,
         "result": "W",
-        "rolling": 47.2,
-        "score": 18.3
+        "rolling": 50.2,
+        "score": 17.5
       },
       {
         "kind": "scrim",
@@ -4203,8 +4194,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1749585301,
         "result": "L",
-        "rolling": 46.1,
-        "score": 38.0
+        "rolling": 48.4,
+        "score": 42.3
       },
       {
         "kind": "scrim",
@@ -4212,8 +4203,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1749586595,
         "result": "L",
-        "rolling": 40.7,
-        "score": 23.9
+        "rolling": 43.0,
+        "score": 26.5
       },
       {
         "kind": "scrim",
@@ -4221,8 +4212,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1749753464,
         "result": "L",
-        "rolling": 43.9,
-        "score": 61.7
+        "rolling": 46.4,
+        "score": 69.4
       },
       {
         "kind": "scrim",
@@ -4230,8 +4221,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1749754903,
         "result": "L",
-        "rolling": 43.6,
-        "score": 36.3
+        "rolling": 45.8,
+        "score": 39.7
       },
       {
         "kind": "scrim",
@@ -4239,8 +4230,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1749757760,
         "result": "W",
-        "rolling": 42.0,
-        "score": 43.1
+        "rolling": 45.0,
+        "score": 45.3
       },
       {
         "kind": "scrim",
@@ -4248,8 +4239,8 @@
         "map": "koth_product_final",
         "playedAt": 1749759046,
         "result": "L",
-        "rolling": 43.2,
-        "score": 34.8
+        "rolling": 47.3,
+        "score": 49.1
       },
       {
         "kind": "scrim",
@@ -4257,7 +4248,7 @@
         "map": "koth_ashville_final1",
         "playedAt": 1749930574,
         "result": "W",
-        "rolling": 43.1,
+        "rolling": 47.0,
         "score": 66.7
       },
       {
@@ -4266,8 +4257,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1749931659,
         "result": "W",
-        "rolling": 39.8,
-        "score": 26.1
+        "rolling": 43.8,
+        "score": 26.9
       },
       {
         "kind": "pug",
@@ -4275,8 +4266,8 @@
         "map": "koth_product_final",
         "playedAt": 1749939701,
         "result": "L",
-        "rolling": 42.9,
-        "score": 80.2
+        "rolling": 46.3,
+        "score": 79.8
       },
       {
         "kind": "scrim",
@@ -4284,8 +4275,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1750012296,
         "result": "L",
-        "rolling": 47.8,
-        "score": 67.6
+        "rolling": 52.3,
+        "score": 76.9
       },
       {
         "kind": "scrim",
@@ -4293,8 +4284,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1750013056,
         "result": "L",
-        "rolling": 47.1,
-        "score": 30.5
+        "rolling": 51.9,
+        "score": 38.9
       },
       {
         "kind": "scrim",
@@ -4302,8 +4293,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1750014407,
         "result": "L",
-        "rolling": 47.4,
-        "score": 26.9
+        "rolling": 51.8,
+        "score": 24.9
       },
       {
         "kind": "scrim",
@@ -4311,8 +4302,8 @@
         "map": "koth_product_final",
         "playedAt": 1750016261,
         "result": "W",
-        "rolling": 48.1,
-        "score": 68.4
+        "rolling": 52.8,
+        "score": 80.3
       },
       {
         "kind": "scrim",
@@ -4320,8 +4311,8 @@
         "map": "koth_product_final",
         "playedAt": 1750017334,
         "result": "W",
-        "rolling": 47.1,
-        "score": 27.1
+        "rolling": 52.4,
+        "score": 35.4
       },
       {
         "kind": "scrim",
@@ -4329,8 +4320,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1750019099,
         "result": "W",
-        "rolling": 50.7,
-        "score": 78.5
+        "rolling": 55.3,
+        "score": 73.7
       },
       {
         "kind": "pug",
@@ -4338,8 +4329,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1750104765,
         "result": "L",
-        "rolling": 51.1,
-        "score": 39.1
+        "rolling": 55.6,
+        "score": 52.5
       },
       {
         "kind": "scrim",
@@ -4347,8 +4338,8 @@
         "map": "ash+upward",
         "playedAt": 1751742311,
         "result": "L",
-        "rolling": 50.7,
-        "score": 62.3
+        "rolling": 55.7,
+        "score": 67.9
       },
       {
         "kind": "scrim",
@@ -4356,8 +4347,8 @@
         "map": "product",
         "playedAt": 1751747203,
         "result": "L",
-        "rolling": 54.2,
-        "score": 61.8
+        "rolling": 59.6,
+        "score": 66.0
       },
       {
         "kind": "pug",
@@ -4365,8 +4356,8 @@
         "map": "koth_product_final",
         "playedAt": 1751999280,
         "result": "W",
-        "rolling": 51.9,
-        "score": 56.3
+        "rolling": 58.1,
+        "score": 64.7
       },
       {
         "kind": "pug",
@@ -4374,8 +4365,8 @@
         "map": "pl_upward_f10",
         "playedAt": 1752001511,
         "result": "W",
-        "rolling": 51.2,
-        "score": 61.5
+        "rolling": 56.9,
+        "score": 64.4
       },
       {
         "kind": "pug",
@@ -4383,8 +4374,8 @@
         "map": "koth_ashville_final",
         "playedAt": 1752259914,
         "result": "L",
-        "rolling": 51.2,
-        "score": 30.0
+        "rolling": 55.0,
+        "score": 20.6
       },
       {
         "kind": "pug",
@@ -4392,8 +4383,8 @@
         "map": "koth_product_final",
         "playedAt": 1752528483,
         "result": "W",
-        "rolling": 54.0,
-        "score": 55.2
+        "rolling": 58.2,
+        "score": 56.4
       },
       {
         "kind": "pug",
@@ -4401,8 +4392,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1752615423,
         "result": "L",
-        "rolling": 52.2,
-        "score": 50.5
+        "rolling": 55.4,
+        "score": 52.8
       },
       {
         "kind": "pug",
@@ -4410,8 +4401,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1752617424,
         "result": "L",
-        "rolling": 54.5,
-        "score": 49.8
+        "rolling": 57.7,
+        "score": 58.1
       },
       {
         "kind": "scrim",
@@ -4419,8 +4410,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1753208994,
         "result": "W",
-        "rolling": 51.1,
-        "score": 44.7
+        "rolling": 53.7,
+        "score": 33.6
       },
       {
         "kind": "scrim",
@@ -4428,8 +4419,8 @@
         "map": null,
         "playedAt": 1753212580,
         "result": "W",
-        "rolling": 53.5,
-        "score": 62.6
+        "rolling": 54.7,
+        "score": 62.2
       },
       {
         "kind": "scrim",
@@ -4437,8 +4428,8 @@
         "map": "koth_product_final",
         "playedAt": 1753554643,
         "result": "W",
-        "rolling": 50.2,
-        "score": 29.1
+        "rolling": 50.9,
+        "score": 29.8
       },
       {
         "kind": "scrim",
@@ -4446,8 +4437,8 @@
         "map": "koth_product_final",
         "playedAt": 1753555581,
         "result": "L",
-        "rolling": 49.6,
-        "score": 56.4
+        "rolling": 50.8,
+        "score": 65.1
       },
       {
         "kind": "scrim",
@@ -4455,8 +4446,8 @@
         "map": null,
         "playedAt": 1753557393,
         "result": "W",
-        "rolling": 48.6,
-        "score": 45.9
+        "rolling": 49.9,
+        "score": 56.3
       },
       {
         "kind": "pug",
@@ -4464,8 +4455,8 @@
         "map": "ashville + product",
         "playedAt": 1753560222,
         "result": "W",
-        "rolling": 50.5,
-        "score": 81.1
+        "rolling": 51.4,
+        "score": 79.1
       },
       {
         "kind": "scrim",
@@ -4473,8 +4464,8 @@
         "map": "koth_ashville_final",
         "playedAt": 1754242946,
         "result": "W",
-        "rolling": 48.9,
-        "score": 13.3
+        "rolling": 51.0,
+        "score": 16.1
       },
       {
         "kind": "scrim",
@@ -4482,8 +4473,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1754422827,
         "result": "W",
-        "rolling": 47.2,
-        "score": 39.0
+        "rolling": 49.2,
+        "score": 38.7
       },
       {
         "kind": "scrim",
@@ -4491,8 +4482,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1754424143,
         "result": "W",
-        "rolling": 45.2,
-        "score": 30.3
+        "rolling": 47.2,
+        "score": 33.3
       },
       {
         "kind": "scrim",
@@ -4500,8 +4491,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1754425116,
         "result": "L",
-        "rolling": 43.2,
-        "score": 29.3
+        "rolling": 44.7,
+        "score": 32.5
       },
       {
         "kind": "scrim",
@@ -4509,8 +4500,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1754596551,
         "result": "L",
-        "rolling": 44.4,
-        "score": 56.5
+        "rolling": 46.7,
+        "score": 53.5
       },
       {
         "kind": "scrim",
@@ -4518,8 +4509,8 @@
         "map": null,
         "playedAt": 1754597828,
         "result": "W",
-        "rolling": 46.2,
-        "score": 80.8
+        "rolling": 48.3,
+        "score": 78.2
       },
       {
         "kind": "scrim",
@@ -4527,8 +4518,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1755023457,
         "result": "W",
-        "rolling": 46.2,
-        "score": 29.2
+        "rolling": 47.8,
+        "score": 25.5
       },
       {
         "kind": "scrim",
@@ -4536,8 +4527,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1755024793,
         "result": "L",
-        "rolling": 46.7,
-        "score": 61.1
+        "rolling": 47.6,
+        "score": 63.2
       },
       {
         "kind": "scrim",
@@ -4545,8 +4536,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1755027251,
         "result": "T",
-        "rolling": 45.8,
-        "score": 37.2
+        "rolling": 46.4,
+        "score": 44.3
       },
       {
         "kind": "scrim",
@@ -4554,8 +4545,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1755028726,
         "result": "L",
-        "rolling": 44.1,
-        "score": 63.8
+        "rolling": 44.5,
+        "score": 59.5
       },
       {
         "kind": "official",
@@ -4563,8 +4554,8 @@
         "map": "pl_upward",
         "playedAt": 1755202200,
         "result": "W",
-        "rolling": 49.4,
-        "score": 67.0
+        "rolling": 50.2,
+        "score": 73.1
       },
       {
         "kind": "official",
@@ -4572,8 +4563,8 @@
         "map": "koth_ashville",
         "playedAt": 1755715740,
         "result": "L",
-        "rolling": 48.2,
-        "score": 26.6
+        "rolling": 48.9,
+        "score": 25.8
       },
       {
         "kind": "scrim",
@@ -4581,8 +4572,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1756150566,
         "result": "W",
-        "rolling": 49.0,
-        "score": 38.3
+        "rolling": 49.8,
+        "score": 42.7
       },
       {
         "kind": "scrim",
@@ -4590,8 +4581,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1756152375,
         "result": "L",
-        "rolling": 48.7,
-        "score": 26.8
+        "rolling": 49.2,
+        "score": 26.5
       },
       {
         "kind": "scrim",
@@ -4599,8 +4590,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1756235139,
         "result": "L",
-        "rolling": 46.8,
-        "score": 37.1
+        "rolling": 47.8,
+        "score": 39.0
       },
       {
         "kind": "scrim",
@@ -4608,8 +4599,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1756321236,
         "result": "L",
-        "rolling": 41.7,
-        "score": 29.7
+        "rolling": 43.7,
+        "score": 36.9
       },
       {
         "kind": "scrim",
@@ -4617,8 +4608,8 @@
         "map": "vigil",
         "playedAt": 1756324594,
         "result": "L",
-        "rolling": 41.1,
-        "score": 23.0
+        "rolling": 43.2,
+        "score": 21.3
       },
       {
         "kind": "scrim",
@@ -4626,8 +4617,8 @@
         "map": null,
         "playedAt": 1756411493,
         "result": "L",
-        "rolling": 39.4,
-        "score": 44.5
+        "rolling": 41.4,
+        "score": 45.1
       },
       {
         "kind": "scrim",
@@ -4635,8 +4626,8 @@
         "map": null,
         "playedAt": 1756411588,
         "result": "L",
-        "rolling": 39.9,
-        "score": 42.5
+        "rolling": 41.4,
+        "score": 44.3
       },
       {
         "kind": "scrim",
@@ -4644,8 +4635,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1756492228,
         "result": "W",
-        "rolling": 36.9,
-        "score": 33.6
+        "rolling": 39.3,
+        "score": 38.2
       },
       {
         "kind": "scrim",
@@ -4653,8 +4644,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1756493718,
         "result": "W",
-        "rolling": 35.0,
-        "score": 47.6
+        "rolling": 36.2,
+        "score": 41.7
       },
       {
         "kind": "official",
@@ -4662,8 +4653,8 @@
         "map": null,
         "playedAt": 1756498706,
         "result": "L",
-        "rolling": 36.1,
-        "score": 38.1
+        "rolling": 37.9,
+        "score": 42.8
       },
       {
         "kind": "scrim",
@@ -4671,8 +4662,8 @@
         "map": "koth_product_final",
         "playedAt": 1756664631,
         "result": "T",
-        "rolling": 34.7,
-        "score": 24.0
+        "rolling": 35.4,
+        "score": 18.2
       },
       {
         "kind": "scrim",
@@ -4680,8 +4671,8 @@
         "map": "koth_product_final",
         "playedAt": 1756665726,
         "result": "L",
-        "rolling": 34.4,
-        "score": 24.2
+        "rolling": 35.2,
+        "score": 24.8
       },
       {
         "kind": "scrim",
@@ -4689,8 +4680,8 @@
         "map": "product 3x",
         "playedAt": 1756671384,
         "result": "W",
-        "rolling": 37.1,
-        "score": 63.5
+        "rolling": 38.7,
+        "score": 73.2
       },
       {
         "kind": "scrim",
@@ -4698,8 +4689,8 @@
         "map": null,
         "playedAt": 1756757526,
         "result": "L",
-        "rolling": 38.7,
-        "score": 46.3
+        "rolling": 40.5,
+        "score": 55.0
       },
       {
         "kind": "scrim",
@@ -4707,8 +4698,8 @@
         "map": "koth_product",
         "playedAt": 1756839962,
         "result": "L",
-        "rolling": 42.8,
-        "score": 63.6
+        "rolling": 44.2,
+        "score": 58.5
       },
       {
         "kind": "scrim",
@@ -4716,8 +4707,8 @@
         "map": "koth_product_final",
         "playedAt": 1756841311,
         "result": "L",
-        "rolling": 39.8,
-        "score": 14.5
+        "rolling": 41.1,
+        "score": 13.8
       },
       {
         "kind": "scrim",
@@ -4725,8 +4716,8 @@
         "map": "koth_product_final",
         "playedAt": 1756842244,
         "result": "L",
-        "rolling": 37.5,
-        "score": 20.0
+        "rolling": 38.9,
+        "score": 22.9
       },
       {
         "kind": "scrim",
@@ -4734,8 +4725,8 @@
         "map": "Product x2",
         "playedAt": 1756925759,
         "result": "L",
-        "rolling": 39.1,
-        "score": 48.8
+        "rolling": 40.2,
+        "score": 51.5
       },
       {
         "kind": "scrim",
@@ -4743,8 +4734,8 @@
         "map": "product 3x",
         "playedAt": 1756929594,
         "result": "L",
-        "rolling": 37.7,
-        "score": 34.0
+        "rolling": 39.7,
+        "score": 36.1
       },
       {
         "kind": "scrim",
@@ -4752,8 +4743,8 @@
         "map": "koth_product_final",
         "playedAt": 1757010660,
         "result": "W",
-        "rolling": 40.5,
-        "score": 66.5
+        "rolling": 41.8,
+        "score": 64.2
       },
       {
         "kind": "scrim",
@@ -4761,8 +4752,8 @@
         "map": "koth_product_final",
         "playedAt": 1757011512,
         "result": "W",
-        "rolling": 43.3,
-        "score": 51.2
+        "rolling": 46.1,
+        "score": 61.2
       },
       {
         "kind": "official",
@@ -4770,8 +4761,8 @@
         "map": "koth_product_final",
         "playedAt": 1757014992,
         "result": "W",
-        "rolling": 47.6,
-        "score": 67.4
+        "rolling": 50.9,
+        "score": 72.2
       },
       {
         "kind": "scrim",
@@ -4779,8 +4770,8 @@
         "map": "cp_steel",
         "playedAt": 1757186822,
         "result": "W",
-        "rolling": 45.3,
-        "score": 40.5
+        "rolling": 47.5,
+        "score": 39.9
       },
       {
         "kind": "scrim",
@@ -4788,8 +4779,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1757356109,
         "result": "L",
-        "rolling": 44.2,
-        "score": 35.9
+        "rolling": 45.4,
+        "score": 33.4
       },
       {
         "kind": "scrim",
@@ -4797,8 +4788,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1757357521,
         "result": "L",
-        "rolling": 43.5,
-        "score": 56.5
+        "rolling": 45.3,
+        "score": 58.1
       },
       {
         "kind": "scrim",
@@ -4806,8 +4797,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1757443109,
         "result": "W",
-        "rolling": 48.9,
-        "score": 68.6
+        "rolling": 51.3,
+        "score": 73.6
       },
       {
         "kind": "scrim",
@@ -4815,8 +4806,8 @@
         "map": null,
         "playedAt": 1757448418,
         "result": "T",
-        "rolling": 50.3,
-        "score": 33.1
+        "rolling": 53.5,
+        "score": 45.2
       },
       {
         "kind": "scrim",
@@ -4824,8 +4815,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1757529656,
         "result": "L",
-        "rolling": 52.0,
-        "score": 66.2
+        "rolling": 55.1,
+        "score": 66.7
       },
       {
         "kind": "scrim",
@@ -4833,8 +4824,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1757530744,
         "result": "W",
-        "rolling": 54.2,
-        "score": 56.4
+        "rolling": 57.1,
+        "score": 56.8
       },
       {
         "kind": "scrim",
@@ -4842,8 +4833,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1757533238,
         "result": "L",
-        "rolling": 51.3,
-        "score": 37.2
+        "rolling": 54.3,
+        "score": 35.4
       },
       {
         "kind": "scrim",
@@ -4851,8 +4842,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1757534282,
         "result": "L",
-        "rolling": 51.9,
-        "score": 57.5
+        "rolling": 53.5,
+        "score": 53.3
       },
       {
         "kind": "scrim",
@@ -4860,8 +4851,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1757616033,
         "result": "L",
-        "rolling": 49.5,
-        "score": 43.2
+        "rolling": 51.2,
+        "score": 49.3
       },
       {
         "kind": "scrim",
@@ -4869,8 +4860,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1757617117,
         "result": "W",
-        "rolling": 49.6,
-        "score": 41.2
+        "rolling": 51.2,
+        "score": 40.3
       },
       {
         "kind": "official",
@@ -4878,8 +4869,8 @@
         "map": null,
         "playedAt": 1757621570,
         "result": "W",
-        "rolling": 50.5,
-        "score": 45.5
+        "rolling": 52.8,
+        "score": 48.8
       },
       {
         "kind": "scrim",
@@ -4887,8 +4878,8 @@
         "map": "koth_product_final",
         "playedAt": 1757792225,
         "result": "L",
-        "rolling": 46.8,
-        "score": 19.2
+        "rolling": 48.9,
+        "score": 19.4
       },
       {
         "kind": "scrim",
@@ -4896,8 +4887,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1757793617,
         "result": "W",
-        "rolling": 44.3,
-        "score": 43.5
+        "rolling": 46.8,
+        "score": 53.0
       },
       {
         "kind": "scrim",
@@ -4905,8 +4896,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1757875087,
         "result": "L",
-        "rolling": 46.1,
-        "score": 50.8
+        "rolling": 48.1,
+        "score": 58.2
       },
       {
         "kind": "scrim",
@@ -4914,8 +4905,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1757876560,
         "result": "L",
-        "rolling": 44.2,
-        "score": 47.5
+        "rolling": 46.9,
+        "score": 54.4
       },
       {
         "kind": "scrim",
@@ -4923,8 +4914,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1757962152,
         "result": "L",
-        "rolling": 44.6,
-        "score": 60.4
+        "rolling": 48.0,
+        "score": 67.7
       },
       {
         "kind": "scrim",
@@ -4932,8 +4923,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1757963467,
         "result": "W",
-        "rolling": 45.6,
-        "score": 47.7
+        "rolling": 50.1,
+        "score": 56.2
       },
       {
         "kind": "scrim",
@@ -4941,8 +4932,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1757965165,
         "result": "L",
-        "rolling": 43.2,
-        "score": 33.0
+        "rolling": 49.2,
+        "score": 45.1
       },
       {
         "kind": "scrim",
@@ -4950,8 +4941,8 @@
         "map": "koth_product_final",
         "playedAt": 1757966656,
         "result": "L",
-        "rolling": 42.6,
-        "score": 37.4
+        "rolling": 49.9,
+        "score": 55.8
       },
       {
         "kind": "scrim",
@@ -4959,8 +4950,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1758220846,
         "result": "L",
-        "rolling": 43.0,
-        "score": 45.4
+        "rolling": 50.5,
+        "score": 46.8
       },
       {
         "kind": "scrim",
@@ -4968,8 +4959,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1758221746,
         "result": "W",
-        "rolling": 43.8,
-        "score": 53.5
+        "rolling": 50.8,
+        "score": 51.1
       },
       {
         "kind": "scrim",
@@ -4977,8 +4968,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1758224235,
         "result": "L",
-        "rolling": 43.7,
-        "score": 17.5
+        "rolling": 51.7,
+        "score": 29.1
       },
       {
         "kind": "scrim",
@@ -4986,8 +4977,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1758225653,
         "result": "L",
-        "rolling": 40.8,
-        "score": 15.1
+        "rolling": 48.5,
+        "score": 20.1
       },
       {
         "kind": "scrim",
@@ -4995,8 +4986,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1758308079,
         "result": "L",
-        "rolling": 41.8,
-        "score": 60.9
+        "rolling": 48.2,
+        "score": 56.1
       },
       {
         "kind": "scrim",
@@ -5004,8 +4995,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1758309408,
         "result": "L",
-        "rolling": 41.0,
-        "score": 39.5
+        "rolling": 48.2,
+        "score": 54.0
       },
       {
         "kind": "scrim",
@@ -5013,8 +5004,8 @@
         "map": "koth_product, pl_upward",
         "playedAt": 1758312931,
         "result": "W",
-        "rolling": 39.2,
-        "score": 42.2
+        "rolling": 46.2,
+        "score": 47.3
       },
       {
         "kind": "scrim",
@@ -5022,8 +5013,8 @@
         "map": "koth_product_final",
         "playedAt": 1758483030,
         "result": "W",
-        "rolling": 40.0,
-        "score": 55.1
+        "rolling": 46.3,
+        "score": 57.6
       },
       {
         "kind": "scrim",
@@ -5031,8 +5022,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1758483978,
         "result": "W",
-        "rolling": 41.2,
-        "score": 45.8
+        "rolling": 45.9,
+        "score": 40.6
       },
       {
         "kind": "scrim",
@@ -5040,8 +5031,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1758485247,
         "result": "W",
-        "rolling": 40.9,
-        "score": 34.1
+        "rolling": 44.6,
+        "score": 43.6
       },
       {
         "kind": "scrim",
@@ -5049,8 +5040,8 @@
         "map": "pl_vigil_rc10 2x",
         "playedAt": 1758567348,
         "result": "W",
-        "rolling": 39.1,
-        "score": 26.8
+        "rolling": 42.6,
+        "score": 26.1
       },
       {
         "kind": "scrim",
@@ -5058,8 +5049,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1758570155,
         "result": "W",
-        "rolling": 41.2,
-        "score": 75.4
+        "rolling": 45.4,
+        "score": 79.1
       },
       {
         "kind": "scrim",
@@ -5067,8 +5058,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1758571242,
         "result": "L",
-        "rolling": 43.2,
-        "score": 37.4
+        "rolling": 47.0,
+        "score": 45.8
       },
       {
         "kind": "scrim",
@@ -5076,8 +5067,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1758652495,
         "result": "L",
-        "rolling": 45.3,
-        "score": 36.0
+        "rolling": 48.3,
+        "score": 33.1
       },
       {
         "kind": "scrim",
@@ -5085,8 +5076,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1758654144,
         "result": "W",
-        "rolling": 46.0,
-        "score": 67.6
+        "rolling": 50.1,
+        "score": 73.9
       },
       {
         "kind": "official",
@@ -5094,8 +5085,8 @@
         "map": null,
         "playedAt": 1758663985,
         "result": "W",
-        "rolling": 45.7,
-        "score": 36.3
+        "rolling": 48.6,
+        "score": 38.9
       },
       {
         "kind": "scrim",
@@ -5103,8 +5094,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1758734717,
         "result": "W",
-        "rolling": 47.8,
-        "score": 63.5
+        "rolling": 50.0,
+        "score": 61.1
       },
       {
         "kind": "scrim",
@@ -5112,8 +5103,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1758735822,
         "result": "L",
-        "rolling": 45.5,
-        "score": 32.5
+        "rolling": 47.2,
+        "score": 29.6
       },
       {
         "kind": "scrim",
@@ -5121,8 +5112,8 @@
         "map": "ashville, vigil",
         "playedAt": 1759348898,
         "result": "W",
-        "rolling": 44.2,
-        "score": 32.5
+        "rolling": 47.0,
+        "score": 38.9
       },
       {
         "kind": "scrim",
@@ -5130,8 +5121,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1759779338,
         "result": "L",
-        "rolling": 43.3,
-        "score": 25.2
+        "rolling": 44.9,
+        "score": 22.3
       },
       {
         "kind": "scrim",
@@ -5139,8 +5130,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1759780103,
         "result": "L",
-        "rolling": 45.5,
-        "score": 48.6
+        "rolling": 47.6,
+        "score": 53.4
       },
       {
         "kind": "scrim",
@@ -5148,8 +5139,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1760382309,
         "result": "L",
-        "rolling": 40.3,
-        "score": 23.2
+        "rolling": 43.1,
+        "score": 34.3
       },
       {
         "kind": "scrim",
@@ -5157,8 +5148,8 @@
         "map": null,
         "playedAt": 1760382376,
         "result": "T",
-        "rolling": 40.6,
-        "score": 40.4
+        "rolling": 42.4,
+        "score": 38.2
       },
       {
         "kind": "scrim",
@@ -5166,8 +5157,8 @@
         "map": "koth_product_final",
         "playedAt": 1760729690,
         "result": "L",
-        "rolling": 41.9,
-        "score": 48.8
+        "rolling": 44.9,
+        "score": 58.5
       },
       {
         "kind": "scrim",
@@ -5175,8 +5166,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1760731279,
         "result": "L",
-        "rolling": 39.4,
-        "score": 43.4
+        "rolling": 42.5,
+        "score": 49.4
       },
       {
         "kind": "scrim",
@@ -5184,8 +5175,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1761418379,
         "result": "W",
-        "rolling": 38.3,
-        "score": 25.0
+        "rolling": 41.5,
+        "score": 29.2
       },
       {
         "kind": "scrim",
@@ -5193,8 +5184,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1761419267,
         "result": "L",
-        "rolling": 34.8,
-        "score": 28.6
+        "rolling": 39.1,
+        "score": 37.1
       },
       {
         "kind": "scrim",
@@ -5202,8 +5193,8 @@
         "map": null,
         "playedAt": 1761419678,
         "result": "L",
-        "rolling": 38.2,
-        "score": 66.2
+        "rolling": 43.4,
+        "score": 72.9
       },
       {
         "kind": "scrim",
@@ -5211,8 +5202,8 @@
         "map": "koth_govan_rc1",
         "playedAt": 1761768082,
         "result": "L",
-        "rolling": 38.3,
-        "score": 33.2
+        "rolling": 43.3,
+        "score": 38.0
       },
       {
         "kind": "scrim",
@@ -5220,8 +5211,8 @@
         "map": "koth_product_final",
         "playedAt": 1761769224,
         "result": "T",
-        "rolling": 39.5,
-        "score": 37.4
+        "rolling": 45.1,
+        "score": 40.1
       },
       {
         "kind": "scrim",
@@ -5229,8 +5220,8 @@
         "map": "koth_govan_rc1",
         "playedAt": 1761770156,
         "result": "W",
-        "rolling": 40.0,
-        "score": 53.5
+        "rolling": 45.1,
+        "score": 53.6
       },
       {
         "kind": "scrim",
@@ -5238,8 +5229,8 @@
         "map": "koth_product_final",
         "playedAt": 1761943043,
         "result": "L",
-        "rolling": 39.7,
-        "score": 20.4
+        "rolling": 45.3,
+        "score": 35.7
       },
       {
         "kind": "scrim",
@@ -5247,8 +5238,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1761943986,
         "result": "L",
-        "rolling": 37.6,
-        "score": 19.4
+        "rolling": 44.0,
+        "score": 25.8
       },
       {
         "kind": "scrim",
@@ -5256,8 +5247,8 @@
         "map": "vigil, govan",
         "playedAt": 1761945379,
         "result": "L",
-        "rolling": 36.4,
-        "score": 36.5
+        "rolling": 43.2,
+        "score": 49.7
       },
       {
         "kind": "scrim",
@@ -5265,8 +5256,8 @@
         "map": "koth_product_final",
         "playedAt": 1762374374,
         "result": "W",
-        "rolling": 38.9,
-        "score": 68.4
+        "rolling": 44.9,
+        "score": 66.6
       },
       {
         "kind": "scrim",
@@ -5274,8 +5265,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1762375393,
         "result": "W",
-        "rolling": 43.4,
-        "score": 70.7
+        "rolling": 49.7,
+        "score": 77.9
       },
       {
         "kind": "scrim",
@@ -5283,8 +5274,8 @@
         "map": "koth_govan_rc1",
         "playedAt": 1762544024,
         "result": "L",
-        "rolling": 46.3,
-        "score": 57.6
+        "rolling": 50.5,
+        "score": 44.5
       },
       {
         "kind": "scrim",
@@ -5292,8 +5283,8 @@
         "map": "koth_govan_rc1",
         "playedAt": 1762544835,
         "result": "L",
-        "rolling": 42.1,
-        "score": 24.2
+        "rolling": 45.8,
+        "score": 26.0
       },
       {
         "kind": "scrim",
@@ -5301,8 +5292,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1762545717,
         "result": "W",
-        "rolling": 41.2,
-        "score": 24.3
+        "rolling": 43.8,
+        "score": 17.9
       },
       {
         "kind": "scrim",
@@ -5310,8 +5301,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1762547963,
         "result": "L",
-        "rolling": 39.4,
-        "score": 18.9
+        "rolling": 41.7,
+        "score": 19.0
       },
       {
         "kind": "scrim",
@@ -5319,8 +5310,8 @@
         "map": "koth_product_final",
         "playedAt": 1762548822,
         "result": "W",
-        "rolling": 38.3,
-        "score": 42.4
+        "rolling": 41.7,
+        "score": 54.3
       },
       {
         "kind": "scrim",
@@ -5328,8 +5319,8 @@
         "map": "koth_product_final",
         "playedAt": 1762549268,
         "result": "W",
-        "rolling": 41.6,
-        "score": 54.0
+        "rolling": 44.4,
+        "score": 62.4
       },
       {
         "kind": "scrim",
@@ -5337,8 +5328,8 @@
         "map": "koth_govan_rc1",
         "playedAt": 1762716335,
         "result": "L",
-        "rolling": 41.8,
-        "score": 20.7
+        "rolling": 43.7,
+        "score": 18.9
       },
       {
         "kind": "scrim",
@@ -5346,8 +5337,8 @@
         "map": "koth_govan_rc1",
         "playedAt": 1762717092,
         "result": "L",
-        "rolling": 46.8,
-        "score": 87.2
+        "rolling": 46.7,
+        "score": 79.9
       },
       {
         "kind": "scrim",
@@ -5355,8 +5346,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1762718427,
         "result": "L",
-        "rolling": 42.4,
-        "score": 24.3
+        "rolling": 42.1,
+        "score": 20.2
       },
       {
         "kind": "scrim",
@@ -5364,8 +5355,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1762720359,
         "result": "L",
-        "rolling": 38.2,
-        "score": 28.5
+        "rolling": 38.3,
+        "score": 39.9
       },
       {
         "kind": "scrim",
@@ -5373,8 +5364,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1762721731,
         "result": "L",
-        "rolling": 34.4,
-        "score": 19.2
+        "rolling": 36.6,
+        "score": 27.9
       },
       {
         "kind": "scrim",
@@ -5382,8 +5373,8 @@
         "map": "pl_vigil",
         "playedAt": 1762804447,
         "result": "L",
-        "rolling": 36.0,
-        "score": 40.6
+        "rolling": 38.5,
+        "score": 44.6
       },
       {
         "kind": "scrim",
@@ -5391,8 +5382,8 @@
         "map": "koth_govan_rc1",
         "playedAt": 1762805170,
         "result": "L",
-        "rolling": 37.3,
-        "score": 37.6
+        "rolling": 41.0,
+        "score": 42.7
       },
       {
         "kind": "scrim",
@@ -5400,8 +5391,8 @@
         "map": "vigil govan",
         "playedAt": 1762895589,
         "result": "L",
-        "rolling": 40.3,
-        "score": 48.3
+        "rolling": 43.7,
+        "score": 45.8
       },
       {
         "kind": "pug",
@@ -5409,8 +5400,8 @@
         "map": "vigil",
         "playedAt": 1762981290,
         "result": "T",
-        "rolling": 39.1,
-        "score": 30.2
+        "rolling": 40.9,
+        "score": 26.9
       },
       {
         "kind": "scrim",
@@ -5418,8 +5409,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1763062132,
         "result": "L",
-        "rolling": 36.5,
-        "score": 28.2
+        "rolling": 38.9,
+        "score": 42.2
       },
       {
         "kind": "scrim",
@@ -5427,8 +5418,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1763063262,
         "result": "W",
-        "rolling": 39.9,
-        "score": 55.1
+        "rolling": 42.3,
+        "score": 53.1
       },
       {
         "kind": "official",
@@ -5436,8 +5427,8 @@
         "map": "Vigil",
         "playedAt": 1763067439,
         "result": "T",
-        "rolling": 34.1,
-        "score": 29.4
+        "rolling": 37.2,
+        "score": 28.9
       },
       {
         "kind": "scrim",
@@ -5445,8 +5436,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1763148597,
         "result": "L",
-        "rolling": 34.6,
-        "score": 28.7
+        "rolling": 38.0,
+        "score": 28.4
       },
       {
         "kind": "scrim",
@@ -5454,8 +5445,8 @@
         "map": "koth_govan_rc1",
         "playedAt": 1763149454,
         "result": "L",
-        "rolling": 33.0,
-        "score": 13.1
+        "rolling": 35.3,
+        "score": 12.8
       },
       {
         "kind": "scrim",
@@ -5463,8 +5454,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1763326549,
         "result": "W",
-        "rolling": 33.9,
-        "score": 28.0
+        "rolling": 35.9,
+        "score": 33.7
       },
       {
         "kind": "scrim",
@@ -5472,8 +5463,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1763494212,
         "result": "L",
-        "rolling": 33.5,
-        "score": 36.8
+        "rolling": 36.5,
+        "score": 50.4
       },
       {
         "kind": "scrim",
@@ -5481,8 +5472,8 @@
         "map": "koth_govan_rc1",
         "playedAt": 1763496114,
         "result": "W",
-        "rolling": 37.2,
-        "score": 73.7
+        "rolling": 40.0,
+        "score": 78.2
       },
       {
         "kind": "scrim",
@@ -5490,8 +5481,8 @@
         "map": "steel + govan",
         "playedAt": 1763546046,
         "result": "L",
-        "rolling": 36.7,
-        "score": 43.5
+        "rolling": 39.2,
+        "score": 37.9
       },
       {
         "kind": "scrim",
@@ -5499,8 +5490,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1763581455,
         "result": "L",
-        "rolling": 39.1,
-        "score": 54.0
+        "rolling": 42.4,
+        "score": 58.6
       },
       {
         "kind": "official",
@@ -5508,7 +5499,7 @@
         "map": "cp_steel_f12",
         "playedAt": 1763585874,
         "result": "W",
-        "rolling": 39.6,
+        "rolling": 41.6,
         "score": 33.8
       },
       {
@@ -5517,8 +5508,8 @@
         "map": "⚔",
         "playedAt": 1763760513,
         "result": "W",
-        "rolling": 39.0,
-        "score": 48.5
+        "rolling": 40.6,
+        "score": 43.7
       },
       {
         "kind": "scrim",
@@ -5526,8 +5517,8 @@
         "map": "cp_gullywash_f9",
         "playedAt": 1763845896,
         "result": "L",
-        "rolling": 40.0,
-        "score": 40.0
+        "rolling": 41.5,
+        "score": 37.8
       },
       {
         "kind": "scrim",
@@ -5535,8 +5526,8 @@
         "map": null,
         "playedAt": 1763850819,
         "result": "W",
-        "rolling": 44.5,
-        "score": 73.3
+        "rolling": 46.7,
+        "score": 80.2
       },
       {
         "kind": "scrim",
@@ -5544,8 +5535,8 @@
         "map": "koth_govan_rc1",
         "playedAt": 1764013548,
         "result": "L",
-        "rolling": 46.6,
-        "score": 34.4
+        "rolling": 49.6,
+        "score": 41.5
       },
       {
         "kind": "scrim",
@@ -5553,8 +5544,8 @@
         "map": "cp_gullywash_f9",
         "playedAt": 1764015409,
         "result": "L",
-        "rolling": 50.4,
-        "score": 65.6
+        "rolling": 52.3,
+        "score": 60.7
       },
       {
         "kind": "scrim",
@@ -5562,8 +5553,8 @@
         "map": "koth_govan_rc1",
         "playedAt": 1764017157,
         "result": "L",
-        "rolling": 51.0,
-        "score": 43.5
+        "rolling": 51.4,
+        "score": 41.7
       },
       {
         "kind": "scrim",
@@ -5571,8 +5562,8 @@
         "map": "cp_gullywash_f9",
         "playedAt": 1764018546,
         "result": "L",
-        "rolling": 46.3,
-        "score": 26.6
+        "rolling": 46.1,
+        "score": 25.1
       },
       {
         "kind": "scrim",
@@ -5580,8 +5571,8 @@
         "map": "cp_gullywash_f9",
         "playedAt": 1764099652,
         "result": "L",
-        "rolling": 45.2,
-        "score": 32.0
+        "rolling": 46.3,
+        "score": 40.1
       },
       {
         "kind": "scrim",
@@ -5589,8 +5580,8 @@
         "map": "koth_govan_rc1",
         "playedAt": 1764100787,
         "result": "L",
-        "rolling": 47.9,
-        "score": 81.4
+        "rolling": 48.9,
+        "score": 84.4
       },
       {
         "kind": "scrim",
@@ -5598,8 +5589,8 @@
         "map": "govan + gully",
         "playedAt": 1764150955,
         "result": "L",
-        "rolling": 45.6,
-        "score": 10.6
+        "rolling": 46.7,
+        "score": 11.7
       },
       {
         "kind": "scrim",
@@ -5607,8 +5598,8 @@
         "map": "koth_govan_rc1",
         "playedAt": 1764189474,
         "result": "L",
-        "rolling": 45.6,
-        "score": 48.5
+        "rolling": 46.7,
+        "score": 44.2
       },
       {
         "kind": "scrim",
@@ -5616,8 +5607,8 @@
         "map": "cp_gullywash_f9",
         "playedAt": 1764191624,
         "result": "L",
-        "rolling": 47.1,
-        "score": 55.1
+        "rolling": 49.4,
+        "score": 64.2
       },
       {
         "kind": "official",
@@ -5625,8 +5616,8 @@
         "map": "cp_gullywash_f9",
         "playedAt": 1764362869,
         "result": "L",
-        "rolling": 43.2,
-        "score": 34.2
+        "rolling": 44.1,
+        "score": 27.8
       },
       {
         "kind": "official",
@@ -5634,8 +5625,8 @@
         "map": "koth_govan_rc1",
         "playedAt": 1764365253,
         "result": "W",
-        "rolling": 45.7,
-        "score": 59.8
+        "rolling": 47.0,
+        "score": 70.1
       },
       {
         "kind": "scrim",
@@ -5643,8 +5634,8 @@
         "map": "pl_borneo_f2",
         "playedAt": 1764531354,
         "result": "L",
-        "rolling": 47.5,
-        "score": 83.4
+        "rolling": 47.7,
+        "score": 67.9
       },
       {
         "kind": "scrim",
@@ -5652,8 +5643,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1764532464,
         "result": "L",
-        "rolling": 46.9,
-        "score": 37.6
+        "rolling": 47.6,
+        "score": 40.5
       },
       {
         "kind": "scrim",
@@ -5661,8 +5652,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1764534269,
         "result": "L",
-        "rolling": 50.1,
-        "score": 58.4
+        "rolling": 51.1,
+        "score": 60.4
       },
       {
         "kind": "scrim",
@@ -5670,8 +5661,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1764622048,
         "result": "W",
-        "rolling": 52.6,
-        "score": 56.8
+        "rolling": 53.7,
+        "score": 65.8
       },
       {
         "kind": "scrim",
@@ -5679,8 +5670,8 @@
         "map": "pl_borneo_f2",
         "playedAt": 1764623810,
         "result": "L",
-        "rolling": 46.6,
-        "score": 21.4
+        "rolling": 47.6,
+        "score": 23.1
       },
       {
         "kind": "scrim",
@@ -5688,8 +5679,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1764705192,
         "result": "W",
-        "rolling": 48.3,
-        "score": 27.6
+        "rolling": 49.6,
+        "score": 32.4
       },
       {
         "kind": "scrim",
@@ -5697,8 +5688,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1764706075,
         "result": "L",
-        "rolling": 46.2,
-        "score": 27.3
+        "rolling": 48.9,
+        "score": 37.0
       },
       {
         "kind": "scrim",
@@ -5706,8 +5697,8 @@
         "map": "borneo/upward",
         "playedAt": 1764771550,
         "result": "W",
-        "rolling": 45.0,
-        "score": 43.0
+        "rolling": 47.3,
+        "score": 47.6
       },
       {
         "kind": "scrim",
@@ -5715,8 +5706,8 @@
         "map": "upward borneo",
         "playedAt": 1764795833,
         "result": "T",
-        "rolling": 44.8,
-        "score": 32.5
+        "rolling": 48.8,
+        "score": 43.4
       },
       {
         "kind": "scrim",
@@ -5724,8 +5715,8 @@
         "map": "pl_upward",
         "playedAt": 1764878447,
         "result": "T",
-        "rolling": 45.3,
-        "score": 65.0
+        "rolling": 48.7,
+        "score": 68.6
       },
       {
         "kind": "official",
@@ -5733,8 +5724,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1764882452,
         "result": "L",
-        "rolling": 39.7,
-        "score": 27.6
+        "rolling": 44.7,
+        "score": 28.3
       },
       {
         "kind": "scrim",
@@ -5742,8 +5733,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1765823038,
         "result": "W",
-        "rolling": 42.3,
-        "score": 62.9
+        "rolling": 46.1,
+        "score": 54.3
       },
       {
         "kind": "scrim",
@@ -5751,8 +5742,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1765824343,
         "result": "W",
-        "rolling": 38.7,
-        "score": 23.1
+        "rolling": 42.9,
+        "score": 28.7
       },
       {
         "kind": "scrim",
@@ -5760,8 +5751,8 @@
         "map": "product + vigil",
         "playedAt": 1767042416,
         "result": "W",
-        "rolling": 35.3,
-        "score": 22.9
+        "rolling": 39.6,
+        "score": 32.3
       },
       {
         "kind": "scrim",
@@ -5769,8 +5760,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1767472692,
         "result": "W",
-        "rolling": 38.2,
-        "score": 50.3
+        "rolling": 43.2,
+        "score": 59.7
       },
       {
         "kind": "scrim",
@@ -5778,8 +5769,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1767473796,
         "result": "W",
-        "rolling": 40.7,
-        "score": 52.4
+        "rolling": 46.2,
+        "score": 62.4
       },
       {
         "kind": "scrim",
@@ -5787,8 +5778,8 @@
         "map": "koth_product_final",
         "playedAt": 1767474636,
         "result": "W",
-        "rolling": 45.8,
-        "score": 78.3
+        "rolling": 51.4,
+        "score": 88.9
       },
       {
         "kind": "pug",
@@ -5796,8 +5787,8 @@
         "map": "koth_product_final",
         "playedAt": 1767483541,
         "result": "W",
-        "rolling": 48.0,
-        "score": 64.8
+        "rolling": 53.4,
+        "score": 66.9
       },
       {
         "kind": "scrim",
@@ -5805,8 +5796,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1767810628,
         "result": "L",
-        "rolling": 48.7,
-        "score": 40.0
+        "rolling": 52.5,
+        "score": 35.3
       },
       {
         "kind": "scrim",
@@ -5814,8 +5805,8 @@
         "map": "koth_product_final",
         "playedAt": 1767811560,
         "result": "W",
-        "rolling": 48.1,
-        "score": 58.6
+        "rolling": 52.4,
+        "score": 66.7
       },
       {
         "kind": "scrim",
@@ -5823,8 +5814,8 @@
         "map": "koth_product_final",
         "playedAt": 1767812819,
         "result": "W",
-        "rolling": 51.6,
-        "score": 62.6
+        "rolling": 56.1,
+        "score": 65.5
       },
       {
         "kind": "scrim",
@@ -5832,8 +5823,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1767904130,
         "result": "W",
-        "rolling": 50.3,
-        "score": 49.6
+        "rolling": 56.7,
+        "score": 60.6
       },
       {
         "kind": "scrim",
@@ -5841,8 +5832,8 @@
         "map": "cp_product",
         "playedAt": 1767905914,
         "result": "W",
-        "rolling": 55.9,
-        "score": 79.6
+        "rolling": 62.9,
+        "score": 91.0
       },
       {
         "kind": "scrim",
@@ -5850,8 +5841,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1767990600,
         "result": "W",
-        "rolling": 57.0,
-        "score": 33.9
+        "rolling": 63.2,
+        "score": 34.6
       },
       {
         "kind": "scrim",
@@ -5859,8 +5850,8 @@
         "map": "koth_product",
         "playedAt": 1767992569,
         "result": "W",
-        "rolling": 57.6,
-        "score": 56.2
+        "rolling": 64.5,
+        "score": 72.6
       },
       {
         "kind": "pug",
@@ -5868,8 +5859,8 @@
         "map": "vigil2x + product",
         "playedAt": 1768306281,
         "result": "L",
-        "rolling": 55.5,
-        "score": 31.6
+        "rolling": 61.6,
+        "score": 34.2
       },
       {
         "kind": "scrim",
@@ -5877,8 +5868,8 @@
         "map": "product + vigil",
         "playedAt": 1768426659,
         "result": "L",
-        "rolling": 51.8,
-        "score": 41.4
+        "rolling": 58.0,
+        "score": 52.5
       },
       {
         "kind": "scrim",
@@ -5886,8 +5877,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1768764449,
         "result": "W",
-        "rolling": 53.7,
-        "score": 83.3
+        "rolling": 59.2,
+        "score": 78.5
       },
       {
         "kind": "scrim",
@@ -5895,8 +5886,8 @@
         "map": "koth_product_final",
         "playedAt": 1768765560,
         "result": "W",
-        "rolling": 57.2,
-        "score": 75.0
+        "rolling": 63.5,
+        "score": 79.2
       },
       {
         "kind": "scrim",
@@ -5904,8 +5895,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1769370278,
         "result": "W",
-        "rolling": 58.1,
-        "score": 68.1
+        "rolling": 63.8,
+        "score": 69.4
       },
       {
         "kind": "scrim",
@@ -5913,8 +5904,8 @@
         "map": "koth_product_final",
         "playedAt": 1769371331,
         "result": "W",
-        "rolling": 55.2,
-        "score": 32.9
+        "rolling": 61.8,
+        "score": 45.3
       },
       {
         "kind": "scrim",
@@ -5922,8 +5913,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1769630668,
         "result": "L",
-        "rolling": 53.8,
-        "score": 36.3
+        "rolling": 59.7,
+        "score": 39.2
       },
       {
         "kind": "scrim",
@@ -5931,8 +5922,8 @@
         "map": "product",
         "playedAt": 1769630796,
         "result": "T",
-        "rolling": 53.8,
-        "score": 78.8
+        "rolling": 57.5,
+        "score": 69.0
       },
       {
         "kind": "scrim",
@@ -5940,8 +5931,8 @@
         "map": "tow_tetsudo_b10a",
         "playedAt": 1769979284,
         "result": "L",
-        "rolling": 53.3,
-        "score": 29.2
+        "rolling": 57.1,
+        "score": 31.0
       },
       {
         "kind": "scrim",
@@ -5949,8 +5940,8 @@
         "map": "koth_product_final",
         "playedAt": 1769980224,
         "result": "W",
-        "rolling": 57.1,
-        "score": 93.9
+        "rolling": 58.7,
+        "score": 88.7
       },
       {
         "kind": "scrim",
@@ -5958,8 +5949,8 @@
         "map": "pl_eruption_b15",
         "playedAt": 1770665942,
         "result": "L",
-        "rolling": 59.8,
-        "score": 59.0
+        "rolling": 61.1,
+        "score": 58.2
       },
       {
         "kind": "scrim",
@@ -5967,8 +5958,8 @@
         "map": "pl_eruption_b15",
         "playedAt": 1771271620,
         "result": "L",
-        "rolling": 58.0,
-        "score": 23.5
+        "rolling": 58.8,
+        "score": 29.0
       },
       {
         "kind": "scrim",
@@ -5976,8 +5967,8 @@
         "map": "pl_eruption_b15",
         "playedAt": 1771273745,
         "result": "L",
-        "rolling": 52.1,
-        "score": 24.5
+        "rolling": 53.2,
+        "score": 23.3
       },
       {
         "kind": "scrim",
@@ -5985,8 +5976,8 @@
         "map": "koth_product_final",
         "playedAt": 1771275306,
         "result": "L",
-        "rolling": 48.5,
-        "score": 38.8
+        "rolling": 49.6,
+        "score": 42.9
       },
       {
         "kind": "scrim",
@@ -5994,8 +5985,8 @@
         "map": "⚔",
         "playedAt": 1771363430,
         "result": "L",
-        "rolling": 44.9,
-        "score": 32.1
+        "rolling": 46.1,
+        "score": 34.8
       },
       {
         "kind": "official",
@@ -6003,8 +5994,8 @@
         "map": "pl_eruption_b15",
         "playedAt": 1771447166,
         "result": "L",
-        "rolling": 47.7,
-        "score": 60.7
+        "rolling": 47.5,
+        "score": 58.5
       },
       {
         "kind": "scrim",
@@ -6012,8 +6003,8 @@
         "map": "pl_downfall_b13",
         "playedAt": 1772134468,
         "result": "W",
-        "rolling": 50.3,
-        "score": 62.3
+        "rolling": 49.7,
+        "score": 61.4
       },
       {
         "kind": "scrim",
@@ -6021,8 +6012,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1772135788,
         "result": "W",
-        "rolling": 46.5,
-        "score": 40.6
+        "rolling": 47.5,
+        "score": 46.8
       },
       {
         "kind": "scrim",
@@ -6030,8 +6021,8 @@
         "map": "pl_downfall_b13",
         "playedAt": 1772221384,
         "result": "L",
-        "rolling": 49.2,
-        "score": 56.5
+        "rolling": 49.4,
+        "score": 50.3
       },
       {
         "kind": "scrim",
@@ -6039,8 +6030,8 @@
         "map": "pl_downfall_b13",
         "playedAt": 1772222908,
         "result": "L",
-        "rolling": 46.0,
-        "score": 62.4
+        "rolling": 46.4,
+        "score": 59.1
       },
       {
         "kind": "scrim",
@@ -6048,8 +6039,8 @@
         "map": "⚔",
         "playedAt": 1772310140,
         "result": "T",
-        "rolling": 45.2,
-        "score": 50.5
+        "rolling": 45.8,
+        "score": 52.2
       },
       {
         "kind": "scrim",
@@ -6058,7 +6049,7 @@
         "playedAt": 1772396053,
         "result": "W",
         "rolling": 49.5,
-        "score": 66.5
+        "score": 65.2
       },
       {
         "kind": "official",
@@ -6066,8 +6057,8 @@
         "map": "pl_romania",
         "playedAt": 1772482248,
         "result": "W",
-        "rolling": 52.5,
-        "score": 54.7
+        "rolling": 52.1,
+        "score": 49.8
       },
       {
         "kind": "official",
@@ -6075,8 +6066,8 @@
         "map": "DF/DVLG",
         "playedAt": 1773522109,
         "result": "L",
-        "rolling": 52.0,
-        "score": 33.2
+        "rolling": 51.2,
+        "score": 33.8
       },
       {
         "kind": "pug",
@@ -6084,8 +6075,8 @@
         "map": "koth_product_final",
         "playedAt": 1783280890,
         "result": "W",
-        "rolling": 52.9,
-        "score": 41.7
+        "rolling": 53.3,
+        "score": 55.5
       },
       {
         "kind": "pug",
@@ -6093,8 +6084,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1783282305,
         "result": "W",
-        "rolling": 49.6,
-        "score": 27.7
+        "rolling": 51.5,
+        "score": 40.7
       },
       {
         "kind": "pug",
@@ -6102,8 +6093,8 @@
         "map": "koth_ashville_final1",
         "playedAt": 1783795346,
         "result": "L",
-        "rolling": 49.3,
-        "score": 59.7
+        "rolling": 52.0,
+        "score": 66.7
       },
       {
         "kind": "pug",
@@ -6111,8 +6102,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1783802771,
         "result": "W",
-        "rolling": 48.7,
-        "score": 33.9
+        "rolling": 51.2,
+        "score": 38.2
       },
       {
         "kind": "pug",
@@ -6120,8 +6111,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1785095282,
         "result": "W",
-        "rolling": 47.2,
-        "score": 42.0
+        "rolling": 51.1,
+        "score": 49.3
       },
       {
         "kind": "pug",
@@ -6129,8 +6120,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1785096670,
         "result": "W",
-        "rolling": 47.6,
-        "score": 66.0
+        "rolling": 51.7,
+        "score": 65.8
       },
       {
         "kind": "pug",
@@ -6138,8 +6129,8 @@
         "map": "product/upward",
         "playedAt": 1785098507,
         "result": "W",
-        "rolling": 45.1,
-        "score": 25.2
+        "rolling": 50.2,
+        "score": 36.7
       },
       {
         "kind": "pug",
@@ -6147,8 +6138,8 @@
         "map": "koth_product_final",
         "playedAt": 1787398289,
         "result": "L",
-        "rolling": 43.7,
-        "score": 53.2
+        "rolling": 48.5,
+        "score": 48.1
       },
       {
         "kind": "pug",
@@ -6156,8 +6147,8 @@
         "map": "pl_badwater_pro_v12",
         "playedAt": 1787400461,
         "result": "L",
-        "rolling": 42.2,
-        "score": 39.8
+        "rolling": 48.3,
+        "score": 47.8
       },
       {
         "kind": "pug",
@@ -6165,8 +6156,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1787401928,
         "result": "L",
-        "rolling": 45.4,
-        "score": 64.6
+        "rolling": 51.8,
+        "score": 69.3
       },
       {
         "kind": "scrim",
@@ -6174,8 +6165,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1787511795,
         "result": "W",
-        "rolling": 44.7,
-        "score": 34.9
+        "rolling": 49.7,
+        "score": 34.0
       },
       {
         "kind": "official",
@@ -6183,8 +6174,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1787516257,
         "result": "W",
-        "rolling": 45.8,
-        "score": 39.0
+        "rolling": 50.0,
+        "score": 43.9
       },
       {
         "kind": "scrim",
@@ -6192,8 +6183,8 @@
         "map": "upward + steel",
         "playedAt": 1787598270,
         "result": "L",
-        "rolling": 42.4,
-        "score": 25.1
+        "rolling": 46.3,
+        "score": 30.1
       },
       {
         "kind": "scrim",
@@ -6201,8 +6192,8 @@
         "map": "product + steel",
         "playedAt": 1787602485,
         "result": "W",
-        "rolling": 43.0,
-        "score": 40.1
+        "rolling": 45.9,
+        "score": 34.2
       },
       {
         "kind": "pug",
@@ -6210,8 +6201,8 @@
         "map": "cp_steel_f12",
         "playedAt": 1787858128,
         "result": "L",
-        "rolling": 43.9,
-        "score": 50.7
+        "rolling": 46.2,
+        "score": 52.4
       },
       {
         "kind": "pug",
@@ -6219,8 +6210,8 @@
         "map": "koth_warmtic_f10",
         "playedAt": 1788028625,
         "result": "W",
-        "rolling": 44.7,
-        "score": 74.8
+        "rolling": 46.8,
+        "score": 71.0
       },
       {
         "kind": "scrim",
@@ -6228,8 +6219,8 @@
         "map": "koth_product_final",
         "playedAt": 1788117280,
         "result": "W",
-        "rolling": 48.1,
-        "score": 58.3
+        "rolling": 49.2,
+        "score": 60.8
       },
       {
         "kind": "pug",
@@ -6237,8 +6228,8 @@
         "map": "pl_vigil_rc10",
         "playedAt": 1788374428,
         "result": "W",
-        "rolling": 47.3,
-        "score": 45.2
+        "rolling": 48.6,
+        "score": 42.1
       },
       {
         "kind": "pug",
@@ -6246,8 +6237,8 @@
         "map": null,
         "playedAt": 1789502845,
         "result": "W",
-        "rolling": 46.6,
-        "score": 33.1
+        "rolling": 48.1,
+        "score": 43.0
       },
       {
         "kind": "pug",
@@ -6255,8 +6246,8 @@
         "map": "pl_swiftwater_final1",
         "playedAt": 1789673414,
         "result": "W",
-        "rolling": 45.8,
-        "score": 56.9
+        "rolling": 47.7,
+        "score": 65.1
       },
       {
         "kind": "pug",
@@ -6264,21 +6255,21 @@
         "map": "pl_swiftwater_final1",
         "playedAt": 1789675330,
         "result": "L",
-        "rolling": 45.6,
-        "score": 33.2
+        "rolling": 48.4,
+        "score": 41.6
       }
     ],
     "winRate": 53.8,
     "worst": [
       {
-        "kind": "pug",
+        "kind": "scrim",
         "league": null,
-        "logId": 3654549,
-        "map": "vigil + product",
-        "playedAt": 1717526891,
+        "logId": 3838797,
+        "map": "cp_steel_f12",
+        "playedAt": 1744914417,
         "result": "L",
-        "score": 10.0,
-        "title": "aaaaaaaaaaaaa"
+        "score": 11.5,
+        "title": "serveme.tf #1478795"
       },
       {
         "kind": "scrim",
@@ -6287,38 +6278,38 @@
         "map": "govan + gully",
         "playedAt": 1764150955,
         "result": "L",
-        "score": 10.6,
+        "score": 11.7,
         "title": "Valhalla vs SBQRRA"
       },
       {
         "kind": "pug",
         "league": null,
-        "logId": 513611,
-        "map": "pl_badwater",
-        "playedAt": 1414159702,
+        "logId": 431937,
+        "map": "pl_upward",
+        "playedAt": 1409069286,
         "result": "T",
-        "score": 11.6,
-        "title": "TF2Center Lobby #242834"
+        "score": 12.6,
+        "title": "serveme.tf - RUS vs BLU"
       },
       {
         "kind": "scrim",
         "league": null,
-        "logId": 3861191,
-        "map": "koth_proot_b5b",
-        "playedAt": 1748112338,
-        "result": "W",
-        "score": 12.7,
-        "title": "serveme.tf #1485982"
-      },
-      {
-        "kind": "scrim",
-        "league": null,
-        "logId": 3817869,
-        "map": "pl_vigil_rc10",
-        "playedAt": 1741725055,
+        "logId": 3967704,
+        "map": "koth_govan_rc1",
+        "playedAt": 1763149454,
         "result": "L",
-        "score": 13.0,
-        "title": "serveme.tf #1472171"
+        "score": 12.8,
+        "title": "serveme.tf #1517944"
+      },
+      {
+        "kind": "pug",
+        "league": null,
+        "logId": 3654549,
+        "map": "vigil + product",
+        "playedAt": 1717526891,
+        "result": "L",
+        "score": 13.3,
+        "title": "aaaaaaaaaaaaa"
       }
     ]
   }

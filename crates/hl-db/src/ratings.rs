@@ -126,6 +126,11 @@ impl Db {
     }
 
     /// How many rated games a player has, per class, most first.
+    /// Ratings stored for a model version: zero after the model changes.
+    pub async fn rating_count(&self, version: &str) -> Result<i64> {
+        Ok(sqlx::query_scalar("SELECT COUNT(*) FROM rating WHERE model_version = ?1").bind(version).fetch_one(self.pool()).await?)
+    }
+
     pub async fn rated_classes(&self, account_id: u32, version: &str) -> Result<Vec<(String, i64)>> {
         let rows = sqlx::query(
             "SELECT class, COUNT(*) AS n FROM rating

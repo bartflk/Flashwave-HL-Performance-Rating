@@ -77,14 +77,21 @@ even_margin = 5.0
 #   dpm             damage per minute
 # ---------------------------------------------------------------------------
 
+# v2, fitted against who won. In the 679 matches with one rated Sniper a
+# side, a model of these picks the winning team 71% of the time against 68%
+# for v1. Fitted jointly, the duel and headshot share point the wrong way
+# once kills and deaths are known, so they are cut; DPM goes up on the
+# players' (and function's) say, since it cost nothing in accuracy.
+# Opening duels and untraded kills come from the fights pass (PLAN §11 B).
 [model.sniper]
-impact_kills   = 0.30
-duel           = 0.20
-medic_picks    = 0.15
+impact_kills   = 0.25
+dpm            = 0.20
 deaths         = 0.15
-headshot_share = 0.10
-dpm            = 0.05
+opening        = 0.15
+medic_picks    = 0.10
 impact_assists = 0.05
+duel           = 0.05
+untraded       = 0.05
 
 [model.medic]
 heal           = 0.30

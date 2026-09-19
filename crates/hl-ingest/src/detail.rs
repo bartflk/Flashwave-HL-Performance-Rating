@@ -26,7 +26,10 @@ pub async fn match_detail(
     let baseline = crate::rating::load_baseline(db).await?;
     let kills = db.kills_for_log(log_id).await?;
     let windows = db.round_windows(log_id).await?;
-    let impact = crate::kills::impacts_for(&kills, &windows, log.map.as_deref(), weights);
+    let mut impact = crate::kills::impacts_for(&kills, &windows, log.map.as_deref(), weights);
+    if let Some(rows) = db.fight_counts(Some(log_id)).await?.get(&log_id) {
+        crate::kills::attach_fights(&mut impact, rows);
+    }
     let mut detail = build_detail(&log, me, weights, &baseline, &impact);
 
     // Kill markers first: demo enrichment then gives every marker its jump.

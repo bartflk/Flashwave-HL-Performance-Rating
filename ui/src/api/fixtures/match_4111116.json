@@ -34,23 +34,23 @@
         "dmg": 5964,
         "rating": {
           "class": "scout",
-          "score": 28.2,
+          "score": 30.9,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_kills",
               "label": "Impact kills",
               "unit": "per 10 min",
-              "raw": 7.48,
-              "percentile": 27.3,
+              "raw": 8.66,
+              "percentile": 30.1,
               "weight": 0.35
             },
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 5.79,
-              "percentile": 26.4,
+              "raw": 2.41,
+              "percentile": 38.2,
               "weight": 0.15
             },
             {
@@ -58,7 +58,7 @@
               "label": "Caps",
               "unit": "per 10 min",
               "raw": 1.51,
-              "percentile": 45.6,
+              "percentile": 45.8,
               "weight": 0.1
             },
             {
@@ -91,23 +91,23 @@
         "dmg": 9150,
         "rating": {
           "class": "scout",
-          "score": 61.5,
+          "score": 57.1,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_kills",
               "label": "Impact kills",
               "unit": "per 10 min",
-              "raw": 13.3,
-              "percentile": 69.3,
+              "raw": 14.16,
+              "percentile": 67.2,
               "weight": 0.35
             },
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 9.05,
-              "percentile": 62.6,
+              "raw": 2.4,
+              "percentile": 38.0,
               "weight": 0.15
             },
             {
@@ -115,7 +115,7 @@
               "label": "Caps",
               "unit": "per 10 min",
               "raw": 2.11,
-              "percentile": 65.8,
+              "percentile": 65.9,
               "weight": 0.1
             },
             {
@@ -123,7 +123,7 @@
               "label": "Deaths",
               "unit": "per 10 min",
               "raw": 7.24,
-              "percentile": 45.5,
+              "percentile": 45.3,
               "weight": 0.2
             },
             {
@@ -141,7 +141,7 @@
         6,
         7
       ],
-      "diff": -33.3,
+      "diff": -26.2,
       "winner": "right",
       "decisive": true,
       "involvesMe": false
@@ -159,23 +159,23 @@
         "dmg": 13372,
         "rating": {
           "class": "soldier",
-          "score": 76.0,
+          "score": 73.3,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_kills",
               "label": "Impact kills",
               "unit": "per 10 min",
-              "raw": 14.87,
-              "percentile": 77.9,
+              "raw": 16.2,
+              "percentile": 78.8,
               "weight": 0.35
             },
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 9.62,
-              "percentile": 77.3,
+              "raw": 2.26,
+              "percentile": 57.8,
               "weight": 0.15
             },
             {
@@ -199,7 +199,7 @@
               "label": "Damage / min",
               "unit": "per min",
               "raw": 403.38,
-              "percentile": 85.7,
+              "percentile": 85.6,
               "weight": 0.2
             }
           ]
@@ -216,23 +216,23 @@
         "dmg": 11940,
         "rating": {
           "class": "soldier",
-          "score": 70.5,
+          "score": 70.0,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_kills",
               "label": "Impact kills",
               "unit": "per 10 min",
-              "raw": 15.14,
-              "percentile": 79.7,
+              "raw": 16.89,
+              "percentile": 82.8,
               "weight": 0.35
             },
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 10.06,
-              "percentile": 80.6,
+              "raw": 2.63,
+              "percentile": 70.1,
               "weight": 0.15
             },
             {
@@ -240,7 +240,7 @@
               "label": "Caps",
               "unit": "per 10 min",
               "raw": 0.9,
-              "percentile": 84.1,
+              "percentile": 84.0,
               "weight": 0.1
             },
             {
@@ -256,7 +256,7 @@
               "label": "Damage / min",
               "unit": "per min",
               "raw": 360.18,
-              "percentile": 67.7,
+              "percentile": 67.6,
               "weight": 0.2
             }
           ]
@@ -266,8 +266,8 @@
         4,
         3
       ],
-      "diff": 5.5,
-      "winner": "left",
+      "diff": 3.3,
+      "winner": "even",
       "decisive": false,
       "involvesMe": false
     },
@@ -284,23 +284,23 @@
         "dmg": 6458,
         "rating": {
           "class": "pyro",
-          "score": 40.8,
+          "score": 42.9,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_kills",
               "label": "Impact kills",
               "unit": "per 10 min",
-              "raw": 4.13,
-              "percentile": 19.3,
+              "raw": 4.59,
+              "percentile": 17.4,
               "weight": 0.35
             },
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 4.86,
-              "percentile": 26.4,
+              "raw": 3.14,
+              "percentile": 44.5,
               "weight": 0.15
             },
             {
@@ -341,23 +341,23 @@
         "dmg": 5602,
         "rating": {
           "class": "pyro",
-          "score": 42.7,
+          "score": 40.5,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_kills",
               "label": "Impact kills",
               "unit": "per 10 min",
-              "raw": 6.03,
-              "percentile": 44.9,
+              "raw": 6.52,
+              "percentile": 38.9,
               "weight": 0.35
             },
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 5.7,
-              "percentile": 38.5,
+              "raw": 2.86,
+              "percentile": 37.6,
               "weight": 0.15
             },
             {
@@ -365,7 +365,7 @@
               "label": "Caps",
               "unit": "per 10 min",
               "raw": 0.9,
-              "percentile": 44.5,
+              "percentile": 44.6,
               "weight": 0.1
             },
             {
@@ -373,7 +373,7 @@
               "label": "Deaths",
               "unit": "per 10 min",
               "raw": 6.64,
-              "percentile": 36.4,
+              "percentile": 36.3,
               "weight": 0.2
             },
             {
@@ -381,7 +381,7 @@
               "label": "Damage / min",
               "unit": "per min",
               "raw": 168.99,
-              "percentile": 47.6,
+              "percentile": 47.7,
               "weight": 0.2
             }
           ]
@@ -391,7 +391,7 @@
         1,
         2
       ],
-      "diff": -1.9,
+      "diff": 2.4,
       "winner": "even",
       "decisive": false,
       "involvesMe": false
@@ -409,23 +409,23 @@
         "dmg": 15658,
         "rating": {
           "class": "demoman",
-          "score": 67.5,
+          "score": 64.6,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_kills",
               "label": "Impact kills",
               "unit": "per 10 min",
-              "raw": 15.54,
-              "percentile": 78.6,
+              "raw": 17.44,
+              "percentile": 80.4,
               "weight": 0.35
             },
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 9.77,
-              "percentile": 69.0,
+              "raw": 2.38,
+              "percentile": 46.1,
               "weight": 0.15
             },
             {
@@ -433,7 +433,7 @@
               "label": "Caps",
               "unit": "per 10 min",
               "raw": 0.9,
-              "percentile": 48.5,
+              "percentile": 48.6,
               "weight": 0.1
             },
             {
@@ -449,7 +449,7 @@
               "label": "Damage / min",
               "unit": "per min",
               "raw": 472.34,
-              "percentile": 62.4,
+              "percentile": 62.3,
               "weight": 0.2
             }
           ]
@@ -466,23 +466,23 @@
         "dmg": 17008,
         "rating": {
           "class": "demoman",
-          "score": 67.2,
+          "score": 65.7,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_kills",
               "label": "Impact kills",
               "unit": "per 10 min",
-              "raw": 13.97,
-              "percentile": 70.6,
+              "raw": 14.78,
+              "percentile": 67.6,
               "weight": 0.35
             },
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 9.8,
-              "percentile": 69.8,
+              "raw": 3.16,
+              "percentile": 67.2,
               "weight": 0.15
             },
             {
@@ -490,7 +490,7 @@
               "label": "Caps",
               "unit": "per 10 min",
               "raw": 0.6,
-              "percentile": 37.1,
+              "percentile": 37.2,
               "weight": 0.1
             },
             {
@@ -506,7 +506,7 @@
               "label": "Damage / min",
               "unit": "per min",
               "raw": 513.06,
-              "percentile": 76.2,
+              "percentile": 76.1,
               "weight": 0.2
             }
           ]
@@ -516,7 +516,7 @@
         5,
         4
       ],
-      "diff": 0.3,
+      "diff": -1.1,
       "winner": "even",
       "decisive": false,
       "involvesMe": false
@@ -534,23 +534,23 @@
         "dmg": 10140,
         "rating": {
           "class": "heavy",
-          "score": 42.1,
+          "score": 41.0,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_kills",
               "label": "Impact kills",
               "unit": "per 10 min",
-              "raw": 9.98,
-              "percentile": 48.7,
+              "raw": 10.84,
+              "percentile": 46.3,
               "weight": 0.35
             },
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 7.5,
-              "percentile": 42.9,
+              "raw": 2.84,
+              "percentile": 41.1,
               "weight": 0.15
             },
             {
@@ -558,7 +558,7 @@
               "label": "Caps",
               "unit": "per 10 min",
               "raw": 0.3,
-              "percentile": 33.0,
+              "percentile": 33.1,
               "weight": 0.1
             },
             {
@@ -591,23 +591,23 @@
         "dmg": 10142,
         "rating": {
           "class": "heavy",
-          "score": 62.9,
+          "score": 62.6,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_kills",
               "label": "Impact kills",
               "unit": "per 10 min",
-              "raw": 11.31,
-              "percentile": 60.5,
+              "raw": 12.7,
+              "percentile": 61.2,
               "weight": 0.35
             },
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 9.03,
-              "percentile": 62.3,
+              "raw": 3.6,
+              "percentile": 58.1,
               "weight": 0.15
             },
             {
@@ -615,7 +615,7 @@
               "label": "Caps",
               "unit": "per 10 min",
               "raw": 0.9,
-              "percentile": 61.8,
+              "percentile": 62.0,
               "weight": 0.1
             },
             {
@@ -623,7 +623,7 @@
               "label": "Deaths",
               "unit": "per 10 min",
               "raw": 5.73,
-              "percentile": 72.8,
+              "percentile": 73.0,
               "weight": 0.2
             },
             {
@@ -631,7 +631,7 @@
               "label": "Damage / min",
               "unit": "per min",
               "raw": 305.94,
-              "percentile": 58.4,
+              "percentile": 58.3,
               "weight": 0.2
             }
           ]
@@ -641,7 +641,7 @@
         6,
         7
       ],
-      "diff": -20.8,
+      "diff": -21.6,
       "winner": "right",
       "decisive": true,
       "involvesMe": false
@@ -659,23 +659,23 @@
         "dmg": 3958,
         "rating": {
           "class": "engineer",
-          "score": 23.2,
+          "score": 22.0,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_kills",
               "label": "Impact kills",
               "unit": "per 10 min",
-              "raw": 3.86,
-              "percentile": 31.8,
+              "raw": 4.22,
+              "percentile": 27.6,
               "weight": 0.35
             },
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 2.99,
-              "percentile": 15.8,
+              "raw": 1.33,
+              "percentile": 17.6,
               "weight": 0.15
             },
             {
@@ -683,7 +683,7 @@
               "label": "Caps",
               "unit": "per 10 min",
               "raw": 0.3,
-              "percentile": 18.0,
+              "percentile": 18.2,
               "weight": 0.1
             },
             {
@@ -691,7 +691,7 @@
               "label": "Deaths",
               "unit": "per 10 min",
               "raw": 6.33,
-              "percentile": 24.0,
+              "percentile": 23.9,
               "weight": 0.2
             },
             {
@@ -699,7 +699,7 @@
               "label": "Damage / min",
               "unit": "per min",
               "raw": 119.4,
-              "percentile": 15.3,
+              "percentile": 15.4,
               "weight": 0.2
             }
           ]
@@ -716,23 +716,23 @@
         "dmg": 3295,
         "rating": {
           "class": "engineer",
-          "score": 28.3,
+          "score": 27.7,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_kills",
               "label": "Impact kills",
               "unit": "per 10 min",
-              "raw": 4.1,
-              "percentile": 34.8,
+              "raw": 4.63,
+              "percentile": 33.0,
               "weight": 0.35
             },
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 2.93,
-              "percentile": 14.9,
+              "raw": 1.2,
+              "percentile": 15.3,
               "weight": 0.15
             },
             {
@@ -740,7 +740,7 @@
               "label": "Caps",
               "unit": "per 10 min",
               "raw": 0.6,
-              "percentile": 29.2,
+              "percentile": 29.4,
               "weight": 0.1
             },
             {
@@ -748,7 +748,7 @@
               "label": "Deaths",
               "unit": "per 10 min",
               "raw": 4.52,
-              "percentile": 47.5,
+              "percentile": 47.3,
               "weight": 0.2
             },
             {
@@ -766,7 +766,7 @@
         0,
         0
       ],
-      "diff": -5.1,
+      "diff": -5.7,
       "winner": "right",
       "decisive": false,
       "involvesMe": false
@@ -784,15 +784,15 @@
         "dmg": 524,
         "rating": {
           "class": "medic",
-          "score": 76.1,
+          "score": 75.6,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 5.64,
-              "percentile": 74.7,
+              "raw": 5.93,
+              "percentile": 71.2,
               "weight": 0.1
             },
             {
@@ -800,7 +800,7 @@
               "label": "Healing",
               "unit": "per min",
               "raw": 1297.07,
-              "percentile": 80.0,
+              "percentile": 79.8,
               "weight": 0.3
             },
             {
@@ -808,7 +808,7 @@
               "label": "Ubers",
               "unit": "per 10 min",
               "raw": 6.03,
-              "percentile": 85.1,
+              "percentile": 85.0,
               "weight": 0.25
             },
             {
@@ -824,7 +824,7 @@
               "label": "Deaths",
               "unit": "per 10 min",
               "raw": 3.62,
-              "percentile": 52.7,
+              "percentile": 52.6,
               "weight": 0.15
             }
           ]
@@ -841,15 +841,15 @@
         "dmg": 734,
         "rating": {
           "class": "medic",
-          "score": 60.4,
+          "score": 59.3,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 4.77,
-              "percentile": 58.8,
+              "raw": 4.74,
+              "percentile": 48.8,
               "weight": 0.1
             },
             {
@@ -857,7 +857,7 @@
               "label": "Healing",
               "unit": "per min",
               "raw": 1238.19,
-              "percentile": 64.4,
+              "percentile": 64.2,
               "weight": 0.3
             },
             {
@@ -873,7 +873,7 @@
               "label": "Drops",
               "unit": "per 10 min",
               "raw": 0.3,
-              "percentile": 49.5,
+              "percentile": 49.6,
               "weight": 0.2
             },
             {
@@ -881,7 +881,7 @@
               "label": "Deaths",
               "unit": "per 10 min",
               "raw": 3.32,
-              "percentile": 58.5,
+              "percentile": 58.4,
               "weight": 0.15
             }
           ]
@@ -891,7 +891,7 @@
         0,
         0
       ],
-      "diff": 15.7,
+      "diff": 16.3,
       "winner": "left",
       "decisive": false,
       "involvesMe": false
@@ -909,23 +909,23 @@
         "dmg": 10506,
         "rating": {
           "class": "sniper",
-          "score": 50.3,
+          "score": 52.4,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_kills",
               "label": "Impact kills",
               "unit": "per 10 min",
-              "raw": 12.79,
-              "percentile": 41.2,
-              "weight": 0.3
+              "raw": 13.97,
+              "percentile": 42.6,
+              "weight": 0.25
             },
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 7.32,
-              "percentile": 41.0,
+              "raw": 1.01,
+              "percentile": 53.9,
               "weight": 0.05
             },
             {
@@ -933,31 +933,23 @@
               "label": "Medic picks",
               "unit": "per 10 min",
               "raw": 0.6,
-              "percentile": 55.3,
-              "weight": 0.15
+              "percentile": 55.2,
+              "weight": 0.1
             },
             {
               "component": "duel",
               "label": "Sniper duel",
               "unit": "per 10 min",
               "raw": 0.9,
-              "percentile": 62.6,
-              "weight": 0.2
-            },
-            {
-              "component": "headshot_share",
-              "label": "Headshot share",
-              "unit": "% of kills",
-              "raw": 67.86,
-              "percentile": 42.6,
-              "weight": 0.1
+              "percentile": 62.5,
+              "weight": 0.05
             },
             {
               "component": "deaths",
               "label": "Deaths",
               "unit": "per 10 min",
               "raw": 6.94,
-              "percentile": 54.8,
+              "percentile": 55.1,
               "weight": 0.15
             },
             {
@@ -965,7 +957,23 @@
               "label": "Damage / min",
               "unit": "per min",
               "raw": 316.92,
-              "percentile": 51.6,
+              "percentile": 51.3,
+              "weight": 0.2
+            },
+            {
+              "component": "opening",
+              "label": "Opening duels",
+              "unit": "net per 10 min",
+              "raw": 0.9,
+              "percentile": 63.1,
+              "weight": 0.15
+            },
+            {
+              "component": "untraded",
+              "label": "Kills not traded",
+              "unit": "% of kills",
+              "raw": 67.86,
+              "percentile": 48.7,
               "weight": 0.05
             }
           ]
@@ -982,23 +990,23 @@
         "dmg": 10801,
         "rating": {
           "class": "sniper",
-          "score": 33.8,
+          "score": 36.8,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_kills",
               "label": "Impact kills",
               "unit": "per 10 min",
-              "raw": 10.92,
-              "percentile": 27.0,
-              "weight": 0.3
+              "raw": 11.99,
+              "percentile": 28.1,
+              "weight": 0.25
             },
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 7.35,
-              "percentile": 41.4,
+              "raw": 2.0,
+              "percentile": 88.5,
               "weight": 0.05
             },
             {
@@ -1007,7 +1015,7 @@
               "unit": "per 10 min",
               "raw": 0.0,
               "percentile": 16.9,
-              "weight": 0.15
+              "weight": 0.1
             },
             {
               "component": "duel",
@@ -1015,22 +1023,14 @@
               "unit": "per 10 min",
               "raw": -0.9,
               "percentile": 24.3,
-              "weight": 0.2
-            },
-            {
-              "component": "headshot_share",
-              "label": "Headshot share",
-              "unit": "% of kills",
-              "raw": 74.07,
-              "percentile": 61.5,
-              "weight": 0.1
+              "weight": 0.05
             },
             {
               "component": "deaths",
               "label": "Deaths",
               "unit": "per 10 min",
               "raw": 7.24,
-              "percentile": 49.2,
+              "percentile": 49.4,
               "weight": 0.15
             },
             {
@@ -1038,7 +1038,23 @@
               "label": "Damage / min",
               "unit": "per min",
               "raw": 325.82,
-              "percentile": 54.3,
+              "percentile": 53.9,
+              "weight": 0.2
+            },
+            {
+              "component": "opening",
+              "label": "Opening duels",
+              "unit": "net per 10 min",
+              "raw": -0.9,
+              "percentile": 13.6,
+              "weight": 0.15
+            },
+            {
+              "component": "untraded",
+              "label": "Kills not traded",
+              "unit": "% of kills",
+              "raw": 66.67,
+              "percentile": 44.1,
               "weight": 0.05
             }
           ]
@@ -1048,9 +1064,9 @@
         9,
         6
       ],
-      "diff": 16.5,
+      "diff": 15.6,
       "winner": "left",
-      "decisive": true,
+      "decisive": false,
       "involvesMe": true
     },
     {
@@ -1066,23 +1082,23 @@
         "dmg": 8826,
         "rating": {
           "class": "spy",
-          "score": 41.7,
+          "score": 47.4,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_kills",
               "label": "Impact kills",
               "unit": "per 10 min",
-              "raw": 9.68,
-              "percentile": 31.8,
+              "raw": 10.84,
+              "percentile": 36.7,
               "weight": 0.35
             },
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 5.78,
-              "percentile": 38.5,
+              "raw": 0.96,
+              "percentile": 78.3,
               "weight": 0.1
             },
             {
@@ -1098,7 +1114,7 @@
               "label": "Deaths",
               "unit": "per 10 min",
               "raw": 7.84,
-              "percentile": 53.8,
+              "percentile": 53.9,
               "weight": 0.2
             },
             {
@@ -1106,7 +1122,7 @@
               "label": "Damage / min",
               "unit": "per min",
               "raw": 266.24,
-              "percentile": 42.2,
+              "percentile": 42.1,
               "weight": 0.15
             }
           ]
@@ -1123,23 +1139,23 @@
         "dmg": 7638,
         "rating": {
           "class": "spy",
-          "score": 25.4,
+          "score": 29.0,
           "minutes": 33.2,
           "parts": [
             {
               "component": "impact_kills",
               "label": "Impact kills",
               "unit": "per 10 min",
-              "raw": 6.37,
-              "percentile": 11.9,
+              "raw": 7.12,
+              "percentile": 13.6,
               "weight": 0.35
             },
             {
               "component": "impact_assists",
               "label": "Impact assists",
               "unit": "per 10 min",
-              "raw": 3.51,
-              "percentile": 12.1,
+              "raw": 0.33,
+              "percentile": 42.3,
               "weight": 0.1
             },
             {
@@ -1147,7 +1163,7 @@
               "label": "Backstabs",
               "unit": "per 10 min",
               "raw": 3.32,
-              "percentile": 19.9,
+              "percentile": 19.7,
               "weight": 0.2
             },
             {
@@ -1155,7 +1171,7 @@
               "label": "Deaths",
               "unit": "per 10 min",
               "raw": 7.54,
-              "percentile": 58.1,
+              "percentile": 58.2,
               "weight": 0.2
             },
             {
@@ -1163,7 +1179,7 @@
               "label": "Damage / min",
               "unit": "per min",
               "raw": 230.41,
-              "percentile": 29.5,
+              "percentile": 29.4,
               "weight": 0.15
             }
           ]
@@ -1173,9 +1189,9 @@
         2,
         2
       ],
-      "diff": 16.3,
+      "diff": 18.4,
       "winner": "left",
-      "decisive": false,
+      "decisive": true,
       "involvesMe": false
     }
   ],
@@ -1210,23 +1226,23 @@
       "cpc": 7,
       "rating": {
         "class": "scout",
-        "score": 61.5,
+        "score": 57.1,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_kills",
             "label": "Impact kills",
             "unit": "per 10 min",
-            "raw": 13.3,
-            "percentile": 69.3,
+            "raw": 14.16,
+            "percentile": 67.2,
             "weight": 0.35
           },
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 9.05,
-            "percentile": 62.6,
+            "raw": 2.4,
+            "percentile": 38.0,
             "weight": 0.15
           },
           {
@@ -1234,7 +1250,7 @@
             "label": "Caps",
             "unit": "per 10 min",
             "raw": 2.11,
-            "percentile": 65.8,
+            "percentile": 65.9,
             "weight": 0.1
           },
           {
@@ -1242,7 +1258,7 @@
             "label": "Deaths",
             "unit": "per 10 min",
             "raw": 7.24,
-            "percentile": 45.5,
+            "percentile": 45.3,
             "weight": 0.2
           },
           {
@@ -1287,23 +1303,23 @@
       "cpc": 3,
       "rating": {
         "class": "soldier",
-        "score": 70.5,
+        "score": 70.0,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_kills",
             "label": "Impact kills",
             "unit": "per 10 min",
-            "raw": 15.14,
-            "percentile": 79.7,
+            "raw": 16.89,
+            "percentile": 82.8,
             "weight": 0.35
           },
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 10.06,
-            "percentile": 80.6,
+            "raw": 2.63,
+            "percentile": 70.1,
             "weight": 0.15
           },
           {
@@ -1311,7 +1327,7 @@
             "label": "Caps",
             "unit": "per 10 min",
             "raw": 0.9,
-            "percentile": 84.1,
+            "percentile": 84.0,
             "weight": 0.1
           },
           {
@@ -1327,7 +1343,7 @@
             "label": "Damage / min",
             "unit": "per min",
             "raw": 360.18,
-            "percentile": 67.7,
+            "percentile": 67.6,
             "weight": 0.2
           }
         ]
@@ -1364,23 +1380,23 @@
       "cpc": 3,
       "rating": {
         "class": "pyro",
-        "score": 42.7,
+        "score": 40.5,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_kills",
             "label": "Impact kills",
             "unit": "per 10 min",
-            "raw": 6.03,
-            "percentile": 44.9,
+            "raw": 6.52,
+            "percentile": 38.9,
             "weight": 0.35
           },
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 5.7,
-            "percentile": 38.5,
+            "raw": 2.86,
+            "percentile": 37.6,
             "weight": 0.15
           },
           {
@@ -1388,7 +1404,7 @@
             "label": "Caps",
             "unit": "per 10 min",
             "raw": 0.9,
-            "percentile": 44.5,
+            "percentile": 44.6,
             "weight": 0.1
           },
           {
@@ -1396,7 +1412,7 @@
             "label": "Deaths",
             "unit": "per 10 min",
             "raw": 6.64,
-            "percentile": 36.4,
+            "percentile": 36.3,
             "weight": 0.2
           },
           {
@@ -1404,7 +1420,7 @@
             "label": "Damage / min",
             "unit": "per min",
             "raw": 168.99,
-            "percentile": 47.6,
+            "percentile": 47.7,
             "weight": 0.2
           }
         ]
@@ -1441,23 +1457,23 @@
       "cpc": 2,
       "rating": {
         "class": "demoman",
-        "score": 67.2,
+        "score": 65.7,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_kills",
             "label": "Impact kills",
             "unit": "per 10 min",
-            "raw": 13.97,
-            "percentile": 70.6,
+            "raw": 14.78,
+            "percentile": 67.6,
             "weight": 0.35
           },
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 9.8,
-            "percentile": 69.8,
+            "raw": 3.16,
+            "percentile": 67.2,
             "weight": 0.15
           },
           {
@@ -1465,7 +1481,7 @@
             "label": "Caps",
             "unit": "per 10 min",
             "raw": 0.6,
-            "percentile": 37.1,
+            "percentile": 37.2,
             "weight": 0.1
           },
           {
@@ -1481,7 +1497,7 @@
             "label": "Damage / min",
             "unit": "per min",
             "raw": 513.06,
-            "percentile": 76.2,
+            "percentile": 76.1,
             "weight": 0.2
           }
         ]
@@ -1518,23 +1534,23 @@
       "cpc": 3,
       "rating": {
         "class": "heavy",
-        "score": 62.9,
+        "score": 62.6,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_kills",
             "label": "Impact kills",
             "unit": "per 10 min",
-            "raw": 11.31,
-            "percentile": 60.5,
+            "raw": 12.7,
+            "percentile": 61.2,
             "weight": 0.35
           },
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 9.03,
-            "percentile": 62.3,
+            "raw": 3.6,
+            "percentile": 58.1,
             "weight": 0.15
           },
           {
@@ -1542,7 +1558,7 @@
             "label": "Caps",
             "unit": "per 10 min",
             "raw": 0.9,
-            "percentile": 61.8,
+            "percentile": 62.0,
             "weight": 0.1
           },
           {
@@ -1550,7 +1566,7 @@
             "label": "Deaths",
             "unit": "per 10 min",
             "raw": 5.73,
-            "percentile": 72.8,
+            "percentile": 73.0,
             "weight": 0.2
           },
           {
@@ -1558,7 +1574,7 @@
             "label": "Damage / min",
             "unit": "per min",
             "raw": 305.94,
-            "percentile": 58.4,
+            "percentile": 58.3,
             "weight": 0.2
           }
         ]
@@ -1595,23 +1611,23 @@
       "cpc": 2,
       "rating": {
         "class": "engineer",
-        "score": 28.3,
+        "score": 27.7,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_kills",
             "label": "Impact kills",
             "unit": "per 10 min",
-            "raw": 4.1,
-            "percentile": 34.8,
+            "raw": 4.63,
+            "percentile": 33.0,
             "weight": 0.35
           },
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 2.93,
-            "percentile": 14.9,
+            "raw": 1.2,
+            "percentile": 15.3,
             "weight": 0.15
           },
           {
@@ -1619,7 +1635,7 @@
             "label": "Caps",
             "unit": "per 10 min",
             "raw": 0.6,
-            "percentile": 29.2,
+            "percentile": 29.4,
             "weight": 0.1
           },
           {
@@ -1627,7 +1643,7 @@
             "label": "Deaths",
             "unit": "per 10 min",
             "raw": 4.52,
-            "percentile": 47.5,
+            "percentile": 47.3,
             "weight": 0.2
           },
           {
@@ -1672,15 +1688,15 @@
       "cpc": 3,
       "rating": {
         "class": "medic",
-        "score": 60.4,
+        "score": 59.3,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 4.77,
-            "percentile": 58.8,
+            "raw": 4.74,
+            "percentile": 48.8,
             "weight": 0.1
           },
           {
@@ -1688,7 +1704,7 @@
             "label": "Healing",
             "unit": "per min",
             "raw": 1238.19,
-            "percentile": 64.4,
+            "percentile": 64.2,
             "weight": 0.3
           },
           {
@@ -1704,7 +1720,7 @@
             "label": "Drops",
             "unit": "per 10 min",
             "raw": 0.3,
-            "percentile": 49.5,
+            "percentile": 49.6,
             "weight": 0.2
           },
           {
@@ -1712,7 +1728,7 @@
             "label": "Deaths",
             "unit": "per 10 min",
             "raw": 3.32,
-            "percentile": 58.5,
+            "percentile": 58.4,
             "weight": 0.15
           }
         ]
@@ -1749,23 +1765,23 @@
       "cpc": 2,
       "rating": {
         "class": "sniper",
-        "score": 33.8,
+        "score": 36.8,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_kills",
             "label": "Impact kills",
             "unit": "per 10 min",
-            "raw": 10.92,
-            "percentile": 27.0,
-            "weight": 0.3
+            "raw": 11.99,
+            "percentile": 28.1,
+            "weight": 0.25
           },
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 7.35,
-            "percentile": 41.4,
+            "raw": 2.0,
+            "percentile": 88.5,
             "weight": 0.05
           },
           {
@@ -1774,7 +1790,7 @@
             "unit": "per 10 min",
             "raw": 0.0,
             "percentile": 16.9,
-            "weight": 0.15
+            "weight": 0.1
           },
           {
             "component": "duel",
@@ -1782,22 +1798,14 @@
             "unit": "per 10 min",
             "raw": -0.9,
             "percentile": 24.3,
-            "weight": 0.2
-          },
-          {
-            "component": "headshot_share",
-            "label": "Headshot share",
-            "unit": "% of kills",
-            "raw": 74.07,
-            "percentile": 61.5,
-            "weight": 0.1
+            "weight": 0.05
           },
           {
             "component": "deaths",
             "label": "Deaths",
             "unit": "per 10 min",
             "raw": 7.24,
-            "percentile": 49.2,
+            "percentile": 49.4,
             "weight": 0.15
           },
           {
@@ -1805,7 +1813,23 @@
             "label": "Damage / min",
             "unit": "per min",
             "raw": 325.82,
-            "percentile": 54.3,
+            "percentile": 53.9,
+            "weight": 0.2
+          },
+          {
+            "component": "opening",
+            "label": "Opening duels",
+            "unit": "net per 10 min",
+            "raw": -0.9,
+            "percentile": 13.6,
+            "weight": 0.15
+          },
+          {
+            "component": "untraded",
+            "label": "Kills not traded",
+            "unit": "% of kills",
+            "raw": 66.67,
+            "percentile": 44.1,
             "weight": 0.05
           }
         ]
@@ -1842,23 +1866,23 @@
       "cpc": 2,
       "rating": {
         "class": "spy",
-        "score": 25.4,
+        "score": 29.0,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_kills",
             "label": "Impact kills",
             "unit": "per 10 min",
-            "raw": 6.37,
-            "percentile": 11.9,
+            "raw": 7.12,
+            "percentile": 13.6,
             "weight": 0.35
           },
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 3.51,
-            "percentile": 12.1,
+            "raw": 0.33,
+            "percentile": 42.3,
             "weight": 0.1
           },
           {
@@ -1866,7 +1890,7 @@
             "label": "Backstabs",
             "unit": "per 10 min",
             "raw": 3.32,
-            "percentile": 19.9,
+            "percentile": 19.7,
             "weight": 0.2
           },
           {
@@ -1874,7 +1898,7 @@
             "label": "Deaths",
             "unit": "per 10 min",
             "raw": 7.54,
-            "percentile": 58.1,
+            "percentile": 58.2,
             "weight": 0.2
           },
           {
@@ -1882,7 +1906,7 @@
             "label": "Damage / min",
             "unit": "per min",
             "raw": 230.41,
-            "percentile": 29.5,
+            "percentile": 29.4,
             "weight": 0.15
           }
         ]
@@ -1919,23 +1943,23 @@
       "cpc": 5,
       "rating": {
         "class": "scout",
-        "score": 28.2,
+        "score": 30.9,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_kills",
             "label": "Impact kills",
             "unit": "per 10 min",
-            "raw": 7.48,
-            "percentile": 27.3,
+            "raw": 8.66,
+            "percentile": 30.1,
             "weight": 0.35
           },
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 5.79,
-            "percentile": 26.4,
+            "raw": 2.41,
+            "percentile": 38.2,
             "weight": 0.15
           },
           {
@@ -1943,7 +1967,7 @@
             "label": "Caps",
             "unit": "per 10 min",
             "raw": 1.51,
-            "percentile": 45.6,
+            "percentile": 45.8,
             "weight": 0.1
           },
           {
@@ -1996,23 +2020,23 @@
       "cpc": 2,
       "rating": {
         "class": "soldier",
-        "score": 76.0,
+        "score": 73.3,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_kills",
             "label": "Impact kills",
             "unit": "per 10 min",
-            "raw": 14.87,
-            "percentile": 77.9,
+            "raw": 16.2,
+            "percentile": 78.8,
             "weight": 0.35
           },
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 9.62,
-            "percentile": 77.3,
+            "raw": 2.26,
+            "percentile": 57.8,
             "weight": 0.15
           },
           {
@@ -2036,7 +2060,7 @@
             "label": "Damage / min",
             "unit": "per min",
             "raw": 403.38,
-            "percentile": 85.7,
+            "percentile": 85.6,
             "weight": 0.2
           }
         ]
@@ -2073,23 +2097,23 @@
       "cpc": 6,
       "rating": {
         "class": "pyro",
-        "score": 40.8,
+        "score": 42.9,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_kills",
             "label": "Impact kills",
             "unit": "per 10 min",
-            "raw": 4.13,
-            "percentile": 19.3,
+            "raw": 4.59,
+            "percentile": 17.4,
             "weight": 0.35
           },
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 4.86,
-            "percentile": 26.4,
+            "raw": 3.14,
+            "percentile": 44.5,
             "weight": 0.15
           },
           {
@@ -2150,23 +2174,23 @@
       "cpc": 3,
       "rating": {
         "class": "demoman",
-        "score": 67.5,
+        "score": 64.6,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_kills",
             "label": "Impact kills",
             "unit": "per 10 min",
-            "raw": 15.54,
-            "percentile": 78.6,
+            "raw": 17.44,
+            "percentile": 80.4,
             "weight": 0.35
           },
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 9.77,
-            "percentile": 69.0,
+            "raw": 2.38,
+            "percentile": 46.1,
             "weight": 0.15
           },
           {
@@ -2174,7 +2198,7 @@
             "label": "Caps",
             "unit": "per 10 min",
             "raw": 0.9,
-            "percentile": 48.5,
+            "percentile": 48.6,
             "weight": 0.1
           },
           {
@@ -2190,7 +2214,7 @@
             "label": "Damage / min",
             "unit": "per min",
             "raw": 472.34,
-            "percentile": 62.4,
+            "percentile": 62.3,
             "weight": 0.2
           }
         ]
@@ -2227,23 +2251,23 @@
       "cpc": 1,
       "rating": {
         "class": "heavy",
-        "score": 42.1,
+        "score": 41.0,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_kills",
             "label": "Impact kills",
             "unit": "per 10 min",
-            "raw": 9.98,
-            "percentile": 48.7,
+            "raw": 10.84,
+            "percentile": 46.3,
             "weight": 0.35
           },
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 7.5,
-            "percentile": 42.9,
+            "raw": 2.84,
+            "percentile": 41.1,
             "weight": 0.15
           },
           {
@@ -2251,7 +2275,7 @@
             "label": "Caps",
             "unit": "per 10 min",
             "raw": 0.3,
-            "percentile": 33.0,
+            "percentile": 33.1,
             "weight": 0.1
           },
           {
@@ -2304,23 +2328,23 @@
       "cpc": 1,
       "rating": {
         "class": "engineer",
-        "score": 23.2,
+        "score": 22.0,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_kills",
             "label": "Impact kills",
             "unit": "per 10 min",
-            "raw": 3.86,
-            "percentile": 31.8,
+            "raw": 4.22,
+            "percentile": 27.6,
             "weight": 0.35
           },
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 2.99,
-            "percentile": 15.8,
+            "raw": 1.33,
+            "percentile": 17.6,
             "weight": 0.15
           },
           {
@@ -2328,7 +2352,7 @@
             "label": "Caps",
             "unit": "per 10 min",
             "raw": 0.3,
-            "percentile": 18.0,
+            "percentile": 18.2,
             "weight": 0.1
           },
           {
@@ -2336,7 +2360,7 @@
             "label": "Deaths",
             "unit": "per 10 min",
             "raw": 6.33,
-            "percentile": 24.0,
+            "percentile": 23.9,
             "weight": 0.2
           },
           {
@@ -2344,7 +2368,7 @@
             "label": "Damage / min",
             "unit": "per min",
             "raw": 119.4,
-            "percentile": 15.3,
+            "percentile": 15.4,
             "weight": 0.2
           }
         ]
@@ -2381,15 +2405,15 @@
       "cpc": 3,
       "rating": {
         "class": "medic",
-        "score": 76.1,
+        "score": 75.6,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 5.64,
-            "percentile": 74.7,
+            "raw": 5.93,
+            "percentile": 71.2,
             "weight": 0.1
           },
           {
@@ -2397,7 +2421,7 @@
             "label": "Healing",
             "unit": "per min",
             "raw": 1297.07,
-            "percentile": 80.0,
+            "percentile": 79.8,
             "weight": 0.3
           },
           {
@@ -2405,7 +2429,7 @@
             "label": "Ubers",
             "unit": "per 10 min",
             "raw": 6.03,
-            "percentile": 85.1,
+            "percentile": 85.0,
             "weight": 0.25
           },
           {
@@ -2421,7 +2445,7 @@
             "label": "Deaths",
             "unit": "per 10 min",
             "raw": 3.62,
-            "percentile": 52.7,
+            "percentile": 52.6,
             "weight": 0.15
           }
         ]
@@ -2458,23 +2482,23 @@
       "cpc": 2,
       "rating": {
         "class": "sniper",
-        "score": 50.3,
+        "score": 52.4,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_kills",
             "label": "Impact kills",
             "unit": "per 10 min",
-            "raw": 12.79,
-            "percentile": 41.2,
-            "weight": 0.3
+            "raw": 13.97,
+            "percentile": 42.6,
+            "weight": 0.25
           },
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 7.32,
-            "percentile": 41.0,
+            "raw": 1.01,
+            "percentile": 53.9,
             "weight": 0.05
           },
           {
@@ -2482,31 +2506,23 @@
             "label": "Medic picks",
             "unit": "per 10 min",
             "raw": 0.6,
-            "percentile": 55.3,
-            "weight": 0.15
+            "percentile": 55.2,
+            "weight": 0.1
           },
           {
             "component": "duel",
             "label": "Sniper duel",
             "unit": "per 10 min",
             "raw": 0.9,
-            "percentile": 62.6,
-            "weight": 0.2
-          },
-          {
-            "component": "headshot_share",
-            "label": "Headshot share",
-            "unit": "% of kills",
-            "raw": 67.86,
-            "percentile": 42.6,
-            "weight": 0.1
+            "percentile": 62.5,
+            "weight": 0.05
           },
           {
             "component": "deaths",
             "label": "Deaths",
             "unit": "per 10 min",
             "raw": 6.94,
-            "percentile": 54.8,
+            "percentile": 55.1,
             "weight": 0.15
           },
           {
@@ -2514,7 +2530,23 @@
             "label": "Damage / min",
             "unit": "per min",
             "raw": 316.92,
-            "percentile": 51.6,
+            "percentile": 51.3,
+            "weight": 0.2
+          },
+          {
+            "component": "opening",
+            "label": "Opening duels",
+            "unit": "net per 10 min",
+            "raw": 0.9,
+            "percentile": 63.1,
+            "weight": 0.15
+          },
+          {
+            "component": "untraded",
+            "label": "Kills not traded",
+            "unit": "% of kills",
+            "raw": 67.86,
+            "percentile": 48.7,
             "weight": 0.05
           }
         ]
@@ -2551,23 +2583,23 @@
       "cpc": 2,
       "rating": {
         "class": "spy",
-        "score": 41.7,
+        "score": 47.4,
         "minutes": 33.2,
         "parts": [
           {
             "component": "impact_kills",
             "label": "Impact kills",
             "unit": "per 10 min",
-            "raw": 9.68,
-            "percentile": 31.8,
+            "raw": 10.84,
+            "percentile": 36.7,
             "weight": 0.35
           },
           {
             "component": "impact_assists",
             "label": "Impact assists",
             "unit": "per 10 min",
-            "raw": 5.78,
-            "percentile": 38.5,
+            "raw": 0.96,
+            "percentile": 78.3,
             "weight": 0.1
           },
           {
@@ -2583,7 +2615,7 @@
             "label": "Deaths",
             "unit": "per 10 min",
             "raw": 7.84,
-            "percentile": 53.8,
+            "percentile": 53.9,
             "weight": 0.2
           },
           {
@@ -2591,7 +2623,7 @@
             "label": "Damage / min",
             "unit": "per min",
             "raw": 266.24,
-            "percentile": 42.2,
+            "percentile": 42.1,
             "weight": 0.15
           }
         ]
@@ -2659,6 +2691,36 @@
           }
         },
         {
+          "atS": 120,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "kingVON:GATEWAY",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "sniper · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 21759
+          }
+        },
+        {
+          "atS": 127,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "boSe. #NOMODS #FULLVANILLA",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "engineer · wrangler_kill",
+          "jump": {
+            "demoId": 53,
+            "tick": 22226
+          }
+        },
+        {
           "atS": 133,
           "kind": "charge",
           "team": "Blue",
@@ -2689,6 +2751,21 @@
           }
         },
         {
+          "atS": 156,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "kingVON:GATEWAY",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "sniper · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 24159
+          }
+        },
+        {
           "atS": 175,
           "kind": "pointcap",
           "team": "Blue",
@@ -2701,6 +2778,21 @@
           "jump": {
             "demoId": 53,
             "tick": 25426
+          }
+        },
+        {
+          "atS": 222,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "kingVON:GATEWAY",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "sniper · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 28559
           }
         },
         {
@@ -2734,6 +2826,21 @@
           }
         },
         {
+          "atS": 248,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "kingVON:GATEWAY",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "sniper · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 30292
+          }
+        },
+        {
           "atS": 257,
           "kind": "pointcap",
           "team": "Blue",
@@ -2746,6 +2853,36 @@
           "jump": {
             "demoId": 53,
             "tick": 30892
+          }
+        },
+        {
+          "atS": 277,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "kingVON:GATEWAY",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "sniper · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 32226
+          }
+        },
+        {
+          "atS": 291,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "K7",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "demoman · iron_bomber",
+          "jump": {
+            "demoId": 53,
+            "tick": 33159
           }
         },
         {
@@ -2822,6 +2959,21 @@
             "demoId": 53,
             "tick": 36959
           }
+        },
+        {
+          "atS": 348,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "zen",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "soldier · quake_rl",
+          "jump": {
+            "demoId": 53,
+            "tick": 36959
+          }
         }
       ],
       "coloursSwapped": false,
@@ -2874,6 +3026,21 @@
           }
         },
         {
+          "atS": 78,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "zen",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "soldier · quake_rl",
+          "jump": {
+            "demoId": 53,
+            "tick": 43159
+          }
+        },
+        {
           "atS": 82,
           "kind": "pointcap",
           "team": "Red",
@@ -2919,6 +3086,51 @@
           }
         },
         {
+          "atS": 153,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "Spenga",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "spy · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 48159
+          }
+        },
+        {
+          "atS": 174,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "kingVON:GATEWAY",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "sniper · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 49559
+          }
+        },
+        {
+          "atS": 177,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "zen",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "soldier · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 49759
+          }
+        },
+        {
           "atS": 183,
           "kind": "medic_death",
           "team": "Red",
@@ -2931,6 +3143,21 @@
           "jump": {
             "demoId": 53,
             "tick": 50159
+          }
+        },
+        {
+          "atS": 187,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "SchmitShot",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "scout · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 50426
           }
         },
         {
@@ -2949,6 +3176,21 @@
           }
         },
         {
+          "atS": 200,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "zen",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "soldier · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 51292
+          }
+        },
+        {
           "atS": 202,
           "kind": "killstreak",
           "team": null,
@@ -2961,6 +3203,21 @@
           "jump": {
             "demoId": 53,
             "tick": 51443
+          }
+        },
+        {
+          "atS": 208,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "kingVON:GATEWAY",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "sniper · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 51826
           }
         },
         {
@@ -2979,6 +3236,36 @@
           }
         },
         {
+          "atS": 228,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "SchmitShot",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "scout · pep_pistol",
+          "jump": {
+            "demoId": 53,
+            "tick": 53159
+          }
+        },
+        {
+          "atS": 273,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "zen",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "soldier · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 56159
+          }
+        },
+        {
           "atS": 274,
           "kind": "charge",
           "team": "Blue",
@@ -2991,6 +3278,36 @@
           "jump": {
             "demoId": 53,
             "tick": 56226
+          }
+        },
+        {
+          "atS": 283,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "阳",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "heavy · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 56826
+          }
+        },
+        {
+          "atS": 298,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "Spenga",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "spy · backstab · spy_cicle",
+          "jump": {
+            "demoId": 53,
+            "tick": 57826
           }
         },
         {
@@ -3048,6 +3365,21 @@
           "medigun": null,
           "point": null,
           "value": null,
+          "jump": {
+            "demoId": 53,
+            "tick": 61026
+          }
+        },
+        {
+          "atS": 346,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "SchmitShot",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "scout · force_a_nature",
           "jump": {
             "demoId": 53,
             "tick": 61026
@@ -3134,6 +3466,36 @@
           }
         },
         {
+          "atS": 83,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "kingVON:GATEWAY",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "sniper · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 77292
+          }
+        },
+        {
+          "atS": 126,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "kingVON:GATEWAY",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "sniper · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 80159
+          }
+        },
+        {
           "atS": 130,
           "kind": "charge",
           "team": "Red",
@@ -3194,6 +3556,36 @@
           }
         },
         {
+          "atS": 187,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "nepal",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "pyro · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 84226
+          }
+        },
+        {
+          "atS": 190,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "zen",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "soldier · quake_rl",
+          "jump": {
+            "demoId": 53,
+            "tick": 84426
+          }
+        },
+        {
           "atS": 217,
           "kind": "charge",
           "team": "Blue",
@@ -3206,6 +3598,21 @@
           "jump": {
             "demoId": 53,
             "tick": 86226
+          }
+        },
+        {
+          "atS": 226,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "Sossok",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "medic · ubersaw",
+          "jump": {
+            "demoId": 53,
+            "tick": 86826
           }
         },
         {
@@ -3269,6 +3676,36 @@
           }
         },
         {
+          "atS": 290,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "SchmitShot",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "scout · scattergun",
+          "jump": {
+            "demoId": 53,
+            "tick": 91092
+          }
+        },
+        {
+          "atS": 333,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "boSe. #NOMODS #FULLVANILLA",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "engineer · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 93959
+          }
+        },
+        {
           "atS": 338,
           "kind": "medic_death",
           "team": "Blue",
@@ -3284,6 +3721,51 @@
           }
         },
         {
+          "atS": 342,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "SchmitShot",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "scout · pep_pistol",
+          "jump": {
+            "demoId": 53,
+            "tick": 94559
+          }
+        },
+        {
+          "atS": 386,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "nepal",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "pyro · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 97492
+          }
+        },
+        {
+          "atS": 394,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "kingVON:GATEWAY",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "sniper · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 98026
+          }
+        },
+        {
           "atS": 423,
           "kind": "charge",
           "team": "Red",
@@ -3293,6 +3775,21 @@
           "medigun": "medigun",
           "point": null,
           "value": null,
+          "jump": {
+            "demoId": 53,
+            "tick": 99959
+          }
+        },
+        {
+          "atS": 423,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "K7",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "demoman · tf_projectile_pipe_remote",
           "jump": {
             "demoId": 53,
             "tick": 99959
@@ -3329,6 +3826,21 @@
           }
         },
         {
+          "atS": 464,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "zen",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "soldier · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 102692
+          }
+        },
+        {
           "atS": 476,
           "kind": "pointcap",
           "team": "Red",
@@ -3359,6 +3871,21 @@
           }
         },
         {
+          "atS": 516,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "SchmitShot",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "scout · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 106159
+          }
+        },
+        {
           "atS": 526,
           "kind": "charge",
           "team": "Red",
@@ -3371,6 +3898,21 @@
           "jump": {
             "demoId": 53,
             "tick": 106826
+          }
+        },
+        {
+          "atS": 527,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "Spenga",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "spy · backstab · spy_cicle",
+          "jump": {
+            "demoId": 53,
+            "tick": 106892
           }
         },
         {
@@ -3389,6 +3931,21 @@
           }
         },
         {
+          "atS": 557,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "nepal",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "pyro · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 108892
+          }
+        },
+        {
           "atS": 566,
           "kind": "medic_death",
           "team": "Red",
@@ -3401,6 +3958,36 @@
           "jump": {
             "demoId": 53,
             "tick": 109492
+          }
+        },
+        {
+          "atS": 573,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "kingVON:GATEWAY",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "sniper · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 109959
+          }
+        },
+        {
+          "atS": 596,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "kingVON:GATEWAY",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "sniper · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 111492
           }
         },
         {
@@ -3449,6 +4036,36 @@
           }
         },
         {
+          "atS": 622,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "medic · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 113226
+          }
+        },
+        {
+          "atS": 633,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "kingVON:GATEWAY",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "sniper · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 113959
+          }
+        },
+        {
           "atS": 636,
           "kind": "medic_death",
           "team": "Red",
@@ -3476,6 +4093,21 @@
           "jump": {
             "demoId": 53,
             "tick": 115626
+          }
+        },
+        {
+          "atS": 667,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "SchmitShot",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "scout · pep_pistol",
+          "jump": {
+            "demoId": 53,
+            "tick": 116226
           }
         },
         {
@@ -3589,6 +4221,36 @@
           }
         },
         {
+          "atS": 82,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "boSe. #NOMODS #FULLVANILLA",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "engineer · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 126492
+          }
+        },
+        {
+          "atS": 118,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "kingVON:GATEWAY",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "sniper · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 128892
+          }
+        },
+        {
           "atS": 137,
           "kind": "charge",
           "team": "Blue",
@@ -3616,6 +4278,21 @@
           "jump": {
             "demoId": 53,
             "tick": 130159
+          }
+        },
+        {
+          "atS": 148,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "K7",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "demoman · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 130892
           }
         },
         {
@@ -3649,6 +4326,21 @@
           }
         },
         {
+          "atS": 236,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "zen",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "soldier · quake_rl",
+          "jump": {
+            "demoId": 53,
+            "tick": 136759
+          }
+        },
+        {
           "atS": 256,
           "kind": "medic_death",
           "team": "Blue",
@@ -3661,6 +4353,21 @@
           "jump": {
             "demoId": 53,
             "tick": 138092
+          }
+        },
+        {
+          "atS": 262,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "Spenga",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "spy · backstab · spy_cicle",
+          "jump": {
+            "demoId": 53,
+            "tick": 138492
           }
         },
         {
@@ -3679,6 +4386,21 @@
           }
         },
         {
+          "atS": 293,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "nepal",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "pyro · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 140559
+          }
+        },
+        {
           "atS": 301,
           "kind": "medic_death",
           "team": "Blue",
@@ -3688,6 +4410,21 @@
           "medigun": null,
           "point": null,
           "value": null,
+          "jump": {
+            "demoId": 53,
+            "tick": 141092
+          }
+        },
+        {
+          "atS": 301,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "Sossok",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "medic · sniperrifle",
           "jump": {
             "demoId": 53,
             "tick": 141092
@@ -3706,6 +4443,36 @@
           "jump": {
             "demoId": 53,
             "tick": 141292
+          }
+        },
+        {
+          "atS": 350,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "K7",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "demoman · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 144359
+          }
+        },
+        {
+          "atS": 375,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "kingVON:GATEWAY",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "sniper · headshot · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 146026
           }
         },
         {
@@ -3784,6 +4551,21 @@
           }
         },
         {
+          "atS": 503,
+          "kind": "my_kill",
+          "team": "Blue",
+          "player": "nepal",
+          "killer": "flashy",
+          "killerIsMe": true,
+          "medigun": null,
+          "point": null,
+          "value": "pyro · sniperrifle",
+          "jump": {
+            "demoId": 53,
+            "tick": 154559
+          }
+        },
+        {
           "atS": 532,
           "kind": "charge",
           "team": "Red",
@@ -3796,6 +4578,21 @@
           "jump": {
             "demoId": 53,
             "tick": 156492
+          }
+        },
+        {
+          "atS": 544,
+          "kind": "my_death",
+          "team": "Red",
+          "player": "flashy",
+          "killer": "Spenga",
+          "killerIsMe": false,
+          "medigun": null,
+          "point": null,
+          "value": "spy · backstab · spy_cicle",
+          "jump": {
+            "demoId": 53,
+            "tick": 157292
           }
         },
         {
@@ -3881,7 +4678,7 @@
       }
     }
   ],
-  "modelVersion": "v1",
+  "modelVersion": "v2",
   "rated": true,
   "format": "highlander",
   "league": null,
