@@ -1,4 +1,4 @@
-# HL Performance Rating System — Plan v1.7
+# HL Performance Rating System — Plan v1.8
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
 **Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
@@ -476,6 +476,7 @@ POV demos only contain what your client received, so phase 2 is you-only for loc
 | **M7** | more.tf-style match views: kill map, heatmaps, damage and kill spread, timeline, play-by-play (§9) | **done** |
 | **M8** | Maps per round: resolve combined logs to the map each round was played on (§10) | **done** |
 | **M9** | Rating update from Highlander theory: game state, pick context, uber timing, per-map values (§11, for deliberation) | |
+| **M10** | Sniper rating v3 and v4 from HLTV's lessons: death context, Fight KAST, situation-valued kills, map and side baselines, fight swing (§12) | |
 | **v2** | Deep demo parse: aim and viewangles, engagement ranges (positions largely come from M6 now) | |
 
 M1 acceptance: every Highlander log on the account stored, classified, deduplicated, and rebuildable from raw blobs with no refetching.
@@ -1028,3 +1029,187 @@ A Premiership Sniper and a lobby Sniper weigh the same in the pool. Proposals:
 3. Per map: which maps make the Sniper most and least important? Where is the defending Engineer the whole defence?
 4. An uber force: is it credit to the player who dealt the damage, to the whole team, or to nobody?
 5. On defence, is a Sniper kill that delays a cap worth more than the same kill during a hold that breaks anyway?
+
+---
+
+## 12. Lessons from the HLTV rating: the Sniper rating v3 plan
+
+Other classes keep basic weights; the Sniper is the focus. This section is the write-up of what HLTV's rating does, what carries over to a Highlander Sniper, and the build plan, step by step.
+
+Sources: [Introducing Rating 2.0](https://www.hltv.org/news/20695/introducing-rating-20), [Introducing Rating 2.1](https://www.hltv.org/news/40051/introducing-rating-21), [Introducing Rating 3.0](https://www.hltv.org/news/42485/introducing-rating-30), [Rating 3.0 adjustments go live](https://www.hltv.org/news/43047/rating-30-adjustments-go-live) (all HLTV), [Reverse engineering the HLTV 2.0 rating](https://flashed.gg/posts/reverse-engineering-hltv-rating/) (flashed.gg), and [How Rating 3.0 works](https://escorenews.com/en/csgo/article/71475-how-hltv-rating-3-0-formula-actually-works-round-swing-and-eco-adjustment-explained) (Escorenews). Read September 2026.
+
+### How HLTV's rating works
+
+**Rating 2.0 (2017)** has five sub-ratings, each computed separately for CT and T. Each is scaled by how many standard deviations the player sits from the expected value for that side, so 1.00 is average.
+
+| Sub-rating | What it measures |
+|---|---|
+| Kills | Kills per round. An assisted kill where the killer did under 60 damage is worth less. |
+| Survival | Not dying. **A death a teammate trades counts less.** |
+| KAST | Share of rounds with a Kill, an Assist, Survival, or a Trade of your death. It measures consistency. |
+| Impact | Opening kills, multi-kills and clutches won (1 v several). |
+| Damage | Average damage per round. |
+
+HLTV keeps the formula private. A reverse-engineered fit gives deaths per round the largest weight of any term (−0.53), ahead of kills per round (+0.36) and impact (+0.24).
+
+**Rating 3.0 (CS2, 2025)** keeps kills, damage, survival and KAST, and adds two ideas:
+- **Economy adjustment.** A kill is worth the chance of winning that duel with that equipment. A rifle killing a pistol is worth about 0.54 of a kill, and an even rifle duel about 1.1. HLTV found only 45% of duels are between equal equipment, so "eco frags" had been inflating players. AWPers lost a little, because they win most duels anyway.
+- **Round Swing.** Each kill's change to the team's chance of winning the round, given the map, side, economy, players alive and bomb state. Credit goes to the final blow, damage share, flash assists, and trades within 5 s.
+
+**HLTV corrected 3.0 after launch:**
+- Round Swing was about 40% of the rating and too dominant. It was cut to 33%, and kills went from 12% to 25%.
+- Swing left over at the end of a round was split more widely: clutch winners, players who swung the round with kills, defusers and survivors.
+- The stated aim was **a 60–40 balance of output (volume) against impact**.
+- HLTV lists its own limits. Round Swing undervalues multi-kills, because the fifth kill of a won round changes little, and it slightly favours passive players, so it is paired with a multi-kill rating.
+
+### What carries over to a Highlander Sniper
+
+| HLTV idea | Highlander version | Status here |
+|---|---|---|
+| Traded deaths count less | A Sniper death your team trades within 3 s opened something. A forced entry peek on Vigil second that your team converts is not a wasted death. | **Step 1** |
+| KAST | Rounds are minutes long, so per round is meaningless. Per **fight** instead: the share of fights you were alive for where you got a kill or assist, survived, or were traded. | **Step 2** |
+| Economy adjustment | TF2 has no economy. The equivalent is **player numbers and ubers**: a kill in a 9 v 5 clean-up is TF2's eco frag (39% of your kills are clean-ups), and a kill at even numbers or on a charged combo is worth more. | **Step 3** |
+| Side-specific expectations | Compare attack Snipers with attack Snipers, per map. Defending Vigil is not the same job as pushing it. | **Step 4** |
+| Round Swing | §11 H: win chance per **fight**, not per round. | **Step 5**, capped at about a third |
+| 60–40 output against impact | v2 is already about 65–35: kills, DPM, deaths and assists against opening duels, Medic picks, the duel and untraded kills. | Keep checking at every step |
+| Transparent sub-ratings | Every component shows raw value, percentile and weight. | Done since M3 |
+| Validated against outcomes | HLTV uses case studies. Model v2 used 693 paired matches and who won them. | **Step 0** makes it a tool |
+
+**What does not carry over:**
+- **Clutches.** A Highlander round rarely ends 1 v several, because players respawn.
+- **Multi-kills in the CS sense.** Killstreaks exist, but a Sniper's streak across two lives does not mean the same thing.
+
+The equivalents are already covered: opening duels, picks into a ready charge, and kill streaks shown in the play-by-play.
+
+### The plan
+
+Each step ends in the same place: re-rate, run the validation from step 0, and look at the grand final (log 3863290) and your career numbers. A step only changes the model if it holds or improves accuracy, or if the players agree it should even when accuracy is flat, as DPM did in v2.
+
+#### Step 0. A validation command
+
+The win test from v2 was a script in a scratch folder. Make it permanent so every later step is measured the same way.
+
+1. `hl validate sniper` in `hl-cli`. It pairs the two Snipers of every decided match, and for each component reports how often the team with the better Sniper won.
+2. For the current weights, a candidate weights file (`--weights path.toml`) and a fitted logistic model, it reports how often the rating picks the winner.
+3. **Out-of-sample check.** Fit on matches before a date and test on the ones after (by default, everything before Season 34 against Season 34 on). A weighting that only wins in-sample is flagged.
+4. Output as a table and as `--json`, so results can go into this plan as they are.
+
+**Done when:** it reproduces v2's numbers (v1 67.5%, v2 71.4%, 679 to 693 matches).
+
+#### Step 1. Death context (HLTV's traded-death rule)
+
+**Measure.** In `fights.rs`, label every death:
+- **traded:** your team killed your killer, or anyone on their team, within 3 s;
+- **killer group:** the enemy Sniper, a flanker (Scout, Spy, Soldier) or the combo (Medic, Demoman, Heavy, Pyro);
+- **opening:** you were the fight's first death (already counted);
+- **stationary:** you died within 300 units of where you got a kill in the same life, after two or more kills from there. That's the "change position after a kill or two" rule from the Sniper theory (§11);
+- **during own uber** (already counted).
+
+**Store.** Migration 0010 adds `traded_deaths`, `deaths_to_sniper`, `deaths_to_flank`, `deaths_to_combo` and `stationary_deaths` to `fight_stat`. The fights pass goes to version 2 so every log is re-read once.
+
+**Rate.** Try three versions of the Deaths component in `hl validate`:
+- all deaths (v2);
+- untraded deaths only;
+- untraded deaths plus half of traded ones.
+
+Keep the one that validates best. If they tie, keep the players' view that a traded entry death is not a failure.
+
+**Show:**
+- **Play-by-play:** each of your deaths gets one tag: *traded*, *to their Sniper*, *to a flanker*, or *stationary*.
+- **Fights tab:** new columns for traded deaths and deaths by killer group.
+- **Profile Fights card:** new lines for the share of deaths traded, deaths to flankers per 10 min (lower is better), and stationary deaths per 10 min (lower is better).
+
+**Tests:**
+- a traded death at 2 s and an untraded one at 4 s;
+- a Spy backstab counting as a flank death;
+- a stationary death after two kills from one spot, and none after moving 400 units.
+
+#### Step 2. Fight KAST
+
+**Measure.** For each fight (the 10 s gap rule), note who was alive at its start or spawned into it. For each of those players, the fight counts if they:
+- got a kill or an assist in it;
+- survived it;
+- or died and were traded.
+
+**Store.** `fights_present` and `fights_kast` in `fight_stat` (same migration and fights version as step 1).
+
+**Rate.** Add a Sniper component, "Fight KAST" (% of fights). Validate at 5% and 10%, taking weight from impact kills, which it overlaps least with.
+
+**Show:** a Fight KAST column in the Fights tab and in the profile's By season table.
+
+**Tests:** a player who survived a fight without a kill counts; one who died untraded without a kill does not; one who respawned into a fight counts from their spawn.
+
+**Open question for function:** does a Sniper who never peeks and survives every fight deserve KAST credit? HLTV says yes (survival counts). If that rewards passivity here, count survival only in fights where the Sniper fired a shot (`shot_fired`).
+
+#### Step 3. Kills valued by the situation (TF2's economy adjustment)
+
+**Measure first.** From the game state (§11 A), for every kill, take the players alive on each side just before it, and whether the victim's team held a ready charge. Then, per state (numbers difference −4 to +4, charge ready or not), measure how often the killing team won the fight, before and after the kill. The rise is what a kill is worth in that state.
+
+**Model.** A situation factor multiplies each kill's victim value:
+- factor = the rise in fight-win chance for a kill in that state ÷ the rise at even numbers;
+- so even numbers is 1.0, a clean-up at +4 comes out below 1 and a kill while down comes out above;
+- a charge-ready victim gets its own measured factor on top.
+
+The table lives in `weights.default.toml` under `[situation]`, generated by a command (`hl situation --write`) so it can be refreshed as data grows.
+
+**Code:**
+- `hl-rating::impact` takes the factor per kill.
+- `kills.rs` passes the numbers and charge state, from a `GameState` built during the rating pass. The pass then parses raw logs: about 5 ms each, 4 s for all.
+- Or the fights pass stores a per-kill factor so rating stays fast. **Recommended:** store it, in `kill_event` via a new column `situation REAL`, written by the fights pass.
+
+**Validate.** Impact kills with and without the factor. If the factor only shrinks clean-ups and accuracy holds, keep it. It answers "39% of my kills were clean-ups" the way HLTV answers eco frags.
+
+**Guard.** The factor is clamped to 0.5–1.5, so no single kill is worth three kills.
+
+#### Step 4. Map and side baselines
+
+**Why.** A 50th-percentile Vigil defence and a 50th-percentile Upward attack are different games. This covers function's "a Sniper pick on Upward is worth more than on Vigil" without guessing per-map values.
+
+**Measure per side.** Split each Sniper performance into its attack and defence halves on attack/defence maps. Payload and A/D control points are split by the side worn each round (already known per kill). Kills, deaths and damage per round come from the raw log. KOTH has no side and stays whole.
+
+**Baseline.** Percentile pools per (map, side), and only where a pool has 150 performances or more. Otherwise fall back to (map), then (all maps). The fallback used is shown on each rating.
+
+**Rate.** A performance's percentile on each component is the time-weighted average of its halves' percentiles against their own pools.
+
+**Validate.** Accuracy should hold. The check that matters here is fairness: your average rating by map should flatten, with Vigil defence no longer your lowest just because it is the hardest job.
+
+**Show.** The rating table on the match page names the pool ("vs Vigil defence Snipers, 212 games").
+
+#### Step 5. Fight swing (HLTV's Round Swing, per fight)
+
+**Model.**
+- Fit, once and stored, a logistic model of **who wins the fight** from the state: players alive per side, both charge states, and which side holds the point.
+- A fight's winner is the side with more kills in it; a tie goes to whoever takes the next cap.
+- A kill's swing is the change in the killing side's win chance.
+
+**Credit, following HLTV's corrected split:**
+- 1 share to the killer;
+- 1 share to damage dealers on the victim in the 5 s before, by damage;
+- 1 share to a trade: the kill that avenges a death passes some swing back to the traded player.
+
+**Component.** Sniper "Fight swing", per 10 min. Weight about 15%, never over a third of the rating: HLTV's 40% was too much. Take it from impact kills and opening duels, which it partly replaces.
+
+**Validate.** Out-of-sample only; this is the easiest step to overfit. It ships only if it beats step 4 out of sample.
+
+**Order note.** Step 3's situation factor is a simple version of this. If step 5 lands, step 3's factor can be dropped from impact kills so the same thing is not counted twice.
+
+### After each step: the balance check
+
+Keep output (impact kills, DPM, deaths, assists) at about 60% and impact (opening duels, Medic picks, the duel, untraded kills, Fight KAST, swing) at about 40%. That is HLTV's stated balance, and v2 already sits near it (65–35).
+
+### Versions
+
+| Model | Contents | Gate |
+|---|---|---|
+| v2 (live) | DPM 20, duel 5, opening duels, untraded kills | 71.4% against v1 67.5% |
+| **v3** | Steps 1–3: death context, Fight KAST, situation-valued kills | Holds or beats v2 out of sample; the grand final still reads right |
+| **v4** | Steps 4–5: map and side baselines, fight swing | Beats v3 out of sample; ratings by map flatten |
+
+Each version bumps `MODEL_VERSION`, re-rates at startup and keeps the old ratings apart. PLAN gets an "As built" note per step with the validation table.
+
+### Questions for function
+
+1. Should a traded entry death count as a death at all, count as half, or count as nothing?
+2. Is 300 units and two kills the right "should have moved" rule?
+3. Should a Sniper who survives a fight without firing get KAST credit for it?
+4. Clean-up kills at 9 v 5: worth half a kill, or nearly a full one, since they stop the enemy regrouping?
