@@ -21,6 +21,7 @@ pub mod rawlog;
 pub mod state;
 pub mod statecheck;
 pub mod fights;
+pub mod situation;
 pub mod seasons;
 pub mod owner;
 pub mod validate;

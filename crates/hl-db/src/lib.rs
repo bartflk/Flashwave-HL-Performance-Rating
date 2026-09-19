@@ -24,7 +24,7 @@ pub use roundmap::{
 };
 pub use ratings::{HistoryDbRow, RatingRow, VsTotals};
 pub use matches::{
-    IndexInfo, IndexStats, LogsTfIndexRow, MatchFilter, MatchPage, MatchSummary, MyLine,
+    IndexInfo, IndexStats, LogsTfIndexRow, MatchFilter, MatchPage, MatchSummary, PartSummary, MyLine,
     TrendsIndexRow,
 };
 

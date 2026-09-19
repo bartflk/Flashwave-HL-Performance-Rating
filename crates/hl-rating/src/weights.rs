@@ -25,6 +25,10 @@ pub struct Weights {
     attack_defend: Vec<String>,
     pub general: General,
     models: HashMap<ModelKey, Vec<(Component, f64)>>,
+    /// Kill factors by situation (PLAN §12 step 3): rows by uber advantage
+    /// (the victim's team, neither, the killer's), columns by the numbers
+    /// difference -4..=4. `None`: every kill counts 1.
+    situation: Option<[[f64; 9]; 3]>,
 }
 
 #[derive(Debug, Clone)]
@@ -78,6 +82,16 @@ struct Raw {
     attack_defend: AttackDefend,
     general: General,
     model: HashMap<String, HashMap<String, f64>>,
+    #[serde(default)]
+    situation: Option<SituationRaw>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SituationRaw {
+    theirs: Vec<f64>,
+    none: Vec<f64>,
+    ours: Vec<f64>,
 }
 
 #[derive(Deserialize, Default)]
@@ -178,7 +192,25 @@ impl Weights {
             bail!("unknown model [model.{unknown}]; expected sniper, medic, spy or generic");
         }
 
+        let situation = match raw.situation {
+            None => None,
+            Some(s) => {
+                let mut rows = [[1.0; 9]; 3];
+                for (i, (name, v)) in [("theirs", s.theirs), ("none", s.none), ("ours", s.ours)].into_iter().enumerate() {
+                    if v.len() != 9 {
+                        bail!("[situation]: `{name}` needs 9 factors (numbers -4 to +4), has {}", v.len());
+                    }
+                    if v.iter().any(|f| !(0.0..=3.0).contains(f)) {
+                        bail!("[situation]: `{name}` factors must be between 0 and 3");
+                    }
+                    rows[i].copy_from_slice(&v);
+                }
+                Some(rows)
+            }
+        };
+
         Ok(Weights {
+            situation,
             victim_value,
             defending,
             maps,
@@ -238,6 +270,14 @@ impl Weights {
             }
         }
         self.victim(class)
+    }
+
+    /// What a kill counts for in its situation: `diff` is the killer's team
+    /// alive minus the victim's (clamped to ±4), `adv` the uber advantage
+    /// (1 the killer's team, -1 the victim's). 1 without a `[situation]` table.
+    pub fn situation(&self, diff: i8, adv: i8) -> f64 {
+        let Some(rows) = &self.situation else { return 1.0 };
+        rows[(adv.clamp(-1, 1) + 1) as usize][(diff.clamp(-4, 4) + 4) as usize]
     }
 
     /// The components and weights that rate this class.

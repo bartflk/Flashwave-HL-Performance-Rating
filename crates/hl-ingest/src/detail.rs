@@ -26,7 +26,8 @@ pub async fn match_detail(
     let baseline = crate::rating::load_baseline(db).await?;
     let kills = db.kills_for_log(log_id).await?;
     let windows = db.round_windows(log_id).await?;
-    let mut impact = crate::kills::impacts_for(&kills, &windows, log.map.as_deref(), weights);
+    let situations = db.kill_situations(log_id).await?;
+    let mut impact = crate::kills::impacts_for(&kills, Some(&situations), &windows, log.map.as_deref(), weights);
     if let Some(rows) = db.fight_counts(Some(log_id)).await?.get(&log_id) {
         crate::kills::attach_fights(&mut impact, rows);
     }
@@ -35,6 +36,20 @@ pub async fn match_detail(
     // Kill markers first: demo enrichment then gives every marker its jump.
     crate::kills::enrich(&log, &kills, me, &mut detail);
     crate::demos::enrich(db, &log, &mut detail).await?;
+
+    detail.parts = db
+        .parts_of(log_id)
+        .await?
+        .into_iter()
+        .map(|p| hl_rating::detail::PartView {
+            log_id: p.log_id,
+            title: p.title,
+            map: p.map,
+            played_at: p.played_at,
+            duration_s: p.duration_s,
+            player_count: p.player_count,
+        })
+        .collect();
 
     if let Some(info) = db.index_info(log_id).await? {
         detail.format = info.format;

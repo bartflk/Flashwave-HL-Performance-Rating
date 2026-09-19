@@ -4,6 +4,7 @@ use crate::Db;
 use anyhow::Result;
 use serde::Serialize;
 use sqlx::Row;
+use std::collections::HashMap;
 
 /// The counted columns of `fight_stat`, in order.
 pub const FIGHT_COLUMNS: [&str; 25] = [
@@ -93,9 +94,21 @@ impl Db {
         Ok(rows.into_iter().map(|r| r.get("log_id")).collect())
     }
 
-    pub async fn replace_fight_stats(&self, log_id: i64, version: i64, rows: &[FightRow]) -> Result<()> {
+    /// One log's fights pass: each player's counts, and each counted kill's
+    /// situation as `(seq, diff, adv)`.
+    pub async fn replace_fight_stats(&self, log_id: i64, version: i64, rows: &[FightRow], situations: &[(i64, i8, i8)]) -> Result<()> {
         let mut tx = self.pool().begin().await?;
         sqlx::query("DELETE FROM fight_stat WHERE log_id = ?1").bind(log_id).execute(&mut *tx).await?;
+        sqlx::query("DELETE FROM kill_situation WHERE log_id = ?1").bind(log_id).execute(&mut *tx).await?;
+        for &(seq, diff, adv) in situations {
+            sqlx::query("INSERT INTO kill_situation (log_id, seq, diff, adv) VALUES (?1, ?2, ?3, ?4)")
+                .bind(log_id)
+                .bind(seq)
+                .bind(i64::from(diff))
+                .bind(i64::from(adv))
+                .execute(&mut *tx)
+                .await?;
+        }
         let cols = FIGHT_COLUMNS.join(", ");
         let marks = (3..3 + FIGHT_COLUMNS.len()).map(|i| format!("?{i}")).collect::<Vec<_>>().join(", ");
         let sql = format!("INSERT INTO fight_stat (log_id, account_id, {cols}) VALUES (?1, ?2, {marks})");
@@ -113,6 +126,27 @@ impl Db {
             .await?;
         tx.commit().await?;
         Ok(())
+    }
+
+    /// Every stored kill situation: per log, `seq -> (diff, adv)`.
+    pub async fn all_kill_situations(&self) -> Result<HashMap<i64, HashMap<i64, (i8, i8)>>> {
+        let rows: Vec<(i64, i64, i64, i64)> = sqlx::query_as("SELECT log_id, seq, diff, adv FROM kill_situation")
+            .fetch_all(self.pool())
+            .await?;
+        let mut out: HashMap<i64, HashMap<i64, (i8, i8)>> = HashMap::new();
+        for (log, seq, diff, adv) in rows {
+            out.entry(log).or_default().insert(seq, (diff as i8, adv as i8));
+        }
+        Ok(out)
+    }
+
+    /// One log's kill situations, `seq -> (diff, adv)`.
+    pub async fn kill_situations(&self, log_id: i64) -> Result<HashMap<i64, (i8, i8)>> {
+        let rows: Vec<(i64, i64, i64)> = sqlx::query_as("SELECT seq, diff, adv FROM kill_situation WHERE log_id = ?1")
+            .bind(log_id)
+            .fetch_all(self.pool())
+            .await?;
+        Ok(rows.into_iter().map(|(seq, diff, adv)| (seq, (diff as i8, adv as i8))).collect())
     }
 
     /// Counts summed over rated performances on one class: the owner's, and

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Parts } from "./Parts";
 import { api } from "../../api/client";
 import { errorMessage, type MatchContext, type MatchDetail } from "../../api/types";
 import { capitalize, formatDate, minutes, splitMap, teamLabel } from "../../lib/format";
@@ -36,6 +37,9 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
           </Fold>
           <Fold id="demos">
             <DemoPanel d={q.data} />
+          </Fold>
+          <Fold id="parts">
+            <Parts d={q.data} />
           </Fold>
           <Fold id="rounds">
             <RoundTimeline d={q.data} />

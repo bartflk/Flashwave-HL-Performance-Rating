@@ -133,6 +133,11 @@ function MatchRow({ m, onOpen }: { m: MatchSummary; onOpen: (logId: number) => v
     >
       <td className="muted nowrap">{formatDate(m.playedAt)}</td>
       <td className="nowrap" title={maps.length > 0 ? maps.join(", ") : m.map ?? "Map not recorded in the log"}>
+        {m.parts > 0 && (
+          <span className="parts-tag" title={`Combined from ${m.parts} logs; open the match to see them`}>
+            {m.parts} logs
+          </span>
+        )}
         {maps.length > 1 ? (
           <span className="multi-map">
             {maps.map((x) => splitMap(x).name).join(" · ")}

@@ -288,7 +288,8 @@ pub fn analyse(raw: &RawLog, gs: &GameState) -> Fights {
 /// Bump to recompute every stored log's fights on the next pass.
 /// 2: deaths in context (traded, by killer group, stationary).
 /// 3: Fight KAST.
-pub const VERSION: i64 = 3;
+/// 4: each kill's situation (numbers and uber advantage), PLAN §12 step 3.
+pub const VERSION: i64 = 4;
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -307,8 +308,14 @@ pub async fn derive_all(db: &hl_db::Db, all: bool) -> anyhow::Result<DeriveSumma
         let Some(zip) = db.rawlog(log_id).await? else { continue };
         let raw = crate::rawlog::parse(&crate::rawlog::unzip(&zip)?);
         let gs = GameState::build(&raw);
-        let rows: Vec<hl_db::FightRow> = analyse(&raw, &gs).players.iter().map(row).collect();
-        db.replace_fight_stats(log_id, VERSION, &rows).await?;
+        let f = analyse(&raw, &gs);
+        let rows: Vec<hl_db::FightRow> = f.players.iter().map(row).collect();
+        let situations: Vec<(i64, i8, i8)> = crate::situation::kill_states(&raw, &gs, &f.tags)
+            .into_iter()
+            .enumerate()
+            .filter_map(|(seq, s)| s.map(|(k, _)| (seq as i64, k.diff, k.adv)))
+            .collect();
+        db.replace_fight_stats(log_id, VERSION, &rows, &situations).await?;
         derived += 1;
     }
     Ok(DeriveSummary { derived, total: ids.len() })

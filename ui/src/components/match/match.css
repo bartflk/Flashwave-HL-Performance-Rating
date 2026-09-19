@@ -759,8 +759,22 @@
   padding-block: 5px;
 }
 
-.scoreboard tbody tr:nth-child(even) td {
-  background: rgba(242, 230, 217, 0.025);
+/* Rows are tinted by team rather than striped: a stripe reads as a grouping
+   that is not there, and the colour already says which side a player is on. */
+.scoreboard tbody tr.row-red td {
+  background: rgba(189, 59, 59, 0.10);
+}
+
+.scoreboard tbody tr.row-blue td {
+  background: rgba(57, 92, 120, 0.16);
+}
+
+.scoreboard tbody tr.row-red:hover td {
+  background: rgba(189, 59, 59, 0.17);
+}
+
+.scoreboard tbody tr.row-blue:hover td {
+  background: rgba(57, 92, 120, 0.24);
 }
 
 .sb-team {
@@ -1203,4 +1217,31 @@
   .bd-meta {
     white-space: normal;
   }
+}
+
+/* --- the logs a combined log was built from --- */
+
+.parts-head {
+  margin-bottom: 10px;
+}
+
+.part-link {
+  font-variant-numeric: tabular-nums;
+}
+
+.part-title {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parts-tag {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.68rem;
+  color: var(--muted);
+  white-space: nowrap;
 }

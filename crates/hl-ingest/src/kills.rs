@@ -149,8 +149,9 @@ fn kill_row(k: &Kill) -> KillRow<'_> {
 }
 
 /// A stored kill, reduced to what valuing it needs.
-pub fn ctx(k: &StoredKill) -> KillCtx {
+pub fn ctx(k: &StoredKill, situation: Option<(i8, i8)>) -> KillCtx {
     KillCtx {
+        situation,
         killer: k.killer,
         assister: k.assister,
         victim_class: k.victim_class.as_deref().and_then(|c| TfClass::parse(c).ok()),
@@ -165,12 +166,25 @@ pub fn ctx(k: &StoredKill) -> KillCtx {
 ///
 /// Each kill is valued on its round's map (`windows`, from the round-map
 /// pass); a kill outside every window, or a log not yet resolved, falls back
-/// to the log's own map name.
-pub fn impacts_for(kills: &[StoredKill], windows: &[RoundWindow], log_map: Option<&str>, w: &Weights) -> HashMap<u32, Impact> {
+/// to the log's own map name. `situations` is the fights pass's per-kill
+/// state, keyed by the kill's `seq` (its index here: every kill is stored).
+pub fn impacts_for(
+    kills: &[StoredKill],
+    situations: Option<&HashMap<i64, (i8, i8)>>,
+    windows: &[RoundWindow],
+    log_map: Option<&str>,
+    w: &Weights,
+) -> HashMap<u32, Impact> {
     if kills.is_empty() {
         return HashMap::new();
     }
-    impacts(kills.iter().map(|k| (ctx(k), map_at(windows, k.at_raw).or(log_map))), w)
+    impacts(
+        kills.iter().enumerate().map(|(seq, k)| {
+            let s = situations.and_then(|m| m.get(&(seq as i64)).copied());
+            (ctx(k, s), map_at(windows, k.at_raw).or(log_map))
+        }),
+        w,
+    )
 }
 
 /// Add each player's fight counts (from `Db::fight_counts`) to their impact,

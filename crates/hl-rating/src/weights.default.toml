@@ -95,8 +95,22 @@ even_margin = 5.0
 # 72.3% since Season 34 against 71.3% for v3. Counting survival only after a
 # shot fired validated worse, so surviving a fight counts as it is.
 # Output (kills, DPM, deaths) 60%, impact 40%: HLTV's balance.
+# PLAN §12 step 3: what a kill counts for, by the numbers just before it
+# (the killer's team alive minus the victim's, -4 to +4) and the uber
+# advantage (rows: the victim's team holds it, neither does, the killer's).
+#
+# Measured over 193,626 kills in 736 logs (`hl situation`): a kill at four up
+# lifts the chance of winning the round by a fifth as much as a kill at even
+# numbers, and one at three up by four fifths. Only that clean-up discount is
+# kept. The full measured tables, down-a-man kills included, were no better at
+# picking match winners, and their thin states were noisy.
+[situation]
+theirs = [1, 1, 1, 1, 1, 1, 1, 0.75, 0.5]
+none   = [1, 1, 1, 1, 1, 1, 1, 0.75, 0.5]
+ours   = [1, 1, 1, 1, 1, 1, 1, 0.75, 0.5]
+
 [model.sniper]
-impact_kills    = 0.20
+situation_kills = 0.20
 dpm             = 0.20
 untraded_deaths = 0.15
 opening         = 0.10

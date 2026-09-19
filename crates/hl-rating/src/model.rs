@@ -20,7 +20,8 @@ use std::collections::HashMap;
 /// headshot share down), with opening duels and untraded kills added.
 /// v3: Sniper deaths in context: untraded deaths, deaths to flankers.
 /// v4: Sniper Fight KAST.
-pub const MODEL_VERSION: &str = "v4";
+/// v5: Sniper kills valued by the situation: a clean-up counts for less.
+pub const MODEL_VERSION: &str = "v5";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -51,10 +52,12 @@ pub enum Component {
     FightKast,
     /// The same, with survival counted only when the player fired in the fight.
     FightKastEngaged,
+    /// Impact kills, each also scaled by its situation (PLAN §12 step 3).
+    SituationKills,
 }
 
 impl Component {
-    pub const ALL: [Component; 19] = [
+    pub const ALL: [Component; 20] = [
         Component::ImpactKills,
         Component::ImpactAssists,
         Component::MedicPicks,
@@ -74,6 +77,7 @@ impl Component {
         Component::StationaryDeaths,
         Component::FightKast,
         Component::FightKastEngaged,
+        Component::SituationKills,
     ];
 
     pub fn key(self) -> &'static str {
@@ -97,6 +101,7 @@ impl Component {
             Component::StationaryDeaths => "stationary_deaths",
             Component::FightKast => "fight_kast",
             Component::FightKastEngaged => "fight_kast_engaged",
+            Component::SituationKills => "situation_kills",
         }
     }
 
@@ -125,6 +130,7 @@ impl Component {
             Component::StationaryDeaths => "Stationary deaths",
             Component::FightKast => "Fight KAST",
             Component::FightKastEngaged => "Fight KAST, engaged",
+            Component::SituationKills => "Kills in context",
         }
     }
 
@@ -228,6 +234,12 @@ pub fn extract(player: &PlayerLine, flags: &LogFlags, w: &Weights, impact: Optio
                 .and_then(|i| i.fights)
                 .filter(|f| f.fights_present > 0)
                 .map(|f| f64::from(f.fights_kast_engaged) / f64::from(f.fights_present) * 100.0),
+            // Without a raw log there is no situation: plain impact kills.
+            Component::SituationKills => Some(
+                impact.map(|i| i.kills_situation).unwrap_or_else(|| {
+                    player.vs.iter().map(|v| v.kills as f64 * w.victim(v.other_class)).sum::<f64>()
+                }) * per10,
+            ),
         };
         if let Some(v) = v {
             values.push((*component, v));

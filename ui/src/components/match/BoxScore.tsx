@@ -103,7 +103,7 @@ export function BoxScore({ d }: { d: MatchDetail }) {
           </thead>
           <tbody>
             {rows.map((p) => (
-              <tr key={p.accountId} className={p.isMe ? "me-row" : undefined}>
+              <tr key={p.accountId} className={`row-${p.team.toLowerCase()}${p.isMe ? " me-row" : ""}`}>
                 <td className={`sb-team sb-team-${p.team.toLowerCase()}`}>{teamLabel(p.team)}</td>
                 <td className="nowrap player-name">
                   {p.name}

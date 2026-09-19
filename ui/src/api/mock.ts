@@ -137,12 +137,21 @@ const FIXTURE_SEGMENTS: Record<number, MatchDetail["segments"]> = {
   ],
 };
 
+/** 4109131 is a real combined log: these are the parts it was built from. */
+const FIXTURE_PARTS: Record<number, MatchDetail["parts"]> = {
+  4109131: [
+    { logId: 4109086, title: "serveme.tf #1563599 RED vs BLU", map: "koth_product_final", playedAt: 1757619000, durationS: 778, playerCount: 18 },
+    { logId: 4109098, title: "serveme.tf #1563599 RED vs BLU", map: "pl_vigil_rc10", playedAt: 1757620200, durationS: 916, playerCount: 18 },
+    { logId: 4109125, title: "serveme.tf #1563599 RED vs BLU", map: "pl_vigil_rc10", playedAt: 1757621600, durationS: 1122, playerCount: 18 },
+  ],
+};
+
 const FIXTURES: MatchDetail[] = [match4109131, match4114301, match4111116, match3863290].map((f) => {
   const d = f as unknown as MatchDetail;
   const segments = FIXTURE_SEGMENTS[d.logId] ?? [
     { map: d.map, firstRound: 1, lastRound: d.rounds.length, rounds: d.rounds.length, redWins: 0, blueWins: 0 },
   ];
-  return { ...d, context: FIXTURE_CONTEXT[d.logId] ?? null, segments };
+  return { ...d, context: FIXTURE_CONTEXT[d.logId] ?? null, segments, parts: FIXTURE_PARTS[d.logId] ?? [] };
 });
 
 // ---- fake match history -----------------------------------------------------
@@ -173,6 +182,7 @@ const FIXTURE_ROWS: MatchSummary[] = FIXTURES.map((d) => {
     league: d.league,
     etf2lMatchId: d.etf2lMatchId,
     demosTfId: d.demosTfId,
+    parts: d.parts?.length ?? 0,
     redScore: d.redScore,
     blueScore: d.blueScore,
     hasDemo: d.demos.length > 0,
@@ -217,6 +227,7 @@ const FAKE_MATCHES: MatchSummary[] = (() => {
         ? `ETF2L HL S36 High - DD14 vs ${pick(["TWS", "GOYDA", "9S", "Kebab"])}`
         : pick(["serveme.tf #1563599 RED vs BLU", "TF2Center Lobby #1330112", "pro vs noob scrim"]),
       durationS: dur,
+      parts: 0,
       format: "highlander",
       league: official ? "etf2l" : null,
       etf2lMatchId: official ? 92_883 - i : null,

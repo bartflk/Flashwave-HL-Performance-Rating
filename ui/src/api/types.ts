@@ -92,6 +92,8 @@ export interface MatchSummary {
   context: MatchContext | null;
   /** The maps played, in order; more than one for a combined log. */
   maps: string[];
+  /** How many per-round logs this one was combined from. */
+  parts: number;
 }
 
 export interface MatchPage {
@@ -295,6 +297,18 @@ export interface MatchDetail {
   context: MatchContext | null;
   /** The maps played, in order, with rounds won on each (stable teams). */
   segments: Segment[];
+  /** The per-round logs this one was combined from; empty for a normal log. */
+  parts: PartView[];
+}
+
+/** One of the logs a combined log was built from. */
+export interface PartView {
+  logId: number;
+  title: string | null;
+  map: string | null;
+  playedAt: number | null;
+  durationS: number | null;
+  playerCount: number | null;
 }
 
 export interface Segment {

@@ -94,6 +94,21 @@ pub struct MatchSummary {
     /// The maps played, in order, when the round-map pass knows them. More
     /// than one for a log combined from several maps.
     pub maps: Vec<String>,
+    /// How many per-round logs this one was combined from.
+    pub parts: i64,
+}
+
+/// One of the per-round logs a combined log was built from. Kept out of
+/// every aggregate (it would double-count), but still worth seeing.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PartSummary {
+    pub log_id: i64,
+    pub title: Option<String>,
+    pub map: Option<String>,
+    pub played_at: Option<i64>,
+    pub duration_s: Option<i64>,
+    pub player_count: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -555,6 +570,7 @@ impl Db {
                     {EFFECTIVE_FORMAT} AS format, i.league, i.etf2l_match_id, i.demos_tf_id,
                     m.red_score, m.blue_score,
                     EXISTS (SELECT 1 FROM demo_link dl WHERE dl.log_id = m.log_id) AS has_demo,
+                    (SELECT COUNT(*) FROM log_index pi WHERE pi.superseded_by = m.log_id) AS part_count,
                     (SELECT group_concat(map, '|') FROM
                         (SELECT map FROM log_segment s WHERE s.log_id = m.log_id AND map IS NOT NULL ORDER BY seq)
                     ) AS segment_maps,
@@ -621,12 +637,35 @@ impl Db {
                         .get::<Option<String>, _>("segment_maps")
                         .map(|s| s.split('|').map(str::to_string).collect())
                         .unwrap_or_default(),
+                    parts: r.get("part_count"),
                     me,
                 }
             })
             .collect();
 
         Ok(MatchPage { total, items })
+    }
+
+    /// The per-round logs a combined log replaced, oldest first.
+    pub async fn parts_of(&self, log_id: i64) -> Result<Vec<PartSummary>> {
+        let rows = sqlx::query(
+            "SELECT log_id, title, map, played_at, duration_s, player_count
+             FROM log_index WHERE superseded_by = ?1 ORDER BY played_at, log_id",
+        )
+        .bind(log_id)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| PartSummary {
+                log_id: r.get("log_id"),
+                title: r.get("title"),
+                map: r.get("map"),
+                played_at: r.get("played_at"),
+                duration_s: r.get("duration_s"),
+                player_count: r.get("player_count"),
+            })
+            .collect())
     }
 
     /// The index context for one log: what trends.tf knows about it.

@@ -49,6 +49,20 @@ pub struct MatchDetail {
     pub weights_warning: Option<String>,
     /// Demos linked to this match; filled in by the caller.
     pub demos: Vec<DemoView>,
+    /// The per-round logs this one was combined from; filled in by the caller.
+    pub parts: Vec<PartView>,
+}
+
+/// One of the logs a combined log was built from.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PartView {
+    pub log_id: i64,
+    pub title: Option<String>,
+    pub map: Option<String>,
+    pub played_at: Option<i64>,
+    pub duration_s: Option<i64>,
+    pub player_count: Option<i64>,
 }
 
 /// Where to jump in a demo: open it with `playdemo`, then `demo_gototick`.
@@ -245,6 +259,7 @@ pub fn build(
         demos_tf_id: None,
         weights_warning: None,
         demos: Vec::new(),
+        parts: Vec::new(),
     }
 }
 

@@ -13,7 +13,7 @@ The pool is ~1,500 Sniper games from 753 matches since 2014. The weights are che
 ## What goes into the Sniper rating now (v4)
 Nine stats. **60% output** (kills, damage, deaths), **40% impact** (what your kills did). Same balance HLTV uses for CS.
 
-- **Impact kills: 20%.** Kills per 10 min, each worth its victim's value (Medic 3.0, Demo 2.2, Sniper 1.8…). *Why: the job is picks on the right targets.*
+- **Kills in context: 20%.** Kills per 10 min, each worth its victim's value (Medic 3.0, Demo 2.2, Sniper 1.8…). *Why: the job is picks on the right targets. A kill while three or four players up counts less: cleaning up a lost fight is not what decides rounds.*
 - **Damage / min: 20%.** *Why: pressure and chip damage that kills alone miss.*
 - **Untraded deaths: 15%.** Deaths your team didn't avenge within 3 s. *Why: a dead Sniper holds nothing, but a traded death still opened a fight.*
 - **Opening duels: 10%.** First kills of fights got, minus first deaths of fights. *Why: opening the fight is the Sniper's job.*

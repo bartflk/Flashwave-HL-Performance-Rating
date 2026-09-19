@@ -43,6 +43,10 @@ COMMANDS:
                            How often each component, and each weighting, picks
                            the team that won (PLAN §12 step 0). --weights takes a
                            TOML file with a [model.sniper] table; repeatable
+    situation [--toml [--round]]
+                           What a kill is worth by numbers and uber advantage
+                           (PLAN §12 step 3); --toml prints the [situation] table
+                           (from winning the fight, or the round)
     owner [--refresh]      Your name and profile picture (--refresh looks them up)
     seasons [CLASS] [--json]
                            Your seasons, and how you played the class in each
@@ -386,6 +390,22 @@ async fn main() -> Result<()> {
                 println!("
 ({:.1}s)", started.elapsed().as_secs_f64());
             }
+            Ok(())
+        }
+
+        ["situation", rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            let started = std::time::Instant::now();
+            let t = hl_ingest::situation::measure(&db).await?;
+            if rest.contains(&"--toml") {
+                let (outcome, table) = if rest.contains(&"--round") { ("round", &t.round) } else { ("fight", &t.fight) };
+                let source = format!("From `hl situation --toml`: winning the {outcome}, {} kills in {} logs.", t.kills, t.logs);
+                print!("{}", hl_ingest::situation::toml_table(&hl_ingest::situation::factors(table), &source));
+                return Ok(());
+            }
+            print!("{t}");
+            println!("
+({:.1}s)", started.elapsed().as_secs_f64());
             Ok(())
         }
 

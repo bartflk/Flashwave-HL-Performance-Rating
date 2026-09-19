@@ -86,6 +86,7 @@ pub async fn collect_performances(
     let kills = db.all_kills().await?;
     let windows = db.all_round_windows().await?;
     let fights = db.fight_counts(None).await?;
+    let situations = db.all_kill_situations().await?;
     let mut perfs: Vec<(i64, Performance)> = Vec::new();
     for (i, log_id) in ids.iter().copied().enumerate() {
         if i % 25 == 0 {
@@ -102,6 +103,7 @@ pub async fn collect_performances(
         let Ok(log) = normalize(log_id, &value) else { continue };
         let mut impact = crate::kills::impacts_for(
             kills.get(&log_id).map_or(&[][..], |k| k.as_slice()),
+            situations.get(&log_id),
             windows.get(&log_id).map_or(&[][..], |k| k.as_slice()),
             log.map.as_deref(),
             w,

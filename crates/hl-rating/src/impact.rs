@@ -23,12 +23,16 @@ pub struct KillCtx {
     pub counts: bool,
     /// Its assist counts (inside a round; logs.tf credits feign-death assists).
     pub assist_counts: bool,
+    /// `(diff, adv)` from the fights pass (PLAN §12 step 3), where it has run.
+    pub situation: Option<(i8, i8)>,
 }
 
 /// Summed kill values for one player, before any per-minute scaling.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Impact {
     pub kills: f64,
+    /// The same kills, each also scaled by its situation factor.
+    pub kills_situation: f64,
     pub assists: f64,
     /// The player's kills in context (PLAN §11 B), where the fights pass has
     /// read the log. `None` without a raw log.
@@ -84,7 +88,9 @@ pub fn impacts<'a>(kills: impl IntoIterator<Item = (KillCtx, Option<&'a str>)>, 
         let k = &k;
         let v = value(k, map, w);
         if k.counts {
-            out.entry(k.killer).or_default().kills += v;
+            let e = out.entry(k.killer).or_default();
+            e.kills += v;
+            e.kills_situation += v * k.situation.map_or(1.0, |(d, a)| w.situation(d, a));
         }
         if let (true, Some(a)) = (k.assist_counts, k.assister) {
             out.entry(a).or_default().assists += v;
@@ -105,6 +111,7 @@ mod tests {
             victim_team: Some(team),
             counts: true,
             assist_counts: true,
+            situation: None,
         }
     }
 
@@ -128,6 +135,32 @@ mod tests {
         let i = impacts([(k, Some("pl_vigil_rc10")), (k, Some("koth_proot_b5b"))], &w);
         let general = w.victim(TfClass::Engineer);
         assert_eq!(i[&1].kills, w.victim_in(TfClass::Engineer, Some("pl_vigil_rc10"), true) + general);
+    }
+
+    #[test]
+    fn a_kill_counts_its_situation_factor() {
+        // The defaults with the situation table swapped for a known one.
+        let mut text = String::new();
+        for line in crate::weights::DEFAULT_TOML.lines() {
+            text += match line.split_whitespace().next() {
+                Some("theirs") => "theirs = [1, 1, 1, 1, 1.4, 1, 1, 1, 1]",
+                Some("none") => "none = [1, 1, 1, 1, 1, 1, 1, 1, 0.5]",
+                Some("ours") => "ours = [1, 1, 1, 1, 1, 1, 1, 1, 1]",
+                _ => line,
+            };
+            text.push('\n');
+        }
+        let mut w = Weights::parse(&text).unwrap();
+        let mut even_into_uber = kill(1, TfClass::Scout, Team::Blue);
+        even_into_uber.situation = Some((0, -1));
+        let mut cleanup = kill(1, TfClass::Scout, Team::Blue);
+        cleanup.situation = Some((6, 0));
+        let i = impacts([(even_into_uber, None), (cleanup, None)], &w)[&1];
+        let scout = w.victim(TfClass::Scout);
+        assert!((i.kills - 2.0 * scout).abs() < 1e-9);
+        assert!((i.kills_situation - 1.9 * scout).abs() < 1e-9, "1.4 + 0.5 (a 6-up clean-up counts as 4-up)");
+        w = Weights::default_weights();
+        assert_eq!(w.situation(0, 0), 1.0);
     }
 
     #[test]
