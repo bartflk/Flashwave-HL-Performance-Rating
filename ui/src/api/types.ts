@@ -610,6 +610,17 @@ export interface MapSegment {
   blueWins: number;
 }
 
+/** A map overview image and where it sits in game units. */
+export interface Overview {
+  mapBase: string;
+  minX: number;
+  maxY: number;
+  /** Game units the square image spans on each side. */
+  size: number;
+  /** A data URL (or, in the browser mock, a plain URL). */
+  image: string;
+}
+
 export interface MapView {
   mapBase: string;
   games: number;

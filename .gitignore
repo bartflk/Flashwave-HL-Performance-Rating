@@ -10,6 +10,8 @@ ui/dist
 src-tauri/gen
 
 # Local data
+# Map images are third-party renders, kept on this machine only.
+ui/public/overviews-local/
 *.sqlite3
 *.sqlite3-wal
 *.sqlite3-shm

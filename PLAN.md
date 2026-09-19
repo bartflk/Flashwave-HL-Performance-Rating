@@ -522,6 +522,12 @@ We already have: class matchups, the round timeline with caps, ubers, drops and 
 
 **Needed for the maps:** ~~an overview image per map~~. Not needed after all: see "As built (M7)".
 
+**Map images (after M8).** For the 12 maps played on this account that more.tf covers (Upward, Vigil, Product, Ashville, Steel, Proot, Proplant, Gullywash, Cascade, Process, Swiftwater, Bagel), the kill map now draws more.tf's overview image, downloaded with the owner's permission to `<app data>/overviews/<map>.png`. The images are **not in the repo**: they are more.tf's renders, kept on this machine only.
+- **Placement** uses more.tf's per-map transform: each image is a square covering 1024 × `scale` game units, centred on (`x` + 910·`scale`, `y` − 512·`scale`).
+- **Checked:** 94–99% of stored kill positions land on the drawn map. On Upward, Sniper firing positions sit on balconies and cliff edges. Every kill mark in the app lies within 0.001 px of more.tf's own formula.
+- **Look:** the image sits under a 45% dark veil so blue and orange stay readable on sand, and crosses get a dark outline.
+- **Fallback:** maps with no image (Lakeside, Warmtic, Govan and others) keep the outline drawn from kill positions. Adding an image for another map needs its `scale`, `x` and `y` in `overview.rs`.
+
 ### As built (M7)
 
 A "Kill by kill" section on every match page, read from the stored raw log on demand in about 40 ms, so nothing new is stored. One filter row (player, round) scopes four views.

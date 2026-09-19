@@ -14,6 +14,7 @@ import type {
   IndexStats,
   MapView,
   MatchDetail,
+  Overview,
   MatchPage,
   MatchQuery,
   ProfileResponse,
@@ -65,6 +66,8 @@ const realApi = {
   getMatchAnalysis: (logId: number) => invoke<Analysis | null>("get_match_analysis", { logId }),
   /** Null when too few kills are stored on the map to draw it. */
   getMapView: (map: string) => invoke<MapView | null>("get_map_view", { map }),
+  /** Null when no image for the map is saved in the app's overviews folder. */
+  getMapOverview: (map: string) => invoke<Overview | null>("get_map_overview", { map }),
   /** Opens in the system browser, never inside the app window. */
   openExternal: (url: string) => openUrl(url),
   copyText: (text: string) => writeText(text),

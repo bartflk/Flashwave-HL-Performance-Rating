@@ -1857,6 +1857,7 @@ name = "hl-ingest"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "hl-core",
  "hl-db",
  "hl-demos",

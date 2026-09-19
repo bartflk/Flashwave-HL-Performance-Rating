@@ -110,6 +110,7 @@ pub fn run() {
             sync_commands::rawlog_stats,
             sync_commands::get_match_analysis,
             sync_commands::get_map_view,
+            sync_commands::get_map_overview,
             sync_commands::scan_demos,
             sync_commands::demo_stats,
             sync_commands::fetch_stv,

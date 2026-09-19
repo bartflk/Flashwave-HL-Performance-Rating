@@ -26,6 +26,7 @@ import type {
   MatchContext,
   MapView,
   MatchDetail,
+  Overview,
   MatchPage,
   MatchQuery,
   MatchSummary,
@@ -396,6 +397,25 @@ export const mockApi: Api = {
           : null,
       150,
     ),
+
+  // Map images are third-party files kept out of the repo. For local UI work,
+  // put them in ui/public/overviews-local/ (git-ignored) and they are used.
+  getMapOverview: async (map: string): Promise<Overview | null> => {
+    const placements: Record<string, [number, number, number]> = {
+      upward: [5.5, -4956, 2216],
+      ashville: [8, -7322, 4101],
+      vigil: [7.5, -5802, 4940],
+      proot: [7.75, -7054, 3968],
+    };
+    const base = Object.keys(placements).find((b) => map.includes(b));
+    if (!base) return null;
+    const url = `/overviews-local/${base}.png`;
+    const ok = await fetch(url, { method: "HEAD" }).then((r) => r.ok && (r.headers.get("content-type") ?? "").startsWith("image"), () => false);
+    if (!ok) return null;
+    const [s, x, y] = placements[base];
+    const size = 1024 * s;
+    return { mapBase: base, minX: x + 910 * s - size / 2, maxY: y - 512 * s + size / 2, size, image: url };
+  },
 
   rawlogStats: () => delay({ stored: 740, pending: 16, missing: 2, bytes: 79_900_000, kills: 226_784 }),
 

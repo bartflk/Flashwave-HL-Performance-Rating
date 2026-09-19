@@ -497,3 +497,15 @@
 .tlc-wrap {
   overflow: hidden;
 }
+
+/* Marks keep a dark edge so they read on a map image as well as the outline. */
+.km-halo {
+  stroke: var(--bg);
+  stroke-width: 5;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.km-shooter {
+  paint-order: stroke;
+}

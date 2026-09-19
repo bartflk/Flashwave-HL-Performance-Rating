@@ -25,6 +25,7 @@ pub mod kills;
 pub const BULK_PER_SYNC: usize = 100;
 pub mod analysis;
 pub mod mapview;
+pub mod overview;
 pub mod mapres;
 pub mod maps;
 pub mod etf2l;

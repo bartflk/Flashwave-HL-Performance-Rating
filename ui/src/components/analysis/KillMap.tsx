@@ -1,16 +1,17 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { Analysis, KillView, MapView, Vec3 } from "../../api/types";
+import type { Analysis, KillView, MapView, Overview, Vec3 } from "../../api/types";
 import { capitalize, splitMap } from "../../lib/format";
 import { DEATH, KILL, inSlice, jumpTo, playerMap, roundClock, type Slice } from "./common";
 
 /**
  * Where the player's kills and deaths happened, top-down.
  *
- * The map itself is drawn from data: every kill stored on this map records
- * where both players stood, and the density of those positions traces the
- * playable space (see `mapview.rs`). A kill is a blue dot where the victim
+ * The map is an overview image where one is saved locally (see
+ * `overview.rs`), and otherwise drawn from data: every kill stored on this
+ * map records where both players stood, and the density of those positions
+ * traces the playable space (see `mapview.rs`). A kill is a blue dot where the victim
  * fell, a death an orange cross where the player fell; a hollow ring marks
  * where the shooter stood, joined by a line. Click any of them to copy the
  * demo tick.
@@ -49,6 +50,13 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
     staleTime: 5 * 60_000,
   });
   const view = mapQ.data ?? null;
+  const overviewQ = useQuery({
+    queryKey: ["overview", mapName],
+    queryFn: () => api.getMapOverview(mapName ?? ""),
+    enabled: mapName !== null,
+    staleTime: Infinity,
+  });
+  const overview = overviewQ.data ?? null;
   const players = useMemo(() => playerMap(a), [a]);
   const me = players.get(player);
   const enemies = a.players.filter((p) => me && p.team !== me.team);
@@ -181,6 +189,8 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
         <>
           <Canvas
             frame={frame}
+            display={overview ? overviewFrame(overview) : frame}
+            image={overview?.image ?? null}
             view={view}
             marks={layer === "dots" ? marks : []}
             heat={heat}
@@ -197,9 +207,11 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
             </div>
           )}
           <p className="hint km-note">
-            {view
-              ? `Map drawn from ${view.points.toLocaleString()} positions in ${view.games} stored ${shortMap ?? ""} matches; brighter is busier.`
-              : "Too few matches on this map to draw it; only this match's positions are shown."}
+            {overview
+              ? "Map image from more.tf."
+              : view
+                ? `Map drawn from ${view.points.toLocaleString()} positions in ${view.games} stored ${shortMap ?? ""} matches; brighter is busier.`
+                : "Too few matches on this map to draw it; only this match's positions are shown."}
             {layer === "heat" && heatOf === "kills" && " The heatmap marks where the player stood when they got the kill."}
           </p>
           {layer === "dots" && <TimeStrip a={a} slice={slice} marks={marks} hover={hover} onHover={setHover} />}
@@ -211,7 +223,11 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
 
 /** The map, a heat layer or the kill marks, and the hover card. */
 function Canvas(props: {
+  /** The grid the heat and outline are counted on. */
   frame: Frame;
+  /** What the canvas shows: the image's square when there is one. */
+  display: Frame;
+  image: string | null;
   view: MapView | null;
   marks: Mark[];
   heat: number[] | null;
@@ -220,7 +236,15 @@ function Canvas(props: {
   onHover: (m: Mark | null) => void;
   a: Analysis;
 }) {
-  const { frame, view, marks, heat, heatColor, hover, onHover, a } = props;
+  const { frame, display, image, view, marks, heat, heatColor, hover, onHover, a } = props;
+  const [img, setImg] = useState<HTMLImageElement | null>(null);
+  useEffect(() => {
+    setImg(null);
+    if (!image) return;
+    const el = new Image();
+    el.onload = () => setImg(el);
+    el.src = image;
+  }, [image]);
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [boxW, setBoxW] = useState(800);
@@ -235,13 +259,18 @@ function Canvas(props: {
     return () => ro.disconnect();
   }, []);
 
-  const scale = Math.min(boxW / frame.width, MAX_H / frame.height);
-  const W = Math.floor(frame.width * scale);
-  const H = Math.floor(frame.height * scale);
+  const scale = Math.min(boxW / display.width, MAX_H / display.height);
+  const W = Math.floor(display.width * scale);
+  const H = Math.floor(display.height * scale);
   const px = ([x, y]: [number, number]): [number, number] => [
-    ((x - frame.minX) / frame.cell) * scale,
-    ((frame.maxY - y) / frame.cell) * scale,
+    ((x - display.minX) / display.cell) * scale,
+    ((display.maxY - y) / display.cell) * scale,
   ];
+  // A cell of the counting grid, in canvas pixels.
+  const cellRect = (i: number): [number, number, number] => {
+    const [x, y] = px([frame.minX + (i % frame.width) * frame.cell, frame.maxY - Math.floor(i / frame.width) * frame.cell]);
+    return [x, y, (frame.cell / display.cell) * scale + 0.5];
+  };
 
   useEffect(() => {
     const c = canvas.current;
@@ -254,17 +283,24 @@ function Canvas(props: {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, W, H);
 
-    // The map: occupancy on a log scale, in the muted ink, so the marks own
-    // the colour. A cell seen once is a stray (a rocket jump, an old map
-    // version) and would speckle the outline, so it is left out.
-    if (view) {
+    if (img) {
+      // The image, under a dark veil: the marks' blue and orange have to read
+      // on sand and stone, and the veil keeps the map recessive.
+      g.drawImage(img, 0, 0, W, H);
+      g.fillStyle = "rgba(20, 22, 27, 0.45)";
+      g.fillRect(0, 0, W, H);
+    } else if (view) {
+      // The map: occupancy on a log scale, in the muted ink, so the marks own
+      // the colour. A cell seen once is a stray (a rocket jump, an old map
+      // version) and would speckle the outline, so it is left out.
       const max = Math.log1p(Math.max(2, ...view.occupancy));
       for (let i = 0; i < view.occupancy.length; i++) {
         const n = view.occupancy[i];
         if (n < 2) continue;
         const v = Math.log1p(n) / max;
         g.fillStyle = `rgba(139, 146, 159, ${(0.06 + 0.6 * v ** 1.4).toFixed(3)})`;
-        g.fillRect((i % view.width) * scale, Math.floor(i / view.width) * scale, scale + 0.5, scale + 0.5);
+        const [x, y, s] = cellRect(i);
+        g.fillRect(x, y, s, s);
       }
     }
     // Heat: one hue, transparent to full, so more is brighter. No floor:
@@ -278,12 +314,14 @@ function Canvas(props: {
           if (alpha < 0.06) continue;
           g.globalAlpha = alpha;
           g.fillStyle = heatColor;
-          g.fillRect((i % frame.width) * scale, Math.floor(i / frame.width) * scale, scale + 0.5, scale + 0.5);
+          const [x, y, s] = cellRect(i);
+          g.fillRect(x, y, s, s);
         }
         g.globalAlpha = 1;
       }
     }
-  }, [view, heat, heatColor, frame, W, H, scale]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [img, view, heat, heatColor, frame, display, W, H, scale]);
 
   const nearest = (e: React.MouseEvent<SVGSVGElement>): Mark | null => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -327,12 +365,16 @@ function Canvas(props: {
             const dim = hover && hover !== m ? 0.35 : 1;
             return (
               <g key={i} opacity={dim}>
-                {from && <line x1={from[0]} y1={from[1]} x2={x} y2={y} stroke={color} strokeWidth={1} opacity={0.55} />}
+                {from && <line x1={from[0]} y1={from[1]} x2={x} y2={y} stroke={color} strokeWidth={1.25} opacity={0.7} />}
                 {from && <circle cx={from[0]} cy={from[1]} r={3.5} className="km-shooter" />}
                 {m.kind === "kill" ? (
                   <circle cx={x} cy={y} r={4.5} fill={color} className="km-mark" />
                 ) : (
-                  <path d={`M${x - 4},${y - 4}L${x + 4},${y + 4}M${x - 4},${y + 4}L${x + 4},${y - 4}`} stroke={color} strokeWidth={2.5} strokeLinecap="round" />
+                  <>
+                    {/* A dark halo first, so the cross reads on a light map. */}
+                    <path d={`M${x - 4},${y - 4}L${x + 4},${y + 4}M${x - 4},${y + 4}L${x + 4},${y - 4}`} className="km-halo" />
+                    <path d={`M${x - 4},${y - 4}L${x + 4},${y + 4}M${x - 4},${y + 4}L${x + 4},${y - 4}`} stroke={color} strokeWidth={2.5} strokeLinecap="round" />
+                  </>
                 )}
               </g>
             );
@@ -564,4 +606,9 @@ function blur(g: number[], w: number, h: number): number[] {
     }
   }
   return out;
+}
+
+/** An overview image's square, as a drawing frame of 1024 units a side. */
+function overviewFrame(o: Overview): Frame {
+  return { minX: o.minX, maxY: o.maxY, cell: o.size / 1024, width: 1024, height: 1024 };
 }
