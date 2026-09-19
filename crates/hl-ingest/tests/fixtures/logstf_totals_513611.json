@@ -1,0 +1,334 @@
+{
+"classkillassists": {
+"[U:1:100589777]": {
+"demoman": 5,
+"engineer": 3,
+"heavyweapons": 4,
+"medic": 4,
+"pyro": 6,
+"scout": 4,
+"sniper": 2,
+"soldier": 1
+},
+"[U:1:111731787]": {
+"demoman": 3,
+"heavyweapons": 1,
+"medic": 1,
+"pyro": 1,
+"scout": 1,
+"soldier": 1,
+"spy": 1
+},
+"[U:1:123330643]": {
+"engineer": 2,
+"heavyweapons": 1,
+"medic": 1,
+"pyro": 1,
+"sniper": 7,
+"soldier": 2,
+"spy": 1
+},
+"[U:1:123679818]": {
+"engineer": 2,
+"heavyweapons": 4,
+"pyro": 1,
+"scout": 3,
+"sniper": 1,
+"soldier": 2,
+"spy": 3
+},
+"[U:1:124051776]": {
+"demoman": 2,
+"soldier": 1,
+"spy": 2
+},
+"[U:1:125434640]": {
+"demoman": 2,
+"engineer": 1,
+"heavyweapons": 3,
+"medic": 2,
+"pyro": 1,
+"sniper": 2,
+"soldier": 1,
+"spy": 1
+},
+"[U:1:139131191]": {
+"pyro": 1,
+"scout": 1,
+"sniper": 1,
+"soldier": 3,
+"spy": 1
+},
+"[U:1:140333353]": {
+"engineer": 1,
+"heavyweapons": 1,
+"sniper": 1,
+"soldier": 1,
+"spy": 2
+},
+"[U:1:150635334]": {
+"heavyweapons": 1,
+"sniper": 2
+},
+"[U:1:161740244]": {
+"demoman": 2,
+"engineer": 2,
+"heavyweapons": 1,
+"pyro": 1,
+"soldier": 3
+},
+"[U:1:191465039]": {
+"demoman": 2,
+"engineer": 1,
+"heavyweapons": 1,
+"medic": 2
+},
+"[U:1:35358709]": {
+"demoman": 1,
+"pyro": 2,
+"soldier": 4,
+"spy": 2
+},
+"[U:1:37515412]": {
+"demoman": 3,
+"engineer": 2,
+"heavyweapons": 4,
+"medic": 2,
+"pyro": 2,
+"scout": 6,
+"sniper": 3,
+"soldier": 6,
+"spy": 2
+},
+"[U:1:65678171]": {
+"demoman": 2,
+"heavyweapons": 2,
+"sniper": 1,
+"soldier": 5,
+"spy": 3
+},
+"[U:1:67498414]": {
+"demoman": 1,
+"scout": 2,
+"sniper": 2,
+"soldier": 1,
+"spy": 4
+},
+"[U:1:78318894]": {
+"demoman": 3,
+"heavyweapons": 1,
+"medic": 1,
+"pyro": 1,
+"sniper": 2,
+"spy": 1
+},
+"[U:1:89761504]": {
+"demoman": 4,
+"engineer": 3,
+"heavyweapons": 2,
+"medic": 2,
+"scout": 4,
+"sniper": 1,
+"soldier": 2,
+"spy": 1
+},
+"[U:1:90407902]": {
+"demoman": 1,
+"engineer": 2,
+"heavyweapons": 2,
+"medic": 1,
+"pyro": 5,
+"scout": 2,
+"sniper": 1,
+"soldier": 2,
+"spy": 2
+}
+},
+"classkills": {
+"[U:1:100589777]": {
+"demoman": 3,
+"engineer": 1,
+"heavyweapons": 3,
+"medic": 2,
+"pyro": 5,
+"scout": 3,
+"sniper": 1
+},
+"[U:1:111731787]": {
+"demoman": 1,
+"pyro": 1,
+"scout": 1,
+"soldier": 1,
+"spy": 1
+},
+"[U:1:123330643]": {
+"engineer": 2,
+"heavyweapons": 1,
+"medic": 1,
+"sniper": 7,
+"soldier": 2,
+"spy": 1
+},
+"[U:1:123679818]": {
+"engineer": 2,
+"heavyweapons": 1,
+"pyro": 1,
+"scout": 1,
+"soldier": 1,
+"spy": 2
+},
+"[U:1:124051776]": {
+"demoman": 1,
+"soldier": 1,
+"spy": 1
+},
+"[U:1:139131191]": {
+"pyro": 1,
+"sniper": 1,
+"soldier": 2
+},
+"[U:1:150635334]": {
+"heavyweapons": 1,
+"sniper": 2
+},
+"[U:1:161740244]": {
+"demoman": 2,
+"engineer": 2,
+"heavyweapons": 1,
+"soldier": 2
+},
+"[U:1:191465039]": {
+"demoman": 2,
+"engineer": 1,
+"heavyweapons": 1,
+"medic": 2
+},
+"[U:1:35358709]": {
+"demoman": 1,
+"pyro": 2,
+"soldier": 3,
+"spy": 2
+},
+"[U:1:37515412]": {
+"demoman": 3,
+"engineer": 1,
+"heavyweapons": 3,
+"medic": 2,
+"pyro": 1,
+"scout": 4,
+"sniper": 2,
+"soldier": 3,
+"spy": 2
+},
+"[U:1:65678171]": {
+"demoman": 1,
+"soldier": 4,
+"spy": 2
+},
+"[U:1:67498414]": {
+"scout": 2,
+"sniper": 1,
+"spy": 2
+},
+"[U:1:78318894]": {
+"demoman": 3,
+"heavyweapons": 1,
+"medic": 1,
+"pyro": 1,
+"sniper": 2,
+"spy": 1
+},
+"[U:1:89761504]": {
+"demoman": 3,
+"engineer": 2,
+"heavyweapons": 2,
+"medic": 2,
+"scout": 3,
+"sniper": 1,
+"soldier": 2,
+"spy": 1
+},
+"[U:1:90407902]": {
+"engineer": 2,
+"heavyweapons": 1,
+"pyro": 3,
+"scout": 2,
+"soldier": 2,
+"spy": 2
+}
+},
+"players": {
+"[U:1:100589777]": {
+"assists": 11,
+"kills": 18
+},
+"[U:1:111731787]": {
+"assists": 4,
+"kills": 5
+},
+"[U:1:123330643]": {
+"assists": 1,
+"kills": 14
+},
+"[U:1:123679818]": {
+"assists": 8,
+"kills": 8
+},
+"[U:1:124051776]": {
+"assists": 2,
+"kills": 3
+},
+"[U:1:125434640]": {
+"assists": 13,
+"kills": 0
+},
+"[U:1:139131191]": {
+"assists": 3,
+"kills": 4
+},
+"[U:1:140333353]": {
+"assists": 6,
+"kills": 0
+},
+"[U:1:150635334]": {
+"assists": 0,
+"kills": 3
+},
+"[U:1:161740244]": {
+"assists": 2,
+"kills": 7
+},
+"[U:1:191465039]": {
+"assists": 0,
+"kills": 6
+},
+"[U:1:35358709]": {
+"assists": 1,
+"kills": 8
+},
+"[U:1:37515412]": {
+"assists": 9,
+"kills": 21
+},
+"[U:1:65678171]": {
+"assists": 6,
+"kills": 7
+},
+"[U:1:67498414]": {
+"assists": 5,
+"kills": 5
+},
+"[U:1:78318894]": {
+"assists": 0,
+"kills": 9
+},
+"[U:1:89761504]": {
+"assists": 3,
+"kills": 16
+},
+"[U:1:90407902]": {
+"assists": 6,
+"kills": 12
+}
+}
+}

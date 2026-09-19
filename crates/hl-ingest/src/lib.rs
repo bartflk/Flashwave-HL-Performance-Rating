@@ -17,6 +17,8 @@ pub use detail::match_detail;
 mod detail;
 pub mod rating;
 pub mod context;
+pub mod rawlog;
+pub mod kills;
 pub mod etf2l;
 pub mod teammates;
 pub mod demos;

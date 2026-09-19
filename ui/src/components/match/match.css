@@ -734,3 +734,41 @@
 .mh-sides {
   font-weight: 600;
 }
+
+/* --- M6: your own kills and deaths, as thin ticks along the track's edges --- */
+
+/* Kills rise from the bottom edge, deaths hang from the top, so neither
+   covers the caps, ubers and picks in the middle of the track. */
+.mk.mk-mine {
+  width: 3px;
+  height: 8px;
+  border-radius: 1px;
+  transform: translateX(-50%);
+  top: auto;
+  opacity: 0.9;
+}
+
+.mk.mk-my-kill {
+  bottom: 1px;
+  background: var(--ok);
+}
+
+.mk.mk-my-death {
+  top: 1px;
+  bottom: auto;
+  background: var(--bad);
+}
+
+.mk-demo.mk-mine {
+  width: 3px;
+  height: 10px;
+  border-radius: 1px;
+}
+
+.mk-demo.mk-my-kill {
+  background: var(--ok);
+}
+
+.mk-demo.mk-my-death {
+  background: var(--bad);
+}

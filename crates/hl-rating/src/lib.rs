@@ -4,6 +4,7 @@
 //! reading an optional weights file.
 
 pub mod detail;
+pub mod impact;
 pub mod model;
 pub mod profile;
 pub mod weights;
@@ -11,4 +12,5 @@ pub mod weights;
 pub use detail::{build as build_detail, DemoView, EventRow, Jump, MatchDetail};
 pub use model::{Baseline, Component, Performance, Rating, MODEL_VERSION};
 pub use profile::{HistoryRow, Profile};
+pub use impact::{Impact, KillCtx};
 pub use weights::Weights;

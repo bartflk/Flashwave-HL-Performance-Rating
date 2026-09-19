@@ -16,6 +16,7 @@ import type {
   MatchQuery,
   ProfileResponse,
   Progress,
+  RawlogStats,
   StvFetched,
   StvProgress,
   SyncDone,
@@ -57,6 +58,7 @@ const realApi = {
   /** `all` includes pugs; otherwise officials and scrims only. */
   getTeammates: (all: boolean) => invoke<Teammates>("get_teammates", { all }),
   contextCounts: () => invoke<ContextCounts>("context_counts"),
+  rawlogStats: () => invoke<RawlogStats>("rawlog_stats"),
   /** Opens in the system browser, never inside the app window. */
   openExternal: (url: string) => openUrl(url),
   copyText: (text: string) => writeText(text),

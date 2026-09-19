@@ -6,7 +6,7 @@ per class against class-relative baselines.
 
 See [PLAN.md](PLAN.md) for the full design and milestone plan.
 
-**Status: M5** — syncs your full match history from trends.tf and logs.tf,
+**Status: M6** — syncs your full match history from trends.tf and logs.tf,
 rates every performance against the players you actually face, and shows it
 two ways: a match page with the nine class matchups, a round timeline and the
 scoreboard; and a profile per class with form, trend, and which parts of your

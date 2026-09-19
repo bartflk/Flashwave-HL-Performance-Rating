@@ -253,6 +253,9 @@ function simulateSync(kind: "sync" | "reprocess") {
         handlers?.onProgress({ kind: "fetching", done, total: 24, logId: 4_122_234 - done }),
       );
     }
+    for (let done = 0; done <= 24; done += 6) {
+      steps.push(() => handlers?.onProgress({ kind: "rawLogs", done, total: 24 }));
+    }
     for (let done = 0; done <= 3; done++) {
       steps.push(() => handlers?.onProgress({ kind: "etf2l", done, total: 3 }));
     }
@@ -336,6 +339,8 @@ export const mockApi: Api = {
       profile: trend.length === 0 ? null : { ...p, filter: kind, games: trend.length, trend, best: only(p.best), worst: only(p.worst) },
     });
   },
+
+  rawlogStats: () => delay({ stored: 740, pending: 16, missing: 2, bytes: 79_900_000, kills: 226_784 }),
 
   getTeammates: (all: boolean) => delay((all ? teammatesAll : teammatesTeam) as unknown as Teammates),
 

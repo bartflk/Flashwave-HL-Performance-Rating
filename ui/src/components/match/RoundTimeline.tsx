@@ -32,6 +32,7 @@ export function RoundTimeline({ d }: { d: MatchDetail }) {
   const demoName = (j: Jump) =>
     d.demos.length > 1 ? d.demos.find((x) => x.demoId === j.demoId)?.fileName : undefined;
   const hasJumps = d.rounds.some((r) => r.jump !== null);
+  const hasMine = d.rounds.some((r) => r.events.some((e) => e.kind === "my_kill" || e.kind === "my_death"));
 
   return (
     <section className="panel rounds">
@@ -45,7 +46,7 @@ export function RoundTimeline({ d }: { d: MatchDetail }) {
             </p>
           )}
         </div>
-        <Legend jumps={hasJumps} />
+        <Legend jumps={hasJumps} mine={hasMine} />
       </header>
       {d.rounds.map((r) => (
         <Round key={r.roundNum} r={r} left={left} right={right} us={us} demoName={demoName} />
@@ -170,6 +171,24 @@ function Marker(props: {
   const jumpCls = jump ? " jumpable" : "";
 
   switch (e.kind) {
+    case "my_kill":
+      return (
+        <span
+          className={`mk mk-mine mk-my-kill${jumpCls}`}
+          style={{ left: pos }}
+          title={`${at} — you killed ${e.player ?? "?"}${e.value ? ` (${e.value})` : ""}${hint}`}
+          {...act}
+        />
+      );
+    case "my_death":
+      return (
+        <span
+          className={`mk mk-mine mk-my-death${jumpCls}`}
+          style={{ left: pos }}
+          title={`${at} — ${e.killer ?? "?"} killed you${e.value ? ` (${e.value})` : ""}${hint}`}
+          {...act}
+        />
+      );
     case "killstreak":
       return (
         <span
@@ -245,7 +264,7 @@ function jumpTo(j: Jump, what: string, demoName: (j: Jump) => string | undefined
   void copy(`demo_gototick ${j.tick}`, name ? `${what} (in ${name})` : what);
 }
 
-function Legend({ jumps }: { jumps: boolean }) {
+function Legend({ jumps, mine }: { jumps: boolean; mine: boolean }) {
   return (
     <div className="legend">
       {jumps && <span className="legend-note">click any marker to copy its tick</span>}
@@ -268,6 +287,16 @@ function Legend({ jumps }: { jumps: boolean }) {
         <span>
           <span className="mk-demo mk-streak">4</span> your killstreak
         </span>
+      )}
+      {mine && (
+        <>
+          <span>
+            <span className="mk-demo mk-mine mk-my-kill" /> your kill
+          </span>
+          <span>
+            <span className="mk-demo mk-mine mk-my-death" /> your death
+          </span>
+        </>
       )}
     </div>
   );

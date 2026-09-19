@@ -112,6 +112,7 @@ export type Progress =
   | { kind: "reprocessing"; done: number; total: number }
   | { kind: "rating"; done: number; total: number }
   | { kind: "etf2l"; done: number; total: number }
+  | { kind: "rawLogs"; done: number; total: number }
   | { kind: "etf2lFailed"; error: string };
 
 /** Sent once on `sync://done`. */
@@ -496,4 +497,16 @@ export interface Teammates {
   teams: TeamEra[];
   teammates: Teammate[];
   minGames: number;
+}
+
+// ---- M6: raw logs ------------------------------------------------------------------
+
+export interface RawlogStats {
+  /** Kept Highlander logs with their raw server log stored. */
+  stored: number;
+  pending: number;
+  /** logs.tf has no raw file for these. */
+  missing: number;
+  bytes: number;
+  kills: number;
 }

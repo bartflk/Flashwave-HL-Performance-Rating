@@ -1,4 +1,4 @@
-# HL Performance Rating System — Plan v0.9
+# HL Performance Rating System — Plan v1.0
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
 **Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
@@ -30,7 +30,7 @@ Four sources, each with one job. This is the biggest change from v0.2, and it re
 | **logs.tf** `/api/v1/log/<id>` | **Detail.** Full box score, per-round events, per-class and per-weapon stats | yes |
 | **ETF2L** `api.etf2l.org` | **Context.** Division and tier, competition, season, opponent identity | yes |
 | **demos.tf** | **STV demos.** All 18 players, reachable via the `demoid` trends.tf already provides | via demoid |
-| **logs.tf raw logs** | **Per-kill events.** The server log behind every logs.tf page: each kill with time, both classes, weapon and both players' positions. See §9 | via more.tf, not yet first-hand |
+| **logs.tf raw logs** | **Per-kill events.** The server log behind every logs.tf page: each kill with time, both classes, weapon and both players' positions. See §9 and "Raw logs (M6)" | yes: 740 logs, every kill matches logs.tf |
 
 ### Why trends.tf changes the plan
 
@@ -123,25 +123,28 @@ So the model becomes a general table plus per-map overrides.
 
 **Per side.** In stopwatch, killing RED's (defending) Engineer matters much more than killing BLU's. The side changes the value, not just the map.
 
-**Proposed shape.** Layered, with each layer optional and falling back to the one above:
+**As built (M6).** Layered, with each layer optional and falling back to the one above. "Defending" covers every attack/defence map, so a separate per-mode layer turned out to be unnecessary:
 
 ```toml
-[victim_value]                       # general, as today
+[victim_value]                       # general
 pyro = 1.5
 spy = 1.3
 
-[victim_value.mode.pl.defense]       # all payload maps, defending side
-engineer = 1.6
-scout = 1.0
+[victim_value.defending]             # victim defending on any attack/defence map
+engineer = 1.6                       # proposed
+scout = 1.0                          # proposed
 
-[victim_value.map.pl_vigil]          # one map, both sides
-sniper_pick_scale = 0.85             # a pick here is worth less
+[victim_value.map.pl_vigil]          # one map, both sides (none set yet)
+sniper = 1.5
 
-[victim_value.map.pl_vigil.defense]  # one map, one side
+[victim_value.map.pl_vigil.defending]  # one map, defending side
 engineer = 1.8
+
+[attack_defend]                      # control-point maps with sides; payload always counts
+maps = ["cp_steel", "cp_gravelpit", ...]
 ```
 
-Lookup order: map+side, then map, then mode+side, then mode, then general. The same validation as today applies, so a typo is an error.
+Lookup order: map and side, then map, then side, then general. Map keys match the start of the map name, so versions do not matter. An unknown class anywhere is an error, not a silent zero.
 
 **What the data allows. This decides the order of work:**
 - **Per map: possible now.** Every log has its map, and `classkills` gives victims per player per log.
@@ -250,6 +253,32 @@ Result on this account: **58 officials, 544 scrims, 156 pugs**. The context pass
 **What it says:** Sniper rating 52 in officials (51 games, 70% won), 49 in scrims (532), 46 in pugs (80). The profile can be filtered to any of the three; its career records (duel, medic picks) are hidden while filtered because they count every game.
 
 **Teammates.** Per ETF2L team: games, officials, record, the owner's average rating, and the nine most frequent teammates. Per teammate with five or more shared games: games, officials, record, first and last game together, their usual class, and the owner's average rating with them against the owner's other games. That comparison needs ten rated games on each side and is labelled as a correlation: it says who you played well alongside, not who made you play well.
+
+### Raw logs (M6)
+
+**Fetch.** `logs.tf/logs/log_<id>.log.zip` for every kept Highlander log, stored verbatim as a source (80 MB compressed for 740 logs). It served files back to 2014. One request per second, newest first; the first full fetch took 18 minutes. Two logs have no raw file. After about 740 requests logs.tf stopped answering entirely, so the last 16 (the oldest, 2014) are left for the next sync to retry.
+
+**What counts.** Checked against logs.tf's own summary of the same files:
+- A kill counts only **inside a round**: after `Round_Start`, before `Round_Win`, `Round_Stalemate` or `Game_Over`. Pre-game and humiliation kills are in the log but not in logs.tf's totals. Missing the stalemate rule put five logs one kill out.
+- **Dead Ringer feign deaths** have a kill line but are not kills. logs.tf does credit the **assist** on one, so assists count inside a round, feign or not.
+- The victim's class is not on the kill line. It is tracked from each player's latest `spawned as` or `changed role to`. 2014 logs write `Heavy`, not `heavyweapons`.
+- An assist line sometimes lands a second after its kill.
+
+Result: on all 740 logs, **every player's kills, assists and kills by victim class match logs.tf exactly** (`hl rawlogs --check`). That is 226,784 kill lines.
+
+**Trap 4: the raw clock.** Raw timestamps are the game server's local time. logs.tf's round times are a whole number of hours away from them: 2 hours on 387 logs, 1 on 344, 0 on 9. The shift is found by matching each `Round_Start` line to logs.tf's rounds. Under the right hour, **all 2,474 rounds match to the second**. Kills are stored shifted into logs.tf's frame, so they fall into rounds and onto demo ticks like every other event.
+
+**A bug it exposed.** logs.tf's `classkillassists` is kills *plus* assists per victim class, not assists. Since M3, "impact assists" counted every kill a second time. Fixed at normalization, so logs without a raw log are right too. For a Sniper, raw impact assists fall from about 8.3 to 1.0 per 10 min, which is what the assist counts say.
+
+**Kills valued one by one.** With a raw log, impact kills and impact assists sum each kill's own value. That value depends on the victim's class, the map, and whether the victim was **defending**. Defending means RED on an attack/defence map: every payload map plus the control-point maps listed in `[attack_defend]` (Steel, Gravel Pit and others). Colours are read at the moment of the kill, so stopwatch halves are right. Lookup order: map and side, then map, then side, then the general value. Defaults: a defending Engineer is worth 1.6 and a defending Scout 1.0. Both are proposed, not agreed (see "Victim values v2"). No per-map values are set yet. Without a raw log, impact falls back to `classkills` at the general values; on a symmetric map the two agree exactly.
+
+**Effect on this account:** small. Sniper career stays at 48.8, and recent form goes from 45.2 to 45.5. Impact kills barely move. The corrected impact assists move from the 44th to the 50th percentile.
+
+**On the match page**, your own kills (green, from the bottom edge) and deaths (red, from the top) now sit on every round's track. Each says who, what class, headshot or not, and the weapon. With a demo linked, every one of them copies its `demo_gototick`: 67 jumpable moments on the TWS official. Deaths from suicides and fall damage have no killer line, so the timeline shows 28 of the 31 deaths logs.tf counts there.
+
+**Stored but not used yet:** positions of both players on every kill, and chat. They feed M7's kill map and play-by-play.
+
+**Not done from the M6 list:** time to first pick, and picks before an uber push. Both are now computable from stored kills and ubers.
 
 ### Still deliberately deferred
 
@@ -376,7 +405,7 @@ POV demos only contain what your client received, so phase 2 is you-only for loc
 | **M3** | Rating v1: Sniper in full, other classes generic; profile page | **done** |
 | **M4** | Demos: local index, demos.tf fetch by demoid, linking, jump-back | **done** |
 | **M5** | ETF2L context, officials vs scrims split, teammate tracking | **done** |
-| **M6** | Raw logs: every kill with time, classes and positions (§9); per-side victim values | |
+| **M6** | Raw logs: every kill with time, classes and positions (§9); per-side victim values | **done** |
 | **M7** | more.tf-style match views: kill map, heatmaps, damage and kill spread, timeline, play-by-play (§9) | |
 | **v2** | Deep demo parse: aim and viewangles, engagement ranges (positions largely come from M6 now) | |
 
@@ -396,6 +425,9 @@ M1 acceptance: every Highlander log on the account stored, classified, deduplica
 8. **Opponent strength.** ETF2L division and tier are now stored for every official, and scrim opponents are often named. The rating pool still weighs every performance equally. Weighting by the opponent's division is the natural next step.
 9. **Teams with no officials.** Scrims are named from official rosters, so a team that never played an official (2 Blacked Up, March–August 2026) stays unnamed. The player's ETF2L transfer history (`/player/{id}/transfers`) could fill the gap; it is incomplete for older teams.
 10. **logs.tf-only combined logs.** Dedupe relies on trends.tf's `duplicate_of`. A combined log that only logs.tf knows (the 2018 S16 semi-final: `gullywash + badwater` plus both single-map logs) is counted alongside its parts.
+11. **Raw logs still to fetch.** 16 of the oldest logs timed out when logs.tf stopped answering; the next sync retries them.
+12. **Defending values.** Engineer 1.6 and Scout 1.0 on defence are proposed, not agreed. Worth checking with function, along with the first per-map values.
+13. **Time to first pick and picks before an uber push.** Planned for M6, not built; the data is stored.
 
 ---
 

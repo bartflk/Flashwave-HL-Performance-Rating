@@ -8,12 +8,14 @@ mod context;
 mod demos;
 mod matches;
 mod ratings;
+mod rawlog;
 
 pub use context::{
     ContextCounts, ContextGameRow, ContextRow, Etf2lMatchRow, MatchContext, MateRow, OfficialInfo,
     OfficialRow, OwnGameRow,
 };
 pub use demos::{ClockInput, ClockRow, DemoRow, DemoStats, LinkedDemo};
+pub use rawlog::{ChatRow, KillRow, RawlogStats, StoredKill};
 pub use ratings::{HistoryDbRow, RatingRow, VsTotals};
 pub use matches::{
     IndexInfo, IndexStats, LogsTfIndexRow, MatchFilter, MatchPage, MatchSummary, MyLine,

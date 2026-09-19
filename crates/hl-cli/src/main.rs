@@ -30,6 +30,9 @@ COMMANDS:
                            Matchups for one stored match
     rate                   Rebuild baselines and rate every stored performance
     demos                  Scan the TF2 folder for demos and link them to matches
+    rawlogs [--max N] [--check]
+                           Fetch logs.tf raw logs and derive every kill; --check
+                           compares stored kills with logs.tf's totals
     etf2l [--offline]      Fetch ETF2L officials and classify every match (official/scrim/pug)
     teammates [--all] [--json]
                            Your teams and regular teammates (officials and scrims unless --all)
@@ -139,6 +142,8 @@ async fn main() -> Result<()> {
             let summary = hl_ingest::sync(&db, &sources, me, &opts, print_progress).await?;
             println!();
             println!("fetched {} log(s), {} failed", summary.fetched, summary.failed);
+            let raw = hl_ingest::kills::fetch(&db, &sources, None, print_progress).await?;
+            println!("\nraw logs: {} fetched, {} missing, {} failed", raw.fetched, raw.missing, raw.failed);
             if let Err(e) = hl_ingest::etf2l::fetch(&db, &sources, me, |_, _| {}).await {
                 println!("ETF2L unavailable, classifying from stored data: {e:#}");
             }
@@ -151,7 +156,9 @@ async fn main() -> Result<()> {
             let db = Db::connect(&db_path).await?;
             let started = std::time::Instant::now();
             let stats = hl_ingest::reprocess(&db, print_progress).await?;
+            let kills = hl_ingest::kills::rederive_all(&db, print_progress).await?;
             println!();
+            println!("{kills} kills re-derived from stored raw logs");
             println!("rebuilt in {:.1}s", started.elapsed().as_secs_f64());
             if let Some(me) = db.get_me().await? {
                 classify(&db, me).await?;
@@ -245,6 +252,41 @@ async fn main() -> Result<()> {
             println!("worst");
             for g in &p.worst {
                 println!("  {:>5.1}  {}  {}  {}", g.score, g.log_id, g.played_at.map(fmt_date).unwrap_or_default(), g.map.as_deref().unwrap_or("?"));
+            }
+            Ok(())
+        }
+
+        ["rawlogs", rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            if !rest.contains(&"--check") {
+                let sources = Sources::new()?;
+                let max = flag_value(rest, "--max")?;
+                let started = std::time::Instant::now();
+                let s = hl_ingest::kills::fetch(&db, &sources, max, print_progress).await?;
+                println!(
+                    "\nfetched {} raw logs ({} kills) in {:.0}s; {} missing on logs.tf, {} failed",
+                    s.fetched,
+                    s.kills,
+                    started.elapsed().as_secs_f64(),
+                    s.missing,
+                    s.failed
+                );
+            }
+            let st = db.rawlog_stats().await?;
+            println!(
+                "stored {} ({:.1} MB), pending {}, missing {}, kills {}",
+                st.stored,
+                st.bytes as f64 / 1e6,
+                st.pending,
+                st.missing,
+                st.kills
+            );
+            if rest.contains(&"--check") {
+                let (logs, bad) = db.check_kills_against_logstf().await?;
+                println!("{logs} logs compared with logs.tf; {} with a player whose kills differ", bad.len());
+                for (log_id, players) in bad.iter().take(15) {
+                    println!("  {log_id}: {players}");
+                }
             }
             Ok(())
         }
@@ -473,6 +515,7 @@ fn print_progress(p: Progress) {
         Progress::Reprocessing { done, total } => print!("\rreprocessing {done}/{total}          "),
         Progress::Rating { done, total } => print!("\rrating {done}/{total}          "),
         Progress::Etf2l { done, total } => print!("\rETF2L matches {done}/{total}          "),
+        Progress::RawLogs { done, total } => print!("\rraw logs {done}/{total}          "),
         Progress::Etf2lFailed { error } => println!("\n  ! ETF2L: {error}"),
     }
     let _ = std::io::stdout().flush();

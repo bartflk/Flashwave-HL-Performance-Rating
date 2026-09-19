@@ -54,6 +54,14 @@ impl Throttled {
 
     /// As [`get_text`](Self::get_text), but a 404 is `None` rather than an error.
     pub async fn get_text_opt(&self, url: &str) -> Result<Option<String>> {
+        match self.get_bytes_opt(url).await? {
+            Some(b) => String::from_utf8(b).map(Some).with_context(|| format!("{url}: body is not UTF-8")),
+            None => Ok(None),
+        }
+    }
+
+    /// GET a URL as raw bytes; a 404 is `None`. Same throttle and retries.
+    pub async fn get_bytes_opt(&self, url: &str) -> Result<Option<Vec<u8>>> {
         let mut last_err = None;
         let mut wait = Duration::ZERO;
         for attempt in 0..=RETRY_DELAYS.len() {
@@ -66,7 +74,7 @@ impl Throttled {
                 Ok(resp) => {
                     let status = resp.status();
                     if status.is_success() {
-                        return resp.text().await.map(Some).with_context(|| format!("reading body of {url}"));
+                        return resp.bytes().await.map(|b| Some(b.to_vec())).with_context(|| format!("reading body of {url}"));
                     }
                     if status.as_u16() == 404 {
                         return Ok(None);

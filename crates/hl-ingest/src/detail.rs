@@ -24,8 +24,12 @@ pub async fn match_detail(
         serde_json::from_str(&json).with_context(|| format!("log {log_id} is not valid JSON"))?;
     let log = normalize(log_id, &value)?;
     let baseline = crate::rating::load_baseline(db).await?;
-    let mut detail = build_detail(&log, me, weights, &baseline);
+    let kills = db.kills_for_log(log_id).await?;
+    let impact = crate::kills::impacts_for(&kills, log.map.as_deref(), weights);
+    let mut detail = build_detail(&log, me, weights, &baseline, &impact);
 
+    // Kill markers first: demo enrichment then gives every marker its jump.
+    crate::kills::enrich(&log, &kills, me, &mut detail);
     crate::demos::enrich(db, &log, &mut detail).await?;
 
     if let Some(info) = db.index_info(log_id).await? {

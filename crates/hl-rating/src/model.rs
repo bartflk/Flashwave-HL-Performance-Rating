@@ -9,6 +9,7 @@
 //! player, not per class played, so a flexer's kills cannot be split across
 //! classes honestly; rating only the main class keeps every number attributable.
 
+use crate::impact::Impact;
 use crate::weights::Weights;
 use hl_core::matchdata::{LogFlags, PlayerLine};
 use hl_core::TfClass;
@@ -114,7 +115,11 @@ pub struct Performance {
 
 /// Raw component values for `player` on their main class, or `None` when they
 /// did not play it long enough to rate.
-pub fn extract(player: &PlayerLine, flags: &LogFlags, w: &Weights) -> Option<Performance> {
+///
+/// `impact` is the player's kills valued one by one from the raw log (victim
+/// class, map, side). Without it, impact falls back to `classkills` at the
+/// general values.
+pub fn extract(player: &PlayerLine, flags: &LogFlags, w: &Weights, impact: Option<&Impact>) -> Option<Performance> {
     let class = player.main_class()?;
     let line = player.classes.iter().find(|c| c.class == class)?;
     let minutes = line.time_s as f64 / 60.0;
@@ -129,11 +134,14 @@ pub fn extract(player: &PlayerLine, flags: &LogFlags, w: &Weights) -> Option<Per
     for (component, _) in w.model_for(class) {
         let v = match component {
             Component::ImpactKills => Some(
-                player.vs.iter().map(|v| v.kills as f64 * w.victim(v.other_class)).sum::<f64>() * per10,
+                impact.map(|i| i.kills).unwrap_or_else(|| {
+                    player.vs.iter().map(|v| v.kills as f64 * w.victim(v.other_class)).sum::<f64>()
+                }) * per10,
             ),
             Component::ImpactAssists => Some(
-                player.vs.iter().map(|v| v.assists as f64 * w.victim(v.other_class)).sum::<f64>()
-                    * w.general.assist_share
+                impact.map(|i| i.assists).unwrap_or_else(|| {
+                    player.vs.iter().map(|v| v.assists as f64 * w.victim(v.other_class)).sum::<f64>()
+                }) * w.general.assist_share
                     * per10,
             ),
             Component::MedicPicks => Some(vs(TfClass::Medic).map_or(0, |v| v.kills) as f64 * per10),

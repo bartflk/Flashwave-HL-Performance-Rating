@@ -48,6 +48,9 @@ pub enum Progress {
     /// ETF2L match fetches.
     #[serde(rename_all = "camelCase")]
     Etf2l { done: usize, total: usize },
+    /// Raw server logs from logs.tf.
+    #[serde(rename_all = "camelCase")]
+    RawLogs { done: usize, total: usize },
     /// ETF2L could not be reached; the rest of the sync carries on.
     #[serde(rename_all = "camelCase")]
     Etf2lFailed { error: String },

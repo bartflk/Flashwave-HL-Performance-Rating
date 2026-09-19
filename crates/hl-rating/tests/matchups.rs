@@ -26,7 +26,7 @@ fn baseline(w: &Weights) -> Baseline {
     ];
     let perfs: Vec<_> = logs
         .iter()
-        .flat_map(|l| l.players.iter().filter_map(|p| extract(p, &l.flags, w)))
+        .flat_map(|l| l.players.iter().filter_map(|p| extract(p, &l.flags, w, None)))
         .collect();
     Baseline::build(&perfs, Some(ME))
 }
@@ -34,7 +34,7 @@ fn baseline(w: &Weights) -> Baseline {
 fn detail() -> MatchDetail {
     let w = Weights::default_weights();
     let log = load("hl_sub_19p_4114301.json", 4114301);
-    build_detail(&log, Some(SteamId::from_account_id(ME)), &w, &baseline(&w))
+    build_detail(&log, Some(SteamId::from_account_id(ME)), &w, &baseline(&w), &Default::default())
 }
 
 #[test]
@@ -111,7 +111,7 @@ fn ratings_show_their_working() {
 fn without_a_baseline_nothing_is_rated() {
     let w = Weights::default_weights();
     let log = load("hl_sub_19p_4114301.json", 4114301);
-    let d = build_detail(&log, Some(SteamId::from_account_id(ME)), &w, &Baseline::default());
+    let d = build_detail(&log, Some(SteamId::from_account_id(ME)), &w, &Baseline::default(), &Default::default());
     assert!(!d.rated);
     assert!(d.players.iter().all(|p| p.rating.is_none()));
     assert!(d.matchups.iter().all(|m| m.winner.is_none()));

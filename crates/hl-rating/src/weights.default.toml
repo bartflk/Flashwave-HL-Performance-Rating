@@ -20,6 +20,28 @@ soldier  = 1.2
 scout    = 1.15  # proposed: above Engineer
 engineer = 1.1
 
+# Killing a player on the DEFENDING side of an attack/defence map (every
+# payload map, and those listed under [attack_defend]). Only the classes listed
+# change; the rest keep the values above. Proposed, not yet agreed: a defending
+# Engineer's sentry holds the defence, and Scout drops back below Engineer.
+[victim_value.defending]
+engineer = 1.6
+scout    = 1.0
+
+# Per-map values, for both sides or the defending side only. Keys match the
+# start of the map name, so versions do not matter. None set yet, for example:
+#
+#   [victim_value.map.pl_vigil]
+#   sniper = 1.5
+#
+#   [victim_value.map.pl_vigil.defending]
+#   engineer = 1.8
+
+# Control-point maps with an attacking and a defending side, matched by the
+# start of the name. Payload maps always count and need no entry.
+[attack_defend]
+maps = ["cp_steel", "cp_gravelpit", "cp_dustbowl", "cp_egypt", "cp_gorge", "cp_junction", "cp_mountainlab"]
+
 [general]
 # An assist counts for this share of the equivalent kill.
 assist_share = 0.5

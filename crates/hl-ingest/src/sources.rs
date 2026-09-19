@@ -122,6 +122,12 @@ impl Sources {
             .collect()
     }
 
+    /// The raw server log behind a logs.tf page, as the zip logs.tf serves;
+    /// `None` when logs.tf has none.
+    pub async fn logstf_rawlog(&self, log_id: i64) -> Result<Option<Vec<u8>>> {
+        self.logstf.get_bytes_opt(&format!("https://logs.tf/logs/log_{log_id}.log.zip")).await
+    }
+
     /// Full JSON for one log, verbatim.
     pub async fn logstf_log(&self, log_id: i64) -> Result<String> {
         let body = self

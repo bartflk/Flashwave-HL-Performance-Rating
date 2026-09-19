@@ -52,6 +52,7 @@ export function SyncStrip() {
           void qc.invalidateQueries({ queryKey: ["match"] });
           void qc.invalidateQueries({ queryKey: ["teammates"] });
           void qc.invalidateQueries({ queryKey: ["context_counts"] });
+          void qc.invalidateQueries({ queryKey: ["rawlog_stats"] });
         },
         onError: (e) => setStatus({ state: "error", message: e.message }),
       })
@@ -169,6 +170,14 @@ function ProgressLine({ progress, failures }: { progress: Progress | null; failu
       case "rating":
         fraction = progress.total > 0 ? progress.done / progress.total : 1;
         label = `Rating ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()} matches`;
+        break;
+      case "rawLogs":
+        fraction = progress.total > 0 ? progress.done / progress.total : 1;
+        label =
+          progress.total === 0
+            ? "Raw logs up to date."
+            : `Raw logs ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()}` +
+              (progress.done < progress.total ? ` — about ${eta(progress.total - progress.done)} left` : "");
         break;
       case "etf2l":
         fraction = progress.total > 0 ? progress.done / progress.total : null;

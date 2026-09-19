@@ -72,6 +72,15 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                 let _ = emitter.emit(EV_PROGRESS, p);
             })
             .await?;
+            // Raw logs: every kill with time, classes and positions. Newest
+            // first; the first sync fetches the whole history (~15 min).
+            let raw = hl_ingest::kills::fetch(&db, &sources, None, |p: Progress| {
+                let _ = emitter.emit(EV_PROGRESS, p);
+            })
+            .await?;
+            if raw.failed > 0 {
+                tracing::warn!(failed = raw.failed, "some raw logs could not be fetched; next sync retries");
+            }
             // ETF2L is context, not the core: if it is down, the sync still succeeds.
             let etf2l = hl_ingest::etf2l::fetch(&db, &sources, me, |done, total| {
                 let _ = emitter.emit(EV_PROGRESS, Progress::Etf2l { done, total });
@@ -122,6 +131,10 @@ pub async fn reprocess_start(app: AppHandle, state: State<'_, AppState>) -> CmdR
         let emitter = app.clone();
         let result = async {
             let stats = hl_ingest::reprocess(&db, |p: Progress| {
+                let _ = emitter.emit(EV_PROGRESS, p);
+            })
+            .await?;
+            hl_ingest::kills::rederive_all(&db, |p: Progress| {
                 let _ = emitter.emit(EV_PROGRESS, p);
             })
             .await?;
@@ -248,6 +261,11 @@ pub async fn get_teammates(state: State<'_, AppState>, all: bool) -> CmdResult<h
         .ok_or_else(|| CmdError::new("missing_config", "Set your SteamID first."))?;
     let scope = if all { hl_ingest::teammates::Scope::All } else { hl_ingest::teammates::Scope::Team };
     Ok(hl_ingest::teammates::load(&state.db, me, scope).await?)
+}
+
+#[tauri::command]
+pub async fn rawlog_stats(state: State<'_, AppState>) -> CmdResult<hl_db::RawlogStats> {
+    Ok(state.db.rawlog_stats().await?)
 }
 
 #[tauri::command]

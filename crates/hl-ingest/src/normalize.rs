@@ -153,6 +153,12 @@ fn vs_lines(kills: Option<&Value>, deaths: Option<&Value>, assists: Option<&Valu
     add(kills, |l, n| l.kills += n);
     add(deaths, |l, n| l.deaths += n);
     add(assists, |l, n| l.assists += n);
+    // logs.tf's `classkillassists` is kills *plus* assists per victim class,
+    // not assists alone: every player's total equals their kills + assists.
+    // Taking it as assists counted each kill twice in impact assists (M3-M5).
+    for line in by_class.values_mut() {
+        line.assists = (line.assists - line.kills).max(0);
+    }
     by_class.into_values().collect()
 }
 

@@ -3,6 +3,7 @@
 //! Orientation: when the owner played, their team is always on the left, so
 //! every matchup reads "us vs them". Otherwise Red is on the left.
 
+use crate::impact::Impact;
 use crate::model::{extract, rate, Baseline, Rating, MODEL_VERSION};
 use crate::weights::Weights;
 use hl_core::matchdata::{EventLine, LogFlags, NormalizedLog, PlayerLine, Team};
@@ -189,7 +190,15 @@ pub struct EventRow {
     pub jump: Option<Jump>,
 }
 
-pub fn build(log: &NormalizedLog, me: Option<SteamId>, w: &Weights, baseline: &Baseline) -> MatchDetail {
+/// `impacts` holds each player's kills valued from the raw log, when there is
+/// one; the stored ratings are built the same way, so the page agrees with them.
+pub fn build(
+    log: &NormalizedLog,
+    me: Option<SteamId>,
+    w: &Weights,
+    baseline: &Baseline,
+    impacts: &HashMap<u32, Impact>,
+) -> MatchDetail {
     let my_team = me.and_then(|m| log.players.iter().find(|p| p.id == m)).map(|p| p.team);
     let left_team = my_team.unwrap_or(Team::Red);
 
@@ -223,8 +232,8 @@ pub fn build(log: &NormalizedLog, me: Option<SteamId>, w: &Weights, baseline: &B
         my_team,
         result,
         left_team,
-        matchups: matchups(log, left_team, me, w, baseline),
-        players: players(log, me, w, baseline),
+        matchups: matchups(log, left_team, me, w, baseline, impacts),
+        players: players(log, me, w, baseline, impacts),
         rounds: rounds(log, &names, me),
         model_version: MODEL_VERSION,
         rated: !baseline.is_empty(),
@@ -243,12 +252,13 @@ fn matchups(
     me: Option<SteamId>,
     w: &Weights,
     baseline: &Baseline,
+    impacts: &HashMap<u32, Impact>,
 ) -> Vec<Matchup> {
     let mut rows: Vec<Matchup> = TfClass::ALL
         .iter()
         .map(|&class| {
-            let l = side(log, left, class, w, baseline);
-            let r = side(log, left.other(), class, w, baseline);
+            let l = side(log, left, class, w, baseline, impacts);
+            let r = side(log, left.other(), class, w, baseline, impacts);
             let score = |s: &Option<Side>| s.as_ref().and_then(|s| s.rating.as_ref()).map(|r| r.score);
             let diff = match (score(&l), score(&r)) {
                 (Some(a), Some(b)) => Some(round2(a - b)),
@@ -311,7 +321,14 @@ fn on_class(log: &NormalizedLog, team: Team, class: TfClass) -> Vec<(&PlayerLine
     v
 }
 
-fn side(log: &NormalizedLog, team: Team, class: TfClass, w: &Weights, baseline: &Baseline) -> Option<Side> {
+fn side(
+    log: &NormalizedLog,
+    team: Team,
+    class: TfClass,
+    w: &Weights,
+    baseline: &Baseline,
+    impacts: &HashMap<u32, Impact>,
+) -> Option<Side> {
     let players = on_class(log, team, class);
     let (primary, _) = *players.first()?;
 
@@ -337,7 +354,7 @@ fn side(log: &NormalizedLog, team: Team, class: TfClass, w: &Weights, baseline: 
         s.assists += line.assists;
         s.dmg += line.dmg;
         if p.main_class() == Some(class) {
-            if let Some(r) = extract(p, &log.flags, w).and_then(|perf| rate(&perf, baseline, w)) {
+            if let Some(r) = extract(p, &log.flags, w, impacts.get(&p.id.account_id())).and_then(|perf| rate(&perf, baseline, w)) {
                 rated.push((r, line.time_s));
             }
         }
@@ -375,7 +392,13 @@ fn head_to_head(log: &NormalizedLog, left: Team, class: TfClass) -> Option<(i64,
     Some((count(left)?, count(left.other())?))
 }
 
-fn players(log: &NormalizedLog, me: Option<SteamId>, w: &Weights, baseline: &Baseline) -> Vec<PlayerRow> {
+fn players(
+    log: &NormalizedLog,
+    me: Option<SteamId>,
+    w: &Weights,
+    baseline: &Baseline,
+    impacts: &HashMap<u32, Impact>,
+) -> Vec<PlayerRow> {
     let class_order = |c: Option<TfClass>| {
         c.and_then(|c| TfClass::ALL.iter().position(|x| *x == c)).unwrap_or(99)
     };
@@ -413,7 +436,7 @@ fn players(log: &NormalizedLog, me: Option<SteamId>, w: &Weights, baseline: &Bas
                 backstabs: s.backstabs,
                 airshots: s.airshots,
                 cpc: s.cpc,
-                rating: extract(p, &log.flags, w).and_then(|perf| rate(&perf, baseline, w)),
+                rating: extract(p, &log.flags, w, impacts.get(&p.id.account_id())).and_then(|perf| rate(&perf, baseline, w)),
                 is_me: me == Some(p.id),
             }
         })

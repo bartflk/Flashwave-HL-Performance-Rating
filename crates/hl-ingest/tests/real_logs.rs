@@ -171,3 +171,14 @@ async fn writing_a_match_is_idempotent() {
     assert_eq!(first, second);
     assert_eq!(first[1], ("match_player", 19));
 }
+
+/// logs.tf's `classkillassists` is kills plus assists. Normalized, the
+/// per-class assists must sum to the player's assists, not kills + assists.
+#[test]
+fn class_assists_exclude_the_kills() {
+    let log = normalize(4114301, &load("hl_sub_19p_4114301.json")).unwrap();
+    for p in &log.players {
+        let by_class: i64 = p.vs.iter().map(|v| v.assists).sum();
+        assert_eq!(by_class, p.stats.assists, "player {}", p.id.account_id());
+    }
+}

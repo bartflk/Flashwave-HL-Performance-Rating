@@ -30,6 +30,7 @@ export function Settings({
   return (
     <div className="content">
       <Etf2lPanel />
+      <RawlogPanel />
       <DemosPanel />
       <div className="panel">
         <h2>Setup</h2>
@@ -183,6 +184,45 @@ function Etf2lPanel() {
               <span className="muted">never</span>
             )}
           </dd>
+        </dl>
+      )}
+    </div>
+  );
+}
+
+/** Raw server logs: where every kill, with its time and position, comes from. */
+function RawlogPanel() {
+  const q = useQuery({ queryKey: ["rawlog_stats"], queryFn: api.rawlogStats });
+  const s = q.data;
+  return (
+    <div className="panel">
+      <h2>Raw logs</h2>
+      <p className="hint" style={{ marginTop: 6 }}>
+        The server log behind each logs.tf page. It has every kill with its time, both classes and where both
+        players stood, so kills are valued one by one: by the victim&apos;s class, the map, and whether they were
+        defending. Fetched on every sync.
+      </p>
+      {s && (
+        <dl className="kv" style={{ marginTop: 14 }}>
+          <dt>Stored</dt>
+          <dd>
+            {s.stored.toLocaleString()} matches <span className="muted">({(s.bytes / 1e6).toFixed(0)} MB)</span>
+          </dd>
+          <dt>Kills</dt>
+          <dd>{s.kills.toLocaleString()}</dd>
+          <dt>Still to fetch</dt>
+          <dd>
+            {s.pending}
+            {s.pending > 0 && <span className="muted"> · retried on the next sync</span>}
+          </dd>
+          {s.missing > 0 && (
+            <>
+              <dt>Not on logs.tf</dt>
+              <dd>
+                {s.missing} <span className="muted">· these use logs.tf&apos;s totals instead</span>
+              </dd>
+            </>
+          )}
         </dl>
       )}
     </div>
