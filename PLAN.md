@@ -1096,6 +1096,27 @@ The win test from v2 was a script in a scratch folder. Make it permanent so ever
 
 **Done when:** it reproduces v2's numbers (v1 67.5%, v2 71.4%, 679 to 693 matches).
 
+**As built.** `hl validate sniper` takes 1.2 s:
+- **The pool.** It extracts every Sniper component, used by the live model or not, for every performance, and measures each against a pool of all Sniper performances. The live rating leaves you out of its pool; here that would favour one player's games.
+- **Candidates.** `--weights file.toml` scores a candidate; the file can hold only a `[model.sniper]` table, and the flag can be repeated. A typo in a component name is an error.
+- **Other options.** `--split YYYY-MM-DD` moves the before/after date, and `--json` gives the report as data.
+
+It reproduces v2's check exactly: 693 matches, v1 67.5%, v2 71.4%.
+
+**First out-of-sample reading** (split at the start of Season 34: 491 matches before, 202 after):
+
+| Picks the winner | All | Before | After |
+|---|---|---|---|
+| Live (v2) | 71.4% | 72.3% | 69.3% |
+| v1 | 67.5% | 67.8% | 66.8% |
+| function's "duel 10, DPM 15" | 68.5% | 68.8% | 67.8% |
+| Fitted before the split | – | 76.8% | **73.8%** |
+
+**What that says:**
+- v2's lead over v1 holds on matches it was not tuned on: 69.3% against 66.8%.
+- A model fitted only on older matches still scores 73.8% on newer ones. So a weighting closer to the fit has real room left, mostly by leaning harder on deaths, impact kills and untraded kills.
+- Steps 1–3 are where that room goes: death context, Fight KAST and situation-valued kills.
+
 #### Step 1. Death context (HLTV's traded-death rule)
 
 **Measure.** In `fights.rs`, label every death:

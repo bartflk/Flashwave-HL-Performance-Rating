@@ -37,11 +37,52 @@ pub async fn rate_all(
     w: &Weights,
     mut progress: impl FnMut(Progress),
 ) -> Result<RateSummary> {
+    // Pass 1: every rateable performance in every kept Highlander log.
+    let (total, perfs) = collect_performances(db, w, &mut progress).await?;
+
+    // Pass 2: the pools, without the owner in them.
+    let baseline = Baseline::build(perfs.iter().map(|(_, p)| p), me.map(|m| m.account_id()));
+    let stored: Vec<(String, String, Vec<f64>)> = baseline
+        .parts()
+        .map(|(class, c, vals)| (class.as_str().to_string(), c.key().to_string(), vals.to_vec()))
+        .collect();
+    db.replace_baselines(MODEL_VERSION, &stored).await?;
+
+    // Pass 3: score everyone, the owner included.
+    let mut rows = Vec::with_capacity(perfs.len());
+    let mut mine = 0;
+    for (log_id, perf) in &perfs {
+        let Some(r) = rate(perf, &baseline, w) else { continue };
+        if me.is_some_and(|m| m.account_id() == perf.account_id) {
+            mine += 1;
+        }
+        rows.push(RatingRow {
+            log_id: *log_id,
+            account_id: perf.account_id,
+            class: perf.class.as_str(),
+            score: r.score,
+            minutes: r.minutes,
+            parts_json: serde_json::to_string(&r.parts)?,
+        });
+    }
+    db.replace_ratings(MODEL_VERSION, &rows).await?;
+    progress(Progress::Rating { done: total, total });
+
+    Ok(RateSummary { logs: total, performances: perfs.len(), rated: rows.len(), mine })
+}
+
+/// Pass 1 of rating: every rateable performance in every kept Highlander log,
+/// with the components `w` names for each class. Kills from raw logs are
+/// valued one by one, and fight counts attached, where a raw log exists.
+/// Returns the number of logs read and the performances.
+pub async fn collect_performances(
+    db: &Db,
+    w: &Weights,
+    mut progress: impl FnMut(Progress),
+) -> Result<(usize, Vec<(i64, Performance)>)> {
     let ids = db.rateable_log_ids().await?;
     let total = ids.len();
 
-    // Pass 1: every rateable performance in every kept Highlander log. Kills
-    // from raw logs are valued one by one where a raw log exists.
     let kills = db.all_kills().await?;
     let windows = db.all_round_windows().await?;
     let fights = db.fight_counts(None).await?;
@@ -74,35 +115,7 @@ pub async fn rate_all(
         );
     }
 
-    // Pass 2: the pools, without the owner in them.
-    let baseline = Baseline::build(perfs.iter().map(|(_, p)| p), me.map(|m| m.account_id()));
-    let stored: Vec<(String, String, Vec<f64>)> = baseline
-        .parts()
-        .map(|(class, c, vals)| (class.as_str().to_string(), c.key().to_string(), vals.to_vec()))
-        .collect();
-    db.replace_baselines(MODEL_VERSION, &stored).await?;
-
-    // Pass 3: score everyone, the owner included.
-    let mut rows = Vec::with_capacity(perfs.len());
-    let mut mine = 0;
-    for (log_id, perf) in &perfs {
-        let Some(r) = rate(perf, &baseline, w) else { continue };
-        if me.is_some_and(|m| m.account_id() == perf.account_id) {
-            mine += 1;
-        }
-        rows.push(RatingRow {
-            log_id: *log_id,
-            account_id: perf.account_id,
-            class: perf.class.as_str(),
-            score: r.score,
-            minutes: r.minutes,
-            parts_json: serde_json::to_string(&r.parts)?,
-        });
-    }
-    db.replace_ratings(MODEL_VERSION, &rows).await?;
-    progress(Progress::Rating { done: total, total });
-
-    Ok(RateSummary { logs: total, performances: perfs.len(), rated: rows.len(), mine })
+    Ok((total, perfs))
 }
 
 /// The stored baselines for the current model; empty until the first rating pass.

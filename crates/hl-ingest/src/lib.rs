@@ -22,6 +22,7 @@ pub mod state;
 pub mod statecheck;
 pub mod fights;
 pub mod seasons;
+pub mod validate;
 pub mod kills;
 
 /// At most this many bulk requests to logs.tf in one sync (raw logs, parts).

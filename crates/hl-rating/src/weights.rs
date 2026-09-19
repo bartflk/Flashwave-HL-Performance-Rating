@@ -244,6 +244,37 @@ impl Weights {
     pub fn model_for(&self, class: TfClass) -> &[(Component, f64)] {
         &self.models[&ModelKey::for_class(class)]
     }
+
+    /// The same weights with one class's model replaced: for trying a
+    /// candidate model, or extracting components the live model skips.
+    pub fn with_model(&self, class: TfClass, mut model: Vec<(Component, f64)>) -> Weights {
+        model.sort_by_key(|(c, _)| Component::ALL.iter().position(|x| x == c));
+        let mut w = self.clone();
+        w.models.insert(ModelKey::for_class(class), model);
+        w
+    }
+
+    /// One class's model from TOML: a whole weights file, or just its
+    /// `[model.<name>]` table (`sniper`, `medic`, `spy` or `generic`).
+    pub fn model_from_toml(text: &str, class: TfClass) -> Result<Vec<(Component, f64)>> {
+        let key = ModelKey::for_class(class).name();
+        let value: toml::Value = toml::from_str(text).context("parsing weights TOML")?;
+        let table = value
+            .get("model")
+            .and_then(|m| m.get(key))
+            .and_then(toml::Value::as_table)
+            .with_context(|| format!("no [model.{key}] table"))?;
+        let mut comps = Vec::new();
+        for (name, v) in table {
+            let c = Component::parse(name).with_context(|| format!("[model.{key}]: unknown component `{name}`"))?;
+            let w = v.as_float().or_else(|| v.as_integer().map(|i| i as f64)).with_context(|| format!("`{name}` must be a number"))?;
+            if w < 0.0 {
+                bail!("[model.{key}]: `{name}` has a negative weight");
+            }
+            comps.push((c, w));
+        }
+        Ok(comps)
+    }
 }
 
 #[cfg(test)]

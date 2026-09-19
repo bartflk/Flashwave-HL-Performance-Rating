@@ -126,6 +126,30 @@ impl Db {
     }
 
     /// How many rated games a player has, per class, most first.
+    /// For every player of every kept, decided (not tied) match: did their
+    /// team win, and when was it played. Keyed by `(log_id, account_id)`.
+    pub async fn decided_results(&self) -> Result<std::collections::HashMap<(i64, u32), (bool, Option<i64>)>> {
+        let rows = sqlx::query(
+            "SELECT p.log_id, p.account_id, p.team, m.red_score, m.blue_score, m.played_at
+             FROM match_player p
+             JOIN match m     ON m.log_id = p.log_id
+             JOIN log_index i ON i.log_id = p.log_id
+             WHERE i.superseded_by IS NULL AND m.red_score IS NOT NULL AND m.blue_score IS NOT NULL
+               AND m.red_score != m.blue_score",
+        )
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                let (red, blue): (i64, i64) = (r.get("red_score"), r.get("blue_score"));
+                let team: String = r.get("team");
+                let key = (r.get::<i64, _>("log_id"), r.get::<i64, _>("account_id") as u32);
+                (key, ((red > blue) == (team == "Red"), r.get("played_at")))
+            })
+            .collect())
+    }
+
     /// Ratings stored for a model version: zero after the model changes.
     pub async fn rating_count(&self, version: &str) -> Result<i64> {
         Ok(sqlx::query_scalar("SELECT COUNT(*) FROM rating WHERE model_version = ?1").bind(version).fetch_one(self.pool()).await?)

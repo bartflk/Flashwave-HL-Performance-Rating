@@ -39,6 +39,10 @@ COMMANDS:
     state --check [--max N]
                            Rebuild the game state (alive, charges, caps) from every
                            raw log and check it against logs.tf
+    validate sniper [--weights PATH]... [--split YYYY-MM-DD] [--json]
+                           How often each component, and each weighting, picks
+                           the team that won (PLAN §12 step 0). --weights takes a
+                           TOML file with a [model.sniper] table; repeatable
     seasons [CLASS] [--json]
                            Your seasons, and how you played the class in each
     fights [CLASS] [--all] [--official|--scrim|--pug]
@@ -348,6 +352,38 @@ async fn main() -> Result<()> {
                 for l in s.alive_at(t) {
                     println!("  {:?} {:<9} [U:1:{}] {}..{} {:?}", l.team, l.class.as_str(), l.account, l.from, l.to, l.end);
                 }
+            }
+            Ok(())
+        }
+
+        ["validate", class, rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            let class = TfClass::parse(class)?;
+            let (live, warning) = hl_rating::Weights::load(&db_path.with_file_name("weights.toml"));
+            if let Some(w) = warning {
+                eprintln!("warning: {w}");
+            }
+            let mut candidates = Vec::new();
+            for (i, a) in rest.iter().enumerate() {
+                if *a == "--weights" {
+                    let path = rest.get(i + 1).context("--weights needs a file")?;
+                    let text = std::fs::read_to_string(path).with_context(|| format!("reading {path}"))?;
+                    let name = std::path::Path::new(path).file_stem().map_or(path.to_string(), |s| s.to_string_lossy().into_owned());
+                    candidates.push((name, hl_rating::Weights::model_from_toml(&text, class)?));
+                }
+            }
+            let split = match flag_value::<String>(rest, "--split")? {
+                Some(d) => Some(parse_day(&d)?),
+                None => None,
+            };
+            let started = std::time::Instant::now();
+            let report = hl_ingest::validate::run(&db, class, &live, candidates, split).await?;
+            if rest.contains(&"--json") {
+                println!("{}", serde_json::to_string(&report)?);
+            } else {
+                print!("{report}");
+                println!("
+({:.1}s)", started.elapsed().as_secs_f64());
             }
             Ok(())
         }
@@ -703,6 +739,21 @@ fn print_tf(info: &hl_core::TfPathInfo) {
 }
 
 /// Mirrors Tauri's `app_data_dir()` so the CLI and the GUI share one database.
+/// `YYYY-MM-DD` to unix seconds at midnight UTC.
+fn parse_day(s: &str) -> Result<i64> {
+    let mut it = s.split('-').map(str::parse::<i64>);
+    let (Some(Ok(y)), Some(Ok(m)), Some(Ok(d)), None) = (it.next(), it.next(), it.next(), it.next()) else {
+        anyhow::bail!("dates are YYYY-MM-DD, got `{s}`");
+    };
+    // Days from civil (Howard Hinnant's algorithm).
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let doy = (153 * ((m + 9) % 12) + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    Ok((era * 146_097 + doe - 719_468) * 86_400)
+}
+
 fn default_db_path() -> Result<PathBuf> {
     let base = if cfg!(windows) {
         std::env::var("APPDATA").context("APPDATA is not set")?
