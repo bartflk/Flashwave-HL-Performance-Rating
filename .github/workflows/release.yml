@@ -48,7 +48,7 @@ jobs:
           releaseBody: |
             First public beta, Windows only. Download the `-setup.exe` below.
 
-            Windows may say "Windows protected your PC" because the installer is not code-signed: click **More info → Run anyway**.
+            Windows may say "Windows protected your PC" because the installer is not code-signed: click **More info, then Run anyway**.
             See the README for first-run steps. Feedback is welcome in Issues.
           releaseDraft: true
           prerelease: true
