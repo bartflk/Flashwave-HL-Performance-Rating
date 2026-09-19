@@ -1,4 +1,4 @@
-# HL Performance Rating System — Plan v1.3
+# HL Performance Rating System — Plan v1.4
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
 **Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
@@ -408,6 +408,7 @@ POV demos only contain what your client received, so phase 2 is you-only for loc
 | **M6** | Raw logs: every kill with time, classes and positions (§9); per-side victim values | **done** |
 | **M7** | more.tf-style match views: kill map, heatmaps, damage and kill spread, timeline, play-by-play (§9) | **done** |
 | **M8** | Maps per round: resolve combined logs to the map each round was played on (§10) | **done** |
+| **M9** | Rating update from Highlander theory: game state, pick context, uber timing, per-map values (§11, for deliberation) | |
 | **v2** | Deep demo parse: aim and viewangles, engagement ranges (positions largely come from M6 now) | |
 
 M1 acceptance: every Highlander log on the account stored, classified, deduplicated, and rebuildable from raw blobs with no refetching.
@@ -435,6 +436,7 @@ M1 acceptance: every Highlander log on the account stored, classified, deduplica
 16. ~~**Combined logs span several maps.**~~ Resolved round by round in M8 (§10).
 17. ~~**Parts of combined logs not yet fetched.**~~ All 289 fetched over a VPN; the exact matches confirmed every earlier answer.
 19. **logs.tf rate limit.** It stopped answering twice, after about 750 requests and then about 300 at one per second. Its API is now paced at one request every 2 seconds, and bulk jobs (raw logs, parts) are capped at 100 per sync. 15 of the oldest raw logs are still to fetch.
+20. **The next rating update.** Items 2, 8, 12, 13 and 14 are expanded in §11, with Highlander theory from the wikis and guides, what the raw logs can measure, and questions for function.
 18. **Demo linking per map.** A combined log's demo is still linked by time or label; linking each map segment on its real map is not built.
 
 ---
@@ -672,3 +674,208 @@ The second column is after five hidden parts were folded away (2,513 rounds) and
 - **Kill by kill** gets a map switch on combined logs and opens on the first map. "All maps" still works for the feed and timeline; the kill map asks for one map, since positions from different maps cannot share a drawing.
 - **The match list** shows `ashville · vigil · proot`, and the **header** shows each map with the rounds won on it, your side first.
 - **Hidden parts:** five logs that were whole copies of rounds inside a longer log are now superseded by it. That includes the 2018 semi-final's two single-map logs and a 2014 lobby uploaded twice. Highlander matches go from 758 to 753, and officials from 58 to 56.
+
+---
+
+## 11. Highlander theory and the next rating update (for deliberation)
+
+Nothing in this section is built or agreed. It collects what the community says wins Highlander games and turns each claim into something this app could measure. It then expands the upcoming improvements from §3 and §8 into concrete proposals, each with a question to settle first. The theory is written as **hypotheses to test against our own data**, not as fact. Wikis and guides describe how people think the game works, and a measured effect can disagree with them.
+
+### What the theory says
+
+Sources (September 2026): the official TF2 wiki pages for [Highlander](https://wiki.teamfortress.com/wiki/Highlander_(Competitive)), [competitive Sniper](https://wiki.teamfortress.com/wiki/Sniper_(competitive)), [competitive dynamics](https://wiki.teamfortress.com/wiki/Competitive_dynamics), [community competitive play](https://wiki.teamfortress.com/wiki/Community_competitive_play), [competitive Engineer](https://wiki.teamfortress.com/wiki/Engineer_(competitive)) and [competitive Upward](https://wiki.teamfortress.com/wiki/Upward_(competitive)). Also RGL's [glossary](https://docs.rgl.gg/guides/basics/glossary/), the Steam guides [An introduction to European Highlander](https://steamcommunity.com/sharedfiles/filedetails/?id=163882605) and [Comprehensive Highlander Medic Guide](https://steamcommunity.com/sharedfiles/filedetails/?id=495096750), and teamfortress.tv's [TF2's hidden stats](https://www.teamfortress.tv/41723/tf2s-hidden-stats-part-1). comp.tf's Highlander class pages, the usual deeper source, returned 404 at the time. Ask function for anything the wikis get wrong.
+
+**1. The teams are four groups, not nine players.**
+- **The combo** is Medic, Demoman, Heavy, and usually Pyro. It takes and holds space, and every push is built around it.
+- **The flank** is Scout and Soldier (sometimes Pyro). It pressures from off-angles, cleans up, and threatens the enemy's backline.
+- **The pick classes** are Sniper and Spy. They create openings by killing key players before or during a fight.
+- **Engineer** anchors a defence and buys time. On attack he gives teleporters and a mini-sentry, and matters much less.
+
+The classic line: "when the Medic dies, the team panics".
+
+**2. Fights are decided by advantages.**
+- **Uber advantage:** one team will have its charge and the other will not. A team with it can push "without having to worry about the other team getting the same charge". Losing it is logged: see `lost_uber_advantage` below.
+- **Player advantage** ("numbers"): more players alive. A pick is valuable because it creates numbers before a fight.
+- **A pick** is "a kill on an enemy that opens up the possibility of a push" (RGL). Its value depends on **what happens next**. A traded pick, where the picker's team loses someone straight back, opens nothing.
+- **Uber force:** making the Medic spend their charge to save themselves or a key player, without the charge winning anything.
+- **Dry push:** a push with no charge. It is usually only right with numbers.
+
+**3. The Sniper's job is picks on the combo, which first means winning the duel.**
+- **Target priority** (wiki, roughly): immediate threats (a Scout on you, the enemy Sniper), then Medic, Demoman, Soldier and Heavy, then Engineer and buildings, then Scout.
+- **The duel comes first.** "The Sniper that wins gains a significant advantage": they can then pick freely. The duel is also the weakest part of your rating (§3, M3).
+- **Positioning:** show as little of yourself as possible, **change position after a kill or two**, and stay close enough to the team that their Scout cannot reach you.
+- **Threats from behind:** Spy and Scout, the classes a Sniper is not looking at.
+- **On attack/defence maps:** a pick on a charged combo class can stop a push "in its tracks". Even failed shots "force the enemy team to … play more passively", which no stat captures.
+
+**4. On defence, the Engineer is worth the time he buys.**
+- A sentry is "a temporary measure to stall an enemy team". The attackers' Soldiers and Demoman break it, so its value is the seconds it holds them, not the kills it gets.
+- The defending Engineer builds in setup time and falls back point to point.
+- That is function's "the defending Engineer is worth more", stated from the other side.
+
+**5. Stopwatch is decided by time, not by rounds.**
+- Payload is played as stopwatch: the attacker who takes every point fastest wins. A team can win it while losing most fights (§3, the TWS official).
+- A defence's output is **seconds held per point**, and an attack's is **seconds taken per point**.
+- **Forward holds** (defending far ahead of the objective) trade risk for time.
+
+**6. On KOTH, the midfight sets up the round.**
+- The midfight winner "consists of which team gets the most frags during the fight, as well as who caps the point first".
+- Losing the Demoman or Medic early usually forces a retreat.
+- It is not decisive: "there are multiple instances where a team that wins the mid fight does not win the match".
+
+**7. On stats, net frags beat K/D, and damage lies.**
+- *TF2's hidden stats* argues that **(kills − deaths) per minute** tracks match outcome better than K/D. A passive player can pad K/D.
+- It also argues that damage per minute rewards spam into chokes, which "builds enemy Übercharge".
+- Our rating already weights damage low (5% for Sniper) and deaths separately, which fits.
+
+### What the raw logs let us measure
+
+Counted over the 60 newest stored raw logs. The oldest stored log (2014) has the same events, except `lost_uber_advantage`:
+
+| Event | Per log | Gives us |
+|---|---|---|
+| `spawned as` (not a trigger) | ~440 | With kills, **who is alive at every second**, and so numbers advantage |
+| `chargeready`, `chargedeployed`, `chargeended` | ~30 each | Each Medic's uber state over time, and so **uber advantage** |
+| `medic_death_ex (uberpct)` | 21 | The Medic's charge at death: a drop, a near-drop, or a pick before they built |
+| `lost_uber_advantage (time)` | 5 | logs.tf's own "advantage lost" with its length, already in the summary |
+| `player_builtobject`, `killedobject`, `object_detonated`, `carry`/`dropobject` | ~180, ~130 | **Each sentry's lifetime**, what killed it and where, and sapper kills |
+| `pointcaptured (cappers, positions)`, `captureblocked` | ~15, ~17 | Cap times per point, and so **hold and push durations**. Also defensive blocks |
+| `Round_Setup_End`, `Round_Overtime` | when present | When stopwatch attack starts; overtime saves |
+| `shot_fired`, `shot_hit` | ~3,500, ~1,400 | Accuracy per weapon. For a Sniper, this separates misses from shots never taken |
+| `damage` (with victim) | ~5,800 | Damage to a Medic just before a charge pops, and so **uber forces** |
+| `healed`, `first_heal_after_spawn` | ~3,000 | Who kept whom alive, and Medic timing |
+
+Kill lines already carry positions (M6), and rounds have maps (M8). Almost every item in the theory can therefore be computed with **no demos**, for all 18 players, across the whole history.
+
+### Upcoming improvements, expanded
+
+Each item below is ordered by how much it moves a Sniper rating and how sure the data is. Each ends with the question to settle before building.
+
+#### A. Game state at every second: the base for everything below
+
+A pure pass over one raw log that rebuilds, second by second:
+- who is alive, per team and class;
+- each Medic's charge state: building, ready, deployed or dead. The percentage between those points is estimated from build rates, about 40 to 50 s for stock and 32 to 40 s for Kritzkrieg per the Medic guide;
+- which team holds which point.
+
+**Validation:**
+- The state's deaths must match the kill feed.
+- Its uber deploys must match logs.tf's `ubers`.
+- Its "advantage lost" moments must line up with the log's own `lost_uber_advantage` lines.
+
+**To settle:** whether respawn waves can be derived from `spawned as` alone. A player who dies and has not respawned counts as dead; that seems safe.
+
+#### B. Pick value in context: the trade window
+
+A kill's worth today is its victim value (Medic 3.0 and so on) whatever happens next. Theory says a pick matters when it creates an advantage. Proposal: classify every kill.
+
+- **Opening pick:** the first kill of a fight, where a fight is a gap of more than about 10 s since the last kill. It leaves your team up a player.
+- **Traded:** someone on your team dies within about 3 s. A traded pick keeps a reduced value, and **dying yourself right after your own kill** (you did not reposition) is its own stat.
+- **Clean-up:** a kill while your team already has numbers, such as the fourth kill of a won fight. It is worth less than an opening pick.
+- **Pick into uber:** a kill on the enemy Medic while they hold a charge (a drop), or on a combo class in the seconds before their push.
+
+For a Sniper this is the main addition, because it separates "got 20 kills" from "opened 12 fights".
+
+**To settle:**
+- The windows (3 s trade, 10 s fight gap). Measure them from the data: plot the time between consecutive kills and look for the natural gap.
+- Whether the context multiplies the victim value or is a separate component.
+
+#### C. Duel in detail
+
+The duel today is `classkills.sniper − classdeaths.sniper` over the whole match. Proposed:
+- **First duel of each round** won or lost. The theory says whoever wins the duel then has free picks.
+- **What happens after a duel win:** the picks you get in the next 20 s, before their Sniper respawns. This measures whether the duel win was used.
+- **Duel on each map and side:** the kill map already shows where you lose it.
+
+**To settle:** whether "first duel won" should be a rating component or only a profile stat. It correlates heavily with the existing duel differential.
+
+#### D. Picks and uber timing (open item 13)
+
+Built on A:
+- **Time to first pick** of each round, and whether it came before the round's first uber.
+- **Picks before an uber push:** kills on the enemy combo in the 10 s before the enemy pops. Those can stop the push, or force it.
+- **Uber forces:** the enemy Medic deploys within about 2 s of taking a big hit, without a push following. Credit goes to the damage dealers.
+- **Deaths before, during and after your own team's uber**, the split more.tf shows. Dying during your own push is costly for a combo class and matters less for a Sniper.
+
+**To settle:** how to tell a force from a deliberate pop. The Medic's health just before the pop, taken from `damage` lines against them, is the likely signal.
+
+#### E. Midfights (open item 14): KOTH only
+
+On KOTH, the first fight of each round:
+- **The midfight winner** is the team that caps first, with kills in the fight as the tiebreak (the wiki's definition).
+- **Each player's part** in it: kills and deaths inside the midfight, opening pick included.
+- Payload has no midfight. Its analogue is the **first fight after setup**, which B already covers.
+
+**To settle:** whether the midfight becomes a rating component or stays a team stat on the match page.
+
+#### F. Stopwatch: time as the currency
+
+On attack/defence maps:
+- **Seconds held per point** on defence and **seconds taken** on attack, from `pointcaptured` times.
+- **Each player's defensive time:** seconds of a hold during which you were alive, plus attackers you killed during it. **Held-back kills**, where your kill delays the next cap, get extra credit.
+- **Engineer:** each sentry's lifetime and the attackers it killed or held, from `builtobject` and `killedobject`. This backs up the defending Engineer's 1.6 value with measured time rather than a guess.
+- **Overtime saves:** a `captureblocked` in overtime that ends the round.
+
+**To settle:**
+- Whether hold time belongs in a per-player rating at all. It is team output, and would reward the whole defending team equally.
+- Alternative: use it only to fit **victim values per map and side** (G).
+
+#### G. Victim values per map and side, fitted rather than guessed (open item 12)
+
+The M6 layers (`[victim_value.map.*]`, `defending`) exist but are unset. Two routes:
+1. **Ask function** for the first values per map, as the chat began: an Engineer on Vigil last, a Sniper pick on Upward. Candidate starting points from the theory:
+   - Upward's long sightlines and its last-point instruction to "watch for the enemy Sniper at all times" argue for a **higher Sniper value on Upward**.
+   - Sentry-held finals argue for a **higher defending Engineer on Vigil last**.
+2. **Measure:** for each class, map and side, how much a kill of that class shifts the chance the killing team wins the fight, or takes or holds the point. This is the "fitted weights" item from §3, made concrete by A.
+
+**Recommendation:** do route 2 on this account's ~2,500 rounds, then show function the fitted table next to the hand-set one. Where they disagree is the conversation worth having.
+
+**To settle:** the sample. Per class, map and side cells get thin fast (Vigil defending Engineer kills might be a few hundred). Pool across maps first, and override per map only where the data is clear.
+
+#### H. Kill value as change in win chance: one model instead of many knobs
+
+A through G each add a hand-tuned number. The principled version is one model:
+- From the game state (A) at each second, estimate the chance that each team **wins the fight, takes the point or wins the round**. This means a logistic fit on numbers per class, uber state, point held and map.
+- **A kill's value is the jump in that chance.** Picks that open fights, drops, and kills that stop a push all fall out of it without separate rules.
+- This is what "win probability added" does in other sports. It turns victim values from opinion into measurement, per map and side automatically.
+
+**Costs:**
+- It is a real modelling project.
+- It needs care on stopwatch, where "winning the round" is not the outcome that matters. Time is (F).
+- A player's rating becomes harder to explain than "3 Medic picks at 3.0".
+
+**To settle:** whether to go straight to H, or ship B, D and G by hand first and use H to check them. **Recommendation:** by hand first. B, D and G are explainable and useful now, and H can replace their numbers later without changing the views.
+
+#### I. Opponent strength (open item 8)
+
+A Premiership Sniper and a lobby Sniper weigh the same in the pool. Proposals:
+- **Tag each performance with its level:** the division from the nearest official of either roster (M5). Otherwise unknown.
+- **Weight the pool or the result by level:** a 60 against Premiership outranks a 60 in a pug.
+- A simpler first step is the **context split** (M5): officials, scrims and pugs are already separate on the profile.
+
+**To settle:** there is no level for most pug opponents. Weight only where known, or fall back to the owner's own division?
+
+#### J. Smaller items worth keeping on the list
+
+- **Net frags per minute** as a profile stat next to K/D, per the hidden-stats argument.
+- **Sniper accuracy** from `shot_fired`/`shot_hit`: shots taken per minute, which shows passive play, and the hit rate. Check whether logs.tf's `hasacc` era limits it.
+- **Deaths to flankers:** a Sniper's deaths to Scout and Spy, per 10 minutes. The theory names them as the threat from behind; a high share suggests positioning too far forward or no cover.
+- **Repositioning:** distance between consecutive kill positions in one life. Staying put after two kills is the classic mistake, and positions are already stored.
+- **Target priority:** your share of kills on the combo against the Sniper average. Already implicit in impact kills; worth showing on its own.
+- **Demo linking per map segment** (open item 18). Unchanged.
+
+### Order, if agreed
+
+1. **A**: the game state. Everything else stands on it.
+2. **B and D**: pick context and uber timing. These give the biggest change in what a Sniper rating means.
+3. **G, route 1**: first per-map values from function, next to the measured numbers from A, B and D.
+4. **C, E and F** as profile stats first, and rating components only once they have been looked at.
+5. **H**, once B, D and G have run long enough to check it against.
+6. **I** alongside, since it is independent of the rest.
+
+### Questions for function
+
+1. The trade window. How quickly does a teammate's death have to follow your pick before it no longer counts as creating an advantage?
+2. Is "first Sniper duel of the round" the moment that matters, or is the duel a running score?
+3. Per map: which maps make the Sniper most and least important? Where is the defending Engineer the whole defence?
+4. An uber force: is it credit to the player who dealt the damage, to the whole team, or to nobody?
+5. On defence, is a Sniper kill that delays a cap worth more than the same kill during a hold that breaks anyway?
