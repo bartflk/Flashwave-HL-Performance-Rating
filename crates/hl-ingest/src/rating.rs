@@ -120,12 +120,14 @@ pub async fn rated_classes(db: &Db, me: SteamId) -> Result<Vec<(String, i64)>> {
     db.rated_classes(me.account_id(), MODEL_VERSION).await
 }
 
-/// The owner's profile on one class; `kind` narrows it to officials, scrims or pugs.
+/// The owner's profile on one class; `kind` narrows it to officials, scrims
+/// or pugs, and `period` to games played between two unix times (a season).
 pub async fn load_profile(
     db: &Db,
     me: SteamId,
     class: TfClass,
     kind: Option<&str>,
+    period: Option<(i64, i64)>,
 ) -> Result<Option<Profile>> {
     let rows = db.rating_history(me.account_id(), class.as_str(), MODEL_VERSION).await?;
     let history: Vec<HistoryRow> = rows
@@ -156,6 +158,10 @@ pub async fn load_profile(
         })
         .collect::<Result<_>>()?;
 
+    let history: Vec<HistoryRow> = match period {
+        Some((from, to)) => history.into_iter().filter(|r| r.played_at.is_some_and(|t| t >= from && t <= to)).collect(),
+        None => history,
+    };
     let contexts = profile::context_splits(&history);
     let history: Vec<HistoryRow> = match kind {
         Some(k) => history.into_iter().filter(|r| r.kind.as_deref() == Some(k)).collect(),
@@ -166,6 +172,10 @@ pub async fn load_profile(
     };
     p.contexts = contexts;
     p.filter = kind.map(str::to_string);
+    // Career records count every game, so a period shows none.
+    if period.is_some() {
+        return Ok(Some(p));
+    }
 
     // Career records that read straight off the logs, no model involved.
     let mirror = db.vs_totals(me.account_id(), class.as_str(), class.as_str(), MODEL_VERSION).await?;

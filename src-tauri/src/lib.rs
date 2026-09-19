@@ -79,6 +79,10 @@ pub fn run() {
                         Ok(s) => tracing::info!(multi_map = s.multi_map_logs, unresolved = s.unresolved, "round maps resolved"),
                         Err(e) => tracing::warn!(error = %format!("{e:#}"), "round map pass failed"),
                     }
+                    match hl_ingest::fights::derive_all(&db, false).await {
+                        Ok(s) => tracing::info!(derived = s.derived, total = s.total, "fights derived"),
+                        Err(e) => tracing::warn!(error = %format!("{e:#}"), "fights pass failed"),
+                    }
                 });
             }
 
@@ -105,6 +109,8 @@ pub fn run() {
             sync_commands::list_matches,
             sync_commands::get_match,
             sync_commands::get_profile,
+            sync_commands::list_seasons,
+            sync_commands::get_seasons,
             sync_commands::get_teammates,
             sync_commands::context_counts,
             sync_commands::rawlog_stats,

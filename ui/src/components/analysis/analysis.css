@@ -556,3 +556,55 @@
 .ss-key-down {
   background: #d6763a;
 }
+
+/* Kill tags in the play-by-play: outlined, so they sit quieter than names. */
+.kill-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--muted);
+  vertical-align: 1px;
+}
+
+.kill-tag.tag-open {
+  border-color: #5791c8;
+  color: #8fb6dc;
+}
+
+.kill-tag.tag-traded {
+  border-color: #d6763a;
+  color: #e3a07a;
+}
+
+.kill-tag.tag-charge {
+  border-color: rgba(230, 232, 236, 0.6);
+  color: var(--text);
+}
+
+.fights-table tr.sel td {
+  background: rgba(230, 232, 236, 0.06);
+}
+
+.fights-team th {
+  text-align: left;
+  padding-top: 10px;
+  font-weight: 600;
+}
+
+.fights-sub {
+  margin: 18px 0 6px;
+  font-size: 14px;
+}
+
+.fights-firsts {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}

@@ -105,6 +105,7 @@ export function PlayByPlay({ a, player, slice }: { a: Analysis; player: number; 
                       <Who id={r.kill.killer} /> <span className="muted">{cls(r.kill.killerClass)}</span>
                       <span className="pbp-arrow"> → </span>
                       <Who id={r.kill.victim} /> <span className="muted">{cls(r.kill.victimClass)}</span>
+                      <KillTagChips k={r.kill} />
                       <span className="pbp-meta">
                         {r.kill.weapon}
                         {r.kill.custom && ` · ${r.kill.custom}`}
@@ -165,4 +166,26 @@ export function PlayByPlay({ a, player, slice }: { a: Analysis; player: number; 
 
 function cls(c: string | null): string {
   return c ? `(${CLASS_SHORT[c] ?? c})` : "";
+}
+
+/** The few labels worth a glance in a feed: rare enough to stand out. */
+function KillTagChips({ k }: { k: KillView }) {
+  const t = k.tags;
+  if (!t) return null;
+  const chips: Array<[string, string, string]> = [];
+  if (t.firstOfRound) chips.push(["first pick", "tag-open", "The first kill of the round"]);
+  else if (t.opening) chips.push(["opening", "tag-open", "The first kill of a fight: more than 10 s after the last one"]);
+  if (t.drop) chips.push(["drop", "tag-charge", "The Medic died holding a ready charge"]);
+  else if (t.intoCharge) chips.push(["into charge", "tag-charge", "A combo player killed while their team held a ready charge"]);
+  // "Traded" and "clean-up" fit a third of all kills each: in the Fights tab, not here.
+  if (t.diedAfter) chips.push(["died after", "tag-traded", "The killer died within 3 s"]);
+  return (
+    <>
+      {chips.map(([label, cls, title]) => (
+        <span key={label} className={`kill-tag ${cls}`} title={title}>
+          {label}
+        </span>
+      ))}
+    </>
+  );
 }

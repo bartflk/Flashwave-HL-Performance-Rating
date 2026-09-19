@@ -1,4 +1,4 @@
-# HL Performance Rating System — Plan v1.5
+# HL Performance Rating System — Plan v1.6
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
 **Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
@@ -437,6 +437,8 @@ M1 acceptance: every Highlander log on the account stored, classified, deduplica
 17. ~~**Parts of combined logs not yet fetched.**~~ All 289 fetched over a VPN; the exact matches confirmed every earlier answer.
 19. **logs.tf rate limit.** It stopped answering twice, after about 750 requests and then about 300 at one per second. Its API is now paced at one request every 2 seconds, and bulk jobs (raw logs, parts) are capped at 100 per sync. 15 of the oldest raw logs are still to fetch.
 21. **Uber and drop counts.** The game state matches logs.tf's uber count for 88% of Medics and drops for 93%. The rest are one off under a rule logs.tf does not publish. The state's own counts come straight from the log's lines.
+22. **Fights as rating inputs.** Opening duels, traded kills and picks into a charge are measured and shown but do not feed the rating yet (§11 B and D).
+23. **Season spans for seasons you did not play.** They need ETF2L match times per competition, 20 per request. A one-off fetch, cached, would give exact spans for every season.
 20. **The next rating update.** Items 2, 8, 12, 13 and 14 are expanded in §11, with Highlander theory from the wikis and guides, what the raw logs can measure, and questions for function.
 18. **Demo linking per map.** A combined log's demo is still linked by time or label; linking each map segment on its real map is not built.
 
@@ -804,6 +806,49 @@ For a Sniper this is the main addition, because it separates "got 20 kills" from
 - The windows (3 s trade, 10 s fight gap). Measure them from the data: plot the time between consecutive kills and look for the natural gap.
 - Whether the context multiplies the victim value or is a separate component.
 
+**As built (B and D together).** `fights.rs` labels every counted kill from the raw log and the game state (A). A pass stores each player's counts per match in `fight_stat` (migration 0009). It runs at startup, after every sync and on rebuild, and reads only logs it has not read yet; all 740 take about 4 s.
+
+**The windows were measured, not guessed,** on this account's 195,095 kills:
+- **Fight gap, 10 s.** 89% of gaps between consecutive kills in a round are 10 s or less. The long tail beyond is the lull between fights.
+- **Trade window, 3 s.** After a kill, the killing team's next loss peaks 1 s later and halves by about 3 s. There is no sharp knee, so 3 s is a judgement; it is question 1 for function.
+
+**Each kill can be:**
+- **opening:** the first of a fight;
+- **first pick:** the first of the round;
+- **traded:** the killer's team lost someone within 3 s;
+- **died after:** the killer themselves died within 3 s;
+- **a trade:** it avenged a teammate killed within 3 s before;
+- **clean-up:** the killer's team was already up a player;
+- **into charge:** a combo player (Medic, Demoman, Heavy, Pyro) killed while their team held a ready uber;
+- **a drop:** the Medic died holding a ready uber.
+
+**Per player it also counts:**
+- **forced ubers:** the enemy Medic popped after taking 90+ damage in the 3 s before, with credit to each player who dealt 40+ of it. 70% of pops come with no damage on the Medic at all, so a pop under fire is the usual sign of a force. It misses pops forced to save someone else.
+- **deaths around their own team's uber:** in the 10 s before it, during it, and in the 10 s after.
+
+**Your Sniper against the Snipers you face**, per 10 minutes unless marked:
+
+| | You | Pool |
+|---|---|---|
+| Opening duels won | 61% | 59% |
+| Opening kills | 1.90 | 1.67 |
+| First pick of the round | 14% of rounds | 12% |
+| Kills traded back | 30% | 31% |
+| Died within 3 s of own kill | 6.0% | 6.3% |
+| Picks into a ready charge | 0.70 | 0.63 |
+| Deaths during own uber | 0.50 | 0.56 |
+
+You open more fights than the typical Sniper you face, and win slightly more of the ones you open.
+
+**Where it shows:**
+- **Match page:** a Fights tab has one row per player (opening duels, first picks, traded share, deaths after own kill, trades, clean-ups, picks into charge, drops, forces, deaths around own uber) and the first pick of every round with its time.
+- **Play-by-play:** tags on the rare kinds only: first pick, opening, drop, into charge, died after. Traded and clean-up each fit about a third of all kills, which made the feed noise.
+- **Profile:** a Fights card compares you with the players you face, under the same filters.
+
+`hl fights [class]` prints the same comparison in a terminal.
+
+**Not yet a rating component.** As planned: look at it first.
+
 #### C. Duel in detail
 
 The duel today is `classkills.sniper − classdeaths.sniper` over the whole match. Proposed:
@@ -878,6 +923,18 @@ A Premiership Sniper and a lobby Sniper weigh the same in the pool. Proposals:
 - A simpler first step is the **context split** (M5): officials, scrims and pugs are already separate on the profile.
 
 **To settle:** there is no level for most pug opponents. Weight only where known, or fall back to the owner's own division?
+
+#### Seasons (a friend's suggestion)
+
+"Sort logs by season, then see how you performed during that season, like average DPM each season. It could be as simple as only looking at logs between two dates." trends.tf has the data but no view of it.
+
+**As built:**
+- **Where seasons come from.** ETF2L's API lists a competition's matches but gives no season dates, and it pages 20 at a time. So seasons come from your stored officials, with no network. Every competition of one season (divisions, group stages, playoffs) groups under the season's number. Anything else groups under its name before the colon: "Winter 2024: Low Playoffs" is "Winter 2024", and "AFA 2025" and "Experimental Cup #10" are their own.
+- **What a season covers.** From six days before its first official (the week of scrims leading up) to the day after its last. The newest season stays open to today while its last official is under 30 days old. Every game in the window counts: officials, scrims and pugs.
+- **One period filter, shared by the match list and the profile:** all time, one season, or custom dates. Seasons without an official of yours are not listed; custom dates cover them. The profile's career records (duel, Medic picks) count every game, so they hide while a period is set.
+- **By season on the profile:** per season for the chosen class, it shows games (officials / scrims / pugs), record, average rating, DPM, K/D, kills and deaths per 10, opening duels won and share of kills traded. Clicking a row filters everything to that season. `hl seasons [class]` prints it.
+
+**What it shows for your Sniper:** Winter 2024 and Season 33 were your best stretch, at ratings of 52–54 and about 370 DPM. Since Season 34, DPM sits near 300 and ratings in the low-to-mid 40s. Season 36 so far: 14 games, 47.
 
 #### J. Smaller items worth keeping on the list
 

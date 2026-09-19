@@ -485,3 +485,62 @@
   z-index: 1;
   background: var(--panel);
 }
+
+.profile-filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.seasons-panel header,
+.fights-panel header {
+  margin-bottom: 10px;
+}
+
+.seasons-table tr.sel td {
+  background: rgba(230, 232, 236, 0.07);
+}
+
+.seasons-table .muted-row td {
+  opacity: 0.6;
+}
+
+.season-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.season-dates {
+  font-size: 12px;
+}
+
+.seasons-total td {
+  font-weight: 600;
+  border-top: 1px solid var(--border);
+}
+
+.badge-now {
+  font-size: 10px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--muted);
+}
+
+/* Blue is better, orange worse: the same pair as everywhere else, always
+   with an arrow and a word. */
+.verdict {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.verdict.good {
+  color: #8fb6dc;
+}
+
+.verdict.bad {
+  color: #e3a07a;
+}

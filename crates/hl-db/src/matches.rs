@@ -63,6 +63,9 @@ pub struct MatchFilter {
     pub format: Option<String>,
     /// `official`, `scrim` or `pug`; `None` means every kind.
     pub kind: Option<String>,
+    /// Played between these, unix seconds, inclusive. `None` is open.
+    pub from: Option<i64>,
+    pub to: Option<i64>,
     pub limit: i64,
     pub offset: i64,
 }
@@ -522,25 +525,31 @@ impl Db {
     pub async fn list_matches(&self, me: Option<u32>, filter: &MatchFilter) -> Result<MatchPage> {
         // Placeholder numbers are parameters so the count query and the page
         // query can share one WHERE clause with different binding layouts.
-        let where_sql = |fmt: u8, kind: u8| {
+        // `fmt` is the first of four: format, kind, from, to.
+        let where_sql = |fmt: u8| {
+            let (kind, from, to) = (fmt + 1, fmt + 2, fmt + 3);
             format!(
                 "WHERE i.superseded_by IS NULL
                    AND (?{fmt} IS NULL OR {EFFECTIVE_FORMAT} = ?{fmt})
-                   AND (?{kind} IS NULL OR c.kind = ?{kind})"
+                   AND (?{kind} IS NULL OR c.kind = ?{kind})
+                   AND (?{from} IS NULL OR m.played_at >= ?{from})
+                   AND (?{to} IS NULL OR m.played_at <= ?{to})"
             )
         };
 
         let total: i64 = sqlx::query_scalar(&format!(
             "SELECT COUNT(*) FROM match m JOIN log_index i ON i.log_id = m.log_id
              LEFT JOIN match_context c ON c.log_id = m.log_id {}",
-            where_sql(1, 2)
+            where_sql(1)
         ))
         .bind(&filter.format)
         .bind(&filter.kind)
+        .bind(filter.from)
+        .bind(filter.to)
         .fetch_one(self.pool())
         .await?;
 
-        let where_sql = where_sql(2, 3);
+        let where_sql = where_sql(2);
         let rows = sqlx::query(&format!(
             "SELECT m.log_id, m.played_at, m.map, m.title, m.duration_s,
                     {EFFECTIVE_FORMAT} AS format, i.league, i.etf2l_match_id, i.demos_tf_id,
@@ -558,11 +567,13 @@ impl Db {
              LEFT JOIN etf2l_match e ON e.match_id = c.etf2l_match_id
              {where_sql}
              ORDER BY m.played_at DESC, m.log_id DESC
-             LIMIT ?4 OFFSET ?5"
+             LIMIT ?6 OFFSET ?7"
         ))
         .bind(me.map(i64::from))
         .bind(&filter.format)
         .bind(&filter.kind)
+        .bind(filter.from)
+        .bind(filter.to)
         .bind(filter.limit)
         .bind(filter.offset)
         .fetch_all(self.pool())

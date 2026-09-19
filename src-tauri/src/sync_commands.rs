@@ -111,6 +111,7 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             }
             // Every round's map, then the rating: kills are valued on their map.
             hl_ingest::maps::resolve_all(&db).await?;
+            hl_ingest::fights::derive_all(&db, false).await?;
             // Every sync ends by re-rating: new matches shift the baselines.
             let (weights, _) = hl_rating::Weights::load(&weights_path);
             hl_ingest::rate_all(&db, Some(me), &weights, |p: Progress| {
@@ -157,6 +158,7 @@ pub async fn reprocess_start(app: AppHandle, state: State<'_, AppState>) -> CmdR
                 hl_ingest::etf2l::derive_context(&db, me).await?;
             }
             hl_ingest::maps::resolve_all(&db).await?;
+            hl_ingest::fights::derive_all(&db, true).await?;
             let (weights, _) = hl_rating::Weights::load(&weights_path);
             hl_ingest::rate_all(&db, me, &weights, |p: Progress| {
                 let _ = emitter.emit(EV_PROGRESS, p);
@@ -193,6 +195,8 @@ pub async fn list_matches(
     state: State<'_, AppState>,
     format: Option<String>,
     kind: Option<String>,
+    from: Option<i64>,
+    to: Option<i64>,
     limit: i64,
     offset: i64,
 ) -> CmdResult<MatchPage> {
@@ -200,6 +204,8 @@ pub async fn list_matches(
     let filter = MatchFilter {
         format,
         kind,
+        from,
+        to,
         // Bound the page size so a bad argument cannot pull the whole table.
         limit: limit.clamp(1, 500),
         offset: offset.max(0),
@@ -241,6 +247,8 @@ pub struct ProfileResponse {
     /// Classes with rated games, most played first: `(class, games)`.
     pub classes: Vec<(String, i64)>,
     pub profile: Option<hl_rating::Profile>,
+    /// Kills in context against the players you face, under the same filters.
+    pub fights: Option<hl_ingest::seasons::FightsCard>,
 }
 
 /// The owner's profile on one class, defaulting to their most-rated class.
@@ -249,6 +257,8 @@ pub async fn get_profile(
     state: State<'_, AppState>,
     class: Option<String>,
     kind: Option<String>,
+    from: Option<i64>,
+    to: Option<i64>,
 ) -> CmdResult<ProfileResponse> {
     let me = state
         .db
@@ -260,11 +270,35 @@ pub async fn get_profile(
         Some(c) => Some(hl_core::TfClass::parse(&c)?),
         None => None,
     };
-    let profile = match chosen {
-        Some(c) => hl_ingest::load_profile(&state.db, me, c, kind.as_deref()).await?,
-        None => None,
+    let period = match (from, to) {
+        (None, None) => None,
+        (f, t) => Some((f.unwrap_or(i64::MIN), t.unwrap_or(i64::MAX))),
     };
-    Ok(ProfileResponse { classes, profile })
+    let (profile, fights) = match chosen {
+        Some(c) => (
+            hl_ingest::load_profile(&state.db, me, c, kind.as_deref(), period).await?,
+            hl_ingest::seasons::fights_card(&state.db, me, c, kind.as_deref(), from, to).await?,
+        ),
+        None => (None, None),
+    };
+    Ok(ProfileResponse { classes, profile, fights })
+}
+
+/// Seasons from your officials, newest first.
+#[tauri::command]
+pub async fn list_seasons(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::seasons::Season>> {
+    Ok(hl_ingest::seasons::list(&state.db).await?)
+}
+
+/// One class, season by season.
+#[tauri::command]
+pub async fn get_seasons(state: State<'_, AppState>, class: String) -> CmdResult<hl_ingest::seasons::SeasonsView> {
+    let me = state
+        .db
+        .get_me()
+        .await?
+        .ok_or_else(|| CmdError::new("missing_config", "Set your SteamID first."))?;
+    Ok(hl_ingest::seasons::by_season(&state.db, me, hl_core::TfClass::parse(&class)?).await?)
 }
 
 // ---- teammates and context ---------------------------------------------------

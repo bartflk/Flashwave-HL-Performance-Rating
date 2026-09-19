@@ -11,6 +11,10 @@ import {
 } from "../../api/types";
 import { capitalize, formatDate, splitMap } from "../../lib/format";
 import { KIND_LABEL, KIND_PLURAL } from "../ContextBadge";
+import { bounds, usePeriod } from "../../lib/period";
+import { PeriodPicker } from "../PeriodPicker";
+import { FightsPanel } from "./FightsPanel";
+import { SeasonsPanel } from "./SeasonsPanel";
 import { TrendChart } from "./TrendChart";
 import "./profile.css";
 
@@ -20,9 +24,11 @@ const THIN_SAMPLE = 20;
 export function ProfilePage({ onOpenMatch }: { onOpenMatch: (logId: number) => void }) {
   const [cls, setCls] = useState<string | null>(null);
   const [kind, setKind] = useState<ContextKind | null>(null);
+  const period = usePeriod();
+  const { from, to } = bounds(period);
   const q = useQuery({
-    queryKey: ["profile", cls, kind],
-    queryFn: () => api.getProfile(cls, kind),
+    queryKey: ["profile", cls, kind, from, to],
+    queryFn: () => api.getProfile(cls, kind, from, to),
     placeholderData: keepPreviousData,
   });
   // The split is over every game, so the last one seen stays valid while a
@@ -33,7 +39,7 @@ export function ProfilePage({ onOpenMatch }: { onOpenMatch: (logId: number) => v
   if (q.isPending) return <div className="profile-page"><p className="hint">Loading profile…</p></div>;
   if (q.isError) return <div className="profile-page"><p className="error">{errorMessage(q.error)}</p></div>;
 
-  const { classes, profile } = q.data;
+  const { classes, profile, fights } = q.data;
   const active = cls ?? profile?.class ?? classes[0]?.[0] ?? null;
 
   if (classes.length === 0) {
@@ -67,17 +73,25 @@ export function ProfilePage({ onOpenMatch }: { onOpenMatch: (logId: number) => v
         ))}
       </nav>
 
-      <KindFilter kind={kind} onChange={setKind} split={lastSplit.current} />
+      <div className="profile-filters">
+        <KindFilter kind={kind} onChange={setKind} split={lastSplit.current} />
+        <PeriodPicker />
+      </div>
 
       {profile ? (
         <ProfileBody p={profile} onOpenMatch={onOpenMatch} onKind={setKind} />
       ) : (
         <div className="panel">
           <p className="hint">
-            No rated {active} {kind ? KIND_PLURAL[kind].toLowerCase() : "games"}.
+            No rated {active} {kind ? KIND_PLURAL[kind].toLowerCase() : "games"}
+            {period.kind !== "all" ? " in this period" : ""}.
           </p>
         </div>
       )}
+
+      {profile && fights && <FightsPanel card={fights} cls={profile.class} />}
+
+      {active && <SeasonsPanel cls={active} />}
     </div>
   );
 }

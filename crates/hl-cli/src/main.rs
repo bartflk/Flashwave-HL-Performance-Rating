@@ -39,6 +39,11 @@ COMMANDS:
     state --check [--max N]
                            Rebuild the game state (alive, charges, caps) from every
                            raw log and check it against logs.tf
+    seasons [CLASS] [--json]
+                           Your seasons, and how you played the class in each
+    fights [CLASS] [--all] [--official|--scrim|--pug]
+                           Kills in context: your totals against the pool
+                           (derives any logs not yet read; --all re-reads every log)
     analysis <LOG_ID> [--json]
                            Kills, damage and play-by-play from a match's raw log
     mapview <MAP> [--json] A map's outline from every stored kill on it
@@ -165,6 +170,7 @@ async fn main() -> Result<()> {
             }
             let m = hl_ingest::maps::resolve_all(&db).await?;
             println!("round maps: {} multi-map logs, {} rounds unresolved", m.multi_map_logs, m.unresolved);
+            hl_ingest::fights::derive_all(&db, false).await?;
             print_stats(&db.index_stats().await?);
             rate(&db, &db_path).await
         }
@@ -182,6 +188,7 @@ async fn main() -> Result<()> {
             }
             let m = hl_ingest::maps::resolve_all(&db).await?;
             println!("round maps: {} multi-map logs, {} rounds unresolved", m.multi_map_logs, m.unresolved);
+            hl_ingest::fights::derive_all(&db, true).await?;
             print_stats(&stats);
             rate(&db, &db_path).await
         }
@@ -220,7 +227,7 @@ async fn main() -> Result<()> {
                 }
             };
             let kind = kind_flag(rest);
-            let Some(p) = hl_ingest::load_profile(&db, me, class, kind).await? else {
+            let Some(p) = hl_ingest::load_profile(&db, me, class, kind, None).await? else {
                 println!("No rated {} games.", class.display_name());
                 return Ok(());
             };
@@ -341,6 +348,64 @@ async fn main() -> Result<()> {
                 for l in s.alive_at(t) {
                     println!("  {:?} {:<9} [U:1:{}] {}..{} {:?}", l.team, l.class.as_str(), l.account, l.from, l.to, l.end);
                 }
+            }
+            Ok(())
+        }
+
+        ["seasons", rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?.context("no owner set")?;
+            let class = TfClass::parse(rest.iter().find(|a| !a.starts_with("--")).copied().unwrap_or("sniper"))?;
+            let v = hl_ingest::seasons::by_season(&db, me, class).await?;
+            if rest.contains(&"--json") {
+                println!("{}", serde_json::to_string(&v)?);
+                return Ok(());
+            }
+            let date = |t: i64| fmt_date(t);
+            println!("{:<26} {:<23} {:>5} {:>4} {:>6} {:>6} {:>5} {:>5} {:>6} {:>6}", "season", "dates", "games", "off", "W-L", "rating", "dpm", "k/d", "open%", "traded");
+            let pct = |x: Option<f64>| x.map_or("-".to_string(), |v| format!("{:.0}%", v * 100.0));
+            let num = |x: Option<f64>, d: usize| x.map_or("-".to_string(), |v| format!("{v:.d$}"));
+            for r in &v.seasons {
+                let s = &r.stats;
+                println!(
+                    "{:<26} {} – {} {:>5} {:>4} {:>6} {:>6} {:>5} {:>5} {:>6} {:>6}",
+                    truncate(&r.season.name, 26),
+                    date(r.season.from),
+                    date(r.season.to),
+                    s.games,
+                    s.officials,
+                    format!("{}-{}", s.wins, s.losses),
+                    num(s.rating, 1),
+                    num(s.dpm, 0),
+                    num(s.kd, 2),
+                    pct(s.opening_won),
+                    pct(s.traded)
+                );
+            }
+            let s = &v.all_time;
+            println!("{:<26} {:<23} {:>5} {:>4} {:>6} {:>6} {:>5} {:>5} {:>6} {:>6}", "all time", "", s.games, s.officials, format!("{}-{}", s.wins, s.losses), num(s.rating, 1), num(s.dpm, 0), num(s.kd, 2), pct(s.opening_won), pct(s.traded));
+            Ok(())
+        }
+
+        ["fights", rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?.context("no owner set")?;
+            let started = std::time::Instant::now();
+            let d = hl_ingest::fights::derive_all(&db, rest.contains(&"--all")).await?;
+            println!("{} of {} logs read in {:.1}s", d.derived, d.total, started.elapsed().as_secs_f64());
+            let class = rest.iter().find(|a| !a.starts_with("--")).copied().unwrap_or("sniper");
+            if rest.contains(&"--json") {
+                let card = hl_ingest::seasons::fights_card(&db, me, TfClass::parse(class)?, kind_flag(rest), None, None).await?;
+                println!("{}", serde_json::to_string(&card)?);
+                return Ok(());
+            }
+            let f = hl_db::FightFilter { class, model_version: hl_rating::MODEL_VERSION, kind: kind_flag(rest), from: None, to: None };
+            let (mine, pool) = db.fight_totals(me.account_id(), &f).await?;
+            println!("{class}: you {} games / {:.0} min, pool {} games / {:.0} min", mine.games, mine.minutes, pool.games, pool.minutes);
+            println!("{:<20} {:>9} {:>9}   (per 10 min)", "", "you", "pool");
+            for (i, c) in hl_db::FIGHT_COLUMNS.iter().enumerate() {
+                let rate = |t: &hl_db::FightTotals| if t.minutes > 0.0 { t.values[i] as f64 / t.minutes * 10.0 } else { 0.0 };
+                println!("{c:<20} {:>9.2} {:>9.2}", rate(&mine), rate(&pool));
             }
             Ok(())
         }
@@ -527,6 +592,8 @@ teammates (≥{} games)", t.min_games);
             let filter = MatchFilter {
                 format: (!rest.contains(&"--all")).then(|| "highlander".to_string()),
                 kind: kind_flag(rest).map(str::to_string),
+                from: None,
+                to: None,
                 limit,
                 offset: 0,
             };

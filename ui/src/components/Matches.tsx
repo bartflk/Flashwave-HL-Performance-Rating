@@ -3,7 +3,9 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { errorMessage, type ContextKind, type MatchSummary } from "../api/types";
 import { capitalize, formatDate, splitMap } from "../lib/format";
+import { bounds, usePeriod } from "../lib/period";
 import { ContextBadge } from "./ContextBadge";
+import { PeriodPicker } from "./PeriodPicker";
 
 const PAGE = 50;
 
@@ -22,9 +24,11 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
   const [pages, setPages] = useState(1);
 
   const kind = view === "official" || view === "scrim" || view === "pug" ? view : null;
+  const period = usePeriod();
   const query = {
     format: view === "all" ? null : "highlander",
     kind,
+    ...bounds(period),
     limit: PAGE * pages,
     offset: 0,
   };
@@ -60,6 +64,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
             </button>
           ))}
         </div>
+        <PeriodPicker />
         <span className="hint">
           {matches.isPending ? "Loading…" : `${total.toLocaleString()} match${total === 1 ? "" : "es"}`}
         </span>

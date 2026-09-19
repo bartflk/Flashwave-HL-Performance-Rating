@@ -12,6 +12,7 @@
 use crate::demos::{jumper, Jumper, JUMP_LEAD_S};
 use crate::normalize::normalize;
 use crate::rawlog::{self, hits_capped, RawLog};
+use crate::fights::{FightStats, KillTags};
 use crate::state::{Charge, GameState};
 use anyhow::{Context, Result};
 use hl_core::matchdata::{NormalizedLog, Team};
@@ -52,6 +53,22 @@ pub struct Analysis {
     pub segments: Vec<MapSegment>,
     /// Players alive and uber charge for each second of game time.
     pub state: StateSeries,
+    /// Every player's kills in context (PLAN §11 B and D).
+    pub fights: Vec<FightStats>,
+    /// The first kill of each round.
+    pub first_picks: Vec<FirstPickView>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FirstPickView {
+    /// Game seconds.
+    pub t: f64,
+    pub round_num: i64,
+    /// Seconds after the round went live (the end of setup in stopwatch).
+    pub after_s: i64,
+    pub killer: u32,
+    pub victim: u32,
 }
 
 /// The game state (`state.rs`) sampled once per game second, in stable
@@ -166,6 +183,8 @@ pub struct KillView {
     /// The map of the kill's round.
     pub map: Option<String>,
     pub jump: Option<Jump>,
+    /// Opening, traded, clean-up...: what the kill meant.
+    pub tags: Option<KillTags>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -286,12 +305,16 @@ pub fn build(
         })
         .collect();
 
+    let gs = GameState::build(raw);
+    let fights = crate::fights::analyse(raw, &gs);
+
     // Kills logs.tf counts, placed in game time.
     let mut kills: Vec<KillView> = raw
         .kills
         .iter()
-        .filter(|k| k.counts())
-        .filter_map(|k| {
+        .enumerate()
+        .filter(|(_, k)| k.counts())
+        .filter_map(|(i, k)| {
             let (t, round_num) = clock.game(k.at)?;
             let distance = match (k.killer_pos, k.victim_pos) {
                 (Some(a), Some(b)) => Some(
@@ -316,6 +339,7 @@ pub fn build(
                 distance,
                 map: map_of(k.at),
                 jump: jump(k.at),
+                tags: fights.tags[i],
             })
         })
         .collect();
@@ -427,9 +451,22 @@ pub fn build(
             .collect()
     };
 
-    let state = StateSeries::new(&GameState::build(raw), &clock, log);
+    let state = StateSeries::new(&gs, &clock, log);
+    // First picks in game time. The raw log's round numbers run in file
+    // order; the game clock knows each round by its start.
+    let first_picks = fights
+        .first_picks
+        .iter()
+        .filter_map(|f| {
+            let k = raw.kills.iter().find(|k| k.round == f.round && k.killer.account == f.killer && k.victim.account == f.victim)?;
+            let (t, round_num) = clock.game(k.at)?;
+            Some(FirstPickView { t, round_num, after_s: f.after_s, killer: f.killer, victim: f.victim })
+        })
+        .collect();
     Analysis {
         state,
+        fights: fights.players,
+        first_picks,
         segments: map_segments,
         log_id: log.log_id,
         map: log.map.clone(),
@@ -502,6 +539,7 @@ mod tests {
             distance: None,
             map: None,
             jump: None,
+            tags: None,
         }
     }
 

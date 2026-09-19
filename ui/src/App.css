@@ -538,3 +538,40 @@ th.num {
 .multi-map {
   font-size: 0.86rem;
 }
+
+/* The period picker: all time, a season, or two dates. Shared by the match
+   list and the profile. */
+.period-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.period-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.period-field .an-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.period-dates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.period-dates input,
+.period-field select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  font: inherit;
+  color-scheme: dark;
+}

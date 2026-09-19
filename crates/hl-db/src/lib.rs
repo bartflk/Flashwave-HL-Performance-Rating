@@ -6,6 +6,7 @@
 
 mod context;
 mod demos;
+mod fights;
 mod matches;
 mod ratings;
 mod rawlog;
@@ -15,6 +16,7 @@ pub use context::{
     ContextCounts, ContextGameRow, ContextRow, Etf2lMatchRow, MatchContext, MateRow, OfficialInfo,
     OfficialRow, OwnGameRow,
 };
+pub use fights::{ClassGame, FightFilter, FightRow, FightTotals, SeasonOfficial, FIGHT_COLUMNS};
 pub use demos::{ClockInput, ClockRow, DemoRow, DemoStats, LinkedDemo};
 pub use rawlog::{ChatRow, KillRow, RawlogStats, StoredKill};
 pub use roundmap::{

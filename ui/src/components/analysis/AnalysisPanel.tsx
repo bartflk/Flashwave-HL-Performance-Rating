@@ -4,17 +4,19 @@ import { api } from "../../api/client";
 import { errorMessage, type Analysis, type MatchDetail } from "../../api/types";
 import { capitalize, splitMap, teamLabel } from "../../lib/format";
 import type { Slice } from "./common";
+import { Fights } from "./Fights";
 import { KillMap } from "./KillMap";
 import { PlayByPlay } from "./PlayByPlay";
 import { Spread } from "./Spread";
 import { TimelineChart } from "./TimelineChart";
 import "./analysis.css";
 
-type Tab = "map" | "feed" | "spread" | "timeline";
+type Tab = "map" | "feed" | "fights" | "spread" | "timeline";
 
 const TABS: Array<[Tab, string]> = [
   ["map", "Kill map"],
   ["feed", "Play-by-play"],
+  ["fights", "Fights"],
   ["spread", "Damage and kills by class"],
   ["timeline", "Timeline"],
 ];
@@ -171,6 +173,7 @@ function Body({ a }: { a: Analysis }) {
 
       {tab === "map" && <KillMap a={a} player={player} slice={slice} />}
       {tab === "feed" && <PlayByPlay a={a} player={player} slice={slice} />}
+      {tab === "fights" && <Fights a={a} player={player} onPick={setPlayer} />}
       {tab === "spread" && <Spread a={a} player={player} />}
       {tab === "timeline" && <TimelineChart a={a} player={player} slice={slice} onPick={setPlayer} />}
     </>

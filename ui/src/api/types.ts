@@ -128,6 +128,9 @@ export interface SyncDone {
 export interface MatchQuery {
   format: string | null;
   kind: ContextKind | null;
+  /** Played between these, unix seconds, inclusive. */
+  from: number | null;
+  to: number | null;
   limit: number;
   offset: number;
 }
@@ -425,6 +428,65 @@ export interface ProfileResponse {
   /** [class, rated games], most played first. */
   classes: Array<[string, number]>;
   profile: Profile | null;
+  /** Kills in context against the players you face, under the same filters. */
+  fights: FightsCard | null;
+}
+
+// ---- Seasons and fights -------------------------------------------------------
+
+/** A season, from your officials in it. */
+export interface Season {
+  key: string;
+  name: string;
+  /** Unix seconds, inclusive: six days before the first official to the day after the last. */
+  from: number;
+  to: number;
+  officials: number;
+  divisions: string[];
+  /** Still being played: `to` is now. */
+  ongoing: boolean;
+}
+
+export interface PeriodStats {
+  games: number;
+  officials: number;
+  scrims: number;
+  pugs: number;
+  wins: number;
+  losses: number;
+  ties: number;
+  rating: number | null;
+  minutes: number;
+  dpm: number | null;
+  kd: number | null;
+  killsPer10: number | null;
+  deathsPer10: number | null;
+  /** 0-1 */
+  openingWon: number | null;
+  /** 0-1 */
+  traded: number | null;
+}
+
+export interface SeasonsView {
+  class: string;
+  seasons: Array<{ season: Season; stats: PeriodStats }>;
+  allTime: PeriodStats;
+}
+
+export interface FightLine {
+  label: string;
+  unit: string;
+  you: number | null;
+  pool: number | null;
+  /** 1 higher is better, -1 lower is better, 0 neither. */
+  better: number;
+  hint: string;
+}
+
+export interface FightsCard {
+  games: number;
+  poolGames: number;
+  lines: FightLine[];
 }
 
 // ---- M5: context and teammates ----------------------------------------------------
@@ -560,6 +622,58 @@ export interface KillView {
   /** The map of the kill's round. */
   map: string | null;
   jump: Jump | null;
+  /** What the kill meant; null for kills the fights pass leaves out. */
+  tags: KillTags | null;
+}
+
+/** What one kill meant (PLAN §11 B). Not exclusive. */
+export interface KillTags {
+  /** First kill of a fight: more than 10 s after the previous kill. */
+  opening: boolean;
+  firstOfRound: boolean;
+  /** The killer's team lost someone within 3 s. */
+  traded: boolean;
+  /** The killer died within 3 s. */
+  diedAfter: boolean;
+  /** Avenged a teammate killed within 3 s before. */
+  trade: boolean;
+  /** The killer's team already had more players alive. */
+  cleanup: boolean;
+  /** A combo player killed while their team held a ready charge. */
+  intoCharge: boolean;
+  /** A Medic killed holding a ready charge. */
+  drop: boolean;
+}
+
+/** One player's kills in context for one match. */
+export interface FightStats {
+  accountId: number;
+  rounds: number;
+  kills: number;
+  deaths: number;
+  openingKills: number;
+  openingDeaths: number;
+  firstPicks: number;
+  firstDeaths: number;
+  tradedKills: number;
+  diedAfterKill: number;
+  tradeKills: number;
+  cleanupKills: number;
+  chargedPicks: number;
+  drops: number;
+  forces: number;
+  deathsBeforeUber: number;
+  deathsDuringUber: number;
+  deathsAfterUber: number;
+}
+
+export interface FirstPickView {
+  t: number;
+  roundNum: number;
+  /** Seconds after the round went live (the end of setup in stopwatch). */
+  afterS: number;
+  killer: number;
+  victim: number;
 }
 
 export interface ClassDamage {
@@ -598,6 +712,8 @@ export interface Analysis {
   segments: MapSegment[];
   /** Players alive and uber charge per game second, in stable teams. */
   state: StateSeries;
+  fights: FightStats[];
+  firstPicks: FirstPickView[];
 }
 
 /** One value per game second; index i covers [i, i + 1). */

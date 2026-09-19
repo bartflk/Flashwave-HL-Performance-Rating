@@ -17,6 +17,8 @@ import teammatesTeam from "./fixtures/teammates_team.json";
 import analysis4109131 from "./fixtures/analysis_4109131.json";
 import mapviewUpward from "./fixtures/mapview_upward.json";
 import teammatesAll from "./fixtures/teammates_all.json";
+import seasonsSniper from "./fixtures/seasons_sniper.json";
+import fightsSniper from "./fixtures/fights_sniper.json";
 import type {
   Analysis,
   AppConfig,
@@ -33,6 +35,8 @@ import type {
   ProfileResponse,
   Teammates,
   TfPathInfo,
+  FightsCard,
+  SeasonsView,
 } from "./types";
 
 // Starts configured, since setup is not what you are usually iterating on.
@@ -348,7 +352,11 @@ export const mockApi: Api = {
 
   listMatches: (q: MatchQuery): Promise<MatchPage> => {
     const filtered = FAKE_MATCHES.filter(
-      (m) => (q.format === null || m.format === q.format) && (q.kind === null || m.context?.kind === q.kind),
+      (m) =>
+        (q.format === null || m.format === q.format) &&
+        (q.kind === null || m.context?.kind === q.kind) &&
+        (q.from === null || (m.playedAt ?? 0) >= q.from) &&
+        (q.to === null || (m.playedAt ?? 0) <= q.to),
     );
     return delay({ total: filtered.length, items: filtered.slice(q.offset, q.offset + q.limit) });
   },
@@ -364,10 +372,12 @@ export const mockApi: Api = {
   // a fixture come back empty, like a class with no rated games.
   // A filtered profile keeps the fixture's numbers but narrows its game lists,
   // which is enough to exercise the layout.
+  // Fights from `hl fights sniper --json`; the period narrows nothing here.
   getProfile: (cls: string | null, kind: ContextKind | null = null) => {
+    const fights = (cls ?? "sniper") === "sniper" ? (fightsSniper as unknown as FightsCard) : null;
     const byClass: Record<string, ProfileResponse> = {
-      sniper: profileSniper as unknown as ProfileResponse,
-      engineer: profileEngineer as unknown as ProfileResponse,
+      sniper: { ...(profileSniper as unknown as ProfileResponse), fights },
+      engineer: { ...(profileEngineer as unknown as ProfileResponse), fights: null },
     };
     const hit = byClass[cls ?? "sniper"];
     if (!hit?.profile || kind === null) return delay(hit ?? { classes: byClass.sniper.classes, profile: null });
@@ -379,6 +389,10 @@ export const mockApi: Api = {
       profile: trend.length === 0 ? null : { ...p, filter: kind, games: trend.length, trend, best: only(p.best), worst: only(p.worst) },
     });
   },
+
+  // From `hl seasons sniper --json`.
+  listSeasons: () => delay((seasonsSniper as unknown as SeasonsView).seasons.map((r) => r.season)),
+  getSeasons: (cls: string) => delay({ ...(seasonsSniper as unknown as SeasonsView), class: cls }),
 
   // One real analysis (the TWS official on Upward); every match opens it.
   getMatchAnalysis: (logId: number) =>

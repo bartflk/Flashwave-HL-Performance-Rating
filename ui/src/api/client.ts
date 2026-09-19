@@ -25,6 +25,8 @@ import type {
   SyncDone,
   Teammates,
   TfPathInfo,
+  Season,
+  SeasonsView,
 } from "./types";
 
 /** True inside the Tauri window, false in a plain browser tab. */
@@ -56,8 +58,11 @@ const realApi = {
   syncStart: (full: boolean) => invoke<void>("sync_start", { full }),
   reprocessStart: () => invoke<void>("reprocess_start"),
   getMatch: (logId: number) => invoke<MatchDetail | null>("get_match", { logId }),
-  getProfile: (cls: string | null, kind: ContextKind | null = null) =>
-    invoke<ProfileResponse>("get_profile", { class: cls, kind }),
+  getProfile: (cls: string | null, kind: ContextKind | null = null, from: number | null = null, to: number | null = null) =>
+    invoke<ProfileResponse>("get_profile", { class: cls, kind, from, to }),
+  /** Seasons from your officials, newest first. */
+  listSeasons: () => invoke<Season[]>("list_seasons"),
+  getSeasons: (cls: string) => invoke<SeasonsView>("get_seasons", { class: cls }),
   /** `all` includes pugs; otherwise officials and scrims only. */
   getTeammates: (all: boolean) => invoke<Teammates>("get_teammates", { all }),
   contextCounts: () => invoke<ContextCounts>("context_counts"),
