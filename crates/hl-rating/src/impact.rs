@@ -44,6 +44,12 @@ pub struct FightCounts {
     pub kills: u32,
     /// Kills after which the killer's team lost someone within 3 s.
     pub traded_kills: u32,
+    /// Deaths to enemy kills, those the team traded within 3 s, those to a
+    /// flanker, and those near a spot already killed from twice this life.
+    pub deaths: u32,
+    pub traded_deaths: u32,
+    pub flank_deaths: u32,
+    pub stationary_deaths: u32,
 }
 
 /// A victim whose class the log never named is valued like a Scout, the

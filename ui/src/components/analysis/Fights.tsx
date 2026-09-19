@@ -39,12 +39,14 @@ export function Fights({ a, player, onPick }: { a: Analysis; player: number; onP
               <th className="num" title="Combo players killed while their team held a ready charge; Medics among them dropped">Into charge</th>
               <th className="num" title="Enemy ubers popped right after this player's damage on the Medic">Forces</th>
               <th className="num" title="Deaths in the 10 s before their team popped, during it, and in the 10 s after">Around own uber</th>
+              <th className="num" title="Deaths your team killed back within 3 s">Deaths traded</th>
+              <th className="num" title="Died to the enemy Sniper / a flanker (Scout, Spy, Soldier) / the combo (Medic, Demoman, Heavy, Pyro)">Died to Sniper / flank / combo</th>
             </tr>
           </thead>
           {teams.map((team) => (
             <tbody key={team}>
               <tr className="fights-team">
-                <th colSpan={10} className={`team-${team.toLowerCase()}`}>
+                <th colSpan={12} className={`team-${team.toLowerCase()}`}>
                   {teamLabel(team)}
                 </th>
               </tr>
@@ -76,6 +78,12 @@ export function Fights({ a, player, onPick }: { a: Analysis; player: number; onP
                     <td className="num">{f.forces || "–"}</td>
                     <td className="num">
                       {f.deathsBeforeUber} / {f.deathsDuringUber} / {f.deathsAfterUber}
+                    </td>
+                    <td className="num">
+                      {f.tradedDeaths} <span className="muted">of {f.deaths}</span>
+                    </td>
+                    <td className="num">
+                      {f.deathsToSniper} / {f.deathsToFlank} / {f.deathsToCombo}
                     </td>
                   </tr>
                 ))}

@@ -106,6 +106,7 @@ export function PlayByPlay({ a, player, slice }: { a: Analysis; player: number; 
                       <span className="pbp-arrow"> → </span>
                       <Who id={r.kill.victim} /> <span className="muted">{cls(r.kill.victimClass)}</span>
                       <KillTagChips k={r.kill} />
+                      {r.kill.victim === player && <DeathTagChips k={r.kill} />}
                       <span className="pbp-meta">
                         {r.kill.weapon}
                         {r.kill.custom && ` · ${r.kill.custom}`}
@@ -186,6 +187,30 @@ function KillTagChips({ k }: { k: KillView }) {
           {label}
         </span>
       ))}
+    </>
+  );
+}
+
+/** Why the chosen player died, on their own deaths only (PLAN §12 step 1). */
+function DeathTagChips({ k }: { k: KillView }) {
+  const t = k.tags;
+  if (!t) return null;
+  return (
+    <>
+      {t.deathTraded ? (
+        <span className="kill-tag tag-open" title="Your team killed back within 3 s: the death opened something">
+          traded
+        </span>
+      ) : (
+        <span className="kill-tag tag-traded" title="Nobody on your team killed back within 3 s">
+          untraded
+        </span>
+      )}
+      {t.stationary && (
+        <span className="kill-tag tag-plain" title="You died near a spot you had already got two kills from this life">
+          stayed put
+        </span>
+      )}
     </>
   );
 }

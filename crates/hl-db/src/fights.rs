@@ -6,7 +6,7 @@ use serde::Serialize;
 use sqlx::Row;
 
 /// The counted columns of `fight_stat`, in order.
-pub const FIGHT_COLUMNS: [&str; 17] = [
+pub const FIGHT_COLUMNS: [&str; 22] = [
     "rounds",
     "kills",
     "deaths",
@@ -24,12 +24,17 @@ pub const FIGHT_COLUMNS: [&str; 17] = [
     "deaths_before_uber",
     "deaths_during_uber",
     "deaths_after_uber",
+    "traded_deaths",
+    "deaths_to_sniper",
+    "deaths_to_flank",
+    "deaths_to_combo",
+    "stationary_deaths",
 ];
 
 /// One player's counts in one match, in [`FIGHT_COLUMNS`] order.
 pub struct FightRow {
     pub account_id: u32,
-    pub values: [i64; 17],
+    pub values: [i64; 22],
 }
 
 /// Summed counts over a set of rated performances.
@@ -89,7 +94,7 @@ impl Db {
         let mut tx = self.pool().begin().await?;
         sqlx::query("DELETE FROM fight_stat WHERE log_id = ?1").bind(log_id).execute(&mut *tx).await?;
         let cols = FIGHT_COLUMNS.join(", ");
-        let marks = (3..=19).map(|i| format!("?{i}")).collect::<Vec<_>>().join(", ");
+        let marks = (3..3 + FIGHT_COLUMNS.len()).map(|i| format!("?{i}")).collect::<Vec<_>>().join(", ");
         let sql = format!("INSERT INTO fight_stat (log_id, account_id, {cols}) VALUES (?1, ?2, {marks})");
         for r in rows {
             let mut q = sqlx::query(&sql).bind(log_id).bind(r.account_id as i64);
@@ -133,7 +138,7 @@ impl Db {
             .bind(f.to)
             .fetch_all(self.pool())
             .await?;
-        let mut mine = FightTotals { values: vec![0; 17], ..Default::default() };
+        let mut mine = FightTotals { values: vec![0; FIGHT_COLUMNS.len()], ..Default::default() };
         let mut pool = mine.clone();
         for r in rows {
             let t = FightTotals {
@@ -150,22 +155,33 @@ impl Db {
         Ok((mine, pool))
     }
 
-    /// `(account, opening kills, opening deaths, kills, traded kills)` per
-    /// player, for every log the fights pass has read, or for one log.
-    pub async fn fight_counts(&self, log_id: Option<i64>) -> Result<std::collections::HashMap<i64, Vec<(u32, [u32; 4])>>> {
+    /// Per player, for every log the fights pass has read or for one log:
+    /// `(account, [opening kills, opening deaths, kills, traded kills, deaths,
+    /// traded deaths, deaths to flankers, stationary deaths])`.
+    pub async fn fight_counts(&self, log_id: Option<i64>) -> Result<std::collections::HashMap<i64, Vec<(u32, [u32; 8])>>> {
         let rows = sqlx::query(
-            "SELECT log_id, account_id, opening_kills, opening_deaths, kills, traded_kills FROM fight_stat
-             WHERE ?1 IS NULL OR log_id = ?1",
+            "SELECT log_id, account_id, opening_kills, opening_deaths, kills, traded_kills,
+                    deaths, traded_deaths, deaths_to_flank, stationary_deaths
+             FROM fight_stat WHERE ?1 IS NULL OR log_id = ?1",
         )
         .bind(log_id)
         .fetch_all(self.pool())
         .await?;
-        let mut out: std::collections::HashMap<i64, Vec<(u32, [u32; 4])>> = std::collections::HashMap::new();
+        let mut out: std::collections::HashMap<i64, Vec<(u32, [u32; 8])>> = std::collections::HashMap::new();
         for r in rows {
             let n = |c: &str| r.get::<i64, _>(c) as u32;
             out.entry(r.get("log_id")).or_default().push((
                 r.get::<i64, _>("account_id") as u32,
-                [n("opening_kills"), n("opening_deaths"), n("kills"), n("traded_kills")],
+                [
+                    n("opening_kills"),
+                    n("opening_deaths"),
+                    n("kills"),
+                    n("traded_kills"),
+                    n("deaths"),
+                    n("traded_deaths"),
+                    n("deaths_to_flank"),
+                    n("stationary_deaths"),
+                ],
             ));
         }
         Ok(out)

@@ -31,9 +31,20 @@ pub const FORCE_WINDOW_S: i64 = 3;
 /// ...and a player is credited when they dealt at least this much of it.
 pub const FORCE_SHARE: i64 = 40;
 
+/// A death within this many units of a spot the player already got
+/// [`STATIONARY_KILLS`] kills from, in the same life, is "stationary": the
+/// Sniper rule to move after a kill or two (PLAN §11, §12 step 1).
+pub const STATIONARY_UNITS: f64 = 300.0;
+pub const STATIONARY_KILLS: usize = 2;
+
 /// The classes that take and hold space together (PLAN §11, "four groups").
 pub fn is_combo(c: TfClass) -> bool {
     matches!(c, TfClass::Medic | TfClass::Demoman | TfClass::Heavy | TfClass::Pyro)
+}
+
+/// The classes that come at a Sniper from the side or behind.
+pub fn is_flank(c: TfClass) -> bool {
+    matches!(c, TfClass::Scout | TfClass::Spy | TfClass::Soldier)
 }
 
 /// What one kill meant. Not exclusive: an opening pick can also be traded.
@@ -56,6 +67,12 @@ pub struct KillTags {
     pub into_charge: bool,
     /// The victim was a Medic holding a ready charge.
     pub drop: bool,
+    /// The victim's death was traded: their team killed someone on the
+    /// killer's team within [`TRADE_S`].
+    pub death_traded: bool,
+    /// The victim died near a spot they had already got
+    /// [`STATIONARY_KILLS`] kills from in this life.
+    pub stationary: bool,
 }
 
 /// One player's counts for one match.
@@ -84,6 +101,16 @@ pub struct FightStats {
     pub deaths_before_uber: u32,
     pub deaths_during_uber: u32,
     pub deaths_after_uber: u32,
+    /// Deaths the player's team traded within [`TRADE_S`].
+    pub traded_deaths: u32,
+    /// Deaths by the killer's class: the enemy Sniper, a flanker (Scout,
+    /// Spy, Soldier) or the combo (Medic, Demoman, Heavy, Pyro). Engineers
+    /// and their sentries are in none of them.
+    pub deaths_to_sniper: u32,
+    pub deaths_to_flank: u32,
+    pub deaths_to_combo: u32,
+    /// Deaths near a spot already killed from twice in the same life.
+    pub stationary_deaths: u32,
 }
 
 /// The first kill of each round, for the match page.
@@ -173,6 +200,13 @@ pub fn analyse(raw: &RawLog, gs: &GameState) -> Fights {
                     break;
                 }
             }
+            // The victim's side of it: did their team kill back in time?
+            t.death_traded = ks[j + 1..]
+                .iter()
+                .map(|&n| &raw.kills[n])
+                .take_while(|next| next.at - k.at <= TRADE_S)
+                .any(|next| next.killer.team == Some(vt));
+            t.stationary = stationary(raw, gs, &idx, ks[j]);
             // Numbers and charge just before the kill.
             let n = gs.numbers_at(k.at - 1);
             let alive = |team: Team| if team == Team::Red { n[0] } else { n[1] };
@@ -198,6 +232,14 @@ pub fn analyse(raw: &RawLog, gs: &GameState) -> Fights {
             v.deaths += 1;
             v.opening_deaths += u32::from(t.opening);
             v.first_deaths += u32::from(t.first_of_round);
+            v.traded_deaths += u32::from(t.death_traded);
+            v.stationary_deaths += u32::from(t.stationary);
+            match k.killer.class {
+                Some(TfClass::Sniper) => v.deaths_to_sniper += 1,
+                Some(c) if is_flank(c) => v.deaths_to_flank += 1,
+                Some(c) if is_combo(c) => v.deaths_to_combo += 1,
+                _ => {}
+            }
             match uber_phase(gs, vt, k.at) {
                 Some(UberPhase::Before) => v.deaths_before_uber += 1,
                 Some(UberPhase::During) => v.deaths_during_uber += 1,
@@ -230,7 +272,8 @@ pub fn analyse(raw: &RawLog, gs: &GameState) -> Fights {
 }
 
 /// Bump to recompute every stored log's fights on the next pass.
-pub const VERSION: i64 = 1;
+/// 2: deaths in context (traded, by killer group, stationary).
+pub const VERSION: i64 = 2;
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -276,8 +319,34 @@ fn row(s: &FightStats) -> hl_db::FightRow {
         s.deaths_before_uber,
         s.deaths_during_uber,
         s.deaths_after_uber,
+        s.traded_deaths,
+        s.deaths_to_sniper,
+        s.deaths_to_flank,
+        s.deaths_to_combo,
+        s.stationary_deaths,
     ];
     hl_db::FightRow { account_id: s.account_id, values: v.map(i64::from) }
+}
+
+/// Whether the death at `raw.kills[i]` came near a spot the victim had
+/// already got [`STATIONARY_KILLS`] kills from in the same life. `counted`
+/// is the list of counted kills, so duplicated lines are not counted twice.
+fn stationary(raw: &RawLog, gs: &GameState, counted: &[usize], i: usize) -> bool {
+    let k = &raw.kills[i];
+    let Some(at) = k.victim_pos else { return false };
+    // The life that ended here: its start bounds "the same life".
+    let Some(life) = gs.lives.iter().find(|l| l.account == k.victim.account && l.to == k.at) else { return false };
+    let near = counted
+        .iter()
+        .map(|&n| &raw.kills[n])
+        .filter(|x| x.killer.account == k.victim.account && x.at >= life.from && x.at <= k.at)
+        .filter_map(|x| x.killer_pos)
+        .filter(|p| {
+            let d: f64 = (0..3).map(|a| f64::from(p[a] - at[a]).powi(2)).sum();
+            d.sqrt() <= STATIONARY_UNITS
+        })
+        .count();
+    near >= STATIONARY_KILLS
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -431,6 +500,51 @@ mod tests {
         assert!(avenged.trade && !avenged.cleanup, "2 v 2 when Red's Demo got the kill");
         let cleanup = f.tags[3].unwrap();
         assert!(cleanup.cleanup, "2 v 1 when Red's Medic got the kill");
+    }
+
+    #[test]
+    fn deaths_are_traded_when_the_team_kills_back_in_time() {
+        let f = fights();
+        assert!(f.tags[0].unwrap().death_traded, "Blue's Demo killed back 2 s after the Medic died");
+        assert!(f.tags[1].unwrap().death_traded, "Red's Demo avenged the Sniper a second later");
+        assert!(!f.tags[4].unwrap().death_traded, "nobody killed back after Red's Demo died");
+        assert_eq!(of(&f, 1).traded_deaths, 1);
+        assert_eq!(of(&f, 1).deaths_to_combo, 1, "a Demoman is combo");
+        assert_eq!(of(&f, 3).deaths_to_sniper, 1);
+    }
+
+    /// A Red Sniper kills twice from one spot, then dies nearby (stationary);
+    /// next life kills twice from there again but dies 400 units away.
+    fn stationary_log() -> String {
+        let (rs, b1, b2, spy) = (p("rs", 1, "Red"), p("b1", 11, "Blue"), p("b2", 12, "Blue"), p("spy", 13, "Blue"));
+        let at = |sec: u32, k: &str, v: &str, kp: &str, vp: &str| {
+            line(sec, &format!("{k} killed {v} with \"x\" (attacker_position \"{kp}\") (victim_position \"{vp}\")"))
+        };
+        let mut s = line(0, "World triggered \"Round_Start\"");
+        for (who, class) in [(&rs, "sniper"), (&b1, "scout"), (&b2, "soldier"), (&spy, "spy")] {
+            s += &line(0, &format!("{who} spawned as \"{class}\""));
+        }
+        s += &at(10, &rs, &b1, "0 0 0", "2000 0 0");
+        s += &at(20, &rs, &b2, "10 0 0", "2000 0 0");
+        s += &at(30, &spy, &rs, "150 0 0", "100 0 0");
+        s += &line(40, &format!("{rs} spawned as \"sniper\""));
+        s += &line(40, &format!("{b1} spawned as \"scout\""));
+        s += &line(40, &format!("{b2} spawned as \"soldier\""));
+        s += &at(50, &rs, &b1, "0 0 0", "2000 0 0");
+        s += &at(60, &rs, &b2, "0 0 0", "2000 0 0");
+        s += &at(70, &spy, &rs, "400 0 0", "400 0 0");
+        s += &line(120, "World triggered \"Round_Win\" (winner \"Blue\")");
+        s
+    }
+
+    #[test]
+    fn dying_where_you_already_killed_twice_is_stationary() {
+        let raw = parse(&stationary_log());
+        let f = analyse(&raw, &GameState::build(&raw));
+        assert!(f.tags[2].unwrap().stationary, "100 units from two kills this life");
+        assert!(!f.tags[5].unwrap().stationary, "400 units away");
+        let rs = of(&f, 1);
+        assert_eq!((rs.stationary_deaths, rs.deaths_to_flank), (1, 2), "a Spy is a flanker");
     }
 
     #[test]

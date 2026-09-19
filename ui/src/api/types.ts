@@ -643,6 +643,10 @@ export interface KillTags {
   intoCharge: boolean;
   /** A Medic killed holding a ready charge. */
   drop: boolean;
+  /** The victim's team killed back within 3 s. */
+  deathTraded: boolean;
+  /** The victim died near a spot they had killed from twice this life. */
+  stationary: boolean;
 }
 
 /** One player's kills in context for one match. */
@@ -665,6 +669,14 @@ export interface FightStats {
   deathsBeforeUber: number;
   deathsDuringUber: number;
   deathsAfterUber: number;
+  /** Deaths the team traded within 3 s. */
+  tradedDeaths: number;
+  deathsToSniper: number;
+  /** Scout, Spy, Soldier. */
+  deathsToFlank: number;
+  /** Medic, Demoman, Heavy, Pyro. */
+  deathsToCombo: number;
+  stationaryDeaths: number;
 }
 
 export interface FirstPickView {

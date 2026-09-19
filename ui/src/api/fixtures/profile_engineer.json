@@ -103,21 +103,21 @@
         "weight": 0.35
       },
       {
-        "careerPct": 50.6,
-        "component": "deaths",
-        "formPct": 43.0,
-        "formRaw": 5.04,
-        "label": "Deaths",
-        "unit": "per 10 min",
-        "weight": 0.2
-      },
-      {
         "careerPct": 64.4,
         "component": "dpm",
         "formPct": 71.8,
         "formRaw": 232.43,
         "label": "Damage / min",
         "unit": "per min",
+        "weight": 0.2
+      },
+      {
+        "careerPct": 50.6,
+        "component": "deaths",
+        "formPct": 43.0,
+        "formRaw": 5.04,
+        "label": "Deaths",
+        "unit": "per 10 min",
         "weight": 0.2
       },
       {

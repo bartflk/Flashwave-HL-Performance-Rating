@@ -1145,6 +1145,60 @@ Keep the one that validates best. If they tie, keep the players' view that a tra
 - a Spy backstab counting as a flank death;
 - a stationary death after two kills from one spot, and none after moving 400 units.
 
+**As built (model v3).** The fights pass (version 2) labels every death:
+- **traded:** your team killed anyone on the killer's team within 3 s;
+- **killer group:** the enemy Sniper, a flanker (Scout, Spy, Soldier), or the combo (Medic, Demoman, Heavy, Pyro), with Engineers and sentries in none;
+- **stationary:** within 300 units of a spot you got two or more kills from in the same life.
+
+Migration 0010 adds the counts to `fight_stat`, and every log was re-read once. The rating gains three candidate components: untraded deaths, deaths to flankers, and stationary deaths.
+
+**What the validation said** (`hl validate sniper`, 693 matches):
+
+| Better at it, and their team won | |
+|---|---|
+| Deaths (all) | 75.6% |
+| Untraded deaths | 74.7% |
+| Deaths to flankers | 70.4% |
+| Stationary deaths | **45.9%**: predicts nothing |
+
+Fitted together:
+- **Untraded deaths and deaths to flankers** both help, on top of everything else.
+- **Stationary deaths** is unclear. Holding a spot you are winning from may simply be right, so it stays information only.
+- **The best fit trained on older matches** rose from 73.8% to 74.8% on newer ones with the new stats: death context carries real signal.
+
+| Weighting | All | Before S34 | From S34 |
+|---|---|---|---|
+| v2 | 71.4% | 72.3% | 69.3% |
+| Untraded deaths in place of deaths | 71.4% | 72.1% | 69.8% |
+| Half deaths, half untraded | 71.6% | 72.5% | 69.3% |
+| **v3** (applied) | **72.4%** | 72.9% | **71.3%** |
+
+**v3 Sniper weights:**
+- Impact kills 25%, DPM 20%;
+- **untraded deaths 15%**, in place of all deaths;
+- opening duels 10%, down from 15;
+- Medic picks 10%;
+- **deaths to flankers 5%** (new);
+- kills not traded 5%, duel 5%, impact assists 5%.
+
+The model version is now `v3`. It predicts winners better than v2 on newer matches it was not tuned on (71.3% against 69.3%). Answer to question 1 for function, as built: **a traded death does not count against you.**
+
+**Effect:**
+- **The grand final (3863290):** you 61.0, angel complex 57.4.
+- **Your Sniper career:** 51.7 → 52.1. Officials 55.9, scrims 52.4, pugs 47.9.
+- **Your deaths against the Snipers you face:**
+  - 37% traded (theirs 36%);
+  - 13% fewer to flankers;
+  - 14% more to their Sniper, which matches the weak duel;
+  - "stayed put and died" level.
+
+**Where it shows:**
+- **Play-by-play:** your own deaths are tagged *traded* or *untraded*, and *stayed put*.
+- **Fights tab:** "deaths traded" and "died to Sniper / flank / combo" columns.
+- **Profile Fights card:** deaths traded, deaths to their Sniper, deaths to flankers, and stayed-put deaths (shown for reference).
+
+**Version plan, renumbered:** v3 is step 1 alone. Steps 2–3 become v4, and steps 4–5 become v5.
+
 #### Step 2. Fight KAST
 
 **Measure.** For each fight (the 10 s gap rule), note who was alive at its start or spawned into it. For each of those players, the fight counts if they:

@@ -909,7 +909,7 @@
         "dmg": 41906,
         "rating": {
           "class": "sniper",
-          "score": 60.8,
+          "score": 61.0,
           "minutes": 108.0,
           "parts": [
             {
@@ -945,14 +945,6 @@
               "weight": 0.05
             },
             {
-              "component": "deaths",
-              "label": "Deaths",
-              "unit": "per 10 min",
-              "raw": 7.41,
-              "percentile": 46.5,
-              "weight": 0.15
-            },
-            {
               "component": "dpm",
               "label": "Damage / min",
               "unit": "per min",
@@ -966,7 +958,7 @@
               "unit": "net per 10 min",
               "raw": 1.57,
               "percentile": 80.0,
-              "weight": 0.15
+              "weight": 0.1
             },
             {
               "component": "untraded",
@@ -974,6 +966,22 @@
               "unit": "% of kills",
               "raw": 70.0,
               "percentile": 56.2,
+              "weight": 0.05
+            },
+            {
+              "component": "untraded_deaths",
+              "label": "Untraded deaths",
+              "unit": "per 10 min",
+              "raw": 3.8,
+              "percentile": 64.6,
+              "weight": 0.15
+            },
+            {
+              "component": "flank_deaths",
+              "label": "Deaths to flankers",
+              "unit": "per 10 min",
+              "raw": 4.63,
+              "percentile": 30.2,
               "weight": 0.05
             }
           ]
@@ -990,7 +998,7 @@
         "dmg": 33425,
         "rating": {
           "class": "sniper",
-          "score": 55.8,
+          "score": 57.4,
           "minutes": 108.0,
           "parts": [
             {
@@ -1026,14 +1034,6 @@
               "weight": 0.05
             },
             {
-              "component": "deaths",
-              "label": "Deaths",
-              "unit": "per 10 min",
-              "raw": 5.74,
-              "percentile": 75.7,
-              "weight": 0.15
-            },
-            {
               "component": "dpm",
               "label": "Damage / min",
               "unit": "per min",
@@ -1047,7 +1047,7 @@
               "unit": "net per 10 min",
               "raw": 0.09,
               "percentile": 43.7,
-              "weight": 0.15
+              "weight": 0.1
             },
             {
               "component": "untraded",
@@ -1055,6 +1055,22 @@
               "unit": "% of kills",
               "raw": 73.64,
               "percentile": 66.4,
+              "weight": 0.05
+            },
+            {
+              "component": "untraded_deaths",
+              "label": "Untraded deaths",
+              "unit": "per 10 min",
+              "raw": 3.24,
+              "percentile": 77.6,
+              "weight": 0.15
+            },
+            {
+              "component": "flank_deaths",
+              "label": "Deaths to flankers",
+              "unit": "per 10 min",
+              "raw": 2.87,
+              "percentile": 69.2,
               "weight": 0.05
             }
           ]
@@ -1064,8 +1080,8 @@
         20,
         26
       ],
-      "diff": 5.0,
-      "winner": "left",
+      "diff": 3.6,
+      "winner": "even",
       "decisive": false,
       "involvesMe": true
     },
@@ -1765,7 +1781,7 @@
       "cpc": 7,
       "rating": {
         "class": "sniper",
-        "score": 60.8,
+        "score": 61.0,
         "minutes": 108.0,
         "parts": [
           {
@@ -1801,14 +1817,6 @@
             "weight": 0.05
           },
           {
-            "component": "deaths",
-            "label": "Deaths",
-            "unit": "per 10 min",
-            "raw": 7.41,
-            "percentile": 46.5,
-            "weight": 0.15
-          },
-          {
             "component": "dpm",
             "label": "Damage / min",
             "unit": "per min",
@@ -1822,7 +1830,7 @@
             "unit": "net per 10 min",
             "raw": 1.57,
             "percentile": 80.0,
-            "weight": 0.15
+            "weight": 0.1
           },
           {
             "component": "untraded",
@@ -1830,6 +1838,22 @@
             "unit": "% of kills",
             "raw": 70.0,
             "percentile": 56.2,
+            "weight": 0.05
+          },
+          {
+            "component": "untraded_deaths",
+            "label": "Untraded deaths",
+            "unit": "per 10 min",
+            "raw": 3.8,
+            "percentile": 64.6,
+            "weight": 0.15
+          },
+          {
+            "component": "flank_deaths",
+            "label": "Deaths to flankers",
+            "unit": "per 10 min",
+            "raw": 4.63,
+            "percentile": 30.2,
             "weight": 0.05
           }
         ]
@@ -2482,7 +2506,7 @@
       "cpc": 6,
       "rating": {
         "class": "sniper",
-        "score": 55.8,
+        "score": 57.4,
         "minutes": 108.0,
         "parts": [
           {
@@ -2518,14 +2542,6 @@
             "weight": 0.05
           },
           {
-            "component": "deaths",
-            "label": "Deaths",
-            "unit": "per 10 min",
-            "raw": 5.74,
-            "percentile": 75.7,
-            "weight": 0.15
-          },
-          {
             "component": "dpm",
             "label": "Damage / min",
             "unit": "per min",
@@ -2539,7 +2555,7 @@
             "unit": "net per 10 min",
             "raw": 0.09,
             "percentile": 43.7,
-            "weight": 0.15
+            "weight": 0.1
           },
           {
             "component": "untraded",
@@ -2547,6 +2563,22 @@
             "unit": "% of kills",
             "raw": 73.64,
             "percentile": 66.4,
+            "weight": 0.05
+          },
+          {
+            "component": "untraded_deaths",
+            "label": "Untraded deaths",
+            "unit": "per 10 min",
+            "raw": 3.24,
+            "percentile": 77.6,
+            "weight": 0.15
+          },
+          {
+            "component": "flank_deaths",
+            "label": "Deaths to flankers",
+            "unit": "per 10 min",
+            "raw": 2.87,
+            "percentile": 69.2,
             "weight": 0.05
           }
         ]
@@ -8850,7 +8882,7 @@
       "jump": null
     }
   ],
-  "modelVersion": "v2",
+  "modelVersion": "v3",
   "rated": true,
   "format": "highlander",
   "league": "etf2l",

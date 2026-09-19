@@ -18,7 +18,8 @@ use std::collections::HashMap;
 
 /// v2: Sniper reweighted against match results (DPM up, the duel and
 /// headshot share down), with opening duels and untraded kills added.
-pub const MODEL_VERSION: &str = "v2";
+/// v3: Sniper deaths in context: untraded deaths, deaths to flankers.
+pub const MODEL_VERSION: &str = "v3";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -39,10 +40,16 @@ pub enum Component {
     Opening,
     /// Share of kills not traded straight back.
     Untraded,
+    /// Deaths the team did not trade within 3 s (PLAN §12 step 1).
+    UntradedDeaths,
+    /// Deaths to a Scout, Spy or Soldier.
+    FlankDeaths,
+    /// Deaths near a spot already killed from twice in the same life.
+    StationaryDeaths,
 }
 
 impl Component {
-    pub const ALL: [Component; 14] = [
+    pub const ALL: [Component; 17] = [
         Component::ImpactKills,
         Component::ImpactAssists,
         Component::MedicPicks,
@@ -57,6 +64,9 @@ impl Component {
         Component::Dpm,
         Component::Opening,
         Component::Untraded,
+        Component::UntradedDeaths,
+        Component::FlankDeaths,
+        Component::StationaryDeaths,
     ];
 
     pub fn key(self) -> &'static str {
@@ -75,6 +85,9 @@ impl Component {
             Component::Dpm => "dpm",
             Component::Opening => "opening",
             Component::Untraded => "untraded",
+            Component::UntradedDeaths => "untraded_deaths",
+            Component::FlankDeaths => "flank_deaths",
+            Component::StationaryDeaths => "stationary_deaths",
         }
     }
 
@@ -98,6 +111,9 @@ impl Component {
             Component::Dpm => "Damage / min",
             Component::Opening => "Opening duels",
             Component::Untraded => "Kills not traded",
+            Component::UntradedDeaths => "Untraded deaths",
+            Component::FlankDeaths => "Deaths to flankers",
+            Component::StationaryDeaths => "Stationary deaths",
         }
     }
 
@@ -113,7 +129,10 @@ impl Component {
 
     /// Fewer deaths and fewer drops are better; everything else, more is.
     pub fn higher_is_better(self) -> bool {
-        !matches!(self, Component::Deaths | Component::Drops)
+        !matches!(
+            self,
+            Component::Deaths | Component::Drops | Component::UntradedDeaths | Component::FlankDeaths | Component::StationaryDeaths
+        )
     }
 }
 
@@ -184,6 +203,11 @@ pub fn extract(player: &PlayerLine, flags: &LogFlags, w: &Weights, impact: Optio
                 .and_then(|i| i.fights)
                 .filter(|f| f.kills > 0)
                 .map(|f| (1.0 - f64::from(f.traded_kills) / f64::from(f.kills)) * 100.0),
+            Component::UntradedDeaths => impact
+                .and_then(|i| i.fights)
+                .map(|f| f64::from(f.deaths.saturating_sub(f.traded_deaths)) * per10),
+            Component::FlankDeaths => impact.and_then(|i| i.fights).map(|f| f64::from(f.flank_deaths) * per10),
+            Component::StationaryDeaths => impact.and_then(|i| i.fights).map(|f| f64::from(f.stationary_deaths) * per10),
         };
         if let Some(v) = v {
             values.push((*component, v));
@@ -339,7 +363,8 @@ mod tests {
             account_id,
             class: TfClass::Sniper,
             minutes: 30.0,
-            values: vec![(Component::Deaths, v), (Component::ImpactKills, v)],
+            // The Sniper model weighs untraded deaths, not all deaths (v3).
+            values: vec![(Component::UntradedDeaths, v), (Component::ImpactKills, v)],
         }
     }
 
@@ -365,8 +390,8 @@ mod tests {
         let w = Weights::default_weights();
         let pool: Vec<_> = (1..=10).map(|i| perf(i, i as f64)).collect();
         let b = Baseline::build(&pool, None);
-        let few = Performance { values: vec![(Component::Deaths, 1.0)], ..perf(0, 0.0) };
-        let many = Performance { values: vec![(Component::Deaths, 10.0)], ..perf(0, 0.0) };
+        let few = Performance { values: vec![(Component::UntradedDeaths, 1.0)], ..perf(0, 0.0) };
+        let many = Performance { values: vec![(Component::UntradedDeaths, 10.0)], ..perf(0, 0.0) };
         let few = rate(&few, &b, &w).unwrap().score;
         let many = rate(&many, &b, &w).unwrap().score;
         assert!(few > many, "few deaths {few} should beat many deaths {many}");
