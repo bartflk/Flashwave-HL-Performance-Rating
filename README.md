@@ -127,4 +127,4 @@ cd ui && npx tsc --noEmit
 
 ---
 
-*Not affiliated with Valve. Team Fortress 2 is a trademark of Valve Corporation.*
+*Not affiliated with Valve. Team Fortress 2 is a trademark of Valve Corporation. Class icons are Valve's, from the [Official TF2 Wiki](https://wiki.teamfortress.com). The app logo is original.*
