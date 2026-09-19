@@ -302,46 +302,12 @@
 }
 
 .mu-breakdown {
-  padding: 12px 10px 16px 126px;
+  padding: 16px 20px 18px;
   border-bottom: 1px solid #29231f;
   background: #231e1a;
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.mu-breakdown table {
-  border-collapse: collapse;
-  font-size: 0.84rem;
-  max-width: 460px;
-}
-
-.mu-breakdown th,
-.mu-breakdown td {
-  padding: 4px 14px 4px 0;
-  text-align: left;
-}
-
-.mu-breakdown th {
-  font-weight: 600;
-  font-size: 0.76rem;
-}
-
-.mu-breakdown th.num,
-.mu-breakdown td.num {
-  text-align: right;
-  min-width: 90px;
-}
-
-.mu-breakdown td:first-child {
-  color: var(--muted);
-  cursor: help;
-}
-
-.mu-breakdown tr.total td {
-  border-top: 1px solid var(--border);
-  font-weight: 600;
-  color: var(--text);
 }
 
 .mu-warn {
@@ -541,24 +507,6 @@
 .match-table tr.clickable:focus-visible td {
   outline: none;
   background: #26211d;
-}
-
-.mu-breakdown .unit {
-  color: #7a6b5e;
-  font-size: 0.72rem;
-  margin-left: 4px;
-}
-
-.mu-breakdown td.pct {
-  color: var(--muted);
-  font-size: 0.74rem;
-  min-width: 44px;
-  text-align: left;
-  padding-left: 6px;
-}
-
-.mu-breakdown table {
-  max-width: 640px;
 }
 
 /* --- demos (M4) --- */
@@ -1005,5 +953,254 @@
   .round,
   .round:last-child {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* --- matchup breakdown: two players, mirrored --- */
+
+.bd {
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bd-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+
+.bd-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  min-width: 0;
+}
+
+.bd-card.right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.bd-card.lead {
+  border-color: rgba(224, 118, 58, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(224, 118, 58, 0.18);
+}
+
+.bd-card-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.bd-card-score {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.bd-card.lead .bd-card-score {
+  color: var(--accent);
+}
+
+.bd-card-kda {
+  font-size: 0.76rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.bd-card-kda b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.bd-vs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.bd-vs-label {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.bd-gap {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bd-gap small {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.bd-drivers {
+  margin: 0;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.bd-drivers b {
+  font-weight: 600;
+}
+
+.bd-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.bd-row {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 200px minmax(0, 1fr) 58px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+  border-top: 1px solid rgba(242, 230, 217, 0.05);
+  border-radius: 4px;
+}
+
+.bd-row:hover {
+  background: rgba(242, 230, 217, 0.03);
+}
+
+.bd-val {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+.bd-val.right {
+  text-align: left;
+}
+
+.bd-val.better {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.bd-bar {
+  position: relative;
+  height: 16px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.bd-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 4px;
+}
+
+.bd-bar.left .bd-fill {
+  right: 0;
+}
+
+.bd-bar.right .bd-fill {
+  left: 0;
+}
+
+/* Bright at the tip, deep at the centre line. */
+.bd-bar.left .bd-fill.fill-red {
+  background: linear-gradient(270deg, var(--red-deep), var(--red));
+}
+
+.bd-bar.right .bd-fill.fill-red {
+  background: linear-gradient(90deg, var(--red-deep), var(--red));
+}
+
+.bd-bar.left .bd-fill.fill-blue {
+  background: linear-gradient(270deg, var(--blu-deep), var(--blu));
+}
+
+.bd-bar.right .bd-fill.fill-blue {
+  background: linear-gradient(90deg, var(--blu-deep), var(--blu));
+}
+
+.bd-fill.dim {
+  opacity: 0.4;
+}
+
+/* The percentile sits at the outer end of the track, away from the centre. */
+.bd-pct {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  font-variant-numeric: tabular-nums;
+}
+
+.bd-bar.left .bd-pct {
+  left: 6px;
+}
+
+.bd-bar.right .bd-pct {
+  right: 6px;
+}
+
+.bd-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  line-height: 1.25;
+  cursor: help;
+}
+
+.bd-name {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.bd-meta {
+  font-size: 0.68rem;
+  color: #7a6b5e;
+  white-space: nowrap;
+}
+
+.bd-swing {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.bd-hint {
+  max-width: 880px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .bd-row {
+    grid-template-columns: 46px minmax(0, 1fr) 130px minmax(0, 1fr) 46px;
+    gap: 6px;
+  }
+
+  .bd-meta {
+    white-space: normal;
   }
 }

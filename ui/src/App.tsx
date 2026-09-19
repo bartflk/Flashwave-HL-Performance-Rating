@@ -103,6 +103,9 @@ export default function App() {
             <span>
               <span className="hl">HL</span> Rating
             </span>
+            <span className="beta-tag" title="Test build: expect rough edges, and please report them">
+              beta
+            </span>
           </h1>
           <nav className="tabs">
             {TABS.map(([t, label]) => (

@@ -168,12 +168,12 @@ function SideCell({ side, align, winning }: { side: Side | null; align: "left" |
   return <span className={`mu-side ${align}`}>{align === "left" ? <>{name}{score}</> : <>{score}{name}</>}</span>;
 }
 
-/** Every component for both players: the raw number, and where it sits
- *  among the players you face. Enough to check any winner call by hand. */
+/** Every component for both players, mirrored: the raw number, and a bar for
+ *  where it sits among the players you face. Weights sum to one, so each
+ *  row's swing (weight x percentile gap) adds up to the rating gap. */
 function Breakdown({ m, left, right }: { m: Matchup; left: Team; right: Team }) {
   const lr = m.left?.rating ?? null;
   const rr = m.right?.rating ?? null;
-  const rows = (lr ?? rr)?.parts ?? [];
   const find = (parts: Part[] | undefined, key: string) => parts?.find((p) => p.component === key);
 
   if (!lr && !rr) {
@@ -184,68 +184,120 @@ function Breakdown({ m, left, right }: { m: Matchup; left: Team; right: Team }) 
     );
   }
 
+  const rows = [...((lr ?? rr)?.parts ?? [])]
+    .sort((x, y) => y.weight - x.weight)
+    .map((p) => {
+      const a = find(lr?.parts, p.component) ?? null;
+      const b = find(rr?.parts, p.component) ?? null;
+      const swing = a && b ? p.weight * (a.percentile - b.percentile) : null;
+      return { p, a, b, swing };
+    });
+
+  // The rows that moved the gap most, in the leader's favour.
+  const leader = lr && rr ? (lr.score >= rr.score ? "left" : "right") : null;
+  const drivers = rows
+    .filter((r) => r.swing !== null && (leader === "left" ? r.swing > 0.5 : leader === "right" && r.swing < -0.5))
+    .sort((x, y) => Math.abs(y.swing!) - Math.abs(x.swing!))
+    .slice(0, 3);
+  const lc = left.toLowerCase();
+  const rc = right.toLowerCase();
+
   return (
     <div className="mu-breakdown">
-      <table>
-        <thead>
-          <tr>
-            <th>Component</th>
-            <th className="num">weight</th>
-            <th className={`num team-${left.toLowerCase()}`}>{m.left?.name ?? teamLabel(left)}</th>
-            <th className="num" />
-            <th className={`num team-${right.toLowerCase()}`}>{m.right?.name ?? teamLabel(right)}</th>
-            <th className="num" />
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((p) => {
-            const a = find(lr?.parts, p.component);
-            const b = find(rr?.parts, p.component);
-            return (
-              <tr key={p.component}>
-                <td title={p.unit}>
-                  {p.label} <span className="unit">{p.unit}</span>
-                </td>
-                <td className="num muted">{Math.round(p.weight * 100)}%</td>
-                <td className="num">{a ? fmtRaw(a) : "—"}</td>
-                <td className="num pct">{a ? pctLabel(a.percentile) : ""}</td>
-                <td className="num">{b ? fmtRaw(b) : "—"}</td>
-                <td className="num pct">{b ? pctLabel(b.percentile) : ""}</td>
-              </tr>
-            );
-          })}
-          <tr className="total">
-            <td>Rating</td>
-            <td />
-            <td className="num">{lr ? lr.score.toFixed(1) : "—"}</td>
-            <td />
-            <td className="num">{rr ? rr.score.toFixed(1) : "—"}</td>
-            <td />
-          </tr>
-          <tr>
-            <td>K / D / A</td>
-            <td />
-            <td className="num">{m.left ? `${m.left.kills} / ${m.left.deaths} / ${m.left.assists}` : "—"}</td>
-            <td />
-            <td className="num">{m.right ? `${m.right.kills} / ${m.right.deaths} / ${m.right.assists}` : "—"}</td>
-            <td />
-          </tr>
-        </tbody>
-      </table>
-      <p className="hint">
-        The small number is the percentile: how this compares with every other player on the class
-        in your matches. It is flipped for deaths, so higher is always better.
+      <div className="bd">
+        <div className="bd-head">
+          <ScoreCard side={m.left} team={lc} align="left" lead={leader === "left"} />
+          <div className="bd-vs">
+            <span className="bd-vs-label">Rating</span>
+            {lr && rr && (
+              <span className="bd-gap">
+                {Math.abs(lr.score - rr.score).toFixed(1)} <small>pts apart</small>
+              </span>
+            )}
+          </div>
+          <ScoreCard side={m.right} team={rc} align="right" lead={leader === "right"} />
+        </div>
+
+        {drivers.length > 0 && (
+          <p className="bd-drivers">
+            <span className="muted">Decided by </span>
+            {drivers.map((r, i) => (
+              <span key={r.p.component}>
+                {i > 0 && <span className="muted">, </span>}
+                <b>{r.p.label}</b>{" "}
+                <span className={`team-${leader === "left" ? lc : rc}`}>+{Math.abs(r.swing!).toFixed(1)}</span>
+              </span>
+            ))}
+          </p>
+        )}
+
+        <div className="bd-rows">
+          {rows.map(({ p, a, b, swing }) => (
+            <div className="bd-row" key={p.component} title={`${p.label}, ${p.unit}. Weight ${Math.round(p.weight * 100)}%.`}>
+              <span className={a && b && a.percentile > b.percentile ? "bd-val better" : "bd-val"}>{a ? fmtRaw(a) : "—"}</span>
+              <Bar part={a} team={lc} align="left" better={!!a && (!b || a.percentile >= b.percentile)} />
+              <span className="bd-label">
+                <span className="bd-name">{p.label}</span>
+                <span className="bd-meta">
+                  {p.unit} · {Math.round(p.weight * 100)}%
+                  {swing !== null && Math.abs(swing) >= 0.1 && (
+                    <span className={`bd-swing team-${swing > 0 ? lc : rc}`}>
+                      {" "}
+                      · {swing > 0 ? "◂" : ""}+{Math.abs(swing).toFixed(1)}
+                      {swing < 0 ? "▸" : ""}
+                    </span>
+                  )}
+                </span>
+              </span>
+              <Bar part={b} team={rc} align="right" better={!!b && (!a || b.percentile >= a.percentile)} />
+              <span className={a && b && b.percentile > a.percentile ? "bd-val right better" : "bd-val right"}>
+                {b ? fmtRaw(b) : "—"}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <p className="hint bd-hint">
+        Bars are the percentile against every player on the class in your matches, flipped for deaths so longer is
+        always better. The coloured number is how many rating points that row swung, and to whom.
       </p>
     </div>
   );
 }
 
-function fmtRaw(p: Part): string {
-  if (p.component === "headshot_share" || p.component === "untraded") return `${p.raw.toFixed(0)}%`;
-  if (p.component === "heal" || p.component === "dpm") return p.raw.toFixed(0);
-  return p.raw.toFixed(2);
+function ScoreCard(props: { side: Side | null; team: string; align: "left" | "right"; lead: boolean }) {
+  const { side, team, align, lead } = props;
+  const r = side?.rating ?? null;
+  return (
+    <div className={`bd-card ${align}${lead ? " lead" : ""}`}>
+      <span className={`bd-card-name team-${team}`}>{side?.name ?? "nobody"}</span>
+      <span className="bd-card-score">{r ? r.score.toFixed(1) : "—"}</span>
+      {side && (
+        <span className="bd-card-kda">
+          <b>{side.kills}</b> K · <b>{side.deaths}</b> D · <b>{side.assists}</b> A
+        </span>
+      )}
+    </div>
+  );
 }
 
-function pctLabel(pct: number): string {
-  return `p${Math.round(pct)}`;
+function Bar(props: { part: Part | null; team: string; align: "left" | "right"; better: boolean }) {
+  const { part, team, align, better } = props;
+  const pct = part ? Math.max(0, Math.min(100, part.percentile)) : 0;
+  return (
+    <span className={`bd-bar ${align}`}>
+      {part && (
+        <>
+          <span className={`bd-fill fill-${team}${better ? "" : " dim"}`} style={{ width: `${Math.max(pct, 2)}%` }} />
+          <span className="bd-pct">p{Math.round(pct)}</span>
+        </>
+      )}
+    </span>
+  );
+}
+
+function fmtRaw(p: Part): string {
+  if (p.unit.startsWith("%")) return `${p.raw.toFixed(0)}%`;
+  if (p.component === "heal" || p.component === "dpm") return p.raw.toFixed(0);
+  return p.raw.toFixed(2);
 }

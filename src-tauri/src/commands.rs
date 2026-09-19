@@ -25,7 +25,8 @@ pub struct AppStatus {
 pub async fn app_status(state: State<'_, AppState>) -> CmdResult<AppStatus> {
     let config = state.db.get_config().await?;
     Ok(AppStatus {
-        version: env!("CARGO_PKG_VERSION"),
+        // The installers carry a plain 0.1.0 (MSI allows digits only); the app says what it is.
+        version: concat!(env!("CARGO_PKG_VERSION"), " beta"),
         db_path: state.db_path.to_string_lossy().into_owned(),
         ready: config.is_ready(),
         config,

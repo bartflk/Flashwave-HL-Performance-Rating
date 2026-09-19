@@ -1,7 +1,9 @@
 # Builds the Windows installers and attaches them to a draft release.
 #
-# Trigger: push a tag like v0.1.0 (bump the version in src-tauri/tauri.conf.json
+# Trigger: push a tag like v0.1.0-beta (bump the version in src-tauri/tauri.conf.json
 # and the root Cargo.toml first), or run it by hand from the Actions tab.
+# The installers' own version stays numeric (MSI allows nothing else); the
+# "-beta" lives in the tag and the release name.
 # The release is created as a draft pre-release: review it, then publish.
 name: Release
 
@@ -41,10 +43,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__
-          releaseName: HL Rating v__VERSION__
+          tagName: v__VERSION__-beta
+          releaseName: HL Rating 0.1 beta
           releaseBody: |
-            Test build for Windows. Download the `-setup.exe` below.
+            First public beta, Windows only. Download the `-setup.exe` below.
 
             Windows may say "Windows protected your PC" because the installer is not code-signed: click **More info → Run anyway**.
             See the README for first-run steps. Feedback is welcome in Issues.

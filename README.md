@@ -12,11 +12,11 @@ A performance rating for **TF2 Highlander**, built from your logs.tf history. It
 
 Everything is stored on your PC. No account, no server.
 
-> **Test release.** This is an early build for testers. Numbers and screens will change; feedback is very welcome in [Issues](../../issues).
+> **0.1 beta.** This is the first public test build. Numbers and screens will change; feedback is very welcome in [Issues](../../issues).
 
 ## Install (Windows)
 
-1. Download `HL Rating_x.y.z_x64-setup.exe` from the [latest release](../../releases/latest).
+1. Download `HL Rating_0.1.0_x64-setup.exe` from the [Releases page](../../releases) (the newest "0.1 beta" entry).
 2. Run it. Windows may show **"Windows protected your PC"** because the installer is not code-signed (signing costs money every year). Click **More info → Run anyway**.
 3. The installer adds HL Rating to the Start menu. It needs Microsoft WebView2, which Windows 10 and 11 already have; if not, the installer fetches it.
 
@@ -73,8 +73,8 @@ npm run build        # installers in target/release/bundle
 Pushing a version tag builds the Windows installers on GitHub and attaches them to a draft release:
 
 ```
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.0-beta
+git push origin v0.1.0-beta
 ```
 
 Bump `version` in `src-tauri/tauri.conf.json` and in the root `Cargo.toml` (`[workspace.package]`) first. Review the draft on the Releases page, then publish it.
