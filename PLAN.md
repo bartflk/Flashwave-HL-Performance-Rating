@@ -1,4 +1,4 @@
-# HL Performance Rating System — Plan v1.1
+# HL Performance Rating System — Plan v1.2
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
 **Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
@@ -407,6 +407,7 @@ POV demos only contain what your client received, so phase 2 is you-only for loc
 | **M5** | ETF2L context, officials vs scrims split, teammate tracking | **done** |
 | **M6** | Raw logs: every kill with time, classes and positions (§9); per-side victim values | **done** |
 | **M7** | more.tf-style match views: kill map, heatmaps, damage and kill spread, timeline, play-by-play (§9) | **done** |
+| **M8** | Maps per round: resolve combined logs to the map each round was played on (§10) | |
 | **v2** | Deep demo parse: aim and viewangles, engagement ranges (positions largely come from M6 now) | |
 
 M1 acceptance: every Highlander log on the account stored, classified, deduplicated, and rebuildable from raw blobs with no refetching.
@@ -430,6 +431,7 @@ M1 acceptance: every Highlander log on the account stored, classified, deduplica
 13. **Time to first pick and picks before an uber push.** Planned for M6, not built; the data is stored.
 14. **Midfights and the uber split** as rating inputs (from M7's list): computable, not built.
 15. **Hit cap date.** logs.tf's 450 cap started somewhere between December 2014 and June 2016; this account has no logs in that window to pin it down.
+16. **Combined logs span several maps.** 78 kept logs cover two or three maps under one free-text name. The plan to resolve them round by round is §10 (M8).
 
 ---
 
@@ -545,3 +547,82 @@ A "Kill by kill" section on every match page, read from the stored raw log on de
 - Deaths before, during and after uber as rating inputs.
 
 Both are computable from what is now stored and belong with the next rating update, not the views.
+
+---
+
+## 10. Combined logs across several maps (M8)
+
+### The problem
+
+After a scrim or official, people combine the per-map logs into one and name it anything: `proot + proplant`, `vigilx2`, `upw/casc`, `how did we win`, `русские не победили :(`. That name is all logs.tf keeps as the map. The example: **SBQRRA vs Champions of Light**, Highlander Season 33 Low grand final (ETF2L 6–3). Log 3863290 is one log with 17 rounds across Ashville, Vigil and Proot, and its map field reads `русские не победили :(`.
+
+Measured on this account:
+- 758 kept Highlander logs, **128 with no real map name** (95 free text, 33 empty).
+- **125** of those 128 list their parts on trends.tf (`duplicate_of`), and the parts have real map names.
+- **78 span more than one map**. Every one of the 78 has a free-text name; not a single multi-map log carries a usable map.
+- 22 of the 128 are officials.
+
+**What breaks today:**
+- **The kill map** for a multi-map log mixes positions from different maps on one frame.
+- **Map outlines and career heatmaps** leave these logs out entirely: kills are matched to maps by the log's map name. Officials are the matches most often combined, so the best data is the data missing.
+- **Victim values** get no attack/defence side and no per-map value, because the log has no map. Vigil rounds inside a combined official get no defending Engineer bonus.
+- **The match list and header** show the free text instead of the maps.
+- **Demo linking** matches such logs on time alone (the `nomap` method, stricter threshold) or a guess from the label.
+- Future per-map statistics (win rate per map, rating per map) need the map of every round.
+
+### The answer: a map for every round, from the evidence that exists
+
+A combined log is still one match: it is what ETF2L's result refers to. So the log stays the unit, and each **round** gets a map. From ordered per-round maps come **segments** (consecutive rounds on one map), and each segment gets its own score.
+
+Evidence, strongest first. Each round takes the first source that gives an answer, and the rest are used as checks.
+
+1. **The raw log's own map lines.** Newer uploads write `World triggered "meta_data" (map "pl_vigil_rc10")` at each map load; every round after one belongs to that map. Direct, but older logs lack it (none of the four combined logs sampled have it).
+
+2. **The parts, matched exactly.** trends.tf lists every part the combined log was built from, each with its real map. The combiner copies rounds verbatim, so a part's round start times are the combined log's round start times, to the second, in the same clock.
+   - Fetch each part's logs.tf JSON once and keep it as a source. That is a few hundred requests for the whole history, about 8 minutes at one per second, then only new combined logs.
+   - Every round then belongs to exactly one part. No thresholds, no guessing.
+   - Parts can themselves be combined logs with no map (in the example, part `3863187`, named `ashville`, is itself a combine of the two Ashville parts). Resolve them recursively through their own parts.
+
+3. **The parts, matched by time, with nothing fetched.** trends.tf gives each part its upload time and length, so each part covers a window of real time. A combined log's rounds are placed on real time by the M4 log clock. Tried on the example, this assigns **13 of 17 rounds** correctly and leaves 4 unplaced where windows leave gaps. That makes it a useful fallback, but not good enough to be the main method.
+
+4. **ETF2L's map list** for officials, in the order played: `ashville, vigil, proot` for the example. It checks that the resolved sequence of maps matches, and fills gaps. An unplaced round between two Ashville rounds is Ashville.
+
+5. **The name.** `proot + proplant`, `upward+proot`, `vigilx2` and `upw/casc` give the maps in order. Tokens are matched against map names already seen on this account: `upw` is the only map beginning with those letters, and `x2` means the same map twice. This gives the order but not the round boundaries, so it pairs with 7.
+
+6. **The kills themselves.** Every round's kills carry positions, and M7 already has an outline for every map played enough. Score each candidate map by the share of the round's kill positions that land on its outline. Ashville and Vigil don't overlap, so the score separates them sharply. This works with no metadata at all, fills any round the other sources leave open, and checks the rest. It needs an outline, so a map played only once or twice may not have one.
+
+7. **Neighbours and gaps.** Maps come in unbroken blocks, and changing map takes minutes, while rounds on one map follow each other in seconds. A long gap between rounds marks a likely map change. An unplaced round between two rounds of the same map takes that map.
+
+For the 3 logs with no parts and no ETF2L match (for example `gullywash + badwater` from 2018), 5, 6 and 7 together still give an answer.
+
+### What gets stored
+
+Both tables are **derived**, rebuilt on reprocess from sources already stored plus the fetched part JSON:
+- `round_map(log_id, round_num, map, source)`, where `source` is `meta`, `part`, `window`, `etf2l`, `name` or `geometry`, so every answer says where it came from.
+- `log_segment(log_id, seq, map, first_round, last_round, red_score, blue_score)`: the per-map sub-results.
+
+A log with one real map name gets one segment and needs no work.
+
+### What changes when it lands
+
+- **Match list and header:** `Ashville · Vigil · Proot` with a score per map, instead of the free text.
+- **Kill by kill:** a map switch above the kill map, one tab per segment, each on its own outline.
+- **Map outlines and career heatmaps** gain every combined log's kills, officials included.
+- **Victim values:** the side and per-map values apply per round, so Vigil in a combined official counts defending kills like any other Vigil.
+- **Demo linking** can match each segment on its real map.
+- **Per-map statistics** become possible: win rate, rating and duel record per map.
+
+### A fix that falls out: unflagged parts
+
+Open item 10 (logs.tf-only combined logs counted alongside their parts) has the same cure. When every round of one kept log appears, start time for start time, inside another kept log, the first is a part of the second, even when trends.tf never said so. Supersede it. On this account that catches the 2018 `gullywash + badwater` semi-final and its two single-map logs.
+
+### How it will be checked
+
+- The 78 multi-map logs with parts give ground truth once method 2 has run: every round's map known exactly.
+- Methods 3, 5 and 6 are then scored against it, round by round, before any of them is trusted on the 3 logs without parts.
+- ETF2L's map order is checked against the resolved segments on all 22 combined officials.
+- The example must come out as Ashville 6 rounds, Vigil 4, Proot 7, and match ETF2L's 6–3.
+
+### One decision for you
+
+Should a combined log be **rated once** (as now, over all its maps), or **once per map segment**? Per segment is closer to how a match is played: a bad Vigil and a great Proot are two different stories, and per-map baselines want it. But it multiplies the rating rows for those logs, and a short segment can fall under the 5-minute minimum. **Recommendation:** keep rating per log for now, show the per-map breakdown, and switch when per-map baselines arrive.
