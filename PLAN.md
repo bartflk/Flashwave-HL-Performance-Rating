@@ -433,7 +433,8 @@ M1 acceptance: every Highlander log on the account stored, classified, deduplica
 14. **Midfights and the uber split** as rating inputs (from M7's list): computable, not built.
 15. **Hit cap date.** logs.tf's 450 cap started somewhere between December 2014 and June 2016; this account has no logs in that window to pin it down.
 16. ~~**Combined logs span several maps.**~~ Resolved round by round in M8 (§10).
-17. **Parts of combined logs not yet fetched.** logs.tf was unreachable from this machine while M8 was built (see §10, "As built"). The exact part-matching method runs on the first sync that reaches logs.tf.
+17. ~~**Parts of combined logs not yet fetched.**~~ All 289 fetched over a VPN; the exact matches confirmed every earlier answer.
+19. **logs.tf rate limit.** It stopped answering twice, after about 750 requests and then about 300 at one per second. Its API is now paced at one request every 2 seconds, and bulk jobs (raw logs, parts) are capped at 100 per sync. 15 of the oldest raw logs are still to fetch.
 18. **Demo linking per map.** A combined log's demo is still linked by time or label; linking each map segment on its real map is not built.
 
 ---
@@ -638,13 +639,16 @@ Every round of every kept Highlander log has a map in `round_map`, and each log'
 
 **Result on this account: 0 rounds unresolved, 81 logs across more than one map.**
 
-| Source | Rounds |
-|---|---|
-| `log` (the log names one real map) | 1,769 |
-| `window` (a part's upload window) | 696 |
-| `geometry` (kill positions) | 49 |
-| `meta` (the raw log's own map lines) | 21 |
-| `part` (exact round times) | 0: waiting on logs.tf |
+| Source | Rounds (first run) | Rounds (after the parts arrived) |
+|---|---|---|
+| `log` (the log names one real map) | 1,769 | 1,747 |
+| `part` (exact round times) | 0 | **717** |
+| `window` (a part's upload window) | 696 | 0 |
+| `geometry` (kill positions) | 49 | 26 |
+| `meta` (the raw log's own map lines) | 21 | 21 |
+| `neighbour` | 0 | 2 |
+
+The second column is after five hidden parts were folded away (2,513 rounds) and the 289 parts were fetched over a different connection. **Scored against the exact part matches, every earlier answer was right: `window` 696 of 696, `geometry` 21 of 21. No round's map changed.**
 
 **logs.tf was unreachable while this was built.** Every request timed out, including its homepage, while trends.tf and more.tf answered normally. It started after the M6 raw-log download of about 750 files, so the likeliest cause is that logs.tf is refusing this address. The part fetch (289 logs) is built and gives up after 3 failures in a row instead of waiting on 289 timeouts. It runs on the first sync that reaches logs.tf, and the pass then upgrades `window` and `geometry` answers to exact ones.
 

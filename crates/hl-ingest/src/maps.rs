@@ -78,7 +78,12 @@ async fn wanted_parts(db: &Db) -> Result<Vec<i64>> {
 
 pub async fn fetch_parts(db: &Db, sources: &Sources, mut progress: impl FnMut(Progress)) -> Result<PartsSummary> {
     let have: HashSet<i64> = db.part_raw_ids().await?.into_iter().collect();
-    let todo: Vec<i64> = wanted_parts(db).await?.into_iter().filter(|id| !have.contains(id)).collect();
+    let todo: Vec<i64> = wanted_parts(db)
+        .await?
+        .into_iter()
+        .filter(|id| !have.contains(id))
+        .take(crate::BULK_PER_SYNC)
+        .collect();
     let mut s = PartsSummary { wanted: todo.len(), ..Default::default() };
     let mut failing = 0;
     for (i, id) in todo.iter().enumerate() {

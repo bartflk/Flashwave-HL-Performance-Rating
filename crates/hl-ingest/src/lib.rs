@@ -19,6 +19,10 @@ pub mod rating;
 pub mod context;
 pub mod rawlog;
 pub mod kills;
+
+/// At most this many bulk requests to logs.tf in one sync (raw logs, parts).
+/// A backlog drains over several syncs instead of tripping its limit.
+pub const BULK_PER_SYNC: usize = 100;
 pub mod analysis;
 pub mod mapview;
 pub mod mapres;

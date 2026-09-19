@@ -62,7 +62,11 @@ impl Sources {
     pub fn new() -> Result<Self> {
         Ok(Sources {
             trends: Throttled::new(Duration::from_millis(1000))?,
-            logstf: Throttled::new(Duration::from_millis(1000))?,
+            // logs.tf stopped answering twice after a few hundred requests at
+            // one a second (~750 raw logs, then ~300 part logs from a second
+            // address), so it gets a slower pace; bulk jobs are also capped
+            // per sync (`BULK_PER_SYNC`).
+            logstf: Throttled::new(Duration::from_millis(2000))?,
             demostf: Throttled::new(Duration::from_millis(1000))?,
             // ETF2L does publish a limit: 60 requests a minute. Stay under it.
             etf2l: Throttled::new(Duration::from_millis(1500))?,
