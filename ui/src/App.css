@@ -646,3 +646,123 @@ th.num {
   font: inherit;
   color-scheme: dark;
 }
+
+/* --- owner badge, top right --- */
+
+.owner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.owner-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.15;
+}
+
+.owner-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-stretch: 85%;
+  font-variation-settings: "wdth" 85;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.95rem;
+}
+
+.owner-id {
+  font-size: 0.68rem;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--muted);
+}
+
+.owner-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
+  border: 2px solid var(--accent);
+  object-fit: cover;
+  flex: none;
+}
+
+.owner-initial {
+  display: grid;
+  place-items: center;
+  background: var(--panel-2);
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* --- class icons --- */
+
+.class-icon {
+  vertical-align: middle;
+  flex: none;
+}
+
+.class-icon.faded {
+  opacity: 0.55;
+}
+
+/* In a table cell: an icon then text, without turning the cell into a flexbox. */
+.class-cell {
+  white-space: nowrap;
+}
+
+.class-cell > .class-icon {
+  margin-right: 5px;
+}
+
+/* --- folding sections: click a panel's heading --- */
+
+.fold > .panel > h2:first-child,
+.fold > .panel > :first-child h2 {
+  cursor: pointer;
+  user-select: none;
+}
+
+.fold > .panel > h2:first-child::before,
+.fold > .panel > :first-child h2::before {
+  content: "▾";
+  display: inline-block;
+  width: 1em;
+  margin-right: 4px;
+  color: var(--accent);
+  transition: transform 120ms ease;
+}
+
+.fold.closed > .panel > h2:first-child::before,
+.fold.closed > .panel > :first-child h2::before {
+  transform: rotate(-90deg);
+}
+
+.fold > .panel > h2:first-child:hover,
+.fold > .panel > :first-child h2:hover {
+  color: var(--accent);
+}
+
+.fold h2:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* Folded: only the heading stays. */
+.fold.closed > .panel > :not(:first-child),
+.fold.closed > .panel > :first-child p,
+.fold.closed > .panel > :first-child > :not(:first-child) {
+  display: none;
+}
+
+.fold.closed > .panel > :first-child {
+  margin-bottom: 0;
+}
+
+.fold.closed > .panel {
+  padding-block: 14px;
+}

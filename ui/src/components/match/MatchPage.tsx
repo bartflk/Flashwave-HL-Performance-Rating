@@ -4,6 +4,7 @@ import { errorMessage, type MatchContext, type MatchDetail } from "../../api/typ
 import { capitalize, formatDate, minutes, splitMap, teamLabel } from "../../lib/format";
 import { ContextBadge, kindReason } from "../ContextBadge";
 import { BoxScore } from "./BoxScore";
+import { Fold } from "../Fold";
 import { DemoPanel } from "./DemoPanel";
 import { AnalysisPanel } from "../analysis/AnalysisPanel";
 import { Matchups } from "./Matchups";
@@ -26,11 +27,22 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
       {q.data && (
         <>
           <Header d={q.data} />
-          <Matchups d={q.data} />
-          <DemoPanel d={q.data} />
-          <RoundTimeline d={q.data} />
-          <AnalysisPanel d={q.data} />
-          <BoxScore d={q.data} />
+          {/* The scoreboard first, as on logs.tf; the matchups read it next. */}
+          <Fold id="scoreboard">
+            <BoxScore d={q.data} />
+          </Fold>
+          <Fold id="matchups">
+            <Matchups d={q.data} />
+          </Fold>
+          <Fold id="demos">
+            <DemoPanel d={q.data} />
+          </Fold>
+          <Fold id="rounds">
+            <RoundTimeline d={q.data} />
+          </Fold>
+          <Fold id="analysis">
+            <AnalysisPanel d={q.data} />
+          </Fold>
         </>
       )}
     </div>

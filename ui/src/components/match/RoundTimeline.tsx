@@ -32,49 +32,73 @@ export function RoundTimeline({ d }: { d: MatchDetail }) {
   const demoName = (j: Jump) =>
     d.demos.length > 1 ? d.demos.find((x) => x.demoId === j.demoId)?.fileName : undefined;
   const hasJumps = d.rounds.some((r) => r.jump !== null);
-  const hasMine = d.rounds.some((r) => r.events.some((e) => e.kind === "my_kill" || e.kind === "my_death"));
+  const hasMine = d.rounds.some((r) => r.events.some((e) => MINE.has(e.kind)));
+  const won = d.rounds.filter((r) => r.winner === left).length;
+  const lost = d.rounds.filter((r) => r.winner === right).length;
+  const leftName = us ? "Us" : teamLabel(left);
+  const rightName = us ? "Them" : teamLabel(right);
 
   return (
     <section className="panel rounds">
       <header className="rounds-head">
         <div>
           <h2>Rounds</h2>
-          {anySwapped && (
-            <p className="hint" style={{ marginTop: 4 }}>
-              Sides swap between stopwatch halves. Colours here follow the team, not the side it
-              played that half.
-            </p>
-          )}
+          <p className="hint" style={{ marginTop: 4 }}>
+            {us ? `You won ${won} of ${d.rounds.length} rounds.` : `${teamLabel(left)} ${won}, ${teamLabel(right)} ${lost}.`}{" "}
+            Each round has a lane per team: that team&apos;s caps and ubers, and its Medic going down.
+            {anySwapped && " Sides swap between stopwatch halves; colours follow the team, not the side."}
+          </p>
         </div>
         <Legend jumps={hasJumps} mine={hasMine} />
       </header>
-      {d.rounds.map((r) => (
-        <Round key={r.roundNum} r={r} left={left} right={right} us={us} demoName={demoName} />
-      ))}
+      <div className="round-list">
+        {d.rounds.map((r) => (
+          <Round
+            key={r.roundNum}
+            r={r}
+            left={left}
+            right={right}
+            us={us}
+            names={[leftName, rightName]}
+            showMine={hasMine}
+            demoName={demoName}
+          />
+        ))}
+      </div>
     </section>
   );
 }
+
+/** Events about the owner alone: their kills, deaths and demo killstreaks. */
+const MINE = new Set(["my_kill", "my_death", "killstreak"]);
 
 function Round(props: {
   r: RoundRow;
   left: Team;
   right: Team;
   us: boolean;
+  names: [string, string];
+  showMine: boolean;
   demoName: (j: Jump) => string | undefined;
 }) {
-  const { r, left, right, us, demoName } = props;
+  const { r, left, right, us, names, showMine, demoName } = props;
   const len = r.lengthS ?? Math.max(1, ...r.events.map((e) => e.atS));
   const events = r.events.filter((e) => e.kind !== "round_win");
+  // An event with no team (rare) goes in the second lane rather than nowhere.
+  const lane = (team: Team) =>
+    events.filter((e) => !MINE.has(e.kind) && (e.team === team || (team === right && e.team === null)));
+  const mine = events.filter((e) => MINE.has(e.kind));
 
-  const outcome =
-    r.winner === null ? "no winner" : !us ? `${teamLabel(r.winner)} won` : r.winner === left ? "won" : "lost";
-  const outcomeClass = r.winner === null || !us ? "" : r.winner === left ? "result-W" : "result-L";
+  const result = r.winner === null ? "–" : !us ? `${teamLabel(r.winner)}` : r.winner === left ? "Won" : "Lost";
+  const resultClass = r.winner === null || !us ? "round-result" : r.winner === left ? "round-result result-W" : "round-result result-L";
 
   // The colour the left team actually wore this round.
   const leftWore: Team = r.coloursSwapped ? right : left;
 
   const ticks = Array.from({ length: Math.floor(len / 60) }, (_, i) => (i + 1) * 60);
   const stat = (t: Team, red: number | null, blue: number | null) => (t === "Red" ? red : blue);
+  const markers = (list: EventRow[]) =>
+    list.map((e, i) => <Marker key={i} e={e} len={len} left={left} us={us} demoName={demoName} />);
 
   return (
     <div className="round">
@@ -90,49 +114,43 @@ function Round(props: {
         ) : (
           <span className="round-num">R{r.roundNum}</span>
         )}
-        <span className={`round-outcome ${outcomeClass}`}>{outcome}</span>
-        <span className="muted">{clock(r.lengthS)}</span>
-        {us && (
-          <span
-            className={`wore wore-${leftWore.toLowerCase()}`}
-            title={r.coloursSwapped ? "Sides swapped this half" : undefined}
-          >
-            as {teamLabel(leftWore)}
-          </span>
-        )}
+        <span className={resultClass}>{result}</span>
+        <span className="round-sub">
+          {clock(r.lengthS)}
+          {us && (
+            <span className={`wore wore-${leftWore.toLowerCase()}`} title={r.coloursSwapped ? "Sides swapped this half" : undefined}>
+              {teamLabel(leftWore)}
+            </span>
+          )}
+        </span>
       </div>
 
-      <div className="track">
-        {ticks.map((t) => (
-          <span key={t} className="tick" style={{ left: `${(t / len) * 100}%` }} />
-        ))}
-        {events.map((e, i) => (
-          <Marker key={i} e={e} len={len} left={left} us={us} demoName={demoName} />
-        ))}
+      <div className="round-lanes">
+        <span className={`lane-label team-${left.toLowerCase()}`}>{names[0]}</span>
+        <div className={`lane lane-team lane-${left.toLowerCase()}`}>{markers(lane(left))}</div>
+        {showMine && (
+          <>
+            <span className="lane-label">You</span>
+            <div className="lane lane-mine">{markers(mine)}</div>
+          </>
+        )}
+        <span className={`lane-label team-${right.toLowerCase()}`}>{names[1]}</span>
+        <div className={`lane lane-team lane-${right.toLowerCase()}`}>{markers(lane(right))}</div>
+        <div className="lane-ticks" aria-hidden>
+          {ticks.map((t) => (
+            <span key={t} className="tick" style={{ left: `${(t / len) * 100}%` }} />
+          ))}
+        </div>
       </div>
 
       <div className="round-stats">
-        <Pair
-          label="kills"
-          a={stat(left, r.redKills, r.blueKills)}
-          b={stat(right, r.redKills, r.blueKills)}
-          left={left}
-          right={right}
-        />
-        <Pair
-          label="ubers"
-          a={stat(left, r.redUbers, r.blueUbers)}
-          b={stat(right, r.redUbers, r.blueUbers)}
-          left={left}
-          right={right}
-        />
+        <StatRow label="Kills" a={stat(left, r.redKills, r.blueKills)} b={stat(right, r.redKills, r.blueKills)} left={left} right={right} />
+        <StatRow label="Ubers" a={stat(left, r.redUbers, r.blueUbers)} b={stat(right, r.redUbers, r.blueUbers)} left={left} right={right} />
         {r.firstcap && (
-          <span className="muted">
-            first cap{" "}
-            <span className={`team-${r.firstcap.toLowerCase()}`}>
-              {us ? (r.firstcap === left ? "us" : "them") : teamLabel(r.firstcap)}
-            </span>
-          </span>
+          <div className="rs-row">
+            <span className="rs-label">First cap</span>
+            <span className={`team-${r.firstcap.toLowerCase()}`}>{names[r.firstcap === left ? 0 : 1]}</span>
+          </div>
         )}
       </div>
     </div>
@@ -247,15 +265,18 @@ function Marker(props: {
   }
 }
 
-function Pair(props: { label: string; a: number | null; b: number | null; left: Team; right: Team }) {
+function StatRow(props: { label: string; a: number | null; b: number | null; left: Team; right: Team }) {
   const { label, a, b, left, right } = props;
   if (a === null && b === null) return null;
   return (
-    <span className="muted">
-      {label} <span className={`team-${left.toLowerCase()}`}>{a ?? "–"}</span>
-      <span className="sep"> : </span>
-      <span className={`team-${right.toLowerCase()}`}>{b ?? "–"}</span>
-    </span>
+    <div className="rs-row">
+      <span className="rs-label">{label}</span>
+      <span>
+        <strong className={`team-${left.toLowerCase()}`}>{a ?? "–"}</strong>
+        <span className="sep"> – </span>
+        <strong className={`team-${right.toLowerCase()}`}>{b ?? "–"}</strong>
+      </span>
+    </div>
   );
 }
 
@@ -278,10 +299,10 @@ function Legend({ jumps, mine }: { jumps: boolean; mine: boolean }) {
         <span className="mk-demo mk-drop">D</span> drop
       </span>
       <span>
-        <span className="mk-demo mk-pick">✚</span> medic killed
+        <span className="mk-demo mk-pick">✚</span> Medic down
       </span>
       <span>
-        <span className="mk-demo mk-pick by-me">✚</span> by you
+        <span className="mk-demo mk-pick by-me">✚</span> killed by you
       </span>
       {jumps && (
         <span>

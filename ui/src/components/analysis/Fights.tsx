@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import type { Analysis, FightStats } from "../../api/types";
-import { capitalize, clock, teamLabel } from "../../lib/format";
+import { clock, teamLabel } from "../../lib/format";
 import { playerMap } from "./common";
+import { ClassIcon } from "../ClassIcon";
 
 /**
  * Every player's kills in context (PLAN §11 B and D): who opened fights,
@@ -59,9 +60,8 @@ export function Fights({ a, player, onPick }: { a: Analysis; player: number; onP
                 .sort((x, y) => y.f.openingKills - x.f.openingKills)
                 .map(({ p, f }) => (
                   <tr key={p.accountId} className={p.accountId === player ? "clickable sel" : "clickable"} onClick={() => onPick(p.accountId)}>
-                    <td>
-                      {p.name}
-                      {p.mainClass && <span className="muted"> · {capitalize(p.mainClass)}</span>}
+                    <td className="nowrap class-cell">
+                      <ClassIcon cls={p.mainClass} size={20} /> {p.name}
                     </td>
                     <td className="num" title={`${f.fightsKast} of ${f.fightsPresent} fights`}>
                       {pct(f.fightsKast, f.fightsPresent)}

@@ -25,6 +25,7 @@ import type {
   SyncDone,
   Teammates,
   TfPathInfo,
+  Owner,
   Season,
   SeasonsView,
 } from "./types";
@@ -60,6 +61,8 @@ const realApi = {
   getMatch: (logId: number) => invoke<MatchDetail | null>("get_match", { logId }),
   getProfile: (cls: string | null, kind: ContextKind | null = null, from: number | null = null, to: number | null = null) =>
     invoke<ProfileResponse>("get_profile", { class: cls, kind, from, to }),
+  /** Your name and picture; null before a SteamID is set. */
+  getOwner: () => invoke<Owner | null>("get_owner"),
   /** Seasons from your officials, newest first. */
   listSeasons: () => invoke<Season[]>("list_seasons"),
   getSeasons: (cls: string) => invoke<SeasonsView>("get_seasons", { class: cls }),

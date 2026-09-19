@@ -43,6 +43,7 @@ COMMANDS:
                            How often each component, and each weighting, picks
                            the team that won (PLAN §12 step 0). --weights takes a
                            TOML file with a [model.sniper] table; repeatable
+    owner [--refresh]      Your name and profile picture (--refresh looks them up)
     seasons [CLASS] [--json]
                            Your seasons, and how you played the class in each
     fights [CLASS] [--all] [--official|--scrim|--pug]
@@ -385,6 +386,20 @@ async fn main() -> Result<()> {
                 println!("
 ({:.1}s)", started.elapsed().as_secs_f64());
             }
+            Ok(())
+        }
+
+        ["owner", rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?.context("no owner set")?;
+            let o = if rest.contains(&"--refresh") {
+                hl_ingest::owner::refresh(&db, &Sources::new()?, me).await?
+            } else {
+                hl_ingest::owner::load(&db, me).await?
+            };
+            println!("steamid64 {}", o.steamid64);
+            println!("name      {}", o.name.as_deref().unwrap_or("(none)"));
+            println!("avatar    {}", o.avatar.as_ref().map_or("(none)".to_string(), |a| format!("{} ({} chars)", &a[..a.len().min(30)], a.len())));
             Ok(())
         }
 

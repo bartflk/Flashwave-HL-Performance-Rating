@@ -103,6 +103,10 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                 let _ = emitter.emit(EV_PROGRESS, Progress::Etf2lFailed { error });
             }
             hl_ingest::etf2l::derive_context(&db, me).await?;
+            // Your name and picture for the top bar; a failure keeps the old ones.
+            if let Err(e) = hl_ingest::owner::refresh(&db, &sources, me).await {
+                tracing::warn!(error = %format!("{e:#}"), "owner profile refresh failed");
+            }
             // New logs can link to demos already on disk. This also places
             // every log on the real clock, which the round maps use.
             if let Some(tf) = db.get_config().await?.tf_path {
@@ -282,6 +286,15 @@ pub async fn get_profile(
         None => (None, None),
     };
     Ok(ProfileResponse { classes, profile, fights })
+}
+
+/// Your name and profile picture, as stored.
+#[tauri::command]
+pub async fn get_owner(state: State<'_, AppState>) -> CmdResult<Option<hl_ingest::owner::Owner>> {
+    match state.db.get_me().await? {
+        Some(me) => Ok(Some(hl_ingest::owner::load(&state.db, me).await?)),
+        None => Ok(None),
+    }
 }
 
 /// Seasons from your officials, newest first.

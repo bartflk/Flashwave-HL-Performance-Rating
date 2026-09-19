@@ -40,6 +40,8 @@ pub struct Sources {
     logstf: Throttled,
     demostf: Throttled,
     etf2l: Throttled,
+    /// Steam profiles and avatar images, for the owner's picture.
+    web: Throttled,
     downloads: reqwest::Client,
 }
 
@@ -70,6 +72,7 @@ impl Sources {
             demostf: Throttled::new(Duration::from_millis(1000))?,
             // ETF2L does publish a limit: 60 requests a minute. Stay under it.
             etf2l: Throttled::new(Duration::from_millis(1500))?,
+            web: Throttled::new(Duration::from_millis(1000))?,
             downloads: download_client()?,
         })
     }
@@ -151,6 +154,16 @@ impl Sources {
 
 impl Sources {
     /// GET a path on the ETF2L v2 API; `None` when it does not exist.
+    /// A page as text; `None` when it does not exist.
+    pub async fn fetch_text(&self, url: &str) -> Result<Option<String>> {
+        self.web.get_text_opt(url).await
+    }
+
+    /// A small file (an avatar image); `None` when it does not exist.
+    pub async fn fetch_bytes(&self, url: &str) -> Result<Option<Vec<u8>>> {
+        self.web.get_bytes_opt(url).await
+    }
+
     pub async fn etf2l_get(&self, path: &str) -> Result<Option<String>> {
         self.etf2l.get_text_opt(&format!("https://api-v2.etf2l.org{path}")).await
     }

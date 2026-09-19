@@ -145,6 +145,8 @@ pub struct PlayerRow {
     pub backstabs: i64,
     pub airshots: i64,
     pub cpc: i64,
+    /// Health packs picked up (logs.tf's HP column).
+    pub medkits: i64,
     /// Rating on the player's main class; `None` if too short to rate.
     pub rating: Option<Rating>,
     pub is_me: bool,
@@ -436,6 +438,7 @@ fn players(
                 backstabs: s.backstabs,
                 airshots: s.airshots,
                 cpc: s.cpc,
+                medkits: s.medkits,
                 rating: extract(p, &log.flags, w, impacts.get(&p.id.account_id())).and_then(|perf| rate(&perf, baseline, w)),
                 is_me: me == Some(p.id),
             }

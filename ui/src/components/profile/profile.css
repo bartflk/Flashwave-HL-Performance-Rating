@@ -546,3 +546,9 @@
 .verdict.bad {
   color: #e3a07a;
 }
+
+.class-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

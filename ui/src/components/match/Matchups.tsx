@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { MatchDetail, Matchup, Part, Side, Team } from "../../api/types";
 import { capitalize, teamLabel } from "../../lib/format";
+import { ClassIcon } from "../ClassIcon";
 
 /**
  * The nine class matchups: the headline of the match page.
@@ -100,6 +101,7 @@ function MatchupRow(props: {
     <>
       <button className={classes.join(" ")} onClick={onToggle} aria-expanded={open}>
         <span className="mu-class">
+          <ClassIcon cls={m.class} size={22} />
           {capitalize(m.class)}
           {m.involvesMe && <span className="you-tag">you</span>}
         </span>

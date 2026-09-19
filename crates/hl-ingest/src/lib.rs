@@ -22,6 +22,7 @@ pub mod state;
 pub mod statecheck;
 pub mod fights;
 pub mod seasons;
+pub mod owner;
 pub mod validate;
 pub mod kills;
 

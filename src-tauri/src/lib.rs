@@ -49,7 +49,7 @@ pub fn run() {
             // migrations have applied, so no command can race an unmigrated db.
             let db = tauri::async_runtime::block_on(Db::connect(&db_path))
                 .map_err(|e| format!("{e:#}"))?;
-            let sources = Sources::new().map_err(|e| format!("{e:#}"))?;
+            let sources = Arc::new(Sources::new().map_err(|e| format!("{e:#}"))?);
 
             // Index demos in the background at startup: the window should not
             // wait on a folder scan, and a missing TF2 folder is not an error.
@@ -57,6 +57,7 @@ pub fn run() {
                 let db = db.clone();
                 let handle = app.handle().clone();
                 let weights_path = db_path.with_file_name("weights.toml");
+                let sources = sources.clone();
                 tauri::async_runtime::spawn(async move {
                     let Ok(cfg) = db.get_config().await else { return };
                     // Classify matches from stored data first: instant, and it
@@ -84,6 +85,14 @@ pub fn run() {
                         Ok(s) => tracing::info!(derived = s.derived, total = s.total, "fights derived"),
                         Err(e) => tracing::warn!(error = %format!("{e:#}"), "fights pass failed"),
                     }
+                    // Your name and picture, if they have never been fetched.
+                    if let Some(me) = cfg.steamid {
+                        if db.get_setting("owner_avatar").await.ok().flatten().is_none() {
+                            if let Err(e) = hl_ingest::owner::refresh(&db, &sources, me).await {
+                                tracing::warn!(error = %format!("{e:#}"), "owner profile refresh failed");
+                            }
+                        }
+                    }
                     // A new rating model has no ratings until something rates:
                     // do it now rather than leave the profile empty until a sync.
                     if db.rating_count(hl_rating::MODEL_VERSION).await.unwrap_or(1) == 0 {
@@ -99,7 +108,7 @@ pub fn run() {
             app.manage(AppState {
                 db,
                 db_path,
-                sources: Arc::new(sources),
+                sources,
                 busy: Arc::new(AtomicBool::new(false)),
                 downloading: Arc::new(AtomicBool::new(false)),
             });
@@ -120,6 +129,7 @@ pub fn run() {
             sync_commands::get_match,
             sync_commands::get_profile,
             sync_commands::list_seasons,
+            sync_commands::get_owner,
             sync_commands::get_seasons,
             sync_commands::get_teammates,
             sync_commands::context_counts,

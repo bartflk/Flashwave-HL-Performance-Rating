@@ -44,6 +44,17 @@ pub async fn set_steamid(state: State<'_, AppState>, input: String) -> CmdResult
     let id = SteamId::parse(&input)?;
     state.db.set_me(id).await?;
     tracing::info!(steamid = %id, "owner set");
+    // A new owner is a new name and picture: forget the old ones and look the
+    // new ones up in the background.
+    for key in ["owner_name", "owner_avatar", "owner_avatar_src"] {
+        state.db.clear_setting(key).await?;
+    }
+    let (db, sources) = (state.db.clone(), state.sources.clone());
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = hl_ingest::owner::refresh(&db, &sources, id).await {
+            tracing::warn!(error = %format!("{e:#}"), "owner profile refresh failed");
+        }
+    });
     Ok(state.db.get_config().await?)
 }
 

@@ -10,6 +10,7 @@ import { MatchPage } from "./components/match/MatchPage";
 import { ProfilePage } from "./components/profile/ProfilePage";
 import { TeammatesPage } from "./components/teammates/TeammatesPage";
 import { ToastHost } from "./lib/toast";
+import { OwnerBadge } from "./components/OwnerBadge";
 import "./App.css";
 import "./components/match/match.css";
 
@@ -111,9 +112,7 @@ export default function App() {
             ))}
           </nav>
         </div>
-        <span className="who">
-          <code>{data.config.steamid}</code>
-        </span>
+        <OwnerBadge steamid={data.config.steamid} />
       </header>
 
       {/* The strip stays mounted on every tab so sync progress is never lost. */}

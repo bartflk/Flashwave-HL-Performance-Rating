@@ -5,6 +5,7 @@ import { errorMessage, type ContextKind, type MatchSummary } from "../api/types"
 import { capitalize, formatDate, splitMap } from "../lib/format";
 import { bounds, usePeriod } from "../lib/period";
 import { ContextBadge } from "./ContextBadge";
+import { ClassIcon } from "./ClassIcon";
 import { PeriodPicker } from "./PeriodPicker";
 
 const PAGE = 50;
@@ -143,7 +144,15 @@ function MatchRow({ m, onOpen }: { m: MatchSummary; onOpen: (logId: number) => v
           </>
         )}
       </td>
-      <td className="nowrap">{me?.mainClass ? capitalize(me.mainClass) : <span className="muted">—</span>}</td>
+      <td className="nowrap class-cell">
+        {me?.mainClass ? (
+          <>
+            <ClassIcon cls={me.mainClass} size={20} /> {capitalize(me.mainClass)}
+          </>
+        ) : (
+          <span className="muted">—</span>
+        )}
+      </td>
       <td className="nowrap">
         {me ? (
           <span className={`result result-${me.result}`}>

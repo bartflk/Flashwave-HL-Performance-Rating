@@ -16,6 +16,8 @@ import { PeriodPicker } from "../PeriodPicker";
 import { FightsPanel } from "./FightsPanel";
 import { SeasonsPanel } from "./SeasonsPanel";
 import { TrendChart } from "./TrendChart";
+import { ClassIcon } from "../ClassIcon";
+import { Fold } from "../Fold";
 import "./profile.css";
 
 /** Below this many rated games a profile is shown, but flagged as thin. */
@@ -68,7 +70,7 @@ export function ProfilePage({ onOpenMatch }: { onOpenMatch: (logId: number) => v
             }}
             title={n < THIN_SAMPLE ? `Only ${n} rated games — read with care` : undefined}
           >
-            {capitalize(c)} <span className="count">{n}</span>
+            <ClassIcon cls={c} size={20} /> {capitalize(c)} <span className="count">{n}</span>
           </button>
         ))}
       </nav>
@@ -89,9 +91,17 @@ export function ProfilePage({ onOpenMatch }: { onOpenMatch: (logId: number) => v
         </div>
       )}
 
-      {profile && fights && <FightsPanel card={fights} cls={profile.class} />}
+      {profile && fights && (
+        <Fold id="profile-fights">
+          <FightsPanel card={fights} cls={profile.class} />
+        </Fold>
+      )}
 
-      {active && <SeasonsPanel cls={active} />}
+      {active && (
+        <Fold id="profile-seasons">
+          <SeasonsPanel cls={active} />
+        </Fold>
+      )}
     </div>
   );
 }
@@ -222,9 +232,13 @@ function ProfileBody(props: {
 
       <KindSplit split={p.contexts} active={p.filter} onKind={onKind} />
 
-      <Components items={p.components} formWindow={Math.min(p.formWindow, p.games)} />
+      <Fold id="profile-components">
+        <Components items={p.components} formWindow={Math.min(p.formWindow, p.games)} />
+      </Fold>
 
-      <TrendChart points={p.trend} rollingWindow={p.rollingWindow} onOpen={onOpenMatch} />
+      <Fold id="profile-trend">
+        <TrendChart points={p.trend} rollingWindow={p.rollingWindow} onOpen={onOpenMatch} />
+      </Fold>
 
       <section className="games-grid">
         <GameList title="Best games" games={p.best} onOpen={onOpenMatch} />

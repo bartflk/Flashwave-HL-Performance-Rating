@@ -28,6 +28,14 @@ export interface TfPathInfo {
   notes: string[];
 }
 
+/** The owner's name and picture, from ETF2L or Steam's public profile. */
+export interface Owner {
+  steamid64: string;
+  name: string | null;
+  /** A data: URL. */
+  avatar: string | null;
+}
+
 export interface AppStatus {
   version: string;
   dbPath: string;
@@ -219,6 +227,8 @@ export interface PlayerRow {
   backstabs: number;
   airshots: number;
   cpc: number;
+  /** Health packs picked up. */
+  medkits: number;
   rating: Rating | null;
   isMe: boolean;
 }

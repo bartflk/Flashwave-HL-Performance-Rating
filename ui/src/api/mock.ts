@@ -390,6 +390,8 @@ export const mockApi: Api = {
     });
   },
 
+  getOwner: () => delay({ steamid64: "76561198099396919", name: "Flashy", avatar: null }),
+
   // From `hl seasons sniper --json`.
   listSeasons: () => delay((seasonsSniper as unknown as SeasonsView).seasons.map((r) => r.season)),
   getSeasons: (cls: string) => delay({ ...(seasonsSniper as unknown as SeasonsView), class: cls }),

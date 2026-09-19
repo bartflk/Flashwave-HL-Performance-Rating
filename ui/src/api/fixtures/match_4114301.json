@@ -1240,6 +1240,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 1,
+      "medkits": 17,
       "rating": {
         "class": "scout",
         "score": 17.1,
@@ -1317,6 +1318,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 0,
+      "medkits": 23,
       "rating": {
         "class": "soldier",
         "score": 32.8,
@@ -1394,6 +1396,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 1,
+      "medkits": 2,
       "rating": {
         "class": "pyro",
         "score": 10.1,
@@ -1471,6 +1474,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 0,
+      "medkits": 6,
       "rating": {
         "class": "demoman",
         "score": 19.7,
@@ -1548,6 +1552,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 0,
+      "medkits": 3,
       "rating": {
         "class": "heavy",
         "score": 30.3,
@@ -1625,6 +1630,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 0,
+      "medkits": 0,
       "rating": null,
       "isMe": false
     },
@@ -1660,6 +1666,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 1,
+      "medkits": 2,
       "rating": {
         "class": "engineer",
         "score": 37.0,
@@ -1737,6 +1744,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 0,
+      "medkits": 4,
       "rating": {
         "class": "medic",
         "score": 19.9,
@@ -1818,6 +1826,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 0,
+      "medkits": 8,
       "rating": {
         "class": "sniper",
         "score": 20.6,
@@ -1927,6 +1936,7 @@
       "backstabs": 3,
       "airshots": 0,
       "cpc": 0,
+      "medkits": 25,
       "rating": {
         "class": "spy",
         "score": 23.9,
@@ -2004,6 +2014,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 0,
+      "medkits": 16,
       "rating": {
         "class": "scout",
         "score": 29.9,
@@ -2081,6 +2092,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 0,
+      "medkits": 49,
       "rating": {
         "class": "soldier",
         "score": 30.2,
@@ -2158,6 +2170,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 0,
+      "medkits": 5,
       "rating": {
         "class": "pyro",
         "score": 60.8,
@@ -2235,6 +2248,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 0,
+      "medkits": 2,
       "rating": {
         "class": "demoman",
         "score": 80.0,
@@ -2312,6 +2326,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 0,
+      "medkits": 13,
       "rating": {
         "class": "heavy",
         "score": 60.7,
@@ -2389,6 +2404,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 0,
+      "medkits": 1,
       "rating": {
         "class": "engineer",
         "score": 26.2,
@@ -2466,6 +2482,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 0,
+      "medkits": 0,
       "rating": {
         "class": "medic",
         "score": 66.6,
@@ -2543,6 +2560,7 @@
       "backstabs": 0,
       "airshots": 0,
       "cpc": 0,
+      "medkits": 1,
       "rating": {
         "class": "sniper",
         "score": 50.7,
@@ -2652,6 +2670,7 @@
       "backstabs": 12,
       "airshots": 0,
       "cpc": 0,
+      "medkits": 20,
       "rating": {
         "class": "spy",
         "score": 79.2,
