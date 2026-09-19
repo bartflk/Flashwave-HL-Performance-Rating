@@ -15,7 +15,7 @@ use crate::rawlog::{self, hits_capped, RawLog};
 use anyhow::{Context, Result};
 use hl_core::matchdata::{NormalizedLog, Team};
 use hl_core::{SteamId, TfClass};
-use hl_db::Db;
+use hl_db::{Db, RoundWindow, Segment};
 use hl_rating::Jump;
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap};
@@ -46,6 +46,25 @@ pub struct Analysis {
     pub has_positions: bool,
     /// logs.tf capped this log's hits at 450; damage here follows it.
     pub damage_capped: bool,
+    /// The maps played, in order: one for most logs, two or three for a log
+    /// combined after a scrim or official.
+    pub segments: Vec<MapSegment>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MapSegment {
+    pub map: Option<String>,
+    pub first_round: i64,
+    pub last_round: i64,
+    /// The segment's rounds in play order. Combined logs can number rounds
+    /// out of order, so "first to last" is not a range of numbers.
+    pub rounds: Vec<i64>,
+    /// Game seconds.
+    pub start_s: f64,
+    pub end_s: f64,
+    pub red_wins: i64,
+    pub blue_wins: i64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -84,6 +103,8 @@ pub struct KillView {
     pub victim_pos: Option<[i32; 3]>,
     /// Game units between the two players.
     pub distance: Option<f64>,
+    /// The map of the kill's round.
+    pub map: Option<String>,
     pub jump: Option<Jump>,
 }
 
@@ -135,7 +156,9 @@ pub async fn load(db: &Db, log_id: i64, me: Option<SteamId>) -> Result<Option<An
         raw.shift(shift);
     }
     let jumps = jumper(db, log_id).await?;
-    Ok(Some(build(&log, &raw, me, hits_capped(uploaded), jumps.as_ref())))
+    let windows = db.round_windows(log_id).await?;
+    let segments = db.segments(log_id).await?;
+    Ok(Some(build(&log, &raw, me, hits_capped(uploaded), jumps.as_ref(), &windows, &segments)))
 }
 
 /// Maps a moment in the log's frame to game time.
@@ -177,8 +200,17 @@ impl Clock {
     }
 }
 
-pub fn build(log: &NormalizedLog, raw: &RawLog, me: Option<SteamId>, capped: bool, jumps: Option<&Jumper>) -> Analysis {
+pub fn build(
+    log: &NormalizedLog,
+    raw: &RawLog,
+    me: Option<SteamId>,
+    capped: bool,
+    jumps: Option<&Jumper>,
+    windows: &[RoundWindow],
+    segments: &[Segment],
+) -> Analysis {
     let clock = Clock::new(log);
+    let map_of = |t: i64| crate::kills::map_at(windows, t).map(str::to_string).or_else(|| log.map.clone());
     let jump = |t: i64| jumps.and_then(|j| j.at(t, JUMP_LEAD_S));
     let team_of: HashMap<u32, Team> = log.players.iter().map(|p| (p.id.account_id(), p.team)).collect();
 
@@ -222,6 +254,7 @@ pub fn build(log: &NormalizedLog, raw: &RawLog, me: Option<SteamId>, capped: boo
                 killer_pos: k.killer_pos,
                 victim_pos: k.victim_pos,
                 distance,
+                map: map_of(k.at),
                 jump: jump(k.at),
             })
         })
@@ -297,7 +330,45 @@ pub fn build(log: &NormalizedLog, raw: &RawLog, me: Option<SteamId>, capped: boo
     events.extend(streaks(&kills, &team_of));
     events.sort_by(|a, b| a.t.total_cmp(&b.t));
 
+    // Each map segment on game time, from its first round's start to its last
+    // round's end.
+    let span = |n: i64| clock.rounds.iter().find(|r| r.0 == n).map(|(_, _, len, off)| (*off, off + *len as f64));
+    let order: Vec<i64> = clock.rounds.iter().map(|r| r.0).collect();
+    let between = |first: i64, last: i64| -> Vec<i64> {
+        match (order.iter().position(|&n| n == first), order.iter().position(|&n| n == last)) {
+            (Some(a), Some(b)) if a <= b => order[a..=b].to_vec(),
+            _ => vec![first],
+        }
+    };
+    let map_segments: Vec<MapSegment> = if segments.is_empty() {
+        vec![MapSegment {
+            map: log.map.clone(),
+            first_round: clock.rounds.first().map_or(1, |r| r.0),
+            last_round: clock.rounds.last().map_or(1, |r| r.0),
+            rounds: order.clone(),
+            start_s: 0.0,
+            end_s: clock.duration(),
+            red_wins: 0,
+            blue_wins: 0,
+        }]
+    } else {
+        segments
+            .iter()
+            .map(|s| MapSegment {
+                map: s.map.clone(),
+                first_round: s.first_round,
+                last_round: s.last_round,
+                rounds: between(s.first_round, s.last_round),
+                start_s: span(s.first_round).map_or(0.0, |x| x.0),
+                end_s: span(s.last_round).map_or(clock.duration(), |x| x.1),
+                red_wins: s.red_wins,
+                blue_wins: s.blue_wins,
+            })
+            .collect()
+    };
+
     Analysis {
+        segments: map_segments,
         log_id: log.log_id,
         map: log.map.clone(),
         duration_s: duration,
@@ -367,6 +438,7 @@ mod tests {
             killer_pos: None,
             victim_pos: None,
             distance: None,
+            map: None,
             jump: None,
         }
     }

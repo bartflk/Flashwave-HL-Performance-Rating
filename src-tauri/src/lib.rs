@@ -66,13 +66,18 @@ pub fn run() {
                             Err(e) => tracing::warn!(error = %format!("{e:#}"), "context pass failed"),
                         }
                     }
-                    let Some(tf) = cfg.tf_path else { return };
-                    match hl_ingest::index_demos(&db, std::path::Path::new(&tf)).await {
-                        Ok(s) => {
-                            tracing::info!(demos = s.scanned, linked = s.demos_linked, "demos indexed");
-                            let _ = tauri::Emitter::emit(&handle, "demos://indexed", &s);
+                    if let Some(tf) = cfg.tf_path {
+                        match hl_ingest::index_demos(&db, std::path::Path::new(&tf)).await {
+                            Ok(s) => {
+                                tracing::info!(demos = s.scanned, linked = s.demos_linked, "demos indexed");
+                                let _ = tauri::Emitter::emit(&handle, "demos://indexed", &s);
+                            }
+                            Err(e) => tracing::warn!(error = %format!("{e:#}"), "demo index failed"),
                         }
-                        Err(e) => tracing::warn!(error = %format!("{e:#}"), "demo index failed"),
+                    }
+                    match hl_ingest::maps::resolve_all(&db).await {
+                        Ok(s) => tracing::info!(multi_map = s.multi_map_logs, unresolved = s.unresolved, "round maps resolved"),
+                        Err(e) => tracing::warn!(error = %format!("{e:#}"), "round map pass failed"),
                     }
                 });
             }

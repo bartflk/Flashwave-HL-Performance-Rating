@@ -8,6 +8,9 @@ import type { Api, StvHandlers, SyncHandlers } from "./client";
 import match4109131 from "./fixtures/match_4109131.json";
 import match4114301 from "./fixtures/match_4114301.json";
 import match4111116 from "./fixtures/match_4111116.json";
+import match3863290 from "./fixtures/match_3863290.json";
+import analysis3863290 from "./fixtures/analysis_3863290.json";
+import mapviewAshville from "./fixtures/mapview_ashville.json";
 import profileSniper from "./fixtures/profile_sniper.json";
 import profileEngineer from "./fixtures/profile_engineer.json";
 import teammatesTeam from "./fixtures/teammates_team.json";
@@ -100,11 +103,41 @@ const FIXTURE_CONTEXT: Record<number, MatchContext> = {
   },
   4111116: { kind: "pug", etf2lMatchId: null, linkMethod: null, teamName: null, oppName: null, regulars: 2, official: null },
   4114301: { kind: "pug", etf2lMatchId: null, linkMethod: null, teamName: null, oppName: null, regulars: 0, official: null },
+  3863290: {
+    kind: "official",
+    etf2lMatchId: 90482,
+    linkMethod: "trends",
+    teamName: "SBQRRA",
+    oppName: "Champions of Light",
+    regulars: 8,
+    official: {
+      competition: "Highlander Season 33 (Spring 2025): Low Playoffs",
+      category: "Highlander Season",
+      division: "Low",
+      tier: 3,
+      week: null,
+      round: "Grand Final",
+      score: [6, 3],
+      defaultWin: false,
+    },
+  },
 };
 
-const FIXTURES: MatchDetail[] = [match4109131, match4114301, match4111116].map((f) => {
+// Maps as the round-map pass resolved them; the grand final spans three.
+const FIXTURE_SEGMENTS: Record<number, MatchDetail["segments"]> = {
+  3863290: [
+    { map: "koth_ashville_final1", firstRound: 1, lastRound: 6, rounds: 6, redWins: 2, blueWins: 4 },
+    { map: "pl_vigil_rc10", firstRound: 7, lastRound: 10, rounds: 4, redWins: 3, blueWins: 1 },
+    { map: "koth_proot_b5b", firstRound: 11, lastRound: 17, rounds: 7, redWins: 3, blueWins: 4 },
+  ],
+};
+
+const FIXTURES: MatchDetail[] = [match4109131, match4114301, match4111116, match3863290].map((f) => {
   const d = f as unknown as MatchDetail;
-  return { ...d, context: FIXTURE_CONTEXT[d.logId] ?? null };
+  const segments = FIXTURE_SEGMENTS[d.logId] ?? [
+    { map: d.map, firstRound: 1, lastRound: d.rounds.length, rounds: d.rounds.length, redWins: 0, blueWins: 0 },
+  ];
+  return { ...d, context: FIXTURE_CONTEXT[d.logId] ?? null, segments };
 });
 
 // ---- fake match history -----------------------------------------------------
@@ -139,6 +172,7 @@ const FIXTURE_ROWS: MatchSummary[] = FIXTURES.map((d) => {
     blueScore: d.blueScore,
     hasDemo: d.demos.length > 0,
     context: d.context,
+    maps: d.segments.map((s) => s.map).filter((m): m is string => m !== null),
     me: me && d.result
       ? {
           team: me.team,
@@ -185,6 +219,7 @@ const FAKE_MATCHES: MatchSummary[] = (() => {
       redScore: red,
       blueScore: blue,
       hasDemo: r() < 0.15,
+      maps: [],
       context: {
         kind,
         etf2lMatchId: official ? 92_883 - i : null,
@@ -346,9 +381,21 @@ export const mockApi: Api = {
 
   // One real analysis (the TWS official on Upward); every match opens it.
   getMatchAnalysis: (logId: number) =>
-    delay({ ...(analysis4109131 as unknown as Analysis), logId }, 200),
+    delay(
+      logId === 3863290
+        ? (analysis3863290 as unknown as Analysis)
+        : { ...(analysis4109131 as unknown as Analysis), logId },
+      200,
+    ),
   getMapView: (map: string) =>
-    delay(map.includes("upward") ? (mapviewUpward as unknown as MapView) : null, 150),
+    delay(
+      map.includes("upward")
+        ? (mapviewUpward as unknown as MapView)
+        : map.includes("ashville")
+          ? (mapviewAshville as unknown as MapView)
+          : null,
+      150,
+    ),
 
   rawlogStats: () => delay({ stored: 740, pending: 16, missing: 2, bytes: 79_900_000, kills: 226_784 }),
 

@@ -40,7 +40,24 @@ export function playerMap(a: Analysis): Map<number, AnalysisPlayer> {
   return new Map(a.players.map((p) => [p.accountId, p]));
 }
 
-/** Inside the chosen round, or every round when none is chosen. */
-export function inRound(roundNum: number, round: number | null): boolean {
-  return round === null || roundNum === round;
+/**
+ * What the filter row selects: one map of a combined log, one round, or all
+ * of it. Every view draws only this slice.
+ */
+export interface Slice {
+  /** The rounds in the slice; null means every round. */
+  rounds: Set<number> | null;
+  /** Game-time span of the slice. */
+  startS: number;
+  endS: number;
+  /** A single round is selected. */
+  oneRound: boolean;
+  /** The slice's map; null when it spans several maps. */
+  map: string | null;
+  /** The match covers more than one map. */
+  multiMap: boolean;
+}
+
+export function inSlice(roundNum: number, s: Slice): boolean {
+  return s.rounds === null || s.rounds.has(roundNum);
 }

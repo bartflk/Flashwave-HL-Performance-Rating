@@ -772,3 +772,19 @@
 .mk-demo.mk-my-death {
   background: var(--bad);
 }
+
+/* --- M8: a combined log's maps --- */
+
+.mh-maps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  margin-top: 4px;
+  font-size: 0.92rem;
+}
+
+.mh-map-result strong {
+  font-variant-numeric: tabular-nums;
+  margin-left: 4px;
+}

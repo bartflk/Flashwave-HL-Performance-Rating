@@ -36,6 +36,9 @@ COMMANDS:
     analysis <LOG_ID> [--json]
                            Kills, damage and play-by-play from a match's raw log
     mapview <MAP> [--json] A map's outline from every stored kill on it
+    maps [--fetch] [--log ID]
+                           Resolve every round's map (combined logs included);
+                           --fetch first downloads the parts of combined logs
     etf2l [--offline]      Fetch ETF2L officials and classify every match (official/scrim/pug)
     teammates [--all] [--json]
                            Your teams and regular teammates (officials and scrims unless --all)
@@ -151,6 +154,11 @@ async fn main() -> Result<()> {
                 println!("ETF2L unavailable, classifying from stored data: {e:#}");
             }
             classify(&db, me).await?;
+            if let Some(tf) = db.get_config().await?.tf_path {
+                hl_ingest::index_demos(&db, std::path::Path::new(&tf)).await?;
+            }
+            let m = hl_ingest::maps::resolve_all(&db).await?;
+            println!("round maps: {} multi-map logs, {} rounds unresolved", m.multi_map_logs, m.unresolved);
             print_stats(&db.index_stats().await?);
             rate(&db, &db_path).await
         }
@@ -166,6 +174,8 @@ async fn main() -> Result<()> {
             if let Some(me) = db.get_me().await? {
                 classify(&db, me).await?;
             }
+            let m = hl_ingest::maps::resolve_all(&db).await?;
+            println!("round maps: {} multi-map logs, {} rounds unresolved", m.multi_map_logs, m.unresolved);
             print_stats(&stats);
             rate(&db, &db_path).await
         }
@@ -354,6 +364,48 @@ async fn main() -> Result<()> {
                     })
                     .collect();
                 println!("{row}");
+            }
+            Ok(())
+        }
+
+        ["maps", rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            if rest.contains(&"--fetch") {
+                let sources = Sources::new()?;
+                let p = hl_ingest::maps::fetch_parts(&db, &sources, print_progress).await?;
+                println!(
+                    "\nparts: {} wanted, {} fetched, {} failed{}",
+                    p.wanted,
+                    p.fetched,
+                    p.failed,
+                    if p.gave_up { " (logs.tf not answering; stopped)" } else { "" }
+                );
+            }
+            let started = std::time::Instant::now();
+            let r = hl_ingest::maps::resolve_all(&db).await?;
+            println!(
+                "{} logs, {} rounds, {} unresolved, {} multi-map logs, in {:.1}s",
+                r.logs,
+                r.rounds,
+                r.unresolved,
+                r.multi_map_logs,
+                started.elapsed().as_secs_f64()
+            );
+            for (src, n) in &r.by_source {
+                println!("  {src:<10} {n:>5}");
+            }
+            if let Some(id) = flag_value::<i64>(rest, "--log")? {
+                for s in db.segments(id).await? {
+                    println!(
+                        "  R{}-R{}  {:<24} {} rounds  red {} blue {}",
+                        s.first_round,
+                        s.last_round,
+                        s.map.as_deref().unwrap_or("?"),
+                        s.rounds,
+                        s.red_wins,
+                        s.blue_wins
+                    );
+                }
             }
             Ok(())
         }
@@ -583,6 +635,7 @@ fn print_progress(p: Progress) {
         Progress::Rating { done, total } => print!("\rrating {done}/{total}          "),
         Progress::Etf2l { done, total } => print!("\rETF2L matches {done}/{total}          "),
         Progress::RawLogs { done, total } => print!("\rraw logs {done}/{total}          "),
+        Progress::Parts { done, total } => print!("\rparts {done}/{total}          "),
         Progress::Etf2lFailed { error } => println!("\n  ! ETF2L: {error}"),
     }
     let _ = std::io::stdout().flush();

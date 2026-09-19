@@ -38,6 +38,9 @@ pub struct RawLog {
     /// Every damage line: one per hit, so thousands per log. Not stored;
     /// summed on demand for a match page.
     pub damage: Vec<Damage>,
+    /// `World triggered "meta_data" (map "...")`: newer uploads write one at
+    /// each map load, which names the map of the rounds after it.
+    pub map_loads: Vec<(i64, String)>,
 }
 
 /// One hit.
@@ -94,6 +97,9 @@ impl RawLog {
         }
         for d in &mut self.damage {
             d.at += shift;
+        }
+        for m in &mut self.map_loads {
+            m.0 += shift;
         }
     }
 }
@@ -188,6 +194,10 @@ pub fn parse(text: &str) -> RawLog {
                 live = true;
             } else if ["Round_Win\"", "Round_Stalemate\"", "Game_Over\""].iter().any(|e| ev.starts_with(e)) {
                 live = false;
+            } else if ev.starts_with("meta_data\"") {
+                if let Some(map) = prop(ev, "map") {
+                    out.map_loads.push((at, map.to_string()));
+                }
             }
             continue;
         }

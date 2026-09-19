@@ -48,6 +48,9 @@ pub enum Progress {
     /// ETF2L match fetches.
     #[serde(rename_all = "camelCase")]
     Etf2l { done: usize, total: usize },
+    /// The per-map logs combined logs were built from.
+    #[serde(rename_all = "camelCase")]
+    Parts { done: usize, total: usize },
     /// Raw server logs from logs.tf.
     #[serde(rename_all = "camelCase")]
     RawLogs { done: usize, total: usize },
@@ -130,6 +133,8 @@ pub async fn sync(
         }
     }
     progress(Progress::Fetching { done: total, total, log_id: 0 });
+    // New logs have rounds now: catch any that are parts of another.
+    recompute_supersessions(db).await?;
 
     Ok(SyncSummary { fetched, failed, stats: db.index_stats().await? })
 }
@@ -157,6 +162,7 @@ pub async fn reprocess(db: &Db, mut progress: impl FnMut(Progress)) -> Result<In
         }
     }
     progress(Progress::Reprocessing { done: total, total });
+    recompute_supersessions(db).await?;
 
     db.index_stats().await
 }
@@ -209,12 +215,27 @@ async fn store_logstf(db: &Db, rows: &[(LogsTfRow, String)]) -> Result<()> {
 }
 
 async fn recompute_supersessions(db: &Db) -> Result<usize> {
-    let entries: Vec<IndexEntry> = db
+    let mut entries: Vec<IndexEntry> = db
         .dedupe_inputs()
         .await?
         .into_iter()
         .map(|(log_id, duration_s, duplicate_of)| IndexEntry { log_id, duration_s, duplicate_of })
         .collect();
+    // Parts trends.tf never listed, found by their rounds. Only logs already
+    // normalized have rounds, so this runs again after new logs are read.
+    let rounds: std::collections::HashMap<i64, Vec<i64>> = db
+        .all_rounds()
+        .await?
+        .into_iter()
+        .map(|(log, rs)| (log, rs.into_iter().map(|r| r.start).collect()))
+        .collect();
+    for (whole, part) in crate::dedupe::contained_parts(&rounds) {
+        if let Some(e) = entries.iter_mut().find(|e| e.log_id == whole) {
+            if !e.duplicate_of.contains(&part) {
+                e.duplicate_of.push(part);
+            }
+        }
+    }
     let map = supersessions(&entries);
     db.apply_supersessions(&map).await?;
     Ok(map.len())

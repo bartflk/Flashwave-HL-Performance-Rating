@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Analysis, Jump, KillView, PlayEvent, Team } from "../../api/types";
 import { capitalize, teamLabel } from "../../lib/format";
-import { CLASS_SHORT, inRound, jumpTo, playerMap, roundClock } from "./common";
+import { CLASS_SHORT, inSlice, jumpTo, playerMap, roundClock, type Slice } from "./common";
 
 type Kind = "kills" | "ubers" | "caps" | "chat" | "streaks";
 
@@ -20,7 +20,7 @@ type Row = { t: number; roundNum: number; kind: Kind; kill?: KillView; ev?: Play
  * drops and caps from logs.tf; streaks are three or more kills without dying.
  * Every row with a demo behind it copies its tick.
  */
-export function PlayByPlay({ a, player, round }: { a: Analysis; player: number; round: number | null }) {
+export function PlayByPlay({ a, player, slice }: { a: Analysis; player: number; slice: Slice }) {
   const [on, setOn] = useState<Set<Kind>>(new Set(["kills", "ubers", "caps", "streaks"]));
   const [onlyPlayer, setOnlyPlayer] = useState(false);
   const players = useMemo(() => playerMap(a), [a]);
@@ -52,7 +52,7 @@ export function PlayByPlay({ a, player, round }: { a: Analysis; player: number; 
       ? r.kill.killer === player || r.kill.victim === player || r.kill.assister === player
       : r.ev?.player === player || (r.ev?.victims ?? []).includes(player);
 
-  const shown = rows.filter((r) => on.has(r.kind) && inRound(r.roundNum, round) && (!onlyPlayer || involves(r)));
+  const shown = rows.filter((r) => on.has(r.kind) && inSlice(r.roundNum, slice) && (!onlyPlayer || involves(r)));
   const byRound = new Map<number, Row[]>();
   for (const r of shown) byRound.set(r.roundNum, [...(byRound.get(r.roundNum) ?? []), r]);
 

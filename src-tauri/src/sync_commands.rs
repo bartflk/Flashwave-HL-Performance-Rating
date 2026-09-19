@@ -72,6 +72,17 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                 let _ = emitter.emit(EV_PROGRESS, p);
             })
             .await?;
+            // Parts of combined logs: best effort, like ETF2L. When logs.tf is
+            // not answering the round maps come from the other sources.
+            match hl_ingest::maps::fetch_parts(&db, &sources, |p: Progress| {
+                let _ = emitter.emit(EV_PROGRESS, p);
+            })
+            .await
+            {
+                Ok(p) if p.gave_up => tracing::warn!(failed = p.failed, "logs.tf not answering; parts wait for the next sync"),
+                Ok(_) => {}
+                Err(e) => tracing::warn!(error = %format!("{e:#}"), "part fetch failed"),
+            }
             // Raw logs: every kill with time, classes and positions. Newest
             // first; the first sync fetches the whole history (~15 min).
             let raw = hl_ingest::kills::fetch(&db, &sources, None, |p: Progress| {
@@ -92,17 +103,20 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                 let _ = emitter.emit(EV_PROGRESS, Progress::Etf2lFailed { error });
             }
             hl_ingest::etf2l::derive_context(&db, me).await?;
+            // New logs can link to demos already on disk. This also places
+            // every log on the real clock, which the round maps use.
+            if let Some(tf) = db.get_config().await?.tf_path {
+                let s = hl_ingest::index_demos(&db, std::path::Path::new(&tf)).await?;
+                let _ = emitter.emit(EV_DEMOS_INDEXED, &s);
+            }
+            // Every round's map, then the rating: kills are valued on their map.
+            hl_ingest::maps::resolve_all(&db).await?;
             // Every sync ends by re-rating: new matches shift the baselines.
             let (weights, _) = hl_rating::Weights::load(&weights_path);
             hl_ingest::rate_all(&db, Some(me), &weights, |p: Progress| {
                 let _ = emitter.emit(EV_PROGRESS, p);
             })
             .await?;
-            // New logs can link to demos already on disk.
-            if let Some(tf) = db.get_config().await?.tf_path {
-                let s = hl_ingest::index_demos(&db, std::path::Path::new(&tf)).await?;
-                let _ = emitter.emit(EV_DEMOS_INDEXED, &s);
-            }
             anyhow::Ok(summary)
         }
         .await;
@@ -142,6 +156,7 @@ pub async fn reprocess_start(app: AppHandle, state: State<'_, AppState>) -> CmdR
             if let Some(me) = me {
                 hl_ingest::etf2l::derive_context(&db, me).await?;
             }
+            hl_ingest::maps::resolve_all(&db).await?;
             let (weights, _) = hl_rating::Weights::load(&weights_path);
             hl_ingest::rate_all(&db, me, &weights, |p: Progress| {
                 let _ = emitter.emit(EV_PROGRESS, p);
@@ -203,6 +218,8 @@ pub struct MatchResponse {
     detail: hl_rating::MatchDetail,
     /// Official, scrim or pug, with the ETF2L side of an official.
     context: Option<hl_db::MatchContext>,
+    /// The maps played, in order, with rounds won on each.
+    segments: Vec<hl_db::Segment>,
 }
 
 #[tauri::command]
@@ -214,7 +231,8 @@ pub async fn get_match(state: State<'_, AppState>, log_id: i64) -> CmdResult<Opt
     };
     detail.weights_warning = warning;
     let context = state.db.match_context(log_id).await?;
-    Ok(Some(MatchResponse { detail, context }))
+    let segments = state.db.segments(log_id).await?;
+    Ok(Some(MatchResponse { detail, context, segments }))
 }
 
 #[derive(Serialize)]

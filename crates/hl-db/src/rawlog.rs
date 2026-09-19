@@ -233,17 +233,19 @@ impl Db {
         Ok((compared, by_log))
     }
 
-    /// Maps of kept Highlander logs, as the logs spell them.
+    /// Every map a round of a kept Highlander log was played on, including
+    /// the maps inside combined logs.
     pub async fn kept_maps(&self) -> Result<Vec<String>> {
         Ok(sqlx::query_scalar(&format!(
-            "SELECT DISTINCT m.map FROM match m WHERE m.map IS NOT NULL AND m.log_id IN ({WANTED})"
+            "SELECT DISTINCT rm.map FROM round_map rm WHERE rm.map IS NOT NULL AND rm.log_id IN ({WANTED})"
         ))
         .fetch_all(self.pool())
         .await?)
     }
 
     /// Every counted kill on these maps with both players' positions:
-    /// `(log_id, killer, victim, kx, ky, vx, vy)`.
+    /// `(log_id, killer, victim, kx, ky, vx, vy)`. A kill's map is its round's,
+    /// so combined logs contribute each map's kills to that map.
     #[allow(clippy::type_complexity)]
     pub async fn kill_positions(&self, maps: &[String]) -> Result<Vec<(i64, u32, u32, i32, i32, i32, i32)>> {
         if maps.is_empty() {
@@ -252,8 +254,11 @@ impl Db {
         let marks = vec!["?"; maps.len()].join(", ");
         let sql = format!(
             "SELECT k.log_id, k.killer, k.victim, k.kx, k.ky, k.vx, k.vy
-             FROM kill_event k JOIN match m ON m.log_id = k.log_id
-             WHERE m.map IN ({marks}) AND k.live = 1 AND COALESCE(k.custom, '') != 'feign_death'
+             FROM kill_event k
+             JOIN match_round r ON r.log_id = k.log_id
+                AND k.at_raw BETWEEN r.start_time AND r.start_time + r.length_s
+             JOIN round_map rm ON rm.log_id = r.log_id AND rm.round_num = r.round_num
+             WHERE rm.map IN ({marks}) AND k.live = 1 AND COALESCE(k.custom, '') != 'feign_death'
                AND k.kx IS NOT NULL AND k.vx IS NOT NULL
                AND k.log_id IN ({WANTED})"
         );

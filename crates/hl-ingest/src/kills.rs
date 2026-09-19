@@ -13,7 +13,7 @@ use crate::Progress;
 use anyhow::{Context, Result};
 use hl_core::matchdata::{NormalizedLog, Team};
 use hl_core::{SteamId, TfClass};
-use hl_db::{ChatRow, Db, KillRow, StoredKill};
+use hl_db::{ChatRow, Db, KillRow, RoundWindow, StoredKill};
 use hl_rating::detail::EventRow;
 use hl_rating::impact::{impacts, Impact, KillCtx};
 use hl_rating::{MatchDetail, Weights};
@@ -162,11 +162,23 @@ pub fn ctx(k: &StoredKill) -> KillCtx {
 
 /// Each player's kills in one log, valued in context. Empty without a raw
 /// log, and the rating falls back to `classkills`.
-pub fn impacts_for(kills: &[StoredKill], map: Option<&str>, w: &Weights) -> HashMap<u32, Impact> {
+///
+/// Each kill is valued on its round's map (`windows`, from the round-map
+/// pass); a kill outside every window, or a log not yet resolved, falls back
+/// to the log's own map name.
+pub fn impacts_for(kills: &[StoredKill], windows: &[RoundWindow], log_map: Option<&str>, w: &Weights) -> HashMap<u32, Impact> {
     if kills.is_empty() {
         return HashMap::new();
     }
-    impacts(&kills.iter().map(ctx).collect::<Vec<_>>(), map, w)
+    impacts(kills.iter().map(|k| (ctx(k), map_at(windows, k.at_raw).or(log_map))), w)
+}
+
+/// The map of the round holding `t` (logs.tf's round-time frame).
+pub fn map_at(windows: &[RoundWindow], t: i64) -> Option<&str> {
+    windows
+        .iter()
+        .find(|w| t >= w.start && t <= w.start + w.length)
+        .and_then(|w| w.map.as_deref())
 }
 
 /// The owner's own kills and deaths as timeline markers, placed in their

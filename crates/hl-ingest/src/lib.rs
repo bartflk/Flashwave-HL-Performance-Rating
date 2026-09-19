@@ -21,6 +21,8 @@ pub mod rawlog;
 pub mod kills;
 pub mod analysis;
 pub mod mapview;
+pub mod mapres;
+pub mod maps;
 pub mod etf2l;
 pub mod teammates;
 pub mod demos;

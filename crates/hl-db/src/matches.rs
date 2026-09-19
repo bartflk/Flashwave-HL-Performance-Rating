@@ -88,6 +88,9 @@ pub struct MatchSummary {
     /// Official, scrim or pug; `None` for matches outside the context pass
     /// (other formats, or ones the owner did not play).
     pub context: Option<MatchContext>,
+    /// The maps played, in order, when the round-map pass knows them. More
+    /// than one for a log combined from several maps.
+    pub maps: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -543,6 +546,9 @@ impl Db {
                     {EFFECTIVE_FORMAT} AS format, i.league, i.etf2l_match_id, i.demos_tf_id,
                     m.red_score, m.blue_score,
                     EXISTS (SELECT 1 FROM demo_link dl WHERE dl.log_id = m.log_id) AS has_demo,
+                    (SELECT group_concat(map, '|') FROM
+                        (SELECT map FROM log_segment s WHERE s.log_id = m.log_id AND map IS NOT NULL ORDER BY seq)
+                    ) AS segment_maps,
                     p.team, p.main_class, p.kills, p.deaths, p.assists, p.dmg, p.time_s,
                     {CONTEXT_COLUMNS}
              FROM match m
@@ -600,6 +606,10 @@ impl Db {
                     blue_score: blue,
                     has_demo: r.get::<i64, _>("has_demo") != 0,
                     context: context_from_row(&r),
+                    maps: r
+                        .get::<Option<String>, _>("segment_maps")
+                        .map(|s| s.split('|').map(str::to_string).collect())
+                        .unwrap_or_default(),
                     me,
                 }
             })

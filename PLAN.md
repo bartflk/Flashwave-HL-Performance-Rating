@@ -1,4 +1,4 @@
-# HL Performance Rating System — Plan v1.2
+# HL Performance Rating System — Plan v1.3
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
 **Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
@@ -407,7 +407,7 @@ POV demos only contain what your client received, so phase 2 is you-only for loc
 | **M5** | ETF2L context, officials vs scrims split, teammate tracking | **done** |
 | **M6** | Raw logs: every kill with time, classes and positions (§9); per-side victim values | **done** |
 | **M7** | more.tf-style match views: kill map, heatmaps, damage and kill spread, timeline, play-by-play (§9) | **done** |
-| **M8** | Maps per round: resolve combined logs to the map each round was played on (§10) | |
+| **M8** | Maps per round: resolve combined logs to the map each round was played on (§10) | **done** |
 | **v2** | Deep demo parse: aim and viewangles, engagement ranges (positions largely come from M6 now) | |
 
 M1 acceptance: every Highlander log on the account stored, classified, deduplicated, and rebuildable from raw blobs with no refetching.
@@ -425,13 +425,16 @@ M1 acceptance: every Highlander log on the account stored, classified, deduplica
 7. **File watcher.** Demos are rescanned at startup, after every sync, and on demand; a live `notify` watcher was planned and is not built.
 8. **Opponent strength.** ETF2L division and tier are now stored for every official, and scrim opponents are often named. The rating pool still weighs every performance equally. Weighting by the opponent's division is the natural next step.
 9. **Teams with no officials.** Scrims are named from official rosters, so a team that never played an official (2 Blacked Up, March–August 2026) stays unnamed. The player's ETF2L transfer history (`/player/{id}/transfers`) could fill the gap; it is incomplete for older teams.
-10. **logs.tf-only combined logs.** Dedupe relies on trends.tf's `duplicate_of`. A combined log that only logs.tf knows (the 2018 S16 semi-final: `gullywash + badwater` plus both single-map logs) is counted alongside its parts.
+10. ~~**logs.tf-only combined logs.**~~ Fixed in M8 (§10): parts found by their rounds.
+    Was: **logs.tf-only combined logs.** Dedupe relies on trends.tf's `duplicate_of`. A combined log that only logs.tf knows (the 2018 S16 semi-final: `gullywash + badwater` plus both single-map logs) is counted alongside its parts.
 11. **Raw logs still to fetch.** 16 of the oldest logs timed out when logs.tf stopped answering; the next sync retries them.
 12. **Defending values.** Engineer 1.6 and Scout 1.0 on defence are proposed, not agreed. Worth checking with function, along with the first per-map values.
 13. **Time to first pick and picks before an uber push.** Planned for M6, not built; the data is stored.
 14. **Midfights and the uber split** as rating inputs (from M7's list): computable, not built.
 15. **Hit cap date.** logs.tf's 450 cap started somewhere between December 2014 and June 2016; this account has no logs in that window to pin it down.
-16. **Combined logs span several maps.** 78 kept logs cover two or three maps under one free-text name. The plan to resolve them round by round is §10 (M8).
+16. ~~**Combined logs span several maps.**~~ Resolved round by round in M8 (§10).
+17. **Parts of combined logs not yet fetched.** logs.tf was unreachable from this machine while M8 was built (see §10, "As built"). The exact part-matching method runs on the first sync that reaches logs.tf.
+18. **Demo linking per map.** A combined log's demo is still linked by time or label; linking each map segment on its real map is not built.
 
 ---
 
@@ -626,3 +629,36 @@ Open item 10 (logs.tf-only combined logs counted alongside their parts) has the 
 ### One decision for you
 
 Should a combined log be **rated once** (as now, over all its maps), or **once per map segment**? Per segment is closer to how a match is played: a bad Vigil and a great Proot are two different stories, and per-map baselines want it. But it multiplies the rating rows for those logs, and a short segment can fall under the 5-minute minimum. **Recommendation:** keep rating per log for now, show the per-map breakdown, and switch when per-map baselines arrive.
+
+**Decided:** rate per log for now, as recommended.
+
+### As built (M8)
+
+Every round of every kept Highlander log has a map in `round_map`, and each log's maps in play order are in `log_segment` with rounds won per map. The pass runs at startup, after every sync (after the demo index, which puts each log on the real clock), and on rebuild. It takes about 3 seconds for 2,535 rounds.
+
+**Result on this account: 0 rounds unresolved, 81 logs across more than one map.**
+
+| Source | Rounds |
+|---|---|
+| `log` (the log names one real map) | 1,769 |
+| `window` (a part's upload window) | 696 |
+| `geometry` (kill positions) | 49 |
+| `meta` (the raw log's own map lines) | 21 |
+| `part` (exact round times) | 0: waiting on logs.tf |
+
+**logs.tf was unreachable while this was built.** Every request timed out, including its homepage, while trends.tf and more.tf answered normally. It started after the M6 raw-log download of about 750 files, so the likeliest cause is that logs.tf is refusing this address. The part fetch (289 logs) is built and gives up after 3 failures in a row instead of waiting on 289 timeouts. It runs on the first sync that reaches logs.tf, and the pass then upgrades `window` and `geometry` answers to exact ones.
+
+**Checks, with no part data:**
+- **The example:** the SBQRRA vs Champions of Light grand final comes out as Ashville rounds 1–6 (4–2 to SBQRRA), Vigil 7–10 (1–3) and Proot 11–17 (4–3), as planned.
+- **ETF2L's map order** matches the resolved maps on all 12 multi-map officials.
+- **Geometry against windows:** before windows took priority, geometry agreed with them on 680 of 692 rounds. The 12 misses were all on maps with no outline yet (Bagel, Valor), which geometry cannot choose. So windows now come first, and geometry reports no confidence when a candidate map has no outline.
+- **Geometry held-out test:** 301 of 310 single-map rounds correct from 18 maps (6 of the 9 misses were Product against Product RCX, the same map), and 309 of 310 from three.
+- **All 49 geometry rounds read right against their titles:** `gullywash + badwater` is Gullywash 8 then Badwater 2, and `upward + vigil` is Upward then Vigil.
+- **A map-name bug caught on the way:** `tow_tetsudo_b10a` is a real map. Map names now accept any short game-mode prefix, not only the usual ones.
+
+**What changed downstream:**
+- **Victim values** use each kill's round map, so combined officials get attack/defence values per map. Sniper form moved 45.5 to 45.6.
+- **Map outlines and career heatmaps** include the kills inside combined logs: Vigil now draws on 144 matches.
+- **Kill by kill** gets a map switch on combined logs and opens on the first map. "All maps" still works for the feed and timeline; the kill map asks for one map, since positions from different maps cannot share a drawing.
+- **The match list** shows `ashville · vigil · proot`, and the **header** shows each map with the rounds won on it, your side first.
+- **Hidden parts:** five logs that were whole copies of rounds inside a longer log are now superseded by it. That includes the 2018 semi-final's two single-map logs and a 2014 lobby uploaded twice. Highlander matches go from 758 to 753, and officials from 58 to 56.

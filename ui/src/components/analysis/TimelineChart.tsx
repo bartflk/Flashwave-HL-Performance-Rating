@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Analysis, AnalysisPlayer } from "../../api/types";
 import { clock } from "../../lib/format";
-import { roundClock } from "./common";
+import { inSlice, roundClock, type Slice } from "./common";
 
 type Metric = "kills" | "deaths" | "damage";
 
@@ -24,10 +24,10 @@ const M = { top: 16, right: 150, bottom: 30, left: 48 };
 export function TimelineChart(props: {
   a: Analysis;
   player: number;
-  round: number | null;
+  slice: Slice;
   onPick: (id: number) => void;
 }) {
-  const { a, player, round, onPick } = props;
+  const { a, player, slice, onPick } = props;
   const [metric, setMetric] = useState<Metric>("kills");
   const [asTable, setAsTable] = useState(false);
   const [hoverT, setHoverT] = useState<number | null>(null);
@@ -43,9 +43,8 @@ export function TimelineChart(props: {
     return () => ro.disconnect();
   }, []);
 
-  const span = round === null ? { startS: 0, endS: a.durationS } : a.rounds.find((r) => r.roundNum === round) ?? { startS: 0, endS: a.durationS };
-  const t0 = span.startS;
-  const t1 = Math.max(span.endS, t0 + 1);
+  const t0 = slice.startS;
+  const t1 = Math.max(slice.endS, t0 + 1);
 
   // Per player: a step function, as sorted (time, running total) pairs.
   const series = useMemo(() => {
@@ -210,12 +209,12 @@ export function TimelineChart(props: {
               </g>
             ))}
             {a.rounds
-              .filter((r) => r.startS > t0 && r.startS < t1)
+              .filter((r) => inSlice(r.roundNum, slice) && r.startS > t0 && r.startS < t1)
               .map((r) => (
                 <line key={r.roundNum} x1={x(r.startS)} x2={x(r.startS)} y1={M.top} y2={M.top + plotH} className="tlc-round" />
               ))}
             {a.rounds
-              .filter((r) => r.endS > t0 && r.startS < t1)
+              .filter((r) => inSlice(r.roundNum, slice) && r.endS > t0 && r.startS < t1)
               .map((r) => (
                 <text key={r.roundNum} x={x(Math.max(r.startS, t0)) + 4} y={H - 10} className="tl-axis">
                   R{r.roundNum}
@@ -238,7 +237,7 @@ export function TimelineChart(props: {
           {hoverT !== null && (
             <div className="tl-tip tlc-tip" style={{ left: Math.min(width - 230, x(hoverT) + 12), top: M.top }}>
               <div className="tip-meta">
-                {round === null ? roundClock(hoverT, a.rounds) : clock(hoverT - t0)}
+                {slice.oneRound ? clock(hoverT - t0) : roundClock(hoverT, a.rounds)}
               </div>
               {ranked.map((r) => (
                 <div key={r.p.accountId} className={r.p.accountId === player ? "tlc-tip-row sel" : "tlc-tip-row"}>

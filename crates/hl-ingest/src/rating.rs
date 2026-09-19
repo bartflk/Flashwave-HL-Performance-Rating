@@ -43,6 +43,7 @@ pub async fn rate_all(
     // Pass 1: every rateable performance in every kept Highlander log. Kills
     // from raw logs are valued one by one where a raw log exists.
     let kills = db.all_kills().await?;
+    let windows = db.all_round_windows().await?;
     let mut perfs: Vec<(i64, Performance)> = Vec::new();
     for (i, log_id) in ids.iter().copied().enumerate() {
         if i % 25 == 0 {
@@ -57,7 +58,12 @@ pub async fn rate_all(
             }
         };
         let Ok(log) = normalize(log_id, &value) else { continue };
-        let impact = crate::kills::impacts_for(kills.get(&log_id).map_or(&[][..], |k| k.as_slice()), log.map.as_deref(), w);
+        let impact = crate::kills::impacts_for(
+            kills.get(&log_id).map_or(&[][..], |k| k.as_slice()),
+            windows.get(&log_id).map_or(&[][..], |k| k.as_slice()),
+            log.map.as_deref(),
+            w,
+        );
         perfs.extend(
             log.players
                 .iter()

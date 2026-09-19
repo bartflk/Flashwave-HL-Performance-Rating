@@ -50,10 +50,13 @@ pub fn value(k: &KillCtx, map: Option<&str>, w: &Weights) -> f64 {
     }
 }
 
-/// Per player: the value of their kills and of their assists.
-pub fn impacts(kills: &[KillCtx], map: Option<&str>, w: &Weights) -> HashMap<u32, Impact> {
+/// Per player: the value of their kills and of their assists. Each kill comes
+/// with the map it happened on: in a log combined from several maps, the
+/// round's map, not the log's name.
+pub fn impacts<'a>(kills: impl IntoIterator<Item = (KillCtx, Option<&'a str>)>, w: &Weights) -> HashMap<u32, Impact> {
     let mut out: HashMap<u32, Impact> = HashMap::new();
-    for k in kills {
+    for (k, map) in kills {
+        let k = &k;
         let v = value(k, map, w);
         if k.counts {
             out.entry(k.killer).or_default().kills += v;
@@ -84,8 +87,8 @@ mod tests {
     fn a_defending_engineer_is_worth_more_on_payload_only() {
         let w = Weights::default_weights();
         let ks = [kill(1, TfClass::Engineer, Team::Red), kill(1, TfClass::Engineer, Team::Blue)];
-        let pl = impacts(&ks, Some("pl_upward_f12"), &w)[&1].kills;
-        let koth = impacts(&ks, Some("koth_product_final"), &w)[&1].kills;
+        let pl = impacts(ks.iter().map(|k| (*k, Some("pl_upward_f12"))), &w)[&1].kills;
+        let koth = impacts(ks.iter().map(|k| (*k, Some("koth_product_final"))), &w)[&1].kills;
         let general = w.victim(TfClass::Engineer);
         assert!(w.victim_in(TfClass::Engineer, Some("pl_upward_f12"), true) > general);
         assert_eq!(koth, 2.0 * general);
@@ -93,11 +96,21 @@ mod tests {
     }
 
     #[test]
+    fn each_kill_is_valued_on_its_own_map() {
+        // One log, two maps: the defending Engineer counts extra on Vigil only.
+        let w = Weights::default_weights();
+        let k = kill(1, TfClass::Engineer, Team::Red);
+        let i = impacts([(k, Some("pl_vigil_rc10")), (k, Some("koth_proot_b5b"))], &w);
+        let general = w.victim(TfClass::Engineer);
+        assert_eq!(i[&1].kills, w.victim_in(TfClass::Engineer, Some("pl_vigil_rc10"), true) + general);
+    }
+
+    #[test]
     fn feign_deaths_count_for_the_assister_only() {
         let w = Weights::default_weights();
         let mut k = kill(1, TfClass::Spy, Team::Blue);
         k.counts = false;
-        let i = impacts(&[k], None, &w);
+        let i = impacts([(k, None)], &w);
         assert!(!i.contains_key(&1));
         assert_eq!(i[&9].assists, w.victim(TfClass::Spy));
     }

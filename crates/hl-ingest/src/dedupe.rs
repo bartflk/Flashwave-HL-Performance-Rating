@@ -14,6 +14,12 @@
 //! claimed by more than one combined log) — someone combines rounds 1-2 and
 //! someone else combines 1-3. So this groups every log connected through a
 //! shared part and keeps exactly one per group.
+//!
+//! trends.tf only knows the parts of logs it indexed. A combined log that
+//! only logs.tf has (the 2018 `gullywash + badwater` semi-final) lists none,
+//! so its parts are found another way: logs.tf copies rounds verbatim when
+//! combining, so every round of a part starts at the same second as one of
+//! the combined log's rounds. See [`contained_parts`].
 
 use std::collections::HashMap;
 
@@ -64,6 +70,41 @@ pub fn supersessions(entries: &[IndexEntry]) -> HashMap<i64, i64> {
     out
 }
 
+/// Logs whose every round also appears, start time for start time, in a
+/// log with more rounds: `(whole, part)`. Round start times are to the second
+/// and a combined log copies them from its parts, so a match is not chance.
+/// On this account: five logs, all genuine.
+pub fn contained_parts(round_starts: &HashMap<i64, Vec<i64>>) -> Vec<(i64, i64)> {
+    let mut owners: HashMap<i64, Vec<i64>> = HashMap::new();
+    for (&log, starts) in round_starts {
+        for &s in starts {
+            owners.entry(s).or_default().push(log);
+        }
+    }
+    let mut out = Vec::new();
+    for (&part, starts) in round_starts {
+        if starts.is_empty() {
+            continue;
+        }
+        // Logs holding every one of this log's round starts.
+        let mut holders: Option<Vec<i64>> = None;
+        for s in starts {
+            let here: Vec<i64> = owners[s].iter().copied().filter(|l| *l != part).collect();
+            holders = Some(match holders {
+                None => here,
+                Some(h) => h.into_iter().filter(|l| here.contains(l)).collect(),
+            });
+        }
+        for whole in holders.unwrap_or_default() {
+            if round_starts[&whole].len() > starts.len() {
+                out.push((whole, part));
+            }
+        }
+    }
+    out.sort_unstable();
+    out
+}
+
 #[derive(Default)]
 struct UnionFind {
     parent: HashMap<i64, i64>,
@@ -101,6 +142,23 @@ impl UnionFind {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_log_inside_another_is_its_part() {
+        // 2111181 combines 2111140 (gullywash) and 2111157 (badwater).
+        let rounds: HashMap<i64, Vec<i64>> = [
+            (2111181, vec![100, 200, 300, 400]),
+            (2111140, vec![100, 200]),
+            (2111157, vec![300, 400]),
+            (9, vec![500]),
+            // The same match uploaded twice is not a part of itself.
+            (10, vec![600, 700]),
+            (11, vec![600, 700]),
+        ]
+        .into_iter()
+        .collect();
+        assert_eq!(contained_parts(&rounds), vec![(2111181, 2111140), (2111181, 2111157)]);
+    }
 
     fn e(log_id: i64, duration_s: i64, duplicate_of: &[i64]) -> IndexEntry {
         IndexEntry { log_id, duration_s, duplicate_of: duplicate_of.to_vec() }

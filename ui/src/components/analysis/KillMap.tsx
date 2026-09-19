@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { Analysis, KillView, MapView, Vec3 } from "../../api/types";
 import { capitalize, splitMap } from "../../lib/format";
-import { DEATH, KILL, inRound, jumpTo, playerMap, roundClock } from "./common";
+import { DEATH, KILL, inSlice, jumpTo, playerMap, roundClock, type Slice } from "./common";
 
 /**
  * Where the player's kills and deaths happened, top-down.
@@ -39,11 +39,13 @@ interface Mark {
 
 const MAX_H = 640;
 
-export function KillMap({ a, player, round }: { a: Analysis; player: number; round: number | null }) {
+export function KillMap({ a, player, slice }: { a: Analysis; player: number; slice: Slice }) {
+  // The slice's map: in a combined log, the map of the chosen segment.
+  const mapName = slice.map;
   const mapQ = useQuery({
-    queryKey: ["mapview", a.map],
-    queryFn: () => api.getMapView(a.map ?? ""),
-    enabled: a.map !== null,
+    queryKey: ["mapview", mapName],
+    queryFn: () => api.getMapView(mapName ?? ""),
+    enabled: mapName !== null,
     staleTime: 5 * 60_000,
   });
   const view = mapQ.data ?? null;
@@ -67,16 +69,17 @@ export function KillMap({ a, player, round }: { a: Analysis; player: number; rou
     if (!players.get(player)?.isMe) setScope("match");
   }, [player, players]);
 
-  const frame: Frame | null = useMemo(() => (view ? view : frameFromKills(a.kills)), [view, a.kills]);
+  const sliceKills = useMemo(() => a.kills.filter((k) => inSlice(k.roundNum, slice)), [a.kills, slice]);
+  const frame: Frame | null = useMemo(() => (view ? view : frameFromKills(sliceKills)), [view, sliceKills]);
   const heat = useMemo(
     () =>
       layer === "heat" && frame
-        ? heatGrid(frame, view, a.kills.filter((k) => inRound(k.roundNum, round)), player, heatOf, scope, enemy)
+        ? heatGrid(frame, view, sliceKills, player, heatOf, scope, enemy)
         : null,
-    [layer, frame, view, a.kills, round, player, heatOf, scope, enemy],
+    [layer, frame, view, sliceKills, player, heatOf, scope, enemy],
   );
 
-  const kills = a.kills.filter((k) => inRound(k.roundNum, round));
+  const kills = sliceKills;
   const marks: Mark[] = [];
   for (const k of kills) {
     if (!k.victimPos) continue;
@@ -95,11 +98,20 @@ export function KillMap({ a, player, round }: { a: Analysis; player: number; rou
   const nDeaths = marks.length - nKills;
   const name = me?.name ?? "player";
 
+  if (slice.map === null && slice.multiMap) {
+    return (
+      <p className="hint an-empty">
+        This match covers {new Set(a.segments.map((x) => x.map)).size} maps. Pick one above to see where its kills
+        happened: positions on different maps cannot share one drawing.
+      </p>
+    );
+  }
+
   if (!a.hasPositions || !frame) {
     return <p className="hint an-empty">This log recorded no positions, so there is no map to draw.</p>;
   }
 
-  const { name: mapName } = splitMap(a.map);
+  const { name: shortMap } = splitMap(mapName);
   const careerOk = me?.isMe && view !== null && view.myGames > 0;
 
   return (
@@ -152,7 +164,7 @@ export function KillMap({ a, player, round }: { a: Analysis; player: number; rou
                   This match
                 </button>
                 <button role="tab" aria-selected={scope === "career"} className={scope === "career" ? "seg active" : "seg"} onClick={() => setScope("career")}>
-                  All {view!.myGames} of your {mapName ?? ""} matches
+                  All {view!.myGames} of your {shortMap ?? ""} matches
                 </button>
               </div>
             )}
@@ -186,11 +198,11 @@ export function KillMap({ a, player, round }: { a: Analysis; player: number; rou
           )}
           <p className="hint km-note">
             {view
-              ? `Map drawn from ${view.points.toLocaleString()} positions in ${view.games} stored ${mapName ?? ""} matches; brighter is busier.`
+              ? `Map drawn from ${view.points.toLocaleString()} positions in ${view.games} stored ${shortMap ?? ""} matches; brighter is busier.`
               : "Too few matches on this map to draw it; only this match's positions are shown."}
             {layer === "heat" && heatOf === "kills" && " The heatmap marks where the player stood when they got the kill."}
           </p>
-          {layer === "dots" && <TimeStrip a={a} marks={marks} hover={hover} onHover={setHover} />}
+          {layer === "dots" && <TimeStrip a={a} slice={slice} marks={marks} hover={hover} onHover={setHover} />}
         </>
       )}
     </div>
@@ -358,8 +370,8 @@ function HoverCard({ m, a, pos, W }: { m: Mark; a: Analysis; pos: [number, numbe
 }
 
 /** Every mark along the match's game time: kills above the line, deaths below. */
-function TimeStrip(props: { a: Analysis; marks: Mark[]; hover: Mark | null; onHover: (m: Mark | null) => void }) {
-  const { a, marks, hover, onHover } = props;
+function TimeStrip(props: { a: Analysis; slice: Slice; marks: Mark[]; hover: Mark | null; onHover: (m: Mark | null) => void }) {
+  const { a, slice, marks, hover, onHover } = props;
   const wrap = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(800);
   useLayoutEffect(() => {
@@ -372,7 +384,8 @@ function TimeStrip(props: { a: Analysis; marks: Mark[]; hover: Mark | null; onHo
   }, []);
   const H = 44;
   const mid = H / 2;
-  const x = (t: number) => (a.durationS > 0 ? (t / a.durationS) * w : 0);
+  const span = Math.max(1, slice.endS - slice.startS);
+  const x = (t: number) => ((t - slice.startS) / span) * w;
 
   const nearest = (e: React.MouseEvent<SVGSVGElement>) => {
     const mx = e.clientX - e.currentTarget.getBoundingClientRect().left;
@@ -403,9 +416,9 @@ function TimeStrip(props: { a: Analysis; marks: Mark[]; hover: Mark | null; onHo
         }}
       >
         <line x1={0} x2={w} y1={mid} y2={mid} className="km-axis" />
-        {a.rounds.map((r) => (
+        {a.rounds.filter((r) => inSlice(r.roundNum, slice)).map((r) => (
           <g key={r.roundNum}>
-            {r.startS > 0 && <line x1={x(r.startS)} x2={x(r.startS)} y1={2} y2={H - 2} className="km-round" />}
+            {r.startS > slice.startS && <line x1={x(r.startS)} x2={x(r.startS)} y1={2} y2={H - 2} className="km-round" />}
             <text x={x(r.startS) + 4} y={H + 12} className="km-round-label">
               R{r.roundNum}
             </text>

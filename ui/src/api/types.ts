@@ -82,6 +82,8 @@ export interface MatchSummary {
   me: MyLine | null;
   /** Official, scrim or pug. Null outside Highlander, or when you did not play. */
   context: MatchContext | null;
+  /** The maps played, in order; more than one for a combined log. */
+  maps: string[];
 }
 
 export interface MatchPage {
@@ -278,6 +280,17 @@ export interface MatchDetail {
   weightsWarning: string | null;
   demos: DemoView[];
   context: MatchContext | null;
+  /** The maps played, in order, with rounds won on each (stable teams). */
+  segments: Segment[];
+}
+
+export interface Segment {
+  map: string | null;
+  firstRound: number;
+  lastRound: number;
+  rounds: number;
+  redWins: number;
+  blueWins: number;
 }
 
 // ---- M4: demos --------------------------------------------------------------------
@@ -544,6 +557,8 @@ export interface KillView {
   killerPos: Vec3 | null;
   victimPos: Vec3 | null;
   distance: number | null;
+  /** The map of the kill's round. */
+  map: string | null;
   jump: Jump | null;
 }
 
@@ -579,6 +594,20 @@ export interface Analysis {
   events: PlayEvent[];
   hasPositions: boolean;
   damageCapped: boolean;
+  /** The maps played, in order: one for most logs, two or three when combined. */
+  segments: MapSegment[];
+}
+
+export interface MapSegment {
+  map: string | null;
+  firstRound: number;
+  lastRound: number;
+  /** The segment's rounds in play order. */
+  rounds: number[];
+  startS: number;
+  endS: number;
+  redWins: number;
+  blueWins: number;
 }
 
 export interface MapView {

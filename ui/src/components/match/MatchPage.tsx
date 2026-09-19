@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type MatchContext, type MatchDetail } from "../../api/types";
-import { formatDate, minutes, splitMap, teamLabel } from "../../lib/format";
+import { capitalize, formatDate, minutes, splitMap, teamLabel } from "../../lib/format";
 import { ContextBadge, kindReason } from "../ContextBadge";
 import { BoxScore } from "./BoxScore";
 import { DemoPanel } from "./DemoPanel";
@@ -38,7 +38,10 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
 }
 
 function Header({ d }: { d: MatchDetail }) {
-  const { mode, name } = splitMap(d.map);
+  // The resolved maps: a combined log's own map field is whatever its
+  // uploader typed.
+  const maps = [...new Set(d.segments.map((s) => s.map).filter((m): m is string => m !== null))];
+  const { mode, name } = splitMap(maps.length === 1 ? maps[0] : d.map);
   const mine = d.myTeam;
   const [myScore, theirScore] = mine === "Blue" ? [d.blueScore, d.redScore] : [d.redScore, d.blueScore];
 
@@ -52,9 +55,16 @@ function Header({ d }: { d: MatchDetail }) {
       <div className="mh-main">
         <div>
           <div className="mh-map">
-            {mode && <span className={`mode mode-${mode}`}>{mode}</span>}
-            <h1>{name ?? "Unknown map"}</h1>
+            {maps.length > 1 ? (
+              <h1>{maps.map((m) => capitalize(splitMap(m).name ?? "?")).join(" · ")}</h1>
+            ) : (
+              <>
+                {mode && <span className={`mode mode-${mode}`}>{mode}</span>}
+                <h1>{name ?? "Unknown map"}</h1>
+              </>
+            )}
           </div>
+          {maps.length > 1 && <MapResults d={d} />}
           <p className="muted mh-sub">
             {formatDate(d.playedAt, true)} · {minutes(d.durationS)}
             {d.title && <> · {d.title}</>}
@@ -127,5 +137,27 @@ function ContextLine({ c, logScore }: { c: MatchContext; logScore: [number, numb
       {c.kind !== "official" && <span className="hint">{kindReason(c)}</span>}
       {c.linkMethod === "roster" && <span className="hint">found by roster; trends.tf had not tagged it</span>}
     </div>
+  );
+}
+
+/**
+ * A combined log's maps, each with the rounds won on it: from your side when
+ * you played, otherwise RED–BLU. Rounds, not ETF2L's score, which counts
+ * stopwatch and golden caps its own way.
+ */
+function MapResults({ d }: { d: MatchDetail }) {
+  return (
+    <p className="mh-maps">
+      {d.segments.map((s, i) => {
+        const [a, b] = d.myTeam === "Blue" ? [s.blueWins, s.redWins] : [s.redWins, s.blueWins];
+        const cls = d.myTeam ? (a > b ? "result-W" : a < b ? "result-L" : "") : "";
+        return (
+          <span key={i} className="mh-map-result" title={`Rounds ${s.firstRound}–${s.lastRound}`}>
+            {capitalize(splitMap(s.map).name ?? "unknown")} <strong className={cls}>{a}–{b}</strong>
+          </span>
+        );
+      })}
+      <span className="hint">rounds won{d.myTeam ? ", yours first" : ", RED–BLU"}</span>
+    </p>
   );
 }

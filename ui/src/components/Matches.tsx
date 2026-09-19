@@ -112,7 +112,9 @@ function MatchRow({ m, onOpen }: { m: MatchSummary; onOpen: (logId: number) => v
   const [mine, theirs] =
     me?.team === "Blue" ? [m.blueScore, m.redScore] : [m.redScore, m.blueScore];
   const dpm = me && me.timeS > 0 ? Math.round(me.dmg / (me.timeS / 60)) : null;
-  const { mode, name } = splitMap(m.map);
+  // A combined log's own map field is free text; its resolved maps are not.
+  const maps = [...new Set(m.maps)];
+  const { mode, name } = splitMap(maps.length === 1 ? maps[0] : m.map);
 
   return (
     <tr
@@ -124,9 +126,17 @@ function MatchRow({ m, onOpen }: { m: MatchSummary; onOpen: (logId: number) => v
       }}
     >
       <td className="muted nowrap">{formatDate(m.playedAt)}</td>
-      <td className="nowrap" title={m.map ?? "Map not recorded in the log"}>
-        {mode && <span className={`mode mode-${mode}`}>{mode}</span>}
-        <span className={name ? "" : "muted"}>{name ?? "unknown"}</span>
+      <td className="nowrap" title={maps.length > 0 ? maps.join(", ") : m.map ?? "Map not recorded in the log"}>
+        {maps.length > 1 ? (
+          <span className="multi-map">
+            {maps.map((x) => splitMap(x).name).join(" · ")}
+          </span>
+        ) : (
+          <>
+            {mode && <span className={`mode mode-${mode}`}>{mode}</span>}
+            <span className={name ? "" : "muted"}>{name ?? "unknown"}</span>
+          </>
+        )}
       </td>
       <td className="nowrap">{me?.mainClass ? capitalize(me.mainClass) : <span className="muted">—</span>}</td>
       <td className="nowrap">

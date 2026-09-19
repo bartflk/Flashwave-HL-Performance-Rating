@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type Analysis, type MatchDetail } from "../../api/types";
-import { capitalize, teamLabel } from "../../lib/format";
+import { capitalize, splitMap, teamLabel } from "../../lib/format";
+import type { Slice } from "./common";
 import { KillMap } from "./KillMap";
 import { PlayByPlay } from "./PlayByPlay";
 import { Spread } from "./Spread";
@@ -20,8 +21,8 @@ const TABS: Array<[Tab, string]> = [
 
 /**
  * The match seen kill by kill, from its raw server log. One filter row (the
- * player and the round) scopes every view below it; the tabs are four ways of
- * looking at the same slice.
+ * player, the map of a combined log, the round) scopes every view below it;
+ * the tabs are four ways of looking at the same slice.
  */
 export function AnalysisPanel({ d }: { d: MatchDetail }) {
   const q = useQuery({ queryKey: ["analysis", d.logId], queryFn: () => api.getMatchAnalysis(d.logId) });
@@ -49,6 +50,41 @@ function Body({ a }: { a: Analysis }) {
   const [tab, setTab] = useState<Tab>("map");
   const [player, setPlayer] = useState<number>(me?.accountId ?? a.players[0]?.accountId ?? 0);
   const [round, setRound] = useState<number | null>(null);
+  // A combined log opens on its first map: a kill map across three maps
+  // would overlay three different places.
+  const mapCount = new Set(a.segments.map((s) => s.map)).size;
+  const multiMap = mapCount > 1;
+  const [seg, setSeg] = useState<number | null>(multiMap ? 0 : null);
+
+  const slice: Slice = useMemo(() => {
+    const segment = seg === null ? null : a.segments[seg] ?? null;
+    if (round !== null) {
+      const r = a.rounds.find((x) => x.roundNum === round);
+      const on = a.segments.find((s) => s.rounds.includes(round));
+      return {
+        rounds: new Set([round]),
+        startS: r?.startS ?? 0,
+        endS: r?.endS ?? a.durationS,
+        oneRound: true,
+        map: on?.map ?? a.map,
+        multiMap,
+      };
+    }
+    if (segment) {
+      return {
+        rounds: new Set(segment.rounds),
+        startS: segment.startS,
+        endS: segment.endS,
+        oneRound: false,
+        map: segment.map,
+        multiMap,
+      };
+    }
+    return { rounds: null, startS: 0, endS: a.durationS, oneRound: false, map: multiMap ? null : a.segments[0]?.map ?? a.map, multiMap };
+  }, [a, seg, round, multiMap]);
+
+  // The round buttons show the chosen map's rounds.
+  const roundChoices = seg === null ? a.rounds : a.rounds.filter((r) => a.segments[seg].rounds.includes(r.roundNum));
 
   const teams = useMemo(() => {
     const byTeam = (t: "Red" | "Blue") => a.players.filter((p) => p.team === t);
@@ -77,11 +113,41 @@ function Body({ a }: { a: Analysis }) {
             )}
           </select>
         </label>
+        {multiMap && (
+          <div className="segmented" role="tablist" aria-label="Map">
+            <button
+              role="tab"
+              aria-selected={seg === null}
+              className={seg === null ? "seg active" : "seg"}
+              onClick={() => {
+                setSeg(null);
+                setRound(null);
+              }}
+            >
+              All maps
+            </button>
+            {a.segments.map((s, i) => (
+              <button
+                key={i}
+                role="tab"
+                aria-selected={seg === i}
+                className={seg === i ? "seg active" : "seg"}
+                onClick={() => {
+                  setSeg(i);
+                  setRound(null);
+                }}
+                title={s.map ?? "map not known"}
+              >
+                {capitalize(splitMap(s.map).name ?? "unknown map")}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="segmented" role="tablist" aria-label="Round">
           <button role="tab" aria-selected={round === null} className={round === null ? "seg active" : "seg"} onClick={() => setRound(null)}>
             All rounds
           </button>
-          {a.rounds.map((r) => (
+          {roundChoices.map((r) => (
             <button
               key={r.roundNum}
               role="tab"
@@ -103,10 +169,10 @@ function Body({ a }: { a: Analysis }) {
         ))}
       </nav>
 
-      {tab === "map" && <KillMap a={a} player={player} round={round} />}
-      {tab === "feed" && <PlayByPlay a={a} player={player} round={round} />}
+      {tab === "map" && <KillMap a={a} player={player} slice={slice} />}
+      {tab === "feed" && <PlayByPlay a={a} player={player} slice={slice} />}
       {tab === "spread" && <Spread a={a} player={player} />}
-      {tab === "timeline" && <TimelineChart a={a} player={player} round={round} onPick={setPlayer} />}
+      {tab === "timeline" && <TimelineChart a={a} player={player} slice={slice} onPick={setPlayer} />}
     </>
   );
 }
