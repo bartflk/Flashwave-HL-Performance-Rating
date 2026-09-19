@@ -1,4 +1,4 @@
-# HL Performance Rating System — Plan v1.4
+# HL Performance Rating System — Plan v1.5
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
 **Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
@@ -436,6 +436,7 @@ M1 acceptance: every Highlander log on the account stored, classified, deduplica
 16. ~~**Combined logs span several maps.**~~ Resolved round by round in M8 (§10).
 17. ~~**Parts of combined logs not yet fetched.**~~ All 289 fetched over a VPN; the exact matches confirmed every earlier answer.
 19. **logs.tf rate limit.** It stopped answering twice, after about 750 requests and then about 300 at one per second. Its API is now paced at one request every 2 seconds, and bulk jobs (raw logs, parts) are capped at 100 per sync. 15 of the oldest raw logs are still to fetch.
+21. **Uber and drop counts.** The game state matches logs.tf's uber count for 88% of Medics and drops for 93%. The rest are one off under a rule logs.tf does not publish. The state's own counts come straight from the log's lines.
 20. **The next rating update.** Items 2, 8, 12, 13 and 14 are expanded in §11, with Highlander theory from the wikis and guides, what the raw logs can measure, and questions for function.
 18. **Demo linking per map.** A combined log's demo is still linked by time or label; linking each map segment on its real map is not built.
 
@@ -763,6 +764,30 @@ A pure pass over one raw log that rebuilds, second by second:
 - Its "advantage lost" moments must line up with the log's own `lost_uber_advantage` lines.
 
 **To settle:** whether respawn waves can be derived from `spawned as` alone. A player who dies and has not respawned counts as dead; that seems safe.
+
+**As built.** `state.rs` rebuilds a match from its raw log. It records every life (spawn to death), every Medic's charge in spans (building, ready, in use), rounds, caps and sentries. It answers: who is alive at any second, each side's charge, who has the uber advantage, and the uber lead in seconds. Nothing is stored. All 740 logs rebuild in 3.8 s, and one match page takes a few milliseconds. `hl state --check` compares it with logs.tf, and `hl state <log> --at <t>` shows who was alive at a moment.
+
+- **Charge between known points is interpolated, not modelled.** The log marks every ready, pop and end, and the charge a Medic held when they died. So the percentage while building is read in hindsight between two real values, with no build-rate model.
+- **Deaths:** of 195,103 counted kills, all but 476 (0.24%) close a life the state had open.
+- **Players alive:** over 987,874 round seconds, a colour has more than 9 players alive for 0.26% of them, and never more than 11. Those are real overlaps: a player who timed out stays alive until their reconnect line, and a sub spawns before the player leaving.
+- **Ubers:** 88% of 1,519 Medic performances match logs.tf's uber count exactly, and most of the rest are one off. logs.tf's counting rule is not public. Counting all pops, only pops after setup, or pops up to the next round start each matched worse than "inside a round".
+- **Uber advantage against the log's own lines:** in 2,208 of the 2,535 `lost_uber_advantage` lines (87%), the state shows that team holding the advantage just as the enemy's charge became ready. MedicStats' plugin source shows its "time" is the *size* of the lead in seconds to full charge, not how long it was held. With that definition the state's lead is a median 2 s off (57% within 2 s, 70% within 5 s). Using each Medic's real build rate made this worse (7 s), so the lead is counted at the stock rate, as MedicStats does.
+
+**Raw-log quirks found on the way, all handled:**
+- The parts of a combined log are appended in any order, so the clock jumps back mid-file.
+- A part can be played in the time gap between two others.
+- Some logs hold the same match twice.
+- Some servers write every round start and spawn twice.
+- Players leave at a map change, or time out and reconnect, with no disconnect line.
+
+Everything open is closed at `Game_Over`, at a round start, where time jumps back, and across a 5-minute silence. A part whose rounds all repeat an earlier part's is skipped.
+
+**On the match page:** the Timeline tab has a strip under the chart on the same time axis:
+- players up or down (blue when the chosen side has more alive, orange when fewer);
+- each side's charge (brighter when ready, hatched when in use);
+- who holds the uber advantage.
+
+A sentence under it gives the shares, for example "up a player 25% of the time, down 39%". Hovering adds "7 v 9 alive · uber in use v 80%" to the tooltip.
 
 #### B. Pick value in context: the trade window
 

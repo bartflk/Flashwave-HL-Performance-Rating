@@ -12,6 +12,7 @@
 use crate::demos::{jumper, Jumper, JUMP_LEAD_S};
 use crate::normalize::normalize;
 use crate::rawlog::{self, hits_capped, RawLog};
+use crate::state::{Charge, GameState};
 use anyhow::{Context, Result};
 use hl_core::matchdata::{NormalizedLog, Team};
 use hl_core::{SteamId, TfClass};
@@ -49,6 +50,65 @@ pub struct Analysis {
     /// The maps played, in order: one for most logs, two or three for a log
     /// combined after a scrim or official.
     pub segments: Vec<MapSegment>,
+    /// Players alive and uber charge for each second of game time.
+    pub state: StateSeries,
+}
+
+/// The game state (`state.rs`) sampled once per game second, in stable
+/// teams: a stopwatch half's colour swap is undone.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StateSeries {
+    pub red_alive: Vec<u8>,
+    pub blue_alive: Vec<u8>,
+    /// 0-99 building, 100 ready, 101 in use, -1 no Medic alive.
+    pub red_charge: Vec<i8>,
+    pub blue_charge: Vec<i8>,
+    /// Uber advantage: 1 Red, -1 Blue, 0 neither.
+    pub advantage: Vec<i8>,
+}
+
+impl StateSeries {
+    fn new(gs: &GameState, clock: &Clock, log: &NormalizedLog) -> Self {
+        let n = clock.duration().ceil() as usize;
+        let mut out = StateSeries {
+            red_alive: vec![0; n],
+            blue_alive: vec![0; n],
+            red_charge: vec![-1; n],
+            blue_charge: vec![-1; n],
+            advantage: vec![0; n],
+        };
+        let code = |c: Charge| match c {
+            Charge::NoMedic => -1,
+            Charge::Building { pct } => pct.clamp(0.0, 99.0) as i8,
+            Charge::Ready => 100,
+            Charge::Deployed => 101,
+        };
+        for &(num, start, len, off) in &clock.rounds {
+            let swapped = log.rounds.iter().any(|r| r.round_num == num && r.colours_swapped);
+            // The colour each stable team wore this round.
+            let (red, blue) = if swapped { (Team::Blue, Team::Red) } else { (Team::Red, Team::Blue) };
+            for sec in 0..len {
+                let i = (off + sec as f64) as usize;
+                if i >= n {
+                    break;
+                }
+                let t = start + sec;
+                let alive = gs.numbers_at(t);
+                let by_colour = |team: Team| if team == Team::Red { alive[0] } else { alive[1] };
+                out.red_alive[i] = by_colour(red);
+                out.blue_alive[i] = by_colour(blue);
+                out.red_charge[i] = code(gs.charge_at(red, t));
+                out.blue_charge[i] = code(gs.charge_at(blue, t));
+                out.advantage[i] = match gs.advantage_at(t) {
+                    Some(c) if c == red => 1,
+                    Some(_) => -1,
+                    None => 0,
+                };
+            }
+        }
+        out
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -367,7 +427,9 @@ pub fn build(
             .collect()
     };
 
+    let state = StateSeries::new(&GameState::build(raw), &clock, log);
     Analysis {
+        state,
         segments: map_segments,
         log_id: log.log_id,
         map: log.map.clone(),

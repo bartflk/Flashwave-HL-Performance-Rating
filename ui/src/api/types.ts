@@ -596,6 +596,19 @@ export interface Analysis {
   damageCapped: boolean;
   /** The maps played, in order: one for most logs, two or three when combined. */
   segments: MapSegment[];
+  /** Players alive and uber charge per game second, in stable teams. */
+  state: StateSeries;
+}
+
+/** One value per game second; index i covers [i, i + 1). */
+export interface StateSeries {
+  redAlive: number[];
+  blueAlive: number[];
+  /** 0-99 building, 100 ready, 101 in use, -1 no Medic alive. */
+  redCharge: number[];
+  blueCharge: number[];
+  /** Uber advantage: 1 Red, -1 Blue, 0 neither. */
+  advantage: number[];
 }
 
 export interface MapSegment {

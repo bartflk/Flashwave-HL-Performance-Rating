@@ -33,6 +33,12 @@ COMMANDS:
     rawlogs [--max N] [--check]
                            Fetch logs.tf raw logs and derive every kill; --check
                            compares stored kills with logs.tf's totals
+    state <LOG_ID> [--at T] [--json]
+                           One match's game state; --at lists who is alive at T
+                           (raw clock)
+    state --check [--max N]
+                           Rebuild the game state (alive, charges, caps) from every
+                           raw log and check it against logs.tf
     analysis <LOG_ID> [--json]
                            Kills, damage and play-by-play from a match's raw log
     mapview <MAP> [--json] A map's outline from every stored kill on it
@@ -299,6 +305,41 @@ async fn main() -> Result<()> {
                 println!("{logs} logs compared with logs.tf; {} with a player whose kills differ", bad.len());
                 for (log_id, players) in bad.iter().take(15) {
                     println!("  {log_id}: {players}");
+                }
+            }
+            Ok(())
+        }
+
+        ["state", rest @ ..] if rest.contains(&"--check") => {
+            let db = Db::connect(&db_path).await?;
+            let report = hl_ingest::statecheck::check(&db, flag_value(rest, "--max")?).await?;
+            print!("{report}");
+            Ok(())
+        }
+
+        ["state", id, rest @ ..] => {
+            let log_id: i64 = id.parse().context("log id must be a number")?;
+            let db = Db::connect(&db_path).await?;
+            let zip = db.rawlog(log_id).await?.with_context(|| format!("log {log_id} has no stored raw log"))?;
+            let raw = hl_ingest::rawlog::parse(&hl_ingest::rawlog::unzip(&zip)?);
+            let s = hl_ingest::state::GameState::build(&raw);
+            if rest.contains(&"--json") {
+                println!("{}", serde_json::to_string(&s)?);
+                return Ok(());
+            }
+            println!(
+                "{} lives, {} charge spans, {} rounds, {} caps, {} sentries",
+                s.lives.len(),
+                s.charges.len(),
+                s.rounds.len(),
+                s.caps.len(),
+                s.sentries.len()
+            );
+            if let Some(t) = flag_value::<i64>(rest, "--at")? {
+                let n = s.numbers_at(t);
+                println!("at {t}: {} red, {} blue alive", n[0], n[1]);
+                for l in s.alive_at(t) {
+                    println!("  {:?} {:<9} [U:1:{}] {}..{} {:?}", l.team, l.class.as_str(), l.account, l.from, l.to, l.end);
                 }
             }
             Ok(())

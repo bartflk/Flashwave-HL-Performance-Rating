@@ -41,6 +41,49 @@ pub struct RawLog {
     /// `World triggered "meta_data" (map "...")`: newer uploads write one at
     /// each map load, which names the map of the rounds after it.
     pub map_loads: Vec<(i64, String)>,
+    /// Everything else the game state needs (see `state.rs`), in log order.
+    pub events: Vec<Event>,
+}
+
+/// A raw-log line other than a kill, damage or chat, kept for the game state.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Event {
+    pub at: i64,
+    /// How many kills the log had written before this line: orders an event
+    /// against the kills of the same second.
+    pub after_kills: usize,
+    pub kind: EventKind,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum EventKind {
+    RoundStart,
+    /// Stopwatch: the attackers' doors open.
+    SetupEnd,
+    RoundWin(Option<Team>),
+    RoundStalemate,
+    GameOver,
+    Spawn(Actor),
+    /// `committed suicide`: fall damage, a kill bind, the world.
+    Suicide(Actor),
+    /// Disconnected, reconnected or joined a team: out of play until the next spawn.
+    Left(u32),
+    ChargeReady(Actor),
+    ChargeDeployed { medic: Actor, medigun: String },
+    ChargeEnded(Actor),
+    /// `medic_death_ex`: the charge the Medic held when they died, 0-100.
+    MedicDied { medic: Actor, pct: u8 },
+    /// `lost_uber_advantage`: logs.tf's "advantage lost", with its length.
+    LostAdvantage { medic: Actor, secs: i64 },
+    FirstHeal(Actor),
+    PointCaptured { team: Option<Team>, cp: u32, name: String, cappers: Vec<u32> },
+    CaptureBlocked { by: Actor, cp: u32 },
+    Built { by: Actor, object: String },
+    ObjectKilled { by: Actor, owner: Option<u32>, object: String },
+    /// An Engineer blew up their own building, usually to move it.
+    Detonated { by: Actor, object: String },
+    /// Picked up (`true`) or put down (`false`).
+    Carried { by: Actor, object: String, picked: bool },
 }
 
 /// One hit.
@@ -100,6 +143,9 @@ impl RawLog {
         }
         for m in &mut self.map_loads {
             m.0 += shift;
+        }
+        for e in &mut self.events {
+            e.at += shift;
         }
     }
 }
@@ -186,13 +232,25 @@ pub fn parse(text: &str) -> RawLog {
 
     for line in text.lines() {
         let Some((at, body)) = split_time(line) else { continue };
+        let after_kills = out.kills.len();
+        let mut event = |kind| out.events.push(Event { at, after_kills, kind });
 
         if let Some(ev) = body.strip_prefix("World triggered \"") {
             if ev.starts_with("Round_Start\"") {
+                event(EventKind::RoundStart);
                 out.rounds += 1;
                 out.round_starts.push(at);
                 live = true;
-            } else if ["Round_Win\"", "Round_Stalemate\"", "Game_Over\""].iter().any(|e| ev.starts_with(e)) {
+            } else if ev.starts_with("Round_Setup_End\"") {
+                event(EventKind::SetupEnd);
+            } else if ev.starts_with("Round_Win\"") {
+                event(EventKind::RoundWin(prop(ev, "winner").and_then(Team::parse)));
+                live = false;
+            } else if ev.starts_with("Round_Stalemate\"") {
+                event(EventKind::RoundStalemate);
+                live = false;
+            } else if ev.starts_with("Game_Over\"") {
+                event(EventKind::GameOver);
                 live = false;
             } else if ev.starts_with("meta_data\"") {
                 if let Some(map) = prop(ev, "map") {
@@ -202,13 +260,40 @@ pub fn parse(text: &str) -> RawLog {
             continue;
         }
 
+        if let Some(ev) = body.strip_prefix("Team \"") {
+            if let Some((team, tail)) = ev.split_once("\" triggered \"pointcaptured\"") {
+                let cappers = (1..=numcappers(tail))
+                    .filter_map(|i| prop(tail, &format!("player{i}")).and_then(account_of))
+                    .collect();
+                event(EventKind::PointCaptured {
+                    team: Team::parse(team),
+                    cp: prop(tail, "cp").and_then(|v| v.parse().ok()).unwrap_or(0),
+                    name: prop(tail, "cpname").unwrap_or_default().to_string(),
+                    cappers,
+                });
+            }
+            continue;
+        }
+
         let Some((who, rest)) = actor(body) else { continue };
+        let me = Actor { class: class.get(&who.account).copied(), ..who };
 
         if let Some(r) = rest.strip_prefix(" spawned as \"").or_else(|| rest.strip_prefix(" changed role to \"")) {
             let name = r.split('"').next().unwrap_or_default().to_ascii_lowercase();
             if let Ok(c) = TfClass::parse(&name) {
                 class.insert(who.account, c);
             }
+            if rest.starts_with(" spawned as ") {
+                event(EventKind::Spawn(Actor { class: class.get(&who.account).copied(), ..who }));
+            }
+        } else if rest.starts_with(" committed suicide ") {
+            event(EventKind::Suicide(me));
+        } else if rest.starts_with(" disconnected") || rest.starts_with(" joined team ") || rest.starts_with(" connected,") {
+            // A `connected` line with no disconnect before it is a reconnect
+            // after a timeout: the old session is gone.
+            event(EventKind::Left(who.account));
+        } else if let Some(kind) = rest.strip_prefix(" triggered \"").and_then(|r| state_event(me, r)) {
+            event(kind);
         } else if let Some(r) = rest.strip_prefix(" killed ") {
             let Some((victim, r)) = actor(r) else { continue };
             let Some(r) = r.strip_prefix(" with \"") else { continue };
@@ -260,6 +345,43 @@ pub fn parse(text: &str) -> RawLog {
         }
     }
     out
+}
+
+/// A player's `triggered "<name>" ...` line that the game state uses.
+/// `r` starts just after the opening quote of the name.
+fn state_event(me: Actor, r: &str) -> Option<EventKind> {
+    let (name, tail) = r.split_once('"')?;
+    let object = || prop(tail, "object").unwrap_or_default().to_string();
+    Some(match name {
+        "chargeready" => EventKind::ChargeReady(me),
+        "chargedeployed" => EventKind::ChargeDeployed { medic: me, medigun: prop(tail, "medigun").unwrap_or("medigun").to_string() },
+        "chargeended" => EventKind::ChargeEnded(me),
+        "medic_death_ex" => {
+            let pct = prop(tail, "uberpct")?.parse::<f64>().ok()?;
+            EventKind::MedicDied { medic: me, pct: pct.clamp(0.0, 100.0) as u8 }
+        }
+        "lost_uber_advantage" => {
+            let secs = prop(tail, "time")?.parse::<f64>().ok()?;
+            EventKind::LostAdvantage { medic: me, secs: secs as i64 }
+        }
+        "first_heal_after_spawn" => EventKind::FirstHeal(me),
+        "captureblocked" => EventKind::CaptureBlocked { by: me, cp: prop(tail, "cp").and_then(|v| v.parse().ok()).unwrap_or(0) },
+        "player_builtobject" => EventKind::Built { by: me, object: object() },
+        "killedobject" => EventKind::ObjectKilled { by: me, owner: prop(tail, "objectowner").and_then(account_of), object: object() },
+        "object_detonated" => EventKind::Detonated { by: me, object: object() },
+        "player_carryobject" => EventKind::Carried { by: me, object: object(), picked: true },
+        "player_dropobject" => EventKind::Carried { by: me, object: object(), picked: false },
+        _ => return None,
+    })
+}
+
+/// The account in a quoted property's actor, `name<uid><[U:1:123]><Red>`.
+fn account_of(s: &str) -> Option<u32> {
+    actor(&format!("\"{s}\"")).map(|(a, _)| a.account)
+}
+
+fn numcappers(tail: &str) -> usize {
+    prop(tail, "numcappers").and_then(|v| v.parse().ok()).unwrap_or(0).min(12)
 }
 
 /// `L 09/15/2026 - 19:45:09: body` -> (seconds as if UTC, body).

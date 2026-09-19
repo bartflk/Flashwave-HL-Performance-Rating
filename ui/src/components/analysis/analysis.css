@@ -509,3 +509,50 @@
 .km-shooter {
   paint-order: stroke;
 }
+
+/* Game state strip under the timeline. Blue: the chosen side is ahead;
+   orange: behind. Charge is neutral ink, brightest when ready. */
+.ss {
+  margin-top: 4px;
+}
+
+.ss-up {
+  fill: #5791c8;
+}
+
+.ss-down {
+  fill: #d6763a;
+}
+
+.ss-ad-none {
+  fill: rgba(139, 146, 159, 0.12);
+}
+
+.ss-uber-build {
+  fill: rgba(230, 232, 236, 0.28);
+}
+
+.ss-uber-ready {
+  fill: rgba(230, 232, 236, 0.75);
+}
+
+.ss-uber-used {
+  fill: url(#ss-hatch);
+}
+
+.ss-hatch-line {
+  stroke: var(--bg);
+  stroke-width: 2;
+}
+
+.ss-summary {
+  margin: 4px 0 0;
+}
+
+.ss-key {
+  border-radius: 2px;
+}
+
+.ss-key-down {
+  background: #d6763a;
+}

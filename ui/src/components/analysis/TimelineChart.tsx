@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Analysis, AnalysisPlayer } from "../../api/types";
 import { clock } from "../../lib/format";
 import { inSlice, roundClock, type Slice } from "./common";
+import { chargeLabel, sides, StateStrip } from "./StateStrip";
 
 type Metric = "kills" | "deaths" | "damage";
 
@@ -234,11 +235,27 @@ export function TimelineChart(props: {
             {hoverT !== null && <line x1={x(hoverT)} x2={x(hoverT)} y1={M.top} y2={M.top + plotH} className="tl-cross" />}
           </svg>
 
+          {me && (
+            <StateStrip
+              a={a}
+              mine={me.team}
+              t0={t0}
+              t1={t1}
+              x={x}
+              left={M.left}
+              plotW={plotW}
+              width={width}
+              hoverT={hoverT}
+              onHover={setHoverT}
+            />
+          )}
+
           {hoverT !== null && (
             <div className="tl-tip tlc-tip" style={{ left: Math.min(width - 230, x(hoverT) + 12), top: M.top }}>
               <div className="tip-meta">
                 {slice.oneRound ? clock(hoverT - t0) : roundClock(hoverT, a.rounds)}
               </div>
+              {me && <StateLine a={a} mine={me.team} t={hoverT} />}
               {ranked.map((r) => (
                 <div key={r.p.accountId} className={r.p.accountId === player ? "tlc-tip-row sel" : "tlc-tip-row"}>
                   <span className={`team-${r.p.team.toLowerCase()}`}>{r.p.name}</span>
@@ -263,4 +280,18 @@ function niceTicks(max: number, whole: boolean): number[] {
   const out: number[] = [];
   for (let v = 0; v < max + step; v += step) out.push(Math.round(v * 100) / 100);
   return out;
+}
+
+/** The game state at one moment, for the hover tip. */
+function StateLine({ a, mine, t }: { a: Analysis; mine: "Red" | "Blue"; t: number }) {
+  const s = sides(a.state, mine);
+  const i = Math.min(Math.floor(t), s.alive.length - 1);
+  if (i < 0) return null;
+  const ad = s.advantage[i] > 0 ? " · uber advantage yours" : s.advantage[i] < 0 ? " · uber advantage theirs" : "";
+  return (
+    <div className="tip-meta">
+      {s.alive[i]} v {s.theirAlive[i]} alive · uber {chargeLabel(s.charge[i])} v {chargeLabel(s.theirCharge[i])}
+      {ad}
+    </div>
+  );
 }
