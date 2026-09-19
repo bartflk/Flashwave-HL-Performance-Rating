@@ -105,5 +105,6 @@ const realApi = {
 export type Api = typeof realApi;
 
 // The mock, and the real-match fixtures it carries, load only in a plain
-// browser. Imported dynamically so none of it ships inside the app.
-export const api: Api = inTauri ? realApi : (await import("./mock")).mockApi;
+// browser during development. `import.meta.env.DEV` is false in a release
+// build, so the branch and the fixtures are dropped from the bundle.
+export const api: Api = inTauri || !import.meta.env.DEV ? realApi : (await import("./mock")).mockApi;

@@ -287,7 +287,7 @@ function Canvas(props: {
       // The image, under a dark veil: the marks' blue and orange have to read
       // on sand and stone, and the veil keeps the map recessive.
       g.drawImage(img, 0, 0, W, H);
-      g.fillStyle = "rgba(20, 22, 27, 0.45)";
+      g.fillStyle = "rgba(27, 23, 20, 0.45)";
       g.fillRect(0, 0, W, H);
     } else if (view) {
       // The map: occupancy on a log scale, in the muted ink, so the marks own
@@ -298,7 +298,7 @@ function Canvas(props: {
         const n = view.occupancy[i];
         if (n < 2) continue;
         const v = Math.log1p(n) / max;
-        g.fillStyle = `rgba(139, 146, 159, ${(0.06 + 0.6 * v ** 1.4).toFixed(3)})`;
+        g.fillStyle = `rgba(168, 153, 139, ${(0.06 + 0.6 * v ** 1.4).toFixed(3)})`;
         const [x, y, s] = cellRect(i);
         g.fillRect(x, y, s, s);
       }

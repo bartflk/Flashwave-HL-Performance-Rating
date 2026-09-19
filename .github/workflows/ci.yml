@@ -1,0 +1,38 @@
+# Tests, lints and type-checks every push and pull request.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: swatinem/rust-cache@v2
+
+      # Type-checks the frontend, and builds ui/dist, which the app crate
+      # embeds: without it the Rust workspace does not compile.
+      - name: Frontend build
+        run: |
+          npm ci --prefix ui
+          npm run build --prefix ui
+
+      - name: Rust tests
+        run: cargo test --workspace
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings

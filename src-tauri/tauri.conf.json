@@ -39,10 +39,16 @@
       "msi",
       "nsis"
     ],
+    "publisher": "Flashy",
+    "category": "Utility",
+    "shortDescription": "Performance ratings for TF2 Highlander, from your logs.tf history",
+    "longDescription": "Rates every TF2 Highlander game you played against the players you faced, with kill maps, fights and seasons. Data from logs.tf, trends.tf and ETF2L; stored on your PC.",
+    "copyright": "Not affiliated with Valve. Team Fortress 2 is a trademark of Valve Corporation.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
+      "icons/icon.icns",
       "icons/icon.ico"
     ]
   }

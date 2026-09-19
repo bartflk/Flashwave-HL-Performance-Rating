@@ -25,6 +25,9 @@ const TABS: Array<[Tab, string]> = [
 export default function App() {
   // Set when the user chooses to revisit setup after it is already complete.
   const [forceSetup, setForceSetup] = useState(false);
+  // A first run keeps the setup screen up until its last step, even once the
+  // SteamID alone has made the app ready.
+  const [onboarding, setOnboarding] = useState<boolean | null>(null);
   const [tab, setTab] = useState<Tab>("matches");
   const [openLog, setOpenLog] = useState<number | null>(null);
   // Pages stay mounted once visited, so their filters and scroll survive a
@@ -72,15 +75,18 @@ export default function App() {
   }
 
   const data = status.data;
+  if (onboarding === null) setOnboarding(!data.ready);
 
-  if (!data.ready || forceSetup) {
+  if (!data.ready || forceSetup || onboarding) {
     return (
       <div className="shell">
         <Setup
           status={data}
-          onDone={() => {
+          onDone={() => void status.refetch()}
+          onFinish={() => {
             setForceSetup(false);
-            void status.refetch();
+            setOnboarding(false);
+            go("matches");
           }}
         />
       </div>
@@ -91,7 +97,12 @@ export default function App() {
     <div className="shell">
       <header className="topbar">
         <div className="brand">
-          <h1>HL Rating</h1>
+          <h1 className="wordmark">
+            <img src="/logo.svg" alt="" />
+            <span>
+              <span className="hl">HL</span> Rating
+            </span>
+          </h1>
           <nav className="tabs">
             {TABS.map(([t, label]) => (
               <button key={t} className={tab === t ? "tab active" : "tab"} onClick={() => go(t)}>

@@ -477,6 +477,7 @@ POV demos only contain what your client received, so phase 2 is you-only for loc
 | **M8** | Maps per round: resolve combined logs to the map each round was played on (§10) | **done** |
 | **M9** | Rating update from Highlander theory: game state, pick context, uber timing, per-map values (§11, for deliberation) | |
 | **M10** | Sniper rating v3 and v4 from HLTV's lessons: death context, Fight KAST, situation-valued kills, map and side baselines, fight swing (§12) | |
+| **R1** | Public test release: first-run flow (TF2 folder optional, first sync step), TF2-styled theme and original logo, release workflow, README for testers | **done** |
 | **v2** | Deep demo parse: aim and viewangles, engagement ranges (positions largely come from M6 now) | |
 
 M1 acceptance: every Highlander log on the account stored, classified, deduplicated, and rebuildable from raw blobs with no refetching.

@@ -1,0 +1,52 @@
+# Builds the Windows installers and attaches them to a draft release.
+#
+# Trigger: push a tag like v0.1.0 (bump the version in src-tauri/tauri.conf.json
+# and the root Cargo.toml first), or run it by hand from the Actions tab.
+# The release is created as a draft pre-release: review it, then publish.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            ui/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+
+      - name: Install JavaScript dependencies
+        run: |
+          npm ci
+          npm ci --prefix ui
+
+      - name: Build and upload the installers
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: HL Rating v__VERSION__
+          releaseBody: |
+            Test build for Windows. Download the `-setup.exe` below.
+
+            Windows may say "Windows protected your PC" because the installer is not code-signed: click **More info → Run anyway**.
+            See the README for first-run steps. Feedback is welcome in Issues.
+          releaseDraft: true
+          prerelease: true

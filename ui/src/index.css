@@ -1,20 +1,27 @@
 :root {
-  --bg: #14161b;
-  --panel: #1c1f26;
-  --panel-2: #232733;
-  --border: #2a2f3a;
-  --text: #e6e8ec;
-  --muted: #8b929f;
-  --accent: #cf6a32;
+  /* TF2's press-kit palette: warm browns, cream, the game's orange. */
+  --bg: #1b1714;
+  --panel: #25201c;
+  --panel-2: #2f2924;
+  --border: #3d342d;
+  --text: #f2e6d9;
+  --muted: #a8998b;
+  --accent: #e0763a;
   --accent-dim: #8f4721;
-  --ok: #4ea36b;
-  --warn: #d0a14a;
-  --bad: #d05a5a;
-  --radius: 10px;
+  --ok: #6fae6a;
+  --warn: #e0b04f;
+  --bad: #e86a62;
+  --radius: 8px;
 
-  /* TF2's team colours, lifted slightly for contrast on a dark ground. */
-  --red: #d0554f;
-  --blu: #6b9cc4;
+  /* TF2's team colours (#bd3b3b, #395c78), lifted to read as text on brown. */
+  --red: #e86a62;
+  --blu: #86abc9;
+  --red-deep: #bd3b3b;
+  --blu-deep: #395c78;
+
+  /* Headings: Windows' Bahnschrift, bold and condensed, is the closest
+     built-in font to TF2's. Elsewhere it falls back to a narrow sans. */
+  --font-display: "Bahnschrift", "Arial Narrow", "Roboto Condensed", "Segoe UI", sans-serif;
 
   color-scheme: dark;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -41,7 +48,11 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  /* A warm glow from the top, like light on the TF2 menu backdrop. */
+  background:
+    radial-gradient(ellipse 90% 45% at 50% -8%, rgba(224, 118, 58, 0.09), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
 }
@@ -52,6 +63,16 @@ h3 {
   margin: 0;
   font-weight: 600;
   letter-spacing: -0.01em;
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-stretch: 85%;
+  font-variation-settings: "wdth" 85;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 h1 {
@@ -87,8 +108,8 @@ button {
 }
 
 button:hover:not(:disabled) {
-  background: #2b3040;
-  border-color: #3a4152;
+  background: #3a322b;
+  border-color: #4f4339;
 }
 
 button:disabled {
@@ -96,16 +117,21 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* The TF2 menu button: orange, bold capitals, a darker lip underneath. */
 button.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #12140f;
-  font-weight: 600;
+  color: #1f140d;
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.22);
 }
 
 button.primary:hover:not(:disabled) {
-  background: #e07a41;
-  border-color: #e07a41;
+  background: #ef8a4f;
+  border-color: #ef8a4f;
 }
 
 input[type="text"] {
@@ -124,5 +150,5 @@ input[type="text"]:focus {
 }
 
 input[type="text"]::placeholder {
-  color: #5d6472;
+  color: #7a6b5e;
 }

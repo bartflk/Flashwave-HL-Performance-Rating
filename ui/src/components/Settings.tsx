@@ -41,7 +41,11 @@ export function Settings({
           </dd>
           <dt>TF2 folder</dt>
           <dd>
-            <code>{status.config.tfPath}</code>
+            {status.config.tfPath ? (
+              <code>{status.config.tfPath}</code>
+            ) : (
+              <span className="muted">Not set: demo jumps and downloads are off. Everything else works.</span>
+            )}
           </dd>
         </dl>
         <button className="linkish" style={{ marginTop: 14 }} onClick={onReconfigure}>

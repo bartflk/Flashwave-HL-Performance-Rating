@@ -63,6 +63,42 @@
   color: #0f1a13;
 }
 
+.step.waiting {
+  opacity: 0.55;
+}
+
+.optional {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  vertical-align: 2px;
+}
+
+.setup-card {
+  max-width: 680px;
+  border-top: 3px solid var(--accent);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+.setup-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.setup-logo {
+  width: 64px;
+  height: 64px;
+  flex: none;
+}
+
 .step-body {
   min-width: 0;
   display: flex;
@@ -143,12 +179,22 @@
 /* --- ready state --- */
 
 .topbar {
+  position: relative;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px var(--bleed-pad);
-  border-bottom: 1px solid var(--border);
+  padding: 12px var(--bleed-pad);
+  background: linear-gradient(#2a241f, #211c18);
+}
+
+/* TF2's colours as a stripe under the bar: RED, the game's orange, BLU. */
+.topbar::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--red-deep) 0 33.3%, var(--accent) 33.3% 66.6%, var(--blu-deep) 66.6% 100%);
 }
 
 .topbar .who {
@@ -219,33 +265,58 @@
 
 .brand {
   display: flex;
-  align-items: baseline;
-  gap: 22px;
+  align-items: center;
+  gap: 26px;
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.wordmark img {
+  width: 34px;
+  height: 34px;
+}
+
+.wordmark .hl {
+  color: var(--accent);
 }
 
 .tabs {
   display: flex;
-  gap: 4px;
+  gap: 2px;
 }
 
+/* Tabs read like TF2's menu: condensed capitals, orange underline when on. */
 .tab {
   background: none;
-  border: 1px solid transparent;
+  border: none;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
   color: var(--muted);
-  padding: 5px 12px;
-  font-size: 0.9rem;
+  padding: 6px 12px 5px;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-stretch: 85%;
+  font-variation-settings: "wdth" 85;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .tab:hover:not(:disabled) {
-  background: var(--panel);
-  border-color: transparent;
+  background: none;
   color: var(--text);
 }
 
 .tab.active {
   color: var(--text);
-  background: var(--panel);
-  border-color: var(--border);
+  background: none;
+  border-bottom-color: var(--accent);
 }
 
 /* --- sync strip --- */
@@ -281,7 +352,7 @@
 }
 
 .sep {
-  color: #4a5160;
+  color: #5c4f44;
 }
 
 .warn-text {
@@ -418,7 +489,7 @@
 
 .match-table td {
   padding: 8px 12px;
-  border-bottom: 1px solid #22262f;
+  border-bottom: 1px solid #29231f;
   vertical-align: middle;
 }
 
@@ -427,7 +498,7 @@
 }
 
 .match-table tbody tr:hover td {
-  background: #1a1d24;
+  background: #221d1a;
 }
 
 .num {
@@ -500,12 +571,12 @@ th.num {
 }
 
 .badge-league {
-  background: rgba(207, 106, 50, 0.16);
-  color: #e89464;
+  background: rgba(224, 118, 58, 0.16);
+  color: #f09a64;
 }
 
 .badge-demo {
-  background: rgba(78, 163, 107, 0.14);
+  background: rgba(111, 174, 106, 0.14);
   color: #7cc496;
 }
 
@@ -516,17 +587,17 @@ th.num {
 /* --- M5: kinds of game --- */
 
 .badge-official {
-  background: rgba(207, 106, 50, 0.16);
-  color: #e89464;
+  background: rgba(224, 118, 58, 0.16);
+  color: #f09a64;
 }
 
 .badge-scrim {
-  background: rgba(107, 156, 196, 0.16);
-  color: #8fb6d8;
+  background: rgba(134, 171, 201, 0.16);
+  color: #9cbcd6;
 }
 
 .badge-pug {
-  background: rgba(139, 146, 159, 0.14);
+  background: rgba(168, 153, 139, 0.14);
   color: var(--muted);
 }
 

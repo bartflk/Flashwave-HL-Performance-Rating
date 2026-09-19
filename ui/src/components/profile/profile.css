@@ -72,9 +72,11 @@
 }
 
 /* Proportional figures for standalone numbers; tabular only in columns. */
+/* Big numbers in the display face, like a TF2 scoreboard. */
 .kpi-value {
-  font-size: 1.8rem;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 700;
   line-height: 1.1;
 }
 
@@ -189,7 +191,7 @@
   top: -3px;
   bottom: -3px;
   width: 1px;
-  background: #3a4152;
+  background: #4f4339;
 }
 
 /* Thin mark, 4px rounded data-end, square at the baseline. */
@@ -225,7 +227,7 @@
 }
 
 .comp-raw .unit {
-  color: #5d6472;
+  color: #7a6b5e;
 }
 
 /* --- trend chart --- */
@@ -274,12 +276,12 @@
 }
 
 .tl-grid {
-  stroke: #262a34;
+  stroke: #2c2621;
   stroke-width: 1;
 }
 
 .tl-median {
-  stroke: #454c5c;
+  stroke: #5b4d42;
   stroke-width: 1;
 }
 
@@ -320,7 +322,7 @@
 }
 
 .tl-cross {
-  stroke: #5d6472;
+  stroke: #7a6b5e;
   stroke-width: 1;
 }
 
@@ -500,7 +502,7 @@
 }
 
 .seasons-table tr.sel td {
-  background: rgba(230, 232, 236, 0.07);
+  background: rgba(242, 230, 217, 0.07);
 }
 
 .seasons-table .muted-row td {

@@ -17,13 +17,15 @@ pub mod keys {
 pub struct AppConfig {
     /// The player this app is about. Everything syncs and rates relative to them.
     pub steamid: Option<SteamId>,
-    /// Absolute path to the `tf` directory of the TF2 install.
+    /// Absolute path to the `tf` directory of the TF2 install. Optional: it
+    /// is only needed for demos, and everything else comes from logs.tf.
     pub tf_path: Option<String>,
 }
 
 impl AppConfig {
-    /// Whether first-run setup is complete. The UI gates the rest of the app on this.
+    /// Whether first-run setup is complete: the owner is known. The TF2
+    /// folder can be skipped (a PC without TF2, or no interest in demos).
     pub fn is_ready(&self) -> bool {
-        self.steamid.is_some() && self.tf_path.is_some()
+        self.steamid.is_some()
     }
 }

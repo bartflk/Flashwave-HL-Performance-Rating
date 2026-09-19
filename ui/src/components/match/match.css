@@ -72,8 +72,9 @@
 }
 
 .mh-numbers {
-  font-size: 2rem;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
   display: flex;
@@ -82,7 +83,7 @@
 }
 
 .dash {
-  color: #4a5160;
+  color: #5c4f44;
   padding: 0 2px;
 }
 
@@ -126,7 +127,7 @@
 .model-tag {
   font-size: 0.72rem;
   color: var(--warn);
-  border: 1px solid rgba(208, 161, 74, 0.35);
+  border: 1px solid rgba(224, 176, 79, 0.35);
   border-radius: 999px;
   padding: 2px 10px;
   white-space: nowrap;
@@ -159,24 +160,24 @@
   background: none;
   border: none;
   border-radius: 0;
-  border-bottom: 1px solid #22262f;
+  border-bottom: 1px solid #29231f;
   padding: 9px 10px;
   text-align: left;
   font-size: 0.9rem;
 }
 
 .mu-row:hover:not(:disabled) {
-  background: #1a1d24;
-  border-color: #22262f;
+  background: #221d1a;
+  border-color: #29231f;
 }
 
 .mu-row.mine {
-  background: rgba(207, 106, 50, 0.07);
+  background: rgba(224, 118, 58, 0.07);
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .mu-row.open {
-  background: #1d2029;
+  background: #231e1a;
 }
 
 .mu-class {
@@ -260,7 +261,7 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background: #3a4152;
+  background: #4f4339;
 }
 
 .bar-fill {
@@ -302,8 +303,8 @@
 
 .mu-breakdown {
   padding: 12px 10px 16px 126px;
-  border-bottom: 1px solid #22262f;
-  background: #1d2029;
+  border-bottom: 1px solid #29231f;
+  background: #231e1a;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -384,7 +385,7 @@
   align-items: center;
   gap: 14px;
   padding: 8px 0;
-  border-bottom: 1px solid #22262f;
+  border-bottom: 1px solid #29231f;
 }
 
 .round:last-child {
@@ -434,7 +435,7 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background: #2f3441;
+  background: #3a3129;
 }
 
 .mk,
@@ -518,11 +519,11 @@
 }
 
 .me-row td {
-  background: rgba(207, 106, 50, 0.08);
+  background: rgba(224, 118, 58, 0.08);
 }
 
 .match-table tbody tr.me-row:hover td {
-  background: rgba(207, 106, 50, 0.13);
+  background: rgba(224, 118, 58, 0.13);
 }
 
 .player-name {
@@ -539,11 +540,11 @@
 
 .match-table tr.clickable:focus-visible td {
   outline: none;
-  background: #1f2330;
+  background: #26211d;
 }
 
 .mu-breakdown .unit {
-  color: #5d6472;
+  color: #7a6b5e;
   font-size: 0.72rem;
   margin-left: 4px;
 }
@@ -563,8 +564,8 @@
 /* --- demos (M4) --- */
 
 .badge-pov {
-  background: rgba(107, 156, 196, 0.16);
-  color: #9cc0dd;
+  background: rgba(134, 171, 201, 0.16);
+  color: #a6c3db;
 }
 
 .demo-panel {
