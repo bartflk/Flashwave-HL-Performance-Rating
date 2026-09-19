@@ -43,6 +43,9 @@ pub struct RawLog {
     pub map_loads: Vec<(i64, String)>,
     /// Everything else the game state needs (see `state.rs`), in log order.
     pub events: Vec<Event>,
+    /// Every `shot_fired`: `(time, account)`. Tells a player who fired in a
+    /// fight from one who sat it out (Fight KAST, PLAN §12 step 2).
+    pub shots: Vec<(i64, u32)>,
 }
 
 /// A raw-log line other than a kill, damage or chat, kept for the game state.
@@ -146,6 +149,9 @@ impl RawLog {
         }
         for e in &mut self.events {
             e.at += shift;
+        }
+        for s in &mut self.shots {
+            s.0 += shift;
         }
     }
 }
@@ -292,6 +298,8 @@ pub fn parse(text: &str) -> RawLog {
             // A `connected` line with no disconnect before it is a reconnect
             // after a timeout: the old session is gone.
             event(EventKind::Left(who.account));
+        } else if rest.starts_with(" triggered \"shot_fired\"") {
+            out.shots.push((at, who.account));
         } else if let Some(kind) = rest.strip_prefix(" triggered \"").and_then(|r| state_event(me, r)) {
             event(kind);
         } else if let Some(r) = rest.strip_prefix(" killed ") {

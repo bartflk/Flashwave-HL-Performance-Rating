@@ -111,6 +111,14 @@ pub struct FightStats {
     pub deaths_to_combo: u32,
     /// Deaths near a spot already killed from twice in the same life.
     pub stationary_deaths: u32,
+    /// Fight KAST (PLAN §12 step 2): fights the player was alive for, and
+    /// those where they got a kill or assist, survived, or had every death
+    /// in it traded.
+    pub fights_present: u32,
+    pub fights_kast: u32,
+    /// The same, except that surviving only counts when they fired a shot
+    /// during the fight: sitting a fight out is not a contribution.
+    pub fights_kast_engaged: u32,
 }
 
 /// The first kill of each round, for the match page.
@@ -259,6 +267,12 @@ pub fn analyse(raw: &RawLog, gs: &GameState) -> Fights {
         }
     }
 
+    for (account, (present, kast, engaged)) in fight_kast(raw, gs, &rounds, &tags) {
+        let s = stats.entry(account).or_insert_with(|| FightStats { account_id: account, ..Default::default() });
+        s.fights_present = present;
+        s.fights_kast = kast;
+        s.fights_kast_engaged = engaged;
+    }
     for (account, n) in forces(raw, gs) {
         stats.entry(account).or_insert_with(|| FightStats { account_id: account, ..Default::default() }).forces += n;
     }
@@ -273,7 +287,8 @@ pub fn analyse(raw: &RawLog, gs: &GameState) -> Fights {
 
 /// Bump to recompute every stored log's fights on the next pass.
 /// 2: deaths in context (traded, by killer group, stationary).
-pub const VERSION: i64 = 2;
+/// 3: Fight KAST.
+pub const VERSION: i64 = 3;
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -324,8 +339,78 @@ fn row(s: &FightStats) -> hl_db::FightRow {
         s.deaths_to_flank,
         s.deaths_to_combo,
         s.stationary_deaths,
+        s.fights_present,
+        s.fights_kast,
+        s.fights_kast_engaged,
     ];
     hl_db::FightRow { account_id: s.account_id, values: v.map(i64::from) }
+}
+
+/// Per player: `(fights present, KAST fights, engaged KAST fights)`.
+///
+/// A fight is a run of a round's kills with no gap over [`FIGHT_GAP_S`];
+/// it spans its first kill to its last. A player is present when alive at
+/// some point in that span (including respawning into it). Engagement is a
+/// shot fired from [`FIGHT_GAP_S`] before the first kill to the last.
+fn fight_kast(raw: &RawLog, gs: &GameState, rounds: &[(u32, Vec<usize>)], tags: &[Option<KillTags>]) -> HashMap<u32, (u32, u32, u32)> {
+    let mut shots: HashMap<u32, Vec<i64>> = HashMap::new();
+    for &(at, account) in &raw.shots {
+        shots.entry(account).or_default().push(at);
+    }
+    for v in shots.values_mut() {
+        v.sort_unstable();
+    }
+    let fired = |account: u32, from: i64, to: i64| {
+        shots.get(&account).is_some_and(|v| {
+            let i = v.partition_point(|t| *t < from);
+            v.get(i).is_some_and(|t| *t <= to)
+        })
+    };
+
+    let mut out: HashMap<u32, (u32, u32, u32)> = HashMap::new();
+    for (_, ks) in rounds {
+        // Split the round's kills into fights at the opening kills.
+        let mut fights: Vec<&[usize]> = Vec::new();
+        let mut start = 0;
+        for j in 1..=ks.len() {
+            if j == ks.len() || tags[ks[j]].is_some_and(|t| t.opening) {
+                fights.push(&ks[start..j]);
+                start = j;
+            }
+        }
+        for fight in fights {
+            let (from, to) = (raw.kills[fight[0]].at, raw.kills[fight[fight.len() - 1]].at);
+            let present: HashSet<u32> = gs.lives.iter().filter(|l| l.from <= to && l.to >= from && l.to > l.from).map(|l| l.account).collect();
+            for account in present {
+                let mut contributed = false;
+                let mut died = false;
+                let mut all_traded = true;
+                for &i in fight {
+                    let k = &raw.kills[i];
+                    if k.killer.account == account || k.assister == Some(account) {
+                        contributed = true;
+                    }
+                    if k.victim.account == account {
+                        died = true;
+                        all_traded &= tags[i].is_some_and(|t| t.death_traded);
+                    }
+                }
+                // A suicide in the fight is a death nobody trades.
+                if gs.lives.iter().any(|l| l.account == account && l.end == crate::state::LifeEnd::Suicide && l.to >= from && l.to <= to) {
+                    died = true;
+                    all_traded = false;
+                }
+                let traded = died && all_traded;
+                let kast = contributed || !died || traded;
+                let engaged = contributed || traded || (!died && fired(account, from - FIGHT_GAP_S, to));
+                let e = out.entry(account).or_default();
+                e.0 += 1;
+                e.1 += u32::from(kast);
+                e.2 += u32::from(engaged);
+            }
+        }
+    }
+    out
 }
 
 /// Whether the death at `raw.kills[i]` came near a spot the victim had
@@ -545,6 +630,22 @@ mod tests {
         assert!(!f.tags[5].unwrap().stationary, "400 units away");
         let rs = of(&f, 1);
         assert_eq!((rs.stationary_deaths, rs.deaths_to_flank), (1, 2), "a Spy is a flanker");
+    }
+
+    #[test]
+    fn fight_kast_counts_kills_survival_and_traded_deaths() {
+        let f = fights();
+        // Fight 1 (:50-:55): six players present. Red's Sniper got a kill,
+        // and his death was traded. Blue's Medic died untraded? No: traded by
+        // Blue's Demo. Blue's Sniper died untraded at :55 with no kill.
+        let rs = of(&f, 1);
+        assert_eq!((rs.fights_present, rs.fights_kast), (1, 1), "only alive for fight 1");
+        let bs = of(&f, 11);
+        assert_eq!(bs.fights_present, 1, "dead from :55, so not in fight 2");
+        assert_eq!(bs.fights_kast, 0, "died at :55 untraded without a kill in fight 1");
+        let rm = of(&f, 2);
+        assert_eq!((rm.fights_present, rm.fights_kast), (2, 2), "a kill in fight 1, survived fight 2");
+        assert_eq!(rm.fights_kast_engaged, 1, "survived fight 2 without firing a shot");
     }
 
     #[test]

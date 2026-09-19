@@ -89,16 +89,22 @@ even_margin = 5.0
 # or Soldier cost a little extra. `hl validate sniper`: 72.4% of winners
 # picked, and 71.3% on matches since Season 34 against 69.3% for v2.
 # "Stationary" deaths were tried and predict nothing, so they stay out.
+#
+# v4 (PLAN §12 step 2): Fight KAST, the share of fights with a kill, assist,
+# survival or traded death (HLTV's KAST, per fight). 73.2% of winners picked,
+# 72.3% since Season 34 against 71.3% for v3. Counting survival only after a
+# shot fired validated worse, so surviving a fight counts as it is.
+# Output (kills, DPM, deaths) 60%, impact 40%: HLTV's balance.
 [model.sniper]
-impact_kills    = 0.25
+impact_kills    = 0.20
 dpm             = 0.20
 untraded_deaths = 0.15
 opening         = 0.10
 medic_picks     = 0.10
+fight_kast      = 0.10
 flank_deaths    = 0.05
 untraded        = 0.05
 duel            = 0.05
-impact_assists  = 0.05
 
 [model.medic]
 heal           = 0.30

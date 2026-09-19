@@ -48,6 +48,7 @@ export function SeasonsPanel({ cls }: { cls: string }) {
               <th className="num" title="Deaths per 10 minutes">Deaths/10</th>
               <th className="num" title="First kills of fights: yours against you dying">Opening duels</th>
               <th className="num" title="Your kills where your team lost someone within 3 s">Traded</th>
+              <th className="num" title="Fights with a kill or assist, survival, or a traded death">Fight KAST</th>
             </tr>
           </thead>
           <tbody>
@@ -88,7 +89,7 @@ export function SeasonsPanel({ cls }: { cls: string }) {
 function Cells({ stats: s }: { stats: PeriodStats }) {
   if (s.games === 0) {
     return (
-      <td className="hint" colSpan={9}>
+      <td className="hint" colSpan={10}>
         No rated games on this class
       </td>
     );
@@ -112,6 +113,7 @@ function Cells({ stats: s }: { stats: PeriodStats }) {
       <td className="num">{num(s.deathsPer10, 1)}</td>
       <td className="num">{pct(s.openingWon)}</td>
       <td className="num">{pct(s.traded)}</td>
+      <td className="num">{pct(s.fightKast)}</td>
     </>
   );
 }

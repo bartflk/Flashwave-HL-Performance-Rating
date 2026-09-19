@@ -50,6 +50,11 @@ pub struct FightCounts {
     pub traded_deaths: u32,
     pub flank_deaths: u32,
     pub stationary_deaths: u32,
+    /// Fight KAST: fights alive for, those with a kill, assist, survival or
+    /// traded death, and the same with survival counted only after a shot.
+    pub fights_present: u32,
+    pub fights_kast: u32,
+    pub fights_kast_engaged: u32,
 }
 
 /// A victim whose class the log never named is valued like a Scout, the

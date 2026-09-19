@@ -19,7 +19,8 @@ use std::collections::HashMap;
 /// v2: Sniper reweighted against match results (DPM up, the duel and
 /// headshot share down), with opening duels and untraded kills added.
 /// v3: Sniper deaths in context: untraded deaths, deaths to flankers.
-pub const MODEL_VERSION: &str = "v3";
+/// v4: Sniper Fight KAST.
+pub const MODEL_VERSION: &str = "v4";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -46,10 +47,14 @@ pub enum Component {
     FlankDeaths,
     /// Deaths near a spot already killed from twice in the same life.
     StationaryDeaths,
+    /// Share of fights with a kill, assist, survival or traded death (PLAN §12 step 2).
+    FightKast,
+    /// The same, with survival counted only when the player fired in the fight.
+    FightKastEngaged,
 }
 
 impl Component {
-    pub const ALL: [Component; 17] = [
+    pub const ALL: [Component; 19] = [
         Component::ImpactKills,
         Component::ImpactAssists,
         Component::MedicPicks,
@@ -67,6 +72,8 @@ impl Component {
         Component::UntradedDeaths,
         Component::FlankDeaths,
         Component::StationaryDeaths,
+        Component::FightKast,
+        Component::FightKastEngaged,
     ];
 
     pub fn key(self) -> &'static str {
@@ -88,6 +95,8 @@ impl Component {
             Component::UntradedDeaths => "untraded_deaths",
             Component::FlankDeaths => "flank_deaths",
             Component::StationaryDeaths => "stationary_deaths",
+            Component::FightKast => "fight_kast",
+            Component::FightKastEngaged => "fight_kast_engaged",
         }
     }
 
@@ -114,6 +123,8 @@ impl Component {
             Component::UntradedDeaths => "Untraded deaths",
             Component::FlankDeaths => "Deaths to flankers",
             Component::StationaryDeaths => "Stationary deaths",
+            Component::FightKast => "Fight KAST",
+            Component::FightKastEngaged => "Fight KAST, engaged",
         }
     }
 
@@ -121,6 +132,7 @@ impl Component {
     pub fn unit(self) -> &'static str {
         match self {
             Component::HeadshotShare | Component::Untraded => "% of kills",
+            Component::FightKast | Component::FightKastEngaged => "% of fights",
             Component::Heal | Component::Dpm => "per min",
             Component::Opening => "net per 10 min",
             _ => "per 10 min",
@@ -208,6 +220,14 @@ pub fn extract(player: &PlayerLine, flags: &LogFlags, w: &Weights, impact: Optio
                 .map(|f| f64::from(f.deaths.saturating_sub(f.traded_deaths)) * per10),
             Component::FlankDeaths => impact.and_then(|i| i.fights).map(|f| f64::from(f.flank_deaths) * per10),
             Component::StationaryDeaths => impact.and_then(|i| i.fights).map(|f| f64::from(f.stationary_deaths) * per10),
+            Component::FightKast => impact
+                .and_then(|i| i.fights)
+                .filter(|f| f.fights_present > 0)
+                .map(|f| f64::from(f.fights_kast) / f64::from(f.fights_present) * 100.0),
+            Component::FightKastEngaged => impact
+                .and_then(|i| i.fights)
+                .filter(|f| f.fights_present > 0)
+                .map(|f| f64::from(f.fights_kast_engaged) / f64::from(f.fights_present) * 100.0),
         };
         if let Some(v) = v {
             values.push((*component, v));

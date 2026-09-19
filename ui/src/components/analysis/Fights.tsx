@@ -21,15 +21,17 @@ export function Fights({ a, player, onPick }: { a: Analysis; player: number; onP
   return (
     <div className="fights">
       <p className="hint">
-        A fight starts when nobody has died for 10 s. A kill is <strong>traded</strong> when the killer&apos;s team loses
-        someone within 3 s, and a <strong>clean-up</strong> when the killer&apos;s team was already up a player. Both
-        windows were measured on this account&apos;s 195,000 kills.
+        A fight starts when nobody has died for 10 s. <strong>Fight KAST</strong> is the share of fights a player was
+        alive for where they got a kill or assist, survived, or had their death traded. A kill is <strong>traded</strong>{" "}
+        when the killer&apos;s team loses someone within 3 s, and a <strong>clean-up</strong> when the killer&apos;s team
+        was already up a player. Both windows were measured on this account&apos;s 195,000 kills.
       </p>
       <div className="table-wrap">
         <table className="match-table fights-table">
           <thead>
             <tr>
               <th>Player</th>
+              <th className="num" title="Fights alive for where they got a kill or assist, survived, or had their death traded">Fight KAST</th>
               <th className="num" title="First kills of fights won and lost">Opening duels</th>
               <th className="num" title="First kills of rounds: got one / was one">First picks</th>
               <th className="num" title="Share of this player's kills where their team lost someone within 3 s">Traded</th>
@@ -46,7 +48,7 @@ export function Fights({ a, player, onPick }: { a: Analysis; player: number; onP
           {teams.map((team) => (
             <tbody key={team}>
               <tr className="fights-team">
-                <th colSpan={12} className={`team-${team.toLowerCase()}`}>
+                <th colSpan={13} className={`team-${team.toLowerCase()}`}>
                   {teamLabel(team)}
                 </th>
               </tr>
@@ -60,6 +62,9 @@ export function Fights({ a, player, onPick }: { a: Analysis; player: number; onP
                     <td>
                       {p.name}
                       {p.mainClass && <span className="muted"> · {capitalize(p.mainClass)}</span>}
+                    </td>
+                    <td className="num" title={`${f.fightsKast} of ${f.fightsPresent} fights`}>
+                      {pct(f.fightsKast, f.fightsPresent)}
                     </td>
                     <td className="num">
                       {f.openingKills}–{f.openingDeaths}

@@ -1216,6 +1216,45 @@ The model version is now `v3`. It predicts winners better than v2 on newer match
 
 **Open question for function:** does a Sniper who never peeks and survives every fight deserve KAST credit? HLTV says yes (survival counts). If that rewards passivity here, count survival only in fights where the Sniper fired a shot (`shot_fired`).
 
+**As built (model v4).**
+- **Parsing.** The parser now keeps every `shot_fired` line.
+- **Counting.** The fights pass (version 3) splits each round into fights with the 10 s rule, so a fight runs from its first kill to its last. A player is present if alive at any point in it, respawns included.
+- **What counts.** A fight counts toward KAST when the player got a kill or assist in it, survived it, or had every death in it traded. Suicides count as untraded deaths.
+- **Question 3 (does surviving without shooting count?).** An engaged variant counts survival only after a shot, from 10 s before the first kill.
+- **Storage.** Migration 0011 stores fights present, KAST fights and engaged KAST fights. Every log was re-read once.
+
+**Validation** (`hl validate sniper`, 693 matches):
+
+| Better at it, and their team won | |
+|---|---|
+| Fight KAST | 72.5% |
+| Fight KAST, engaged | 71.6% |
+
+Fitted with everything else, Fight KAST helps a little (+0.18, bootstrap range just above zero). It overlaps with untraded deaths. The engaged variant is unclear. **So the answer to question 3, from the data: surviving a fight counts, fired or not.**
+
+| Weighting | All | Before S34 | From S34 |
+|---|---|---|---|
+| v3 | 72.4% | 72.9% | 71.3% |
+| + Fight KAST 5% (from assists) | 72.9% | 73.3% | 71.8% |
+| **+ Fight KAST 10%** (from impact kills and assists): **v4** | **73.2%** | 73.5% | **72.3%** |
+| + Fight KAST 10%, impact kills 15%, assists kept | 73.6% | 74.1% | 72.3% |
+| + engaged Fight KAST 5% | 72.6% | 72.9% | 71.8% |
+
+v4 keeps impact kills at 20% rather than 15%. Both scored the same on newer matches, kills are the core of the job, and HLTV raised kills for the same reason.
+
+**v4 Sniper weights:**
+- **Output, 60%:** impact kills 20, DPM 20, untraded deaths 15, deaths to flankers 5. That is HLTV's 60–40 balance.
+- **Impact, 40%:** Fight KAST 10, opening duels 10, Medic picks 10, kills not traded 5, duel 5.
+
+**Effect:**
+- **The grand final:** you 62.3, angel complex 59.2.
+- **Your Sniper career:** 52.1 → 52.4. Officials 56.5.
+- **Your Fight KAST:** 85% of fights, the 54th percentile over your career against the Snipers you face.
+
+**Where it shows:** a Fight KAST column in the match page's Fights tab and in the profile's By season table, and a first line on the profile's Fights card.
+
+**Versions, renumbered again:** v4 is step 2. Step 3 will be v5, and steps 4–5 v6.
+
 #### Step 3. Kills valued by the situation (TF2's economy adjustment)
 
 **Measure first.** From the game state (§11 A), for every kill, take the players alive on each side just before it, and whether the victim's team held a ready charge. Then, per state (numbers difference −4 to +4, charge ready or not), measure how often the killing team won the fight, before and after the kill. The rise is what a kill is worth in that state.

@@ -127,6 +127,8 @@ pub struct PeriodStats {
     pub opening_won: Option<f64>,
     /// Kills traded back within 3 s, 0-1.
     pub traded: Option<f64>,
+    /// Fight KAST, 0-1.
+    pub fight_kast: Option<f64>,
 }
 
 /// Stats over the games played in `[from, to]`; `None` bounds are open.
@@ -183,6 +185,7 @@ fn ratio(n: f64, d: f64) -> Option<f64> {
 fn add_fights(p: &mut PeriodStats, t: &FightTotals) {
     p.opening_won = ratio(col(t, "opening_kills"), col(t, "opening_kills") + col(t, "opening_deaths"));
     p.traded = ratio(col(t, "traded_kills"), col(t, "kills"));
+    p.fight_kast = ratio(col(t, "fights_kast"), col(t, "fights_present"));
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -277,6 +280,14 @@ pub async fn fights_card(
         hint: hint.into(),
     };
     let lines = vec![
+        line(
+            "Fight KAST",
+            "% of fights",
+            share(&mine, "fights_kast", "fights_present"),
+            share(&pool, "fights_kast", "fights_present"),
+            1,
+            "Fights you were alive for where you got a kill or assist, survived, or had your death traded: HLTV's KAST, per fight.",
+        ),
         line(
             "Opening duels won",
             "% of fights you opened or died opening",

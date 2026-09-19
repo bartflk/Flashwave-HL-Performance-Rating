@@ -909,7 +909,7 @@
         "dmg": 10506,
         "rating": {
           "class": "sniper",
-          "score": 52.5,
+          "score": 53.3,
           "minutes": 33.2,
           "parts": [
             {
@@ -918,15 +918,7 @@
               "unit": "per 10 min",
               "raw": 13.97,
               "percentile": 42.6,
-              "weight": 0.25
-            },
-            {
-              "component": "impact_assists",
-              "label": "Impact assists",
-              "unit": "per 10 min",
-              "raw": 1.01,
-              "percentile": 53.9,
-              "weight": 0.05
+              "weight": 0.2
             },
             {
               "component": "medic_picks",
@@ -983,6 +975,14 @@
               "raw": 3.92,
               "percentile": 43.2,
               "weight": 0.05
+            },
+            {
+              "component": "fight_kast",
+              "label": "Fight KAST",
+              "unit": "% of fights",
+              "raw": 86.11,
+              "percentile": 56.4,
+              "weight": 0.1
             }
           ]
         }
@@ -998,7 +998,7 @@
         "dmg": 10801,
         "rating": {
           "class": "sniper",
-          "score": 38.0,
+          "score": 37.8,
           "minutes": 33.2,
           "parts": [
             {
@@ -1007,15 +1007,7 @@
               "unit": "per 10 min",
               "raw": 11.99,
               "percentile": 28.1,
-              "weight": 0.25
-            },
-            {
-              "component": "impact_assists",
-              "label": "Impact assists",
-              "unit": "per 10 min",
-              "raw": 2.0,
-              "percentile": 88.5,
-              "weight": 0.05
+              "weight": 0.2
             },
             {
               "component": "medic_picks",
@@ -1072,6 +1064,14 @@
               "raw": 2.11,
               "percentile": 83.3,
               "weight": 0.05
+            },
+            {
+              "component": "fight_kast",
+              "label": "Fight KAST",
+              "unit": "% of fights",
+              "raw": 86.11,
+              "percentile": 56.4,
+              "weight": 0.1
             }
           ]
         }
@@ -1080,7 +1080,7 @@
         9,
         6
       ],
-      "diff": 14.5,
+      "diff": 15.5,
       "winner": "left",
       "decisive": false,
       "involvesMe": true
@@ -1781,7 +1781,7 @@
       "cpc": 2,
       "rating": {
         "class": "sniper",
-        "score": 38.0,
+        "score": 37.8,
         "minutes": 33.2,
         "parts": [
           {
@@ -1790,15 +1790,7 @@
             "unit": "per 10 min",
             "raw": 11.99,
             "percentile": 28.1,
-            "weight": 0.25
-          },
-          {
-            "component": "impact_assists",
-            "label": "Impact assists",
-            "unit": "per 10 min",
-            "raw": 2.0,
-            "percentile": 88.5,
-            "weight": 0.05
+            "weight": 0.2
           },
           {
             "component": "medic_picks",
@@ -1855,6 +1847,14 @@
             "raw": 2.11,
             "percentile": 83.3,
             "weight": 0.05
+          },
+          {
+            "component": "fight_kast",
+            "label": "Fight KAST",
+            "unit": "% of fights",
+            "raw": 86.11,
+            "percentile": 56.4,
+            "weight": 0.1
           }
         ]
       },
@@ -2506,7 +2506,7 @@
       "cpc": 2,
       "rating": {
         "class": "sniper",
-        "score": 52.5,
+        "score": 53.3,
         "minutes": 33.2,
         "parts": [
           {
@@ -2515,15 +2515,7 @@
             "unit": "per 10 min",
             "raw": 13.97,
             "percentile": 42.6,
-            "weight": 0.25
-          },
-          {
-            "component": "impact_assists",
-            "label": "Impact assists",
-            "unit": "per 10 min",
-            "raw": 1.01,
-            "percentile": 53.9,
-            "weight": 0.05
+            "weight": 0.2
           },
           {
             "component": "medic_picks",
@@ -2580,6 +2572,14 @@
             "raw": 3.92,
             "percentile": 43.2,
             "weight": 0.05
+          },
+          {
+            "component": "fight_kast",
+            "label": "Fight KAST",
+            "unit": "% of fights",
+            "raw": 86.11,
+            "percentile": 56.4,
+            "weight": 0.1
           }
         ]
       },
@@ -4710,7 +4710,7 @@
       }
     }
   ],
-  "modelVersion": "v3",
+  "modelVersion": "v4",
   "rated": true,
   "format": "highlander",
   "league": null,

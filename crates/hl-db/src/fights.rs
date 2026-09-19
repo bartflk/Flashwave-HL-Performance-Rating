@@ -6,7 +6,7 @@ use serde::Serialize;
 use sqlx::Row;
 
 /// The counted columns of `fight_stat`, in order.
-pub const FIGHT_COLUMNS: [&str; 22] = [
+pub const FIGHT_COLUMNS: [&str; 25] = [
     "rounds",
     "kills",
     "deaths",
@@ -29,12 +29,15 @@ pub const FIGHT_COLUMNS: [&str; 22] = [
     "deaths_to_flank",
     "deaths_to_combo",
     "stationary_deaths",
+    "fights_present",
+    "fights_kast",
+    "fights_kast_engaged",
 ];
 
 /// One player's counts in one match, in [`FIGHT_COLUMNS`] order.
 pub struct FightRow {
     pub account_id: u32,
-    pub values: [i64; 22],
+    pub values: [i64; 25],
 }
 
 /// Summed counts over a set of rated performances.
@@ -157,17 +160,19 @@ impl Db {
 
     /// Per player, for every log the fights pass has read or for one log:
     /// `(account, [opening kills, opening deaths, kills, traded kills, deaths,
-    /// traded deaths, deaths to flankers, stationary deaths])`.
-    pub async fn fight_counts(&self, log_id: Option<i64>) -> Result<std::collections::HashMap<i64, Vec<(u32, [u32; 8])>>> {
+    /// traded deaths, deaths to flankers, stationary deaths, fights present,
+    /// KAST fights, engaged KAST fights])`.
+    pub async fn fight_counts(&self, log_id: Option<i64>) -> Result<std::collections::HashMap<i64, Vec<(u32, [u32; 11])>>> {
         let rows = sqlx::query(
             "SELECT log_id, account_id, opening_kills, opening_deaths, kills, traded_kills,
-                    deaths, traded_deaths, deaths_to_flank, stationary_deaths
+                    deaths, traded_deaths, deaths_to_flank, stationary_deaths,
+                    fights_present, fights_kast, fights_kast_engaged
              FROM fight_stat WHERE ?1 IS NULL OR log_id = ?1",
         )
         .bind(log_id)
         .fetch_all(self.pool())
         .await?;
-        let mut out: std::collections::HashMap<i64, Vec<(u32, [u32; 8])>> = std::collections::HashMap::new();
+        let mut out: std::collections::HashMap<i64, Vec<(u32, [u32; 11])>> = std::collections::HashMap::new();
         for r in rows {
             let n = |c: &str| r.get::<i64, _>(c) as u32;
             out.entry(r.get("log_id")).or_default().push((
@@ -181,6 +186,9 @@ impl Db {
                     n("traded_deaths"),
                     n("deaths_to_flank"),
                     n("stationary_deaths"),
+                    n("fights_present"),
+                    n("fights_kast"),
+                    n("fights_kast_engaged"),
                 ],
             ));
         }

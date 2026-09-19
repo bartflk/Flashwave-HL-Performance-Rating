@@ -465,6 +465,8 @@ export interface PeriodStats {
   openingWon: number | null;
   /** 0-1 */
   traded: number | null;
+  /** 0-1 */
+  fightKast: number | null;
 }
 
 export interface SeasonsView {
@@ -677,6 +679,11 @@ export interface FightStats {
   /** Medic, Demoman, Heavy, Pyro. */
   deathsToCombo: number;
   stationaryDeaths: number;
+  /** Fights alive for; those with a kill/assist, survival or traded death;
+   *  and the same with survival counted only after a shot. */
+  fightsPresent: number;
+  fightsKast: number;
+  fightsKastEngaged: number;
 }
 
 export interface FirstPickView {
