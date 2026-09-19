@@ -510,3 +510,90 @@ export interface RawlogStats {
   bytes: number;
   kills: number;
 }
+
+// ---- M7: match analysis ------------------------------------------------------------
+
+export interface RoundSpan {
+  roundNum: number;
+  /** Game seconds: rounds laid end to end, gaps removed. */
+  startS: number;
+  endS: number;
+}
+
+export interface AnalysisPlayer {
+  accountId: number;
+  name: string;
+  /** Stable team, whatever colour a stopwatch half wore. */
+  team: Team;
+  mainClass: string | null;
+  isMe: boolean;
+}
+
+export type Vec3 = [number, number, number];
+
+export interface KillView {
+  t: number;
+  roundNum: number;
+  killer: number;
+  victim: number;
+  assister: number | null;
+  killerClass: string | null;
+  victimClass: string | null;
+  weapon: string;
+  custom: string | null;
+  killerPos: Vec3 | null;
+  victimPos: Vec3 | null;
+  distance: number | null;
+  jump: Jump | null;
+}
+
+export interface ClassDamage {
+  accountId: number;
+  otherClass: string;
+  dealt: number;
+  taken: number;
+}
+
+export interface PlayEvent {
+  t: number;
+  roundNum: number;
+  kind: "charge" | "drop" | "pointcap" | "chat" | "streak" | string;
+  team: Team | null;
+  player: number | null;
+  text: string | null;
+  victims: number[];
+  teamChat: boolean;
+  jump: Jump | null;
+}
+
+export interface Analysis {
+  logId: number;
+  map: string | null;
+  durationS: number;
+  rounds: RoundSpan[];
+  players: AnalysisPlayer[];
+  kills: KillView[];
+  damage: ClassDamage[];
+  damageSeries: Array<{ accountId: number; buckets: number[] }>;
+  bucketS: number;
+  events: PlayEvent[];
+  hasPositions: boolean;
+  damageCapped: boolean;
+}
+
+export interface MapView {
+  mapBase: string;
+  games: number;
+  points: number;
+  /** Game units at the grid's left and top edges (game y points up). */
+  minX: number;
+  maxY: number;
+  cell: number;
+  width: number;
+  height: number;
+  /** Row-major, row 0 at the top. */
+  occupancy: number[];
+  myKills: number[];
+  myDeaths: number[];
+  myGames: number;
+}

@@ -5,6 +5,7 @@ import { formatDate, minutes, splitMap, teamLabel } from "../../lib/format";
 import { ContextBadge, kindReason } from "../ContextBadge";
 import { BoxScore } from "./BoxScore";
 import { DemoPanel } from "./DemoPanel";
+import { AnalysisPanel } from "../analysis/AnalysisPanel";
 import { Matchups } from "./Matchups";
 import { RoundTimeline } from "./RoundTimeline";
 
@@ -28,6 +29,7 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
           <Matchups d={q.data} />
           <DemoPanel d={q.data} />
           <RoundTimeline d={q.data} />
+          <AnalysisPanel d={q.data} />
           <BoxScore d={q.data} />
         </>
       )}

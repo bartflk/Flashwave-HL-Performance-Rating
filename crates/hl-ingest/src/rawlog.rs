@@ -35,6 +35,49 @@ pub struct RawLog {
     pub rounds: u32,
     /// Every `Round_Start`, in the raw log's clock.
     pub round_starts: Vec<i64>,
+    /// Every damage line: one per hit, so thousands per log. Not stored;
+    /// summed on demand for a match page.
+    pub damage: Vec<Damage>,
+}
+
+/// One hit.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Damage {
+    pub at: i64,
+    pub live: bool,
+    pub attacker: Actor,
+    pub victim: Actor,
+    /// As logged. A backstab logs six times the victim's health (1,986 on a Heavy).
+    pub amount: i64,
+}
+
+/// logs.tf counts at most this much from a single hit, which keeps a Spy's
+/// stabs from dwarfing everyone's damage. Found by matching two Spies' totals;
+/// no other cap reproduces both.
+pub const HIT_CAP: i64 = 450;
+
+/// logs.tf started capping hits between December 2014 and June 2016: on this
+/// account the 25 logs uploaded up to 2014-12-30 match only uncapped, and the
+/// 712 from 2016-06-29 on match only capped. There are no logs in between to
+/// narrow it, so the switch is put at the midpoint, 2015-09-30.
+pub const HIT_CAP_SINCE: i64 = 1_443_600_000;
+
+/// Whether logs.tf capped hits for a log uploaded at `uploaded` (unix seconds).
+pub fn hits_capped(uploaded: Option<i64>) -> bool {
+    uploaded.is_none_or(|t| t >= HIT_CAP_SINCE)
+}
+
+impl Damage {
+    /// The damage logs.tf counts: inside a round, and capped per hit on logs
+    /// where logs.tf capped. Summed per player this is logs.tf's damage dealt
+    /// exactly, on all 740 logs checked.
+    pub fn counted(&self, capped: bool) -> i64 {
+        match (self.live, capped) {
+            (false, _) => 0,
+            (true, true) => self.amount.min(HIT_CAP),
+            (true, false) => self.amount,
+        }
+    }
 }
 
 impl RawLog {
@@ -48,6 +91,9 @@ impl RawLog {
         }
         for r in &mut self.round_starts {
             *r += shift;
+        }
+        for d in &mut self.damage {
+            d.at += shift;
         }
     }
 }
@@ -168,6 +214,16 @@ pub fn parse(text: &str) -> RawLog {
                 assister: None,
                 killer_pos: prop(tail, "attacker_position").and_then(position),
                 victim_pos: prop(tail, "victim_position").and_then(position),
+            });
+        } else if let Some(r) = rest.strip_prefix(" triggered \"damage\" against ") {
+            let Some((victim, tail)) = actor(r) else { continue };
+            let Some(amount) = prop(tail, "damage").and_then(|v| v.parse().ok()) else { continue };
+            out.damage.push(Damage {
+                at,
+                live,
+                attacker: Actor { class: class.get(&who.account).copied(), ..who },
+                victim: Actor { class: class.get(&victim.account).copied(), ..victim },
+                amount,
             });
         } else if let Some(r) = rest.strip_prefix(" triggered \"kill assist\" against ") {
             let Some((victim, _)) = actor(r) else { continue };

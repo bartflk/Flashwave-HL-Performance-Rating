@@ -233,6 +233,51 @@ impl Db {
         Ok((compared, by_log))
     }
 
+    /// Maps of kept Highlander logs, as the logs spell them.
+    pub async fn kept_maps(&self) -> Result<Vec<String>> {
+        Ok(sqlx::query_scalar(&format!(
+            "SELECT DISTINCT m.map FROM match m WHERE m.map IS NOT NULL AND m.log_id IN ({WANTED})"
+        ))
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    /// Every counted kill on these maps with both players' positions:
+    /// `(log_id, killer, victim, kx, ky, vx, vy)`.
+    #[allow(clippy::type_complexity)]
+    pub async fn kill_positions(&self, maps: &[String]) -> Result<Vec<(i64, u32, u32, i32, i32, i32, i32)>> {
+        if maps.is_empty() {
+            return Ok(Vec::new());
+        }
+        let marks = vec!["?"; maps.len()].join(", ");
+        let sql = format!(
+            "SELECT k.log_id, k.killer, k.victim, k.kx, k.ky, k.vx, k.vy
+             FROM kill_event k JOIN match m ON m.log_id = k.log_id
+             WHERE m.map IN ({marks}) AND k.live = 1 AND COALESCE(k.custom, '') != 'feign_death'
+               AND k.kx IS NOT NULL AND k.vx IS NOT NULL
+               AND k.log_id IN ({WANTED})"
+        );
+        let mut q = sqlx::query(&sql);
+        for m in maps {
+            q = q.bind(m);
+        }
+        Ok(q.fetch_all(self.pool())
+            .await?
+            .into_iter()
+            .map(|r| {
+                (
+                    r.get("log_id"),
+                    r.get::<i64, _>("killer") as u32,
+                    r.get::<i64, _>("victim") as u32,
+                    r.get::<i64, _>("kx") as i32,
+                    r.get::<i64, _>("ky") as i32,
+                    r.get::<i64, _>("vx") as i32,
+                    r.get::<i64, _>("vy") as i32,
+                )
+            })
+            .collect())
+    }
+
     pub async fn rawlog_stats(&self) -> Result<RawlogStats> {
         let r = sqlx::query(&format!(
             "SELECT

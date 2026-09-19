@@ -1,0 +1,499 @@
+/* --- M7: kill by kill ------------------------------------------------------ */
+
+.analysis {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.an-head .hint {
+  margin-top: 4px;
+}
+
+.an-empty {
+  padding: 18px 0;
+}
+
+/* One filter row scopes every view below it. */
+.an-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px 18px;
+  flex-wrap: wrap;
+}
+
+.an-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.an-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.analysis select {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  max-width: 320px;
+}
+
+.an-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.an-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 8px 14px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.an-tab:hover:not(:disabled) {
+  background: none;
+  color: var(--text);
+}
+
+.an-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+/* --- kill map --- */
+
+.killmap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.km-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+.km-table-toggle {
+  margin-left: auto;
+}
+
+.km-key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  vertical-align: -1px;
+}
+
+.km-key-kill {
+  border-radius: 50%;
+  background: #5791c8;
+}
+
+/* A cross, like the mark on the map. */
+.km-key-death {
+  background:
+    linear-gradient(45deg, transparent 40%, #d6763a 40%, #d6763a 60%, transparent 60%),
+    linear-gradient(-45deg, transparent 40%, #d6763a 40%, #d6763a 60%, transparent 60%);
+}
+
+.km-canvas {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+}
+
+.km-stage {
+  position: relative;
+}
+
+.km-stage canvas,
+.km-svg {
+  position: absolute;
+  inset: 0;
+}
+
+.km-shooter {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.5;
+  opacity: 0.8;
+}
+
+/* A 2px surface ring keeps overlapping kill dots apart. */
+.km-mark {
+  stroke: var(--bg);
+  stroke-width: 2;
+}
+
+.km-tip {
+  position: absolute;
+  z-index: 3;
+  width: 240px;
+  pointer-events: none;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.84rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.km-tip-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.km-tip-jump {
+  color: var(--accent);
+  font-size: 0.78rem;
+}
+
+.km-note {
+  font-size: 0.82rem;
+}
+
+.km-strip svg {
+  display: block;
+  cursor: pointer;
+}
+
+.km-axis {
+  stroke: var(--border);
+}
+
+.km-round {
+  stroke: #3a4152;
+}
+
+.km-round-label {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+/* --- play-by-play --- */
+
+.pbp-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 6px;
+}
+
+.chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: none;
+}
+
+.chip.on {
+  color: var(--text);
+  background: var(--panel-2);
+  border-color: #3a4152;
+}
+
+.pbp-round-head {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 14px 0 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pbp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 560px;
+  overflow-y: auto;
+}
+
+.pbp-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 10px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 0.88rem;
+}
+
+.pbp-row.jumpable {
+  cursor: pointer;
+}
+
+.pbp-row.jumpable:hover {
+  background: var(--panel-2);
+}
+
+.pbp-involved {
+  background: rgba(207, 106, 50, 0.07);
+}
+
+.pbp-time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.pbp-name {
+  font-weight: 500;
+}
+
+.pbp-me {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pbp-arrow {
+  color: var(--muted);
+}
+
+.pbp-meta {
+  color: var(--muted);
+  margin-left: 8px;
+  font-size: 0.82rem;
+}
+
+.pbp-chat {
+  color: var(--text);
+}
+
+.pbp-chat,
+.pbp-chat + * {
+  word-break: break-word;
+}
+
+/* --- spread --- */
+
+.spread-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.spread-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 22px;
+  margin-top: 8px;
+}
+
+.bf-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.bf-head h3 {
+  font-size: 0.95rem;
+}
+
+.bf-legend {
+  font-size: 0.8rem;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bf-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-left: 8px;
+}
+
+.bf-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bf-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 62px minmax(0, 1fr) 52px;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+}
+
+.bf-side {
+  display: flex;
+  height: 14px;
+}
+
+.bf-l {
+  justify-content: flex-end;
+}
+
+.bf-bar {
+  height: 100%;
+  border-radius: 3px;
+  min-width: 0;
+}
+
+.bf-l .bf-bar {
+  border-radius: 3px 0 0 3px;
+}
+
+.bf-r .bf-bar {
+  border-radius: 0 3px 3px 0;
+}
+
+.bf-cls {
+  text-align: center;
+  color: var(--muted);
+}
+
+.bf-val {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.bf-val-l {
+  text-align: right;
+}
+
+.spread-foot {
+  margin-top: 12px;
+  font-size: 0.8rem;
+}
+
+/* --- timeline --- */
+
+.tlc-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px 18px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.tlc-controls .linkish {
+  margin-left: auto;
+}
+
+.tlc-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.tlc-wrap svg {
+  display: block;
+  cursor: crosshair;
+}
+
+.tlc-line {
+  fill: none;
+  stroke-linejoin: round;
+}
+
+.tl-sel {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.tl-mate {
+  stroke: rgba(230, 232, 236, 0.45);
+  stroke-width: 1;
+}
+
+.tl-foe {
+  stroke: rgba(139, 146, 159, 0.35);
+  stroke-width: 1;
+}
+
+.tlc-round {
+  stroke: #3a4152;
+}
+
+.tlc-end {
+  font-size: 12px;
+  fill: var(--text);
+}
+
+.tlc-tip {
+  width: 220px;
+  max-height: 260px;
+  overflow: hidden;
+}
+
+.tlc-tip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.tlc-tip-row.sel {
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .bf-row {
+    grid-template-columns: 40px minmax(0, 1fr) 48px minmax(0, 1fr) 40px;
+  }
+  .spread-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.km-scale {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.km-scale-bar {
+  width: 140px;
+  height: 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+/* Flex children default to min-width: auto and would grow to fit a canvas's
+   first guess at its width, so the resize observers never see the real space. */
+.analysis > *,
+.killmap > *,
+.tlc > * {
+  min-width: 0;
+}
+
+.km-canvas,
+.tlc-wrap {
+  overflow: hidden;
+}

@@ -1,4 +1,4 @@
-# HL Performance Rating System — Plan v1.0
+# HL Performance Rating System — Plan v1.1
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
 **Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
@@ -406,7 +406,7 @@ POV demos only contain what your client received, so phase 2 is you-only for loc
 | **M4** | Demos: local index, demos.tf fetch by demoid, linking, jump-back | **done** |
 | **M5** | ETF2L context, officials vs scrims split, teammate tracking | **done** |
 | **M6** | Raw logs: every kill with time, classes and positions (§9); per-side victim values | **done** |
-| **M7** | more.tf-style match views: kill map, heatmaps, damage and kill spread, timeline, play-by-play (§9) | |
+| **M7** | more.tf-style match views: kill map, heatmaps, damage and kill spread, timeline, play-by-play (§9) | **done** |
 | **v2** | Deep demo parse: aim and viewangles, engagement ranges (positions largely come from M6 now) | |
 
 M1 acceptance: every Highlander log on the account stored, classified, deduplicated, and rebuildable from raw blobs with no refetching.
@@ -428,6 +428,8 @@ M1 acceptance: every Highlander log on the account stored, classified, deduplica
 11. **Raw logs still to fetch.** 16 of the oldest logs timed out when logs.tf stopped answering; the next sync retries them.
 12. **Defending values.** Engineer 1.6 and Scout 1.0 on defence are proposed, not agreed. Worth checking with function, along with the first per-map values.
 13. **Time to first pick and picks before an uber push.** Planned for M6, not built; the data is stored.
+14. **Midfights and the uber split** as rating inputs (from M7's list): computable, not built.
+15. **Hit cap date.** logs.tf's 450 cap started somewhere between December 2014 and June 2016; this account has no logs in that window to pin it down.
 
 ---
 
@@ -512,4 +514,34 @@ We already have: class matchups, the round timeline with caps, ubers, drops and 
 5. **Heatmaps.**
 6. **Midfight winner** per round, and the **deaths before, during and after uber** split, as new rating inputs for every class.
 
-**Needed for the maps:** an overview image per map, and the transform from game coordinates to image pixels. more.tf has these. TF2's own overview files and community sets are the likely sources. Start with the competitive Highlander pool (Upward, Vigil, Swiftwater, Product, Proot, Ashville, Steel and the rest). Show a plain grid when a map has no overview.
+**Needed for the maps:** ~~an overview image per map~~. Not needed after all: see "As built (M7)".
+
+### As built (M7)
+
+A "Kill by kill" section on every match page, read from the stored raw log on demand in about 40 ms, so nothing new is stored. One filter row (player, round) scopes four views.
+
+**Maps drawn from data, not images.** Every stored kill records where both players stood. On Upward that is 38,506 positions from 94 matches, and binned top-down into a 180-cell grid they trace the map: buildings show as gaps, and the cart route and chokes as the densest cells. Versions share one outline (`pl_upward_f10` and `_f12` are both "upward"). Cells seen only once are dropped as strays. A map with fewer than 400 positions has no outline; its kills are drawn on their own frame. This needs no third-party assets and works for any map that has been played enough.
+
+**Kill map.** Kills are blue dots where the victim fell; deaths are orange crosses where the player fell. A white ring marks where the shooter stood, joined by a line. Your Sniper spots show up as clusters of rings. You can filter to one enemy (the duel view) or one round. Hovering shows who, classes, weapon, headshot, and distance in game units. Clicking copies the `demo_gototick`. A strip below places every kill and death on the match's time axis.
+
+**Heatmaps.** "Where you got kills" (your position when you got them) or "where you died", for this match or **across every stored match on the map**. For Upward that is 94 matches and 1,040 deaths. A single hue with no floor: a floor lit every cell anyone had died in and drowned the hot spots. A scale legend shows fewer to more.
+
+**Play-by-play.** Kills (from the raw log), ubers, drops and caps (from logs.tf), chat, and killstreaks (three or more kills without dying), grouped by round. You can filter by type or to rows involving the chosen player. Rows with a demo copy their tick.
+
+**Damage and kills by class.** Back-to-back bars per enemy class: taken or deaths on the left in orange, dealt or kills on the right in blue, on one scale for both sides.
+
+**Timeline.** Running kills, deaths or damage per player on game time, with the gaps between rounds removed. It is an emphasis chart: the chosen player is the accent line, their team light grey, the other team darker grey. Hovering ranks all 18 players at that moment; clicking a line picks that player for every view.
+
+**Colour.** Blue `#5791c8` means you hurt them and orange `#d6763a` means they hurt you, in every view. The pair passes the dataviz validator on the dark surface (colour-blind ΔE 19.7). The obvious green and red pair failed it (ΔE 3.0 for deuteranopes). Shape or side always backs the colour up, and every view has a table.
+
+**Damage, checked against logs.tf:**
+- Damage counts only inside a round.
+- **logs.tf caps each hit at 450.** A backstab logs six times the victim's health, so without the cap a Spy's damage doubles. The cap arrived between December 2014 and June 2016: all 25 older logs match only uncapped, and all 712 newer ones only capped. The switch is placed at the midpoint.
+- With both rules, damage dealt matches logs.tf exactly on every player of all 740 logs.
+- Damage *taken* does not always match logs.tf on combined logs; the view says so.
+
+**Not done from the M7 list:**
+- Midfight winner per round.
+- Deaths before, during and after uber as rating inputs.
+
+Both are computable from what is now stored and belong with the next rating update, not the views.

@@ -33,6 +33,9 @@ COMMANDS:
     rawlogs [--max N] [--check]
                            Fetch logs.tf raw logs and derive every kill; --check
                            compares stored kills with logs.tf's totals
+    analysis <LOG_ID> [--json]
+                           Kills, damage and play-by-play from a match's raw log
+    mapview <MAP> [--json] A map's outline from every stored kill on it
     etf2l [--offline]      Fetch ETF2L officials and classify every match (official/scrim/pug)
     teammates [--all] [--json]
                            Your teams and regular teammates (officials and scrims unless --all)
@@ -287,6 +290,70 @@ async fn main() -> Result<()> {
                 for (log_id, players) in bad.iter().take(15) {
                     println!("  {log_id}: {players}");
                 }
+            }
+            Ok(())
+        }
+
+        ["analysis", id, rest @ ..] => {
+            let log_id: i64 = id.parse().context("log id must be a number")?;
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?;
+            let started = std::time::Instant::now();
+            let a = hl_ingest::analysis::load(&db, log_id, me)
+                .await?
+                .with_context(|| format!("log {log_id} has no stored raw log"))?;
+            if rest.contains(&"--json") {
+                println!("{}", serde_json::to_string(&a)?);
+                return Ok(());
+            }
+            println!(
+                "{} kills, {} events, {} damage rows, {:.0}s of game time, built in {} ms",
+                a.kills.len(),
+                a.events.len(),
+                a.damage.len(),
+                a.duration_s,
+                started.elapsed().as_millis()
+            );
+            for r in &a.rounds {
+                println!("  round {} {:>6.0}s - {:>6.0}s", r.round_num, r.start_s, r.end_s);
+            }
+            let jumpable = a.kills.iter().filter(|k| k.jump.is_some()).count();
+            println!("jumpable kills {jumpable}; streaks {}", a.events.iter().filter(|e| e.kind == "streak").count());
+            Ok(())
+        }
+
+        ["mapview", map, rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?;
+            let Some(m) = hl_ingest::mapview::load(&db, map, me).await? else {
+                println!("too few kills on {map} to draw it");
+                return Ok(());
+            };
+            if rest.contains(&"--json") {
+                println!("{}", serde_json::to_string(&m)?);
+                return Ok(());
+            }
+            println!(
+                "{}: {} games, {} positions, {}x{} cells of {:.0} units; your games {}",
+                m.map_base, m.games, m.points, m.width, m.height, m.cell, m.my_games
+            );
+            // A coarse ASCII preview, every third cell.
+            let max = *m.occupancy.iter().max().unwrap_or(&1) as f64;
+            for y in (0..m.height).step_by(3) {
+                let row: String = (0..m.width)
+                    .step_by(2)
+                    .map(|x| {
+                        let n = m.occupancy[y * m.width + x] as f64;
+                        match (n.ln_1p() / max.ln_1p() * 4.0) as usize {
+                            0 => ' ',
+                            1 => '.',
+                            2 => ':',
+                            3 => '*',
+                            _ => '#',
+                        }
+                    })
+                    .collect();
+                println!("{row}");
             }
             Ok(())
         }

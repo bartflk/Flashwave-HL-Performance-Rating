@@ -263,6 +263,24 @@ pub async fn get_teammates(state: State<'_, AppState>, all: bool) -> CmdResult<h
     Ok(hl_ingest::teammates::load(&state.db, me, scope).await?)
 }
 
+/// The analysis views for one match, built from its raw log. `None` without one.
+#[tauri::command]
+pub async fn get_match_analysis(
+    state: State<'_, AppState>,
+    log_id: i64,
+) -> CmdResult<Option<hl_ingest::analysis::Analysis>> {
+    let me = state.db.get_me().await?;
+    Ok(hl_ingest::analysis::load(&state.db, log_id, me).await?)
+}
+
+/// A map's outline from every stored kill on it, plus your own kill and death
+/// spots across all your matches there. `None` with too few kills.
+#[tauri::command]
+pub async fn get_map_view(state: State<'_, AppState>, map: String) -> CmdResult<Option<hl_ingest::mapview::MapView>> {
+    let me = state.db.get_me().await?;
+    Ok(hl_ingest::mapview::load(&state.db, &map, me).await?)
+}
+
 #[tauri::command]
 pub async fn rawlog_stats(state: State<'_, AppState>) -> CmdResult<hl_db::RawlogStats> {
     Ok(state.db.rawlog_stats().await?)

@@ -292,3 +292,29 @@ pub async fn fetch_stv(
 
     Ok(StvFetched { demo_id, file_name: f.file_name, bytes, log_share })
 }
+
+/// Turns a moment in a log (logs.tf's round-time frame) into a demo tick, in
+/// the first linked demo that holds it.
+pub struct Jumper {
+    demos: Vec<LinkedDemo>,
+    offset: i64,
+}
+
+impl Jumper {
+    /// `lead_s` seconds early, to show the lead-up.
+    pub fn at(&self, log_time: i64, lead_s: f64) -> Option<Jump> {
+        self.demos.iter().find_map(|d| {
+            let tick = tick_for(log_time, self.offset, d.start_utc?, d.tick_rate?, d.ticks, lead_s)?;
+            Some(Jump { demo_id: d.demo_id, tick })
+        })
+    }
+}
+
+/// `None` when the log has no linked demo or is not on the real clock.
+pub async fn jumper(db: &Db, log_id: i64) -> Result<Option<Jumper>> {
+    let demos = db.demos_for_log(log_id).await?;
+    if demos.is_empty() {
+        return Ok(None);
+    }
+    Ok(db.log_clock_offset(log_id).await?.map(|offset| Jumper { demos, offset }))
+}

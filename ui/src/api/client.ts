@@ -3,6 +3,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import type {
+  Analysis,
   AppConfig,
   AppStatus,
   CmdError,
@@ -11,6 +12,7 @@ import type {
   DemoIndexSummary,
   DemoStats,
   IndexStats,
+  MapView,
   MatchDetail,
   MatchPage,
   MatchQuery,
@@ -59,6 +61,10 @@ const realApi = {
   getTeammates: (all: boolean) => invoke<Teammates>("get_teammates", { all }),
   contextCounts: () => invoke<ContextCounts>("context_counts"),
   rawlogStats: () => invoke<RawlogStats>("rawlog_stats"),
+  /** Null when the match's raw log is not stored. */
+  getMatchAnalysis: (logId: number) => invoke<Analysis | null>("get_match_analysis", { logId }),
+  /** Null when too few kills are stored on the map to draw it. */
+  getMapView: (map: string) => invoke<MapView | null>("get_map_view", { map }),
   /** Opens in the system browser, never inside the app window. */
   openExternal: (url: string) => openUrl(url),
   copyText: (text: string) => writeText(text),

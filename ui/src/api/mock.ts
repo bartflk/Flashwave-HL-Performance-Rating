@@ -11,13 +11,17 @@ import match4111116 from "./fixtures/match_4111116.json";
 import profileSniper from "./fixtures/profile_sniper.json";
 import profileEngineer from "./fixtures/profile_engineer.json";
 import teammatesTeam from "./fixtures/teammates_team.json";
+import analysis4109131 from "./fixtures/analysis_4109131.json";
+import mapviewUpward from "./fixtures/mapview_upward.json";
 import teammatesAll from "./fixtures/teammates_all.json";
 import type {
+  Analysis,
   AppConfig,
   AppStatus,
   ContextKind,
   IndexStats,
   MatchContext,
+  MapView,
   MatchDetail,
   MatchPage,
   MatchQuery,
@@ -339,6 +343,12 @@ export const mockApi: Api = {
       profile: trend.length === 0 ? null : { ...p, filter: kind, games: trend.length, trend, best: only(p.best), worst: only(p.worst) },
     });
   },
+
+  // One real analysis (the TWS official on Upward); every match opens it.
+  getMatchAnalysis: (logId: number) =>
+    delay({ ...(analysis4109131 as unknown as Analysis), logId }, 200),
+  getMapView: (map: string) =>
+    delay(map.includes("upward") ? (mapviewUpward as unknown as MapView) : null, 150),
 
   rawlogStats: () => delay({ stored: 740, pending: 16, missing: 2, bytes: 79_900_000, kills: 226_784 }),
 

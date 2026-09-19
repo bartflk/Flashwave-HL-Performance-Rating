@@ -12,7 +12,8 @@ fn fixture(name: &str) -> Vec<u8> {
     std::fs::read(&path).expect(&path)
 }
 
-fn check(log_id: i64) {
+fn check(log_id: i64, uploaded: i64) {
+    let capped = hl_ingest::rawlog::hits_capped(Some(uploaded));
     let raw: RawLog = parse(&unzip(&fixture(&format!("log_{log_id}.log.zip"))).unwrap());
     let want: Value = serde_json::from_slice(&fixture(&format!("logstf_totals_{log_id}.json"))).unwrap();
 
@@ -27,6 +28,10 @@ fn check(log_id: i64) {
         let class = if class == "heavy" { "heavyweapons" } else { class };
         *by_class.entry(id).or_default().entry(class.to_string()).or_default() += 1;
     }
+    let mut dealt: BTreeMap<String, i64> = BTreeMap::new();
+    for d in &raw.damage {
+        *dealt.entry(format!("[U:1:{}]", d.attacker.account)).or_default() += d.counted(capped);
+    }
     for k in raw.kills.iter().filter(|k| k.assist_counts()) {
         *assists.entry(format!("[U:1:{}]", k.assister.unwrap())).or_default() += 1;
     }
@@ -40,15 +45,16 @@ fn check(log_id: i64) {
             .unwrap_or_default();
         assert_eq!(by_class.get(id).cloned().unwrap_or_default(), ck, "{log_id} classkills of {id}");
         assert_eq!(assists.get(id).copied().unwrap_or(0), p["assists"].as_i64().unwrap(), "{log_id} assists of {id}");
+        assert_eq!(dealt.get(id).copied().unwrap_or(0), p["dmg"].as_i64().unwrap(), "{log_id} damage of {id}");
     }
 }
 
 #[test]
 fn kills_match_logstf_on_a_2026_scrim() {
-    check(4121291);
+    check(4121291, 1_789_502_845);
 }
 
 #[test]
 fn kills_match_logstf_on_a_2014_lobby() {
-    check(513611);
+    check(513611, 1_414_159_702);
 }
