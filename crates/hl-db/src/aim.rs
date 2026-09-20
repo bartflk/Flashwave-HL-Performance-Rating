@@ -44,6 +44,8 @@ pub struct AimRow {
     pub demo_id: i64,
     pub tick: i64,
     pub at_raw: Option<i64>,
+    /// The round it happened in, where the log's rounds cover it.
+    pub round_num: Option<i64>,
     pub victim: Option<u32>,
     pub error_deg: f64,
     pub before_deg: f64,
@@ -67,6 +69,8 @@ pub struct DeathRow {
     pub demo_id: i64,
     pub tick: i64,
     pub at_raw: Option<i64>,
+    /// The round it happened in, where the log's rounds cover it.
+    pub round_num: Option<i64>,
     pub killer: Option<u32>,
     pub killer_range: Option<f64>,
     pub nearest_mate: Option<f64>,
@@ -189,8 +193,12 @@ impl Db {
 
     pub async fn deaths_for_log(&self, log_id: i64) -> Result<Vec<DeathRow>> {
         let rows = sqlx::query(
-            "SELECT demo_id, tick, at_raw, killer, killer_range, nearest_mate, mates_near, scoped
-             FROM demo_death WHERE log_id = ?1 ORDER BY tick",
+            "SELECT d.demo_id, d.tick, d.at_raw, d.killer, d.killer_range, d.nearest_mate,
+                    d.mates_near, d.scoped,
+                    (SELECT r.round_num FROM match_round r
+                      WHERE r.log_id = d.log_id
+                        AND d.at_raw BETWEEN r.start_time AND r.start_time + r.length_s) AS round_num
+             FROM demo_death d WHERE d.log_id = ?1 ORDER BY d.tick",
         )
         .bind(log_id)
         .fetch_all(self.pool())
@@ -201,6 +209,7 @@ impl Db {
                 demo_id: r.get("demo_id"),
                 tick: r.get("tick"),
                 at_raw: r.get("at_raw"),
+                round_num: r.get("round_num"),
                 killer: r.get::<Option<i64>, _>("killer").map(|v| v as u32),
                 killer_range: r.get("killer_range"),
                 nearest_mate: r.get("nearest_mate"),
@@ -283,9 +292,13 @@ impl Db {
 
     pub async fn aim_for_log(&self, log_id: i64) -> Result<Vec<AimRow>> {
         let rows = sqlx::query(
-            "SELECT demo_id, tick, at_raw, victim, error_deg, before_deg, flick_deg,
-                    range_units, height, victim_seen, headshot, dx_deg, dy_deg, before_dx_deg, before_dy_deg
-             FROM demo_aim WHERE log_id = ?1 ORDER BY tick",
+            "SELECT a.demo_id, a.tick, a.at_raw, a.victim, a.error_deg, a.before_deg, a.flick_deg,
+                    a.range_units, a.height, a.victim_seen, a.headshot,
+                    a.dx_deg, a.dy_deg, a.before_dx_deg, a.before_dy_deg,
+                    (SELECT r.round_num FROM match_round r
+                      WHERE r.log_id = a.log_id
+                        AND a.at_raw BETWEEN r.start_time AND r.start_time + r.length_s) AS round_num
+             FROM demo_aim a WHERE a.log_id = ?1 ORDER BY a.tick",
         )
         .bind(log_id)
         .fetch_all(self.pool())
@@ -331,6 +344,7 @@ fn row(r: sqlx::sqlite::SqliteRow) -> AimRow {
         demo_id: r.get("demo_id"),
         tick: r.get("tick"),
         at_raw: r.get("at_raw"),
+        round_num: r.get("round_num"),
         victim: r.get::<Option<i64>, _>("victim").map(|v| v as u32),
         error_deg: r.get("error_deg"),
         before_deg: r.get("before_deg"),

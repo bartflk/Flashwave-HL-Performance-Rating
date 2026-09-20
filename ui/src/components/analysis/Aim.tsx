@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type Analysis, type AimRow, type AimTotals, type DeathRow, type LifeTotals } from "../../api/types";
 import { AimCharts } from "./AimCharts";
-import { playerMap } from "./common";
+import { playerMap, type Slice } from "./common";
 
 /**
  * Your aim, read from the match's own demo (PLAN §14).
@@ -12,9 +12,12 @@ import { playerMap } from "./common";
  * the demo carried both players through get an answer, so a Spy killed round
  * a corner is left out.
  */
-export function Aim({ a, logId }: { a: Analysis; logId: number }) {
+export function Aim({ a, logId, slice }: { a: Analysis; logId: number; slice: Slice }) {
   const q = useQuery({ queryKey: ["aim", logId], queryFn: () => api.getAim(logId) });
   const names = playerMap(a);
+  // The filter row above applies here too: a round, or a map of a combined
+  // log, narrows the kills and deaths the demo is read for.
+  const inSlice = (round: number | null) => slice.rounds === null || (round !== null && slice.rounds.has(round));
 
   if (q.isPending) return <p className="hint an-empty">Reading the demo…</p>;
   if (q.isError) return <p className="error">{errorMessage(q.error)}</p>;
@@ -28,12 +31,23 @@ export function Aim({ a, logId }: { a: Analysis; logId: number }) {
     );
   }
 
-  const kills = [...d.kills].sort((x, y) => x.tick - y.tick);
+  const kills = d.kills.filter((k) => inSlice(k.roundNum)).sort((x, y) => x.tick - y.tick);
+  const deaths = d.deaths.filter((k) => inSlice(k.roundNum));
+  const filtered = slice.rounds !== null;
+  if (kills.length === 0 && deaths.length === 0) {
+    return <p className="hint an-empty">No kills or deaths of yours in this round.</p>;
+  }
 
   return (
     <div className="aim">
-      {d.totals && <Summary t={d.totals} career={d.career} life={d.life} careerLife={d.careerLife} />}
-      <AimCharts kills={kills} deaths={d.deaths} />
+      {d.totals && !filtered && <Summary t={d.totals} career={d.career} life={d.life} careerLife={d.careerLife} />}
+      {filtered && (
+        <p className="hint">
+          {kills.length} kill{kills.length === 1 ? "" : "s"} and {deaths.length} death
+          {deaths.length === 1 ? "" : "s"} in this round. The cards above the tabs cover the whole match.
+        </p>
+      )}
+      <AimCharts kills={kills} deaths={deaths} />
       <details className="aim-details">
         <summary>Every kill, in numbers</summary>
         <div className="table-wrap">
@@ -86,10 +100,10 @@ export function Aim({ a, logId }: { a: Analysis; logId: number }) {
         </table>
         </div>
       </details>
-      {d.deaths.length > 0 && (
+      {deaths.length > 0 && (
         <details className="aim-details">
           <summary>Every death, in numbers</summary>
-          <Deaths rows={d.deaths} names={names} />
+          <Deaths rows={deaths} names={names} />
         </details>
       )}
       <p className="hint aim-foot">

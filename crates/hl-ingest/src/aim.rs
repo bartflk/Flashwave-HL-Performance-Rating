@@ -190,6 +190,8 @@ fn death_row(d: &AimDeath) -> hl_db::DeathRow {
         demo_id: d.demo_id,
         tick: i64::from(d.death.tick),
         at_raw: d.at_raw,
+        // The round is read back from the log's windows, not stored.
+        round_num: None,
         killer: d.killer,
         killer_range: d.death.killer_range.map(f64::from),
         nearest_mate: d.death.nearest_mate.map(f64::from),
@@ -203,6 +205,7 @@ fn store_row(k: &AimKill) -> hl_db::AimRow {
         demo_id: k.demo_id,
         tick: i64::from(k.shot.tick),
         at_raw: k.at_raw,
+        round_num: None,
         victim: k.victim,
         error_deg: f64::from(k.shot.error_deg),
         before_deg: f64::from(k.shot.error_before_deg),

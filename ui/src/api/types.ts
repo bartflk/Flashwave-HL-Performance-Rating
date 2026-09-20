@@ -829,6 +829,8 @@ export interface AimRow {
   tick: number;
   /** The matching kill in the log's clock, where the log had one. */
   atRaw: number | null;
+  /** The round it happened in, where the log's rounds cover it. */
+  roundNum: number | null;
   victim: number | null;
   /** View to the victim's head when the kill landed, and a second before. */
   errorDeg: number;
@@ -865,6 +867,8 @@ export interface DeathRow {
   demoId: number;
   tick: number;
   atRaw: number | null;
+  /** The round it happened in, where the log's rounds cover it. */
+  roundNum: number | null;
   killer: number | null;
   /** How far away the killer was; null when the demo never carried them. */
   killerRange: number | null;
