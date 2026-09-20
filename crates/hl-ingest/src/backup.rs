@@ -50,7 +50,7 @@ pub fn list(db_path: &Path) -> Vec<Backup> {
             })
         })
         .collect();
-    out.sort_by(|a, b| b.made_at.cmp(&a.made_at));
+    out.sort_by_key(|b| std::cmp::Reverse(b.made_at));
     out
 }
 
