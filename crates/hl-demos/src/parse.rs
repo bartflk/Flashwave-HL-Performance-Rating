@@ -72,6 +72,13 @@ impl Scan {
     }
 }
 
+/// A view direction as a unit-ish vector, from Source's yaw and pitch in
+/// degrees. Pitch is positive looking down, so its sign flips here.
+pub fn view_dir(yaw: f32, pitch: f32) -> [f32; 3] {
+    let (y, p) = (yaw.to_radians(), pitch.to_radians());
+    [p.cos() * y.cos(), p.cos() * y.sin(), -p.sin()]
+}
+
 /// Walk `path`, sampling every `stride` ticks. `steamid64` picks whose
 /// samples come back; `None` collects none, which is the fastest way to see
 /// who is in a demo.

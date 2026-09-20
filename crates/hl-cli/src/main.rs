@@ -47,6 +47,8 @@ COMMANDS:
                            What a kill is worth by numbers and uber advantage
                            (PLAN §12 step 3); --toml prints the [situation] table
                            (from winning the fight, or the round)
+    aim <LOG_ID> [--json]  Your aim behind every kill in a match, from its demo:
+                           crosshair error, flick and range (PLAN §14)
     demo <PATH> [--stride N] [--json]
                            Read a demo's packets: who is in it, and where you
                            stood and looked (PLAN §14)
@@ -409,6 +411,76 @@ async fn main() -> Result<()> {
             print!("{t}");
             println!("
 ({:.1}s)", started.elapsed().as_secs_f64());
+            Ok(())
+        }
+
+        // PLAN §14: the aim behind every kill of yours in one match.
+        ["aim", log_id, rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?.context("no owner set")?;
+            let started = std::time::Instant::now();
+            let report = hl_ingest::aim::for_log(&db, log_id.parse()?, me).await?;
+            if rest.contains(&"--json") {
+                println!("{}", serde_json::to_string(&report)?);
+                return Ok(());
+            }
+            let kills = &report.kills;
+            if kills.is_empty() {
+                println!("No aim to read: no demo is linked to this match, or you are not in it.");
+                return Ok(());
+            }
+            println!(
+                "{} of your {} kills in this match are in the demo, read in {:.1}s{}\n",
+                kills.len(),
+                report.log_kills,
+                started.elapsed().as_secs_f64(),
+                if report.other_matches > 0 {
+                    format!(
+                        "\n({} more kills in the recording belong to another match in it)",
+                        report.other_matches
+                    )
+                } else {
+                    String::new()
+                }
+            );
+            println!(
+                "{:<18} {:<9} {:>7} {:>7} {:>7} {:>7} {:>7}  weapon",
+                "victim", "class", "error", "1s", "flick", "range", "height"
+            );
+            for k in kills {
+                let name: String = k
+                    .victim_name
+                    .clone()
+                    .unwrap_or_else(|| k.shot.victim.clone())
+                    .chars()
+                    .take(17)
+                    .collect();
+                let seen = if k.shot.victim_seen { "" } else { "  (not carried by the demo)" };
+                println!(
+                    "{:<18} {:<9} {:>6.1}° {:>6.1}° {:>6.1}° {:>7.0} {:>7.0}  {}{}",
+                    name,
+                    k.victim_class.clone().unwrap_or_default(),
+                    k.shot.error_deg,
+                    k.shot.error_before_deg,
+                    k.shot.flick_deg,
+                    k.shot.range,
+                    k.shot.height,
+                    if k.headshot { format!("{} (hs)", k.shot.weapon) } else { k.shot.weapon.clone() },
+                    seen
+                );
+            }
+            let seen: Vec<_> = kills.iter().filter(|k| k.shot.victim_seen).collect();
+            if !seen.is_empty() {
+                let mean = |f: fn(&&hl_ingest::aim::AimKill) -> f32| seen.iter().map(f).sum::<f32>() / seen.len() as f32;
+                println!(
+                    "\n{} kills with both players on screen: crosshair {:.1}° off at the shot, {:.1}° a second before, {:.1}° of flick, {:.0} units away.",
+                    seen.len(),
+                    mean(|k| k.shot.error_deg),
+                    mean(|k| k.shot.error_before_deg),
+                    mean(|k| k.shot.flick_deg),
+                    mean(|k| k.shot.range),
+                );
+            }
             Ok(())
         }
 

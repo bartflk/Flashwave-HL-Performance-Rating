@@ -51,6 +51,9 @@ pub struct ClockRow {
 #[serde(rename_all = "camelCase")]
 pub struct LinkedDemo {
     pub demo_id: i64,
+    /// Where the file is on this machine. Not sent to the UI.
+    #[serde(skip)]
+    pub path: String,
     pub file_name: String,
     pub playdemo_arg: String,
     pub kind: String,
@@ -278,7 +281,7 @@ impl Db {
 
     pub async fn demos_for_log(&self, log_id: i64) -> Result<Vec<LinkedDemo>> {
         let rows = sqlx::query(
-            "SELECT d.demo_id, d.file_name, d.playdemo_arg, d.kind, d.recorder, d.size_bytes,
+            "SELECT d.demo_id, d.path, d.file_name, d.playdemo_arg, d.kind, d.recorder, d.size_bytes,
                     d.playback_s, d.ticks, d.tick_rate, d.start_utc, d.filename_time,
                     l.method, l.log_share
              FROM demo_link l JOIN demo d ON d.demo_id = l.demo_id
@@ -301,6 +304,7 @@ impl Db {
                 .collect();
             out.push(LinkedDemo {
                 demo_id,
+                path: r.get("path"),
                 file_name: r.get("file_name"),
                 playdemo_arg: r.get("playdemo_arg"),
                 kind: r.get("kind"),

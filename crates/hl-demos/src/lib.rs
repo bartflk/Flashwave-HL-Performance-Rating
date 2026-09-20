@@ -3,6 +3,7 @@
 //! v1 is index-only — the 1072-byte header, the file's timestamps and the Demo
 //! Support sidecar. No packet parsing; that is v2.
 
+pub mod aim;
 pub mod header;
 pub mod link;
 pub mod parse;

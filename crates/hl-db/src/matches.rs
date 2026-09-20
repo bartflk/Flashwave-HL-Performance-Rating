@@ -683,6 +683,16 @@ impl Db {
         Ok(MatchPage { total, items })
     }
 
+    /// Every player's name in one match, by account id.
+    pub async fn player_names(&self, log_id: i64) -> Result<HashMap<u32, String>> {
+        let rows: Vec<(i64, Option<String>)> =
+            sqlx::query_as("SELECT account_id, name FROM match_player WHERE log_id = ?1")
+                .bind(log_id)
+                .fetch_all(self.pool())
+                .await?;
+        Ok(rows.into_iter().filter_map(|(id, name)| Some((id as u32, name?))).collect())
+    }
+
     /// The per-round logs a combined log replaced, oldest first.
     pub async fn parts_of(&self, log_id: i64) -> Result<Vec<PartSummary>> {
         let rows = sqlx::query(
