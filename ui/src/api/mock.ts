@@ -392,8 +392,8 @@ export const mockApi: Api = {
     // shape of it: a smaller sample than the rating's.
     const aim = { kills: 312, errorDeg: 5.8, beforeDeg: 15.2, flickDeg: 10.4, rangeUnits: 1147, heldShare: 0.24, biasX: 0.6, biasY: 2.4 };
     const aimAll = { kills: 496, errorDeg: 6.3, beforeDeg: 16.5, flickDeg: 11.1, rangeUnits: 1096, heldShare: 0.22, biasX: 0.8, biasY: 2.9 };
-    const life = { scopedShare: 0.23, minutes: 412, deaths: 218, nearestMate: 502, aloneShare: 0.08, scopedShareDeaths: 0.51 };
-    const lifeAll = { scopedShare: 0.21, minutes: 640, deaths: 354, nearestMate: 449, aloneShare: 0.1, scopedShareDeaths: 0.49 };
+    const life = { scopedShare: 0.23, minutes: 412, deaths: 218, nearestMate: 502, aloneShare: 0.08, scopedShareDeaths: 0.51, behindShare: 0.28 };
+    const lifeAll = { scopedShare: 0.21, minutes: 640, deaths: 354, nearestMate: 449, aloneShare: 0.1, scopedShareDeaths: 0.49, behindShare: 0.31 };
     const byClass: Record<string, ProfileResponse> = {
       sniper: { ...(profileSniper as unknown as ProfileResponse), fights, aim, life, aimAll, lifeAll },
       engineer: { ...(profileEngineer as unknown as ProfileResponse), fights: null, aim: null, life: null, aimAll: null, lifeAll: null },
@@ -470,6 +470,9 @@ export const mockApi: Api = {
       roundNum: 1 + (i % 5),
       killer: null,
       killerRange: r() < 0.3 ? null : 200 + r() * 1_600,
+      // Most deaths come from ahead, a third from beside or behind.
+      killerDxDeg: (r() < 0.33 ? 90 + r() * 90 : r() * 60) * (r() < 0.5 ? 1 : -1),
+      killerDyDeg: (r() - 0.5) * 30,
       nearestMate: 100 + r() * 1_400,
       matesNear: r() < 0.15 ? 0 : 1 + Math.floor(r() * 3),
       scoped: r() < 0.5,
@@ -481,6 +484,7 @@ export const mockApi: Api = {
       nearestMate: deaths.reduce((n, d) => n + (d.nearestMate ?? 0), 0) / deaths.length,
       aloneShare: deaths.filter((d) => d.matesNear === 0).length / deaths.length,
       scopedShareDeaths: deaths.filter((d) => d.scoped).length / deaths.length,
+      behindShare: deaths.filter((d) => Math.abs(d.killerDxDeg) > 90).length / deaths.length,
     };
     return delay(
       {
@@ -489,7 +493,7 @@ export const mockApi: Api = {
         totals,
         life,
         career: { ...totals, errorDeg: 2.1, beforeDeg: 16.5, flickDeg: 11.1, rangeUnits: 1096, heldShare: 0.22, biasX: 0.8, biasY: 2.9 },
-        careerLife: { ...life, scopedShare: 0.21, nearestMate: 449, aloneShare: 0.1, scopedShareDeaths: 0.49 },
+        careerLife: { ...life, scopedShare: 0.21, nearestMate: 449, aloneShare: 0.1, scopedShareDeaths: 0.49, behindShare: 0.31 },
       },
       200,
     );

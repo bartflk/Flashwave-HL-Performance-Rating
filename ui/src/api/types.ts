@@ -874,6 +874,10 @@ export interface DeathRow {
   killer: number | null;
   /** How far away the killer was; null when the demo never carried them. */
   killerRange: number | null;
+  /** Where they were relative to your view: right, and above. 180 sideways
+   *  is directly behind you. Null when the demo never carried them. */
+  killerDxDeg: number | null;
+  killerDyDeg: number | null;
   /** Distance to the closest living teammate, and how many were within 900. */
   nearestMate: number | null;
   matesNear: number;
@@ -890,6 +894,8 @@ export interface LifeTotals {
   /** Share of deaths with nobody within 900 units, and with you scoped. */
   aloneShare: number;
   scopedShareDeaths: number;
+  /** Share of deaths where the killer was over 90° from your crosshair. */
+  behindShare: number | null;
 }
 
 export interface AimResponse {

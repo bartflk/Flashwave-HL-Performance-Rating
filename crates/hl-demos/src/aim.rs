@@ -78,6 +78,11 @@ pub struct Death {
     /// (`None` when the demo never carried them: the usual case for a Spy).
     pub killer: String,
     pub killer_range: Option<f32>,
+    /// Where they were relative to where you were looking, in degrees:
+    /// positive is to your right, and above your crosshair. 180 sideways is
+    /// directly behind you. `None` when the demo never carried them.
+    pub killer_dx_deg: Option<f32>,
+    pub killer_dy_deg: Option<f32>,
     /// The nearest living teammate, and how many were within
     /// [`MATE_NEAR_UNITS`]. `None` when the demo carried no teammate at all.
     pub nearest_mate: Option<f32>,
@@ -196,11 +201,10 @@ fn death_for(recent: &VecDeque<Frame>, me: &str, attacker: u16, victim: u16) -> 
     }
     let (pos, ..) = now.me?;
     let killer = now.user_ids.get(&attacker).cloned().unwrap_or_default();
-    let killer_range = now
-        .others
-        .get(&attacker)
-        .filter(|(_, seen)| *seen)
-        .map(|&(p, _)| dist(pos, p));
+    let (_, yaw, pitch) = now.me?;
+    let killer_seen = now.others.get(&attacker).filter(|(_, seen)| *seen).map(|&(p, _)| p);
+    let killer_range = killer_seen.map(|p| dist(pos, p));
+    let killer_offset = killer_seen.map(|p| offset_to(pos, yaw, pitch, p));
     let mut nearest: Option<f32> = None;
     let mut near = 0u8;
     for &m in &now.mates {
@@ -211,7 +215,16 @@ fn death_for(recent: &VecDeque<Frame>, me: &str, attacker: u16, victim: u16) -> 
         }
     }
     let scoped = recent.iter().any(|f| f.scoped);
-    Some(Death { tick: now.tick, killer, killer_range, nearest_mate: nearest, mates_near: near, scoped })
+    Some(Death {
+        tick: now.tick,
+        killer,
+        killer_range,
+        killer_dx_deg: killer_offset.map(|(x, _)| x),
+        killer_dy_deg: killer_offset.map(|(_, y)| y),
+        nearest_mate: nearest,
+        mates_near: near,
+        scoped,
+    })
 }
 
 struct Frame {
@@ -437,6 +450,9 @@ mod tests {
         let d = death_for(&recent, me, 2, 1).expect("our death");
         assert_eq!(d.killer, "[U:1:2]");
         assert_eq!(d.killer_range, Some(500.0));
+        // They were straight ahead: no angle either way.
+        assert!(d.killer_dx_deg.is_some_and(|x| x.abs() < 0.01), "{:?}", d.killer_dx_deg);
+        assert!(d.killer_dy_deg.is_some_and(|y| y.abs() < 0.2), "{:?}", d.killer_dy_deg);
         assert_eq!(d.nearest_mate, Some(300.0));
         assert_eq!(d.mates_near, 1, "the other teammate is 2,000 units away");
         assert!(d.scoped);

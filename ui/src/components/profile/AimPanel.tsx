@@ -42,6 +42,15 @@ export function AimPanel(props: {
       },
       { label: "Died alone", value: `${(life.aloneShare * 100).toFixed(0)}%`, note: "with nobody within 900 units", usual: lifeAll ? `${(lifeAll.aloneShare * 100).toFixed(0)}%` : null, better: "low", here: life.aloneShare, all: lifeAll?.aloneShare },
       { label: "Scoped when you died", value: `${(life.scopedShareDeaths * 100).toFixed(0)}%`, note: "in the second before it", usual: lifeAll ? `${(lifeAll.scopedShareDeaths * 100).toFixed(0)}%` : null },
+      {
+        label: "Never saw them",
+        value: life.behindShare === null ? "—" : `${(life.behindShare * 100).toFixed(0)}%`,
+        note: "killed from more than 90° off your crosshair",
+        usual: lifeAll?.behindShare != null ? `${(lifeAll.behindShare * 100).toFixed(0)}%` : null,
+        better: "low",
+        here: life.behindShare ?? undefined,
+        all: lifeAll?.behindShare ?? undefined,
+      },
     );
   }
 

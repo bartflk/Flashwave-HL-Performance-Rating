@@ -948,3 +948,22 @@
 .board-read dd {
   margin: 0;
 }
+
+/* Seen from above: the wedge is roughly what the screen showed. */
+.board-fov {
+  fill: rgba(87, 145, 200, 0.12);
+  stroke: rgba(87, 145, 200, 0.3);
+}
+
+.board-you {
+  fill: #f2e6d9;
+}
+
+.board-dot-fov {
+  background: rgba(87, 145, 200, 0.35);
+  border: 1px solid rgba(87, 145, 200, 0.6);
+}
+
+.death-board {
+  width: 320px;
+}

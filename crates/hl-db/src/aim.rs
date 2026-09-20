@@ -73,6 +73,9 @@ pub struct DeathRow {
     pub round_num: Option<i64>,
     pub killer: Option<u32>,
     pub killer_range: Option<f64>,
+    /// Where they were relative to your view, degrees: right, and above.
+    pub killer_dx_deg: Option<f64>,
+    pub killer_dy_deg: Option<f64>,
     pub nearest_mate: Option<f64>,
     pub mates_near: i64,
     pub scoped: bool,
@@ -92,6 +95,9 @@ pub struct LifeTotals {
     /// player scoped at the time.
     pub alone_share: f64,
     pub scoped_share_deaths: f64,
+    /// Share of deaths where the killer was more than 90 degrees from where
+    /// you were looking: they were beside or behind you.
+    pub behind_share: Option<f64>,
 }
 
 /// Averages over the kills a demo could answer for.
@@ -160,8 +166,9 @@ impl Db {
         for r in rows {
             sqlx::query(
                 "INSERT OR REPLACE INTO demo_death
-                    (log_id, demo_id, tick, at_raw, killer, killer_range, nearest_mate, mates_near, scoped)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                    (log_id, demo_id, tick, at_raw, killer, killer_range, nearest_mate, mates_near, scoped,
+                     killer_dx_deg, killer_dy_deg)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
             )
             .bind(log_id)
             .bind(r.demo_id)
@@ -172,6 +179,8 @@ impl Db {
             .bind(r.nearest_mate)
             .bind(r.mates_near)
             .bind(i64::from(r.scoped))
+            .bind(r.killer_dx_deg)
+            .bind(r.killer_dy_deg)
             .execute(&mut *tx)
             .await?;
         }
@@ -194,7 +203,7 @@ impl Db {
     pub async fn deaths_for_log(&self, log_id: i64) -> Result<Vec<DeathRow>> {
         let rows = sqlx::query(
             "SELECT d.demo_id, d.tick, d.at_raw, d.killer, d.killer_range, d.nearest_mate,
-                    d.mates_near, d.scoped,
+                    d.mates_near, d.scoped, d.killer_dx_deg, d.killer_dy_deg,
                     (SELECT r.round_num FROM match_round r
                       WHERE r.log_id = d.log_id
                         AND d.at_raw BETWEEN r.start_time AND r.start_time + r.length_s) AS round_num
@@ -212,6 +221,8 @@ impl Db {
                 round_num: r.get("round_num"),
                 killer: r.get::<Option<i64>, _>("killer").map(|v| v as u32),
                 killer_range: r.get("killer_range"),
+                killer_dx_deg: r.get("killer_dx_deg"),
+                killer_dy_deg: r.get("killer_dy_deg"),
                 nearest_mate: r.get("nearest_mate"),
                 mates_near: r.get("mates_near"),
                 scoped: r.get::<i64, _>("scoped") != 0,
@@ -243,7 +254,10 @@ impl Db {
         let d = sqlx::query(&format!(
             "SELECT COUNT(*) AS deaths, AVG(nearest_mate) AS mate,
                     AVG(CASE WHEN mates_near = 0 THEN 1.0 ELSE 0.0 END) AS alone,
-                    AVG(CASE WHEN scoped = 1 THEN 1.0 ELSE 0.0 END) AS scoped
+                    AVG(CASE WHEN scoped = 1 THEN 1.0 ELSE 0.0 END) AS scoped,
+                    AVG(CASE WHEN killer_dx_deg IS NULL THEN NULL
+                             WHEN ABS(killer_dx_deg) > 90 OR ABS(killer_dy_deg) > 90 THEN 1.0
+                             ELSE 0.0 END) AS behind
              FROM demo_death
              {}",
             scope("demo_death")
@@ -264,6 +278,7 @@ impl Db {
             nearest_mate: d.get("mate"),
             alone_share: d.get::<Option<f64>, _>("alone").unwrap_or(0.0),
             scoped_share_deaths: d.get::<Option<f64>, _>("scoped").unwrap_or(0.0),
+            behind_share: d.get("behind"),
         }))
     }
 

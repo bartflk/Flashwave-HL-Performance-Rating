@@ -150,7 +150,8 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
 /// 1: crosshair error, flick, range.
 /// 2: deaths (who was near, scoped) and time spent scoped.
 /// 3: which way the crosshair was off, not just how far.
-pub const VERSION: i64 = 3;
+/// 4: where the player who killed you was, relative to your view.
+pub const VERSION: i64 = 4;
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -194,6 +195,8 @@ fn death_row(d: &AimDeath) -> hl_db::DeathRow {
         round_num: None,
         killer: d.killer,
         killer_range: d.death.killer_range.map(f64::from),
+        killer_dx_deg: d.death.killer_dx_deg.map(f64::from),
+        killer_dy_deg: d.death.killer_dy_deg.map(f64::from),
         nearest_mate: d.death.nearest_mate.map(f64::from),
         mates_near: i64::from(d.death.mates_near),
         scoped: d.death.scoped,
