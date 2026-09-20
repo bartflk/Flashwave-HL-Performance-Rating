@@ -833,6 +833,11 @@ export interface AimRow {
   /** View to the victim's head when the kill landed, and a second before. */
   errorDeg: number;
   beforeDeg: number;
+  /** The same miss split in two: positive is right of the head, and above it. */
+  dxDeg: number;
+  dyDeg: number;
+  beforeDxDeg: number;
+  beforeDyDeg: number;
   /** How far the view turned in the half second before the shot. */
   flickDeg: number;
   rangeUnits: number;
@@ -850,6 +855,9 @@ export interface AimTotals {
   rangeUnits: number;
   /** Share of kills where the crosshair was within 3° a second before. */
   heldShare: number;
+  /** Where the crosshair usually sat: right of the head, and above it. */
+  biasX: number;
+  biasY: number;
 }
 
 /** One death, as the demo saw it. */

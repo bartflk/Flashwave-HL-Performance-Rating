@@ -1,3 +1,4 @@
+import { AimBoard } from "./AimBoard";
 import type { AimRow, DeathRow } from "../../api/types";
 
 /**
@@ -33,6 +34,7 @@ export function AimCharts({ kills, deaths }: { kills: AimRow[]; deaths: DeathRow
 
   return (
     <div className="aim-charts">
+      <AimBoard kills={seen} />
       <Setup kills={seen} />
       <Scatter kills={seen} />
       {deaths.length > 0 && <Cover deaths={deaths} />}

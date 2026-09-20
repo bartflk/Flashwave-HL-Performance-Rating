@@ -53,6 +53,12 @@ pub struct Shot {
     /// [`LEAD_S`] before it.
     pub error_deg: f32,
     pub error_before_deg: f32,
+    /// The same miss split into sideways and vertical degrees, so it can be
+    /// drawn on a target: positive is right of the head and above it.
+    pub dx_deg: f32,
+    pub dy_deg: f32,
+    pub before_dx_deg: f32,
+    pub before_dy_deg: f32,
     /// Degrees the view turned over the [`FLICK_S`] before the shot.
     pub flick_deg: f32,
     /// Distance to the victim, and how far above the shooter they stood.
@@ -234,13 +240,13 @@ fn shot_for(recent: &VecDeque<Frame>, me: &str, attacker: u16, victim: u16, weap
     let (pos, yaw, pitch) = now.me?;
     let &(victim_pos, in_pvs) = now.others.get(&victim)?;
     let error = angle_to(pos, yaw, pitch, victim_pos);
+    let (dx, dy) = offset_to(pos, yaw, pitch, victim_pos);
 
     // A second earlier, against where the victim was then.
     let then = recent.front()?;
-    let before = then
-        .me
-        .zip(then.others.get(&victim))
-        .map_or(error, |((p, y, pi), &(vp, _))| angle_to(p, y, pi, vp));
+    let earlier = then.me.zip(then.others.get(&victim));
+    let before = earlier.map_or(error, |((p, y, pi), &(vp, _))| angle_to(p, y, pi, vp));
+    let (before_dx, before_dy) = earlier.map_or((dx, dy), |((p, y, pi), &(vp, _))| offset_to(p, y, pi, vp));
     let before_seen = then.others.get(&victim).is_some_and(|&(_, seen)| seen);
 
     // The flick: how far the view turned over the last FLICK_S.
@@ -256,6 +262,10 @@ fn shot_for(recent: &VecDeque<Frame>, me: &str, attacker: u16, victim: u16, weap
         weapon: weapon.to_string(),
         error_deg: error,
         error_before_deg: before,
+        dx_deg: dx,
+        dy_deg: dy,
+        before_dx_deg: before_dx,
+        before_dy_deg: before_dy,
         flick_deg: flick,
         range: dist(pos, victim_pos),
         height: victim_pos[2] - pos[2],
@@ -269,6 +279,33 @@ fn angle_to(from: Pos, yaw: f32, pitch: f32, target: Pos) -> f32 {
     let head = [target[0], target[1], target[2] + HEAD_HEIGHT];
     let to = [head[0] - eye[0], head[1] - eye[1], head[2] - eye[2]];
     angle_between(view_dir(yaw, pitch), to)
+}
+
+/// Where the head sat relative to the crosshair, in degrees: sideways first
+/// (positive to the right of the view), then vertical (positive above it).
+/// Their combination is [`angle_to`], give or take the usual rounding.
+fn offset_to(from: Pos, yaw: f32, pitch: f32, target: Pos) -> (f32, f32) {
+    let eye = [from[0], from[1], from[2] + HEAD_HEIGHT];
+    let head = [target[0], target[1], target[2] + HEAD_HEIGHT];
+    let (dx, dy, dz) = (head[0] - eye[0], head[1] - eye[1], head[2] - eye[2]);
+    let flat = (dx * dx + dy * dy).sqrt();
+    if flat == 0.0 && dz == 0.0 {
+        return (0.0, 0.0);
+    }
+    // Where the head is, in the same angles the view uses.
+    let head_yaw = dy.atan2(dx).to_degrees();
+    let head_pitch = -dz.atan2(flat).to_degrees();
+    (wrap180(head_yaw - yaw), pitch - head_pitch)
+}
+
+/// An angle difference folded into -180..180 degrees.
+fn wrap180(deg: f32) -> f32 {
+    let d = (deg + 180.0).rem_euclid(360.0) - 180.0;
+    if d == -180.0 {
+        180.0
+    } else {
+        d
+    }
 }
 
 /// The angle between two vectors, degrees. Zero-length vectors give 0.
@@ -312,6 +349,29 @@ mod tests {
         // Someone 500 along and 500 below: looking 45 degrees down is exact.
         let e = angle_to([0.0, 0.0, 0.0], 0.0, 45.0, [500.0, 0.0, -500.0]);
         assert!(e < 0.01, "{e}");
+    }
+
+    #[test]
+    fn the_miss_splits_into_sideways_and_vertical_degrees() {
+        // Looking along +x; the head is 30 degrees to the left (+y is left of
+        // +x in Source's anticlockwise yaw), so the offset is +30 sideways.
+        let (dx, dy) = offset_to([0.0, 0.0, 0.0], 0.0, 0.0, [500.0, 289.0, 0.0]);
+        assert!((dx - 30.0).abs() < 0.2, "{dx}");
+        assert!(dy.abs() < 0.01, "{dy}");
+        // Level view, head 500 above: the crosshair sits 45 degrees below it.
+        let (dx, dy) = offset_to([0.0, 0.0, 0.0], 0.0, 0.0, [500.0, 0.0, 500.0]);
+        assert!(dx.abs() < 0.01, "{dx}");
+        assert!((dy - 45.0).abs() < 0.2, "{dy}");
+        // Looking right at them: no miss either way.
+        let (dx, dy) = offset_to([0.0, 0.0, 0.0], 0.0, 45.0, [500.0, 0.0, -500.0]);
+        assert!(dx.abs() < 0.01 && dy.abs() < 0.2, "{dx} {dy}");
+    }
+
+    #[test]
+    fn angles_wrap_the_short_way_round() {
+        assert!((wrap180(350.0) + 10.0).abs() < 1e-6);
+        assert!((wrap180(-350.0) - 10.0).abs() < 1e-6);
+        assert!((wrap180(10.0) - 10.0).abs() < 1e-6);
     }
 
     #[test]

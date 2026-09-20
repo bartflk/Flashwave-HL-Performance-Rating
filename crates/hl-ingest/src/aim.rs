@@ -149,7 +149,8 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
 /// Bump to re-read every demo on the next pass.
 /// 1: crosshair error, flick, range.
 /// 2: deaths (who was near, scoped) and time spent scoped.
-pub const VERSION: i64 = 2;
+/// 3: which way the crosshair was off, not just how far.
+pub const VERSION: i64 = 3;
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -205,6 +206,10 @@ fn store_row(k: &AimKill) -> hl_db::AimRow {
         victim: k.victim,
         error_deg: f64::from(k.shot.error_deg),
         before_deg: f64::from(k.shot.error_before_deg),
+        dx_deg: f64::from(k.shot.dx_deg),
+        dy_deg: f64::from(k.shot.dy_deg),
+        before_dx_deg: f64::from(k.shot.before_dx_deg),
+        before_dy_deg: f64::from(k.shot.before_dy_deg),
         flick_deg: f64::from(k.shot.flick_deg),
         range_units: f64::from(k.shot.range),
         height: f64::from(k.shot.height),

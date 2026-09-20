@@ -47,6 +47,12 @@ pub struct AimRow {
     pub victim: Option<u32>,
     pub error_deg: f64,
     pub before_deg: f64,
+    /// The miss split in two, degrees: positive is right of the head, and
+    /// above it. At the shot, and a second before.
+    pub dx_deg: f64,
+    pub dy_deg: f64,
+    pub before_dx_deg: f64,
+    pub before_dy_deg: f64,
     pub flick_deg: f64,
     pub range_units: f64,
     pub height: f64,
@@ -95,6 +101,10 @@ pub struct AimTotals {
     pub range_units: f64,
     /// Kills where the crosshair was already within 3 degrees a second before.
     pub held_share: f64,
+    /// Where the crosshair usually sat at the shot: positive is right of the
+    /// head, and above it. A steady bias is a sensitivity or habit, not luck.
+    pub bias_x: f64,
+    pub bias_y: f64,
 }
 
 impl Db {
@@ -106,8 +116,8 @@ impl Db {
             sqlx::query(
                 "INSERT OR REPLACE INTO demo_aim
                     (log_id, demo_id, tick, at_raw, victim, error_deg, before_deg, flick_deg,
-                     range_units, height, victim_seen, headshot)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                     range_units, height, victim_seen, headshot, dx_deg, dy_deg, before_dx_deg, before_dy_deg)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
             )
             .bind(log_id)
             .bind(r.demo_id)
@@ -121,6 +131,10 @@ impl Db {
             .bind(r.height)
             .bind(i64::from(r.victim_seen))
             .bind(i64::from(r.headshot))
+            .bind(r.dx_deg)
+            .bind(r.dy_deg)
+            .bind(r.before_dx_deg)
+            .bind(r.before_dy_deg)
             .execute(&mut *tx)
             .await?;
         }
@@ -270,7 +284,7 @@ impl Db {
     pub async fn aim_for_log(&self, log_id: i64) -> Result<Vec<AimRow>> {
         let rows = sqlx::query(
             "SELECT demo_id, tick, at_raw, victim, error_deg, before_deg, flick_deg,
-                    range_units, height, victim_seen, headshot
+                    range_units, height, victim_seen, headshot, dx_deg, dy_deg, before_dx_deg, before_dy_deg
              FROM demo_aim WHERE log_id = ?1 ORDER BY tick",
         )
         .bind(log_id)
@@ -284,7 +298,8 @@ impl Db {
         let row = sqlx::query(&format!(
             "SELECT COUNT(*) AS kills, AVG(error_deg) AS e, AVG(before_deg) AS b,
                     AVG(flick_deg) AS f, AVG(range_units) AS r,
-                    AVG(CASE WHEN before_deg <= 3 THEN 1.0 ELSE 0.0 END) AS held
+                    AVG(CASE WHEN before_deg <= 3 THEN 1.0 ELSE 0.0 END) AS held,
+                    AVG(dx_deg) AS bx, AVG(dy_deg) AS by
              FROM demo_aim
              {} AND demo_aim.victim_seen = 1",
             scope("demo_aim")
@@ -305,6 +320,8 @@ impl Db {
             flick_deg: row.get("f"),
             range_units: row.get("r"),
             held_share: row.get("held"),
+            bias_x: row.get::<Option<f64>, _>("bx").unwrap_or(0.0),
+            bias_y: row.get::<Option<f64>, _>("by").unwrap_or(0.0),
         }))
     }
 }
@@ -317,6 +334,10 @@ fn row(r: sqlx::sqlite::SqliteRow) -> AimRow {
         victim: r.get::<Option<i64>, _>("victim").map(|v| v as u32),
         error_deg: r.get("error_deg"),
         before_deg: r.get("before_deg"),
+        dx_deg: r.get("dx_deg"),
+        dy_deg: r.get("dy_deg"),
+        before_dx_deg: r.get("before_dx_deg"),
+        before_dy_deg: r.get("before_dy_deg"),
         flick_deg: r.get("flick_deg"),
         range_units: r.get("range_units"),
         height: r.get("height"),

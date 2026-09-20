@@ -390,8 +390,8 @@ export const mockApi: Api = {
     const fights = (cls ?? "sniper") === "sniper" ? (fightsSniper as unknown as FightsCard) : null;
     // Aim only exists for matches with a demo, so the mock carries the real
     // shape of it: a smaller sample than the rating's.
-    const aim = { kills: 312, errorDeg: 5.8, beforeDeg: 15.2, flickDeg: 10.4, rangeUnits: 1147, heldShare: 0.24 };
-    const aimAll = { kills: 496, errorDeg: 6.3, beforeDeg: 16.5, flickDeg: 11.1, rangeUnits: 1096, heldShare: 0.22 };
+    const aim = { kills: 312, errorDeg: 5.8, beforeDeg: 15.2, flickDeg: 10.4, rangeUnits: 1147, heldShare: 0.24, biasX: 0.6, biasY: 2.4 };
+    const aimAll = { kills: 496, errorDeg: 6.3, beforeDeg: 16.5, flickDeg: 11.1, rangeUnits: 1096, heldShare: 0.22, biasX: 0.8, biasY: 2.9 };
     const life = { scopedShare: 0.23, minutes: 412, deaths: 218, nearestMate: 502, aloneShare: 0.08, scopedShareDeaths: 0.51 };
     const lifeAll = { scopedShare: 0.21, minutes: 640, deaths: 354, nearestMate: 449, aloneShare: 0.1, scopedShareDeaths: 0.49 };
     const byClass: Record<string, ProfileResponse> = {
@@ -423,13 +423,26 @@ export const mockApi: Api = {
     const r = rng(logId);
     const kills = Array.from({ length: 18 }, (_, i) => {
       const flick = r() < 0.25 ? 20 + r() * 60 : r() * 6;
+      const errorDeg = 0.4 + r() * 2.5;
+      const beforeDeg = flick > 10 ? 15 + r() * 40 : r() * 6;
+      // A miss has a direction: a slight high-right habit, as a real one is.
+      const split = (mag: number, biasX: number, biasY: number) => {
+        const a = r() * Math.PI * 2;
+        return [mag * Math.cos(a) + biasX, mag * Math.sin(a) + biasY] as const;
+      };
+      const [dxDeg, dyDeg] = split(errorDeg * 0.7, 0.3, 0.9);
+      const [beforeDxDeg, beforeDyDeg] = split(beforeDeg * 0.7, 0.4, 1.1);
       return {
         demoId: 1,
         tick: 5_000 + i * 1_800,
         atRaw: null,
         victim: null,
-        errorDeg: 0.4 + r() * 2.5,
-        beforeDeg: flick > 10 ? 15 + r() * 40 : r() * 6,
+        errorDeg,
+        beforeDeg,
+        dxDeg,
+        dyDeg,
+        beforeDxDeg,
+        beforeDyDeg,
         flickDeg: flick,
         rangeUnits: 300 + r() * 1_900,
         height: Math.round((r() - 0.5) * 600),
@@ -446,6 +459,8 @@ export const mockApi: Api = {
       flickDeg: mean((k) => k.flickDeg),
       rangeUnits: mean((k) => k.rangeUnits),
       heldShare: seen.filter((k) => k.beforeDeg <= 3).length / seen.length,
+      biasX: mean((k) => k.dxDeg),
+      biasY: mean((k) => k.dyDeg),
     };
     const deaths = Array.from({ length: 11 }, (_, i) => ({
       demoId: 1,
@@ -471,7 +486,7 @@ export const mockApi: Api = {
         deaths,
         totals,
         life,
-        career: { ...totals, errorDeg: 2.1, beforeDeg: 16.5, flickDeg: 11.1, rangeUnits: 1096, heldShare: 0.22 },
+        career: { ...totals, errorDeg: 2.1, beforeDeg: 16.5, flickDeg: 11.1, rangeUnits: 1096, heldShare: 0.22, biasX: 0.8, biasY: 2.9 },
         careerLife: { ...life, scopedShare: 0.21, nearestMate: 449, aloneShare: 0.1, scopedShareDeaths: 0.49 },
       },
       200,

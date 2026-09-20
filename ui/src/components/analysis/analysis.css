@@ -881,3 +881,70 @@
 .aim-details > summary:hover {
   color: var(--text);
 }
+
+/* --- the target: every kill placed where the crosshair was --- */
+
+.board-when {
+  margin-left: auto;
+}
+
+.board-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: center;
+}
+
+.aim-board {
+  width: 420px;
+  max-width: 100%;
+  height: auto;
+  flex: none;
+}
+
+.board-ring {
+  fill: none;
+  stroke: rgba(242, 230, 217, 0.12);
+}
+
+.board-cross {
+  stroke: rgba(242, 230, 217, 0.08);
+}
+
+.board-head {
+  fill: rgba(224, 118, 58, 0.25);
+  stroke: var(--accent);
+  stroke-width: 1;
+}
+
+.board-bias line {
+  stroke: #f2e6d9;
+  stroke-width: 2;
+}
+
+.board-dot-bias {
+  background: #f2e6d9;
+  border-radius: 1px;
+}
+
+.board-read {
+  display: grid;
+  grid-template-columns: auto;
+  gap: 2px;
+  margin: 0;
+  min-width: 220px;
+  flex: 1 1 220px;
+  font-size: 0.82rem;
+}
+
+.board-read dt {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 8px;
+}
+
+.board-read dd {
+  margin: 0;
+}
