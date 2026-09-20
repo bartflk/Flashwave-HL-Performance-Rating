@@ -949,4 +949,6 @@ export interface PartScore {
   durationS: number | null;
   /** Null until the part's log has been fetched from logs.tf. */
   detail: MatchDetail | null;
+  /** The combined log's rounds this part covers, matched by start time. */
+  parentRounds: number[];
 }

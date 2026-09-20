@@ -26,15 +26,27 @@ pub struct PartScore {
     pub played_at: Option<i64>,
     pub duration_s: Option<i64>,
     pub detail: Option<MatchDetail>,
+    /// The rounds of the combined log this part covers. logs.tf copies rounds
+    /// verbatim when it combines, so a part's round and its copy in the
+    /// combined log start on the same second.
+    pub parent_rounds: Vec<i64>,
 }
 
-/// Every part of `log_id`, oldest first, with the scoreboards already stored.
+/// Rounds are matched by their start time; a second either way is rounding,
+/// not a different round.
+const ROUND_SLACK_S: i64 = 2;
+
+/// Every part of `log_id`, oldest first, with the scoreboards already stored
+/// and the rounds each one covers in the combined log.
 pub async fn scores(db: &Db, log_id: i64, me: Option<SteamId>, w: &Weights) -> Result<Vec<PartScore>> {
     let parts = db.parts_of(log_id).await?;
+    let parent = db.round_spans(log_id).await?;
     let mut out = Vec::with_capacity(parts.len());
     for p in parts {
+        let detail = detail_of(db, p.log_id, me, w).await?;
         out.push(PartScore {
-            detail: detail_of(db, p.log_id, me, w).await?,
+            parent_rounds: parent_rounds(db, p.log_id, &parent).await?,
+            detail,
             log_id: p.log_id,
             title: p.title,
             map: p.map,
@@ -43,6 +55,19 @@ pub async fn scores(db: &Db, log_id: i64, me: Option<SteamId>, w: &Weights) -> R
         });
     }
     Ok(out)
+}
+
+/// Which of the combined log's rounds came from this part, by start time.
+async fn parent_rounds(db: &Db, part_id: i64, parent: &[(i64, i64, i64)]) -> Result<Vec<i64>> {
+    let Some(json) = db.part_raw(part_id).await? else { return Ok(Vec::new()) };
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(&json) else { return Ok(Vec::new()) };
+    let Ok(log) = crate::normalize::normalize(part_id, &value) else { return Ok(Vec::new()) };
+    let starts: Vec<i64> = log.rounds.iter().filter_map(|r| r.start_time).collect();
+    Ok(parent
+        .iter()
+        .filter(|(_, start, _)| starts.iter().any(|s| (s - start).abs() <= ROUND_SLACK_S))
+        .map(|(num, ..)| *num)
+        .collect())
 }
 
 /// Fetch one part's log from logs.tf, store it, and score it. Does nothing

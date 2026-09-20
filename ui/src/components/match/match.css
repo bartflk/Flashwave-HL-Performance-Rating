@@ -1263,3 +1263,17 @@
   flex-basis: 100%;
   margin: 0;
 }
+
+/* Which log the page is reading. */
+.part-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px 16px;
+  padding: 12px 16px;
+}
+
+.part-picker .hint,
+.part-picker .error {
+  margin: 0;
+}

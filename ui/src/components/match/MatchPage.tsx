@@ -1,7 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Parts } from "./Parts";
 import { api } from "../../api/client";
-import { errorMessage, type MatchContext, type MatchDetail } from "../../api/types";
+import { errorMessage, type MatchContext, type MatchDetail, type PartScore } from "../../api/types";
 import { capitalize, formatDate, minutes, splitMap, teamLabel } from "../../lib/format";
 import { ContextBadge, kindReason } from "../ContextBadge";
 import { BoxScore } from "./BoxScore";
@@ -13,6 +14,41 @@ import { RoundTimeline } from "./RoundTimeline";
 
 export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void }) {
   const q = useQuery({ queryKey: ["match", logId], queryFn: () => api.getMatch(logId) });
+  // A combined log can be read whole, or one of its logs at a time: picking
+  // one scopes the whole page, not just the scoreboard.
+  const [part, setPart] = useState<number | null>(null);
+  const qc = useQueryClient();
+  const partsQ = useQuery({
+    queryKey: ["parts", logId],
+    queryFn: () => api.getParts(logId),
+    enabled: (q.data?.parts.length ?? 0) > 0,
+    staleTime: 5 * 60_000,
+  });
+  const [fetching, setFetching] = useState(false);
+  const [partError, setPartError] = useState<string | null>(null);
+
+  const chosen = part === null ? null : (partsQ.data ?? []).find((p) => p.logId === part) ?? null;
+  const shown = chosen?.detail ?? q.data ?? null;
+  // The rounds of the combined log this part covers, for the kill-by-kill
+  // views, which read the whole match's raw log.
+  const onlyRounds = chosen?.parentRounds.length ? chosen.parentRounds : null;
+
+  async function pick(next: number | null) {
+    setPart(next);
+    setPartError(null);
+    if (next === null) return;
+    if ((partsQ.data ?? []).find((p) => p.logId === next)?.detail) return;
+    setFetching(true);
+    try {
+      await api.fetchPart(next);
+      await qc.invalidateQueries({ queryKey: ["parts", logId] });
+    } catch (e) {
+      setPartError(errorMessage(e));
+      setPart(null);
+    } finally {
+      setFetching(false);
+    }
+  }
 
   return (
     <div className="match-page">
@@ -25,31 +61,84 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
       {q.data === null && (
         <p className="hint">This log is not stored yet. Run a sync, then open it again.</p>
       )}
-      {q.data && (
+      {q.data && shown && (
         <>
-          <Header d={q.data} />
+          <Header d={shown} />
+          {q.data.parts.length > 0 && (
+            <PartPicker
+              d={q.data}
+              parts={partsQ.data ?? null}
+              part={part}
+              onPick={(id) => void pick(id)}
+              fetching={fetching}
+              error={partError}
+            />
+          )}
           {/* The scoreboard first, as on logs.tf; the matchups read it next. */}
           <Fold id="scoreboard">
-            <BoxScore d={q.data} />
+            <BoxScore d={shown} />
           </Fold>
           <Fold id="matchups">
-            <Matchups d={q.data} />
+            <Matchups d={shown} />
           </Fold>
           <Fold id="demos">
             <DemoPanel d={q.data} />
           </Fold>
-          <Fold id="parts">
-            <Parts d={q.data} />
-          </Fold>
+          {part === null && (
+            <Fold id="parts">
+              <Parts d={q.data} />
+            </Fold>
+          )}
           <Fold id="rounds">
-            <RoundTimeline d={q.data} />
+            <RoundTimeline d={shown} />
           </Fold>
           <Fold id="analysis">
-            <AnalysisPanel d={q.data} />
+            <AnalysisPanel d={q.data} onlyRounds={onlyRounds} />
           </Fold>
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * Which log the page is reading: the whole combined upload, or one of the
+ * logs it was built from. Picking one scopes every panel below, and a log
+ * whose data is not stored yet is fetched from logs.tf on the spot.
+ */
+function PartPicker(props: {
+  d: MatchDetail;
+  parts: PartScore[] | null;
+  part: number | null;
+  onPick: (id: number | null) => void;
+  fetching: boolean;
+  error: string | null;
+}) {
+  const { d, parts, part, onPick, fetching, error } = props;
+  const rows = parts ?? d.parts.map((p) => ({ ...p, detail: null, parentRounds: [] }));
+  return (
+    <section className="panel part-picker">
+      <label className="an-field">
+        <span className="an-label">Reading</span>
+        <select value={part ?? ""} onChange={(e) => onPick(e.target.value === "" ? null : Number(e.target.value))}>
+          <option value="">The whole match · {d.parts.length} logs combined</option>
+          {rows.map((p) => (
+            <option key={p.logId} value={p.logId}>
+              {capitalize(splitMap(p.map).name ?? "unknown")} · log {p.logId}
+              {"detail" in p && p.detail ? "" : " (fetches)"}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="hint">
+        {fetching
+          ? "Fetching that log from logs.tf…"
+          : part === null
+            ? "This upload holds several logs. Pick one to read the whole page as that map alone."
+            : "Every panel below is this log alone, scored on its own."}
+      </p>
+      {error && <p className="error">{error}</p>}
+    </section>
   );
 }
 

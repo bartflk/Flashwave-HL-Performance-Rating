@@ -523,6 +523,8 @@ export const mockApi: Api = {
         playedAt: p.playedAt,
         durationS: p.durationS,
         detail: i < 2 && d ? ({ ...d, logId: p.logId, map: p.map, parts: [] } as MatchDetail) : null,
+        // Two rounds per part, as a real combined log splits them.
+        parentRounds: [i * 2 + 1, i * 2 + 2],
       })),
       150,
     );

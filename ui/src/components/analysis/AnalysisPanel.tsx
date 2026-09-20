@@ -28,7 +28,7 @@ const TABS: Array<[Tab, string]> = [
  * player, the map of a combined log, the round) scopes every view below it;
  * the tabs are four ways of looking at the same slice.
  */
-export function AnalysisPanel({ d }: { d: MatchDetail }) {
+export function AnalysisPanel({ d, onlyRounds }: { d: MatchDetail; onlyRounds?: number[] | null }) {
   const q = useQuery({ queryKey: ["analysis", d.logId], queryFn: () => api.getMatchAnalysis(d.logId) });
 
   return (
@@ -44,7 +44,13 @@ export function AnalysisPanel({ d }: { d: MatchDetail }) {
           This match&apos;s raw log is not stored yet. Sync fetches it; logs.tf has none for a few very old matches.
         </p>
       )}
-      {q.data && <Body a={q.data} stv={{ demosTfId: d.demosTfId, hasStv: d.demos.some((x) => x.kind === "stv") }} />}
+      {q.data && (
+        <Body
+          a={q.data}
+          stv={{ demosTfId: d.demosTfId, hasStv: d.demos.some((x) => x.kind === "stv") }}
+          onlyRounds={onlyRounds ?? null}
+        />
+      )}
     </section>
   );
 }
@@ -55,7 +61,7 @@ export interface StvInfo {
   hasStv: boolean;
 }
 
-function Body({ a, stv }: { a: Analysis; stv: StvInfo }) {
+function Body({ a, stv, onlyRounds }: { a: Analysis; stv: StvInfo; onlyRounds: number[] | null }) {
   const me = a.players.find((p) => p.isMe) ?? null;
   const [tab, setTab] = useState<Tab>("map");
   const [player, setPlayer] = useState<number>(me?.accountId ?? a.players[0]?.accountId ?? 0);
@@ -65,6 +71,10 @@ function Body({ a, stv }: { a: Analysis; stv: StvInfo }) {
   const mapCount = new Set(a.segments.map((s) => s.map)).size;
   const multiMap = mapCount > 1;
   const [seg, setSeg] = useState<number | null>(multiMap ? 0 : null);
+
+  // The page can be reading one log of a combined upload: then every view
+  // here is held to that log's rounds, whatever else is picked.
+  const only = useMemo(() => (onlyRounds ? new Set(onlyRounds) : null), [onlyRounds]);
 
   const slice: Slice = useMemo(() => {
     const segment = seg === null ? null : a.segments[seg] ?? null;
@@ -90,11 +100,26 @@ function Body({ a, stv }: { a: Analysis; stv: StvInfo }) {
         multiMap,
       };
     }
+    if (only) {
+      // The log's own rounds, laid on the combined log's clock.
+      const mine = a.rounds.filter((r) => only.has(r.roundNum));
+      return {
+        rounds: only,
+        startS: mine[0]?.startS ?? 0,
+        endS: mine[mine.length - 1]?.endS ?? a.durationS,
+        oneRound: mine.length === 1,
+        map: a.segments.find((sg) => sg.rounds.some((n) => only.has(n)))?.map ?? a.map,
+        multiMap: false,
+      };
+    }
     return { rounds: null, startS: 0, endS: a.durationS, oneRound: false, map: multiMap ? null : a.segments[0]?.map ?? a.map, multiMap };
-  }, [a, seg, round, multiMap]);
+  }, [a, seg, round, multiMap, only]);
 
-  // The round buttons show the chosen map's rounds.
-  const roundChoices = seg === null ? a.rounds : a.rounds.filter((r) => a.segments[seg].rounds.includes(r.roundNum));
+  // The round buttons show the chosen map's rounds, or only the rounds of
+  // the log the page is reading.
+  const roundChoices = (seg === null ? a.rounds : a.rounds.filter((r) => a.segments[seg].rounds.includes(r.roundNum))).filter(
+    (r) => !only || only.has(r.roundNum),
+  );
 
   const teams = useMemo(() => {
     const byTeam = (t: "Red" | "Blue") => a.players.filter((p) => p.team === t);
@@ -123,7 +148,7 @@ function Body({ a, stv }: { a: Analysis; stv: StvInfo }) {
             )}
           </select>
         </label>
-        {multiMap && (
+        {multiMap && !only && (
           <div className="segmented" role="tablist" aria-label="Map">
             <button
               role="tab"
