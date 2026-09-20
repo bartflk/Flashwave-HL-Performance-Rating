@@ -923,3 +923,17 @@ export interface Backups {
   dir: string;
   items: Backup[];
 }
+
+/** One life as a route across the map, from your own demo (PLAN §14). */
+export interface PathRow {
+  demoId: number;
+  seq: number;
+  fromTick: number;
+  toTick: number;
+  /** The round the life started in. */
+  roundNum: number | null;
+  /** It ended in a death rather than a round end. */
+  died: boolean;
+  /** `[tick, x, y, z]` in map units, about four a second. */
+  points: Array<[number, number, number, number]>;
+}

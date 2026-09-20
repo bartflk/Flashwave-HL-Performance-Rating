@@ -439,6 +439,13 @@ pub async fn get_aim(state: State<'_, AppState>, log_id: i64) -> CmdResult<AimRe
     })
 }
 
+/// Where you walked in one match, one route per life (PLAN §14). Empty
+/// without a demo for it.
+#[tauri::command]
+pub async fn get_paths(state: State<'_, AppState>, log_id: i64) -> CmdResult<Vec<hl_db::PathRow>> {
+    Ok(state.db.paths_for_log(log_id).await?)
+}
+
 /// A map's outline from every stored kill on it, plus your own kill and death
 /// spots across all your matches there. `None` with too few kills.
 #[tauri::command]

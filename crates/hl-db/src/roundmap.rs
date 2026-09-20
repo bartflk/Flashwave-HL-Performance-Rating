@@ -255,6 +255,19 @@ impl Db {
         Ok(self.all_round_windows_where(Some(log_id)).await?.remove(&log_id).unwrap_or_default())
     }
 
+    /// Each round's number and span on the log's own clock: what a moment
+    /// needs to be placed in a round.
+    pub async fn round_spans(&self, log_id: i64) -> Result<Vec<(i64, i64, i64)>> {
+        let rows: Vec<(i64, i64, i64)> = sqlx::query_as(
+            "SELECT round_num, start_time, length_s FROM match_round
+             WHERE log_id = ?1 AND start_time IS NOT NULL ORDER BY round_num",
+        )
+        .bind(log_id)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows)
+    }
+
     /// Round windows with their maps, for every log.
     pub async fn all_round_windows(&self) -> Result<HashMap<i64, Vec<RoundWindow>>> {
         self.all_round_windows_where(None).await

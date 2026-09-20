@@ -84,6 +84,20 @@ pub struct DeathRow {
     pub scoped: bool,
 }
 
+/// One life as a route across the map, as stored.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PathRow {
+    pub demo_id: i64,
+    pub seq: i64,
+    pub from_tick: i64,
+    pub to_tick: i64,
+    pub round_num: Option<i64>,
+    pub died: bool,
+    /// `(tick, x, y, z)` in map units, about four a second.
+    pub points: Vec<(i64, i32, i32, i32)>,
+}
+
 /// How the living time was spent, over one match or all of them.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -203,6 +217,54 @@ impl Db {
         }
         tx.commit().await?;
         Ok(())
+    }
+
+    /// Replace one log's routes.
+    pub async fn replace_paths(&self, log_id: i64, rows: &[PathRow]) -> Result<()> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("DELETE FROM demo_path WHERE log_id = ?1").bind(log_id).execute(&mut *tx).await?;
+        for r in rows {
+            sqlx::query(
+                "INSERT OR REPLACE INTO demo_path
+                    (log_id, demo_id, seq, from_tick, to_tick, round_num, died, points)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            )
+            .bind(log_id)
+            .bind(r.demo_id)
+            .bind(r.seq)
+            .bind(r.from_tick)
+            .bind(r.to_tick)
+            .bind(r.round_num)
+            .bind(i64::from(r.died))
+            .bind(serde_json::to_string(&r.points).unwrap_or_else(|_| "[]".into()))
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// One log's routes, with the round each life started in.
+    pub async fn paths_for_log(&self, log_id: i64) -> Result<Vec<PathRow>> {
+        let rows = sqlx::query(
+            "SELECT demo_id, seq, from_tick, to_tick, round_num, died, points
+             FROM demo_path WHERE log_id = ?1 ORDER BY seq",
+        )
+        .bind(log_id)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| PathRow {
+                demo_id: r.get("demo_id"),
+                seq: r.get("seq"),
+                from_tick: r.get("from_tick"),
+                to_tick: r.get("to_tick"),
+                round_num: r.get("round_num"),
+                died: r.get::<i64, _>("died") != 0,
+                points: serde_json::from_str(&r.get::<String, _>("points")).unwrap_or_default(),
+            })
+            .collect())
     }
 
     pub async fn deaths_for_log(&self, log_id: i64) -> Result<Vec<DeathRow>> {

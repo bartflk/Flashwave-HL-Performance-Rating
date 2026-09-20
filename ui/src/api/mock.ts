@@ -510,6 +510,26 @@ export const mockApi: Api = {
     );
   },
 
+  getPaths: (logId: number) => {
+    // A lap of a small loop, so the layer has something to draw in a browser.
+    const r = rng(logId);
+    const lives = Array.from({ length: 6 }, (_, i) => {
+      const cx = -1_000 + r() * 2_000;
+      const cy = -1_000 + r() * 2_000;
+      const points = Array.from({ length: 40 }, (_, j) => {
+        const t = (j / 39) * Math.PI * 2;
+        return [5_000 + i * 900 + j * 16, Math.round(cx + Math.cos(t) * 700), Math.round(cy + Math.sin(t) * 500), 0] as [
+          number,
+          number,
+          number,
+          number,
+        ];
+      });
+      return { demoId: 1, seq: i, fromTick: points[0][0], toTick: points[39][0], roundNum: 1 + (i % 5), died: r() < 0.6, points };
+    });
+    return delay(lives, 150);
+  },
+
   listBackups: () =>
     delay({
       dir: "C:\Users\you\AppData\Roaming\gg.highlander.rating\backups",

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { Analysis, KillView, MapView, Overview, Vec3 } from "../../api/types";
+import type { Analysis, KillView, MapView, Overview, PathRow, Vec3 } from "../../api/types";
 import { capitalize, splitMap } from "../../lib/format";
 import { DEATH, KILL, inSlice, jumpTo, playerMap, roundClock, type Slice } from "./common";
 
@@ -17,7 +17,7 @@ import { DEATH, KILL, inSlice, jumpTo, playerMap, roundClock, type Slice } from 
  * demo tick.
  */
 
-type Layer = "dots" | "heat";
+type Layer = "dots" | "paths" | "heat";
 type HeatOf = "kills" | "deaths";
 type Scope = "match" | "career";
 
@@ -94,6 +94,14 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
   const [showKills, setShowKills] = useState(true);
   const [showDeaths, setShowDeaths] = useState(true);
   const [layer, setLayer] = useState<Layer>("dots");
+  // Routes are only fetched once the layer is asked for: most views never
+  // want them, and a match is a few hundred kilobytes of points.
+  const pathQ = useQuery({
+    queryKey: ["paths", a.logId],
+    queryFn: () => api.getPaths(a.logId),
+    enabled: layer === "paths",
+    staleTime: 5 * 60_000,
+  });
   const [heatOf, setHeatOf] = useState<HeatOf>("deaths");
   const [scope, setScope] = useState<Scope>("match");
   const [asTable, setAsTable] = useState(false);
@@ -170,6 +178,15 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
           <button role="tab" aria-selected={layer === "dots"} className={layer === "dots" ? "seg active" : "seg"} onClick={() => setLayer("dots")}>
             Each kill
           </button>
+          <button
+            role="tab"
+            aria-selected={layer === "paths"}
+            className={layer === "paths" ? "seg active" : "seg"}
+            title="Where you walked, one line per life, from your own demo"
+            onClick={() => setLayer("paths")}
+          >
+            Movement
+          </button>
           <button role="tab" aria-selected={layer === "heat"} className={layer === "heat" ? "seg active" : "seg"} onClick={() => setLayer("heat")}>
             Heatmap
           </button>
@@ -229,12 +246,19 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
             image={overview?.image ?? null}
             view={view}
             marks={layer === "dots" ? marks : []}
+            paths={layer === "paths" ? (pathQ.data ?? []).filter((r) => slice.rounds === null || (r.roundNum !== null && slice.rounds.has(r.roundNum))) : []}
             heat={heat}
             heatColor={heatOf === "kills" ? KILL : DEATH}
             hover={hover}
             onHover={setHover}
             a={a}
           />
+          {layer === "paths" && (
+            <div className="km-scale" aria-hidden>
+              <span className="km-key km-key-path" /> a life
+              <span className="km-key km-key-path-died" /> one that ended in a death
+            </div>
+          )}
           {layer === "heat" && (
             <div className="km-scale" aria-hidden>
               <span>fewer</span>
@@ -249,6 +273,12 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
                 ? `Map drawn from ${view.points.toLocaleString()} positions in ${view.games} stored ${shortMap ?? ""} matches; brighter is busier.`
                 : "Too few matches on this map to draw it; only this match's positions are shown."}
             {layer === "heat" && heatOf === "kills" && " The heatmap marks where the player stood when they got the kill."}
+            {layer === "paths" &&
+              (pathQ.isPending
+                ? " Reading the demo's routes…"
+                : pathQ.data && pathQ.data.length > 0
+                  ? " One line per life, four positions a second, from your own recording. Only your own movement is in a POV demo."
+                  : " No demo is linked to this match, so there is no movement to draw.")}
           </p>
           {layer === "dots" && <TimeStrip a={a} slice={slice} marks={marks} hover={hover} onHover={setHover} />}
         </>
@@ -266,13 +296,15 @@ function Canvas(props: {
   image: string | null;
   view: MapView | null;
   marks: Mark[];
+  /** Routes to draw under the marks, one per life. */
+  paths: PathRow[];
   heat: number[] | null;
   heatColor: string;
   hover: Mark | null;
   onHover: (m: Mark | null) => void;
   a: Analysis;
 }) {
-  const { frame, display, image, view, marks, heat, heatColor, hover, onHover, a } = props;
+  const { frame, display, image, view, marks, paths, heat, heatColor, hover, onHover, a } = props;
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   useEffect(() => {
     setImg(null);
@@ -339,6 +371,29 @@ function Canvas(props: {
         g.fillRect(x, y, s, s);
       }
     }
+    // Routes: one line per life, thin and translucent so a busy match reads
+    // as traffic rather than spaghetti. A life that ended in a death is drawn
+    // in the death colour, and every line ends in a dot where it stopped.
+    for (const route of paths) {
+      if (route.points.length < 2) continue;
+      g.strokeStyle = route.died ? "rgba(232, 106, 98, 0.55)" : "rgba(134, 171, 201, 0.5)";
+      g.lineWidth = 1.5;
+      g.lineJoin = "round";
+      g.beginPath();
+      route.points.forEach(([, x, y], i) => {
+        const [cx, cy] = px([x, y]);
+        if (i === 0) g.moveTo(cx, cy);
+        else g.lineTo(cx, cy);
+      });
+      g.stroke();
+      const last = route.points[route.points.length - 1];
+      const [ex, ey] = px([last[1], last[2]]);
+      g.fillStyle = route.died ? DEATH : KILL;
+      g.beginPath();
+      g.arc(ex, ey, 2.5, 0, Math.PI * 2);
+      g.fill();
+    }
+
     // Heat: one hue, transparent to full, so more is brighter. No floor:
     // with a floor every cell anyone ever died in lights up and the hot spots
     // drown; below 6% a cell stays clear.
@@ -357,7 +412,7 @@ function Canvas(props: {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [img, view, heat, heatColor, frame, display, W, H, scale]);
+  }, [img, view, heat, heatColor, frame, display, W, H, scale, paths]);
 
   const nearest = (e: React.MouseEvent<SVGSVGElement>): Mark | null => {
     const r = e.currentTarget.getBoundingClientRect();

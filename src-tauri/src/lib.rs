@@ -136,6 +136,7 @@ pub fn run() {
             sync_commands::rawlog_stats,
             sync_commands::get_match_analysis,
             sync_commands::get_aim,
+            sync_commands::get_paths,
             sync_commands::list_backups,
             sync_commands::backup_now,
             sync_commands::get_map_view,

@@ -36,6 +36,11 @@ pub const HEAD_HEIGHT: f32 = 68.0;
 
 /// How long before the shot the "before" reading is taken.
 pub const LEAD_S: f64 = 1.0;
+/// How often to keep a position while walking a life: every this many ticks,
+/// so about four a second. Fine enough to show a route, small enough that a
+/// whole history is a couple of megabytes.
+pub const PATH_STRIDE: u32 = 16;
+
 /// How many points of the crosshair's path to keep per kill, the last one
 /// being the shot itself. Eight over a second is enough to show a flick and
 /// its overshoot without keeping every tick.
@@ -103,12 +108,31 @@ pub struct Death {
     pub scoped: bool,
 }
 
+/// One life, as a route across the map.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LifePath {
+    /// The tick the life starts and ends on, in the demo's own clock.
+    pub from_tick: u32,
+    pub to_tick: u32,
+    /// It ended in a death rather than a round end or the demo running out.
+    pub died: bool,
+    /// Where they were, every [`PATH_STRIDE`] ticks: `(tick, x, y, z)`,
+    /// rounded to whole units because a map is 8,000 units across.
+    pub points: Vec<(u32, i32, i32, i32)>,
+}
+
 /// One pass over a demo: the kills, the deaths, and how the time was spent.
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Pass {
     pub shots: Vec<Shot>,
     pub deaths: Vec<Death>,
+    /// Where you walked, one route per life (PLAN §14). A POV demo carries
+    /// its own recorder throughout, so these are complete; other players are
+    /// only in the demo while the recorder could see them, which is why only
+    /// the recorder's route is kept.
+    pub lives: Vec<LifePath>,
     /// Ticks you were alive, and of those, ticks you were scoped in.
     pub alive_ticks: u32,
     pub scoped_ticks: u32,
@@ -140,6 +164,9 @@ pub fn pass(path: &Path, me: &str, tick_rate: f64) -> Result<Pass> {
     let mut out = Pass::default();
     let mut done = 0usize;
     let mut last = u32::MAX;
+    // The life being walked: its points, and whether it is still open.
+    let mut life: Vec<(u32, i32, i32, i32)> = Vec::new();
+    let mut alive_now = false;
 
     while ticker.tick().with_context(|| format!("parsing {}", path.display()))? {
         let state = ticker.state();
@@ -167,9 +194,13 @@ pub fn pass(path: &Path, me: &str, tick_rate: f64) -> Result<Pass> {
                 frame.me = Some((pos, p.view_angle, p.pitch_angle));
                 frame.my_team = Some(p.team);
                 frame.scoped = p.has_condition(PlayerCondition::Zoomed);
-                if p.state == PlayerState::Alive {
+                alive_now = p.state == PlayerState::Alive;
+                if alive_now {
                     out.alive_ticks += 1;
                     out.scoped_ticks += u32::from(frame.scoped);
+                    if tick % PATH_STRIDE == 0 {
+                        life.push((tick, pos[0] as i32, pos[1] as i32, pos[2] as i32));
+                    }
                 }
             }
             frame.others.insert(u16::from(info.user_id), (pos, p.in_pvs));
@@ -196,12 +227,38 @@ pub fn pass(path: &Path, me: &str, tick_rate: f64) -> Result<Pass> {
                 out.shots.push(shot);
             }
             if let Some(death) = death_for(&recent, me, kill.attacker_id, kill.victim_id) {
+                if !life.is_empty() {
+                    out.lives.push(close(&mut life, true));
+                }
                 out.deaths.push(death);
             }
         }
         done = state.kills.len();
+
+        // Not alive, and no death event claimed the life: a round ended, or
+        // the player left. Either way the route stops here.
+        if !alive_now && !life.is_empty() {
+            out.lives.push(close(&mut life, false));
+        }
     }
+    // The demo ran out while still alive.
+    if !life.is_empty() {
+        out.lives.push(close(&mut life, false));
+    }
+    // A life of one point is a spawn the demo barely saw; it draws nothing.
+    out.lives.retain(|l| l.points.len() > 1);
     Ok(out)
+}
+
+/// Take the points walked so far as a finished life.
+fn close(points: &mut Vec<(u32, i32, i32, i32)>, died: bool) -> LifePath {
+    let points = std::mem::take(points);
+    LifePath {
+        from_tick: points.first().map_or(0, |p| p.0),
+        to_tick: points.last().map_or(0, |p| p.0),
+        died,
+        points,
+    }
 }
 
 /// Your death, from the tick it happened on.

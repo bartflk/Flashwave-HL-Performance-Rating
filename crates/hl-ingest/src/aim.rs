@@ -59,6 +59,8 @@ pub struct AimReport {
     pub other_matches: usize,
     pub kills: Vec<AimKill>,
     pub deaths: Vec<AimDeath>,
+    /// Where you walked, one route per life, with the round it started in.
+    pub paths: Vec<hl_db::PathRow>,
     /// Per demo: ticks alive, and of those, ticks scoped in.
     pub life: Vec<(i64, i64, i64)>,
 }
@@ -78,11 +80,38 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
         .filter(|k| k.killer == me.account_id() && k.live && k.custom.as_deref() != Some("feign_death"))
         .collect();
 
+    // The log's rounds on its own clock, to place each life and route.
+    let rounds: Vec<(i64, f64, f64)> = db
+        .round_spans(log_id)
+        .await?
+        .into_iter()
+        .map(|(num, start, len)| (num, start as f64, (start + len) as f64))
+        .collect();
+
     let mut out = AimReport { log_kills: mine.len(), ..AimReport::default() };
     for d in &demos {
         let (Some(start), Some(rate)) = (d.start_utc, d.tick_rate) else { continue };
         let pass = hl_demos::aim::pass(Path::new(&d.path), &me.to_steamid3(), rate)?;
         out.life.push((d.demo_id, i64::from(pass.alive_ticks), i64::from(pass.scoped_ticks)));
+        // Each life's route, placed in the log's rounds by when it started.
+        for (seq, l) in pass.lives.iter().enumerate() {
+            let at = offset.map(|o| start + f64::from(l.from_tick) / rate - o as f64);
+            let round = at.and_then(|at| rounds.iter().find(|(_, f, t)| at >= *f && at <= *t).map(|(n, ..)| *n));
+            // A life outside every round of this log belongs to another match
+            // in the same recording.
+            if round.is_none() && offset.is_some() {
+                continue;
+            }
+            out.paths.push(hl_db::PathRow {
+                demo_id: d.demo_id,
+                seq: seq as i64,
+                from_tick: i64::from(l.from_tick),
+                to_tick: i64::from(l.to_tick),
+                round_num: round,
+                died: l.died,
+                points: l.points.iter().map(|&(t, x, y, z)| (i64::from(t), x, y, z)).collect(),
+            });
+        }
         // The log's deaths of yours, to join the demo's against.
         let my_deaths: Vec<_> = kills.iter().filter(|k| k.victim == me.account_id() && k.live).collect();
         for death in pass.deaths {
@@ -153,7 +182,8 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
 /// 4: where the player who killed you was, relative to your view.
 /// 5: the crosshair's path over the second before each kill, and the
 ///    sideways and vertical angles corrected to mean what they say.
-pub const VERSION: i64 = 5;
+/// 6: where you walked, one route per life.
+pub const VERSION: i64 = 6;
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -181,6 +211,7 @@ pub async fn derive_all(db: &Db, me: SteamId, all: bool, mut progress: impl FnMu
         let deaths: Vec<hl_db::DeathRow> = report.deaths.iter().map(death_row).collect();
         db.replace_aim(log_id, VERSION, &rows).await?;
         db.replace_deaths(log_id, &deaths, &report.life).await?;
+        db.replace_paths(log_id, &report.paths).await?;
         out.read += 1;
         out.kills += rows.len();
     }
