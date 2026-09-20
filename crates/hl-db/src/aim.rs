@@ -6,6 +6,37 @@ use serde::Serialize;
 use sqlx::Row;
 use std::collections::HashSet;
 
+/// Which matches an aim figure covers: one log, or every log matching a
+/// class, kind and period. `None` everywhere means every match read.
+#[derive(Debug, Clone, Default)]
+pub struct AimFilter<'a> {
+    /// The owner's account id: `class` is their main class in the match.
+    pub me: u32,
+    pub log_id: Option<i64>,
+    /// The owner's main class in the match, e.g. `sniper`.
+    pub class: Option<&'a str>,
+    /// `official`, `scrim` or `pug`.
+    pub kind: Option<&'a str>,
+    /// Played between these, unix seconds.
+    pub from: Option<i64>,
+    pub to: Option<i64>,
+}
+
+/// The rows of `table` this filter covers, as a `WHERE` clause over `?1..?5`.
+/// Every filter is a parameter, so nothing is ever pasted into SQL.
+fn scope(table: &str) -> String {
+    format!(
+        "WHERE (?1 IS NULL OR {table}.log_id = ?1)
+           AND (?2 IS NULL OR EXISTS (SELECT 1 FROM match_player mp
+                                      WHERE mp.log_id = {table}.log_id AND mp.account_id = ?6
+                                        AND mp.main_class = ?2))
+           AND (?3 IS NULL OR EXISTS (SELECT 1 FROM match_context c
+                                      WHERE c.log_id = {table}.log_id AND c.kind = ?3))
+           AND (?4 IS NULL OR EXISTS (SELECT 1 FROM match m WHERE m.log_id = {table}.log_id AND m.played_at >= ?4))
+           AND (?5 IS NULL OR EXISTS (SELECT 1 FROM match m WHERE m.log_id = {table}.log_id AND m.played_at <= ?5))"
+    )
+}
+
 /// One kill's aim, as stored.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -165,27 +196,41 @@ impl Db {
             .collect())
     }
 
-    /// How the living time was spent: one match, or every match read.
+    /// How the living time was spent, over the matches a filter covers.
     /// Ticks are turned into minutes at 66.67 a second, TF2's server rate.
-    pub async fn life_totals(&self, log_id: Option<i64>) -> Result<Option<LifeTotals>> {
-        let life = sqlx::query(
+    pub async fn life_totals(&self, f: &AimFilter<'_>) -> Result<Option<LifeTotals>> {
+        let life = sqlx::query(&format!(
             "SELECT SUM(alive_ticks) AS alive, SUM(scoped_ticks) AS scoped
-             FROM demo_life WHERE (?1 IS NULL OR log_id = ?1)",
-        )
-        .bind(log_id)
+             FROM demo_life
+             {}",
+            scope("demo_life")
+        ))
+        .bind(f.log_id)
+        .bind(f.class)
+        .bind(f.kind)
+        .bind(f.from)
+        .bind(f.to)
+        .bind(f.me)
         .fetch_one(self.pool())
         .await?;
         let alive: Option<i64> = life.get("alive");
         let Some(alive) = alive.filter(|a| *a > 0) else { return Ok(None) };
         let scoped: i64 = life.get::<Option<i64>, _>("scoped").unwrap_or(0);
 
-        let d = sqlx::query(
+        let d = sqlx::query(&format!(
             "SELECT COUNT(*) AS deaths, AVG(nearest_mate) AS mate,
                     AVG(CASE WHEN mates_near = 0 THEN 1.0 ELSE 0.0 END) AS alone,
                     AVG(CASE WHEN scoped = 1 THEN 1.0 ELSE 0.0 END) AS scoped
-             FROM demo_death WHERE (?1 IS NULL OR log_id = ?1)",
-        )
-        .bind(log_id)
+             FROM demo_death
+             {}",
+            scope("demo_death")
+        ))
+        .bind(f.log_id)
+        .bind(f.class)
+        .bind(f.kind)
+        .bind(f.from)
+        .bind(f.to)
+        .bind(f.me)
         .fetch_one(self.pool())
         .await?;
         let deaths: i64 = d.get("deaths");
@@ -234,16 +279,22 @@ impl Db {
         Ok(rows.into_iter().map(row).collect())
     }
 
-    /// Averages over every stored kill, or over one log's.
-    pub async fn aim_totals(&self, log_id: Option<i64>) -> Result<Option<AimTotals>> {
-        let row = sqlx::query(
+    /// Averages over the kills a filter covers.
+    pub async fn aim_totals(&self, f: &AimFilter<'_>) -> Result<Option<AimTotals>> {
+        let row = sqlx::query(&format!(
             "SELECT COUNT(*) AS kills, AVG(error_deg) AS e, AVG(before_deg) AS b,
                     AVG(flick_deg) AS f, AVG(range_units) AS r,
                     AVG(CASE WHEN before_deg <= 3 THEN 1.0 ELSE 0.0 END) AS held
              FROM demo_aim
-             WHERE victim_seen = 1 AND (?1 IS NULL OR log_id = ?1)",
-        )
-        .bind(log_id)
+             {} AND demo_aim.victim_seen = 1",
+            scope("demo_aim")
+        ))
+        .bind(f.log_id)
+        .bind(f.class)
+        .bind(f.kind)
+        .bind(f.from)
+        .bind(f.to)
+        .bind(f.me)
         .fetch_one(self.pool())
         .await?;
         let kills: i64 = row.get("kills");

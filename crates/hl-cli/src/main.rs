@@ -434,7 +434,8 @@ async fn main() -> Result<()> {
                 started.elapsed().as_secs_f64(),
                 s.kills
             );
-            if let Some(t) = db.aim_totals(None).await? {
+            let everything = hl_db::AimFilter { me: me.account_id(), ..Default::default() };
+            if let Some(t) = db.aim_totals(&everything).await? {
                 println!(
                     "\nOver {} kills: crosshair {:.1}° off at the shot, {:.1}° a second before, \
                      {:.1}° of flick, {:.0} units away. The crosshair was already within 3° \

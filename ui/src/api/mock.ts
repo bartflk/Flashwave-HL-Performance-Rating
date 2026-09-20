@@ -388,12 +388,19 @@ export const mockApi: Api = {
   // Fights from `hl fights sniper --json`; the period narrows nothing here.
   getProfile: (cls: string | null, kind: ContextKind | null = null) => {
     const fights = (cls ?? "sniper") === "sniper" ? (fightsSniper as unknown as FightsCard) : null;
+    // Aim only exists for matches with a demo, so the mock carries the real
+    // shape of it: a smaller sample than the rating's.
+    const aim = { kills: 312, errorDeg: 5.8, beforeDeg: 15.2, flickDeg: 10.4, rangeUnits: 1147, heldShare: 0.24 };
+    const aimAll = { kills: 496, errorDeg: 6.3, beforeDeg: 16.5, flickDeg: 11.1, rangeUnits: 1096, heldShare: 0.22 };
+    const life = { scopedShare: 0.23, minutes: 412, deaths: 218, nearestMate: 502, aloneShare: 0.08, scopedShareDeaths: 0.51 };
+    const lifeAll = { scopedShare: 0.21, minutes: 640, deaths: 354, nearestMate: 449, aloneShare: 0.1, scopedShareDeaths: 0.49 };
     const byClass: Record<string, ProfileResponse> = {
-      sniper: { ...(profileSniper as unknown as ProfileResponse), fights },
-      engineer: { ...(profileEngineer as unknown as ProfileResponse), fights: null },
+      sniper: { ...(profileSniper as unknown as ProfileResponse), fights, aim, life, aimAll, lifeAll },
+      engineer: { ...(profileEngineer as unknown as ProfileResponse), fights: null, aim: null, life: null, aimAll: null, lifeAll: null },
     };
     const hit = byClass[cls ?? "sniper"];
-    if (!hit?.profile || kind === null) return delay(hit ?? { classes: byClass.sniper.classes, profile: null });
+    if (!hit?.profile || kind === null)
+      return delay(hit ?? { classes: byClass.sniper.classes, profile: null, fights: null, aim: null, life: null, aimAll: null, lifeAll: null });
     const p = hit.profile;
     const trend = p.trend.filter((t) => t.kind === kind);
     const only = <T extends { kind: ContextKind | null }>(xs: T[]) => xs.filter((x) => x.kind === kind);

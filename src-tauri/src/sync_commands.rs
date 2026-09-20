@@ -267,6 +267,12 @@ pub struct ProfileResponse {
     pub profile: Option<hl_rating::Profile>,
     /// Kills in context against the players you face, under the same filters.
     pub fights: Option<hl_ingest::seasons::FightsCard>,
+    /// What your demos say about your aim under the same filters (PLAN §14),
+    /// and over everything read, to compare against.
+    pub aim: Option<hl_db::AimTotals>,
+    pub life: Option<hl_db::LifeTotals>,
+    pub aim_all: Option<hl_db::AimTotals>,
+    pub life_all: Option<hl_db::LifeTotals>,
 }
 
 /// The owner's profile on one class, defaulting to their most-rated class.
@@ -299,7 +305,26 @@ pub async fn get_profile(
         ),
         None => (None, None),
     };
-    Ok(ProfileResponse { classes, profile, fights })
+    // The same filters, over what the demos say (PLAN §14).
+    let class_name = chosen.map(|c| c.as_str());
+    let scope = hl_db::AimFilter {
+        me: me.account_id(),
+        log_id: None,
+        class: class_name,
+        kind: kind.as_deref(),
+        from,
+        to,
+    };
+    let everything = hl_db::AimFilter { me: me.account_id(), class: class_name, ..Default::default() };
+    Ok(ProfileResponse {
+        classes,
+        profile,
+        fights,
+        aim: state.db.aim_totals(&scope).await?,
+        life: state.db.life_totals(&scope).await?,
+        aim_all: state.db.aim_totals(&everything).await?,
+        life_all: state.db.life_totals(&everything).await?,
+    })
 }
 
 /// Your name and profile picture, as stored.
@@ -368,13 +393,16 @@ pub struct AimResponse {
 
 #[tauri::command]
 pub async fn get_aim(state: State<'_, AppState>, log_id: i64) -> CmdResult<AimResponse> {
+    let me = state.db.get_me().await?.map_or(0, |m| m.account_id());
+    let this = hl_db::AimFilter { me, log_id: Some(log_id), ..Default::default() };
+    let all = hl_db::AimFilter { me, ..Default::default() };
     Ok(AimResponse {
         kills: state.db.aim_for_log(log_id).await?,
         deaths: state.db.deaths_for_log(log_id).await?,
-        totals: state.db.aim_totals(Some(log_id)).await?,
-        life: state.db.life_totals(Some(log_id)).await?,
-        career: state.db.aim_totals(None).await?,
-        career_life: state.db.life_totals(None).await?,
+        totals: state.db.aim_totals(&this).await?,
+        life: state.db.life_totals(&this).await?,
+        career: state.db.aim_totals(&all).await?,
+        career_life: state.db.life_totals(&all).await?,
     })
 }
 

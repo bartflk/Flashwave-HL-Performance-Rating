@@ -459,6 +459,11 @@ export interface ProfileResponse {
   profile: Profile | null;
   /** Kills in context against the players you face, under the same filters. */
   fights: FightsCard | null;
+  /** What your demos say, under the same filters and over everything read. */
+  aim: AimTotals | null;
+  life: LifeTotals | null;
+  aimAll: AimTotals | null;
+  lifeAll: LifeTotals | null;
 }
 
 // ---- Seasons and fights -------------------------------------------------------

@@ -13,6 +13,7 @@ import { capitalize, formatDate, splitMap } from "../../lib/format";
 import { KIND_LABEL, KIND_PLURAL } from "../ContextBadge";
 import { bounds, usePeriod } from "../../lib/period";
 import { PeriodPicker } from "../PeriodPicker";
+import { AimPanel } from "./AimPanel";
 import { FightsPanel } from "./FightsPanel";
 import { SeasonsPanel } from "./SeasonsPanel";
 import { TrendChart } from "./TrendChart";
@@ -94,6 +95,12 @@ export function ProfilePage({ onOpenMatch }: { onOpenMatch: (logId: number) => v
       {profile && fights && (
         <Fold id="profile-fights">
           <FightsPanel card={fights} cls={profile.class} />
+        </Fold>
+      )}
+
+      {profile && (q.data?.aim || q.data?.life) && (
+        <Fold id="profile-aim">
+          <AimPanel aim={q.data.aim} life={q.data.life} aimAll={q.data.aimAll} lifeAll={q.data.lifeAll} cls={profile.class} />
         </Fold>
       )}
 
