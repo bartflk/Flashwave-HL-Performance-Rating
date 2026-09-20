@@ -22,27 +22,8 @@
   flex-wrap: wrap;
 }
 
-.an-field {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.an-label {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-}
-
+/* The player picker can hold a long name; the rest stay compact. */
 .analysis select {
-  font: inherit;
-  font-size: 0.9rem;
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--panel-2);
-  color: var(--text);
   max-width: 320px;
 }
 

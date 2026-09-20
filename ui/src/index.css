@@ -134,6 +134,68 @@ button.primary:hover:not(:disabled) {
   border-color: #ef8a4f;
 }
 
+/* Dropdowns. The browser's own control is kept — it behaves properly with a
+   keyboard and on a touchpad — but its skin is replaced: the arrow is drawn
+   here, since a native one cannot be recoloured. The list that opens is the
+   operating system's; Chromium takes the colours below for it, which is why
+   `option` is styled too. */
+select {
+  font: inherit;
+  padding: 7px 30px 7px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  color-scheme: dark;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a8998b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+select:hover {
+  border-color: #4f4339;
+  background-color: #3a322b;
+}
+
+select:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(224, 118, 58, 0.25);
+}
+
+select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+option {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+option:disabled {
+  color: #7a6b5e;
+}
+
+/* A field and its label: the pattern every filter row uses. */
+.an-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.an-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 input[type="text"] {
   font: inherit;
   width: 100%;
