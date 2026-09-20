@@ -759,3 +759,125 @@
 .aim-table .badge + .muted {
   margin-left: 6px;
 }
+
+/* --- aim: the pictures --- */
+
+.aim-charts {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.aim-fig {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.aim-fig figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.aim-fig-sub {
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.setup-bar {
+  display: flex;
+  height: 26px;
+  border-radius: 5px;
+  overflow: hidden;
+  gap: 2px;
+}
+
+.setup-seg {
+  display: grid;
+  place-items: center;
+  min-width: 2px;
+}
+
+.setup-in {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #1b1714;
+}
+
+.aim-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.aim-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.aim-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.aim-dot-open {
+  background: none;
+  border: 2px solid var(--muted);
+}
+
+/* Wide screens would stretch the plot to a letterbox; its shape carries
+   meaning, so it stops growing instead. */
+.aim-svg {
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.aim-grid {
+  stroke: rgba(242, 230, 217, 0.07);
+}
+
+.aim-axis-line {
+  stroke: rgba(242, 230, 217, 0.18);
+}
+
+.aim-cover-line {
+  stroke: var(--accent);
+  stroke-dasharray: 4 4;
+  opacity: 0.7;
+}
+
+.aim-axis {
+  fill: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.aim-details > summary {
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.85rem;
+  color: var(--muted);
+  padding: 4px 0;
+}
+
+.aim-details > summary:hover {
+  color: var(--text);
+}

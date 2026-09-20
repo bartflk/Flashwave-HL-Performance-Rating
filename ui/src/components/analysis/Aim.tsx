@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type Analysis, type AimRow, type AimTotals, type DeathRow, type LifeTotals } from "../../api/types";
+import { AimCharts } from "./AimCharts";
 import { playerMap } from "./common";
 
 /**
@@ -32,7 +33,10 @@ export function Aim({ a, logId }: { a: Analysis; logId: number }) {
   return (
     <div className="aim">
       {d.totals && <Summary t={d.totals} career={d.career} life={d.life} careerLife={d.careerLife} />}
-      <div className="table-wrap">
+      <AimCharts kills={kills} deaths={d.deaths} />
+      <details className="aim-details">
+        <summary>Every kill, in numbers</summary>
+        <div className="table-wrap">
         <table className="match-table aim-table">
           <thead>
             <tr>
@@ -80,8 +84,14 @@ export function Aim({ a, logId }: { a: Analysis; logId: number }) {
             ))}
           </tbody>
         </table>
-      </div>
-      {d.deaths.length > 0 && <Deaths rows={d.deaths} names={names} />}
+        </div>
+      </details>
+      {d.deaths.length > 0 && (
+        <details className="aim-details">
+          <summary>Every death, in numbers</summary>
+          <Deaths rows={d.deaths} names={names} />
+        </details>
+      )}
       <p className="hint aim-foot">
         Angles are measured to the middle of the victim&apos;s head. A small crosshair error a second before the kill
         means the angle was already held; a large one followed by a flick means it was a reaction.
@@ -130,7 +140,6 @@ function Summary(props: { t: AimTotals; career: AimTotals | null; life: LifeTota
 function Deaths({ rows, names }: { rows: DeathRow[]; names: ReturnType<typeof playerMap> }) {
   return (
     <div className="table-wrap">
-      <h3 className="aim-h3">Your deaths</h3>
       <table className="match-table aim-table">
         <thead>
           <tr>
