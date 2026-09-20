@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
-import type { LogFlags, MatchDetail, PlayerRow } from "../../api/types";
-import { capitalize, clock, teamLabel } from "../../lib/format";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "../../api/client";
+import { errorMessage, type LogFlags, type MatchDetail, type PlayerRow } from "../../api/types";
+import { capitalize, clock, splitMap, teamLabel } from "../../lib/format";
 import { ClassIcon } from "../ClassIcon";
 
 const CLASS_ORDER = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
@@ -49,18 +51,51 @@ const COLS: Col[] = [
  */
 export function BoxScore({ d }: { d: MatchDetail }) {
   const [sort, setSort] = useState<{ key: Key; desc: boolean }>({ key: "team", desc: false });
+  // A combined log can be read whole, or one of its logs at a time.
+  const [part, setPart] = useState<number | null>(null);
+  const qc = useQueryClient();
+  const partsQ = useQuery({
+    queryKey: ["parts", d.logId],
+    queryFn: () => api.getParts(d.logId),
+    enabled: d.parts.length > 0,
+    staleTime: 5 * 60_000,
+  });
+  const [fetching, setFetching] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const chosen = part === null ? null : (partsQ.data ?? []).find((p) => p.logId === part) ?? null;
+  const shown = chosen?.detail ?? d;
+
+  // A part whose log has never been fetched: one request to logs.tf gets it.
+  async function pick(logId: number | null) {
+    setPart(logId);
+    setError(null);
+    if (logId === null) return;
+    const have = (partsQ.data ?? []).find((p) => p.logId === logId);
+    if (have?.detail) return;
+    setFetching(logId);
+    try {
+      await api.fetchPart(logId);
+      await qc.invalidateQueries({ queryKey: ["parts", d.logId] });
+    } catch (e) {
+      setError(errorMessage(e));
+      setPart(null);
+    } finally {
+      setFetching(null);
+    }
+  }
 
   const rows = useMemo(() => {
     const byTeamClass = (a: PlayerRow, b: PlayerRow) =>
-      (a.team === d.leftTeam ? 0 : 1) - (b.team === d.leftTeam ? 0 : 1) ||
+      (a.team === shown.leftTeam ? 0 : 1) - (b.team === shown.leftTeam ? 0 : 1) ||
       CLASS_ORDER.indexOf(a.mainClass ?? "") - CLASS_ORDER.indexOf(b.mainClass ?? "");
     const col = COLS.find((c) => c.key === sort.key);
-    const out = [...d.players];
+    const out = [...shown.players];
     if (sort.key === "team") out.sort(byTeamClass);
     else if (sort.key === "name") out.sort((a, b) => a.name.localeCompare(b.name));
     else if (col) {
       // Unrecorded values sink to the bottom whichever way the column is sorted.
-      const v = (p: PlayerRow) => col.value(p, d.flags);
+      const v = (p: PlayerRow) => col.value(p, shown.flags);
       out.sort((a, b) => {
         const x = v(a);
         const y = v(b);
@@ -70,7 +105,7 @@ export function BoxScore({ d }: { d: MatchDetail }) {
     }
     if (sort.desc) out.reverse();
     return out;
-  }, [d, sort]);
+  }, [shown, sort]);
 
   const click = (key: Key) =>
     setSort((s) => (s.key === key ? { key, desc: !s.desc } : { key, desc: false }));
@@ -80,7 +115,26 @@ export function BoxScore({ d }: { d: MatchDetail }) {
     <section className="panel box">
       <header className="box-head">
         <h2>Scoreboard</h2>
-        <p className="hint">Click a column to sort. Hover a class for time played; a dash means the log did not record it.</p>
+        {d.parts.length > 0 && (
+          <label className="an-field box-part">
+            <span className="an-label">Showing</span>
+            <select value={part ?? ""} onChange={(e) => void pick(e.target.value === "" ? null : Number(e.target.value))}>
+              <option value="">Whole match ({d.parts.length} logs)</option>
+              {(partsQ.data ?? d.parts.map((p) => ({ ...p, detail: null }))).map((p) => (
+                <option key={p.logId} value={p.logId}>
+                  {capitalize(splitMap(p.map).name ?? "unknown")} · log {p.logId}
+                  {p.detail ? "" : " (fetches)"}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <p className="hint">
+          Click a column to sort. Hover a class for time played; a dash means the log did not record it.
+          {chosen && " This is one of the logs this match was combined from, scored on its own."}
+          {fetching !== null && " Fetching that log from logs.tf…"}
+        </p>
+        {error && <p className="error">{error}</p>}
       </header>
       <div className="table-wrap">
         <table className="match-table scoreboard">
@@ -117,7 +171,7 @@ export function BoxScore({ d }: { d: MatchDetail }) {
                   ))}
                 </td>
                 {COLS.map((c) => {
-                  const v = c.value(p, d.flags);
+                  const v = c.value(p, shown.flags);
                   return (
                     <td key={c.key} className={c.key === "rating" ? "num sb-rating" : "num"}>
                       {v === null ? <span className="muted">–</span> : c.fmt ? c.fmt(v) : String(Math.round(v))}

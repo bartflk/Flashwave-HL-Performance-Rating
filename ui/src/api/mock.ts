@@ -510,6 +510,28 @@ export const mockApi: Api = {
     );
   },
 
+  getParts: (logId: number) => {
+    // The combined fixture's three logs, two of them already "fetched": the
+    // third exercises the fetch-on-demand path.
+    const d = FIXTURES.find((f) => f.logId === logId);
+    const parts = d?.parts ?? [];
+    return delay(
+      parts.map((p, i) => ({
+        logId: p.logId,
+        title: p.title,
+        map: p.map,
+        playedAt: p.playedAt,
+        durationS: p.durationS,
+        detail: i < 2 && d ? ({ ...d, logId: p.logId, map: p.map, parts: [] } as MatchDetail) : null,
+      })),
+      150,
+    );
+  },
+  fetchPart: (partId: number) => {
+    const d = FIXTURES[0];
+    return delay({ ...d, logId: partId, parts: [] } as MatchDetail, 600);
+  },
+
   getPaths: (logId: number) => {
     // A lap of a small loop, so the layer has something to draw in a browser.
     const r = rng(logId);

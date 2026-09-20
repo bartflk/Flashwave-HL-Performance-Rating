@@ -32,6 +32,7 @@ import type {
   Backup,
   Backups,
   PathRow,
+  PartScore,
 } from "./types";
 
 /** True inside the Tauri window, false in a plain browser tab. */
@@ -76,6 +77,10 @@ const realApi = {
   rawlogStats: () => invoke<RawlogStats>("rawlog_stats"),
   /** Null when the match's raw log is not stored. */
   getMatchAnalysis: (logId: number) => invoke<Analysis | null>("get_match_analysis", { logId }),
+  /** The scoreboards of the logs a combined log was built from. */
+  getParts: (logId: number) => invoke<PartScore[]>("get_parts", { logId }),
+  /** Fetch one part's log from logs.tf and score it. */
+  fetchPart: (partId: number) => invoke<MatchDetail | null>("fetch_part", { partId }),
   /** Where you walked in one match, one route per life (PLAN §14). */
   getPaths: (logId: number) => invoke<PathRow[]>("get_paths", { logId }),
   /** Copies of the database, newest first. */

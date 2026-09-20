@@ -1245,3 +1245,21 @@
   color: var(--muted);
   white-space: nowrap;
 }
+
+/* The scoreboard's "whole match or one of its logs" picker. */
+.box-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px 16px;
+}
+
+.box-head h2 {
+  margin-right: auto;
+}
+
+.box-head .hint,
+.box-head .error {
+  flex-basis: 100%;
+  margin: 0;
+}

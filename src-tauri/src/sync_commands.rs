@@ -439,6 +439,23 @@ pub async fn get_aim(state: State<'_, AppState>, log_id: i64) -> CmdResult<AimRe
     })
 }
 
+/// The scoreboards of the logs a combined log was built from. A part with no
+/// stored data comes back without one; `fetch_part` gets it.
+#[tauri::command]
+pub async fn get_parts(state: State<'_, AppState>, log_id: i64) -> CmdResult<Vec<hl_ingest::parts::PartScore>> {
+    let me = state.db.get_me().await?;
+    let (weights, _) = hl_rating::Weights::load(&state.db_path.with_file_name("weights.toml"));
+    Ok(hl_ingest::parts::scores(&state.db, log_id, me, &weights).await?)
+}
+
+/// Fetch one part's log from logs.tf and score it.
+#[tauri::command]
+pub async fn fetch_part(state: State<'_, AppState>, part_id: i64) -> CmdResult<Option<hl_rating::MatchDetail>> {
+    let me = state.db.get_me().await?;
+    let (weights, _) = hl_rating::Weights::load(&state.db_path.with_file_name("weights.toml"));
+    Ok(hl_ingest::parts::fetch(&state.db, &state.sources, part_id, me, &weights).await?)
+}
+
 /// Where you walked in one match, one route per life (PLAN §14). Empty
 /// without a demo for it.
 #[tauri::command]

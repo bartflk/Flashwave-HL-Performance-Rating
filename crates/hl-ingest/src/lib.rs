@@ -24,6 +24,7 @@ pub mod fights;
 pub mod situation;
 pub mod seasons;
 pub mod owner;
+pub mod parts;
 pub mod validate;
 pub mod kills;
 

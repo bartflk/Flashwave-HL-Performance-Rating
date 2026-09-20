@@ -22,7 +22,19 @@ pub async fn match_detail(
     };
     let value: serde_json::Value =
         serde_json::from_str(&json).with_context(|| format!("log {log_id} is not valid JSON"))?;
-    let log = normalize(log_id, &value)?;
+    Ok(Some(match_detail_from(db, log_id, &value, me, weights).await?))
+}
+
+/// The same, from JSON already in hand: a stored log, or a part of a combined
+/// one that has no raw server log of its own.
+pub async fn match_detail_from(
+    db: &Db,
+    log_id: i64,
+    value: &serde_json::Value,
+    me: Option<SteamId>,
+    weights: &Weights,
+) -> Result<MatchDetail> {
+    let log = normalize(log_id, value)?;
     let baseline = crate::rating::load_baseline(db).await?;
     let kills = db.kills_for_log(log_id).await?;
     let windows = db.round_windows(log_id).await?;
@@ -57,5 +69,5 @@ pub async fn match_detail(
         detail.etf2l_match_id = info.etf2l_match_id;
         detail.demos_tf_id = info.demos_tf_id;
     }
-    Ok(Some(detail))
+    Ok(detail)
 }

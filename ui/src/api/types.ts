@@ -939,3 +939,14 @@ export interface PathRow {
   /** `[tick, x, y, z]` in map units, about four a second. */
   points: Array<[number, number, number, number]>;
 }
+
+/** One log a combined log was built from, with its own scoreboard. */
+export interface PartScore {
+  logId: number;
+  title: string | null;
+  map: string | null;
+  playedAt: number | null;
+  durationS: number | null;
+  /** Null until the part's log has been fetched from logs.tf. */
+  detail: MatchDetail | null;
+}

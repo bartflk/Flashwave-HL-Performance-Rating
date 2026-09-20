@@ -54,6 +54,9 @@ COMMANDS:
     demo <PATH> [--stride N] [--json]
                            Read a demo's packets: who is in it, and where you
                            stood and looked (PLAN §14)
+    parts <LOG_ID> [--fetch]
+                           The logs a combined log was built from, each scored
+                           on its own; --fetch gets any that are missing
     stv <LOG_ID>           Download a match's SourceTV demo, link it and read it
     backup [--list]        Copy the database (kept beside it, newest five)
     owner [--refresh]      Your name and profile picture (--refresh looks them up)
@@ -537,6 +540,42 @@ async fn main() -> Result<()> {
             match hl_ingest::backup::run(&db, &db_path, true).await? {
                 Some(b) => println!("copied to {} ({:.0} MB)", b.path, b.bytes as f64 / 1_000_000.0),
                 None => println!("a recent copy already exists"),
+            }
+            Ok(())
+        }
+
+        // The logs a combined log was built from, each scored on its own.
+        ["parts", log_id, rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?;
+            let (w, _) = hl_rating::Weights::load(&db_path.with_file_name("weights.toml"));
+            let log_id: i64 = log_id.parse()?;
+            let mut parts = hl_ingest::parts::scores(&db, log_id, me, &w).await?;
+            if rest.contains(&"--fetch") {
+                let sources = Sources::new()?;
+                for p in &mut parts {
+                    if p.detail.is_none() {
+                        p.detail = hl_ingest::parts::fetch(&db, &sources, p.log_id, me, &w).await?;
+                    }
+                }
+            }
+            if parts.is_empty() {
+                println!("log {log_id} was not combined from other logs");
+                return Ok(());
+            }
+            for p in &parts {
+                match &p.detail {
+                    Some(d) => println!(
+                        "log {:<9} {:<22} {:>3} min  {} players  {}-{}",
+                        p.log_id,
+                        p.map.as_deref().unwrap_or("?"),
+                        d.duration_s / 60,
+                        d.players.len(),
+                        d.red_score,
+                        d.blue_score
+                    ),
+                    None => println!("log {:<9} {:<22} not fetched (use --fetch)", p.log_id, p.map.as_deref().unwrap_or("?")),
+                }
             }
             Ok(())
         }
