@@ -16,6 +16,13 @@ Everything is stored on your PC. No account, no server.
 
 ## Install (Windows)
 
+> **Uninstalling deletes your history if you let it.** The uninstaller offers
+> a **"Delete the application data"** checkbox. Leave it unticked unless you
+> mean it: that folder holds every log, demo index and rating the app has
+> built. The app keeps five copies of its database in a `backups` folder
+> beside it, but the uninstaller removes those too.
+
+
 1. Download `HL Rating_0.1.0_x64-setup.exe` from the [Releases page](../../releases) (the newest "0.1 beta" entry).
 2. Run it. Windows may show **"Windows protected your PC"** because the installer is not code-signed (signing costs money every year). Click **More info → Run anyway**.
 3. The installer adds HL Rating to the Start menu. It needs Microsoft WebView2, which Windows 10 and 11 already have; if not, the installer fetches it.

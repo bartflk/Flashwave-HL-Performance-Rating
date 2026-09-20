@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { errorMessage, type AppStatus, type DemoIndexSummary } from "../api/types";
+import { formatDate } from "../lib/format";
 
 export function Settings({
   status,
@@ -74,6 +75,70 @@ export function Settings({
           <dd>{status.version}</dd>
         </dl>
       </div>
+
+      <BackupsPanel />
+    </div>
+  );
+}
+
+/**
+ * Copies of the database. One is taken before every sync and rebuild, five
+ * are kept, and this is where to check they exist — the file holds every log,
+ * demo index and rating, and nothing else here can rebuild it from nothing.
+ */
+function BackupsPanel() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["backups"], queryFn: api.listBackups });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function backupNow() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.backupNow();
+      await qc.invalidateQueries({ queryKey: ["backups"] });
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const items = q.data?.items ?? [];
+  return (
+    <div className="panel">
+      <h2>Backups</h2>
+      <p className="hint">
+        A copy of the database is made before every sync and rebuild, and the newest five are kept beside it. To go
+        back to one, close the app and rename the copy over <code>hl.sqlite3</code>.
+      </p>
+      <p className="hint">
+        Uninstalling the app offers to delete its data. That removes these copies too, so keep one elsewhere if it
+        matters to you.
+      </p>
+      <div className="row" style={{ marginTop: 14 }}>
+        <button onClick={() => void backupNow()} disabled={busy}>
+          {busy ? "Copying…" : "Back up now"}
+        </button>
+      </div>
+      {error && <p className="error" style={{ marginTop: 10 }}>{error}</p>}
+      {items.length === 0 ? (
+        <p className="hint" style={{ marginTop: 14 }}>No copies yet. The next sync makes one.</p>
+      ) : (
+        <dl className="kv" style={{ marginTop: 16 }}>
+          <dt>Folder</dt>
+          <dd>
+            <code>{q.data?.dir}</code>
+          </dd>
+          {items.map((b) => (
+            <Fragment key={b.path}>
+              <dt>{formatDate(b.madeAt, true)}</dt>
+              <dd>{(b.bytes / 1_000_000).toFixed(0)} MB</dd>
+            </Fragment>
+          ))}
+        </dl>
+      )}
     </div>
   );
 }

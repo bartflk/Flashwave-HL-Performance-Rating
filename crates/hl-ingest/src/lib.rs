@@ -31,6 +31,7 @@ pub mod kills;
 /// A backlog drains over several syncs instead of tripping its limit.
 pub const BULK_PER_SYNC: usize = 100;
 pub mod aim;
+pub mod backup;
 pub mod analysis;
 pub mod mapview;
 pub mod overview;

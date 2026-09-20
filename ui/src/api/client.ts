@@ -29,6 +29,8 @@ import type {
   Season,
   SeasonsView,
   AimResponse,
+  Backup,
+  Backups,
 } from "./types";
 
 /** True inside the Tauri window, false in a plain browser tab. */
@@ -73,6 +75,10 @@ const realApi = {
   rawlogStats: () => invoke<RawlogStats>("rawlog_stats"),
   /** Null when the match's raw log is not stored. */
   getMatchAnalysis: (logId: number) => invoke<Analysis | null>("get_match_analysis", { logId }),
+  /** Copies of the database, newest first. */
+  listBackups: () => invoke<Backups>("list_backups"),
+  /** Copy the database now, whatever the last copy's age. */
+  backupNow: () => invoke<Backup | null>("backup_now"),
   /** What the demo says about your aim in one match (PLAN §14). */
   getAim: (logId: number) => invoke<AimResponse>("get_aim", { logId }),
   /** Null when too few kills are stored on the map to draw it. */

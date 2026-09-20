@@ -495,6 +495,17 @@ export const mockApi: Api = {
     );
   },
 
+  listBackups: () =>
+    delay({
+      dir: "C:\Users\you\AppData\Roaming\gg.highlander.rating\backups",
+      items: [
+        { path: "…\hl-20260920-120340.sqlite3", bytes: 183_730_176, madeAt: Math.floor(Date.now() / 1000) - 3_600 },
+        { path: "…\hl-20260919-201112.sqlite3", bytes: 182_100_000, madeAt: Math.floor(Date.now() / 1000) - 90_000 },
+      ],
+    }),
+  backupNow: () =>
+    delay({ path: "…\hl-now.sqlite3", bytes: 183_900_000, madeAt: Math.floor(Date.now() / 1000) }),
+
   getMatchAnalysis: (logId: number) =>
     delay(
       logId === 3863290

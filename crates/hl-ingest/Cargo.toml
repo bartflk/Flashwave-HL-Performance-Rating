@@ -12,6 +12,7 @@ hl-rating.workspace = true
 hl-demos.workspace = true
 
 anyhow.workspace = true
+chrono.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["time", "sync", "fs", "io-util"] }

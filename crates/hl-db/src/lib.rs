@@ -85,6 +85,19 @@ impl Db {
         Ok(Db { pool })
     }
 
+    /// Write a consistent copy of the whole database to `path`, which must
+    /// not exist. Safe while the app is using the original: SQLite reads it
+    /// inside a transaction and the result is an ordinary database file.
+    pub async fn vacuum_into(&self, path: &Path) -> Result<()> {
+        // The path goes in as a bound value, never pasted into the statement.
+        sqlx::query("VACUUM INTO ?1")
+            .bind(path.to_string_lossy().as_ref())
+            .execute(&self.pool)
+            .await
+            .with_context(|| format!("copying the database to `{}`", path.display()))?;
+        Ok(())
+    }
+
     /// An in-memory database with migrations applied. For tests.
     pub async fn connect_in_memory() -> Result<Self> {
         let pool = SqlitePoolOptions::new()

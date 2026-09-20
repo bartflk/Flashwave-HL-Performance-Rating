@@ -901,3 +901,16 @@ export interface AimResponse {
   career: AimTotals | null;
   careerLife: LifeTotals | null;
 }
+
+/** A copy of the database, kept beside it. */
+export interface Backup {
+  path: string;
+  bytes: number;
+  /** Unix seconds. */
+  madeAt: number;
+}
+
+export interface Backups {
+  dir: string;
+  items: Backup[];
+}

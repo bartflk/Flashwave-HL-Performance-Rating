@@ -54,6 +54,7 @@ COMMANDS:
     demo <PATH> [--stride N] [--json]
                            Read a demo's packets: who is in it, and where you
                            stood and looked (PLAN §14)
+    backup [--list]        Copy the database (kept beside it, newest five)
     owner [--refresh]      Your name and profile picture (--refresh looks them up)
     seasons [CLASS] [--json]
                            Your seasons, and how you played the class in each
@@ -513,6 +514,28 @@ async fn main() -> Result<()> {
                     mean(|k| k.shot.flick_deg),
                     mean(|k| k.shot.range),
                 );
+            }
+            Ok(())
+        }
+
+        // Copies of the database, taken before every sync and rebuild.
+        ["backup", rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            if rest.contains(&"--list") {
+                let all = hl_ingest::backup::list(&db_path);
+                if all.is_empty() {
+                    println!("No copies yet. They live in {}", hl_ingest::backup::dir(&db_path).display());
+                    return Ok(());
+                }
+                println!("{:<24} {:>10}  path", "made", "size");
+                for b in &all {
+                    println!("{:<24} {:>9.0} MB  {}", fmt_date(b.made_at), b.bytes as f64 / 1_000_000.0, b.path);
+                }
+                return Ok(());
+            }
+            match hl_ingest::backup::run(&db, &db_path, true).await? {
+                Some(b) => println!("copied to {} ({:.0} MB)", b.path, b.bytes as f64 / 1_000_000.0),
+                None => println!("a recent copy already exists"),
             }
             Ok(())
         }

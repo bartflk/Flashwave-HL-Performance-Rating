@@ -61,6 +61,7 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
 
     let db = state.db.clone();
     let sources = state.sources.clone();
+    let db_path = state.db_path.clone();
     let weights_path = state.db_path.with_file_name("weights.toml");
 
     tauri::async_runtime::spawn(async move {
@@ -68,6 +69,11 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
         let emitter = app.clone();
         let opts = SyncOptions { full, max_fetch: None };
         let result = async {
+            // A copy first: a sync rewrites derived tables, and the file is
+            // the only thing here that cannot be fetched again.
+            if let Err(e) = hl_ingest::backup::run(&db, &db_path, false).await {
+                tracing::warn!(error = %format!("{e:#}"), "database backup failed");
+            }
             let summary = hl_ingest::sync(&db, &sources, me, &opts, |p: Progress| {
                 let _ = emitter.emit(EV_PROGRESS, p);
             })
@@ -150,12 +156,17 @@ pub async fn reprocess_start(app: AppHandle, state: State<'_, AppState>) -> CmdR
     let guard = BusyGuard::acquire(&state.busy)
         .ok_or_else(|| CmdError::new("busy", "A sync is already running."))?;
     let db = state.db.clone();
+    let db_path = state.db_path.clone();
     let weights_path = state.db_path.with_file_name("weights.toml");
 
     tauri::async_runtime::spawn(async move {
         let _guard = guard;
         let emitter = app.clone();
         let result = async {
+            // A rebuild rewrites every derived table; keep a copy of what was.
+            if let Err(e) = hl_ingest::backup::run(&db, &db_path, false).await {
+                tracing::warn!(error = %format!("{e:#}"), "database backup failed");
+            }
             let stats = hl_ingest::reprocess(&db, |p: Progress| {
                 let _ = emitter.emit(EV_PROGRESS, p);
             })
@@ -325,6 +336,28 @@ pub async fn get_profile(
         aim_all: state.db.aim_totals(&everything).await?,
         life_all: state.db.life_totals(&everything).await?,
     })
+}
+
+/// Copies of the database, newest first, with where they live.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Backups {
+    pub dir: String,
+    pub items: Vec<hl_ingest::backup::Backup>,
+}
+
+#[tauri::command]
+pub async fn list_backups(state: State<'_, AppState>) -> CmdResult<Backups> {
+    Ok(Backups {
+        dir: hl_ingest::backup::dir(&state.db_path).to_string_lossy().into_owned(),
+        items: hl_ingest::backup::list(&state.db_path),
+    })
+}
+
+/// Copy the database now, whatever the last copy's age.
+#[tauri::command]
+pub async fn backup_now(state: State<'_, AppState>) -> CmdResult<Option<hl_ingest::backup::Backup>> {
+    Ok(hl_ingest::backup::run(&state.db, &state.db_path, true).await?)
 }
 
 /// Your name and profile picture, as stored.
