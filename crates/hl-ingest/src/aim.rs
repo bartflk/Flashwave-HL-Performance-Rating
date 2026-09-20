@@ -151,7 +151,9 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
 /// 2: deaths (who was near, scoped) and time spent scoped.
 /// 3: which way the crosshair was off, not just how far.
 /// 4: where the player who killed you was, relative to your view.
-pub const VERSION: i64 = 4;
+/// 5: the crosshair's path over the second before each kill, and the
+///    sideways and vertical angles corrected to mean what they say.
+pub const VERSION: i64 = 5;
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -216,6 +218,7 @@ fn store_row(k: &AimKill) -> hl_db::AimRow {
         dy_deg: f64::from(k.shot.dy_deg),
         before_dx_deg: f64::from(k.shot.before_dx_deg),
         before_dy_deg: f64::from(k.shot.before_dy_deg),
+        path: k.shot.path.iter().map(|&(x, y)| (f64::from(x), f64::from(y))).collect(),
         flick_deg: f64::from(k.shot.flick_deg),
         range_units: f64::from(k.shot.range),
         height: f64::from(k.shot.height),

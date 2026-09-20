@@ -36,6 +36,10 @@ pub const HEAD_HEIGHT: f32 = 68.0;
 
 /// How long before the shot the "before" reading is taken.
 pub const LEAD_S: f64 = 1.0;
+/// How many points of the crosshair's path to keep per kill, the last one
+/// being the shot itself. Eight over a second is enough to show a flick and
+/// its overshoot without keeping every tick.
+pub const PATH_POINTS: usize = 8;
 /// The window the flick is measured over.
 pub const FLICK_S: f64 = 0.5;
 
@@ -67,6 +71,10 @@ pub struct Shot {
     /// Both players were carried by the demo for the whole window. A POV demo
     /// drops players it never showed, and their numbers would be stale.
     pub victim_seen: bool,
+    /// Where the crosshair sat through the second before, oldest first and
+    /// ending at the shot: `(sideways, vertical)` degrees from the head, the
+    /// same measure as `dx_deg`. Empty when the window was too short.
+    pub path: Vec<(f32, f32)>,
 }
 
 /// How you died, as the demo saw it.
@@ -81,6 +89,9 @@ pub struct Death {
     /// Where they were relative to where you were looking, in degrees:
     /// positive is to your right, and above your crosshair. 180 sideways is
     /// directly behind you. `None` when the demo never carried them.
+    ///
+    /// This is the mirror of a kill's `dx_deg`, which says where the
+    /// crosshair sat relative to a head; here the head is the moving part.
     pub killer_dx_deg: Option<f32>,
     pub killer_dy_deg: Option<f32>,
     /// The nearest living teammate, and how many were within
@@ -204,7 +215,12 @@ fn death_for(recent: &VecDeque<Frame>, me: &str, attacker: u16, victim: u16) -> 
     let (_, yaw, pitch) = now.me?;
     let killer_seen = now.others.get(&attacker).filter(|(_, seen)| *seen).map(|&(p, _)| p);
     let killer_range = killer_seen.map(|p| dist(pos, p));
-    let killer_offset = killer_seen.map(|p| offset_to(pos, yaw, pitch, p));
+    // offset_to says where the crosshair was relative to them; negate it to
+    // say where they were relative to the crosshair.
+    let killer_offset = killer_seen.map(|p| {
+        let (x, y) = offset_to(pos, yaw, pitch, p);
+        (-x, -y)
+    });
     let mut nearest: Option<f32> = None;
     let mut near = 0u8;
     for &m in &now.mates {
@@ -262,6 +278,19 @@ fn shot_for(recent: &VecDeque<Frame>, me: &str, attacker: u16, victim: u16, weap
     let (before_dx, before_dy) = earlier.map_or((dx, dy), |((p, y, pi), &(vp, _))| offset_to(p, y, pi, vp));
     let before_seen = then.others.get(&victim).is_some_and(|&(_, seen)| seen);
 
+    // The path the crosshair took to get there, thinned to PATH_POINTS.
+    let step = (recent.len() / PATH_POINTS).max(1);
+    let path: Vec<(f32, f32)> = recent
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| i % step == 0 || *i == recent.len() - 1)
+        .filter_map(|(_, f)| {
+            let (p, y, pi) = f.me?;
+            let &(vp, seen) = f.others.get(&victim)?;
+            seen.then(|| offset_to(p, y, pi, vp))
+        })
+        .collect();
+
     // The flick: how far the view turned over the last FLICK_S.
     let flick_from = recent.len().saturating_sub(flick_back + 1);
     let flick = recent
@@ -283,6 +312,7 @@ fn shot_for(recent: &VecDeque<Frame>, me: &str, attacker: u16, victim: u16, weap
         range: dist(pos, victim_pos),
         height: victim_pos[2] - pos[2],
         victim_seen: in_pvs && before_seen,
+        path,
     })
 }
 
@@ -294,9 +324,15 @@ fn angle_to(from: Pos, yaw: f32, pitch: f32, target: Pos) -> f32 {
     angle_between(view_dir(yaw, pitch), to)
 }
 
-/// Where the head sat relative to the crosshair, in degrees: sideways first
-/// (positive to the right of the view), then vertical (positive above it).
-/// Their combination is [`angle_to`], give or take the usual rounding.
+/// Where the crosshair sat relative to the head, in degrees: sideways first,
+/// then vertical, both positive when the crosshair was to the right of the
+/// head and above it. Their combination is [`angle_to`], give or take the
+/// usual rounding.
+///
+/// Source counts yaw anticlockwise, so a head at a greater yaw than the view
+/// is to the player's left, which puts the crosshair to its right: the
+/// sideways term needs no flip. Pitch counts downwards, so the vertical term
+/// does.
 fn offset_to(from: Pos, yaw: f32, pitch: f32, target: Pos) -> (f32, f32) {
     let eye = [from[0], from[1], from[2] + HEAD_HEIGHT];
     let head = [target[0], target[1], target[2] + HEAD_HEIGHT];
@@ -308,7 +344,7 @@ fn offset_to(from: Pos, yaw: f32, pitch: f32, target: Pos) -> (f32, f32) {
     // Where the head is, in the same angles the view uses.
     let head_yaw = dy.atan2(dx).to_degrees();
     let head_pitch = -dz.atan2(flat).to_degrees();
-    (wrap180(head_yaw - yaw), pitch - head_pitch)
+    (wrap180(head_yaw - yaw), head_pitch - pitch)
 }
 
 /// An angle difference folded into -180..180 degrees.
@@ -374,7 +410,10 @@ mod tests {
         // Level view, head 500 above: the crosshair sits 45 degrees below it.
         let (dx, dy) = offset_to([0.0, 0.0, 0.0], 0.0, 0.0, [500.0, 0.0, 500.0]);
         assert!(dx.abs() < 0.01, "{dx}");
-        assert!((dy - 45.0).abs() < 0.2, "{dy}");
+        assert!((dy + 45.0).abs() < 0.2, "below the head, so negative: {dy}");
+        // Head 500 below, level view: the crosshair sits above it.
+        let (_, dy) = offset_to([0.0, 0.0, 0.0], 0.0, 0.0, [500.0, 0.0, -500.0]);
+        assert!((dy - 45.0).abs() < 0.2, "above the head, so positive: {dy}");
         // Looking right at them: no miss either way.
         let (dx, dy) = offset_to([0.0, 0.0, 0.0], 0.0, 45.0, [500.0, 0.0, -500.0]);
         assert!(dx.abs() < 0.01 && dy.abs() < 0.2, "{dx} {dy}");
@@ -422,6 +461,10 @@ mod tests {
         assert!((shot.flick_deg - 60.0).abs() < 0.01, "the turn: {}", shot.flick_deg);
         assert!((shot.range - 500.0).abs() < 0.01);
         assert!(shot.victim_seen);
+        // The path runs from where the view started to where it ended.
+        assert_eq!(shot.path.len(), 2, "{:?}", shot.path);
+        assert!((shot.path[0].0 + 60.0).abs() < 0.5, "starts 60 degrees left of the head: {:?}", shot.path[0]);
+        assert!(shot.path[1].0.abs() < 0.5, "ends on the head: {:?}", shot.path[1]);
         // Someone else's kill, and our own death, are not ours.
         assert!(shot_for(&recent, me, 2, 1, "x", 1).is_none());
         assert!(shot_for(&recent, me, 1, 1, "x", 1).is_none());
@@ -450,7 +493,8 @@ mod tests {
         let d = death_for(&recent, me, 2, 1).expect("our death");
         assert_eq!(d.killer, "[U:1:2]");
         assert_eq!(d.killer_range, Some(500.0));
-        // They were straight ahead: no angle either way.
+        // They were straight ahead: no angle either way. (A killer 90 degrees
+        // to the player's right reads +90; see `the_miss_splits` for the sign.)
         assert!(d.killer_dx_deg.is_some_and(|x| x.abs() < 0.01), "{:?}", d.killer_dx_deg);
         assert!(d.killer_dy_deg.is_some_and(|y| y.abs() < 0.2), "{:?}", d.killer_dy_deg);
         assert_eq!(d.nearest_mate, Some(300.0));

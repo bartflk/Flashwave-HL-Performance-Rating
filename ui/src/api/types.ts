@@ -837,6 +837,9 @@ export interface AimRow {
   /** View to the victim's head when the kill landed, and a second before. */
   errorDeg: number;
   beforeDeg: number;
+  /** Where the crosshair sat over the second before, oldest first and ending
+   *  at the shot: pairs of sideways and vertical degrees from the head. */
+  path: Array<[number, number]>;
   /** The same miss split in two: positive is right of the head, and above it. */
   dxDeg: number;
   dyDeg: number;

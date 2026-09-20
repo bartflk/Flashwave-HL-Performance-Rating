@@ -967,3 +967,21 @@
 .death-board {
   width: 320px;
 }
+
+/* The second before a kill, drawn as a line into its dot. */
+.board-trail {
+  fill: none;
+  stroke: rgba(242, 230, 217, 0.22);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+
+.board-trails {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.board-trails + .board-when {
+  margin-left: 10px;
+}

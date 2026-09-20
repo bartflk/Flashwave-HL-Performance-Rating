@@ -432,8 +432,19 @@ export const mockApi: Api = {
       };
       const [dxDeg, dyDeg] = split(errorDeg * 0.7, 0.3, 0.9);
       const [beforeDxDeg, beforeDyDeg] = split(beforeDeg * 0.7, 0.4, 1.1);
+      // A path that closes on the head, with a little overshoot on flicks.
+      const path: Array<[number, number]> = Array.from({ length: 10 }, (_, j) => {
+        const t = j / 9;
+        const ease = 1 - Math.pow(1 - t, 2.5);
+        const over = flick > 10 && t > 0.6 && t < 0.9 ? -0.25 : 0;
+        return [
+          beforeDxDeg * (1 - ease + over) + dxDeg * ease,
+          beforeDyDeg * (1 - ease + over) + dyDeg * ease,
+        ] as [number, number];
+      });
       return {
         demoId: 1,
+        path,
         tick: 5_000 + i * 1_800,
         atRaw: null,
         roundNum: 1 + (i % 5),

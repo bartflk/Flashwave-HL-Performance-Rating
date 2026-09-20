@@ -24,6 +24,7 @@ const HEAD_UNITS = 16;
 
 export function AimBoard({ kills }: { kills: AimRow[] }) {
   const [when, setWhen] = useState<"shot" | "before">("shot");
+  const [trails, setTrails] = useState(true);
   const seen = kills.filter((k) => k.victimSeen);
   if (seen.length === 0) return null;
 
@@ -56,6 +57,9 @@ export function AimBoard({ kills }: { kills: AimRow[] }) {
         <span className="aim-fig-sub">
           centre is the head you killed; right of centre means you were aiming to their right
         </span>
+        <label className="check board-trails" title="Draw the second before each kill as a line into the dot">
+          <input type="checkbox" checked={trails} onChange={(e) => setTrails(e.target.checked)} /> trails
+        </label>
         <span className="board-when segmented" role="tablist" aria-label="Moment">
           <button role="tab" aria-selected={when === "shot"} className={when === "shot" ? "seg active" : "seg"} onClick={() => setWhen("shot")}>
             At the shot
@@ -80,6 +84,20 @@ export function AimBoard({ kills }: { kills: AimRow[] }) {
           <line x1={c} x2={c} y1={c - R} y2={c + R} className="board-cross" />
           {/* The head itself, to scale: inside this circle the shot was on it. */}
           <circle cx={c} cy={c} r={Math.max(2, radius(headDeg))} className="board-head" />
+
+          {trails &&
+            seen.map((k) => {
+              // The path is stored from the head's point of view, so it needs
+              // the same placing as a dot: the line ends where the dot sits.
+              if (k.path.length < 2) return null;
+              const d = k.path
+                .map(([px, py], i) => {
+                  const [x, y] = place(px, py, Math.hypot(px, py));
+                  return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+                })
+                .join(" ");
+              return <path key={`t${k.tick}`} d={d} className="board-trail" />;
+            })}
 
           {seen.map((k) => {
             const p = at(k);

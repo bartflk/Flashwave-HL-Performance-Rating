@@ -38,7 +38,7 @@ fn scope(table: &str) -> String {
 }
 
 /// One kill's aim, as stored.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AimRow {
     pub demo_id: i64,
@@ -55,6 +55,9 @@ pub struct AimRow {
     pub dy_deg: f64,
     pub before_dx_deg: f64,
     pub before_dy_deg: f64,
+    /// The crosshair's path over the second before, oldest first: pairs of
+    /// sideways and vertical degrees. Empty when the demo could not follow it.
+    pub path: Vec<(f64, f64)>,
     pub flick_deg: f64,
     pub range_units: f64,
     pub height: f64,
@@ -126,8 +129,9 @@ impl Db {
             sqlx::query(
                 "INSERT OR REPLACE INTO demo_aim
                     (log_id, demo_id, tick, at_raw, victim, error_deg, before_deg, flick_deg,
-                     range_units, height, victim_seen, headshot, dx_deg, dy_deg, before_dx_deg, before_dy_deg)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+                     range_units, height, victim_seen, headshot, dx_deg, dy_deg, before_dx_deg, before_dy_deg,
+                     path)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
             )
             .bind(log_id)
             .bind(r.demo_id)
@@ -145,6 +149,7 @@ impl Db {
             .bind(r.dy_deg)
             .bind(r.before_dx_deg)
             .bind(r.before_dy_deg)
+            .bind(serde_json::to_string(&r.path).unwrap_or_else(|_| "[]".into()))
             .execute(&mut *tx)
             .await?;
         }
@@ -309,7 +314,7 @@ impl Db {
         let rows = sqlx::query(
             "SELECT a.demo_id, a.tick, a.at_raw, a.victim, a.error_deg, a.before_deg, a.flick_deg,
                     a.range_units, a.height, a.victim_seen, a.headshot,
-                    a.dx_deg, a.dy_deg, a.before_dx_deg, a.before_dy_deg,
+                    a.dx_deg, a.dy_deg, a.before_dx_deg, a.before_dy_deg, a.path,
                     (SELECT r.round_num FROM match_round r
                       WHERE r.log_id = a.log_id
                         AND a.at_raw BETWEEN r.start_time AND r.start_time + r.length_s) AS round_num
@@ -367,6 +372,10 @@ fn row(r: sqlx::sqlite::SqliteRow) -> AimRow {
         dy_deg: r.get("dy_deg"),
         before_dx_deg: r.get("before_dx_deg"),
         before_dy_deg: r.get("before_dy_deg"),
+        path: r
+            .get::<Option<String>, _>("path")
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_default(),
         flick_deg: r.get("flick_deg"),
         range_units: r.get("range_units"),
         height: r.get("height"),
