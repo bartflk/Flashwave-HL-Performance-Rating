@@ -410,6 +410,39 @@ export const mockApi: Api = {
   getSeasons: (cls: string) => delay({ ...(seasonsSniper as unknown as SeasonsView), class: cls }),
 
   // One real analysis (the TWS official on Upward); every match opens it.
+  getAim: (logId: number) => {
+    // Plausible readings so the tab can be worked on in a browser: mostly
+    // held angles, a few flicks, Sniper ranges.
+    const r = rng(logId);
+    const kills = Array.from({ length: 18 }, (_, i) => {
+      const flick = r() < 0.25 ? 20 + r() * 60 : r() * 6;
+      return {
+        demoId: 1,
+        tick: 5_000 + i * 1_800,
+        atRaw: null,
+        victim: null,
+        errorDeg: 0.4 + r() * 2.5,
+        beforeDeg: flick > 10 ? 15 + r() * 40 : r() * 6,
+        flickDeg: flick,
+        rangeUnits: 300 + r() * 1_900,
+        height: Math.round((r() - 0.5) * 600),
+        victimSeen: r() > 0.1,
+        headshot: r() > 0.45,
+      };
+    });
+    const seen = kills.filter((k) => k.victimSeen);
+    const mean = (f: (k: (typeof kills)[number]) => number) => seen.reduce((n, k) => n + f(k), 0) / seen.length;
+    const totals = {
+      kills: seen.length,
+      errorDeg: mean((k) => k.errorDeg),
+      beforeDeg: mean((k) => k.beforeDeg),
+      flickDeg: mean((k) => k.flickDeg),
+      rangeUnits: mean((k) => k.rangeUnits),
+      heldShare: seen.filter((k) => k.beforeDeg <= 3).length / seen.length,
+    };
+    return delay({ kills, totals, career: { ...totals, errorDeg: 2.1, beforeDeg: 16.5, flickDeg: 11.1, rangeUnits: 1096, heldShare: 0.22 } }, 200);
+  },
+
   getMatchAnalysis: (logId: number) =>
     delay(
       logId === 3863290

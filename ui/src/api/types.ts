@@ -814,3 +814,42 @@ export interface MapView {
   myDeaths: number[];
   myGames: number;
 }
+
+// ---- PLAN §14: aim from demos -------------------------------------------------
+
+/** One kill, as the demo saw it. Angles in degrees, distances in map units. */
+export interface AimRow {
+  demoId: number;
+  /** The demo's own kill tick. */
+  tick: number;
+  /** The matching kill in the log's clock, where the log had one. */
+  atRaw: number | null;
+  victim: number | null;
+  /** View to the victim's head when the kill landed, and a second before. */
+  errorDeg: number;
+  beforeDeg: number;
+  /** How far the view turned in the half second before the shot. */
+  flickDeg: number;
+  rangeUnits: number;
+  height: number;
+  /** The demo carried both players throughout; if not, the numbers are stale. */
+  victimSeen: boolean;
+  headshot: boolean;
+}
+
+export interface AimTotals {
+  kills: number;
+  errorDeg: number;
+  beforeDeg: number;
+  flickDeg: number;
+  rangeUnits: number;
+  /** Share of kills where the crosshair was within 3° a second before. */
+  heldShare: number;
+}
+
+export interface AimResponse {
+  kills: AimRow[];
+  totals: AimTotals | null;
+  /** The same averages over every match with a demo. */
+  career: AimTotals | null;
+}

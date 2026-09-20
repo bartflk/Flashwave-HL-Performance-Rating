@@ -102,3 +102,54 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
     out.kills.sort_by_key(|k| (k.demo_id, k.shot.tick));
     Ok(out)
 }
+
+/// Bump to re-read every demo on the next pass.
+/// 1: crosshair error, flick, range.
+pub const VERSION: i64 = 1;
+
+#[derive(Debug, Clone, Copy, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AimSummary {
+    /// Logs read this time, and those with a demo to read at all.
+    pub read: usize,
+    pub total: usize,
+    pub kills: usize,
+}
+
+/// Read every linked demo the current [`VERSION`] has not read yet, or all of
+/// them with `all`, and store the aim behind each of the owner's kills.
+///
+/// About 4 s a demo, so a first pass over a full history is minutes, not
+/// seconds: it reports progress and is meant for the background.
+pub async fn derive_all(db: &Db, me: SteamId, all: bool, mut progress: impl FnMut(usize, usize)) -> Result<AimSummary> {
+    let ids = db.aim_queue().await?;
+    let done = if all { Default::default() } else { db.aim_logs(VERSION).await? };
+    let todo: Vec<i64> = ids.iter().copied().filter(|id| !done.contains(id)).collect();
+    let mut out = AimSummary { total: ids.len(), ..AimSummary::default() };
+    for (i, log_id) in todo.iter().copied().enumerate() {
+        progress(i, todo.len());
+        let report = for_log(db, log_id, me).await?;
+        let rows: Vec<hl_db::AimRow> = report.kills.iter().map(store_row).collect();
+        db.replace_aim(log_id, VERSION, &rows).await?;
+        out.read += 1;
+        out.kills += rows.len();
+    }
+    progress(todo.len(), todo.len());
+    Ok(out)
+}
+
+fn store_row(k: &AimKill) -> hl_db::AimRow {
+    hl_db::AimRow {
+        demo_id: k.demo_id,
+        tick: i64::from(k.shot.tick),
+        at_raw: k.at_raw,
+        victim: k.victim,
+        error_deg: f64::from(k.shot.error_deg),
+        before_deg: f64::from(k.shot.error_before_deg),
+        flick_deg: f64::from(k.shot.flick_deg),
+        range_units: f64::from(k.shot.range),
+        height: f64::from(k.shot.height),
+        victim_seen: k.shot.victim_seen,
+        headshot: k.headshot,
+    }
+}

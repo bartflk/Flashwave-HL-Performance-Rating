@@ -4,6 +4,7 @@
 //! macros on purpose: the macros require a live database at build time, which
 //! would make a fresh clone fail to compile before it has ever been run.
 
+mod aim;
 mod context;
 mod demos;
 mod fights;
@@ -16,6 +17,7 @@ pub use context::{
     ContextCounts, ContextGameRow, ContextRow, Etf2lMatchRow, MatchContext, MateRow, OfficialInfo,
     OfficialRow, OwnGameRow,
 };
+pub use aim::{AimRow, AimTotals};
 pub use fights::{ClassGame, FightFilter, FightRow, FightTotals, SeasonOfficial, FIGHT_COLUMNS};
 pub use demos::{ClockInput, ClockRow, DemoRow, DemoStats, LinkedDemo};
 pub use rawlog::{ChatRow, KillRow, RawlogStats, StoredKill};

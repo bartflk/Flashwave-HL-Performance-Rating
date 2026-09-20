@@ -28,6 +28,7 @@ import type {
   Owner,
   Season,
   SeasonsView,
+  AimResponse,
 } from "./types";
 
 /** True inside the Tauri window, false in a plain browser tab. */
@@ -72,6 +73,8 @@ const realApi = {
   rawlogStats: () => invoke<RawlogStats>("rawlog_stats"),
   /** Null when the match's raw log is not stored. */
   getMatchAnalysis: (logId: number) => invoke<Analysis | null>("get_match_analysis", { logId }),
+  /** What the demo says about your aim in one match (PLAN §14). */
+  getAim: (logId: number) => invoke<AimResponse>("get_aim", { logId }),
   /** Null when too few kills are stored on the map to draw it. */
   getMapView: (map: string) => invoke<MapView | null>("get_map_view", { map }),
   /** Null when no image for the map is saved in the app's overviews folder. */

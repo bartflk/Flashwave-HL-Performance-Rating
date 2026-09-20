@@ -669,3 +669,84 @@
 .km-full-toggle {
   margin-left: 12px;
 }
+
+/* --- aim, from the demo --- */
+
+.aim {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.aim-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.aim-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.aim-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.aim-value {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+.aim-note {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.aim-vs {
+  font-size: 0.72rem;
+  color: #7a6b5e;
+}
+
+.aim-count {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.aim-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+.aim-table tr.muted-row td {
+  color: var(--muted);
+}
+
+.deg-good {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.deg-far {
+  color: var(--bad);
+}
+
+.badge-hs {
+  background: rgba(224, 118, 58, 0.16);
+  color: var(--accent);
+}
+
+.aim-foot {
+  margin: 0;
+}

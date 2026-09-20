@@ -116,6 +116,13 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             // Every round's map, then the rating: kills are valued on their map.
             hl_ingest::maps::resolve_all(&db).await?;
             hl_ingest::fights::derive_all(&db, false).await?;
+            // Aim from any newly linked demo. Seconds a demo, and a demo the
+            // parser cannot read must not fail the whole sync.
+            match hl_ingest::aim::derive_all(&db, me, false, |_, _| {}).await {
+                Ok(s) if s.read > 0 => tracing::info!(read = s.read, kills = s.kills, "aim read from demos"),
+                Ok(_) => {}
+                Err(e) => tracing::warn!(error = %format!("{e:#}"), "reading aim from demos failed"),
+            }
             // Every sync ends by re-rating: new matches shift the baselines.
             let (weights, _) = hl_rating::Weights::load(&weights_path);
             hl_ingest::rate_all(&db, Some(me), &weights, |p: Progress| {
@@ -343,6 +350,26 @@ pub async fn get_match_analysis(
 ) -> CmdResult<Option<hl_ingest::analysis::Analysis>> {
     let me = state.db.get_me().await?;
     Ok(hl_ingest::analysis::load(&state.db, log_id, me).await?)
+}
+
+/// What the demo says about your aim in one match (PLAN §14): every kill it
+/// could answer for, and the averages over them. Empty without a demo.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AimResponse {
+    pub kills: Vec<hl_db::AimRow>,
+    pub totals: Option<hl_db::AimTotals>,
+    /// The same averages over every match with a demo, to compare against.
+    pub career: Option<hl_db::AimTotals>,
+}
+
+#[tauri::command]
+pub async fn get_aim(state: State<'_, AppState>, log_id: i64) -> CmdResult<AimResponse> {
+    Ok(AimResponse {
+        kills: state.db.aim_for_log(log_id).await?,
+        totals: state.db.aim_totals(Some(log_id)).await?,
+        career: state.db.aim_totals(None).await?,
+    })
 }
 
 /// A map's outline from every stored kill on it, plus your own kill and death

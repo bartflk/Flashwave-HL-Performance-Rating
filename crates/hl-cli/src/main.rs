@@ -49,6 +49,8 @@ COMMANDS:
                            (from winning the fight, or the round)
     aim <LOG_ID> [--json]  Your aim behind every kill in a match, from its demo:
                            crosshair error, flick and range (PLAN §14)
+    aim --derive [--all]   Read every linked demo and store the aim behind every
+                           kill; --all re-reads demos already done
     demo <PATH> [--stride N] [--json]
                            Read a demo's packets: who is in it, and where you
                            stood and looked (PLAN §14)
@@ -411,6 +413,36 @@ async fn main() -> Result<()> {
             print!("{t}");
             println!("
 ({:.1}s)", started.elapsed().as_secs_f64());
+            Ok(())
+        }
+
+        // PLAN §14: read every linked demo and store the aim behind each kill.
+        ["aim", "--all", rest @ ..] | ["aim", "--derive", rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?.context("no owner set")?;
+            let started = std::time::Instant::now();
+            let all = command.contains(&"--all");
+            let s = hl_ingest::aim::derive_all(&db, me, all, |done, total| {
+                print!("\r  reading demos {done}/{total}          ");
+                let _ = std::io::Write::flush(&mut std::io::stdout());
+            })
+            .await?;
+            println!(
+                "\r{} of {} matches with a demo read in {:.0}s, {} kills stored",
+                s.read,
+                s.total,
+                started.elapsed().as_secs_f64(),
+                s.kills
+            );
+            if let Some(t) = db.aim_totals(None).await? {
+                println!(
+                    "\nOver {} kills: crosshair {:.1}° off at the shot, {:.1}° a second before, \
+                     {:.1}° of flick, {:.0} units away. The crosshair was already within 3° \
+                     a second before in {:.0}% of them.",
+                    t.kills, t.error_deg, t.before_deg, t.flick_deg, t.range_units, t.held_share * 100.0
+                );
+            }
+            let _ = rest;
             Ok(())
         }
 
