@@ -32,6 +32,11 @@ const SORTS: Array<{ key: string; label: string; num?: boolean; title?: string }
 export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
   const [view, setView] = useState<View>("highlander");
   const [pages, setPages] = useState(1);
+  // What you played on, and where: both narrow the whole history, not the
+  // rows already on screen.
+  const [cls, setCls] = useState<string | null>(null);
+  const [map, setMap] = useState<string | null>(null);
+  const filters = useQuery({ queryKey: ["played_filters"], queryFn: api.playedFilters, staleTime: 5 * 60_000 });
   const [sort, setSort] = useState<{ key: string; ascending: boolean }>({ key: "date", ascending: false });
 
   const kind = view === "official" || view === "scrim" || view === "pug" ? view : null;
@@ -44,6 +49,8 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
     offset: 0,
     sort: sort.key,
     ascending: sort.ascending,
+    class: cls,
+    map,
   };
 
   const matches = useQuery({
@@ -78,10 +85,61 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
           ))}
         </div>
         <PeriodPicker />
+        {(filters.data?.maps.length ?? 0) > 0 && (
+          <label className="an-field">
+            <span className="an-label">Map</span>
+            <select
+              value={map ?? ""}
+              onChange={(e) => {
+                setMap(e.target.value === "" ? null : e.target.value);
+                setPages(1);
+              }}
+            >
+              <option value="">Every map</option>
+              {filters.data!.maps.map(([name, n]) => (
+                <option key={name} value={name}>
+                  {capitalize(name)} ({n})
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <span className="hint">
           {matches.isPending ? "Loading…" : `${total.toLocaleString()} match${total === 1 ? "" : "es"}`}
         </span>
       </div>
+
+      {(filters.data?.classes.length ?? 0) > 0 && (
+        <div className="class-filter" role="tablist" aria-label="Class">
+          <button
+            role="tab"
+            aria-selected={cls === null}
+            className={cls === null ? "cf active" : "cf"}
+            onClick={() => {
+              setCls(null);
+              setPages(1);
+            }}
+          >
+            All classes
+          </button>
+          {filters.data!.classes.map(([name, n]) => (
+            <button
+              key={name}
+              role="tab"
+              aria-selected={cls === name}
+              className={cls === name ? "cf active" : "cf"}
+              title={`${capitalize(name)}: ${n} match${n === 1 ? "" : "es"}`}
+              onClick={() => {
+                setCls(cls === name ? null : name);
+                setPages(1);
+              }}
+            >
+              <ClassIcon cls={name} size={20} />
+              <span className="cf-n">{n}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {matches.isError && <p className="error">{errorMessage(matches.error)}</p>}
 

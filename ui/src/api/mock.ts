@@ -510,6 +510,25 @@ export const mockApi: Api = {
     );
   },
 
+  playedFilters: () =>
+    delay({
+      classes: [
+        ["sniper", 646],
+        ["engineer", 58],
+        ["scout", 21],
+        ["spy", 14],
+        ["medic", 9],
+      ] as Array<[string, number]>,
+      maps: [
+        ["product", 143],
+        ["upward", 119],
+        ["vigil", 98],
+        ["swiftwater", 74],
+        ["steel", 41],
+        ["proot", 22],
+      ] as Array<[string, number]>,
+    }),
+
   getParts: (logId: number) => {
     // The combined fixture's three logs, two of them already "fetched": the
     // third exercises the fetch-on-demand path.

@@ -10,5 +10,6 @@ pub mod parse;
 pub mod scan;
 
 pub use header::DemoHeader;
-pub use link::{link, map_base, tick_for, DemoSpan, Link, LogClock};
+pub use hl_core::map_base;
+pub use link::{link, tick_for, DemoSpan, Link, LogClock};
 pub use scan::{scan, DemoFile, SidecarEvent};

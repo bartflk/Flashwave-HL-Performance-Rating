@@ -148,6 +148,16 @@ export interface MatchQuery {
   /** date | kills | deaths | assists | dmg | dpm | kd | rating */
   sort: string | null;
   ascending: boolean;
+  /** Your main class in the match, e.g. `sniper`. */
+  class: string | null;
+  /** A map without its version: `upward` matches `pl_upward_f12`. */
+  map: string | null;
+}
+
+/** What the match list's filters can offer, most played first. */
+export interface PlayedFilters {
+  classes: Array<[string, number]>;
+  maps: Array<[string, number]>;
 }
 
 // ---- M2: match page -----------------------------------------------------------

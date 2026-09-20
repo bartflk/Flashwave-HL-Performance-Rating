@@ -76,8 +76,10 @@ COMMANDS:
                            Your teams and regular teammates (officials and scrims unless --all)
     profile [CLASS] [--official|--scrim|--pug] [--json]
                            Your rating profile (defaults to your most-rated class)
-    matches [N] [--all] [--official|--scrim|--pug]
-                           List recent matches (Highlander only unless --all)
+    matches [N] [--all] [--official|--scrim|--pug] [--class C] [--map M]
+                           List recent matches (Highlander only unless --all);
+                           --class and --map narrow them, a map without its
+                           version (upward, product)
 
 OPTIONS:
     --db <PATH>            Override the database location
@@ -908,6 +910,8 @@ teammates (≥{} games)", t.min_games);
                 to: None,
                 limit,
                 offset: 0,
+                class: rest.iter().position(|a| *a == "--class").and_then(|i| rest.get(i + 1)).map(|s| s.to_string()),
+                map: rest.iter().position(|a| *a == "--map").and_then(|i| rest.get(i + 1)).map(|s| s.to_string()),
                 sort: rest.iter().position(|a| *a == "--sort").and_then(|i| rest.get(i + 1)).map(|s| s.to_string()),
                 ascending: false,
                 model_version: hl_rating::MODEL_VERSION.to_string(),

@@ -922,3 +922,40 @@ th.num {
 .dl-go {
   align-self: flex-start;
 }
+
+/* --- the match list's class filter --- */
+
+.class-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -4px 0 12px;
+}
+
+.cf {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.cf:hover {
+  color: var(--text);
+  border-color: #4a3f36;
+}
+
+.cf.active {
+  border-color: var(--accent);
+  color: var(--text);
+  background: rgba(224, 118, 58, 0.12);
+}
+
+.cf-n {
+  font-variant-numeric: tabular-nums;
+}

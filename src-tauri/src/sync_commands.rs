@@ -225,6 +225,8 @@ pub async fn list_matches(
     offset: i64,
     sort: Option<String>,
     ascending: Option<bool>,
+    class: Option<String>,
+    map: Option<String>,
 ) -> CmdResult<MatchPage> {
     let me = state.db.get_me().await?;
     let filter = MatchFilter {
@@ -233,6 +235,8 @@ pub async fn list_matches(
         from,
         to,
         sort,
+        class,
+        map,
         ascending: ascending.unwrap_or(false),
         model_version: hl_rating::MODEL_VERSION.to_string(),
         // Bound the page size so a bad argument cannot pull the whole table.
@@ -437,6 +441,24 @@ pub async fn get_aim(state: State<'_, AppState>, log_id: i64) -> CmdResult<AimRe
         career: state.db.aim_totals(&all).await?,
         career_life: state.db.life_totals(&all).await?,
     })
+}
+
+/// What the match list's filters can offer: the classes and maps you have
+/// actually played, most played first.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayedFilters {
+    pub classes: Vec<(String, i64)>,
+    pub maps: Vec<(String, i64)>,
+}
+
+#[tauri::command]
+pub async fn played_filters(state: State<'_, AppState>) -> CmdResult<PlayedFilters> {
+    let Some(me) = state.db.get_me().await? else {
+        return Ok(PlayedFilters { classes: Vec::new(), maps: Vec::new() });
+    };
+    let (classes, maps) = state.db.played_classes_and_maps(me.account_id()).await?;
+    Ok(PlayedFilters { classes, maps })
 }
 
 /// The scoreboards of the logs a combined log was built from. A part with no

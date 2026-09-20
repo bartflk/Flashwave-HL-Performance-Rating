@@ -33,6 +33,7 @@ import type {
   Backups,
   PathRow,
   PartScore,
+  PlayedFilters,
 } from "./types";
 
 /** True inside the Tauri window, false in a plain browser tab. */
@@ -77,6 +78,8 @@ const realApi = {
   rawlogStats: () => invoke<RawlogStats>("rawlog_stats"),
   /** Null when the match's raw log is not stored. */
   getMatchAnalysis: (logId: number) => invoke<Analysis | null>("get_match_analysis", { logId }),
+  /** The classes and maps you have played, for the match list's filters. */
+  playedFilters: () => invoke<PlayedFilters>("played_filters"),
   /** The scoreboards of the logs a combined log was built from. */
   getParts: (logId: number) => invoke<PartScore[]>("get_parts", { logId }),
   /** Fetch one part's log from logs.tf and score it. */

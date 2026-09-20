@@ -7,6 +7,7 @@ description = "Demo files: header parsing, sidecar events, and linking demos to 
 
 [dependencies]
 anyhow.workspace = true
+hl-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true

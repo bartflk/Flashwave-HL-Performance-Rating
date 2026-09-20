@@ -16,6 +16,7 @@
 //! rounding) keeps the implied upload delay non-negative; measured residual
 //! delay after the offset is 16 s median, 19 s at the 90th percentile.
 
+use hl_core::map_base;
 use serde::Serialize;
 
 /// A log's round span on the server's raw clock, plus its UTC anchor.
@@ -123,26 +124,7 @@ fn map_match(demo_map: &str, log_map: Option<&str>) -> Option<&'static str> {
     (!base.is_empty() && lm.contains(&base)).then_some("label")
 }
 
-/// `pl_upward_f12` -> `upward`.
-pub fn map_base(map: &str) -> String {
-    let m = map.to_ascii_lowercase();
-    let m = ["pl_", "koth_", "cp_", "ctf_", "plr_", "arena_", "tc_", "mvm_"]
-        .iter()
-        .find_map(|p| m.strip_prefix(p))
-        .unwrap_or(&m)
-        .to_string();
-    match m.rfind('_') {
-        Some(i) if is_version(&m[i + 1..]) => m[..i].to_string(),
-        _ => m,
-    }
-}
-
-fn is_version(s: &str) -> bool {
-    let (alpha, rest) = s.split_at(s.find(|c: char| c.is_ascii_digit()).unwrap_or(s.len()));
-    matches!(alpha, "final" | "rc" | "b" | "f" | "v" | "a" | "pro")
-        && rest.chars().next().is_none_or(|c| c.is_ascii_digit())
-        && rest.chars().all(|c| c.is_ascii_alphanumeric())
-}
+/// A map without its version, so `pl_upward_f12` and `pl_upward_rc7` are one
 
 /// The demo tick for a moment in a log.
 ///

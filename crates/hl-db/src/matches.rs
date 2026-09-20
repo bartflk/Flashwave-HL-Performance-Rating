@@ -66,6 +66,11 @@ pub struct MatchFilter {
     /// Played between these, unix seconds, inclusive. `None` is open.
     pub from: Option<i64>,
     pub to: Option<i64>,
+    /// The owner's main class in the match, e.g. `sniper`.
+    pub class: Option<String>,
+    /// A map, without its version: `koth_product` matches `koth_product_final`.
+    /// A combined log counts when any of its maps match.
+    pub map: Option<String>,
     pub limit: i64,
     pub offset: i64,
     /// What to order by: one of [`SORTS`]; anything else falls back to `date`.
@@ -572,30 +577,41 @@ impl Db {
         // Placeholder numbers are parameters so the count query and the page
         // query can share one WHERE clause with different binding layouts.
         // `fmt` is the first of four: format, kind, from, to.
-        let where_sql = |fmt: u8| {
+        // The two queries bind a different number of values, so each says
+        // where `class` and `map` sit in its own list.
+        let where_sql = |fmt: u8, class_p: u8, map_p: u8| {
             let (kind, from, to) = (fmt + 1, fmt + 2, fmt + 3);
             format!(
                 "WHERE i.superseded_by IS NULL
                    AND (?{fmt} IS NULL OR {EFFECTIVE_FORMAT} = ?{fmt})
                    AND (?{kind} IS NULL OR c.kind = ?{kind})
                    AND (?{from} IS NULL OR m.played_at >= ?{from})
-                   AND (?{to} IS NULL OR m.played_at <= ?{to})"
+                   AND (?{to} IS NULL OR m.played_at <= ?{to})
+                   AND (?{class_p} IS NULL OR EXISTS (SELECT 1 FROM match_player mp
+                                                      WHERE mp.log_id = m.log_id AND mp.account_id = ?1
+                                                        AND mp.main_class = ?{class_p}))
+                   AND (?{map_p} IS NULL OR m.map LIKE ?{map_p} || '%'
+                        OR EXISTS (SELECT 1 FROM log_segment s
+                                   WHERE s.log_id = m.log_id AND s.map LIKE ?{map_p} || '%'))"
             )
         };
 
         let total: i64 = sqlx::query_scalar(&format!(
             "SELECT COUNT(*) FROM match m JOIN log_index i ON i.log_id = m.log_id
              LEFT JOIN match_context c ON c.log_id = m.log_id {}",
-            where_sql(1)
+            where_sql(2, 6, 7)
         ))
+        .bind(me.map(i64::from))
         .bind(&filter.format)
         .bind(&filter.kind)
         .bind(filter.from)
         .bind(filter.to)
+        .bind(&filter.class)
+        .bind(&filter.map)
         .fetch_one(self.pool())
         .await?;
 
-        let where_sql = where_sql(2);
+        let where_sql = where_sql(2, 9, 10);
         let order = order_by(filter);
         let rows = sqlx::query(&format!(
             "SELECT m.log_id, m.played_at, m.map, m.title, m.duration_s,
@@ -628,6 +644,8 @@ impl Db {
         .bind(filter.limit)
         .bind(filter.offset)
         .bind(&filter.model_version)
+        .bind(&filter.class)
+        .bind(&filter.map)
         .fetch_all(self.pool())
         .await?;
 
@@ -681,6 +699,42 @@ impl Db {
             .collect();
 
         Ok(MatchPage { total, items })
+    }
+
+    /// The owner's own matches by class and by map, most played first: what
+    /// the match list's filters offer. Maps lose their version, so
+    /// `koth_product_final` and `koth_product_rc8` are one entry.
+    pub async fn played_classes_and_maps(&self, me: u32) -> Result<(Vec<(String, i64)>, Vec<(String, i64)>)> {
+        let classes: Vec<(String, i64)> = sqlx::query_as(
+            "SELECT mp.main_class, COUNT(*) FROM match_player mp
+             JOIN log_index i ON i.log_id = mp.log_id
+             WHERE mp.account_id = ?1 AND mp.main_class IS NOT NULL AND i.superseded_by IS NULL
+             GROUP BY mp.main_class ORDER BY COUNT(*) DESC",
+        )
+        .bind(me)
+        .fetch_all(self.pool())
+        .await?;
+
+        // A combined log counts once per map it holds, which is what a player
+        // means by "my upward games".
+        let rows: Vec<(i64, String)> = sqlx::query_as(
+            "SELECT DISTINCT mp.log_id, COALESCE(s.map, m.map) AS map
+             FROM match_player mp
+             JOIN log_index i ON i.log_id = mp.log_id
+             JOIN match m ON m.log_id = mp.log_id
+             LEFT JOIN log_segment s ON s.log_id = mp.log_id
+             WHERE mp.account_id = ?1 AND i.superseded_by IS NULL AND COALESCE(s.map, m.map) IS NOT NULL",
+        )
+        .bind(me)
+        .fetch_all(self.pool())
+        .await?;
+        let mut by_map: HashMap<String, i64> = HashMap::new();
+        for (_, map) in rows {
+            *by_map.entry(hl_core::map_base(&map)).or_default() += 1;
+        }
+        let mut maps: Vec<(String, i64)> = by_map.into_iter().collect();
+        maps.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        Ok((classes, maps))
     }
 
     /// Every player's name in one match, by account id.
@@ -769,6 +823,8 @@ mod tests {
             sort: sort.map(str::to_string),
             ascending,
             model_version: "v5".to_string(),
+            class: None,
+            map: None,
         }
     }
 
