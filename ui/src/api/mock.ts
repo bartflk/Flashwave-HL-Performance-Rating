@@ -440,7 +440,35 @@ export const mockApi: Api = {
       rangeUnits: mean((k) => k.rangeUnits),
       heldShare: seen.filter((k) => k.beforeDeg <= 3).length / seen.length,
     };
-    return delay({ kills, totals, career: { ...totals, errorDeg: 2.1, beforeDeg: 16.5, flickDeg: 11.1, rangeUnits: 1096, heldShare: 0.22 } }, 200);
+    const deaths = Array.from({ length: 11 }, (_, i) => ({
+      demoId: 1,
+      tick: 6_000 + i * 2_600,
+      atRaw: null,
+      killer: null,
+      killerRange: r() < 0.3 ? null : 200 + r() * 1_600,
+      nearestMate: 100 + r() * 1_400,
+      matesNear: r() < 0.15 ? 0 : 1 + Math.floor(r() * 3),
+      scoped: r() < 0.5,
+    }));
+    const life = {
+      scopedShare: 0.24,
+      minutes: 31,
+      deaths: deaths.length,
+      nearestMate: deaths.reduce((n, d) => n + (d.nearestMate ?? 0), 0) / deaths.length,
+      aloneShare: deaths.filter((d) => d.matesNear === 0).length / deaths.length,
+      scopedShareDeaths: deaths.filter((d) => d.scoped).length / deaths.length,
+    };
+    return delay(
+      {
+        kills,
+        deaths,
+        totals,
+        life,
+        career: { ...totals, errorDeg: 2.1, beforeDeg: 16.5, flickDeg: 11.1, rangeUnits: 1096, heldShare: 0.22 },
+        careerLife: { ...life, scopedShare: 0.21, nearestMate: 449, aloneShare: 0.1, scopedShareDeaths: 0.49 },
+      },
+      200,
+    );
   },
 
   getMatchAnalysis: (logId: number) =>

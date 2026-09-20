@@ -847,9 +847,38 @@ export interface AimTotals {
   heldShare: number;
 }
 
+/** One death, as the demo saw it. */
+export interface DeathRow {
+  demoId: number;
+  tick: number;
+  atRaw: number | null;
+  killer: number | null;
+  /** How far away the killer was; null when the demo never carried them. */
+  killerRange: number | null;
+  /** Distance to the closest living teammate, and how many were within 900. */
+  nearestMate: number | null;
+  matesNear: number;
+  /** Scoped in at some point in the second before dying. */
+  scoped: boolean;
+}
+
+export interface LifeTotals {
+  /** Share of living time spent scoped in. */
+  scopedShare: number;
+  minutes: number;
+  deaths: number;
+  nearestMate: number | null;
+  /** Share of deaths with nobody within 900 units, and with you scoped. */
+  aloneShare: number;
+  scopedShareDeaths: number;
+}
+
 export interface AimResponse {
   kills: AimRow[];
+  deaths: DeathRow[];
   totals: AimTotals | null;
+  life: LifeTotals | null;
   /** The same averages over every match with a demo. */
   career: AimTotals | null;
+  careerLife: LifeTotals | null;
 }

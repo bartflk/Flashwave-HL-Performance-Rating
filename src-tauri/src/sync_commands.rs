@@ -358,17 +358,23 @@ pub async fn get_match_analysis(
 #[serde(rename_all = "camelCase")]
 pub struct AimResponse {
     pub kills: Vec<hl_db::AimRow>,
+    pub deaths: Vec<hl_db::DeathRow>,
     pub totals: Option<hl_db::AimTotals>,
+    pub life: Option<hl_db::LifeTotals>,
     /// The same averages over every match with a demo, to compare against.
     pub career: Option<hl_db::AimTotals>,
+    pub career_life: Option<hl_db::LifeTotals>,
 }
 
 #[tauri::command]
 pub async fn get_aim(state: State<'_, AppState>, log_id: i64) -> CmdResult<AimResponse> {
     Ok(AimResponse {
         kills: state.db.aim_for_log(log_id).await?,
+        deaths: state.db.deaths_for_log(log_id).await?,
         totals: state.db.aim_totals(Some(log_id)).await?,
+        life: state.db.life_totals(Some(log_id)).await?,
         career: state.db.aim_totals(None).await?,
+        career_life: state.db.life_totals(None).await?,
     })
 }
 

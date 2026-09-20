@@ -750,3 +750,12 @@
 .aim-foot {
   margin: 0;
 }
+
+.aim-h3 {
+  font-size: 0.95rem;
+  margin: 4px 0 8px;
+}
+
+.aim-table .badge + .muted {
+  margin-left: 6px;
+}

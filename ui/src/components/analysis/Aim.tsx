@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type Analysis, type AimRow, type AimTotals } from "../../api/types";
+import { errorMessage, type Analysis, type AimRow, type AimTotals, type DeathRow, type LifeTotals } from "../../api/types";
 import { playerMap } from "./common";
 
 /**
@@ -31,7 +31,7 @@ export function Aim({ a, logId }: { a: Analysis; logId: number }) {
 
   return (
     <div className="aim">
-      {d.totals && <Summary t={d.totals} career={d.career} />}
+      {d.totals && <Summary t={d.totals} career={d.career} life={d.life} careerLife={d.careerLife} />}
       <div className="table-wrap">
         <table className="match-table aim-table">
           <thead>
@@ -81,6 +81,7 @@ export function Aim({ a, logId }: { a: Analysis; logId: number }) {
           </tbody>
         </table>
       </div>
+      {d.deaths.length > 0 && <Deaths rows={d.deaths} names={names} />}
       <p className="hint aim-foot">
         Angles are measured to the middle of the victim&apos;s head. A small crosshair error a second before the kill
         means the angle was already held; a large one followed by a flick means it was a reaction.
@@ -89,7 +90,8 @@ export function Aim({ a, logId }: { a: Analysis; logId: number }) {
   );
 }
 
-function Summary({ t, career }: { t: AimTotals; career: AimTotals | null }) {
+function Summary(props: { t: AimTotals; career: AimTotals | null; life: LifeTotals | null; careerLife: LifeTotals | null }) {
+  const { t, career, life, careerLife } = props;
   const cards: Array<[string, string, string, string | null]> = [
     ["Crosshair error", `${t.errorDeg.toFixed(1)}°`, "when the kill landed", career && `${career.errorDeg.toFixed(1)}° usually`],
     ["A second before", `${t.beforeDeg.toFixed(1)}°`, "how far it had to travel", career && `${career.beforeDeg.toFixed(1)}° usually`],
@@ -97,6 +99,18 @@ function Summary({ t, career }: { t: AimTotals; career: AimTotals | null }) {
     ["Range", t.rangeUnits.toFixed(0), "map units", career && `${career.rangeUnits.toFixed(0)} usually`],
     ["Angle already held", `${(t.heldShare * 100).toFixed(0)}%`, "within 3° a second before", career && `${(career.heldShare * 100).toFixed(0)}% usually`],
   ];
+  if (life) {
+    cards.push(
+      ["Scoped", `${(life.scopedShare * 100).toFixed(0)}%`, "of your time alive", careerLife && `${(careerLife.scopedShare * 100).toFixed(0)}% usually`],
+      [
+        "Nearest teammate",
+        life.nearestMate === null ? "—" : life.nearestMate.toFixed(0),
+        "units away when you died",
+        careerLife?.nearestMate ? `${careerLife.nearestMate.toFixed(0)} usually` : null,
+      ],
+      ["Died alone", `${(life.aloneShare * 100).toFixed(0)}%`, "nobody within 900 units", careerLife && `${(careerLife.aloneShare * 100).toFixed(0)}% usually`],
+    );
+  }
   return (
     <div className="aim-cards">
       {cards.map(([label, value, note, vs]) => (
@@ -108,6 +122,48 @@ function Summary({ t, career }: { t: AimTotals; career: AimTotals | null }) {
         </div>
       ))}
       <p className="hint aim-count">From {t.kills} kills the demo could answer for.</p>
+    </div>
+  );
+}
+
+/** Your deaths: who got you, from how far, and who was close enough to help. */
+function Deaths({ rows, names }: { rows: DeathRow[]; names: ReturnType<typeof playerMap> }) {
+  return (
+    <div className="table-wrap">
+      <h3 className="aim-h3">Your deaths</h3>
+      <table className="match-table aim-table">
+        <thead>
+          <tr>
+            <th>Killed by</th>
+            <th className="num" title="How far away they were; blank when the demo never carried them">
+              Their range
+            </th>
+            <th className="num" title="Distance to the nearest living teammate the demo carried">
+              Nearest teammate
+            </th>
+            <th className="num" title="Teammates within 900 units">
+              Cover
+            </th>
+            <th>State</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.tick}>
+              <td className="nowrap player-name">{(r.killer !== null && names.get(r.killer)?.name) || "—"}</td>
+              <td className="num">{r.killerRange === null ? <span className="muted">–</span> : r.killerRange.toFixed(0)}</td>
+              <td className="num">
+                {r.nearestMate === null ? <span className="muted">–</span> : <span className={r.nearestMate > 900 ? "deg-far" : ""}>{r.nearestMate.toFixed(0)}</span>}
+              </td>
+              <td className="num">{r.matesNear}</td>
+              <td className="nowrap">
+                {r.scoped && <span className="badge badge-hs">scoped</span>}
+                {r.matesNear === 0 && <span className="muted">alone</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

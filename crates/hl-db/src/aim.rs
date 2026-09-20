@@ -23,6 +23,36 @@ pub struct AimRow {
     pub headshot: bool,
 }
 
+/// One death, as the demo saw it.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeathRow {
+    pub demo_id: i64,
+    pub tick: i64,
+    pub at_raw: Option<i64>,
+    pub killer: Option<u32>,
+    pub killer_range: Option<f64>,
+    pub nearest_mate: Option<f64>,
+    pub mates_near: i64,
+    pub scoped: bool,
+}
+
+/// How the living time was spent, over one match or all of them.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LifeTotals {
+    /// Share of living time spent scoped in.
+    pub scoped_share: f64,
+    pub minutes: f64,
+    pub deaths: i64,
+    /// Averages over deaths where the demo carried a teammate.
+    pub nearest_mate: Option<f64>,
+    /// Share of deaths with nobody within the near distance, and with the
+    /// player scoped at the time.
+    pub alone_share: f64,
+    pub scoped_share_deaths: f64,
+}
+
 /// Averages over the kills a demo could answer for.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -71,6 +101,102 @@ impl Db {
             .await?;
         tx.commit().await?;
         Ok(())
+    }
+
+    /// Replace one log's deaths and living time.
+    pub async fn replace_deaths(&self, log_id: i64, rows: &[DeathRow], life: &[(i64, i64, i64)]) -> Result<()> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("DELETE FROM demo_death WHERE log_id = ?1").bind(log_id).execute(&mut *tx).await?;
+        sqlx::query("DELETE FROM demo_life WHERE log_id = ?1").bind(log_id).execute(&mut *tx).await?;
+        for r in rows {
+            sqlx::query(
+                "INSERT OR REPLACE INTO demo_death
+                    (log_id, demo_id, tick, at_raw, killer, killer_range, nearest_mate, mates_near, scoped)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            )
+            .bind(log_id)
+            .bind(r.demo_id)
+            .bind(r.tick)
+            .bind(r.at_raw)
+            .bind(r.killer.map(i64::from))
+            .bind(r.killer_range)
+            .bind(r.nearest_mate)
+            .bind(r.mates_near)
+            .bind(i64::from(r.scoped))
+            .execute(&mut *tx)
+            .await?;
+        }
+        for &(demo_id, alive, scoped) in life {
+            sqlx::query(
+                "INSERT OR REPLACE INTO demo_life (log_id, demo_id, alive_ticks, scoped_ticks)
+                 VALUES (?1, ?2, ?3, ?4)",
+            )
+            .bind(log_id)
+            .bind(demo_id)
+            .bind(alive)
+            .bind(scoped)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
+    pub async fn deaths_for_log(&self, log_id: i64) -> Result<Vec<DeathRow>> {
+        let rows = sqlx::query(
+            "SELECT demo_id, tick, at_raw, killer, killer_range, nearest_mate, mates_near, scoped
+             FROM demo_death WHERE log_id = ?1 ORDER BY tick",
+        )
+        .bind(log_id)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| DeathRow {
+                demo_id: r.get("demo_id"),
+                tick: r.get("tick"),
+                at_raw: r.get("at_raw"),
+                killer: r.get::<Option<i64>, _>("killer").map(|v| v as u32),
+                killer_range: r.get("killer_range"),
+                nearest_mate: r.get("nearest_mate"),
+                mates_near: r.get("mates_near"),
+                scoped: r.get::<i64, _>("scoped") != 0,
+            })
+            .collect())
+    }
+
+    /// How the living time was spent: one match, or every match read.
+    /// Ticks are turned into minutes at 66.67 a second, TF2's server rate.
+    pub async fn life_totals(&self, log_id: Option<i64>) -> Result<Option<LifeTotals>> {
+        let life = sqlx::query(
+            "SELECT SUM(alive_ticks) AS alive, SUM(scoped_ticks) AS scoped
+             FROM demo_life WHERE (?1 IS NULL OR log_id = ?1)",
+        )
+        .bind(log_id)
+        .fetch_one(self.pool())
+        .await?;
+        let alive: Option<i64> = life.get("alive");
+        let Some(alive) = alive.filter(|a| *a > 0) else { return Ok(None) };
+        let scoped: i64 = life.get::<Option<i64>, _>("scoped").unwrap_or(0);
+
+        let d = sqlx::query(
+            "SELECT COUNT(*) AS deaths, AVG(nearest_mate) AS mate,
+                    AVG(CASE WHEN mates_near = 0 THEN 1.0 ELSE 0.0 END) AS alone,
+                    AVG(CASE WHEN scoped = 1 THEN 1.0 ELSE 0.0 END) AS scoped
+             FROM demo_death WHERE (?1 IS NULL OR log_id = ?1)",
+        )
+        .bind(log_id)
+        .fetch_one(self.pool())
+        .await?;
+        let deaths: i64 = d.get("deaths");
+        Ok(Some(LifeTotals {
+            scoped_share: scoped as f64 / alive as f64,
+            minutes: alive as f64 / 66.67 / 60.0,
+            deaths,
+            nearest_mate: d.get("mate"),
+            alone_share: d.get::<Option<f64>, _>("alone").unwrap_or(0.0),
+            scoped_share_deaths: d.get::<Option<f64>, _>("scoped").unwrap_or(0.0),
+        }))
     }
 
     /// Logs already read at this version of the pass.

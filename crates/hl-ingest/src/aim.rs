@@ -36,6 +36,18 @@ pub struct AimKill {
     pub shot: Shot,
 }
 
+/// One death of yours, joined to the log the same way a kill is.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AimDeath {
+    pub demo_id: i64,
+    pub at_raw: Option<i64>,
+    pub killer: Option<u32>,
+    pub killer_name: Option<String>,
+    #[serde(flatten)]
+    pub death: hl_demos::aim::Death,
+}
+
 /// Every kill of yours in one match, with the aim behind those a demo covers.
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -46,6 +58,9 @@ pub struct AimReport {
     /// recording: one demo often spans two logs.
     pub other_matches: usize,
     pub kills: Vec<AimKill>,
+    pub deaths: Vec<AimDeath>,
+    /// Per demo: ticks alive, and of those, ticks scoped in.
+    pub life: Vec<(i64, i64, i64)>,
 }
 
 /// Read the demos linked to `log_id` and measure the aim behind each of `me`'s
@@ -66,7 +81,35 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
     let mut out = AimReport { log_kills: mine.len(), ..AimReport::default() };
     for d in &demos {
         let (Some(start), Some(rate)) = (d.start_utc, d.tick_rate) else { continue };
-        for shot in hl_demos::aim::shots(Path::new(&d.path), &me.to_steamid3(), rate)? {
+        let pass = hl_demos::aim::pass(Path::new(&d.path), &me.to_steamid3(), rate)?;
+        out.life.push((d.demo_id, i64::from(pass.alive_ticks), i64::from(pass.scoped_ticks)));
+        // The log's deaths of yours, to join the demo's against.
+        let my_deaths: Vec<_> = kills.iter().filter(|k| k.victim == me.account_id() && k.live).collect();
+        for death in pass.deaths {
+            let at = offset.map(|o| start + f64::from(death.tick) / rate - o as f64);
+            let killer = SteamId::parse(&death.killer).ok().map(SteamId::account_id);
+            let log_death = at.and_then(|at| {
+                my_deaths
+                    .iter()
+                    .filter(|k| (k.at_raw as f64 - at).abs() <= JOIN_WINDOW_S)
+                    .min_by(|a, b| {
+                        let d = |k: &&&hl_db::StoredKill| (k.at_raw as f64 - at).abs();
+                        d(a).total_cmp(&d(b))
+                    })
+                    .copied()
+            });
+            if log_death.is_none() && offset.is_some() {
+                continue;
+            }
+            out.deaths.push(AimDeath {
+                demo_id: d.demo_id,
+                at_raw: log_death.map(|k| k.at_raw),
+                killer,
+                killer_name: killer.and_then(|k| names.get(&k).cloned()),
+                death,
+            });
+        }
+        for shot in pass.shots {
             // The demo's tick, put on the log's clock.
             let at = offset.map(|o| start + f64::from(shot.tick) / rate - o as f64);
             let victim = SteamId::parse(&shot.victim).ok().map(SteamId::account_id);
@@ -105,7 +148,8 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
 
 /// Bump to re-read every demo on the next pass.
 /// 1: crosshair error, flick, range.
-pub const VERSION: i64 = 1;
+/// 2: deaths (who was near, scoped) and time spent scoped.
+pub const VERSION: i64 = 2;
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -130,12 +174,27 @@ pub async fn derive_all(db: &Db, me: SteamId, all: bool, mut progress: impl FnMu
         progress(i, todo.len());
         let report = for_log(db, log_id, me).await?;
         let rows: Vec<hl_db::AimRow> = report.kills.iter().map(store_row).collect();
+        let deaths: Vec<hl_db::DeathRow> = report.deaths.iter().map(death_row).collect();
         db.replace_aim(log_id, VERSION, &rows).await?;
+        db.replace_deaths(log_id, &deaths, &report.life).await?;
         out.read += 1;
         out.kills += rows.len();
     }
     progress(todo.len(), todo.len());
     Ok(out)
+}
+
+fn death_row(d: &AimDeath) -> hl_db::DeathRow {
+    hl_db::DeathRow {
+        demo_id: d.demo_id,
+        tick: i64::from(d.death.tick),
+        at_raw: d.at_raw,
+        killer: d.killer,
+        killer_range: d.death.killer_range.map(f64::from),
+        nearest_mate: d.death.nearest_mate.map(f64::from),
+        mates_near: i64::from(d.death.mates_near),
+        scoped: d.death.scoped,
+    }
 }
 
 fn store_row(k: &AimKill) -> hl_db::AimRow {

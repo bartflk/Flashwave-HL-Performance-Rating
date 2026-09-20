@@ -23,8 +23,13 @@ use anyhow::{Context, Result};
 use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
 use std::path::Path;
+use tf_demo_parser::demo::data::game_state::{PlayerCondition, PlayerState};
 use tf_demo_parser::demo::parser::gamestateanalyser::GameStateAnalyser;
 use tf_demo_parser::{Demo, DemoParser};
+
+/// A teammate this close is covering you: a Scout's fight is about this wide,
+/// and a Medic on you is far closer.
+pub const MATE_NEAR_UNITS: f32 = 900.0;
 
 /// Eyes above the origin for a standing player. TF2's standing view offset.
 pub const HEAD_HEIGHT: f32 = 68.0;
@@ -58,11 +63,48 @@ pub struct Shot {
     pub victim_seen: bool,
 }
 
-/// Every kill by `me` in the demo at `path`, with the aim behind it.
+/// How you died, as the demo saw it.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Death {
+    pub tick: u32,
+    /// Who killed you, as the demo writes SteamIDs, and how far away they were
+    /// (`None` when the demo never carried them: the usual case for a Spy).
+    pub killer: String,
+    pub killer_range: Option<f32>,
+    /// The nearest living teammate, and how many were within
+    /// [`MATE_NEAR_UNITS`]. `None` when the demo carried no teammate at all.
+    pub nearest_mate: Option<f32>,
+    pub mates_near: u8,
+    /// You were scoped in at some point in the second before it. The tick of
+    /// the death itself is no good: dying clears the condition.
+    pub scoped: bool,
+}
+
+/// One pass over a demo: the kills, the deaths, and how the time was spent.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Pass {
+    pub shots: Vec<Shot>,
+    pub deaths: Vec<Death>,
+    /// Ticks you were alive, and of those, ticks you were scoped in.
+    pub alive_ticks: u32,
+    pub scoped_ticks: u32,
+}
+
+impl Pass {
+    /// The share of your living time spent scoped, where there was any.
+    pub fn scoped_share(&self) -> Option<f64> {
+        (self.alive_ticks > 0).then(|| f64::from(self.scoped_ticks) / f64::from(self.alive_ticks))
+    }
+}
+
+/// Read the demo at `path` once: every kill by `me` with the aim behind it,
+/// every death with who was nearby, and how much of the time was scoped.
 ///
-/// One pass. Only the last [`LEAD_S`] of ticks is held, so memory stays flat
-/// however long the demo is.
-pub fn shots(path: &Path, me: &str, tick_rate: f64) -> Result<Vec<Shot>> {
+/// Only the last [`LEAD_S`] of ticks is held, so memory stays flat however
+/// long the demo is.
+pub fn pass(path: &Path, me: &str, tick_rate: f64) -> Result<Pass> {
     let bytes = std::fs::read(path).with_context(|| format!("reading {}", path.display()))?;
     let demo = Demo::new(&bytes);
     let (_, mut ticker) = DemoParser::new_with_analyser(demo.get_stream(), GameStateAnalyser::new())
@@ -73,7 +115,7 @@ pub fn shots(path: &Path, me: &str, tick_rate: f64) -> Result<Vec<Shot>> {
     let flick_back = (FLICK_S * tick_rate).round() as usize;
     // The last `depth` ticks: the shooter's view, and where everyone stood.
     let mut recent: VecDeque<Frame> = VecDeque::with_capacity(depth + 1);
-    let mut out: Vec<Shot> = Vec::new();
+    let mut out = Pass::default();
     let mut done = 0usize;
     let mut last = u32::MAX;
 
@@ -86,15 +128,39 @@ pub fn shots(path: &Path, me: &str, tick_rate: f64) -> Result<Vec<Shot>> {
         last = tick;
 
         // This tick: the shooter's view, and every player's position by user id.
-        let mut frame = Frame { tick, me: None, others: HashMap::new(), user_ids: HashMap::new() };
+        let mut frame = Frame {
+            tick,
+            me: None,
+            my_team: None,
+            scoped: false,
+            others: HashMap::new(),
+            mates: Vec::new(),
+            user_ids: HashMap::new(),
+        };
         for p in &state.players {
             let Some(info) = &p.info else { continue };
             let pos = [p.position.x, p.position.y, p.position.z];
             frame.user_ids.insert(u16::from(info.user_id), info.steam_id.clone());
             if info.steam_id == me {
                 frame.me = Some((pos, p.view_angle, p.pitch_angle));
+                frame.my_team = Some(p.team);
+                frame.scoped = p.has_condition(PlayerCondition::Zoomed);
+                if p.state == PlayerState::Alive {
+                    out.alive_ticks += 1;
+                    out.scoped_ticks += u32::from(frame.scoped);
+                }
             }
             frame.others.insert(u16::from(info.user_id), (pos, p.in_pvs));
+        }
+        // Living teammates, for "was anyone watching my flank".
+        for p in &state.players {
+            if p.info.as_ref().is_some_and(|i| i.steam_id != me)
+                && Some(p.team) == frame.my_team
+                && p.state == PlayerState::Alive
+                && p.in_pvs
+            {
+                frame.mates.push([p.position.x, p.position.y, p.position.z]);
+            }
         }
         if recent.len() == depth {
             recent.pop_front();
@@ -105,7 +171,10 @@ pub fn shots(path: &Path, me: &str, tick_rate: f64) -> Result<Vec<Shot>> {
         // since the last tick belongs to this moment, with the view still fresh.
         for kill in state.kills.iter().skip(done) {
             if let Some(shot) = shot_for(&recent, me, kill.attacker_id, kill.victim_id, &kill.weapon, flick_back) {
-                out.push(shot);
+                out.shots.push(shot);
+            }
+            if let Some(death) = death_for(&recent, me, kill.attacker_id, kill.victim_id) {
+                out.deaths.push(death);
             }
         }
         done = state.kills.len();
@@ -113,12 +182,43 @@ pub fn shots(path: &Path, me: &str, tick_rate: f64) -> Result<Vec<Shot>> {
     Ok(out)
 }
 
+/// Your death, from the tick it happened on.
+fn death_for(recent: &VecDeque<Frame>, me: &str, attacker: u16, victim: u16) -> Option<Death> {
+    let now = recent.back()?;
+    if now.user_ids.get(&victim).map(String::as_str) != Some(me) {
+        return None;
+    }
+    let (pos, ..) = now.me?;
+    let killer = now.user_ids.get(&attacker).cloned().unwrap_or_default();
+    let killer_range = now
+        .others
+        .get(&attacker)
+        .filter(|(_, seen)| *seen)
+        .map(|&(p, _)| dist(pos, p));
+    let mut nearest: Option<f32> = None;
+    let mut near = 0u8;
+    for &m in &now.mates {
+        let d = dist(pos, m);
+        nearest = Some(nearest.map_or(d, |n: f32| n.min(d)));
+        if d <= MATE_NEAR_UNITS {
+            near += 1;
+        }
+    }
+    let scoped = recent.iter().any(|f| f.scoped);
+    Some(Death { tick: now.tick, killer, killer_range, nearest_mate: nearest, mates_near: near, scoped })
+}
+
 struct Frame {
     tick: u32,
     /// The shooter: position, yaw, pitch.
     me: Option<(Pos, f32, f32)>,
+    my_team: Option<tf_demo_parser::demo::parser::analyser::Team>,
+    /// The shooter was scoped in on this tick.
+    scoped: bool,
     /// Everyone by user id: position, and whether the demo carried them.
     others: HashMap<u16, (Pos, bool)>,
+    /// Living teammates the demo carried, for the distance to the nearest.
+    mates: Vec<Pos>,
     user_ids: HashMap<u16, String>,
 }
 
@@ -233,7 +333,15 @@ mod tests {
             let mut user_ids = HashMap::new();
             user_ids.insert(1, me.to_string());
             user_ids.insert(2, "[U:1:2]".to_string());
-            recent.push_back(Frame { tick, me: Some(([0.0, 0.0, 0.0], yaw, 0.0)), others, user_ids });
+            recent.push_back(Frame {
+                tick,
+                me: Some(([0.0, 0.0, 0.0], yaw, 0.0)),
+                my_team: None,
+                scoped: false,
+                others,
+                mates: vec![[300.0, 0.0, 0.0], [2_000.0, 0.0, 0.0]],
+                user_ids,
+            });
         }
         let shot = shot_for(&recent, me, 1, 2, "sniperrifle", 1).expect("our kill");
         assert!(shot.error_deg < 0.01, "on the head: {}", shot.error_deg);
@@ -244,5 +352,35 @@ mod tests {
         // Someone else's kill, and our own death, are not ours.
         assert!(shot_for(&recent, me, 2, 1, "x", 1).is_none());
         assert!(shot_for(&recent, me, 1, 1, "x", 1).is_none());
+    }
+
+    /// The same two ticks, read as a death instead: who killed us, how far
+    /// away they were, and who was near enough to help.
+    #[test]
+    fn a_death_reads_who_was_nearby() {
+        let me = "[U:1:1]";
+        let mut recent = VecDeque::new();
+        let mut others = HashMap::new();
+        others.insert(2, ([500.0, 0.0, 0.0], true));
+        let mut user_ids = HashMap::new();
+        user_ids.insert(1, me.to_string());
+        user_ids.insert(2, "[U:1:2]".to_string());
+        recent.push_back(Frame {
+            tick: 10,
+            me: Some(([0.0, 0.0, 0.0], 0.0, 0.0)),
+            my_team: None,
+            scoped: true,
+            others,
+            mates: vec![[300.0, 0.0, 0.0], [2_000.0, 0.0, 0.0]],
+            user_ids,
+        });
+        let d = death_for(&recent, me, 2, 1).expect("our death");
+        assert_eq!(d.killer, "[U:1:2]");
+        assert_eq!(d.killer_range, Some(500.0));
+        assert_eq!(d.nearest_mate, Some(300.0));
+        assert_eq!(d.mates_near, 1, "the other teammate is 2,000 units away");
+        assert!(d.scoped);
+        // Our own kill is not a death.
+        assert!(death_for(&recent, me, 1, 2).is_none());
     }
 }
