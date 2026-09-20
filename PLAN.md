@@ -478,7 +478,8 @@ POV demos only contain what your client received, so phase 2 is you-only for loc
 | **M9** | Rating update from Highlander theory: game state, pick context, uber timing, per-map values (§11, for deliberation) | |
 | **M10** | Sniper rating v3 and v4 from HLTV's lessons: death context, Fight KAST, situation-valued kills, map and side baselines, fight swing (§12) | |
 | **R1** | Public test release: first-run flow (TF2 folder optional, first sync step), TF2-styled theme and original logo, release workflow, README for testers | **done** |
-| **v2** | Deep demo parse: aim and viewangles, engagement ranges (positions largely come from M6 now) | |
+| **M11** | Queue §13: filters bug, database backups, per-class models, opponent strength, themes | |
+| **v2** | Deep demo parse (§14): aim and viewangles, crosshair placement, reaction time, scoped share | |
 
 M1 acceptance: every Highlander log on the account stored, classified, deduplicated, and rebuildable from raw blobs with no refetching.
 
@@ -1369,3 +1370,78 @@ Each version bumps `MODEL_VERSION`, re-rates at startup and keeps the old rating
 2. Is 300 units and two kills the right "should have moved" rule?
 3. Should a Sniper who survives a fight without firing get KAST credit for it?
 4. Clean-up kills at 9 v 5: worth half a kill, or nearly a full one, since they stop the enemy regrouping?
+
+---
+
+## 13. The queue
+
+Everything agreed but not yet built, in the order it will be taken. Each row
+says why it is where it is; the sections after it hold the detail. Feedback
+from testers (function, boSe, Taiga) is marked with who asked.
+
+| # | Job | Size | Why here |
+|---|---|---|---|
+| Q1 | **Filters ignored by two tabs** (function) | small | A bug: the map and round filters change the kill map but not Damage-and-kills or Fights, so those two quietly show the whole match. |
+| Q2 | **Database backup before every sync**, and a warning in the release notes about the uninstaller's "delete application data" box | small | A tester who uninstalls can lose their whole history, as happened here on 19 Sep 2026. |
+| Q3 | **Deep demo parse** (§14) | large | The one source of data we hold and do not read: aim, viewangles, distances, scoped time. Everything else is logs.tf's. |
+| Q4 | **Scout picks on KOTH worth more** (boSe) | small | One value in `victim_value.map`; boSe's point is that the Scout is in the uber on KOTH. Check it against `hl validate` first. |
+| Q5 | **§12 step 4: map and side baselines** | medium | Judge a Vigil defence against other Vigil defences. The fairness fix, not an accuracy one. |
+| Q6 | **§12 step 5: fight swing** | large | Win chance per fight, HLTV's Round Swing done properly. Replaces step 3's situation factor if it lands. |
+| Q7 | **Teamfights** (Taiga) | medium | Who collapsed on whom, who was dropped off cooldown, uber exchanges as space. Needs Q6's fight model to value them. |
+| Q8 | **Every class gets its own model** (boSe) | large | Pyro, Engineer and Medic are hardest to read from logs.tf, so they gain the most. The Sniper work is the template. |
+| Q9 | **Opponent strength** (open item 8) | medium | ETF2L division is stored for every official; the pool still treats a low game like a Premiership one. |
+| Q10 | **Colour themes in settings** (function) | small | The palette is already CSS variables, so a theme is a small set of overrides. Cheap, and worth doing once the screens settle. |
+
+Smaller open items stay in §8 and are folded into whichever job touches them:
+demo linking per map segment (18) and the in-game jump-tick check (5) belong
+with Q3; the untested STV download (6) and the file watcher (7) ride along
+with it.
+
+---
+
+## 14. Deep demo parse (Q3)
+
+**Why.** logs.tf answers what happened. A demo answers how: where the Sniper
+was looking, how far the shot was, how long they held the angle, how quickly
+they reacted, how much of the game they spent scoped. None of that is in any
+log, and the demos are already on the machine (101 here, 25 linked to matches).
+
+**What is read today.** Only the 1072-byte header, for the map name, duration
+and tick count, plus Demo Support `.json` sidecars for killstreak ticks. No
+packet is parsed.
+
+**What a parse gives.** A TF2 demo holds the server's snapshots: every
+player's position, view angles, health, class and weapon, tick by tick (66 or
+so a second). From that, per kill and per life:
+
+- **Crosshair placement**: the angle between where the Sniper was looking and
+  the head of the player they killed, in the seconds before the shot.
+- **Reaction time**: from the victim first being visible-ish (in the Sniper's
+  view cone and in the open) to the shot.
+- **Flick size**: how far the view moved in the half second before the kill.
+- **Engagement range**: the distance of every kill, already possible from the
+  log's positions, but exact here, with height.
+- **Scoped share**: how much of the life was spent zoomed, and how long each
+  hold lasted before a shot.
+- **Where the rest of the team was**: the distance from the Sniper to their
+  nearest teammate when they died — the "nobody was watching my flank" number.
+
+**How.** `tf-demo-parser` (the crate behind demos.tf) reads TF2 demos in Rust.
+The work is a spike first: parse one linked demo, print the owner's ticks, and
+time it. If a demo takes seconds rather than minutes, a background pass over
+linked demos is worth building; if not, only the seconds around each kill get
+parsed.
+
+**Where it goes.**
+
+- `hl demo parse <file>` in the CLI first, so the numbers can be checked
+  against the demo by eye before any screen is built.
+- A `demo_tick` or per-kill `demo_detail` table, derived, rebuildable.
+- The match page's play-by-play gains the aim numbers per kill; the profile
+  gains scoped share and crosshair placement as trends.
+- Rating comes last, and only for what validates: crosshair placement and
+  reaction time are the candidates.
+
+**Risks.** POV demos hold only what the recording player's client received, so
+teammate positions are partial. Old demos may use protocol versions the parser
+does not know. Both are checked in the spike before anything is built on top.
