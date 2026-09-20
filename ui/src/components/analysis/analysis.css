@@ -985,3 +985,122 @@
 .board-trails + .board-when {
   margin-left: 10px;
 }
+
+/* --- movement: the map beside its list of lives --- */
+
+.km-split {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.km-split > .km-canvas {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.km-lives {
+  flex: 0 0 210px;
+  max-height: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+/* In full screen the list grows with the window, like the map. */
+.killmap.full .km-lives {
+  max-height: calc(100vh - 150px);
+}
+
+.km-lives-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.km-lives-head h3 {
+  font-size: 0.86rem;
+  margin: 0;
+}
+
+.km-lives-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.km-life {
+  display: grid;
+  grid-template-columns: 10px 30px 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: none;
+  color: var(--text);
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.km-life:hover {
+  background: rgba(242, 230, 217, 0.05);
+}
+
+.km-life.picked {
+  border-color: var(--accent);
+  background: rgba(224, 118, 58, 0.12);
+}
+
+.km-life-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.km-life-dot.died {
+  background: var(--bad);
+}
+
+.km-life-dot.lived {
+  background: var(--blu);
+}
+
+.km-life-round {
+  color: var(--muted);
+}
+
+.km-life-end {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.km-lives-empty {
+  flex: 0 0 210px;
+}
+
+@media (max-width: 900px) {
+  .km-split {
+    flex-direction: column;
+  }
+
+  .km-lives {
+    flex: 1 1 auto;
+    width: 100%;
+    max-height: 240px;
+  }
+}

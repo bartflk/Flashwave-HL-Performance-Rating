@@ -928,6 +928,8 @@ export interface Backups {
 export interface PathRow {
   demoId: number;
   seq: number;
+  /** Whose route it is. */
+  accountId: number;
   fromTick: number;
   toTick: number;
   /** The round the life started in. */

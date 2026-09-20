@@ -105,6 +105,7 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
             out.paths.push(hl_db::PathRow {
                 demo_id: d.demo_id,
                 seq: seq as i64,
+                account_id: SteamId::parse(&l.steamid).map(|s| s.account_id()).unwrap_or(0),
                 from_tick: i64::from(l.from_tick),
                 to_tick: i64::from(l.to_tick),
                 round_num: round,
@@ -183,7 +184,8 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
 /// 5: the crosshair's path over the second before each kill, and the
 ///    sideways and vertical angles corrected to mean what they say.
 /// 6: where you walked, one route per life.
-pub const VERSION: i64 = 6;
+/// 7: routes for every player the demo carried, not only the owner's.
+pub const VERSION: i64 = 7;
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
 #[serde(rename_all = "camelCase")]

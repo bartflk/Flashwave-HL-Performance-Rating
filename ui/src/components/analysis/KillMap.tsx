@@ -4,6 +4,7 @@ import { api } from "../../api/client";
 import type { Analysis, KillView, MapView, Overview, PathRow, Vec3 } from "../../api/types";
 import { capitalize, splitMap } from "../../lib/format";
 import { DEATH, KILL, inSlice, jumpTo, playerMap, roundClock, type Slice } from "./common";
+import { LifeList } from "./LifeList";
 
 /**
  * Where the player's kills and deaths happened, top-down.
@@ -39,6 +40,8 @@ interface Mark {
 }
 
 const MAX_H = 640;
+/** Room left for the controls and the note when the map fills the window. */
+const FULL_CHROME = 150;
 
 export function KillMap({ a, player, slice }: { a: Analysis; player: number; slice: Slice }) {
   // Full screen: the window's own where the webview allows it, and otherwise
@@ -50,7 +53,14 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
       if (!document.fullscreenElement) setFull(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !document.fullscreenElement) setFull(false);
+      if (e.key !== "Escape") return;
+      // Escape drops a picked route first, and only then leaves full screen:
+      // losing the whole view to un-pick one line is a surprise.
+      setFocus((f) => {
+        if (f) return null;
+        if (!document.fullscreenElement) setFull(false);
+        return null;
+      });
     };
     document.addEventListener("fullscreenchange", onChange);
     document.addEventListener("keydown", onKey);
@@ -102,6 +112,9 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
     enabled: layer === "paths",
     staleTime: 5 * 60_000,
   });
+  // Whose routes: the player the panel is on, or everyone the demo saw.
+  const [pathWho, setPathWho] = useState<"player" | "all">("player");
+  const [focus, setFocus] = useState<PathRow | null>(null);
   const [heatOf, setHeatOf] = useState<HeatOf>("deaths");
   const [scope, setScope] = useState<Scope>("match");
   const [asTable, setAsTable] = useState(false);
@@ -123,6 +136,20 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
         : null,
     [layer, frame, view, sliceKills, player, heatOf, scope, enemy],
   );
+
+  // Routes in view: this round or map, and whose the layer is set to.
+  const routes = useMemo(
+    () =>
+      (pathQ.data ?? []).filter(
+        (r) =>
+          (slice.rounds === null || (r.roundNum !== null && slice.rounds.has(r.roundNum))) &&
+          (pathWho === "all" || r.accountId === player),
+      ),
+    [pathQ.data, slice.rounds, pathWho, player],
+  );
+  // The routes are stored in demo ticks; TF2 servers run at 66.67 a second,
+  // which is close enough to turn a route's length into seconds.
+  const tickRate = 66.67;
 
   const kills = sliceKills;
   const marks: Mark[] = [];
@@ -191,6 +218,33 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
             Heatmap
           </button>
         </div>
+        {layer === "paths" && (
+          <div className="segmented" role="tablist" aria-label="Whose movement">
+            <button
+              role="tab"
+              aria-selected={pathWho === "player"}
+              className={pathWho === "player" ? "seg active" : "seg"}
+              onClick={() => {
+                setPathWho("player");
+                setFocus(null);
+              }}
+            >
+              {name}
+            </button>
+            <button
+              role="tab"
+              aria-selected={pathWho === "all"}
+              className={pathWho === "all" ? "seg active" : "seg"}
+              title="Everyone the demo could see, which is patchy for players other than the recorder"
+              onClick={() => {
+                setPathWho("all");
+                setFocus(null);
+              }}
+            >
+              Everyone
+            </button>
+          </div>
+        )}
         {layer === "dots" ? (
           <>
             <label className="check">
@@ -240,19 +294,32 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
         <MarkTable marks={marks} a={a} />
       ) : (
         <>
+          <div className={layer === "paths" ? "km-split" : undefined}>
           <Canvas
             frame={frame}
             display={overview ? overviewFrame(overview) : frame}
             image={overview?.image ?? null}
             view={view}
             marks={layer === "dots" ? marks : []}
-            paths={layer === "paths" ? (pathQ.data ?? []).filter((r) => slice.rounds === null || (r.roundNum !== null && slice.rounds.has(r.roundNum))) : []}
+            paths={layer === "paths" ? routes : []}
+            focus={focus}
+            maxHeight={full ? Math.max(360, window.innerHeight - FULL_CHROME) : MAX_H}
             heat={heat}
             heatColor={heatOf === "kills" ? KILL : DEATH}
             hover={hover}
             onHover={setHover}
             a={a}
           />
+          {layer === "paths" && (
+            <LifeList
+              rows={routes}
+              tickRate={tickRate}
+              focus={focus}
+              onFocus={setFocus}
+              partial={pathWho === "all" || !me?.isMe}
+            />
+          )}
+          </div>
           {layer === "paths" && (
             <div className="km-scale" aria-hidden>
               <span className="km-key km-key-path" /> a life
@@ -277,7 +344,9 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
               (pathQ.isPending
                 ? " Reading the demo's routes…"
                 : pathQ.data && pathQ.data.length > 0
-                  ? " One line per life, four positions a second, from your own recording. Only your own movement is in a POV demo."
+                  ? pathWho === "all"
+                    ? " One line per life, four positions a second. A POV demo only carries other players while its recorder could see them, so their lines break where the demo lost them."
+                    : " One line per life, four positions a second, read from the demo."
                   : " No demo is linked to this match, so there is no movement to draw.")}
           </p>
           {layer === "dots" && <TimeStrip a={a} slice={slice} marks={marks} hover={hover} onHover={setHover} />}
@@ -298,13 +367,17 @@ function Canvas(props: {
   marks: Mark[];
   /** Routes to draw under the marks, one per life. */
   paths: PathRow[];
+  /** One route to pick out, with the rest faded. */
+  focus: PathRow | null;
+  /** How tall the map may be; the window's height in full screen. */
+  maxHeight: number;
   heat: number[] | null;
   heatColor: string;
   hover: Mark | null;
   onHover: (m: Mark | null) => void;
   a: Analysis;
 }) {
-  const { frame, display, image, view, marks, paths, heat, heatColor, hover, onHover, a } = props;
+  const { frame, display, image, view, marks, paths, focus, maxHeight, heat, heatColor, hover, onHover, a } = props;
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   useEffect(() => {
     setImg(null);
@@ -327,7 +400,7 @@ function Canvas(props: {
     return () => ro.disconnect();
   }, []);
 
-  const scale = Math.min(boxW / display.width, MAX_H / display.height);
+  const scale = Math.min(boxW / display.width, maxHeight / display.height);
   const W = Math.floor(display.width * scale);
   const H = Math.floor(display.height * scale);
   const px = ([x, y]: [number, number]): [number, number] => [
@@ -376,8 +449,12 @@ function Canvas(props: {
     // in the death colour, and every line ends in a dot where it stopped.
     for (const route of paths) {
       if (route.points.length < 2) continue;
-      g.strokeStyle = route.died ? "rgba(232, 106, 98, 0.55)" : "rgba(134, 171, 201, 0.5)";
-      g.lineWidth = 1.5;
+      const picked = focus !== null && focus.seq === route.seq && focus.demoId === route.demoId;
+      const dim = focus !== null && !picked;
+      g.strokeStyle = route.died
+        ? `rgba(232, 106, 98, ${dim ? 0.12 : picked ? 0.95 : 0.55})`
+        : `rgba(134, 171, 201, ${dim ? 0.1 : picked ? 0.95 : 0.5})`;
+      g.lineWidth = picked ? 2.5 : 1.5;
       g.lineJoin = "round";
       g.beginPath();
       route.points.forEach(([, x, y], i) => {
@@ -386,11 +463,23 @@ function Canvas(props: {
         else g.lineTo(cx, cy);
       });
       g.stroke();
+      if (dim) continue;
+      // Where it started and where it stopped: a ring for the spawn, a solid
+      // dot for the end, so a route reads in one direction.
+      const first = route.points[0];
       const last = route.points[route.points.length - 1];
+      const [sx, sy] = px([first[1], first[2]]);
       const [ex, ey] = px([last[1], last[2]]);
+      if (picked) {
+        g.strokeStyle = "rgba(242, 230, 217, 0.9)";
+        g.lineWidth = 1.5;
+        g.beginPath();
+        g.arc(sx, sy, 4, 0, Math.PI * 2);
+        g.stroke();
+      }
       g.fillStyle = route.died ? DEATH : KILL;
       g.beginPath();
-      g.arc(ex, ey, 2.5, 0, Math.PI * 2);
+      g.arc(ex, ey, picked ? 4 : 2.5, 0, Math.PI * 2);
       g.fill();
     }
 
@@ -412,7 +501,7 @@ function Canvas(props: {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [img, view, heat, heatColor, frame, display, W, H, scale, paths]);
+  }, [img, view, heat, heatColor, frame, display, W, H, scale, paths, focus]);
 
   const nearest = (e: React.MouseEvent<SVGSVGElement>): Mark | null => {
     const r = e.currentTarget.getBoundingClientRect();

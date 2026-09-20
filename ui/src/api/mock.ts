@@ -525,7 +525,16 @@ export const mockApi: Api = {
           number,
         ];
       });
-      return { demoId: 1, seq: i, fromTick: points[0][0], toTick: points[39][0], roundNum: 1 + (i % 5), died: r() < 0.6, points };
+      return {
+        demoId: 1,
+        seq: i,
+        accountId: i % 3 === 0 ? 139131191 : 1000 + i,
+        fromTick: points[0][0],
+        toTick: points[39][0],
+        roundNum: 1 + (i % 5),
+        died: r() < 0.6,
+        points,
+      };
     });
     return delay(lives, 150);
   },

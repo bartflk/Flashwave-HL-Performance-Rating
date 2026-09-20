@@ -90,6 +90,8 @@ pub struct DeathRow {
 pub struct PathRow {
     pub demo_id: i64,
     pub seq: i64,
+    /// Whose route it is.
+    pub account_id: u32,
     pub from_tick: i64,
     pub to_tick: i64,
     pub round_num: Option<i64>,
@@ -226,8 +228,8 @@ impl Db {
         for r in rows {
             sqlx::query(
                 "INSERT OR REPLACE INTO demo_path
-                    (log_id, demo_id, seq, from_tick, to_tick, round_num, died, points)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                    (log_id, demo_id, seq, from_tick, to_tick, round_num, died, points, account_id)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             )
             .bind(log_id)
             .bind(r.demo_id)
@@ -237,6 +239,7 @@ impl Db {
             .bind(r.round_num)
             .bind(i64::from(r.died))
             .bind(serde_json::to_string(&r.points).unwrap_or_else(|_| "[]".into()))
+            .bind(r.account_id)
             .execute(&mut *tx)
             .await?;
         }
@@ -247,8 +250,8 @@ impl Db {
     /// One log's routes, with the round each life started in.
     pub async fn paths_for_log(&self, log_id: i64) -> Result<Vec<PathRow>> {
         let rows = sqlx::query(
-            "SELECT demo_id, seq, from_tick, to_tick, round_num, died, points
-             FROM demo_path WHERE log_id = ?1 ORDER BY seq",
+            "SELECT demo_id, seq, account_id, from_tick, to_tick, round_num, died, points
+             FROM demo_path WHERE log_id = ?1 ORDER BY from_tick, seq",
         )
         .bind(log_id)
         .fetch_all(self.pool())
@@ -258,6 +261,7 @@ impl Db {
             .map(|r| PathRow {
                 demo_id: r.get("demo_id"),
                 seq: r.get("seq"),
+                account_id: r.get::<i64, _>("account_id") as u32,
                 from_tick: r.get("from_tick"),
                 to_tick: r.get("to_tick"),
                 round_num: r.get("round_num"),
