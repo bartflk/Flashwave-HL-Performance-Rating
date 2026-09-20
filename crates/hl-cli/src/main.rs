@@ -47,6 +47,9 @@ COMMANDS:
                            What a kill is worth by numbers and uber advantage
                            (PLAN §12 step 3); --toml prints the [situation] table
                            (from winning the fight, or the round)
+    demo <PATH> [--stride N] [--json]
+                           Read a demo's packets: who is in it, and where you
+                           stood and looked (PLAN §14)
     owner [--refresh]      Your name and profile picture (--refresh looks them up)
     seasons [CLASS] [--json]
                            Your seasons, and how you played the class in each
@@ -406,6 +409,51 @@ async fn main() -> Result<()> {
             print!("{t}");
             println!("
 ({:.1}s)", started.elapsed().as_secs_f64());
+            Ok(())
+        }
+
+        // PLAN §14: read a demo's packets, not just its header.
+        ["demo", path, rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?;
+            let stride = flag_value::<u32>(rest, "--stride")?.unwrap_or(hl_demos::parse::DEFAULT_STRIDE);
+            let mine = me.map(|m| m.to_steamid3());
+            let started = std::time::Instant::now();
+            let scan = hl_demos::parse::scan(std::path::Path::new(path), mine.as_deref(), stride)?;
+            let took = started.elapsed().as_secs_f64();
+            if rest.contains(&"--json") {
+                println!("{}", serde_json::to_string(&scan)?);
+                return Ok(());
+            }
+            println!(
+                "{} · {} ticks ({:.0} s of play) · parsed in {:.1}s ({:.0}x real time)",
+                scan.map,
+                scan.header_ticks,
+                scan.seconds(),
+                took,
+                if took > 0.0 { scan.seconds() / took } else { 0.0 }
+            );
+            println!("\n{:<20} {:<20} {:<6} {:>8}", "player", "steamid", "team", "ticks");
+            for p in scan.players.iter().take(20) {
+                let name: String = p.name.chars().take(19).collect();
+                println!("{:<20} {:<20} {:<6} {:>8}", name, p.steamid, p.team, p.ticks);
+            }
+            if scan.samples.is_empty() {
+                println!("\nNo samples: you are not in this demo, or no SteamID is set.");
+            } else {
+                let alive = scan.samples.iter().filter(|s| s.alive).count();
+                println!(
+                    "\n{} samples of you, every {stride} ticks; alive in {alive} of them. First five:",
+                    scan.samples.len()
+                );
+                println!("{:>8} {:>8} {:>8} {:>8} {:>7} {:>7} {:>6}", "tick", "x", "y", "z", "yaw", "pitch", "hp");
+                for s in scan.samples.iter().take(5) {
+                    println!(
+                        "{:>8} {:>8.0} {:>8.0} {:>8.0} {:>7.1} {:>7.1} {:>6}",
+                        s.tick, s.pos[0], s.pos[1], s.pos[2], s.yaw, s.pitch, s.health
+                    );
+                }
+            }
             Ok(())
         }
 

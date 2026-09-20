@@ -5,6 +5,7 @@
 
 pub mod header;
 pub mod link;
+pub mod parse;
 pub mod scan;
 
 pub use header::DemoHeader;
