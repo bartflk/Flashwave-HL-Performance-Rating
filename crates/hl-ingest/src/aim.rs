@@ -88,13 +88,30 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
         .map(|(num, start, len)| (num, start as f64, (start + len) as f64))
         .collect();
 
+    // A match can have both demos, and each answers a different question:
+    // your own POV holds your view and your own whole life, while an STV
+    // demo holds all eighteen players' movement. Reading both into one
+    // report would count every kill twice, so each job picks one.
+    let usable = |d: &&hl_db::LinkedDemo| d.start_utc.is_some() && d.tick_rate.is_some();
+    let aim_demo = demos.iter().filter(usable).find(|d| d.kind == "pov").or_else(|| demos.iter().find(usable));
+    let path_demo = demos.iter().filter(usable).find(|d| d.kind == "stv").or(aim_demo);
+    let Some(aim_demo) = aim_demo else { return Ok(AimReport::default()) };
+
     let mut out = AimReport { log_kills: mine.len(), ..AimReport::default() };
-    for d in &demos {
+    // One pass each, or one pass when the same demo answers both.
+    let jobs: Vec<(&hl_db::LinkedDemo, bool, bool)> = match path_demo {
+        Some(p) if p.demo_id != aim_demo.demo_id => vec![(aim_demo, true, false), (p, false, true)],
+        _ => vec![(aim_demo, true, true)],
+    };
+
+    for (d, for_aim, for_paths) in jobs {
         let (Some(start), Some(rate)) = (d.start_utc, d.tick_rate) else { continue };
         let pass = hl_demos::aim::pass(Path::new(&d.path), &me.to_steamid3(), rate)?;
-        out.life.push((d.demo_id, i64::from(pass.alive_ticks), i64::from(pass.scoped_ticks)));
+        if for_aim {
+            out.life.push((d.demo_id, i64::from(pass.alive_ticks), i64::from(pass.scoped_ticks)));
+        }
         // Each life's route, placed in the log's rounds by when it started.
-        for (seq, l) in pass.lives.iter().enumerate() {
+        for (seq, l) in pass.lives.iter().enumerate().take(if for_paths { usize::MAX } else { 0 }) {
             let at = offset.map(|o| start + f64::from(l.from_tick) / rate - o as f64);
             let round = at.and_then(|at| rounds.iter().find(|(_, f, t)| at >= *f && at <= *t).map(|(n, ..)| *n));
             // A life outside every round of this log belongs to another match
@@ -112,6 +129,9 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
                 died: l.died,
                 points: l.points.iter().map(|&(t, x, y, z)| (i64::from(t), x, y, z)).collect(),
             });
+        }
+        if !for_aim {
+            continue;
         }
         // The log's deaths of yours, to join the demo's against.
         let my_deaths: Vec<_> = kills.iter().filter(|k| k.victim == me.account_id() && k.live).collect();
@@ -185,7 +205,9 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
 ///    sideways and vertical angles corrected to mean what they say.
 /// 6: where you walked, one route per life.
 /// 7: routes for every player the demo carried, not only the owner's.
-pub const VERSION: i64 = 7;
+/// 8: one demo per job, so a match with both a POV and an STV demo is not
+///    counted twice.
+pub const VERSION: i64 = 8;
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -236,6 +258,19 @@ fn death_row(d: &AimDeath) -> hl_db::DeathRow {
         mates_near: i64::from(d.death.mates_near),
         scoped: d.death.scoped,
     }
+}
+
+/// Read one match's demos again and store what they say, whether or not the
+/// pass has seen it before. Used after an STV download: the new demo carries
+/// every player, where a POV demo only carried its recorder.
+pub async fn derive_log(db: &Db, me: SteamId, log_id: i64) -> Result<usize> {
+    let report = for_log(db, log_id, me).await?;
+    let rows: Vec<hl_db::AimRow> = report.kills.iter().map(store_row).collect();
+    let deaths: Vec<hl_db::DeathRow> = report.deaths.iter().map(death_row).collect();
+    db.replace_aim(log_id, VERSION, &rows).await?;
+    db.replace_deaths(log_id, &deaths, &report.life).await?;
+    db.replace_paths(log_id, &report.paths).await?;
+    Ok(report.paths.len())
 }
 
 fn store_row(k: &AimKill) -> hl_db::AimRow {

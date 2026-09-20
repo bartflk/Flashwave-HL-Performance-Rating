@@ -54,6 +54,7 @@ COMMANDS:
     demo <PATH> [--stride N] [--json]
                            Read a demo's packets: who is in it, and where you
                            stood and looked (PLAN §14)
+    stv <LOG_ID>           Download a match's SourceTV demo, link it and read it
     backup [--list]        Copy the database (kept beside it, newest five)
     owner [--refresh]      Your name and profile picture (--refresh looks them up)
     seasons [CLASS] [--json]
@@ -537,6 +538,31 @@ async fn main() -> Result<()> {
                 Some(b) => println!("copied to {} ({:.0} MB)", b.path, b.bytes as f64 / 1_000_000.0),
                 None => println!("a recent copy already exists"),
             }
+            Ok(())
+        }
+
+        // Fetch a match's SourceTV demo, link it, and read it: the same
+        // chain the match page's button runs.
+        ["stv", log_id, ..] => {
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?.context("no owner set")?;
+            let tf = db.get_config().await?.tf_path.context("no TF2 folder set")?;
+            let log_id: i64 = log_id.parse()?;
+            let started = std::time::Instant::now();
+            let mut last = 0u64;
+            let done = hl_ingest::fetch_stv(&db, &Sources::new()?, std::path::Path::new(&tf), log_id, |bytes, total| {
+                if bytes / 5_000_000 != last {
+                    last = bytes / 5_000_000;
+                    let of = total.map_or(String::new(), |t| format!(" of {:.0} MB", t as f64 / 1e6));
+                    print!("\r  {:.0} MB{of}          ", bytes as f64 / 1e6);
+                    let _ = std::io::Write::flush(&mut std::io::stdout());
+                }
+            })
+            .await?;
+            println!("\rdownloaded {} in {:.0}s", done.file_name, started.elapsed().as_secs_f64());
+            hl_ingest::index_demos(&db, std::path::Path::new(&tf)).await?;
+            let routes = hl_ingest::aim::derive_log(&db, me, log_id).await?;
+            println!("linked and read: {routes} routes stored");
             Ok(())
         }
 

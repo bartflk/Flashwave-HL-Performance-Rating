@@ -22,10 +22,32 @@ export function LifeList(props: {
   onFocus: (r: PathRow | null) => void;
   /** True when the routes belong to someone other than the recorder. */
   partial: boolean;
+  /** Whether this match has an STV demo: linked, fetchable, or neither. */
+  stv: "linked" | "available" | "none";
+  onFetchStv: () => void;
+  fetching: boolean;
 }) {
-  const { rows, tickRate, focus, onFocus, partial } = props;
+  const { rows, tickRate, focus, onFocus, partial, stv, onFetchStv, fetching } = props;
+  const offer =
+    stv === "available" ? (
+      <div className="km-stv">
+        <p className="hint">
+          This is a POV demo, so other players are only in it while the recorder could see them. The SourceTV demo on
+          demos.tf carries all eighteen.
+        </p>
+        <button onClick={onFetchStv} disabled={fetching}>
+          {fetching ? "Downloading and reading…" : "Download the STV demo"}
+        </button>
+      </div>
+    ) : null;
+
   if (rows.length === 0) {
-    return <p className="hint km-lives-empty">No movement stored for this player in this round.</p>;
+    return (
+      <div className="km-lives">
+        <p className="hint">No movement stored for this player here.</p>
+        {offer}
+      </div>
+    );
   }
 
   const seconds = (r: PathRow) => Math.max(1, Math.round((r.toTick - r.fromTick) / tickRate));
@@ -62,6 +84,7 @@ export function LifeList(props: {
           );
         })}
       </ol>
+      {offer}
       {focus && (
         <p className="hint">
           Showing one {focus.died ? "life that ended in a death" : "life"}. Click it again, or press Escape, for all of

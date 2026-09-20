@@ -44,12 +44,18 @@ export function AnalysisPanel({ d }: { d: MatchDetail }) {
           This match&apos;s raw log is not stored yet. Sync fetches it; logs.tf has none for a few very old matches.
         </p>
       )}
-      {q.data && <Body a={q.data} />}
+      {q.data && <Body a={q.data} stv={{ demosTfId: d.demosTfId, hasStv: d.demos.some((x) => x.kind === "stv") }} />}
     </section>
   );
 }
 
-function Body({ a }: { a: Analysis }) {
+/** What the match page knows about demos, which the map offers to fetch. */
+export interface StvInfo {
+  demosTfId: number | null;
+  hasStv: boolean;
+}
+
+function Body({ a, stv }: { a: Analysis; stv: StvInfo }) {
   const me = a.players.find((p) => p.isMe) ?? null;
   const [tab, setTab] = useState<Tab>("map");
   const [player, setPlayer] = useState<number>(me?.accountId ?? a.players[0]?.accountId ?? 0);
@@ -173,7 +179,7 @@ function Body({ a }: { a: Analysis }) {
         ))}
       </nav>
 
-      {tab === "map" && <KillMap a={a} player={player} slice={slice} />}
+      {tab === "map" && <KillMap a={a} player={player} slice={slice} stv={stv} />}
       {tab === "feed" && <PlayByPlay a={a} player={player} slice={slice} />}
       {tab === "fights" && <Fights a={a} player={player} slice={slice} onPick={setPlayer} />}
       {tab === "spread" && <Spread a={a} player={player} slice={slice} />}

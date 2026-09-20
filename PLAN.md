@@ -492,7 +492,7 @@ M1 acceptance: every Highlander log on the account stored, classified, deduplica
 3. **Linux demos** — a second machine holds more POV demos. Import path to be designed; the `demoid` route may make it unnecessary.
 4. **Sixes** — detected and stored, excluded from ratings. A later update.
 5. **Verify jump ticks in-game.** The arithmetic is tested end to end (a sidecar killstreak at raw tick 51,212 lands at 50,879 after the 5 s lead), but only TF2 can confirm the demo shows the right moment.
-6. **One real STV download.** The fetch is built and its metadata step verified live; the multi-megabyte download and the upload-time alignment of STV demos are untested.
+6. ~~**One real STV download.**~~ Done (20 Sep 2026): 109 MB fetched for log 4122234 in 29 s, linked, and read into 325 routes over all 18 players. A match with both demos now uses the POV for aim and the STV for movement, so neither is counted twice.
 7. **File watcher.** Demos are rescanned at startup, after every sync, and on demand; a live `notify` watcher was planned and is not built.
 8. **Opponent strength.** ETF2L division and tier are now stored for every official, and scrim opponents are often named. The rating pool still weighs every performance equally. Weighting by the opponent's division is the natural next step.
 9. **Teams with no officials.** Scrims are named from official rosters, so a team that never played an official (2 Blacked Up, March–August 2026) stays unnamed. The player's ETF2L transfer history (`/player/{id}/transfers`) could fill the gap; it is incomplete for older teams.

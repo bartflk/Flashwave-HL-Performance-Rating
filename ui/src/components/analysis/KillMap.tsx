@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { Analysis, KillView, MapView, Overview, PathRow, Vec3 } from "../../api/types";
 import { capitalize, splitMap } from "../../lib/format";
 import { DEATH, KILL, inSlice, jumpTo, playerMap, roundClock, type Slice } from "./common";
 import { LifeList } from "./LifeList";
+import type { StvInfo } from "./AnalysisPanel";
 
 /**
  * Where the player's kills and deaths happened, top-down.
@@ -43,7 +44,7 @@ const MAX_H = 640;
 /** Room left for the controls and the note when the map fills the window. */
 const FULL_CHROME = 150;
 
-export function KillMap({ a, player, slice }: { a: Analysis; player: number; slice: Slice }) {
+export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number; slice: Slice; stv?: StvInfo }) {
   // Full screen: the window's own where the webview allows it, and otherwise
   // the map fills the app over everything else. Escape leaves either way.
   const box = useRef<HTMLDivElement>(null);
@@ -112,10 +113,46 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
     enabled: layer === "paths",
     staleTime: 5 * 60_000,
   });
-  // Whose routes: the player the panel is on, or everyone the demo saw.
-  const [pathWho, setPathWho] = useState<"player" | "all">("player");
+  // Whose routes: one player's, or everyone the demo saw. It follows the
+  // panel's player until it is set by hand.
+  const [pathWho, setPathWho] = useState<number | "all" | null>(null);
   const [focus, setFocus] = useState<PathRow | null>(null);
   const [heatOf, setHeatOf] = useState<HeatOf>("deaths");
+  // Fetching the match's STV demo: it carries every player, where a POV demo
+  // only carried its recorder.
+  const [stvBusy, setStvBusy] = useState(false);
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!stvBusy) return;
+    let off: (() => void) | undefined;
+    let cancelled = false;
+    void api
+      .onStv({
+        onProgress: () => {},
+        onDone: () => {
+          setStvBusy(false);
+          // The demo has been linked and read by the time this arrives.
+          void qc.invalidateQueries({ queryKey: ["paths", a.logId] });
+          void qc.invalidateQueries({ queryKey: ["aim", a.logId] });
+          void qc.invalidateQueries({ queryKey: ["match", a.logId] });
+        },
+        onError: () => setStvBusy(false),
+      })
+      .then((u) => (cancelled ? u() : (off = u)));
+    return () => {
+      cancelled = true;
+      off?.();
+    };
+  }, [stvBusy, a.logId, qc]);
+
+  const fetchStv = async () => {
+    setStvBusy(true);
+    try {
+      await api.fetchStv(a.logId);
+    } catch {
+      setStvBusy(false);
+    }
+  };
   const [scope, setScope] = useState<Scope>("match");
   const [asTable, setAsTable] = useState(false);
   const [hover, setHover] = useState<Mark | null>(null);
@@ -143,13 +180,23 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
       (pathQ.data ?? []).filter(
         (r) =>
           (slice.rounds === null || (r.roundNum !== null && slice.rounds.has(r.roundNum))) &&
-          (pathWho === "all" || r.accountId === player),
+          (pathWho === "all" || r.accountId === (pathWho ?? player)),
       ),
     [pathQ.data, slice.rounds, pathWho, player],
   );
   // The routes are stored in demo ticks; TF2 servers run at 66.67 a second,
   // which is close enough to turn a route's length into seconds.
   const tickRate = 66.67;
+  const myId = a.players.find((p) => p.isMe)?.accountId ?? -1;
+  const stvLinked = stv?.hasStv ?? false;
+  // How many routes each player has in the rounds on screen, so the dropdown
+  // can say who the demo actually followed.
+  const routeCounts = useMemo(() => {
+    const by = new Map<number, number>();
+    const rows = (pathQ.data ?? []).filter((r) => slice.rounds === null || (r.roundNum !== null && slice.rounds.has(r.roundNum)));
+    for (const r of rows) by.set(r.accountId, (by.get(r.accountId) ?? 0) + 1);
+    return { by, total: rows.length };
+  }, [pathQ.data, slice.rounds]);
 
   const kills = sliceKills;
   const marks: Mark[] = [];
@@ -219,31 +266,25 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
           </button>
         </div>
         {layer === "paths" && (
-          <div className="segmented" role="tablist" aria-label="Whose movement">
-            <button
-              role="tab"
-              aria-selected={pathWho === "player"}
-              className={pathWho === "player" ? "seg active" : "seg"}
-              onClick={() => {
-                setPathWho("player");
+          <label className="an-field">
+            <span className="an-label">Movement of</span>
+            <select
+              value={pathWho === null ? String(player) : String(pathWho)}
+              onChange={(e) => {
+                setPathWho(e.target.value === "all" ? "all" : Number(e.target.value));
                 setFocus(null);
               }}
             >
-              {name}
-            </button>
-            <button
-              role="tab"
-              aria-selected={pathWho === "all"}
-              className={pathWho === "all" ? "seg active" : "seg"}
-              title="Everyone the demo could see, which is patchy for players other than the recorder"
-              onClick={() => {
-                setPathWho("all");
-                setFocus(null);
-              }}
-            >
-              Everyone
-            </button>
-          </div>
+              <option value="all">Everyone ({routeCounts.total})</option>
+              {a.players.map((p) => (
+                <option key={p.accountId} value={p.accountId}>
+                  {p.name}
+                  {p.mainClass ? ` · ${capitalize(p.mainClass)}` : ""}
+                  {routeCounts.by.get(p.accountId) ? ` (${routeCounts.by.get(p.accountId)})` : " (none)"}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
         {layer === "dots" ? (
           <>
@@ -316,7 +357,10 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
               tickRate={tickRate}
               focus={focus}
               onFocus={setFocus}
-              partial={pathWho === "all" || !me?.isMe}
+              partial={!stvLinked && (pathWho === "all" || (pathWho ?? player) !== myId)}
+              stv={stv?.hasStv ? "linked" : stv?.demosTfId ? "available" : "none"}
+              onFetchStv={fetchStv}
+              fetching={stvBusy}
             />
           )}
           </div>

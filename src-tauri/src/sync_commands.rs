@@ -523,6 +523,16 @@ struct StvError {
 
 /// Download the demos.tf STV demo for a match in the background, then index
 /// and link it. Progress streams on `stv://progress`.
+/// Link a freshly downloaded demo to its match and read it.
+async fn index_and_read(db: &hl_db::Db, tf: &std::path::Path, log_id: i64) -> anyhow::Result<()> {
+    hl_ingest::index_demos(db, tf).await?;
+    if let Some(me) = db.get_me().await? {
+        let routes = hl_ingest::aim::derive_log(db, me, log_id).await?;
+        tracing::info!(log_id, routes, "STV demo read");
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn fetch_stv(app: AppHandle, state: State<'_, AppState>, log_id: i64) -> CmdResult<()> {
     let guard = BusyGuard::acquire(&state.downloading)
@@ -546,6 +556,11 @@ pub async fn fetch_stv(app: AppHandle, state: State<'_, AppState>, log_id: i64) 
         .await;
         match result {
             Ok(done) => {
+                // The file is on disk; link it, then read it, so the match
+                // page has everyone's movement by the time the event lands.
+                if let Err(e) = index_and_read(&db, &tf, log_id).await {
+                    tracing::warn!(log_id, error = %format!("{e:#}"), "reading the new STV demo failed");
+                }
                 let _ = app.emit(EV_STV_DONE, done);
             }
             Err(e) => {
