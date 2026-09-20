@@ -41,6 +41,35 @@ interface Mark {
 const MAX_H = 640;
 
 export function KillMap({ a, player, slice }: { a: Analysis; player: number; slice: Slice }) {
+  // Full screen: the window's own where the webview allows it, and otherwise
+  // the map fills the app over everything else. Escape leaves either way.
+  const box = useRef<HTMLDivElement>(null);
+  const [full, setFull] = useState(false);
+  useEffect(() => {
+    const onChange = () => {
+      if (!document.fullscreenElement) setFull(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !document.fullscreenElement) setFull(false);
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+  const toggleFull = () => {
+    if (full) {
+      setFull(false);
+      if (document.fullscreenElement) void document.exitFullscreen();
+      return;
+    }
+    setFull(true);
+    void box.current?.requestFullscreen().catch(() => {
+      // The webview refused it; the in-app overlay covers the window instead.
+    });
+  };
   // The slice's map: in a combined log, the map of the chosen segment.
   const mapName = slice.map;
   const mapQ = useQuery({
@@ -123,7 +152,7 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
   const careerOk = me?.isMe && view !== null && view.myGames > 0;
 
   return (
-    <div className="killmap">
+    <div className={full ? "killmap full" : "killmap"} ref={box}>
       <div className="km-controls">
         <label className="an-field">
           <span className="an-label">Against</span>
@@ -180,6 +209,13 @@ export function KillMap({ a, player, slice }: { a: Analysis; player: number; sli
         )}
         <button className="linkish km-table-toggle" onClick={() => setAsTable((t) => !t)}>
           {asTable ? "Show map" : "Show as table"}
+        </button>
+        <button
+          className="linkish km-full-toggle"
+          onClick={toggleFull}
+          title={full ? "Leave full screen (Escape)" : "Fill the window with the map"}
+        >
+          {full ? "Exit full screen" : "Full screen"}
         </button>
       </div>
 

@@ -20,9 +20,19 @@ const VIEWS: Array<{ id: View; label: string; hint?: string }> = [
   { id: "all", label: "All formats" },
 ];
 
+/** The sortable columns, in table order. `null` sorts by date. */
+const SORTS: Array<{ key: string; label: string; num?: boolean; title?: string }> = [
+  { key: "date", label: "Date" },
+  { key: "kills", label: "K / D / A", num: true, title: "Sort by kills" },
+  { key: "dmg", label: "Dmg", num: true, title: "Sort by damage" },
+  { key: "dpm", label: "DPM", num: true, title: "Sort by damage per minute" },
+  { key: "rating", label: "Rating", num: true, title: "Sort by your rating on your main class" },
+];
+
 export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
   const [view, setView] = useState<View>("highlander");
   const [pages, setPages] = useState(1);
+  const [sort, setSort] = useState<{ key: string; ascending: boolean }>({ key: "date", ascending: false });
 
   const kind = view === "official" || view === "scrim" || view === "pug" ? view : null;
   const period = usePeriod();
@@ -32,6 +42,8 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
     ...bounds(period),
     limit: PAGE * pages,
     offset: 0,
+    sort: sort.key,
+    ascending: sort.ascending,
   };
 
   const matches = useQuery({
@@ -85,13 +97,13 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
           <table className="match-table">
             <thead>
               <tr>
-                <th>Date</th>
+                <SortHead col={SORTS[0]} sort={sort} onSort={setSort} />
                 <th>Map</th>
                 <th>Class</th>
                 <th>Result</th>
-                <th className="num">K / D / A</th>
-                <th className="num">Dmg</th>
-                <th className="num">DPM</th>
+                {SORTS.slice(1).map((c) => (
+                  <SortHead key={c.key} col={c} sort={sort} onSort={setSort} />
+                ))}
                 <th>Match</th>
               </tr>
             </thead>
@@ -110,6 +122,27 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
         </button>
       )}
     </section>
+  );
+}
+
+/** A column heading that sorts: click to use it, click again to flip it. */
+function SortHead(props: {
+  col: { key: string; label: string; num?: boolean; title?: string };
+  sort: { key: string; ascending: boolean };
+  onSort: (s: { key: string; ascending: boolean }) => void;
+}) {
+  const { col, sort, onSort } = props;
+  const on = sort.key === col.key;
+  return (
+    <th
+      className={`sortable${col.num ? " num" : ""}${on ? " sorted" : ""}`}
+      title={col.title ?? "Sort by date"}
+      aria-sort={on ? (sort.ascending ? "ascending" : "descending") : "none"}
+      onClick={() => onSort({ key: col.key, ascending: on ? !sort.ascending : false })}
+    >
+      {col.label}
+      {on && <span className="sort-arrow">{sort.ascending ? " ▴" : " ▾"}</span>}
+    </th>
   );
 }
 
@@ -133,11 +166,6 @@ function MatchRow({ m, onOpen }: { m: MatchSummary; onOpen: (logId: number) => v
     >
       <td className="muted nowrap">{formatDate(m.playedAt)}</td>
       <td className="nowrap" title={maps.length > 0 ? maps.join(", ") : m.map ?? "Map not recorded in the log"}>
-        {m.parts > 0 && (
-          <span className="parts-tag" title={`Combined from ${m.parts} logs; open the match to see them`}>
-            {m.parts} logs
-          </span>
-        )}
         {maps.length > 1 ? (
           <span className="multi-map">
             {maps.map((x) => splitMap(x).name).join(" · ")}
@@ -170,11 +198,19 @@ function MatchRow({ m, onOpen }: { m: MatchSummary; onOpen: (logId: number) => v
       <td className="num nowrap">{me ? `${me.kills} / ${me.deaths} / ${me.assists}` : ""}</td>
       <td className="num">{me ? me.dmg.toLocaleString() : ""}</td>
       <td className="num">{dpm ?? ""}</td>
+      <td className="num">
+        {m.rating === null ? <span className="muted">–</span> : <span className="sb-rating">{m.rating.toFixed(0)}</span>}
+      </td>
       <td className="title-cell">
         {m.context ? (
           <ContextBadge c={m.context} />
         ) : (
           m.league && <span className="badge badge-league">{m.league.toUpperCase()}</span>
+        )}
+        {m.parts > 0 && (
+          <span className="badge badge-parts" title={`Combined from ${m.parts} logs; open the match to see them`}>
+            {m.parts} {m.parts === 1 ? "log" : "logs"}
+          </span>
         )}
         {m.hasDemo && (
           <span className="badge badge-pov" title="Your recording of this match is on this machine">

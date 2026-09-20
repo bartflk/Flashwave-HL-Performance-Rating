@@ -68,6 +68,35 @@ pub struct MatchFilter {
     pub to: Option<i64>,
     pub limit: i64,
     pub offset: i64,
+    /// What to order by: one of [`SORTS`]; anything else falls back to `date`.
+    /// Every sort but `date` is about the owner's own line, so matches they
+    /// did not play in sink to the bottom.
+    pub sort: Option<String>,
+    /// Smallest first, rather than the usual biggest (or newest) first.
+    pub ascending: bool,
+    /// The rating model whose scores the `rating` sort and column use.
+    pub model_version: String,
+}
+
+/// The orderings the match list offers, as `(key, SQL)`. The owner's line is
+/// `p`, so `p.kills IS NULL` puts matches they did not play last either way.
+pub const SORTS: [(&str, &str); 8] = [
+    ("date", "m.played_at"),
+    ("kills", "p.kills"),
+    ("deaths", "p.deaths"),
+    ("assists", "p.assists"),
+    ("dmg", "p.dmg"),
+    ("dpm", "CASE WHEN COALESCE(p.time_s, 0) > 0 THEN p.dmg * 60.0 / p.time_s END"),
+    ("kd", "CASE WHEN COALESCE(p.deaths, 0) > 0 THEN p.kills * 1.0 / p.deaths ELSE p.kills END"),
+    ("rating", "r.score"),
+];
+
+fn order_by(f: &MatchFilter) -> String {
+    let key = f.sort.as_deref().unwrap_or("date");
+    let expr = SORTS.iter().find(|(k, _)| *k == key).map_or("m.played_at", |(_, e)| *e);
+    let dir = if f.ascending { "ASC" } else { "DESC" };
+    // NULLs last whichever way round it is: an unplayed match has no line.
+    format!("ORDER BY ({expr}) IS NULL, ({expr}) {dir}, m.played_at DESC, m.log_id DESC")
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -96,6 +125,8 @@ pub struct MatchSummary {
     pub maps: Vec<String>,
     /// How many per-round logs this one was combined from.
     pub parts: i64,
+    /// The owner's rating in this match on their main class, where it has one.
+    pub rating: Option<f64>,
 }
 
 /// One of the per-round logs a combined log was built from. Kept out of
@@ -565,6 +596,7 @@ impl Db {
         .await?;
 
         let where_sql = where_sql(2);
+        let order = order_by(filter);
         let rows = sqlx::query(&format!(
             "SELECT m.log_id, m.played_at, m.map, m.title, m.duration_s,
                     {EFFECTIVE_FORMAT} AS format, i.league, i.etf2l_match_id, i.demos_tf_id,
@@ -575,14 +607,17 @@ impl Db {
                         (SELECT map FROM log_segment s WHERE s.log_id = m.log_id AND map IS NOT NULL ORDER BY seq)
                     ) AS segment_maps,
                     p.team, p.main_class, p.kills, p.deaths, p.assists, p.dmg, p.time_s,
+                    r.score AS my_rating,
                     {CONTEXT_COLUMNS}
              FROM match m
              JOIN log_index i ON i.log_id = m.log_id
              LEFT JOIN match_player p ON p.log_id = m.log_id AND p.account_id = ?1
+             LEFT JOIN rating r ON r.log_id = m.log_id AND r.account_id = ?1
+                AND r.class = p.main_class AND r.model_version = ?8
              LEFT JOIN match_context c ON c.log_id = m.log_id
              LEFT JOIN etf2l_match e ON e.match_id = c.etf2l_match_id
              {where_sql}
-             ORDER BY m.played_at DESC, m.log_id DESC
+             {order}
              LIMIT ?6 OFFSET ?7"
         ))
         .bind(me.map(i64::from))
@@ -592,6 +627,7 @@ impl Db {
         .bind(filter.to)
         .bind(filter.limit)
         .bind(filter.offset)
+        .bind(&filter.model_version)
         .fetch_all(self.pool())
         .await?;
 
@@ -638,6 +674,7 @@ impl Db {
                         .map(|s| s.split('|').map(str::to_string).collect())
                         .unwrap_or_default(),
                     parts: r.get("part_count"),
+                    rating: r.get("my_rating"),
                     me,
                 }
             })
@@ -704,5 +741,41 @@ impl Db {
             pending: self.fetch_queue(3).await?.len() as i64,
             failed: q("SELECT COUNT(*) FROM log_fetch_error WHERE attempts >= 3".into()).await?,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn filter(sort: Option<&str>, ascending: bool) -> MatchFilter {
+        MatchFilter {
+            format: None,
+            kind: None,
+            from: None,
+            to: None,
+            limit: 50,
+            offset: 0,
+            sort: sort.map(str::to_string),
+            ascending,
+            model_version: "v5".to_string(),
+        }
+    }
+
+    #[test]
+    fn every_sort_is_a_known_column_and_anything_else_falls_back_to_the_date() {
+        assert!(order_by(&filter(Some("dpm"), false)).contains("p.dmg * 60.0 / p.time_s"));
+        assert!(order_by(&filter(Some("rating"), true)).contains("r.score) ASC"));
+        // A sort from outside the list can never reach the query.
+        let sneaky = order_by(&filter(Some("1; DROP TABLE match"), false));
+        assert!(!sneaky.contains("DROP"), "{sneaky}");
+        assert_eq!(sneaky, order_by(&filter(None, false)));
+    }
+
+    #[test]
+    fn matches_the_owner_did_not_play_sort_last_either_way() {
+        for ascending in [false, true] {
+            assert!(order_by(&filter(Some("kills"), ascending)).starts_with("ORDER BY (p.kills) IS NULL,"));
+        }
     }
 }

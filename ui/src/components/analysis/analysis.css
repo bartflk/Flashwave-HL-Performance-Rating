@@ -311,7 +311,25 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+}
+
+/* Each side is named over its own column, in its own colour. */
+.bf-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 62px;
+  font-size: 0.8rem;
+  margin-bottom: 6px;
+}
+
+.bf-col-l {
+  text-align: right;
+}
+
+.bf-col b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
 .bf-head h3 {
@@ -607,4 +625,47 @@
   display: grid;
   gap: 4px;
   font-size: 13px;
+}
+
+/* --- spread: two framed cards, mirrored bars, a divider between them --- */
+
+.butterfly {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.14);
+  padding: 12px 14px;
+}
+
+.bf-cls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.bf-row:hover {
+  background: rgba(242, 230, 217, 0.03);
+  border-radius: 4px;
+}
+
+/* --- kill map, full screen: the window's own, or an overlay over the app --- */
+
+.killmap.full {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--bg);
+  padding: 16px 20px;
+  overflow: auto;
+}
+
+.killmap.full:fullscreen {
+  position: static;
+}
+
+.killmap.full .km-canvas {
+  max-width: none;
+}
+
+.km-full-toggle {
+  margin-left: 12px;
 }

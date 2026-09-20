@@ -94,6 +94,8 @@ export interface MatchSummary {
   maps: string[];
   /** How many per-round logs this one was combined from. */
   parts: number;
+  /** Your rating in this match on your main class, where it has one. */
+  rating: number | null;
 }
 
 export interface MatchPage {
@@ -143,6 +145,9 @@ export interface MatchQuery {
   to: number | null;
   limit: number;
   offset: number;
+  /** date | kills | deaths | assists | dmg | dpm | kd | rating */
+  sort: string | null;
+  ascending: boolean;
 }
 
 // ---- M2: match page -----------------------------------------------------------

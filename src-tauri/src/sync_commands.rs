@@ -194,6 +194,8 @@ pub async fn index_stats(state: State<'_, AppState>) -> CmdResult<IndexStats> {
     Ok(state.db.index_stats().await?)
 }
 
+// A Tauri command takes its arguments flat, one per field the UI sends.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn list_matches(
     state: State<'_, AppState>,
@@ -203,6 +205,8 @@ pub async fn list_matches(
     to: Option<i64>,
     limit: i64,
     offset: i64,
+    sort: Option<String>,
+    ascending: Option<bool>,
 ) -> CmdResult<MatchPage> {
     let me = state.db.get_me().await?;
     let filter = MatchFilter {
@@ -210,6 +214,9 @@ pub async fn list_matches(
         kind,
         from,
         to,
+        sort,
+        ascending: ascending.unwrap_or(false),
+        model_version: hl_rating::MODEL_VERSION.to_string(),
         // Bound the page size so a bad argument cannot pull the whole table.
         limit: limit.clamp(1, 500),
         offset: offset.max(0),

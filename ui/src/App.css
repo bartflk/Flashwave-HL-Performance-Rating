@@ -780,3 +780,28 @@ th.num {
   padding: 2px 5px;
   margin-left: -2px;
 }
+
+/* --- sortable match-list headings --- */
+
+.match-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.match-table th.sortable:hover {
+  color: var(--text);
+}
+
+.match-table th.sorted {
+  color: var(--accent);
+}
+
+.sort-arrow {
+  font-size: 0.7em;
+}
+
+.badge-parts {
+  background: rgba(242, 230, 217, 0.08);
+  color: var(--muted);
+}

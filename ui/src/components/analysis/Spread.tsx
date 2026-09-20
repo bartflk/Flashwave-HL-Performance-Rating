@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Analysis } from "../../api/types";
 import { CLASS_ORDER, CLASS_SHORT, DEATH, KILL, playerMap } from "./common";
+import { ClassIcon } from "../ClassIcon";
 
 /**
  * Who the player hurt and who hurt them, class by class: back-to-back bars
@@ -34,8 +35,22 @@ export function Spread({ a, player }: { a: Analysis; player: number }) {
         </button>
       </div>
       <div className="spread-grid">
-        <Butterfly title="Damage" leftLabel="taken" rightLabel="dealt" rows={dmg} asTable={asTable} format={(n) => n.toLocaleString()} />
-        <Butterfly title="Kills" leftLabel="deaths to" rightLabel="kills on" rows={kills} asTable={asTable} format={(n) => String(n)} />
+        <Butterfly
+          title="Damage spread"
+          leftLabel="Damage taken"
+          rightLabel="Damage dealt"
+          rows={dmg}
+          asTable={asTable}
+          format={(n) => n.toLocaleString()}
+        />
+        <Butterfly
+          title="Kill spread"
+          leftLabel="Deaths"
+          rightLabel="Kills"
+          rows={kills}
+          asTable={asTable}
+          format={(n) => String(n)}
+        />
       </div>
       <p className="hint spread-foot">
         Damage taken is summed from the raw log. On logs combined from several parts it can differ from logs.tf&apos;s
@@ -63,11 +78,15 @@ function Butterfly(props: {
     <section className="butterfly">
       <header className="bf-head">
         <h3>{title}</h3>
-        <span className="bf-legend">
-          <span className="bf-swatch" style={{ background: DEATH }} aria-hidden /> {leftLabel} {format(totalL)}
-          <span className="bf-swatch" style={{ background: KILL }} aria-hidden /> {rightLabel} {format(totalR)}
-        </span>
       </header>
+      <div className="bf-cols" aria-hidden>
+        <span className="bf-col bf-col-l" style={{ color: DEATH }}>
+          {leftLabel} <b>{format(totalL)}</b>
+        </span>
+        <span className="bf-col bf-col-r" style={{ color: KILL }}>
+          {rightLabel} <b>{format(totalR)}</b>
+        </span>
+      </div>
       {asTable ? (
         <table className="match-table bf-table">
           <thead>
@@ -95,7 +114,9 @@ function Butterfly(props: {
               <span className="bf-side bf-l">
                 <span className="bf-bar" style={{ width: `${(r.left / max) * 100}%`, background: DEATH }} />
               </span>
-              <span className="bf-cls">{CLASS_SHORT[r.cls]}</span>
+              <span className="bf-cls">
+                <ClassIcon cls={r.cls} size={20} faded={r.left === 0 && r.right === 0} />
+              </span>
               <span className="bf-side bf-r">
                 <span className="bf-bar" style={{ width: `${(r.right / max) * 100}%`, background: KILL }} />
               </span>
