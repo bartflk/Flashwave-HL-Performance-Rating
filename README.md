@@ -2,17 +2,87 @@
 
 # HL Rating
 
-A performance rating for **TF2 Highlander**, built from your logs.tf history. It rates every game you played against the players you actually faced, like HLTV's rating does for CS, and shows each match kill by kill.
+A performance rating for **TF2 Highlander**, built from your logs.tf history
+and your own demos. It rates every game you played against the players you
+actually faced, the way HLTV's rating does for CS, and then shows you the
+match kill by kill — including what your crosshair was doing and where you
+walked.
 
-- **Ratings per class, 0–100**, where 50 is a typical game by the players you face. The Sniper model is the most developed; see [docs/sniper-rating.md](docs/sniper-rating.md) for every value it uses and why.
-- **Match pages:** the nine class matchups, a round timeline, a kill map on the real map, heatmaps, play-by-play, fights (openings, trades, Fight KAST), and who had the uber advantage second by second.
-- **Profile:** form, trend, strengths and weaknesses, split by officials, scrims and pugs, and **by season**.
-- **Officials, scrims and pugs** are told apart automatically from ETF2L rosters and your regular teammates.
-- **Demos (optional):** point it at your TF2 folder and any kill jumps to that moment in your recording.
+Everything runs on your PC: no account, no server, nothing uploaded.
 
-Everything is stored on your PC. No account, no server.
+## What it does
 
-> **0.2 beta.** An early test build. Numbers and screens will change; feedback is very welcome in [Issues](../../issues).
+**Ratings**
+
+- A rating per class, **0 to 100**, where 50 is a typical game by the players
+  you face. Your own games are left out of the pool you are measured against.
+- The **Sniper model is the deepest**: impact kills valued by victim, class,
+  map and side; damage per minute; untraded deaths; opening duels; Medic
+  picks; Fight KAST; deaths to flankers; the Sniper duel. Every value and its
+  weight is written up in [docs/sniper-rating.md](docs/sniper-rating.md).
+- Kills are **worth what the situation is worth**: cleaning up while three or
+  four players up counts for less, measured from 193,626 kills rather than
+  guessed.
+- Every rating is **checked against results**: `hl validate sniper` pairs the
+  Snipers of 693 decided matches and reports how often the model picks the
+  winner (73.6%, and 72.8% on matches it has never seen).
+
+**Match pages**
+
+- A **scoreboard** laid out like logs.tf, sortable by any column.
+- The **nine class matchups**, each opening into a mirrored breakdown: both
+  players' percentiles per component, what decided it, and how many rating
+  points each row swung.
+- A **round timeline**: caps, ubers and Medic deaths per round, per team.
+- A **kill map** on the real map, with your kills and deaths, a heatmap, and
+  **your movement drawn one line per life**.
+- **Kill by kill**: play-by-play, fights (openings, trades, clean-ups, Fight
+  KAST), damage and kills by class, and who held the uber advantage second by
+  second.
+- **Combined logs** list the individual logs they were built from, and are
+  counted once rather than twice.
+
+**Aim, from your own demos**
+
+- Where your **crosshair sat** when each kill landed and one second earlier,
+  drawn on a target with the path it took to get there.
+- **Flick size**, **range** and **height** of every shot.
+- Every death: **who killed you, from how far, and from which direction**,
+  drawn as a compass — plus how close your nearest teammate was, and whether
+  you were scoped.
+- How much of your living time you spend **scoped**.
+- Reading a demo takes about four seconds and happens after a sync.
+
+**Your history**
+
+- **Profile**: form, trend, strengths and weaknesses, and the aim figures,
+  each against your usual, split by officials, scrims and pugs, and **by
+  season**.
+- **Match list** sortable by kills, damage, DPM or your rating, with a rating
+  column, and filterable by season or date range.
+- **Officials, scrims and pugs** are told apart automatically from ETF2L
+  rosters and your regular teammates.
+- **Demos** are found in your TF2 folder and matched to your matches; any kill
+  copies a `demo_gototick` so you can watch that exact moment.
+- A **copy of the database** is made before every sync, five kept, listed in
+  Settings.
+
+## Coming next
+
+In the order it is queued (the detail lives in [PLAN.md](PLAN.md) §13):
+
+- **Scout picks on KOTH worth more** — a weights change suggested by boSe,
+  checked against the validator before it ships.
+- **Map and side baselines** — judge a Vigil defence against other Vigil
+  defences, so the hardest jobs stop reading as bad games.
+- **Fight swing** — value a kill by how much it changes the chance of winning
+  that fight, HLTV's Round Swing done properly.
+- **Teamfights** — who collapsed on whom, who was dropped off cooldown, and
+  what an uber exchange bought, from Taiga's feedback.
+- **A model for every class** — Pyro, Engineer and Medic gain the most, since
+  logs.tf says least about them.
+- **Opponent strength** — weigh a Premiership game differently from a low one.
+- **Colour themes** in settings.
 
 ## Install (Windows)
 
@@ -41,12 +111,24 @@ Everything is stored on your PC. No account, no server.
 | [trends.tf](https://trends.tf) | Which matches you played, which logs were combined from which |
 | [ETF2L](https://etf2l.org) | Officials, divisions, rosters and seasons |
 | [demos.tf](https://demos.tf) | STV demos, downloaded only when you ask |
+| Your own `.dem` files | Aim, deaths and movement: read on your PC, never uploaded |
 
-No demo parsing is needed for any rating: the raw logs.tf log covers all 18 players back to 2014.
+Every rating comes from logs alone — the raw logs.tf log covers all 18 players
+back to 2014 — so the app works fully without a single demo. Demos add the aim
+and movement views, and only for the person who recorded them.
 
 ## Your data
 
-The database lives at `%APPDATA%\gg.highlander.rating\hl.sqlite3`. Deleting it resets the app. Uninstalling does not delete it.
+The database lives at `%APPDATA%\gg.highlander.rating\hl.sqlite3`, with the
+newest five copies in a `backups` folder beside it. A copy is made before
+every sync and rebuild, and Settings lists them; to restore one, close the app
+and rename the copy over `hl.sqlite3`.
+
+Deleting the database resets the app. **Updating never touches it**, but
+uninstalling with the **"Delete the application data"** box ticked removes the
+folder, backups and all — keep a copy elsewhere if your history matters. Going
+back to an older version after a newer one has opened the database does not
+work, since the older build does not know the newer tables.
 
 ---
 
