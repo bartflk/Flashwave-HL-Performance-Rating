@@ -732,6 +732,8 @@ export interface FirstPickView {
 export interface ClassDamage {
   accountId: number;
   otherClass: string;
+  /** The round it happened in; 0 outside every round. */
+  roundNum: number;
   dealt: number;
   taken: number;
 }

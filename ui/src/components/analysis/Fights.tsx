@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import type { Analysis, FightStats } from "../../api/types";
 import { clock, teamLabel } from "../../lib/format";
-import { playerMap } from "./common";
+import { playerMap, type Slice } from "./common";
+import { fightsInSlice } from "./roundFights";
 import { ClassIcon } from "../ClassIcon";
 
 /**
@@ -10,14 +11,22 @@ import { ClassIcon } from "../ClassIcon";
  * around their own team's uber. A table, one team at a time, the owner's
  * team first; click a row to pick that player for every view.
  */
-export function Fights({ a, player, onPick }: { a: Analysis; player: number; onPick: (id: number) => void }) {
+export function Fights({ a, player, slice, onPick }: { a: Analysis; player: number; slice: Slice; onPick: (id: number) => void }) {
   const players = useMemo(() => playerMap(a), [a]);
-  const byId = useMemo(() => new Map(a.fights.map((f) => [f.accountId, f])), [a.fights]);
+  // A round or one map of a combined log: count its kills again, since the
+  // stored counts are for the whole match.
+  const partial = slice.rounds !== null;
+  const byId = useMemo(
+    () => (slice.rounds ? fightsInSlice(a, slice.rounds) : new Map(a.fights.map((f) => [f.accountId, f]))),
+    [a, slice.rounds],
+  );
   const me = a.players.find((p) => p.isMe);
   const teams = me?.team === "Red" ? (["Red", "Blue"] as const) : (["Blue", "Red"] as const);
   const name = (id: number) => players.get(id)?.name ?? "?";
 
   const pct = (n: number, d: number) => (d > 0 ? `${Math.round((n / d) * 100)}%` : "–");
+  /** Whole-match only: these need the fights pass, not the kills alone. */
+  const whole = (v: number | string) => (partial ? <span className="muted">–</span> : v);
 
   return (
     <div className="fights">
@@ -27,6 +36,12 @@ export function Fights({ a, player, onPick }: { a: Analysis; player: number; onP
         when the killer&apos;s team loses someone within 3 s, and a <strong>clean-up</strong> when the killer&apos;s team
         was already up a player. Both windows were measured on this account&apos;s 195,000 kills.
       </p>
+      {partial && (
+        <p className="hint">
+          Counted from this round&apos;s kills. Fight KAST, forces and deaths around an uber need the whole match, so
+          they are blank here.
+        </p>
+      )}
       <div className="table-wrap">
         <table className="match-table fights-table">
           <thead>
@@ -63,8 +78,8 @@ export function Fights({ a, player, onPick }: { a: Analysis; player: number; onP
                     <td className="nowrap class-cell">
                       <ClassIcon cls={p.mainClass} size={20} /> {p.name}
                     </td>
-                    <td className="num" title={`${f.fightsKast} of ${f.fightsPresent} fights`}>
-                      {pct(f.fightsKast, f.fightsPresent)}
+                    <td className="num" title={partial ? "Whole-match only" : `${f.fightsKast} of ${f.fightsPresent} fights`}>
+                      {whole(pct(f.fightsKast, f.fightsPresent))}
                     </td>
                     <td className="num">
                       {f.openingKills}–{f.openingDeaths}
@@ -80,9 +95,9 @@ export function Fights({ a, player, onPick }: { a: Analysis; player: number; onP
                       {f.chargedPicks}
                       {f.drops > 0 && <span className="muted"> ({f.drops} drop{f.drops > 1 ? "s" : ""})</span>}
                     </td>
-                    <td className="num">{f.forces || "–"}</td>
+                    <td className="num">{whole(f.forces || "–")}</td>
                     <td className="num">
-                      {f.deathsBeforeUber} / {f.deathsDuringUber} / {f.deathsAfterUber}
+                      {whole(`${f.deathsBeforeUber} / ${f.deathsDuringUber} / ${f.deathsAfterUber}`)}
                     </td>
                     <td className="num">
                       {f.tradedDeaths} <span className="muted">of {f.deaths}</span>
@@ -97,18 +112,20 @@ export function Fights({ a, player, onPick }: { a: Analysis; player: number; onP
         </table>
       </div>
 
-      {a.firstPicks.length > 0 && (
+      {a.firstPicks.some((f) => !slice.rounds || slice.rounds.has(f.roundNum)) && (
         <>
           <h3 className="fights-sub">First pick of each round</h3>
           <ol className="fights-firsts">
-            {a.firstPicks.map((f, i) => (
+            {a.firstPicks
+              .filter((f) => !slice.rounds || slice.rounds.has(f.roundNum))
+              .map((f, i) => (
               <li key={i}>
                 <span className="muted">R{f.roundNum}</span> <strong>{clock(f.afterS)}</strong>{" "}
                 <span className="muted">after the round went live:</span>{" "}
                 <span className={`team-${(players.get(f.killer)?.team ?? "none").toLowerCase()}`}>{name(f.killer)}</span> →{" "}
                 <span className={`team-${(players.get(f.victim)?.team ?? "none").toLowerCase()}`}>{name(f.victim)}</span>
               </li>
-            ))}
+              ))}
           </ol>
         </>
       )}

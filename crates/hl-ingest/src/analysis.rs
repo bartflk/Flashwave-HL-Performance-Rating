@@ -192,6 +192,9 @@ pub struct KillView {
 pub struct ClassDamage {
     pub account_id: u32,
     pub other_class: TfClass,
+    /// The round it happened in, so a round filter can narrow it. `0` for
+    /// damage outside every round (warmup, or between rounds).
+    pub round_num: i64,
     pub dealt: i64,
     pub taken: i64,
 }
@@ -347,7 +350,7 @@ pub fn build(
     let has_positions = kills.iter().any(|k| k.killer_pos.is_some());
 
     // Damage by the other player's class, and over time.
-    let mut by_class: BTreeMap<(u32, TfClass), (i64, i64)> = BTreeMap::new();
+    let mut by_class: BTreeMap<(u32, TfClass, i64), (i64, i64)> = BTreeMap::new();
     let duration = clock.duration();
     let n_buckets = ((duration / BUCKET_S).ceil() as usize).max(1);
     let mut series: BTreeMap<u32, Vec<i64>> = BTreeMap::new();
@@ -356,11 +359,12 @@ pub fn build(
         if amount == 0 || d.attacker.account == d.victim.account {
             continue;
         }
+        let round = clock.game(d.at).map_or(0, |(_, r)| r);
         if let Some(c) = d.victim.class {
-            by_class.entry((d.attacker.account, c)).or_default().0 += amount;
+            by_class.entry((d.attacker.account, c, round)).or_default().0 += amount;
         }
         if let Some(c) = d.attacker.class {
-            by_class.entry((d.victim.account, c)).or_default().1 += amount;
+            by_class.entry((d.victim.account, c, round)).or_default().1 += amount;
         }
         if let Some((t, _)) = clock.game(d.at) {
             let b = ((t / BUCKET_S) as usize).min(n_buckets - 1);
@@ -369,7 +373,7 @@ pub fn build(
     }
     let damage = by_class
         .into_iter()
-        .map(|((account_id, other_class), (dealt, taken))| ClassDamage { account_id, other_class, dealt, taken })
+        .map(|((account_id, other_class, round_num), (dealt, taken))| ClassDamage { account_id, other_class, round_num, dealt, taken })
         .collect();
     let damage_series =
         series.into_iter().map(|(account_id, buckets)| DamageSeries { account_id, buckets }).collect();

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Analysis } from "../../api/types";
-import { CLASS_ORDER, CLASS_SHORT, DEATH, KILL, playerMap } from "./common";
+import { CLASS_ORDER, CLASS_SHORT, DEATH, KILL, playerMap, type Slice } from "./common";
 import { ClassIcon } from "../ClassIcon";
 
 /**
@@ -9,25 +9,31 @@ import { ClassIcon } from "../ClassIcon";
  * right (blue). Side and colour carry the same meaning, so neither is needed
  * alone. Over the whole match: the raw log's damage has no round split here.
  */
-export function Spread({ a, player }: { a: Analysis; player: number }) {
+export function Spread({ a, player, slice }: { a: Analysis; player: number; slice: Slice }) {
   const [asTable, setAsTable] = useState(false);
   const p = playerMap(a).get(player);
+  const inSlice = (round: number) => slice.rounds === null || slice.rounds.has(round);
 
   const dmg = CLASS_ORDER.map((c) => {
-    const row = a.damage.find((d) => d.accountId === player && d.otherClass === c);
-    return { cls: c, left: row?.taken ?? 0, right: row?.dealt ?? 0 };
+    const rows = a.damage.filter((d) => d.accountId === player && d.otherClass === c && inSlice(d.roundNum));
+    return {
+      cls: c,
+      left: rows.reduce((n, r) => n + r.taken, 0),
+      right: rows.reduce((n, r) => n + r.dealt, 0),
+    };
   });
+  const mine = a.kills.filter((k) => inSlice(k.roundNum));
   const kills = CLASS_ORDER.map((c) => ({
     cls: c,
-    left: a.kills.filter((k) => k.victim === player && k.killer !== player && k.killerClass === c).length,
-    right: a.kills.filter((k) => k.killer === player && k.victim !== player && k.victimClass === c).length,
+    left: mine.filter((k) => k.victim === player && k.killer !== player && k.killerClass === c).length,
+    right: mine.filter((k) => k.killer === player && k.victim !== player && k.victimClass === c).length,
   }));
 
   return (
     <div className="spread">
       <div className="spread-head">
         <p className="hint">
-          {p?.name ?? "The player"} against each enemy class, over the whole match.
+          {p?.name ?? "The player"} against each enemy class, {slice.rounds ? "in this round" : "over the whole match"}.
           {!a.damageCapped && " This log predates logs.tf's 450-per-hit cap, so backstabs count in full."}
         </p>
         <button className="linkish" onClick={() => setAsTable((t) => !t)}>

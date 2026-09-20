@@ -175,8 +175,8 @@ function Body({ a }: { a: Analysis }) {
 
       {tab === "map" && <KillMap a={a} player={player} slice={slice} />}
       {tab === "feed" && <PlayByPlay a={a} player={player} slice={slice} />}
-      {tab === "fights" && <Fights a={a} player={player} onPick={setPlayer} />}
-      {tab === "spread" && <Spread a={a} player={player} />}
+      {tab === "fights" && <Fights a={a} player={player} slice={slice} onPick={setPlayer} />}
+      {tab === "spread" && <Spread a={a} player={player} slice={slice} />}
       {tab === "aim" && <Aim a={a} logId={a.logId} slice={slice} />}
       {tab === "timeline" && <TimelineChart a={a} player={player} slice={slice} onPick={setPlayer} />}
     </>

@@ -68,6 +68,10 @@ npm run dev          # builds Rust, starts Vite, opens the app window
 npm run build        # installers in target/release/bundle
 ```
 
+`scripts\dev.cmd` does the same thing by double-click: it installs anything
+missing, then starts the app in development mode. Copy it to the Desktop if
+you want it to hand.
+
 ### Releasing
 
 Pushing a version tag builds the Windows installers on GitHub and attaches them to a draft release:
