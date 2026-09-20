@@ -14,6 +14,16 @@ import type { PathRow } from "../../api/types";
 /** Rows past this are cut: the map still draws every route. */
 const MAX_ROWS = 200;
 
+/** "1st", "2nd", "3rd", then plain numbers: a life rarely takes four. */
+function ordinal(n: number): string {
+  return ["1st", "2nd", "3rd"][n - 1] ?? `${n}th`;
+}
+
+/** Seconds into the life, as a clock. */
+function clock(s: number): string {
+  return `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+}
+
 export function LifeList(props: {
   rows: PathRow[];
   /** Ticks per second, to turn a route's length into time. */
@@ -78,8 +88,27 @@ export function LifeList(props: {
                 <span className={`km-life-dot ${r.died ? "died" : "lived"}`} aria-hidden />
                 <span className="km-life-round">R{r.roundNum ?? "?"}</span>
                 <span className="km-life-len">{seconds(r)}s</span>
-                <span className="km-life-end">{r.died ? "died" : partial ? "lost sight" : "survived"}</span>
+                <span className="km-life-end">
+                  {r.died ? "died" : partial ? "lost sight" : "survived"}
+                  {r.caps.length > 0 && (
+                    <span className="km-life-caps" title={`${r.caps.length} points taken while alive`}>
+                      {" "}
+                      · {r.caps.length} cap{r.caps.length === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </span>
               </button>
+              {r.caps.length > 0 && (
+                <ol className="km-caps">
+                  {r.caps.map(([at, point], i) => (
+                    <li key={`${at}-${i}`}>
+                      <span className="km-cap-n">{ordinal(i + 1)} cap</span>
+                      <span className="km-cap-point">point {point}</span>
+                      <span className="km-cap-at">{clock(at)} in</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </li>
           );
         })}

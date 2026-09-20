@@ -738,6 +738,16 @@ impl Db {
     }
 
     /// Every player's name in one match, by account id.
+    /// Every player's team in one match, by account id: `Red` or `Blue`.
+    pub async fn player_teams(&self, log_id: i64) -> Result<HashMap<u32, String>> {
+        let rows: Vec<(i64, String)> =
+            sqlx::query_as("SELECT account_id, team FROM match_player WHERE log_id = ?1")
+                .bind(log_id)
+                .fetch_all(self.pool())
+                .await?;
+        Ok(rows.into_iter().map(|(id, team)| (id as u32, team)).collect())
+    }
+
     pub async fn player_names(&self, log_id: i64) -> Result<HashMap<u32, String>> {
         let rows: Vec<(i64, Option<String>)> =
             sqlx::query_as("SELECT account_id, name FROM match_player WHERE log_id = ?1")

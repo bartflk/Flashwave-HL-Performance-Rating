@@ -80,6 +80,11 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
         .filter(|k| k.killer == me.account_id() && k.live && k.custom.as_deref() != Some("feign_death"))
         .collect();
 
+    // Who was on which team, and every point captured: a life is worth more
+    // when it took ground, so the caps its team made during it come with it.
+    let teams: std::collections::HashMap<u32, String> = db.player_teams(log_id).await?;
+    let caps = db.cap_events(log_id).await?;
+
     // The log's rounds on its own clock, to place each life and route.
     let rounds: Vec<(i64, f64, f64)> = db
         .round_spans(log_id)
@@ -126,10 +131,24 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
             if round.is_none() && offset.is_some() {
                 continue;
             }
+            let account_id = SteamId::parse(&l.steamid).map(|s| s.account_id()).unwrap_or(0);
+            // The life on the log's clock, to find the caps inside it.
+            let life_caps = match (offset, teams.get(&account_id)) {
+                (Some(o), Some(team)) => {
+                    let from = start + f64::from(l.from_tick) / rate - o as f64;
+                    let to = start + f64::from(l.to_tick) / rate - o as f64;
+                    caps.iter()
+                        .filter(|(at, t, _)| t == team && (*at as f64) >= from && (*at as f64) <= to)
+                        .map(|(at, _, point)| ((*at as f64 - from).round() as i64, *point))
+                        .collect()
+                }
+                _ => Vec::new(),
+            };
             out.paths.push(hl_db::PathRow {
                 demo_id: d.demo_id,
                 seq: seq as i64,
-                account_id: SteamId::parse(&l.steamid).map(|s| s.account_id()).unwrap_or(0),
+                account_id,
+                caps: life_caps,
                 from_tick: i64::from(l.from_tick),
                 to_tick: i64::from(l.to_tick),
                 round_num: round,
@@ -215,7 +234,8 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
 /// 8: one demo per job, so a match with both a POV and an STV demo is not
 ///    counted twice.
 /// 9: routes for other players only from an STV demo.
-pub const VERSION: i64 = 9;
+/// 10: the points captured during each life.
+pub const VERSION: i64 = 10;
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
 #[serde(rename_all = "camelCase")]

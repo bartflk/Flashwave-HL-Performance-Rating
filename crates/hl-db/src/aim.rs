@@ -98,6 +98,9 @@ pub struct PathRow {
     pub died: bool,
     /// `(tick, x, y, z)` in map units, about four a second.
     pub points: Vec<(i64, i32, i32, i32)>,
+    /// Points this player's team captured during the life:
+    /// `(seconds into the life, the point's number)`.
+    pub caps: Vec<(i64, i64)>,
 }
 
 /// How the living time was spent, over one match or all of them.
@@ -228,8 +231,8 @@ impl Db {
         for r in rows {
             sqlx::query(
                 "INSERT OR REPLACE INTO demo_path
-                    (log_id, demo_id, seq, from_tick, to_tick, round_num, died, points, account_id)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                    (log_id, demo_id, seq, from_tick, to_tick, round_num, died, points, account_id, caps)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             )
             .bind(log_id)
             .bind(r.demo_id)
@@ -240,6 +243,7 @@ impl Db {
             .bind(i64::from(r.died))
             .bind(serde_json::to_string(&r.points).unwrap_or_else(|_| "[]".into()))
             .bind(r.account_id)
+            .bind(serde_json::to_string(&r.caps).unwrap_or_else(|_| "[]".into()))
             .execute(&mut *tx)
             .await?;
         }
@@ -250,7 +254,7 @@ impl Db {
     /// One log's routes, with the round each life started in.
     pub async fn paths_for_log(&self, log_id: i64) -> Result<Vec<PathRow>> {
         let rows = sqlx::query(
-            "SELECT demo_id, seq, account_id, from_tick, to_tick, round_num, died, points
+            "SELECT demo_id, seq, account_id, from_tick, to_tick, round_num, died, points, caps
              FROM demo_path WHERE log_id = ?1 ORDER BY from_tick, seq",
         )
         .bind(log_id)
@@ -267,6 +271,10 @@ impl Db {
                 round_num: r.get("round_num"),
                 died: r.get::<i64, _>("died") != 0,
                 points: serde_json::from_str(&r.get::<String, _>("points")).unwrap_or_default(),
+                caps: r
+                    .get::<Option<String>, _>("caps")
+                    .and_then(|s| serde_json::from_str(&s).ok())
+                    .unwrap_or_default(),
             })
             .collect())
     }
@@ -351,6 +359,23 @@ impl Db {
             scoped_share_deaths: d.get::<Option<f64>, _>("scoped").unwrap_or(0.0),
             behind_share: d.get("behind"),
         }))
+    }
+
+    /// Every point captured in a log: `(absolute time, team, point number)`,
+    /// on the log's own clock, so a moment in a demo can be placed against it.
+    pub async fn cap_events(&self, log_id: i64) -> Result<Vec<(i64, String, i64)>> {
+        let rows: Vec<(i64, String, Option<i64>)> = sqlx::query_as(
+            "SELECT r.start_time + e.at_s, e.team, e.point
+             FROM match_event e
+             JOIN match_round r ON r.log_id = e.log_id AND r.round_num = e.round_num
+             WHERE e.log_id = ?1 AND e.kind = 'pointcap' AND e.team IS NOT NULL
+               AND r.start_time IS NOT NULL
+             ORDER BY r.start_time + e.at_s",
+        )
+        .bind(log_id)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows.into_iter().map(|(at, team, point)| (at, team, point.unwrap_or(0))).collect())
     }
 
     /// Logs already read at this version of the pass.

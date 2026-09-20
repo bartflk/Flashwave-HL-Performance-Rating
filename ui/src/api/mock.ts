@@ -577,6 +577,15 @@ export const mockApi: Api = {
         roundNum: 1 + (i % 5),
         died: r() < 0.6,
         points,
+        // A long life takes a point or three; a short one takes none.
+        caps: (i % 2 === 0
+          ? ([
+              [43, 1],
+              [95, 2],
+              [229, 3],
+            ] as Array<[number, number]>)
+          : []
+        ).slice(0, 1 + (i % 3)),
       };
     });
     return delay(lives, 150);

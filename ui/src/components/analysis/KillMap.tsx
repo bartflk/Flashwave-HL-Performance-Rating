@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { Analysis, KillView, MapView, Overview, PathRow, Vec3 } from "../../api/types";
-import { capitalize, splitMap } from "../../lib/format";
+import { capitalize, splitMap, teamLabel } from "../../lib/format";
 import { DEATH, KILL, inSlice, jumpTo, playerMap, roundClock, type Slice } from "./common";
 import { LifeList } from "./LifeList";
 import { beginDownload, useDownload } from "../../lib/downloads";
@@ -173,6 +173,16 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
   const stvLinked = stv?.hasStv ?? false;
   // How many routes each player has in the rounds on screen, so the dropdown
   // can say who the demo actually followed.
+  // The two sides, the owner's first where they played.
+  const teamGroups = useMemo(() => {
+    const mine = a.players.find((p) => p.isMe)?.team ?? null;
+    const of = (t: "Red" | "Blue") => a.players.filter((p) => p.team === t);
+    const label = (t: "Red" | "Blue") =>
+      mine === null ? teamLabel(t) : t === mine ? `Us · ${teamLabel(t)}` : `Them · ${teamLabel(t)}`;
+    const order: Array<"Red" | "Blue"> = mine === "Blue" ? ["Blue", "Red"] : ["Red", "Blue"];
+    return order.map((t) => [label(t), of(t)] as [string, typeof a.players]);
+  }, [a.players]);
+
   const routeCounts = useMemo(() => {
     const by = new Map<number, number>();
     const rows = (pathQ.data ?? []).filter((r) => slice.rounds === null || (r.roundNum !== null && slice.rounds.has(r.roundNum)));
@@ -265,16 +275,22 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
               <option value="all" disabled={!stvLinked}>
                 Everyone{stvLinked ? ` (${routeCounts.total})` : " — needs the STV demo"}
               </option>
-              {a.players.map((p) => {
-                const n = routeCounts.by.get(p.accountId) ?? 0;
-                return (
-                  <option key={p.accountId} value={p.accountId} disabled={n === 0}>
-                    {p.name}
-                    {p.mainClass ? ` · ${capitalize(p.mainClass)}` : ""}
-                    {n > 0 ? ` (${n})` : stvLinked ? " (none)" : " — needs the STV demo"}
-                  </option>
-                );
-              })}
+              {/* Grouped by side, the owner's first, so picking an opponent is
+                  a deliberate act rather than a scroll through eighteen names. */}
+              {teamGroups.map(([label, players]) => (
+                <optgroup key={label} label={label}>
+                  {players.map((p) => {
+                    const n = routeCounts.by.get(p.accountId) ?? 0;
+                    return (
+                      <option key={p.accountId} value={p.accountId} disabled={n === 0}>
+                        {p.name}
+                        {p.mainClass ? ` · ${capitalize(p.mainClass)}` : ""}
+                        {n > 0 ? ` (${n})` : stvLinked ? " (none)" : " — needs the STV demo"}
+                      </option>
+                    );
+                  })}
+                </optgroup>
+              ))}
             </select>
           </label>
         )}

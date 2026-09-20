@@ -950,6 +950,9 @@ export interface PathRow {
   died: boolean;
   /** `[tick, x, y, z]` in map units, about four a second. */
   points: Array<[number, number, number, number]>;
+  /** Points this player's team captured during the life:
+   *  `[seconds into the life, the point's number]`. */
+  caps: Array<[number, number]>;
 }
 
 /** One log a combined log was built from, with its own scoreboard. */

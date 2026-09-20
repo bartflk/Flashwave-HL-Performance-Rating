@@ -1098,3 +1098,36 @@
 .km-stv button {
   width: 100%;
 }
+
+/* What a life took: the caps under its row. */
+.km-life-caps {
+  color: var(--accent);
+}
+
+.km-caps {
+  list-style: none;
+  margin: 2px 0 6px 26px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 0.74rem;
+  color: var(--muted);
+  border-left: 1px solid var(--border);
+}
+
+.km-caps li {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: 6px;
+  padding: 1px 0 1px 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.km-cap-n {
+  color: var(--accent);
+}
+
+.km-cap-at {
+  color: #7a6b5e;
+}
