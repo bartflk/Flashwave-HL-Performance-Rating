@@ -1816,7 +1816,7 @@ dependencies = [
 
 [[package]]
 name = "hl-app"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "hl-core",
@@ -1837,7 +1837,7 @@ dependencies = [
 
 [[package]]
 name = "hl-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "hl-core",
@@ -1853,7 +1853,7 @@ dependencies = [
 
 [[package]]
 name = "hl-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "serde",
  "thiserror 2.0.20",
@@ -1861,7 +1861,7 @@ dependencies = [
 
 [[package]]
 name = "hl-db"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1875,7 +1875,7 @@ dependencies = [
 
 [[package]]
 name = "hl-demos"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1887,7 +1887,7 @@ dependencies = [
 
 [[package]]
 name = "hl-ingest"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -1907,7 +1907,7 @@ dependencies = [
 
 [[package]]
 name = "hl-rating"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "hl-core",

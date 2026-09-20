@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/hl-core", "crates/hl-db", "crates/hl-ingest", "crates/hl-rating", "crates/hl-demos", "crates/hl-cli", "src-tauri"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 

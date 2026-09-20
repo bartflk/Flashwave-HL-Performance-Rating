@@ -43,12 +43,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__-beta
-          releaseName: HL Rating 0.1 beta
+          tagName: v__VERSION__
+          releaseName: HL Rating __VERSION__
           releaseBody: |
-            First public beta, Windows only. Download the `-setup.exe` below.
+            Windows only. Download the `-setup.exe` below and run it.
 
             Windows may say "Windows protected your PC" because the installer is not code-signed: click **More info, then Run anyway**.
+
+            **Updating from an earlier version keeps your data.** Install over the top; your logs, demos index and ratings stay where they are. The app also keeps the newest five copies of its database in a `backups` folder beside it.
+
+            **Uninstalling can remove it.** The uninstaller offers a "Delete the application data" checkbox; leave it unticked unless you mean it, and note that it removes those backups too.
+
+            **Going back to an older version does not work** once this one has opened your database: the older build does not know the new tables. Restore a backup if you need to.
+
             See the README for first-run steps. Feedback is welcome in Issues.
           releaseDraft: true
           prerelease: true
