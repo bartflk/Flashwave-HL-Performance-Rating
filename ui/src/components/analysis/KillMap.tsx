@@ -187,7 +187,6 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
   // The routes are stored in demo ticks; TF2 servers run at 66.67 a second,
   // which is close enough to turn a route's length into seconds.
   const tickRate = 66.67;
-  const myId = a.players.find((p) => p.isMe)?.accountId ?? -1;
   const stvLinked = stv?.hasStv ?? false;
   // How many routes each player has in the rounds on screen, so the dropdown
   // can say who the demo actually followed.
@@ -274,15 +273,25 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
                 setPathWho(e.target.value === "all" ? "all" : Number(e.target.value));
                 setFocus(null);
               }}
+              title={
+                stvLinked
+                  ? "The STV demo carries all eighteen players"
+                  : "A POV demo only holds its recorder's movement; download the STV demo for everyone else"
+              }
             >
-              <option value="all">Everyone ({routeCounts.total})</option>
-              {a.players.map((p) => (
-                <option key={p.accountId} value={p.accountId}>
-                  {p.name}
-                  {p.mainClass ? ` · ${capitalize(p.mainClass)}` : ""}
-                  {routeCounts.by.get(p.accountId) ? ` (${routeCounts.by.get(p.accountId)})` : " (none)"}
-                </option>
-              ))}
+              <option value="all" disabled={!stvLinked}>
+                Everyone{stvLinked ? ` (${routeCounts.total})` : " — needs the STV demo"}
+              </option>
+              {a.players.map((p) => {
+                const n = routeCounts.by.get(p.accountId) ?? 0;
+                return (
+                  <option key={p.accountId} value={p.accountId} disabled={n === 0}>
+                    {p.name}
+                    {p.mainClass ? ` · ${capitalize(p.mainClass)}` : ""}
+                    {n > 0 ? ` (${n})` : stvLinked ? " (none)" : " — needs the STV demo"}
+                  </option>
+                );
+              })}
             </select>
           </label>
         )}
@@ -357,7 +366,7 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
               tickRate={tickRate}
               focus={focus}
               onFocus={setFocus}
-              partial={!stvLinked && (pathWho === "all" || (pathWho ?? player) !== myId)}
+              partial={false}
               stv={stv?.hasStv ? "linked" : stv?.demosTfId ? "available" : "none"}
               onFetchStv={fetchStv}
               fetching={stvBusy}
@@ -388,9 +397,9 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
               (pathQ.isPending
                 ? " Reading the demo's routes…"
                 : pathQ.data && pathQ.data.length > 0
-                  ? pathWho === "all"
-                    ? " One line per life, four positions a second. A POV demo only carries other players while its recorder could see them, so their lines break where the demo lost them."
-                    : " One line per life, four positions a second, read from the demo."
+                  ? stvLinked
+                    ? " One line per life, four positions a second, from this match's SourceTV demo: every player, whole lives."
+                    : " One line per life, four positions a second, from your own recording. A POV demo only holds its recorder's movement; the SourceTV demo has everyone."
                   : " No demo is linked to this match, so there is no movement to draw.")}
           </p>
           {layer === "dots" && <TimeStrip a={a} slice={slice} marks={marks} hover={hover} onHover={setHover} />}

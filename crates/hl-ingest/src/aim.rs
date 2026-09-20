@@ -110,8 +110,15 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
         if for_aim {
             out.life.push((d.demo_id, i64::from(pass.alive_ticks), i64::from(pass.scoped_ticks)));
         }
-        // Each life's route, placed in the log's rounds by when it started.
+        // A POV demo only carries other players while its recorder could see
+        // them, so their routes are a handful of disconnected seconds. They
+        // are dropped rather than drawn as if they were whole lives: an STV
+        // demo is the only honest source for anyone but the recorder.
+        let everyone = d.kind == "stv";
         for (seq, l) in pass.lives.iter().enumerate().take(if for_paths { usize::MAX } else { 0 }) {
+            if !everyone && l.steamid != me.to_steamid3() {
+                continue;
+            }
             let at = offset.map(|o| start + f64::from(l.from_tick) / rate - o as f64);
             let round = at.and_then(|at| rounds.iter().find(|(_, f, t)| at >= *f && at <= *t).map(|(n, ..)| *n));
             // A life outside every round of this log belongs to another match
@@ -207,7 +214,8 @@ pub async fn for_log(db: &Db, log_id: i64, me: SteamId) -> Result<AimReport> {
 /// 7: routes for every player the demo carried, not only the owner's.
 /// 8: one demo per job, so a match with both a POV and an STV demo is not
 ///    counted twice.
-pub const VERSION: i64 = 8;
+/// 9: routes for other players only from an STV demo.
+pub const VERSION: i64 = 9;
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
