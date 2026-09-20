@@ -638,7 +638,7 @@ export const mockApi: Api = {
       bytes = Math.min(total, bytes + 6_000_000);
       stvHandlers?.onProgress({ logId, bytes, total });
       if (bytes < total) setTimeout(step, 150);
-      else stvHandlers?.onDone({ demoId: 999, fileName: "match-20260823-1956-pl_upward_f12.dem", bytes, logShare: 0.37 });
+      else stvHandlers?.onDone({ logId, demoId: 999, fileName: "match-20260823-1956-pl_upward_f12.dem", bytes, logShare: 0.37 });
     };
     setTimeout(step, 150);
   },

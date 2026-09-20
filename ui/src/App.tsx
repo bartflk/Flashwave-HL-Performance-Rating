@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "./api/client";
 import { errorMessage } from "./api/types";
 import { Setup } from "./components/Setup";
@@ -10,6 +10,8 @@ import { MatchPage } from "./components/match/MatchPage";
 import { ProfilePage } from "./components/profile/ProfilePage";
 import { TeammatesPage } from "./components/teammates/TeammatesPage";
 import { ToastHost } from "./lib/toast";
+import { Downloads } from "./components/Downloads";
+import { watchDownloads } from "./lib/downloads";
 import { OwnerBadge } from "./components/OwnerBadge";
 import "./App.css";
 import "./components/match/match.css";
@@ -31,6 +33,9 @@ export default function App() {
   const [onboarding, setOnboarding] = useState<boolean | null>(null);
   const [tab, setTab] = useState<Tab>("matches");
   const [openLog, setOpenLog] = useState<number | null>(null);
+  // Demo downloads keep running while you read other matches, so the app
+  // follows them rather than the panel that started one.
+  useEffect(watchDownloads, []);
   // Pages stay mounted once visited, so their filters and scroll survive a
   // trip to a match and back.
   const [visited, setVisited] = useState<Set<Tab>>(new Set(["matches"]));
@@ -145,6 +150,7 @@ export default function App() {
       )}
       {/* "Back" returns to whichever tab the match was opened from. */}
       {openLog !== null && <MatchPage logId={openLog} onBack={() => setOpenLog(null)} />}
+      <Downloads onOpenMatch={setOpenLog} />
       <ToastHost />
     </div>
   );

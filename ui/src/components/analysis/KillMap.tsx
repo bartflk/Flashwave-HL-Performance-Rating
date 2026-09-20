@@ -5,6 +5,7 @@ import type { Analysis, KillView, MapView, Overview, PathRow, Vec3 } from "../..
 import { capitalize, splitMap } from "../../lib/format";
 import { DEATH, KILL, inSlice, jumpTo, playerMap, roundClock, type Slice } from "./common";
 import { LifeList } from "./LifeList";
+import { beginDownload, useDownload } from "../../lib/downloads";
 import type { StvInfo } from "./AnalysisPanel";
 
 /**
@@ -117,42 +118,24 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
   // panel's player until it is set by hand.
   const [pathWho, setPathWho] = useState<number | "all" | null>(null);
   const [focus, setFocus] = useState<PathRow | null>(null);
-  const [heatOf, setHeatOf] = useState<HeatOf>("deaths");
-  // Fetching the match's STV demo: it carries every player, where a POV demo
-  // only carried its recorder.
-  const [stvBusy, setStvBusy] = useState(false);
+  // The download itself is followed app-wide, so it survives leaving the
+  // page; this panel only starts it and reads its state.
   const qc = useQueryClient();
+  const download = useDownload(a.logId);
+  const stvBusy = download?.state === "running";
   useEffect(() => {
-    if (!stvBusy) return;
-    let off: (() => void) | undefined;
-    let cancelled = false;
-    void api
-      .onStv({
-        onProgress: () => {},
-        onDone: () => {
-          setStvBusy(false);
-          // The demo has been linked and read by the time this arrives.
-          void qc.invalidateQueries({ queryKey: ["paths", a.logId] });
-          void qc.invalidateQueries({ queryKey: ["aim", a.logId] });
-          void qc.invalidateQueries({ queryKey: ["match", a.logId] });
-        },
-        onError: () => setStvBusy(false),
-      })
-      .then((u) => (cancelled ? u() : (off = u)));
-    return () => {
-      cancelled = true;
-      off?.();
-    };
-  }, [stvBusy, a.logId, qc]);
+    if (download?.state !== "done") return;
+    void qc.invalidateQueries({ queryKey: ["paths", a.logId] });
+    void qc.invalidateQueries({ queryKey: ["aim", a.logId] });
+    void qc.invalidateQueries({ queryKey: ["match", a.logId] });
+  }, [download?.state, a.logId, qc]);
 
   const fetchStv = async () => {
-    setStvBusy(true);
-    try {
-      await api.fetchStv(a.logId);
-    } catch {
-      setStvBusy(false);
-    }
+    beginDownload(a.logId, `${capitalize(splitMap(a.map).name ?? "this match")}, log ${a.logId}`);
+    await api.fetchStv(a.logId).catch(() => {});
   };
+
+  const [heatOf, setHeatOf] = useState<HeatOf>("deaths");
   const [scope, setScope] = useState<Scope>("match");
   const [asTable, setAsTable] = useState(false);
   const [hover, setHover] = useState<Mark | null>(null);

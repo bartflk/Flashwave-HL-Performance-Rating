@@ -210,6 +210,9 @@ fn view(d: &LinkedDemo) -> DemoView {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StvFetched {
+    /// The match it was fetched for, so a listener that has since moved on
+    /// can tell which download finished.
+    pub log_id: i64,
     pub demo_id: i64,
     pub file_name: String,
     pub bytes: u64,
@@ -290,7 +293,7 @@ pub async fn fetch_stv(
     };
     db.add_demo_link(demo_id, log_id, "demos.tf", log_share).await?;
 
-    Ok(StvFetched { demo_id, file_name: f.file_name, bytes, log_share })
+    Ok(StvFetched { log_id, demo_id, file_name: f.file_name, bytes, log_share })
 }
 
 /// Turns a moment in a log (logs.tf's round-time frame) into a demo tick, in

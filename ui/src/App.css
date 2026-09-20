@@ -805,3 +805,120 @@ th.num {
   background: rgba(242, 230, 217, 0.08);
   color: var(--muted);
 }
+
+/* --- demo downloads, bottom right --- */
+
+.downloads {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 320px;
+}
+
+.dl {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dl-done {
+  border-color: rgba(111, 174, 106, 0.5);
+}
+
+.dl-failed {
+  border-color: rgba(232, 106, 98, 0.5);
+}
+
+.dl-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dl-title {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dl-done .dl-title {
+  color: var(--ok);
+}
+
+.dl-failed .dl-title {
+  color: var(--bad);
+}
+
+.dl-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+.dl-close:hover {
+  color: var(--text);
+}
+
+.dl-label,
+.dl-sub {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.dl-sub {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.dl-error {
+  color: var(--bad);
+}
+
+.dl-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.dl-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 200ms linear;
+}
+
+/* No total from the server: the bar paces instead of filling. */
+.dl-unknown {
+  width: 35%;
+  animation: dl-slide 1.4s ease-in-out infinite;
+}
+
+@keyframes dl-slide {
+  0% {
+    margin-left: -35%;
+  }
+  100% {
+    margin-left: 100%;
+  }
+}
+
+.dl-go {
+  align-self: flex-start;
+}

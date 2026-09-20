@@ -377,6 +377,8 @@ export interface StvProgress {
 }
 
 export interface StvFetched {
+  /** The match it was fetched for. */
+  logId: number;
   demoId: number;
   fileName: string;
   bytes: number;

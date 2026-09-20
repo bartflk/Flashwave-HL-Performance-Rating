@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type DemoView, type MatchDetail } from "../../api/types";
 import { copy } from "../../lib/toast";
+import { beginDownload, useDownload } from "../../lib/downloads";
 
 /**
  * The demos behind this match, and how to jump into them.
@@ -14,40 +15,23 @@ import { copy } from "../../lib/toast";
  */
 export function DemoPanel({ d }: { d: MatchDetail }) {
   const qc = useQueryClient();
-  const [download, setDownload] = useState<{ bytes: number; total: number | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // The download is followed app-wide: it keeps going, and keeps reporting,
+  // while you read another match.
+  const download = useDownload(d.logId);
   useEffect(() => {
-    let off: (() => void) | undefined;
-    let cancelled = false;
-    void api
-      .onStv({
-        onProgress: (p) => p.logId === d.logId && setDownload({ bytes: p.bytes, total: p.total }),
-        onDone: () => {
-          setDownload(null);
-          void qc.invalidateQueries({ queryKey: ["match", d.logId] });
-          void qc.invalidateQueries({ queryKey: ["matches"] });
-        },
-        onError: (e) => {
-          if (e.logId !== d.logId) return;
-          setDownload(null);
-          setError(e.message);
-        },
-      })
-      .then((u) => (cancelled ? u() : (off = u)));
-    return () => {
-      cancelled = true;
-      off?.();
-    };
-  }, [d.logId, qc]);
+    if (download?.state !== "done") return;
+    void qc.invalidateQueries({ queryKey: ["match", d.logId] });
+    void qc.invalidateQueries({ queryKey: ["matches"] });
+  }, [download?.state, d.logId, qc]);
 
   async function fetchStv() {
     setError(null);
-    setDownload({ bytes: 0, total: null });
+    beginDownload(d.logId, `${d.map ?? "this match"}, log ${d.logId}`);
     try {
       await api.fetchStv(d.logId);
     } catch (e) {
-      setDownload(null);
       setError(errorMessage(e));
     }
   }
