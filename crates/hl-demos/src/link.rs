@@ -124,8 +124,6 @@ fn map_match(demo_map: &str, log_map: Option<&str>) -> Option<&'static str> {
     (!base.is_empty() && lm.contains(&base)).then_some("label")
 }
 
-/// A map without its version, so `pl_upward_f12` and `pl_upward_rc7` are one
-
 /// The demo tick for a moment in a log.
 ///
 /// `lead_s` rewinds a few seconds so the jump shows the lead-up, not the
