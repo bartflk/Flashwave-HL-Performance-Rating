@@ -352,6 +352,22 @@ pub async fn list_backups(state: State<'_, AppState>) -> CmdResult<Backups> {
     })
 }
 
+/// Whether every log ever played is downloaded, rather than the recent years
+/// plus every official.
+#[tauri::command]
+pub async fn all_history(state: State<'_, AppState>) -> CmdResult<bool> {
+    Ok(state.db.all_history().await?)
+}
+
+/// Turn the full history on or off. Turning it on does not fetch anything by
+/// itself: the next sync sees a longer queue.
+#[tauri::command]
+pub async fn set_all_history(state: State<'_, AppState>, on: bool) -> CmdResult<bool> {
+    state.db.set_all_history(on).await?;
+    tracing::info!(on, "history policy changed");
+    Ok(on)
+}
+
 /// Copy the database now, whatever the last copy's age.
 #[tauri::command]
 pub async fn backup_now(state: State<'_, AppState>) -> CmdResult<Option<hl_ingest::backup::Backup>> {

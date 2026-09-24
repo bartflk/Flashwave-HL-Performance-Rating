@@ -285,7 +285,11 @@ const fakeStats = (pending: number): IndexStats => ({
   normalized: 759 - pending,
   pending,
   failed: 0,
+  outsideWindow: allHistory ? 0 : 282,
 });
+
+// The full-history setting, for the Settings panel's dialog.
+let allHistory = false;
 
 let handlers: SyncHandlers | null = null;
 let stvHandlers: StvHandlers | null = null;
@@ -594,6 +598,11 @@ export const mockApi: Api = {
     return delay(lives, 150);
   },
 
+  allHistory: () => delay(allHistory),
+  setAllHistory: (on: boolean) => {
+    allHistory = on;
+    return delay(on);
+  },
   listBackups: () =>
     delay({
       dir: "C:\Users\you\AppData\Roaming\gg.highlander.rating\backups",

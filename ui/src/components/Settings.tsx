@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { errorMessage, type AppStatus, type DemoIndexSummary } from "../api/types";
 import { formatDate } from "../lib/format";
+import { HistoryPanel } from "./HistoryPanel";
 
 export function Settings({
   status,
@@ -30,6 +31,7 @@ export function Settings({
 
   return (
     <div className="content">
+      <HistoryPanel />
       <Etf2lPanel />
       <RawlogPanel />
       <DemosPanel />

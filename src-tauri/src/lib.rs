@@ -152,6 +152,8 @@ pub fn run() {
             sync_commands::get_parts,
             sync_commands::fetch_part,
             sync_commands::get_paths,
+            sync_commands::all_history,
+            sync_commands::set_all_history,
             sync_commands::list_backups,
             sync_commands::backup_now,
             sync_commands::get_map_view,

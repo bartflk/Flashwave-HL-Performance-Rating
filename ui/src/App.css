@@ -1010,3 +1010,39 @@ th.num {
   gap: 10px;
   flex-wrap: wrap;
 }
+
+/* A question that has to be answered before the app goes on. Rare on
+   purpose: only the full-history download uses one. */
+.modal-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  z-index: 40;
+}
+
+.modal {
+  width: 100%;
+  max-width: 520px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+
+.modal h3 {
+  font-size: 1.05rem;
+}
+
+.modal p {
+  margin-top: 12px;
+  line-height: 1.55;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}

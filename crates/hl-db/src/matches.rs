@@ -3,6 +3,7 @@
 use crate::context::{context_from_row, MatchContext, CONTEXT_COLUMNS};
 use crate::Db;
 use anyhow::{Context, Result};
+use hl_core::config::keys;
 use hl_core::matchdata::{Format, NormalizedLog, Team};
 use serde::Serialize;
 use sqlx::Row;
@@ -47,6 +48,8 @@ pub struct IndexStats {
     pub normalized: i64,
     pub pending: i64,
     pub failed: i64,
+    /// Old logs the retention window is holding back, none of them officials.
+    pub outside_window: i64,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -171,6 +174,28 @@ pub struct MatchPage {
 /// SQL for the format a log is treated as. A manual override always wins.
 const EFFECTIVE_FORMAT: &str = "COALESCE(i.format_override, i.format)";
 
+/// How far back a sync reaches by default.
+///
+/// Every log ever played is 754 on this account and takes an hour of
+/// logs.tf's patience to download; the recent years are what a rating is
+/// actually about. Officials are kept whatever their age — a season from 2019
+/// is still the games you care about — and Settings can ask for the lot.
+pub const KEEP_YEARS: i64 = 2;
+
+/// Which logs a sync will download: recent, or an official at any age.
+///
+/// An official is recognised three ways, because no one of them is complete:
+/// trends.tf's own tag, the ETF2L match id it carries, and the scheduled time
+/// each log was placed against before any of this was downloaded (see
+/// `etf2l::match_by_time`). A log with no date at all is kept — not knowing
+/// when it was played is not a reason to throw it away.
+fn in_window() -> String {
+    format!(
+        "(i.played_at IS NULL OR i.played_at >= unixepoch() - {KEEP_YEARS} * 365 * 86400
+          OR i.etf2l_time_match IS NOT NULL OR i.etf2l_match_id IS NOT NULL OR i.league IS NOT NULL)"
+    )
+}
+
 impl Db {
     // ---- index -----------------------------------------------------------
 
@@ -288,7 +313,14 @@ impl Db {
     /// Logs worth fetching in full: kept (not superseded), Highlander or not
     /// yet classified but plausibly so, not already stored, and not failing
     /// permanently. Newest first, so a sync surfaces recent matches soonest.
+    /// Logs still to download, newest first.
+    ///
+    /// Reads the retention setting itself rather than taking it as an
+    /// argument: the policy decides what the app does with logs.tf's
+    /// patience, and a caller that forgot to pass it would quietly download
+    /// twelve years of pugs.
     pub async fn fetch_queue(&self, max_attempts: i64) -> Result<Vec<i64>> {
+        let window = if self.all_history().await? { "1 = 1".to_string() } else { in_window() };
         let sql = format!(
             "SELECT i.log_id FROM log_index i
              LEFT JOIN log_raw r         ON r.log_id = i.log_id
@@ -298,10 +330,38 @@ impl Db {
                AND ( {EFFECTIVE_FORMAT} = 'highlander'
                   OR ({EFFECTIVE_FORMAT} IS NULL AND COALESCE(i.player_count, 0) >= 16) )
                AND (e.log_id IS NULL OR e.attempts < ?1)
+               AND {window}
              ORDER BY i.played_at DESC"
         );
         let rows = sqlx::query(&sql).bind(max_attempts).fetch_all(self.pool()).await?;
         Ok(rows.into_iter().map(|r| r.get("log_id")).collect())
+    }
+
+    /// Whether every log ever played should be downloaded, not just the
+    /// recent years and the officials.
+    pub async fn all_history(&self) -> Result<bool> {
+        Ok(self.get_setting(keys::ALL_HISTORY).await?.as_deref() == Some("1"))
+    }
+
+    pub async fn set_all_history(&self, on: bool) -> Result<()> {
+        self.set_setting(keys::ALL_HISTORY, if on { "1" } else { "0" }).await
+    }
+
+    /// Logs the window is holding back: old, not officials, never downloaded.
+    /// What Settings offers to fetch, and what it costs.
+    pub async fn outside_window(&self) -> Result<i64> {
+        let window = in_window();
+        Ok(sqlx::query_scalar(&format!(
+            "SELECT COUNT(*) FROM log_index i
+             LEFT JOIN log_raw r ON r.log_id = i.log_id
+             WHERE r.log_id IS NULL
+               AND i.superseded_by IS NULL
+               AND ( {EFFECTIVE_FORMAT} = 'highlander'
+                  OR ({EFFECTIVE_FORMAT} IS NULL AND COALESCE(i.player_count, 0) >= 16) )
+               AND NOT {window}"
+        ))
+        .fetch_one(self.pool())
+        .await?)
     }
 
     /// Highest `updated` timestamp seen from trends.tf, for incremental sync.
@@ -814,6 +874,7 @@ impl Db {
             normalized: q("SELECT COUNT(*) FROM match".into()).await?,
             pending: self.fetch_queue(3).await?.len() as i64,
             failed: q("SELECT COUNT(*) FROM log_fetch_error WHERE attempts >= 3".into()).await?,
+            outside_window: if self.all_history().await? { 0 } else { self.outside_window().await? },
         })
     }
 }
@@ -853,5 +914,53 @@ mod tests {
         for ascending in [false, true] {
             assert!(order_by(&filter(Some("kills"), ascending)).starts_with("ORDER BY (p.kills) IS NULL,"));
         }
+    }
+
+    /// A row in the index and nothing else: enough to ask what the sync would
+    /// download, which is decided before anything is fetched.
+    async fn index(db: &Db, log_id: i64, years_ago: f64) {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+        db.upsert_logstf_rows(&[LogsTfIndexRow {
+            log_id,
+            title: Some("a game"),
+            map: Some("pl_upward_f12"),
+            played_at: Some(now - (years_ago * 365.0 * 86400.0) as i64),
+            player_count: Some(18),
+            raw_json: "{}",
+        }])
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn old_pugs_are_left_alone_but_old_officials_are_not() {
+        let db = Db::connect_in_memory().await.unwrap();
+        index(&db, 1, 0.5).await; // recent
+        index(&db, 2, 5.0).await; // old, ordinary
+        index(&db, 3, 5.0).await; // old, tagged by trends.tf
+        index(&db, 4, 5.0).await; // old, placed against an ETF2L match by time
+        sqlx::query("UPDATE log_index SET league = 'etf2l' WHERE log_id = 3")
+            .execute(db.pool())
+            .await
+            .unwrap();
+        sqlx::query("UPDATE log_index SET etf2l_time_match = 92883 WHERE log_id = 4")
+            .execute(db.pool())
+            .await
+            .unwrap();
+
+        let mut queue = db.fetch_queue(3).await.unwrap();
+        queue.sort_unstable();
+        assert_eq!(queue, vec![1, 3, 4], "the old pug is the only one skipped");
+        assert_eq!(db.outside_window().await.unwrap(), 1);
+
+        // Asked for the lot, nothing is held back.
+        db.set_all_history(true).await.unwrap();
+        let mut queue = db.fetch_queue(3).await.unwrap();
+        queue.sort_unstable();
+        assert_eq!(queue, vec![1, 2, 3, 4]);
+        assert_eq!(db.index_stats().await.unwrap().outside_window, 0, "and nothing is on offer");
     }
 }

@@ -127,6 +127,8 @@ export interface IndexStats {
   normalized: number;
   pending: number;
   failed: number;
+  /** Old logs the two-year window is holding back; 0 on full history. */
+  outsideWindow: number;
 }
 
 /** Streamed on `sync://progress`. Mirrors `hl_ingest::Progress`. */

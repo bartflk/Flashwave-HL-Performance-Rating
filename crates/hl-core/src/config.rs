@@ -10,6 +10,9 @@ pub mod keys {
     pub const STEAMID: &str = "steamid";
     pub const TF_PATH: &str = "tf_path";
     pub const SCHEMA_NOTE: &str = "schema_note";
+    /// Set to "1" to download every log ever played rather than the recent
+    /// years plus officials. Asked for in Settings, never on by default.
+    pub const ALL_HISTORY: &str = "fetch_all_history";
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

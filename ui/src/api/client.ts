@@ -87,6 +87,8 @@ const realApi = {
   /** Where you walked in one match, one route per life (PLAN §14). */
   getPaths: (logId: number) => invoke<PathRow[]>("get_paths", { logId }),
   /** Copies of the database, newest first. */
+  allHistory: () => invoke<boolean>("all_history"),
+  setAllHistory: (on: boolean) => invoke<boolean>("set_all_history", { on }),
   listBackups: () => invoke<Backups>("list_backups"),
   /** Show a file or folder in Explorer. */
   revealPath: (path: string) => invoke<void>("reveal_path", { path }),
