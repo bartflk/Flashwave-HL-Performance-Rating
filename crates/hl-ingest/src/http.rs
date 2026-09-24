@@ -167,3 +167,18 @@ pub async fn download_to(
         .with_context(|| format!("moving download into {}", dest.display()))?;
     Ok(done)
 }
+
+/// Whether a request never reached the server at all.
+///
+/// The difference matters. A log logs.tf answered about with a 404 or a
+/// broken body has something wrong with it, and is worth marking so it is not
+/// retried forever. A log we could not even connect about says nothing about
+/// the log — only that the server is down or the network is — and marking
+/// hundreds of them during an outage would park a whole history behind a
+/// manual retry.
+pub fn unreachable(e: &anyhow::Error) -> bool {
+    e.chain().any(|c| {
+        c.downcast_ref::<reqwest::Error>()
+            .is_some_and(|r| r.is_connect() || r.is_timeout() || r.is_request())
+    })
+}

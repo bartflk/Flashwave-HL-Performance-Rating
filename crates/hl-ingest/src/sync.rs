@@ -21,6 +21,10 @@ use serde::Serialize;
 /// A log that has failed this many times is left alone until retried by hand.
 const MAX_FETCH_ATTEMPTS: i64 = 3;
 
+/// Consecutive logs we could not connect about before concluding that the
+/// server, not the log, is the problem.
+const GIVE_UP_AFTER: usize = 3;
+
 #[derive(Debug, Clone, Default)]
 pub struct SyncOptions {
     /// Ignore the incremental cursor and re-index everything.
@@ -54,9 +58,14 @@ pub enum Progress {
     /// Raw server logs from logs.tf.
     #[serde(rename_all = "camelCase")]
     RawLogs { done: usize, total: usize },
-    /// ETF2L could not be reached; the rest of the sync carries on.
+    /// A source could not be reached. The sync carries on without it: every
+    /// one of them adds to what is already stored rather than replacing it.
     #[serde(rename_all = "camelCase")]
-    Etf2lFailed { error: String },
+    SourceFailed { source: &'static str, error: String },
+    /// Downloading stopped early because the server stopped answering. What
+    /// is left waits for the next sync, unmarked.
+    #[serde(rename_all = "camelCase")]
+    GaveUp { source: &'static str, done: usize, total: usize },
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -91,11 +100,22 @@ pub async fn sync(
         db.record_sync("trends", Some(&cursor.to_string()), None).await?;
     }
 
-    // 2. logs.tf search: catches what trends.tf never indexed.
+    // 2. logs.tf search: catches what trends.tf never indexed. A supplement,
+    //    so a logs.tf that is down costs those older logs, not the sync.
     progress(Progress::Indexing { source: "logs.tf", rows: 0 });
-    let logstf = sources.logstf_search(&steamid64).await.context("indexing logs.tf")?;
-    store_logstf(db, &logstf).await?;
-    db.record_sync("logstf_search", None, None).await?;
+    let logstf = match sources.logstf_search(&steamid64).await {
+        Ok(rows) => {
+            store_logstf(db, &rows).await?;
+            db.record_sync("logstf_search", None, None).await?;
+            rows
+        }
+        Err(e) => {
+            let error = format!("{e:#}");
+            tracing::warn!(%error, "logs.tf index failed");
+            progress(Progress::SourceFailed { source: "logs.tf", error });
+            Vec::new()
+        }
+    };
 
     // 3. Collapse combined logs and their parts.
     let superseded = recompute_supersessions(db).await?;
@@ -124,7 +144,7 @@ pub async fn sync(
         Err(e) => {
             let error = format!("{e:#}");
             tracing::warn!(%error, "ETF2L fetch failed");
-            progress(Progress::Etf2lFailed { error });
+            progress(Progress::SourceFailed { source: "ETF2L", error });
         }
     }
 
@@ -135,6 +155,12 @@ pub async fn sync(
     }
     let total = queue.len();
     let (mut fetched, mut failed) = (0, 0);
+
+    // A log that logs.tf answered about badly has earned its failed attempt.
+    // A log we could not connect about has not, and three attempts is all a
+    // log gets before it waits for a retry by hand — so an outage must not
+    // spend them. Consecutive unreachable logs end the pass instead.
+    let mut unreachable_run = 0usize;
 
     for (i, log_id) in queue.into_iter().enumerate() {
         progress(Progress::Fetching { done: i, total, log_id });
@@ -147,6 +173,7 @@ pub async fn sync(
 
         match result {
             Ok(()) => {
+                unreachable_run = 0;
                 fetched += 1;
                 // Rated now rather than at the end of the sync, so the row
                 // that just appeared in the list arrives with its number on
@@ -156,7 +183,17 @@ pub async fn sync(
                     tracing::warn!(log_id, error = %format!("{e:#}"), "rating a new log failed");
                 }
             }
+            Err(e) if crate::http::unreachable(&e) => {
+                unreachable_run += 1;
+                tracing::warn!(log_id, error = %format!("{e:#}"), "logs.tf unreachable");
+                if unreachable_run >= GIVE_UP_AFTER {
+                    tracing::warn!(done = i, total, "logs.tf stopped answering; the rest waits for the next sync");
+                    progress(Progress::GaveUp { source: "logs.tf", done: i, total });
+                    break;
+                }
+            }
             Err(e) => {
+                unreachable_run = 0;
                 failed += 1;
                 let error = format!("{e:#}");
                 tracing::warn!(log_id, %error, "fetch failed");

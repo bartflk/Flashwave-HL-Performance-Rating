@@ -79,11 +79,15 @@ function SyncCard() {
         </p>
       )}
 
-      {done && sync.etf2lError && (
-        <p className="dl-sub" title={sync.etf2lError}>
-          ETF2L could not be reached; officials came from what was already stored.
-        </p>
-      )}
+      {/* What a source could not give us. The sync still finished, so this
+          is a note rather than a failure — but it is why a count may look
+          short, and it should not need the log file to find out. */}
+      {(done || sync.state === "running") &&
+        sync.notes.map((n) => (
+          <p key={n} className="dl-sub dl-note">
+            {n}
+          </p>
+        ))}
 
       {failed && <p className="dl-sub dl-error">{sync.message}</p>}
     </div>

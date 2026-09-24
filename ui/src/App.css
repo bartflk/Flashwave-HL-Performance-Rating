@@ -1046,3 +1046,8 @@ th.num {
   gap: 10px;
   margin-top: 22px;
 }
+
+/* A source that was down, on a card that otherwise says it went fine. */
+.dl-note {
+  color: var(--warn);
+}

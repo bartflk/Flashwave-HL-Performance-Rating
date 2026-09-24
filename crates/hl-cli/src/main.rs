@@ -1078,7 +1078,12 @@ fn print_progress(p: Progress) {
         Progress::Etf2l { done, total } => print!("\rETF2L matches {done}/{total}          "),
         Progress::RawLogs { done, total } => print!("\rraw logs {done}/{total}          "),
         Progress::Parts { done, total } => print!("\rparts {done}/{total}          "),
-        Progress::Etf2lFailed { error } => println!("\n  ! ETF2L: {error}"),
+        Progress::SourceFailed { source, error } => println!("
+  ! {source}: {error}"),
+        Progress::GaveUp { source, done, total } => {
+            println!("
+  ! {source} stopped answering at {done} of {total}; the rest waits for the next sync")
+        }
     }
     let _ = std::io::stdout().flush();
 }

@@ -28,7 +28,12 @@ pub struct RawlogSummary {
     pub missing: usize,
     pub failed: usize,
     pub kills: usize,
+    /// logs.tf stopped answering; the rest waits for the next sync.
+    pub gave_up: bool,
 }
+
+/// Consecutive logs we could not connect about before giving up on the server.
+const GIVE_UP_AFTER: usize = 3;
 
 /// Fetch raw logs for kept Highlander logs that lack one, newest first, and
 /// derive their kills. `max` caps how many are fetched in one go.
@@ -44,10 +49,14 @@ pub async fn fetch(
     }
     let total = queue.len();
     let mut s = RawlogSummary::default();
+    // Same rule as the log fetch: a server that is not answering is not a
+    // reason to spend an hour asking it politely.
+    let mut unreachable_run = 0usize;
     for (i, log_id) in queue.into_iter().enumerate() {
         progress(Progress::RawLogs { done: i, total });
         match sources.logstf_rawlog(log_id).await {
             Ok(None) => {
+                unreachable_run = 0;
                 db.mark_rawlog_missing(log_id, "logs.tf has no raw log").await?;
                 s.missing += 1;
             }
@@ -55,6 +64,7 @@ pub async fn fetch(
             // on every rebuild.
             Ok(Some(zip)) => match rawlog::unzip(&zip) {
                 Ok(text) => {
+                    unreachable_run = 0;
                     db.store_rawlog(log_id, &zip).await?;
                     s.kills += store(db, log_id, &rawlog::parse(&text)).await?;
                     s.fetched += 1;
@@ -65,7 +75,17 @@ pub async fn fetch(
                     s.failed += 1;
                 }
             },
+            Err(e) if crate::http::unreachable(&e) => {
+                unreachable_run += 1;
+                tracing::warn!(log_id, error = %format!("{e:#}"), "logs.tf unreachable");
+                if unreachable_run >= GIVE_UP_AFTER {
+                    s.gave_up = true;
+                    progress(Progress::GaveUp { source: "logs.tf", done: i, total });
+                    break;
+                }
+            }
             Err(e) => {
+                unreachable_run = 0;
                 tracing::warn!(log_id, error = %format!("{e:#}"), "raw log fetch failed");
                 s.failed += 1;
             }

@@ -14,8 +14,8 @@ import { errorMessage, type Progress, type SyncDone } from "../api/types";
 
 export type SyncState =
   | { state: "idle" }
-  | { state: "running"; progress: Progress | null; failures: number; etf2lError: string | null }
-  | { state: "done"; result: SyncDone; etf2lError: string | null }
+  | { state: "running"; progress: Progress | null; failures: number; notes: string[] }
+  | { state: "done"; result: SyncDone; notes: string[] }
   | { state: "error"; message: string };
 
 /** How often the match list may refresh while logs are arriving. Newest are
@@ -61,18 +61,26 @@ export function watchSync(qc: QueryClient) {
   // A sync may already be running: one started before the window reloaded.
   void api.syncBusy().then((busy) => {
     if (busy && status.state === "idle") {
-      set({ state: "running", progress: null, failures: 0, etf2lError: null });
+      set({ state: "running", progress: null, failures: 0, notes: [] });
     }
   });
 
   void api.onSync({
     onProgress: (p) => {
       const was = status.state === "running" ? status : null;
+      // What a source could not give us, kept for the card at the end: a
+      // sync that carried on without logs.tf succeeded, but not completely.
+      const note =
+        p.kind === "sourceFailed"
+          ? `${p.source} could not be reached; the sync carried on without it.`
+          : p.kind === "gaveUp"
+            ? `${p.source} stopped answering after ${p.done.toLocaleString()} of ${p.total.toLocaleString()}; the rest waits for the next sync.`
+            : null;
       set({
         state: "running",
         progress: p,
         failures: (was?.failures ?? 0) + (p.kind === "fetchFailed" ? 1 : 0),
-        etf2lError: p.kind === "etf2lFailed" ? p.error : (was?.etf2lError ?? null),
+        notes: note && !was?.notes.includes(note) ? [...(was?.notes ?? []), note] : (was?.notes ?? []),
       });
       // Each log is rated as it lands, so a refresh shows finished rows.
       if (p.kind === "fetching" && p.done > 0 && refreshTimer === null) {
@@ -86,7 +94,7 @@ export function watchSync(qc: QueryClient) {
       set({
         state: "done",
         result,
-        etf2lError: status.state === "running" ? status.etf2lError : null,
+        notes: status.state === "running" ? status.notes : [],
       });
       invalidateAll(qc);
     },
@@ -97,7 +105,7 @@ export function watchSync(qc: QueryClient) {
 /** Ask for a sync, and show it as running from the click rather than from the
  *  first event — indexing takes a few seconds before anything is reported. */
 export async function startSync(full = false) {
-  set({ state: "running", progress: null, failures: 0, etf2lError: null });
+  set({ state: "running", progress: null, failures: 0, notes: [] });
   try {
     await api.syncStart(full);
   } catch (e) {
@@ -107,7 +115,7 @@ export async function startSync(full = false) {
 
 /** The same, for rebuilding every match from stored data. */
 export async function startRebuild() {
-  set({ state: "running", progress: null, failures: 0, etf2lError: null });
+  set({ state: "running", progress: null, failures: 0, notes: [] });
   try {
     await api.reprocessStart();
   } catch (e) {
@@ -180,8 +188,10 @@ export function labelOf(p: Progress | null): string {
       return `Per-map logs ${n(p.done)} of ${n(p.total)}`;
     case "etf2l":
       return p.total === 0 ? "Checking ETF2L…" : `ETF2L officials ${p.done} of ${p.total}`;
-    case "etf2lFailed":
-      return "ETF2L could not be reached; carrying on without it.";
+    case "sourceFailed":
+      return `${p.source} could not be reached; carrying on without it.`;
+    case "gaveUp":
+      return `${p.source} stopped answering; the rest waits for the next sync.`;
   }
 }
 

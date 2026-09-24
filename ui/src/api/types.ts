@@ -143,7 +143,10 @@ export type Progress =
   | { kind: "rawLogs"; done: number; total: number }
   /** The per-map logs a combined log was built from. */
   | { kind: "parts"; done: number; total: number }
-  | { kind: "etf2lFailed"; error: string };
+  /** A source could not be reached; the sync carries on without it. */
+  | { kind: "sourceFailed"; source: string; error: string }
+  /** Downloading stopped early because the server stopped answering. */
+  | { kind: "gaveUp"; source: string; done: number; total: number };
 
 /** Sent once on `sync://done`. */
 export interface SyncDone {
