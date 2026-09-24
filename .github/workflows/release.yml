@@ -44,7 +44,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v__VERSION__
-          releaseName: HL Rating __VERSION__
+          releaseName: Flashwave.tf __VERSION__
           releaseBody: |
             Windows only. Download the `-setup.exe` below and run it.
 

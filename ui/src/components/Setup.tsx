@@ -20,7 +20,7 @@ export function Setup(props: { status: AppStatus; onDone: () => void; onFinish: 
         <div className="card-head setup-head">
           <img src="/logo.svg" alt="" className="setup-logo" />
           <div>
-            <h1>Welcome to HL Rating</h1>
+            <h1>Welcome to Flashwave.tf</h1>
             <p className="sub">
               Ratings for your TF2 Highlander games, built from your logs.tf history. Everything is stored on this PC.
             </p>

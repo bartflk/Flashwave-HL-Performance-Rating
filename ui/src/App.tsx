@@ -123,7 +123,7 @@ export default function App() {
           <h1 className="wordmark">
             <img src="/logo.svg" alt="" />
             <span>
-              <span className="hl">HL</span> Rating
+              Flashwave<span className="hl">.tf</span>
             </span>
             <span className="beta-tag" title="Test build: expect rough edges, and please report them">
               beta

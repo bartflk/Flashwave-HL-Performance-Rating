@@ -1,10 +1,10 @@
 @echo off
-rem Launch HL Rating in development mode: builds the Rust side, starts Vite,
+rem Launch Flashwave.tf in development mode: builds the Rust side, starts Vite,
 rem and opens the app window. Close the window (or this one) to stop it.
 rem
 rem Double-click a copy of this on the Desktop, or run `scripts\dev.cmd`.
 
-title HL Rating (dev)
+title Flashwave.tf (dev)
 
 rem This file lives in <repo>\scripts, so the repo is one level up.
 cd /d "%~dp0.."
@@ -27,7 +27,7 @@ if not exist "node_modules" (
 )
 
 echo.
-echo Starting HL Rating. The first build can take a few minutes; after that it
+echo Starting Flashwave.tf. The first build can take a few minutes; after that it
 echo reloads itself when the code changes.
 echo.
 call npm run dev

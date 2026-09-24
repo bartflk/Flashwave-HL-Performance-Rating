@@ -1,4 +1,4 @@
-"""The HL Rating logo: an original badge in TF2's colours (not Valve's logo).
+"""The Flashwave.tf logo: an original badge in TF2's colours (not Valve's logo).
 
 Writes ui/public/logo.svg and favicon.svg, and target/hl-logo-1024.png
 (pure Python, anti-aliased by signed distance). Then make every app icon:
