@@ -291,7 +291,7 @@
   gap: 2px;
 }
 
-/* Tabs read like TF2's menu: condensed capitals, orange underline when on. */
+/* Plain words with an orange underline on the one you are on. */
 .tab {
   background: none;
   border: none;
@@ -299,13 +299,9 @@
   border-bottom: 2px solid transparent;
   color: var(--muted);
   padding: 6px 12px 5px;
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  font-weight: 600;
-  font-stretch: 85%;
-  font-variation-settings: "wdth" 85;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .tab:hover:not(:disabled) {
@@ -319,51 +315,7 @@
   border-bottom-color: var(--accent);
 }
 
-/* --- sync strip --- */
-
-.sync-strip {
-  border-bottom: 1px solid var(--border);
-  padding: 12px var(--bleed-pad);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.sync-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.sync-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-
-.sync-summary strong {
-  color: var(--text);
-  font-weight: 600;
-}
-
-.sep {
-  color: #5c4f44;
-}
-
-.warn-text {
-  color: var(--warn);
-}
-
-.sync-note {
-  font-size: 0.87rem;
-  color: var(--muted);
-}
-
+/* A filling bar. The demo panel uses it; so does the corner card. */
 .progress {
   display: flex;
   flex-direction: column;
@@ -404,6 +356,64 @@
   color: var(--muted);
 }
 
+/* --- the top bar's right half: counts, Sync, you, settings --- */
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.sync-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ss-counts {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ss-counts strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* There is more to say than fits: the tooltip says it. */
+.ss-more {
+  color: var(--warn);
+  margin-left: 6px;
+}
+
+.ss-sync {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+}
+
+/* Settings, where a setting belongs: the far right, after you. */
+.cog {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--muted);
+}
+
+.cog:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.cog.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 /* --- match list --- */
 
 .matches {
@@ -417,41 +427,84 @@
   min-width: 0;
 }
 
-.matches-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  /* Tabs, period and map on one line until the window is too narrow. */
-  gap: 10px 14px;
-  flex-wrap: wrap;
-}
-
-.segmented {
-  display: inline-flex;
+/* The filter bar: one panel, and every control in a fixed place. Before
+   this they were flexed in a row and shuffled whenever one went missing —
+   the map dropdown only exists once there are maps to pick from. */
+.filters {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 3px;
-  gap: 2px;
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filter-row {
+  display: grid;
+  grid-template-columns: auto 230px 210px 1fr;
+  align-items: center;
+  gap: 14px;
+}
+
+.filter-row .an-field {
+  min-width: 0;
+}
+
+.filter-row select {
+  width: 100%;
+}
+
+.fi-count {
+  text-align: right;
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Narrow: the two dropdowns drop under the format tabs rather than squeezing. */
+@media (max-width: 900px) {
+  .filter-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .filter-row .segmented {
+    grid-column: 1 / -1;
+  }
+
+  .fi-count {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+}
+
+/* The format choices. No container: five words in a row, the chosen one lit
+   and underlined, like the tabs in the bar above them. */
+.segmented {
+  display: inline-flex;
+  gap: 4px;
 }
 
 .seg {
   border: none;
+  border-bottom: 2px solid transparent;
   background: none;
-  padding: 5px 12px;
+  border-radius: 0;
+  padding: 4px 10px 5px;
   font-size: 0.86rem;
   color: var(--muted);
-  border-radius: 6px;
 }
 
 .seg:hover:not(:disabled) {
-  background: var(--panel-2);
+  background: none;
   color: var(--text);
 }
 
 .seg.active {
-  background: var(--panel-2);
+  background: none;
   color: var(--text);
+  border-bottom-color: var(--accent);
 }
 
 .empty {
@@ -476,10 +529,13 @@
 
 .match-table th {
   text-align: left;
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-stretch: 85%;
+  font-variation-settings: "wdth" 85;
   font-size: 0.76rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   color: var(--muted);
   padding: 10px 12px;
   background: var(--panel);
@@ -490,16 +546,22 @@
 
 .match-table td {
   padding: 8px 12px;
-  border-bottom: 1px solid #29231f;
   vertical-align: middle;
 }
 
-.match-table tbody tr:last-child td {
-  border-bottom: none;
+/* Rows alternate between the page and a shade above it. Eleven columns of
+   numbers are hard to read straight across, and a line the eye can follow
+   beats a border between every pair of them. */
+.match-table tbody tr {
+  background: var(--bg);
 }
 
-.match-table tbody tr:hover td {
-  background: #221d1a;
+.match-table tbody tr:nth-child(even) {
+  background: #201b18;
+}
+
+.match-table tbody tr:hover {
+  background: #2b2420;
 }
 
 .num {
@@ -1050,4 +1112,10 @@ th.num {
 /* A source that was down, on a card that otherwise says it went fine. */
 .dl-note {
   color: var(--warn);
+}
+
+/* A panel's title sits on its own line, separated by a hairline. */
+.panel > h2 {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
 }

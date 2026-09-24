@@ -5,7 +5,7 @@ import { errorMessage } from "./api/types";
 import { Setup } from "./components/Setup";
 import { Settings } from "./components/Settings";
 import { Matches } from "./components/Matches";
-import { SyncStrip } from "./components/SyncStrip";
+import { SyncSummary } from "./components/SyncSummary";
 import { MatchPage } from "./components/match/MatchPage";
 import { ProfilePage } from "./components/profile/ProfilePage";
 import { TeammatesPage } from "./components/teammates/TeammatesPage";
@@ -20,11 +20,12 @@ import "./components/match/match.css";
 
 type Tab = "matches" | "profile" | "teammates" | "settings";
 
+// Settings is not one of these: it is the cog on the far right, where a
+// setting belongs, rather than a fourth thing to read.
 const TABS: Array<[Tab, string]> = [
   ["matches", "Matches"],
   ["profile", "Profile"],
   ["teammates", "Teammates"],
-  ["settings", "Settings"],
 ];
 
 export default function App() {
@@ -137,11 +138,20 @@ export default function App() {
             ))}
           </nav>
         </div>
-        <OwnerBadge steamid={data.config.steamid} />
+        <div className="topbar-right">
+          <SyncSummary />
+          <OwnerBadge steamid={data.config.steamid} />
+          <button
+            className={tab === "settings" ? "cog active" : "cog"}
+            title="Settings"
+            aria-label="Settings"
+            aria-pressed={tab === "settings"}
+            onClick={() => go(tab === "settings" ? "matches" : "settings")}
+          >
+            <Cog />
+          </button>
+        </div>
       </header>
-
-      {/* The strip stays mounted on every tab so sync progress is never lost. */}
-      <SyncStrip />
 
       <div hidden={tab !== "matches" || openLog !== null}>
         <Matches onOpen={setOpenLog} />
@@ -170,5 +180,21 @@ export default function App() {
       <Notifications onOpenMatch={setOpenLog} />
       <ToastHost />
     </div>
+  );
+}
+
+/** A cogwheel, drawn rather than fetched: eight teeth and a hole. */
+function Cog() {
+  return (
+    <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden focusable="false">
+      <path
+        fill="currentColor"
+        d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm0 6a2.2 2.2 0 1 1 0-4.4 2.2 2.2 0 0 1 0 4.4Z"
+      />
+      <path
+        fill="currentColor"
+        d="m20.5 13.6.02-1.6-.02-1.6-2.1-.34a6.6 6.6 0 0 0-.62-1.5l1.24-1.73-2.26-2.26-1.73 1.24a6.6 6.6 0 0 0-1.5-.62L12.9 2.7h-1.8l-.63 2.1c-.53.14-1.03.35-1.5.62L7.24 4.18 4.98 6.44l1.24 1.73c-.27.47-.48.97-.62 1.5l-2.1.33v3.2l2.1.33c.14.53.35 1.03.62 1.5l-1.24 1.73 2.26 2.26 1.73-1.24c.47.27.97.48 1.5.62l.33 2.1h3.2l.33-2.1c.53-.14 1.03-.35 1.5-.62l1.73 1.24 2.26-2.26-1.24-1.73c.27-.47.48-.97.62-1.5l2.1-.33Zm-3.6-.55a5.1 5.1 0 0 1-.78 1.88l-.3.44.97 1.35-.43.43-1.35-.97-.44.3c-.57.38-1.2.64-1.88.78l-.52.1-.26 1.64h-.6l-.26-1.64-.52-.1a5.1 5.1 0 0 1-1.88-.78l-.44-.3-1.35.97-.43-.43.97-1.35-.3-.44a5.1 5.1 0 0 1-.78-1.88l-.1-.52-1.64-.26v-.6l1.64-.26.1-.52c.14-.68.4-1.31.78-1.88l.3-.44-.97-1.35.43-.43 1.35.97.44-.3c.57-.38 1.2-.64 1.88-.78l.52-.1.26-1.64h.6l.26 1.64.52.1c.68.14 1.31.4 1.88.78l.44.3 1.35-.97.43.43-.97 1.35.3.44c.38.57.64 1.2.78 1.88l.1.52 1.64.26v.6l-1.64.26-.1.52Z"
+      />
+    </svg>
   );
 }

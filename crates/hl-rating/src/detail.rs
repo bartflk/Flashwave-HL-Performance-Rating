@@ -394,7 +394,7 @@ fn side(
         let weighted = rated.iter().map(|(r, t)| r.score * *t as f64).sum::<f64>() / total_t as f64;
         // Show the starter's breakdown; rank on the team's time-weighted score.
         let mut r = rated.into_iter().next().expect("total_t > 0").0;
-        r.score = round1(weighted);
+        r.score = round2(weighted);
         s.rating = Some(r);
     }
     Some(s)
@@ -523,9 +523,6 @@ fn display_name(p: &PlayerLine) -> String {
     p.name.clone().unwrap_or_else(|| p.id.to_steamid3())
 }
 
-fn round1(x: f64) -> f64 {
-    (x * 10.0).round() / 10.0
-}
 
 fn round2(x: f64) -> f64 {
     (x * 100.0).round() / 100.0

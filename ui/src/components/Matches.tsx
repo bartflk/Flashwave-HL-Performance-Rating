@@ -66,7 +66,12 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
 
   return (
     <section className="matches">
-      <div className="matches-head">
+      {/* Every filter has a place and keeps it: the format on the left, the
+          two dropdowns in the middle at a fixed width, the count on the
+          right, and the classes on their own line underneath. Nothing moves
+          when one of them is missing. */}
+      <div className="filters">
+        <div className="filter-row">
         <div className="segmented" role="tablist">
           {VIEWS.map((v) => (
             <button
@@ -86,7 +91,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
         </div>
         <PeriodPicker />
         {(filters.data?.maps.length ?? 0) > 0 && (
-          <label className="an-field">
+          <label className="an-field fi-map">
             <span className="an-label">Map</span>
             <select
               value={map ?? ""}
@@ -104,10 +109,10 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
             </select>
           </label>
         )}
-        <span className="hint">
+        <span className="fi-count">
           {matches.isPending ? "Loading…" : `${total.toLocaleString()} match${total === 1 ? "" : "es"}`}
         </span>
-      </div>
+        </div>
 
       {(filters.data?.classes.length ?? 0) > 0 && (
         <div className="class-filter" role="tablist" aria-label="Class">
@@ -140,6 +145,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
           ))}
         </div>
       )}
+      </div>
 
       {matches.isError && <p className="error">{errorMessage(matches.error)}</p>}
 

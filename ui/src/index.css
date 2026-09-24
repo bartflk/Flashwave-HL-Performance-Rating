@@ -96,20 +96,21 @@ code {
   word-break: break-all;
 }
 
+/* A button is a flat surface with the faintest lift from top to bottom. */
 button {
   font: inherit;
   padding: 8px 16px;
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid var(--border);
-  background: var(--panel-2);
+  background: linear-gradient(#302a24, #2a241f);
   color: var(--text);
   cursor: pointer;
   transition: background 120ms ease, border-color 120ms ease;
 }
 
 button:hover:not(:disabled) {
-  background: #3a322b;
-  border-color: #4f4339;
+  background: linear-gradient(#393129, #322b25);
+  border-color: #54483d;
 }
 
 button:disabled {
@@ -119,19 +120,18 @@ button:disabled {
 
 /* The TF2 menu button: orange, bold capitals, a darker lip underneath. */
 button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: linear-gradient(#e8813f, #d97333);
+  border-color: #c4642a;
   color: #1f140d;
   font-family: var(--font-display);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.22);
 }
 
 button.primary:hover:not(:disabled) {
-  background: #ef8a4f;
-  border-color: #ef8a4f;
+  background: linear-gradient(#f1904d, #e37f3c);
+  border-color: #d06d2f;
 }
 
 /* Dropdowns. The browser's own control is kept — it behaves properly with a
@@ -142,24 +142,26 @@ button.primary:hover:not(:disabled) {
 select {
   font: inherit;
   padding: 7px 30px 7px 11px;
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid var(--border);
-  background-color: var(--panel-2);
+  background-color: #2d2721;
   color: var(--text);
   cursor: pointer;
   outline: none;
   appearance: none;
   -webkit-appearance: none;
   color-scheme: dark;
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a8998b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
+  /* Two layers: the arrow, then the same faint lift the buttons have. */
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a8998b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
+    linear-gradient(#302a24, #2a241f);
+  background-repeat: no-repeat, no-repeat;
+  background-position: right 10px center, center;
   transition: background-color 120ms ease, border-color 120ms ease;
 }
 
 select:hover {
-  border-color: #4f4339;
-  background-color: #3a322b;
+  border-color: #574a3e;
+  background-color: #383029;
 }
 
 select:focus-visible {

@@ -34,7 +34,7 @@
         "dmg": 37338,
         "rating": {
           "class": "scout",
-          "score": 1.2,
+          "score": 1.19,
           "minutes": 108.0,
           "parts": [
             {
@@ -91,7 +91,7 @@
         "dmg": 37220,
         "rating": {
           "class": "scout",
-          "score": 1.3,
+          "score": 1.33,
           "minutes": 107.6,
           "parts": [
             {
@@ -141,7 +141,7 @@
         6,
         11
       ],
-      "diff": -0.1,
+      "diff": -0.14,
       "winner": "right",
       "decisive": false,
       "involvesMe": false
@@ -159,7 +159,7 @@
         "dmg": 39253,
         "rating": {
           "class": "soldier",
-          "score": 1.1,
+          "score": 1.08,
           "minutes": 108.0,
           "parts": [
             {
@@ -216,7 +216,7 @@
         "dmg": 36750,
         "rating": {
           "class": "soldier",
-          "score": 1.0,
+          "score": 1.03,
           "minutes": 108.0,
           "parts": [
             {
@@ -266,8 +266,8 @@
         18,
         13
       ],
-      "diff": 0.1,
-      "winner": "left",
+      "diff": 0.05,
+      "winner": "even",
       "decisive": false,
       "involvesMe": false
     },
@@ -341,7 +341,7 @@
         "dmg": 10040,
         "rating": {
           "class": "pyro",
-          "score": 0.7,
+          "score": 0.72,
           "minutes": 108.0,
           "parts": [
             {
@@ -391,7 +391,7 @@
         4,
         3
       ],
-      "diff": 0.3,
+      "diff": 0.28,
       "winner": "left",
       "decisive": true,
       "involvesMe": false
@@ -409,7 +409,7 @@
         "dmg": 51978,
         "rating": {
           "class": "demoman",
-          "score": 1.0,
+          "score": 1.01,
           "minutes": 108.0,
           "parts": [
             {
@@ -466,7 +466,7 @@
         "dmg": 53163,
         "rating": {
           "class": "demoman",
-          "score": 1.1,
+          "score": 1.12,
           "minutes": 108.0,
           "parts": [
             {
@@ -516,7 +516,7 @@
         11,
         12
       ],
-      "diff": -0.1,
+      "diff": -0.11,
       "winner": "right",
       "decisive": false,
       "involvesMe": false
@@ -534,7 +534,7 @@
         "dmg": 34135,
         "rating": {
           "class": "heavy",
-          "score": 0.9,
+          "score": 0.94,
           "minutes": 108.0,
           "parts": [
             {
@@ -591,7 +591,7 @@
         "dmg": 37960,
         "rating": {
           "class": "heavy",
-          "score": 1.3,
+          "score": 1.28,
           "minutes": 108.0,
           "parts": [
             {
@@ -641,7 +641,7 @@
         10,
         29
       ],
-      "diff": -0.4,
+      "diff": -0.34,
       "winner": "right",
       "decisive": true,
       "involvesMe": false
@@ -659,7 +659,7 @@
         "dmg": 17428,
         "rating": {
           "class": "engineer",
-          "score": 1.0,
+          "score": 0.95,
           "minutes": 108.0,
           "parts": [
             {
@@ -716,7 +716,7 @@
         "dmg": 25147,
         "rating": {
           "class": "engineer",
-          "score": 1.2,
+          "score": 1.21,
           "minutes": 108.0,
           "parts": [
             {
@@ -766,7 +766,7 @@
         3,
         0
       ],
-      "diff": -0.2,
+      "diff": -0.26,
       "winner": "right",
       "decisive": true,
       "involvesMe": false
@@ -784,7 +784,7 @@
         "dmg": 307,
         "rating": {
           "class": "medic",
-          "score": 1.2,
+          "score": 1.19,
           "minutes": 108.0,
           "parts": [
             {
@@ -841,7 +841,7 @@
         "dmg": 414,
         "rating": {
           "class": "medic",
-          "score": 1.2,
+          "score": 1.24,
           "minutes": 108.0,
           "parts": [
             {
@@ -891,7 +891,7 @@
         0,
         0
       ],
-      "diff": 0.0,
+      "diff": -0.05,
       "winner": "even",
       "decisive": false,
       "involvesMe": false
@@ -909,7 +909,7 @@
         "dmg": 41906,
         "rating": {
           "class": "sniper",
-          "score": 1.2,
+          "score": 1.16,
           "minutes": 108.0,
           "parts": [
             {
@@ -998,7 +998,7 @@
         "dmg": 33425,
         "rating": {
           "class": "sniper",
-          "score": 1.1,
+          "score": 1.12,
           "minutes": 108.0,
           "parts": [
             {
@@ -1080,8 +1080,8 @@
         20,
         26
       ],
-      "diff": 0.1,
-      "winner": "left",
+      "diff": 0.04,
+      "winner": "even",
       "decisive": false,
       "involvesMe": true
     },
@@ -1098,7 +1098,7 @@
         "dmg": 30524,
         "rating": {
           "class": "spy",
-          "score": 1.0,
+          "score": 0.97,
           "minutes": 108.0,
           "parts": [
             {
@@ -1155,7 +1155,7 @@
         "dmg": 36858,
         "rating": {
           "class": "spy",
-          "score": 1.1,
+          "score": 1.11,
           "minutes": 108.0,
           "parts": [
             {
@@ -1205,7 +1205,7 @@
         6,
         7
       ],
-      "diff": -0.1,
+      "diff": -0.14,
       "winner": "right",
       "decisive": false,
       "involvesMe": false
