@@ -13,6 +13,7 @@ import { ToastHost } from "./lib/toast";
 import { Downloads } from "./components/Downloads";
 import { watchDownloads } from "./lib/downloads";
 import { OwnerBadge } from "./components/OwnerBadge";
+import { RestoreBanner } from "./components/RestoreBanner";
 import "./App.css";
 import "./components/match/match.css";
 
@@ -81,6 +82,19 @@ export default function App() {
   }
 
   const data = status.data;
+
+  // Before anything else, including setup: a wiped install looks exactly like
+  // a new one, and only the backup beside it tells them apart.
+  if (data.restore) {
+    return (
+      <div className="shell">
+        <div className="centered">
+          <RestoreBanner offer={data.restore} onSettled={() => void status.refetch()} />
+        </div>
+      </div>
+    );
+  }
+
   if (onboarding === null) setOnboarding(!data.ready);
 
   if (!data.ready || forceSetup || onboarding) {

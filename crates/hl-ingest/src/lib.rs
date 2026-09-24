@@ -33,6 +33,7 @@ pub mod kills;
 pub const BULK_PER_SYNC: usize = 100;
 pub mod aim;
 pub mod backup;
+pub mod restore;
 pub mod analysis;
 pub mod mapview;
 pub mod overview;

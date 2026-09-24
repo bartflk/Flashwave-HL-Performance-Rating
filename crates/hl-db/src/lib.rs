@@ -98,6 +98,33 @@ impl Db {
         Ok(())
     }
 
+    /// How many logs a database file holds, without opening it properly.
+    ///
+    /// Read-only and without migrations, because the caller is asking about a
+    /// *backup*: migrating one as a side effect of looking at it would rewrite
+    /// the very file being kept as it was. A file that is not a database, or
+    /// is too old to have `log_index`, counts as empty rather than an error —
+    /// the question is only ever "is there anything in here".
+    pub async fn peek_matches(path: &Path) -> i64 {
+        let opts = SqliteConnectOptions::new().filename(path).create_if_missing(false).read_only(true);
+        let Ok(mut conn) = <sqlx::sqlite::SqliteConnection as sqlx::Connection>::connect_with(&opts).await
+        else {
+            return 0;
+        };
+        let n: i64 = sqlx::query_scalar("SELECT count(*) FROM log_index")
+            .fetch_one(&mut conn)
+            .await
+            .unwrap_or(0);
+        let _ = sqlx::Connection::close(conn).await;
+        n
+    }
+
+    /// Let go of the file. Only startup work needs this: everything else keeps
+    /// the pool for as long as the app runs.
+    pub async fn close(&self) {
+        self.pool.close().await;
+    }
+
     /// An in-memory database with migrations applied. For tests.
     pub async fn connect_in_memory() -> Result<Self> {
         let pool = SqlitePoolOptions::new()

@@ -88,6 +88,12 @@ const realApi = {
   getPaths: (logId: number) => invoke<PathRow[]>("get_paths", { logId }),
   /** Copies of the database, newest first. */
   listBackups: () => invoke<Backups>("list_backups"),
+  /** Show a file or folder in Explorer. */
+  revealPath: (path: string) => invoke<void>("reveal_path", { path }),
+  /** Put a backup back and restart. Refused unless this database is empty. */
+  restoreBackup: (path: string) => invoke<void>("restore_backup", { path }),
+  /** Start fresh on purpose: stop offering the backup. */
+  declineRestore: () => invoke<void>("decline_restore"),
   /** Copy the database now, whatever the last copy's age. */
   backupNow: () => invoke<Backup | null>("backup_now"),
   /** What the demo says about your aim in one match (PLAN §14). */

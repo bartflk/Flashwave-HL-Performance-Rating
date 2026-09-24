@@ -19,17 +19,33 @@ pub struct AppStatus {
     pub db_path: String,
     pub ready: bool,
     pub config: AppConfig,
+    /// Set only when the database is empty and a backup beside it is not:
+    /// the app says so before it asks for anything else.
+    pub restore: Option<hl_ingest::restore::RestoreOffer>,
 }
 
 #[tauri::command]
 pub async fn app_status(state: State<'_, AppState>) -> CmdResult<AppStatus> {
     let config = state.db.get_config().await?;
+    // A wipe takes the config with it, so this is checked before the setup
+    // screen goes up — a fresh-looking install is exactly the case where a
+    // backup matters most.
+    let declined = state.db.get_setting(RESTORE_DECLINED).await?.is_some();
+    let restore = if declined {
+        None
+    } else {
+        hl_ingest::restore::offer(&state.db, &state.db_path).await.unwrap_or_else(|e| {
+            tracing::warn!(error = %format!("{e:#}"), "looking for a backup to offer failed");
+            None
+        })
+    };
     Ok(AppStatus {
         // The installers carry a plain 0.1.0 (MSI allows digits only); the app says what it is.
         version: concat!(env!("CARGO_PKG_VERSION"), " beta"),
         db_path: state.db_path.to_string_lossy().into_owned(),
         ready: config.is_ready(),
         config,
+        restore,
     })
 }
 
@@ -86,3 +102,56 @@ pub async fn set_tf_path(state: State<'_, AppState>, path: String) -> CmdResult<
     tracing::info!(path = %info.path, demos = info.demo_count, "tf path set");
     Ok(info)
 }
+
+/// Show a file or folder in the system file manager.
+///
+/// The database is the one thing here that cannot be downloaded again, so
+/// getting to it — to copy it somewhere safe, or to put one back by hand —
+/// should not mean typing out an `AppData` path from a label.
+#[tauri::command]
+pub async fn reveal_path(app: tauri::AppHandle, path: String) -> CmdResult<()> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .reveal_item_in_dir(&path)
+        .map_err(|e| CmdError::new("reveal_failed", format!("Could not open `{path}`: {e}")))
+}
+
+/// Put a backup back in place of the current database, and restart.
+///
+/// The copy itself happens at the next start, with nothing connected: SQLite
+/// holds the file open while the app runs, and Windows will not let an open
+/// file be replaced underneath. Refused unless the database really is empty,
+/// so this can never be the thing that loses a history.
+#[tauri::command]
+pub async fn restore_backup(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    path: String,
+) -> CmdResult<()> {
+    let indexed = state.db.index_stats().await?.indexed;
+    if indexed > 0 {
+        return Err(CmdError::new(
+            "not_empty",
+            format!(
+                "This database already holds {indexed} matches. \
+                 Close the app and rename the copy over `hl.sqlite3` if you mean to replace it."
+            ),
+        ));
+    }
+    hl_ingest::restore::request(&state.db_path, std::path::Path::new(&path))
+        .map_err(|e| CmdError::new("restore_failed", format!("{e:#}")))?;
+    tracing::info!(%path, "restore requested; restarting");
+    // Never returns.
+    app.restart()
+}
+
+/// Don't offer the restore again on this database.
+#[tauri::command]
+pub async fn decline_restore(state: State<'_, AppState>) -> CmdResult<()> {
+    state.db.set_setting(RESTORE_DECLINED, "1").await?;
+    Ok(())
+}
+
+/// Set once the offer has been turned down, so a deliberate fresh start is
+/// not asked about again on every launch.
+pub const RESTORE_DECLINED: &str = "restore_declined";

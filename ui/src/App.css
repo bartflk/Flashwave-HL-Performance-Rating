@@ -959,3 +959,54 @@ th.num {
 .cf-n {
   font-variant-numeric: tabular-nums;
 }
+
+/* An empty database with a backup beside it: the one screen that must be
+   read before anything else on it is touched. Built like .card, but warm —
+   this is a warning, not a step in setup. */
+.restore {
+  width: 100%;
+  max-width: 620px;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 28px;
+  box-shadow: 0 0 0 4px rgba(224, 118, 58, 0.08);
+}
+
+.restore h2 {
+  font-size: 1.15rem;
+  line-height: 1.35;
+}
+
+.restore-body p {
+  margin-top: 12px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.restore-path {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.restore-path code {
+  font-size: 0.8rem;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.restore-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+/* A path and the button that opens it, on one line where there is room. */
+.path-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}

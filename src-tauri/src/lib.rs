@@ -45,6 +45,15 @@ pub fn run() {
                 .map_err(|e| format!("resolving the application data directory: {e}"))?
                 .join("hl.sqlite3");
 
+            // A backup asked for last run goes in now, while nothing has the
+            // file open. Failing here must not stop the app: the marker is
+            // cleared either way, and the old database is still there.
+            match hl_ingest::restore::apply_pending(&db_path) {
+                Ok(Some(from)) => tracing::info!(from = %from.display(), "database restored"),
+                Ok(None) => {}
+                Err(e) => tracing::error!(error = %format!("{e:#}"), "restore failed"),
+            }
+
             // Blocking here is deliberate: the window should not appear until
             // migrations have applied, so no command can race an unmigrated db.
             let db = tauri::async_runtime::block_on(Db::connect(&db_path))
@@ -121,6 +130,9 @@ pub fn run() {
             commands::inspect_tf_path,
             commands::detect_tf_path,
             commands::set_tf_path,
+            commands::reveal_path,
+            commands::restore_backup,
+            commands::decline_restore,
             sync_commands::sync_start,
             sync_commands::reprocess_start,
             sync_commands::sync_busy,

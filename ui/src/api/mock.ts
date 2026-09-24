@@ -337,6 +337,9 @@ export const mockApi: Api = {
       dbPath: "C:\\Users\\you\\AppData\\Roaming\\gg.highlander.rating\\hl.sqlite3",
       ready: state.steamid !== null && state.tfPath !== null,
       config: { ...state },
+      // The browser mock is never a wiped install; the banner has its own
+      // story in the preview when this is filled in by hand.
+      restore: null,
     }),
 
   getConfig: () => delay({ ...state }),
@@ -599,6 +602,15 @@ export const mockApi: Api = {
         { path: "…\hl-20260919-201112.sqlite3", bytes: 182_100_000, madeAt: Math.floor(Date.now() / 1000) - 90_000 },
       ],
     }),
+  revealPath: (path: string) => {
+    console.info("would reveal", path);
+    return delay(undefined as void);
+  },
+  restoreBackup: (path: string) => {
+    console.info("would restore", path);
+    return delay(undefined as void);
+  },
+  declineRestore: () => delay(undefined as void),
   backupNow: () =>
     delay({ path: "…\hl-now.sqlite3", bytes: 183_900_000, madeAt: Math.floor(Date.now() / 1000) }),
 

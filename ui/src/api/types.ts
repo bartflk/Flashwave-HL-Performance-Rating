@@ -41,6 +41,18 @@ export interface AppStatus {
   dbPath: string;
   ready: boolean;
   config: AppConfig;
+  /** Set only when this database is empty and a backup beside it is not. */
+  restore: RestoreOffer | null;
+}
+
+/** A backup the app can put back, because there is nothing to lose by it. */
+export interface RestoreOffer {
+  path: string;
+  bytes: number;
+  /** Unix seconds. */
+  madeAt: number;
+  /** Matches inside it. */
+  matches: number;
 }
 
 /** What every failed command rejects with. */

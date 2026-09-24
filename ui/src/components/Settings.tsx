@@ -68,8 +68,13 @@ export function Settings({
         {rebuild.error && <p className="error" style={{ marginTop: 10 }}>{rebuild.error}</p>}
         <dl className="kv" style={{ marginTop: 16 }}>
           <dt>Database</dt>
-          <dd>
+          <dd className="path-row">
             <code>{status.dbPath}</code>
+            {/* Every log, rating and demo link is in this one file, and it is
+                the only thing here that cannot be fetched again. */}
+            <button className="linkish" onClick={() => void api.revealPath(status.dbPath)}>
+              Show in Explorer
+            </button>
           </dd>
           <dt>Version</dt>
           <dd>{status.version}</dd>
@@ -128,8 +133,11 @@ function BackupsPanel() {
       ) : (
         <dl className="kv" style={{ marginTop: 16 }}>
           <dt>Folder</dt>
-          <dd>
+          <dd className="path-row">
             <code>{q.data?.dir}</code>
+            <button className="linkish" onClick={() => void api.revealPath(q.data!.dir)}>
+              Show in Explorer
+            </button>
           </dd>
           {items.map((b) => (
             <Fragment key={b.path}>
