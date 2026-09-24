@@ -1,7 +1,7 @@
 //! Sync and reprocess.
 //!
 //! ```text
-//! sync:      trends.tf index -> logs.tf search -> dedupe -> ETF2L -> fetch queue -> normalize
+//! sync:      trends.tf index -> logs.tf search -> dedupe -> ETF2L -> fetch queue -> normalize -> rate
 //! reprocess: stored index    ->                   dedupe ->               normalize
 //! ```
 //!
@@ -72,6 +72,7 @@ pub async fn sync(
     sources: &Sources,
     me: SteamId,
     opts: &SyncOptions,
+    w: &hl_rating::Weights,
     mut progress: impl FnMut(Progress),
 ) -> Result<SyncSummary> {
     let steamid64 = me.to_steamid64();
@@ -145,7 +146,16 @@ pub async fn sync(
         .await;
 
         match result {
-            Ok(()) => fetched += 1,
+            Ok(()) => {
+                fetched += 1;
+                // Rated now rather than at the end of the sync, so the row
+                // that just appeared in the list arrives with its number on
+                // it. Against the stored baselines, which a few new games
+                // barely move; the full pass at the end refines it.
+                if let Err(e) = crate::rating::rate_logs(db, w, &[log_id]).await {
+                    tracing::warn!(log_id, error = %format!("{e:#}"), "rating a new log failed");
+                }
+            }
             Err(e) => {
                 failed += 1;
                 let error = format!("{e:#}");

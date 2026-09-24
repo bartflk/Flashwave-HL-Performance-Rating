@@ -112,6 +112,42 @@ impl Db {
         Ok(())
     }
 
+    /// Replace one log's ratings, leaving every other log alone.
+    ///
+    /// For rating a log the moment it arrives, mid sync: `replace_ratings`
+    /// clears the whole model version, which would empty the match list every
+    /// time a single match landed.
+    pub async fn put_ratings_for_log(
+        &self,
+        version: &str,
+        log_id: i64,
+        rows: &[RatingRow<'_>],
+    ) -> Result<()> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("DELETE FROM rating WHERE model_version = ?1 AND log_id = ?2")
+            .bind(version)
+            .bind(log_id)
+            .execute(&mut *tx)
+            .await?;
+        for r in rows {
+            sqlx::query(
+                "INSERT INTO rating (log_id, account_id, model_version, class, score, minutes, parts)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            )
+            .bind(r.log_id)
+            .bind(r.account_id as i64)
+            .bind(version)
+            .bind(r.class)
+            .bind(r.score)
+            .bind(r.minutes)
+            .bind(&r.parts_json)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
     /// Kept Highlander logs with a stored raw log: the set that gets rated.
     pub async fn rateable_log_ids(&self) -> Result<Vec<i64>> {
         Ok(sqlx::query_scalar(
@@ -232,5 +268,31 @@ impl Db {
         .fetch_one(self.pool())
         .await?;
         Ok(VsTotals { kills: row.get("kills"), deaths: row.get("deaths") })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A baseline is a sorted pool of floats, and a rating is a value's place
+    /// in it. One bit of drift turns a tie into a near miss and moves a
+    /// percentile by half a rank, so stored and in-memory pools must be the
+    /// same numbers, not nearly the same.
+    ///
+    /// This holds only because `serde_json` is built with `float_roundtrip`:
+    /// its default parser is not correctly rounded. The value below is a real
+    /// one from a medic-picks pool, and it is off by one bit without it.
+    #[tokio::test]
+    async fn a_stored_baseline_comes_back_bit_for_bit() {
+        let db = Db::connect_in_memory().await.unwrap();
+        let values = vec![0.0, 0.996_677_740_863_787_5, 1.0 / 3.0, f64::MAX];
+        db.replace_baselines("v-test", &[("sniper".into(), "medic_picks".into(), values.clone())])
+            .await
+            .unwrap();
+
+        let back = db.load_baselines("v-test").await.unwrap();
+        assert_eq!(back.len(), 1);
+        assert_eq!(back[0].2, values, "stored as text, read back as the same floats");
     }
 }

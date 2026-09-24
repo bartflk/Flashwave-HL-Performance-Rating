@@ -1,11 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { errorMessage, type Progress, type SyncDone } from "../api/types";
 
-/** Newest logs are fetched first, so refreshing the list during a sync shows
- *  recent matches appearing while older history is still downloading. */
-const REFRESH_EVERY_N_FETCHES = 10;
+/** How often the list may refresh while a sync runs.
+ *
+ *  Newest logs are fetched first, so the matches you played last night appear
+ *  within seconds while older history is still downloading — and each arrives
+ *  already rated, because the fetch loop scores it as it lands. A refresh per
+ *  log would re-render the list every two seconds for an hour, so they are
+ *  collapsed into one a second. */
+const REFRESH_EVERY_MS = 1000;
 
 /** Rough seconds per log: the 1 req/s throttle plus logs.tf response time. */
 const SECONDS_PER_LOG = 2.5;
@@ -23,6 +28,8 @@ export function SyncStrip() {
   const [etf2lError, setEtf2lError] = useState<string | null>(null);
 
   const stats = useQuery({ queryKey: ["index_stats"], queryFn: api.indexStats });
+  // One pending refresh at a time, whatever arrives in between.
+  const refreshing = useRef<number | null>(null);
 
   // A sync may already be running (started before a reload). Reflect that.
   useEffect(() => {
@@ -40,8 +47,11 @@ export function SyncStrip() {
           setStatus({ state: "running", progress: p });
           if (p.kind === "fetchFailed") setFailures((n) => n + 1);
           if (p.kind === "etf2lFailed") setEtf2lError(p.error);
-          if (p.kind === "fetching" && p.done > 0 && p.done % REFRESH_EVERY_N_FETCHES === 0) {
-            void qc.invalidateQueries({ queryKey: ["matches"] });
+          if (p.kind === "fetching" && p.done > 0 && refreshing.current === null) {
+            refreshing.current = window.setTimeout(() => {
+              refreshing.current = null;
+              void qc.invalidateQueries({ queryKey: ["matches"] });
+            }, REFRESH_EVERY_MS);
           }
         },
         onDone: (result) => {
@@ -64,6 +74,10 @@ export function SyncStrip() {
     return () => {
       cancelled = true;
       off?.();
+      if (refreshing.current !== null) {
+        clearTimeout(refreshing.current);
+        refreshing.current = null;
+      }
     };
   }, [qc]);
 

@@ -179,7 +179,8 @@ async fn main() -> Result<()> {
                 .await?
                 .context("no owner set: run `hl set-steamid <ID>` first")?;
             let sources = Sources::new()?;
-            let summary = hl_ingest::sync(&db, &sources, me, &opts, print_progress).await?;
+            let (weights, _) = hl_rating::Weights::load(&db_path.with_file_name("weights.toml"));
+            let summary = hl_ingest::sync(&db, &sources, me, &opts, &weights, print_progress).await?;
             println!();
             println!("fetched {} log(s), {} failed", summary.fetched, summary.failed);
             let raw = hl_ingest::kills::fetch(&db, &sources, None, print_progress).await?;

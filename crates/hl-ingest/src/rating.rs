@@ -71,6 +71,64 @@ pub async fn rate_all(
     Ok(RateSummary { logs: total, performances: perfs.len(), rated: rows.len(), mine })
 }
 
+/// Rate a few logs now, against the baselines already stored.
+///
+/// A sync downloads newest first, so a match you played last night appears in
+/// the list within seconds — and used to sit there with an empty rating until
+/// the whole corpus was re-rated at the end, minutes later. This fills it in
+/// as it lands.
+///
+/// The number is real, not a placeholder. It is measured against the pool as
+/// it stood at the last full pass, which a handful of new games barely move;
+/// and the components that need the raw server log — openings, trades, kill
+/// situations — are *skipped* rather than scored as zero, exactly as they are
+/// for the logs logs.tf never had a raw log for. The full pass at the end of
+/// the sync refines both.
+///
+/// Returns how many performances were scored. Does nothing before the first
+/// full pass, when there are no baselines to measure against.
+pub async fn rate_logs(db: &Db, w: &Weights, log_ids: &[i64]) -> Result<usize> {
+    let baseline = load_baseline(db).await?;
+    if baseline.is_empty() || log_ids.is_empty() {
+        return Ok(0);
+    }
+    let mut scored = 0;
+    for &log_id in log_ids {
+        let Some(json) = db.raw_log(log_id).await? else { continue };
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(&json) else { continue };
+        let Ok(log) = normalize(log_id, &value) else { continue };
+
+        // Per log rather than the whole corpus: this runs between fetches.
+        let kills = db.kills_for_log(log_id).await?;
+        let situations = db.kill_situations(log_id).await?;
+        let windows = db.round_windows(log_id).await?;
+        let mut impact =
+            crate::kills::impacts_for(&kills, Some(&situations), &windows, log.map.as_deref(), w);
+        let fights = db.fight_counts(Some(log_id)).await?;
+        crate::kills::attach_fights(&mut impact, fights.get(&log_id).map_or(&[][..], |f| f.as_slice()));
+
+        let rows: Vec<RatingRow> = log
+            .players
+            .iter()
+            .filter_map(|p| extract(p, &log.flags, w, impact.get(&p.id.account_id())))
+            .filter_map(|perf| {
+                let r = rate(&perf, &baseline, w)?;
+                Some(RatingRow {
+                    log_id,
+                    account_id: perf.account_id,
+                    class: perf.class.as_str(),
+                    score: r.score,
+                    minutes: r.minutes,
+                    parts_json: serde_json::to_string(&r.parts).ok()?,
+                })
+            })
+            .collect();
+        scored += rows.len();
+        db.put_ratings_for_log(MODEL_VERSION, log_id, &rows).await?;
+    }
+    Ok(scored)
+}
+
 /// Pass 1 of rating: every rateable performance in every kept Highlander log,
 /// with the components `w` names for each class. Kills from raw logs are
 /// valued one by one, and fight counts attached, where a raw log exists.

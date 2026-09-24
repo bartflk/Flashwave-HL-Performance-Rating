@@ -74,7 +74,10 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             if let Err(e) = hl_ingest::backup::run(&db, &db_path, false).await {
                 tracing::warn!(error = %format!("{e:#}"), "database backup failed");
             }
-            let summary = hl_ingest::sync(&db, &sources, me, &opts, |p: Progress| {
+            // Loaded once: the fetch loop rates each log as it lands, and
+            // the pass at the end re-rates everything.
+            let (weights, _) = hl_rating::Weights::load(&weights_path);
+            let summary = hl_ingest::sync(&db, &sources, me, &opts, &weights, |p: Progress| {
                 let _ = emitter.emit(EV_PROGRESS, p);
             })
             .await?;
@@ -124,7 +127,6 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                 Err(e) => tracing::warn!(error = %format!("{e:#}"), "reading aim from demos failed"),
             }
             // Every sync ends by re-rating: new matches shift the baselines.
-            let (weights, _) = hl_rating::Weights::load(&weights_path);
             hl_ingest::rate_all(&db, Some(me), &weights, |p: Progress| {
                 let _ = emitter.emit(EV_PROGRESS, p);
             })

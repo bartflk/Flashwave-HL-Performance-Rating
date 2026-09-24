@@ -17,7 +17,11 @@ hl-demos = { path = "crates/hl-demos" }
 anyhow = "1"
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# `float_roundtrip`: serde_json's default parser is not correctly rounded, so
+# a float could come back one bit-pattern away from the one written — enough
+# to turn a tie in a rating baseline into a near miss, and move a percentile
+# by half a rank. Everything here that stores a number stores it as JSON.
+serde_json = { version = "1", features = ["float_roundtrip"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs"] }
 sqlx = { version = "0.8", default-features = false, features = [
     "runtime-tokio",
