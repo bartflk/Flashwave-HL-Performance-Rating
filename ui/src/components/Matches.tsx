@@ -2,7 +2,7 @@ import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { errorMessage, type ContextKind, type MatchSummary } from "../api/types";
-import { capitalize, formatDate, splitMap } from "../lib/format";
+import { capitalize, formatDate, rating, splitMap } from "../lib/format";
 import { bounds, usePeriod } from "../lib/period";
 import { ContextBadge } from "./ContextBadge";
 import { ClassIcon } from "./ClassIcon";
@@ -257,7 +257,7 @@ function MatchRow({ m, onOpen }: { m: MatchSummary; onOpen: (logId: number) => v
       <td className="num">{me ? me.dmg.toLocaleString() : ""}</td>
       <td className="num">{dpm ?? ""}</td>
       <td className="num">
-        {m.rating === null ? <span className="muted">–</span> : <span className="sb-rating">{m.rating.toFixed(0)}</span>}
+        {m.rating === null ? <span className="muted">–</span> : <span className="sb-rating">{rating(m.rating)}</span>}
       </td>
       <td className="title-cell">
         {m.context ? (

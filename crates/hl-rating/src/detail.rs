@@ -4,7 +4,7 @@
 //! every matchup reads "us vs them". Otherwise Red is on the left.
 
 use crate::impact::Impact;
-use crate::model::{extract, rate, Baseline, Rating, MODEL_VERSION};
+use crate::model::{extract, rate, Baseline, Rating, Scale, MODEL_VERSION};
 use crate::weights::Weights;
 use hl_core::matchdata::{EventLine, LogFlags, NormalizedLog, PlayerLine, Team};
 use hl_core::{SteamId, TfClass};
@@ -38,6 +38,11 @@ pub struct MatchDetail {
     pub players: Vec<PlayerRow>,
     pub rounds: Vec<RoundRow>,
     pub model_version: &'static str,
+    /// What one percentile point is worth in rating terms, so a breakdown can
+    /// show each component's swing in the same units as the rating gap it
+    /// adds up to. The parts themselves stay percentiles: they are the
+    /// working, and a percentile is what they mean.
+    pub rating_per_percentile: f64,
     /// False until baselines exist (first sync or rebuild not yet run).
     pub rated: bool,
     // Index context, filled in by the caller from `log_index`.
@@ -213,6 +218,7 @@ pub fn build(
     me: Option<SteamId>,
     w: &Weights,
     baseline: &Baseline,
+    scale: &Scale,
     impacts: &HashMap<u32, Impact>,
 ) -> MatchDetail {
     let my_team = me.and_then(|m| log.players.iter().find(|p| p.id == m)).map(|p| p.team);
@@ -248,10 +254,11 @@ pub fn build(
         my_team,
         result,
         left_team,
-        matchups: matchups(log, left_team, me, w, baseline, impacts),
-        players: players(log, me, w, baseline, impacts),
+        matchups: matchups(log, left_team, me, w, baseline, scale, impacts),
+        players: players(log, me, w, baseline, scale, impacts),
         rounds: rounds(log, &names, me),
         model_version: MODEL_VERSION,
+        rating_per_percentile: scale.per_percentile(),
         rated: !baseline.is_empty(),
         format: None,
         league: None,
@@ -269,13 +276,14 @@ fn matchups(
     me: Option<SteamId>,
     w: &Weights,
     baseline: &Baseline,
+    scale: &Scale,
     impacts: &HashMap<u32, Impact>,
 ) -> Vec<Matchup> {
     let mut rows: Vec<Matchup> = TfClass::ALL
         .iter()
         .map(|&class| {
-            let l = side(log, left, class, w, baseline, impacts);
-            let r = side(log, left.other(), class, w, baseline, impacts);
+            let l = side(log, left, class, w, baseline, scale, impacts);
+            let r = side(log, left.other(), class, w, baseline, scale, impacts);
             let score = |s: &Option<Side>| s.as_ref().and_then(|s| s.rating.as_ref()).map(|r| r.score);
             let diff = match (score(&l), score(&r)) {
                 (Some(a), Some(b)) => Some(round2(a - b)),
@@ -344,6 +352,7 @@ fn side(
     class: TfClass,
     w: &Weights,
     baseline: &Baseline,
+    scale: &Scale,
     impacts: &HashMap<u32, Impact>,
 ) -> Option<Side> {
     let players = on_class(log, team, class);
@@ -371,7 +380,10 @@ fn side(
         s.assists += line.assists;
         s.dmg += line.dmg;
         if p.main_class() == Some(class) {
-            if let Some(r) = extract(p, &log.flags, w, impacts.get(&p.id.account_id())).and_then(|perf| rate(&perf, baseline, w)) {
+            if let Some(r) = extract(p, &log.flags, w, impacts.get(&p.id.account_id()))
+                .and_then(|perf| rate(&perf, baseline, w))
+                .map(|r| r.scaled(scale))
+            {
                 rated.push((r, line.time_s));
             }
         }
@@ -414,6 +426,7 @@ fn players(
     me: Option<SteamId>,
     w: &Weights,
     baseline: &Baseline,
+    scale: &Scale,
     impacts: &HashMap<u32, Impact>,
 ) -> Vec<PlayerRow> {
     let class_order = |c: Option<TfClass>| {
@@ -454,7 +467,9 @@ fn players(
                 airshots: s.airshots,
                 cpc: s.cpc,
                 medkits: s.medkits,
-                rating: extract(p, &log.flags, w, impacts.get(&p.id.account_id())).and_then(|perf| rate(&perf, baseline, w)),
+                rating: extract(p, &log.flags, w, impacts.get(&p.id.account_id()))
+                    .and_then(|perf| rate(&perf, baseline, w))
+                    .map(|r| r.scaled(scale)),
                 is_me: me == Some(p.id),
             }
         })

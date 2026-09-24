@@ -34,7 +34,7 @@ fn baseline(w: &Weights) -> Baseline {
 fn detail() -> MatchDetail {
     let w = Weights::default_weights();
     let log = load("hl_sub_19p_4114301.json", 4114301);
-    build_detail(&log, Some(SteamId::from_account_id(ME)), &w, &baseline(&w), &Default::default())
+    build_detail(&log, Some(SteamId::from_account_id(ME)), &w, &baseline(&w), &Default::default(), &Default::default())
 }
 
 #[test]
@@ -90,16 +90,18 @@ fn box_score_has_everyone_grouped_by_team() {
     assert_eq!(teams.windows(2).filter(|w| w[0] != w[1]).count(), 1);
 }
 
-/// The rating is exactly the weighted average of its displayed percentiles,
-/// and it uses the Sniper model: the duel is in it, caps are not.
+/// The rating is the weighted average of its displayed percentiles, put on
+/// the 1.00 scale, and it uses the Sniper model: the duel is in it, caps are
+/// not. The parts stay percentiles — they are the working, not the answer.
 #[test]
 fn ratings_show_their_working() {
     let d = detail();
     let me = d.players.iter().find(|p| p.is_me).unwrap();
     let r = me.rating.as_ref().expect("a 15-minute Sniper game is rateable");
     let sum: f64 = r.parts.iter().map(|p| p.percentile * p.weight).sum();
-    assert!((r.score - sum).abs() < 0.6, "score {} vs parts {}", r.score, sum);
-    assert!((0.0..=100.0).contains(&r.score));
+    let expected = hl_rating::model::Scale::default().rating(sum);
+    assert!((r.score - expected).abs() < 0.01, "score {} vs parts {sum} -> {expected}", r.score);
+    assert!((0.0..=3.0).contains(&r.score), "a rating, not a percentile: {}", r.score);
     let keys: Vec<_> = r.parts.iter().map(|p| p.component.key()).collect();
     assert!(keys.contains(&"duel"));
     assert!(!keys.contains(&"caps"));
@@ -111,7 +113,7 @@ fn ratings_show_their_working() {
 fn without_a_baseline_nothing_is_rated() {
     let w = Weights::default_weights();
     let log = load("hl_sub_19p_4114301.json", 4114301);
-    let d = build_detail(&log, Some(SteamId::from_account_id(ME)), &w, &Baseline::default(), &Default::default());
+    let d = build_detail(&log, Some(SteamId::from_account_id(ME)), &w, &Baseline::default(), &Default::default(), &Default::default());
     assert!(!d.rated);
     assert!(d.players.iter().all(|p| p.rating.is_none()));
     assert!(d.matchups.iter().all(|m| m.winner.is_none()));

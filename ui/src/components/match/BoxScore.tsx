@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { LogFlags, MatchDetail, PlayerRow } from "../../api/types";
-import { capitalize, clock, teamLabel } from "../../lib/format";
+import { capitalize, clock, rating, teamLabel } from "../../lib/format";
 import { ClassIcon } from "../ClassIcon";
 
 const CLASS_ORDER = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
@@ -36,9 +36,9 @@ const COLS: Col[] = [
   {
     key: "rating",
     label: "Rating",
-    title: "Rating on the main class, 0-100 against the players you face. Not rated under 5 minutes.",
+    title: "Rating on the main class against the players you face: 1.00 is an average game. Not rated under 5 minutes.",
     value: (p) => p.rating?.score ?? null,
-    fmt: (v) => v.toFixed(0),
+    fmt: (v) => rating(v),
   },
 ];
 

@@ -21,7 +21,73 @@ use std::collections::HashMap;
 /// v3: Sniper deaths in context: untraded deaths, deaths to flankers.
 /// v4: Sniper Fight KAST.
 /// v5: Sniper kills valued by the situation: a clean-up counts for less.
-pub const MODEL_VERSION: &str = "v5";
+/// v6: the score is an HLTV-style rating around 1.00, not a 0-100 percentile.
+pub const MODEL_VERSION: &str = "v6";
+
+/// How far one standard deviation moves the rating.
+///
+/// HLTV's own rating counts "how many standard deviations the player is above
+/// or below average" and centres that on 1.00. The only free choice is how
+/// wide a deviation is, and it is picked to make the numbers mean what they
+/// mean over there: at 0.25 the best of this database's 54 regulars averages
+/// 1.24 over a career, against ZywOo's 1.27 and s1mple's 1.23, and a single
+/// game runs from about 0.60 at the fifth percentile to 1.64 at its best.
+pub const RATING_SPREAD: f64 = 0.25;
+
+/// Where the middle of the pool is, and how spread out it is.
+///
+/// Built from every rated performance once the pool exists, and stored, so
+/// that a game rated on its own months later lands on the same scale as the
+/// games it is listed beside.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Scale {
+    pub mean: f64,
+    pub sd: f64,
+}
+
+impl Rating {
+    /// The same rating with its score on the 1.00 scale.
+    pub fn scaled(mut self, scale: &Scale) -> Rating {
+        self.score = scale.rating(self.score);
+        self
+    }
+}
+
+impl Default for Scale {
+    /// The shape a pool of weighted percentiles has before one is measured:
+    /// centred halfway, a fifth of the range either side. Used only where
+    /// there is no stored pool yet — a database on its first run, or a test.
+    fn default() -> Self {
+        Scale { mean: 50.0, sd: 20.0 }
+    }
+}
+
+impl Scale {
+    /// Measure the pool. `scores` are weighted percentiles, 0 to 100.
+    pub fn of(scores: &[f64]) -> Option<Scale> {
+        if scores.len() < 2 {
+            return None;
+        }
+        let mean = scores.iter().sum::<f64>() / scores.len() as f64;
+        let var = scores.iter().map(|s| (s - mean).powi(2)).sum::<f64>() / scores.len() as f64;
+        let sd = var.sqrt();
+        (sd > f64::EPSILON).then_some(Scale { mean, sd })
+    }
+
+    /// What one percentile point of a component is worth as a rating.
+    pub fn per_percentile(&self) -> f64 {
+        RATING_SPREAD / self.sd
+    }
+
+    /// A weighted percentile as a rating around 1.00.
+    ///
+    /// Floored at zero: a rating is a multiple of average output, and there is
+    /// no such thing as less than none of it. Nothing caps the top, the same
+    /// way nothing caps a 2.00 game on HLTV.
+    pub fn rating(&self, score: f64) -> f64 {
+        round2((1.0 + (score - self.mean) / self.sd * RATING_SPREAD).max(0.0))
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -323,7 +389,10 @@ impl Baseline {
 #[serde(rename_all = "camelCase")]
 pub struct Rating {
     pub class: TfClass,
-    /// 0-100: the weighted average of the component percentiles.
+    /// An HLTV-style rating: 1.00 is the pool's average game, 1.40 a strong
+    /// one, 0.60 a poor one. Straight out of [`rate`] this is still the
+    /// weighted average of the component percentiles, 0 to 100; [`Scale`]
+    /// turns it into a rating once the pool is known.
     pub score: f64,
     pub minutes: f64,
     pub parts: Vec<Part>,
@@ -384,6 +453,43 @@ fn round1(x: f64) -> f64 {
 
 fn round2(x: f64) -> f64 {
     (x * 100.0).round() / 100.0
+}
+
+#[cfg(test)]
+mod scale_tests {
+    use super::*;
+
+    #[test]
+    fn the_middle_of_the_pool_rates_one() {
+        let pool: Vec<f64> = (0..=100).map(f64::from).collect();
+        let s = Scale::of(&pool).unwrap();
+        assert_eq!(s.rating(50.0), 1.00, "the average game is 1.00");
+        assert!(s.rating(80.0) > 1.0 && s.rating(20.0) < 1.0);
+        // Symmetric either side, because the mapping is a straight line.
+        assert!(((s.rating(80.0) - 1.0) + (s.rating(20.0) - 1.0)).abs() < 0.001);
+    }
+
+    #[test]
+    fn a_deviation_is_worth_what_it_says_it_is() {
+        let s = Scale { mean: 50.0, sd: 20.0 };
+        assert_eq!(s.rating(70.0), 1.0 + RATING_SPREAD, "one deviation up");
+        assert_eq!(s.rating(30.0), 1.0 - RATING_SPREAD, "and down");
+        assert_eq!(s.rating(110.0), round2(1.0 + 3.0 * RATING_SPREAD), "nothing caps the top");
+    }
+
+    #[test]
+    fn a_rating_never_goes_below_nothing() {
+        // A pool so tight that an ordinary game is ten deviations out.
+        let s = Scale { mean: 50.0, sd: 1.0 };
+        assert_eq!(s.rating(10.0), 0.0);
+    }
+
+    #[test]
+    fn a_pool_that_cannot_be_measured_is_refused() {
+        assert!(Scale::of(&[]).is_none());
+        assert!(Scale::of(&[42.0]).is_none(), "one game says nothing about spread");
+        assert!(Scale::of(&[7.0; 20]).is_none(), "nor does a pool with no spread at all");
+    }
 }
 
 #[cfg(test)]

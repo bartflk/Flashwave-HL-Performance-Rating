@@ -112,6 +112,32 @@ impl Db {
         Ok(())
     }
 
+    /// Store the pool's middle and spread, which turn a weighted percentile
+    /// into a rating around 1.00.
+    pub async fn replace_rating_scale(&self, version: &str, mean: f64, sd: f64, n: usize) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO rating_scale (model_version, mean, sd, n, made_at)
+             VALUES (?1, ?2, ?3, ?4, datetime('now'))
+             ON CONFLICT(model_version) DO UPDATE SET
+                mean = excluded.mean, sd = excluded.sd, n = excluded.n, made_at = excluded.made_at",
+        )
+        .bind(version)
+        .bind(mean)
+        .bind(sd)
+        .bind(n as i64)
+        .execute(self.pool())
+        .await?;
+        Ok(())
+    }
+
+    /// The stored `(mean, sd)`, or `None` before the first full rating pass.
+    pub async fn rating_scale(&self, version: &str) -> Result<Option<(f64, f64)>> {
+        Ok(sqlx::query_as("SELECT mean, sd FROM rating_scale WHERE model_version = ?1")
+            .bind(version)
+            .fetch_optional(self.pool())
+            .await?)
+    }
+
     /// Replace one log's ratings, leaving every other log alone.
     ///
     /// For rating a log the moment it arrives, mid sync: `replace_ratings`

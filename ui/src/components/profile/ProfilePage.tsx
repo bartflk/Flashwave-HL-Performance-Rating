@@ -9,7 +9,7 @@ import {
   type GameRef,
   type Profile,
 } from "../../api/types";
-import { capitalize, formatDate, splitMap } from "../../lib/format";
+import { capitalize, formatDate, rating, ratingPercent, splitMap } from "../../lib/format";
 import { KIND_LABEL, KIND_PLURAL } from "../ContextBadge";
 import { bounds, usePeriod } from "../../lib/period";
 import { PeriodPicker } from "../PeriodPicker";
@@ -147,7 +147,7 @@ function KindFilter(props: { kind: ContextKind | null; onChange: (k: ContextKind
 
 /**
  * The same class across officials, scrims and pugs: one row each, average
- * rating on a 0-100 track with the 50 line, games and win rate beside it.
+ * rating on a track with the 1.00 line, games and win rate beside it.
  * Always over every game, whatever the filter.
  */
 function KindSplit(props: { split: ContextSplit[]; active: ContextKind | null; onKind: (k: ContextKind | null) => void }) {
@@ -170,9 +170,9 @@ function KindSplit(props: { split: ContextSplit[]; active: ContextKind | null; o
             <span className="ks-label">{KIND_PLURAL[s.kind]}</span>
             <span className="ks-track" aria-hidden>
               <span className="comp-mid" />
-              <span className={`ks-fill ks-${s.kind}`} style={{ width: `${s.avg}%` }} />
+              <span className={`ks-fill ks-${s.kind}`} style={{ width: `${ratingPercent(s.avg)}%` }} />
             </span>
-            <span className="ks-value">{s.avg.toFixed(0)}</span>
+            <span className="ks-value">{rating(s.avg)}</span>
             <span className="ks-meta muted">
               {s.games} game{s.games === 1 ? "" : "s"}
               {s.winRate !== null && ` · ${s.winRate.toFixed(0)}% won`}
@@ -206,16 +206,16 @@ function ProfileBody(props: {
       <section className="kpis">
         <div className="kpi hero">
           <span className="kpi-label">Form · last {Math.min(p.formWindow, p.games)} {scope}</span>
-          <span className="kpi-value">{p.formAvg.toFixed(0)}</span>
+          <span className="kpi-value">{rating(p.formAvg)}</span>
           {delta !== null && (
             <span className={delta >= 0 ? "kpi-delta up" : "kpi-delta down"}>
-              {delta >= 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(1)} vs the {p.formWindow} before
+              {delta >= 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(2)} vs the {p.formWindow} before
             </span>
           )}
         </div>
         <div className="kpi">
           <span className="kpi-label">Career</span>
-          <span className="kpi-value">{p.careerAvg.toFixed(0)}</span>
+          <span className="kpi-value">{rating(p.careerAvg)}</span>
           <span className="kpi-sub">
             {p.games} rated {scope}
           </span>
@@ -325,7 +325,7 @@ function GameList(props: { title: string; games: GameRef[]; onOpen: (logId: numb
               const { mode, name } = splitMap(g.map);
               return (
                 <tr key={g.logId} className="clickable" tabIndex={0} onClick={() => onOpen(g.logId)} onKeyDown={(e) => e.key === "Enter" && onOpen(g.logId)}>
-                  <td className="num game-score">{g.score.toFixed(0)}</td>
+                  <td className="num game-score">{rating(g.score)}</td>
                   <td className="muted nowrap">{formatDate(g.playedAt, true)}</td>
                   <td className="nowrap" title={g.map ?? undefined}>
                     {mode && <span className="mode">{mode}</span>}

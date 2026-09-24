@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { MatchDetail, Matchup, Part, Side, Team } from "../../api/types";
-import { capitalize, teamLabel } from "../../lib/format";
+import { capitalize, rating, teamLabel } from "../../lib/format";
 import { ClassIcon } from "../ClassIcon";
 
 /**
@@ -44,7 +44,7 @@ export function Matchups({ d }: { d: MatchDetail }) {
         </div>
         <span
           className="model-tag"
-          title="Each component is a percentile against every other player's games on that class in your stored matches (yours excluded). The rating is their weighted average, 0-100; 50 is the typical player you face."
+          title="Each component is a percentile against every other player's games on that class in your stored matches (yours excluded). The rating is their weighted average, put on the scale HLTV uses: 1.00 is the typical player you face, and one standard deviation is worth 0.25."
         >
           model {d.modelVersion} · 0–100 vs players you face
         </span>
@@ -69,6 +69,7 @@ export function Matchups({ d }: { d: MatchDetail }) {
           left={left}
           right={right}
           maxGap={maxGap}
+          perPct={d.ratingPerPercentile}
           open={open === m.class}
           onToggle={() => setOpen(open === m.class ? null : m.class)}
         />
@@ -84,10 +85,11 @@ function MatchupRow(props: {
   left: Team;
   right: Team;
   maxGap: number;
+  perPct: number;
   open: boolean;
   onToggle: () => void;
 }) {
-  const { m, left, right, maxGap, open, onToggle } = props;
+  const { m, left, right, maxGap, perPct, open, onToggle } = props;
   const pct = m.diff === null ? 0 : Math.min(50, (Math.abs(m.diff) / maxGap) * 50);
   const leftWins = m.winner === "left";
   const rightWins = m.winner === "right";
@@ -142,7 +144,7 @@ function MatchupRow(props: {
         </span>
       </button>
 
-      {open && <Breakdown m={m} left={left} right={right} />}
+      {open && <Breakdown m={m} left={left} right={right} perPct={perPct} />}
     </>
   );
 }
@@ -162,7 +164,7 @@ function SideCell({ side, align, winning }: { side: Side | null; align: "left" |
       className={winning ? "mu-score win" : "mu-score"}
       title={side.rating ? undefined : "Not rated: nobody here had this as their main class for 5+ minutes"}
     >
-      {side.rating ? side.rating.score.toFixed(0) : "—"}
+      {side.rating ? rating(side.rating.score) : "—"}
     </span>
   );
   return <span className={`mu-side ${align}`}>{align === "left" ? <>{name}{score}</> : <>{score}{name}</>}</span>;
@@ -170,8 +172,9 @@ function SideCell({ side, align, winning }: { side: Side | null; align: "left" |
 
 /** Every component for both players, mirrored: the raw number, and a bar for
  *  where it sits among the players you face. Weights sum to one, so each
- *  row's swing (weight x percentile gap) adds up to the rating gap. */
-function Breakdown({ m, left, right }: { m: Matchup; left: Team; right: Team }) {
+ *  row's swing — the percentile gap, weighted, in rating points — adds up to
+ *  the gap between the two ratings. */
+function Breakdown({ m, left, right, perPct }: { m: Matchup; left: Team; right: Team; perPct: number }) {
   const lr = m.left?.rating ?? null;
   const rr = m.right?.rating ?? null;
   const find = (parts: Part[] | undefined, key: string) => parts?.find((p) => p.component === key);
@@ -189,14 +192,15 @@ function Breakdown({ m, left, right }: { m: Matchup; left: Team; right: Team }) 
     .map((p) => {
       const a = find(lr?.parts, p.component) ?? null;
       const b = find(rr?.parts, p.component) ?? null;
-      const swing = a && b ? p.weight * (a.percentile - b.percentile) : null;
+      const swing = a && b ? p.weight * (a.percentile - b.percentile) * perPct : null;
       return { p, a, b, swing };
     });
 
   // The rows that moved the gap most, in the leader's favour.
   const leader = lr && rr ? (lr.score >= rr.score ? "left" : "right") : null;
   const drivers = rows
-    .filter((r) => r.swing !== null && (leader === "left" ? r.swing > 0.5 : leader === "right" && r.swing < -0.5))
+    // Worth calling out at about a hundredth of a rating point.
+    .filter((r) => r.swing !== null && (leader === "left" ? r.swing > 0.01 : leader === "right" && r.swing < -0.01))
     .sort((x, y) => Math.abs(y.swing!) - Math.abs(x.swing!))
     .slice(0, 3);
   const lc = left.toLowerCase();
@@ -211,7 +215,7 @@ function Breakdown({ m, left, right }: { m: Matchup; left: Team; right: Team }) 
             <span className="bd-vs-label">Rating</span>
             {lr && rr && (
               <span className="bd-gap">
-                {Math.abs(lr.score - rr.score).toFixed(1)} <small>pts apart</small>
+                {Math.abs(lr.score - rr.score).toFixed(2)} <small>apart</small>
               </span>
             )}
           </div>
@@ -271,7 +275,7 @@ function ScoreCard(props: { side: Side | null; team: string; align: "left" | "ri
   return (
     <div className={`bd-card ${align}${lead ? " lead" : ""}`}>
       <span className={`bd-card-name team-${team}`}>{side?.name ?? "nobody"}</span>
-      <span className="bd-card-score">{r ? r.score.toFixed(1) : "—"}</span>
+      <span className="bd-card-score">{r ? rating(r.score) : "—"}</span>
       {side && (
         <span className="bd-card-kda">
           <b>{side.kills}</b> K · <b>{side.deaths}</b> D · <b>{side.assists}</b> A

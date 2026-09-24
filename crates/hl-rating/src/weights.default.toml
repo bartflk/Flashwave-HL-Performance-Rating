@@ -48,8 +48,10 @@ assist_share = 0.5
 # Performances shorter than this on their main class are not rated: too little
 # time to say anything.
 min_minutes = 5.0
-# Two ratings closer than this (0-100 scale) count as an even matchup.
-even_margin = 5.0
+# Two ratings closer together than this count as an even matchup. On the
+# rating scale, where one standard deviation is 0.25, this is about the five
+# percentile points it used to be.
+even_margin = 0.06
 
 # ---------------------------------------------------------------------------
 # Class models (v1)
@@ -57,7 +59,8 @@ even_margin = 5.0
 # Each component is scored as a percentile against every other player's
 # performances on that class in your stored matches -- excluding your own, so
 # you are rated against the players you actually face. The rating is the
-# weighted average of those percentiles, on a 0-100 scale.
+# weighted average of those percentiles, put on the scale HLTV uses: 1.00 is
+# an average game, and a standard deviation either way is worth 0.25.
 #
 # Weights need not sum to 1; they are normalised. A component the log did not
 # record (e.g. headshots on an old log) is dropped and the rest renormalised.

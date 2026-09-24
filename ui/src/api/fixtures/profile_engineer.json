@@ -22,7 +22,7 @@
     ],
     [
       "heavy",
-      5
+      6
     ],
     [
       "pyro",
@@ -46,7 +46,7 @@
         "map": "koth_warmtic_f10",
         "playedAt": 1706910777,
         "result": "W",
-        "score": 80.1,
+        "score": 1.39,
         "title": "serveme.tf #1389112"
       },
       {
@@ -56,7 +56,7 @@
         "map": "koth_product_final",
         "playedAt": 1788210707,
         "result": "W",
-        "score": 76.9,
+        "score": 1.35,
         "title": "TF2Center Lobby #1329180"
       },
       {
@@ -66,7 +66,7 @@
         "map": "pl_badwater",
         "playedAt": 1419969612,
         "result": "T",
-        "score": 74.5,
+        "score": 1.32,
         "title": "serveme.tf - RE4DY vs BLU"
       },
       {
@@ -76,7 +76,7 @@
         "map": "koth_proot_b5b",
         "playedAt": 1759261296,
         "result": "W",
-        "score": 74.4,
+        "score": 1.32,
         "title": "serveme.tf #1510269"
       },
       {
@@ -86,30 +86,21 @@
         "map": "koth_product_final",
         "playedAt": 1788047514,
         "result": "W",
-        "score": 73.5,
+        "score": 1.3,
         "title": "TF2Center Lobby #1329026"
       }
     ],
-    "careerAvg": 56.9,
+    "careerAvg": 1.09,
     "class": "engineer",
     "components": [
       {
         "careerPct": 65.4,
         "component": "impact_kills",
-        "formPct": 71.5,
+        "formPct": 71.6,
         "formRaw": 8.95,
         "label": "Impact kills",
         "unit": "per 10 min",
         "weight": 0.35
-      },
-      {
-        "careerPct": 50.6,
-        "component": "deaths",
-        "formPct": 43.0,
-        "formRaw": 5.04,
-        "label": "Deaths",
-        "unit": "per 10 min",
-        "weight": 0.2
       },
       {
         "careerPct": 64.4,
@@ -118,6 +109,15 @@
         "formRaw": 232.43,
         "label": "Damage / min",
         "unit": "per min",
+        "weight": 0.2
+      },
+      {
+        "careerPct": 50.6,
+        "component": "deaths",
+        "formPct": 43.0,
+        "formRaw": 5.04,
+        "label": "Deaths",
+        "unit": "per 10 min",
         "weight": 0.2
       },
       {
@@ -132,7 +132,7 @@
       {
         "careerPct": 24.2,
         "component": "caps",
-        "formPct": 29.9,
+        "formPct": 30.0,
         "formRaw": 0.58,
         "label": "Caps",
         "unit": "per 10 min",
@@ -141,7 +141,7 @@
     ],
     "contexts": [
       {
-        "avg": 56.9,
+        "avg": 1.09,
         "games": 29,
         "kind": "pug",
         "winRate": 61.5
@@ -162,7 +162,7 @@
       }
     ],
     "filter": null,
-    "formAvg": 59.5,
+    "formAvg": 1.12,
     "formWindow": 20,
     "games": 29,
     "prevFormAvg": null,
@@ -174,7 +174,7 @@
         "map": "koth_product_final",
         "playedAt": 1788625946,
         "result": "W",
-        "score": 71.1,
+        "score": 1.27,
         "title": "TF2Center Lobby #1329563"
       },
       {
@@ -184,7 +184,7 @@
         "map": "koth_product_final",
         "playedAt": 1788210707,
         "result": "W",
-        "score": 76.9,
+        "score": 1.35,
         "title": "TF2Center Lobby #1329180"
       },
       {
@@ -194,7 +194,7 @@
         "map": "koth_product_final",
         "playedAt": 1788047514,
         "result": "W",
-        "score": 73.5,
+        "score": 1.3,
         "title": "TF2Center Lobby #1329026"
       },
       {
@@ -204,7 +204,7 @@
         "map": "koth_warmtic_f10",
         "playedAt": 1788044995,
         "result": "W",
-        "score": 71.6,
+        "score": 1.28,
         "title": "TF2Center Lobby #1329018"
       },
       {
@@ -214,7 +214,7 @@
         "map": "koth_product_final",
         "playedAt": 1788025318,
         "result": "W",
-        "score": 68.8,
+        "score": 1.24,
         "title": "TF2Center Lobby #1328982"
       },
       {
@@ -224,7 +224,7 @@
         "map": "koth_product_final",
         "playedAt": 1788018744,
         "result": "W",
-        "score": 55.4,
+        "score": 1.07,
         "title": "TF2Center Lobby #1328975"
       },
       {
@@ -234,7 +234,7 @@
         "map": "koth_proot_b5b",
         "playedAt": 1767481477,
         "result": "W",
-        "score": 71.7,
+        "score": 1.28,
         "title": "serveme.tf #1525328"
       },
       {
@@ -244,7 +244,7 @@
         "map": "koth_proot_b5b",
         "playedAt": 1759261296,
         "result": "W",
-        "score": 74.4,
+        "score": 1.32,
         "title": "serveme.tf #1510269"
       },
       {
@@ -254,7 +254,7 @@
         "map": "pl_upward_f12",
         "playedAt": 1748640719,
         "result": "W",
-        "score": 61.8,
+        "score": 1.15,
         "title": "TF2Center Lobby #1297637"
       },
       {
@@ -264,7 +264,7 @@
         "map": "koth_warmtic_f10",
         "playedAt": 1706910777,
         "result": "W",
-        "score": 80.1,
+        "score": 1.39,
         "title": "serveme.tf #1389112"
       }
     ],
@@ -277,7 +277,7 @@
         "playedAt": 1415035008,
         "result": "L",
         "rolling": null,
-        "score": 62.7
+        "score": 1.16
       },
       {
         "kind": "pug",
@@ -286,7 +286,7 @@
         "playedAt": 1415035009,
         "result": "L",
         "rolling": null,
-        "score": 62.7
+        "score": 1.16
       },
       {
         "kind": "pug",
@@ -295,7 +295,7 @@
         "playedAt": 1415297755,
         "result": "W",
         "rolling": null,
-        "score": 68.1
+        "score": 1.23
       },
       {
         "kind": "pug",
@@ -304,7 +304,7 @@
         "playedAt": 1415388889,
         "result": "W",
         "rolling": null,
-        "score": 50.8
+        "score": 1.01
       },
       {
         "kind": "pug",
@@ -313,7 +313,7 @@
         "playedAt": 1415388890,
         "result": "W",
         "rolling": null,
-        "score": 50.7
+        "score": 1.01
       },
       {
         "kind": "pug",
@@ -322,7 +322,7 @@
         "playedAt": 1415477542,
         "result": "T",
         "rolling": null,
-        "score": 46.3
+        "score": 0.95
       },
       {
         "kind": "pug",
@@ -331,7 +331,7 @@
         "playedAt": 1415477546,
         "result": "T",
         "rolling": null,
-        "score": 46.3
+        "score": 0.95
       },
       {
         "kind": "pug",
@@ -340,7 +340,7 @@
         "playedAt": 1415561915,
         "result": "L",
         "rolling": null,
-        "score": 36.7
+        "score": 0.83
       },
       {
         "kind": "pug",
@@ -349,7 +349,7 @@
         "playedAt": 1415561916,
         "result": "L",
         "rolling": null,
-        "score": 36.7
+        "score": 0.83
       },
       {
         "kind": "pug",
@@ -357,8 +357,8 @@
         "map": "koth_pro_viaduct_rc4",
         "playedAt": 1415651885,
         "result": "L",
-        "rolling": 52.1,
-        "score": 60.3
+        "rolling": 1.03,
+        "score": 1.13
       },
       {
         "kind": "pug",
@@ -366,8 +366,8 @@
         "map": "koth_pro_viaduct_rc4",
         "playedAt": 1415651886,
         "result": "L",
-        "rolling": 51.9,
-        "score": 60.3
+        "rolling": 1.02,
+        "score": 1.13
       },
       {
         "kind": "pug",
@@ -375,8 +375,8 @@
         "map": "pl_badwater",
         "playedAt": 1416139087,
         "result": "W",
-        "rolling": 47.7,
-        "score": 20.7
+        "rolling": 0.97,
+        "score": 0.62
       },
       {
         "kind": "pug",
@@ -384,8 +384,8 @@
         "map": "pl_badwater",
         "playedAt": 1416139088,
         "result": "W",
-        "rolling": 43.0,
-        "score": 20.7
+        "rolling": 0.91,
+        "score": 0.62
       },
       {
         "kind": "pug",
@@ -393,8 +393,8 @@
         "map": "koth_lakeside_final",
         "playedAt": 1417037189,
         "result": "L",
-        "rolling": 41.7,
-        "score": 38.2
+        "rolling": 0.89,
+        "score": 0.85
       },
       {
         "kind": "pug",
@@ -402,8 +402,8 @@
         "map": "koth_lakeside_final",
         "playedAt": 1417037190,
         "result": "L",
-        "rolling": 40.4,
-        "score": 38.2
+        "rolling": 0.88,
+        "score": 0.85
       },
       {
         "kind": "pug",
@@ -411,8 +411,8 @@
         "map": "koth_lakeside_final",
         "playedAt": 1417207600,
         "result": "L",
-        "rolling": 41.6,
-        "score": 58.2
+        "rolling": 0.89,
+        "score": 1.1
       },
       {
         "kind": "pug",
@@ -420,8 +420,8 @@
         "map": "koth_lakeside_final",
         "playedAt": 1417207601,
         "result": "L",
-        "rolling": 42.8,
-        "score": 58.2
+        "rolling": 0.91,
+        "score": 1.1
       },
       {
         "kind": "pug",
@@ -429,8 +429,8 @@
         "map": "pl_badwater",
         "playedAt": 1419969612,
         "result": "T",
-        "rolling": 46.6,
-        "score": 74.5
+        "rolling": 0.95,
+        "score": 1.32
       },
       {
         "kind": "pug",
@@ -438,8 +438,8 @@
         "map": "cp_gullywash_f3",
         "playedAt": 1621110583,
         "result": "W",
-        "rolling": 48.5,
-        "score": 55.4
+        "rolling": 0.98,
+        "score": 1.07
       },
       {
         "kind": "pug",
@@ -447,8 +447,8 @@
         "map": "koth_warmtic_f10",
         "playedAt": 1706910777,
         "result": "W",
-        "rolling": 50.5,
-        "score": 80.1
+        "rolling": 1.01,
+        "score": 1.39
       },
       {
         "kind": "pug",
@@ -456,8 +456,8 @@
         "map": "pl_upward_f12",
         "playedAt": 1748640719,
         "result": "W",
-        "rolling": 50.6,
-        "score": 61.8
+        "rolling": 1.01,
+        "score": 1.15
       },
       {
         "kind": "pug",
@@ -465,8 +465,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1759261296,
         "result": "W",
-        "rolling": 56.0,
-        "score": 74.4
+        "rolling": 1.08,
+        "score": 1.32
       },
       {
         "kind": "pug",
@@ -474,8 +474,8 @@
         "map": "koth_proot_b5b",
         "playedAt": 1767481477,
         "result": "W",
-        "rolling": 61.1,
-        "score": 71.7
+        "rolling": 1.14,
+        "score": 1.28
       },
       {
         "kind": "pug",
@@ -483,8 +483,8 @@
         "map": "koth_product_final",
         "playedAt": 1788018744,
         "result": "W",
-        "rolling": 62.8,
-        "score": 55.4
+        "rolling": 1.17,
+        "score": 1.07
       },
       {
         "kind": "pug",
@@ -492,8 +492,8 @@
         "map": "koth_product_final",
         "playedAt": 1788025318,
         "result": "W",
-        "rolling": 65.9,
-        "score": 68.8
+        "rolling": 1.2,
+        "score": 1.24
       },
       {
         "kind": "pug",
@@ -501,8 +501,8 @@
         "map": "koth_warmtic_f10",
         "playedAt": 1788044995,
         "result": "W",
-        "rolling": 67.2,
-        "score": 71.6
+        "rolling": 1.22,
+        "score": 1.28
       },
       {
         "kind": "pug",
@@ -510,8 +510,8 @@
         "map": "koth_product_final",
         "playedAt": 1788047514,
         "result": "W",
-        "rolling": 68.7,
-        "score": 73.5
+        "rolling": 1.24,
+        "score": 1.3
       },
       {
         "kind": "pug",
@@ -519,8 +519,8 @@
         "map": "koth_product_final",
         "playedAt": 1788210707,
         "result": "W",
-        "rolling": 69.0,
-        "score": 76.9
+        "rolling": 1.24,
+        "score": 1.35
       },
       {
         "kind": "pug",
@@ -528,8 +528,8 @@
         "map": "koth_product_final",
         "playedAt": 1788625946,
         "result": "W",
-        "rolling": 70.5,
-        "score": 71.1
+        "rolling": 1.27,
+        "score": 1.27
       }
     ],
     "winRate": 61.5,
@@ -541,7 +541,7 @@
         "map": "pl_badwater",
         "playedAt": 1416139088,
         "result": "W",
-        "score": 20.7,
+        "score": 0.62,
         "title": "TF2Center Lobby #260009"
       },
       {
@@ -551,7 +551,7 @@
         "map": "pl_badwater",
         "playedAt": 1416139087,
         "result": "W",
-        "score": 20.7,
+        "score": 0.62,
         "title": "serveme.tf - yelow vs lel"
       },
       {
@@ -561,7 +561,7 @@
         "map": "pl_upward",
         "playedAt": 1415561916,
         "result": "L",
-        "score": 36.7,
+        "score": 0.83,
         "title": "TF2Center Lobby #255174"
       },
       {
@@ -571,7 +571,7 @@
         "map": "pl_upward",
         "playedAt": 1415561915,
         "result": "L",
-        "score": 36.7,
+        "score": 0.83,
         "title": "GFM PCW Server #3 niggas vs BLU"
       },
       {
@@ -581,7 +581,7 @@
         "map": "koth_lakeside_final",
         "playedAt": 1417037190,
         "result": "L",
-        "score": 38.2,
+        "score": 0.85,
         "title": "TF2Center Lobby #267805"
       }
     ]

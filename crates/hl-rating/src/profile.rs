@@ -135,7 +135,7 @@ pub fn build(class: TfClass, mut rows: Vec<HistoryRow>) -> Option<Profile> {
             map: r.map.clone(),
             score: r.rating.score,
             rolling: (i + 1 >= ROLLING_WINDOW)
-                .then(|| round1(mean(&scores[i + 1 - ROLLING_WINDOW..=i]))),
+                .then(|| round2(mean(&scores[i + 1 - ROLLING_WINDOW..=i]))),
             result: r.result.clone(),
             kind: r.kind.clone(),
         })
@@ -149,9 +149,9 @@ pub fn build(class: TfClass, mut rows: Vec<HistoryRow>) -> Option<Profile> {
     Some(Profile {
         class,
         games: n,
-        career_avg: round1(mean(&scores)),
-        form_avg: round1(mean(&form.iter().map(|r| r.rating.score).collect::<Vec<_>>())),
-        prev_form_avg: prev.map(|p| round1(mean(&p.iter().map(|r| r.rating.score).collect::<Vec<_>>()))),
+        career_avg: round2(mean(&scores)),
+        form_avg: round2(mean(&form.iter().map(|r| r.rating.score).collect::<Vec<_>>())),
+        prev_form_avg: prev.map(|p| round2(mean(&p.iter().map(|r| r.rating.score).collect::<Vec<_>>()))),
         win_rate,
         trend,
         components: components(&rows, form),
@@ -182,7 +182,7 @@ pub fn context_splits(rows: &[HistoryRow]) -> Vec<ContextSplit> {
             (!of.is_empty()).then(|| ContextSplit {
                 kind: kind.to_string(),
                 games: of.len(),
-                avg: round1(mean(&of.iter().map(|r| r.rating.score).collect::<Vec<_>>())),
+                avg: round2(mean(&of.iter().map(|r| r.rating.score).collect::<Vec<_>>())),
                 win_rate: win_rate(&of),
             })
         })

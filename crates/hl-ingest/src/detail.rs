@@ -43,7 +43,10 @@ pub async fn match_detail_from(
     if let Some(rows) = db.fight_counts(Some(log_id)).await?.get(&log_id) {
         crate::kills::attach_fights(&mut impact, rows);
     }
-    let mut detail = build_detail(&log, me, weights, &baseline, &impact);
+    // Before the first full pass there is no pool, so the breakdown falls
+    // back to a scale where an average game is still 1.00.
+    let scale = crate::rating::load_scale(db).await?.unwrap_or_default();
+    let mut detail = build_detail(&log, me, weights, &baseline, &scale, &impact);
 
     // Kill markers first: demo enrichment then gives every marker its jump.
     crate::kills::enrich(&log, &kills, me, &mut detail);

@@ -207,10 +207,13 @@ export interface Part {
   weight: number;
 }
 
-/** 0-100: the weighted average of the component percentiles, measured against
- *  every other player's performances on the class in your stored matches. */
+/** The weighted average of the component percentiles, measured against every
+ *  other player's performances on the class in your stored matches, and put on
+ *  the scale HLTV uses: 1.00 is an average game, one standard deviation is
+ *  worth 0.25. The `parts` stay percentiles — they are the working. */
 export interface Rating {
   class: string;
+  /** Around 1.00. */
   score: number;
   minutes: number;
   parts: Part[];
@@ -320,6 +323,9 @@ export interface MatchDetail {
   players: PlayerRow[];
   rounds: RoundRow[];
   modelVersion: string;
+  /** What one percentile point of a component is worth as a rating, so a
+   *  breakdown's swings add up to the gap between two ratings. */
+  ratingPerPercentile: number;
   /** False until the first rating pass has built the baselines. */
   rated: boolean;
   format: string | null;

@@ -16,7 +16,7 @@ use crate::Progress;
 use anyhow::{Context, Result};
 use hl_core::{SteamId, TfClass};
 use hl_db::{Db, RatingRow};
-use hl_rating::model::{extract, rate, Baseline, Component, Performance};
+use hl_rating::model::{extract, rate, Baseline, Component, Performance, Scale};
 use hl_rating::profile::{self, Extra, HistoryRow};
 use hl_rating::{Profile, Rating, Weights, MODEL_VERSION};
 use serde::Serialize;
@@ -49,17 +49,35 @@ pub async fn rate_all(
     db.replace_baselines(MODEL_VERSION, &stored).await?;
 
     // Pass 3: score everyone, the owner included.
-    let mut rows = Vec::with_capacity(perfs.len());
+    let mut scored: Vec<(i64, u32, hl_rating::Rating)> = Vec::with_capacity(perfs.len());
     let mut mine = 0;
     for (log_id, perf) in &perfs {
         let Some(r) = rate(perf, &baseline, w) else { continue };
         if me.is_some_and(|m| m.account_id() == perf.account_id) {
             mine += 1;
         }
+        scored.push((*log_id, perf.account_id, r));
+    }
+
+    // Pass 4: the scale, and the ratings themselves. A rating says how far
+    // from an ordinary game this was, so it needs the pool's middle and
+    // spread — measured here and stored, so a game rated on its own as it
+    // arrives lands on the same scale as the games it is listed beside.
+    let raw: Vec<f64> = scored.iter().map(|(_, _, r)| r.score).collect();
+    let Some(scale) = Scale::of(&raw) else {
+        // Nothing to measure: leave the last scale and the last ratings alone
+        // rather than writing numbers that mean nothing.
+        return Ok(RateSummary { logs: total, performances: perfs.len(), rated: 0, mine: 0 });
+    };
+    db.replace_rating_scale(MODEL_VERSION, scale.mean, scale.sd, raw.len()).await?;
+
+    let mut rows = Vec::with_capacity(scored.len());
+    for (log_id, account_id, r) in scored {
+        let r = r.scaled(&scale);
         rows.push(RatingRow {
-            log_id: *log_id,
-            account_id: perf.account_id,
-            class: perf.class.as_str(),
+            log_id,
+            account_id,
+            class: r.class.as_str(),
             score: r.score,
             minutes: r.minutes,
             parts_json: serde_json::to_string(&r.parts)?,
@@ -89,6 +107,8 @@ pub async fn rate_all(
 /// full pass, when there are no baselines to measure against.
 pub async fn rate_logs(db: &Db, w: &Weights, log_ids: &[i64]) -> Result<usize> {
     let baseline = load_baseline(db).await?;
+    // Both come from the last full pass, and neither exists before it.
+    let Some(scale) = load_scale(db).await? else { return Ok(0) };
     if baseline.is_empty() || log_ids.is_empty() {
         return Ok(0);
     }
@@ -112,7 +132,7 @@ pub async fn rate_logs(db: &Db, w: &Weights, log_ids: &[i64]) -> Result<usize> {
             .iter()
             .filter_map(|p| extract(p, &log.flags, w, impact.get(&p.id.account_id())))
             .filter_map(|perf| {
-                let r = rate(&perf, &baseline, w)?;
+                let r = rate(&perf, &baseline, w)?.scaled(&scale);
                 Some(RatingRow {
                     log_id,
                     account_id: perf.account_id,
@@ -176,6 +196,11 @@ pub async fn collect_performances(
     }
 
     Ok((total, perfs))
+}
+
+/// The stored scale for the current model; `None` until the first full pass.
+pub async fn load_scale(db: &Db) -> Result<Option<Scale>> {
+    Ok(db.rating_scale(MODEL_VERSION).await?.map(|(mean, sd)| Scale { mean, sd }))
 }
 
 /// The stored baselines for the current model; empty until the first rating pass.

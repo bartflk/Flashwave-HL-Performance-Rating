@@ -229,7 +229,8 @@ const FAKE_MATCHES: MatchSummary[] = (() => {
         : pick(["serveme.tf #1563599 RED vs BLU", "TF2Center Lobby #1330112", "pro vs noob scrim"]),
       durationS: dur,
       parts: 0,
-      rating: 30 + Math.round(r() * 45),
+      // A rating, not a percentile: a spread around 1.00 like the real one.
+      rating: Math.round((0.6 + r() * 0.9) * 100) / 100,
       format: "highlander",
       league: official ? "etf2l" : null,
       etf2lMatchId: official ? 92_883 - i : null,

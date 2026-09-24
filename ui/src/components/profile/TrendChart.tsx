@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { TrendPoint } from "../../api/types";
-import { formatDate, splitMap } from "../../lib/format";
+import { formatDate, rating, splitMap } from "../../lib/format";
 
 /**
  * Rating over time, as an emphasis chart: the rolling average is the story
@@ -21,7 +21,11 @@ const RANGES: Array<{ id: Range; label: string }> = [
 
 const H = 260;
 const M = { top: 14, right: 64, bottom: 30, left: 36 };
-const Y_TICKS = [0, 25, 50, 75, 100];
+/** The band a rating actually lives in: 0.60 is a poor game, 1.40 a strong
+ *  one, and 1.00 the line everything is read against. */
+const Y_TICKS = [0.4, 0.7, 1.0, 1.3, 1.6];
+const Y_MIN = 0.25;
+const Y_MAX = 1.75;
 
 export function TrendChart(props: {
   points: TrendPoint[];
@@ -55,7 +59,7 @@ export function TrendChart(props: {
   const plotW = width - M.left - M.right;
   const plotH = H - M.top - M.bottom;
   const x = (i: number) => M.left + (shown.length <= 1 ? plotW / 2 : (i / (shown.length - 1)) * plotW);
-  const y = (v: number) => M.top + (1 - v / 100) * plotH;
+  const y = (v: number) => M.top + (1 - (v - Y_MIN) / (Y_MAX - Y_MIN)) * plotH;
 
   const linePath = useMemo(() => {
     let d = "";
@@ -156,7 +160,7 @@ export function TrendChart(props: {
           <svg width="18" height="8" aria-hidden>
             <line x1="1" y1="4" x2="17" y2="4" className="tl-median" />
           </svg>
-          50 = the typical player you face
+          1.00 = the typical player you face
         </span>
       </div>
 
@@ -192,10 +196,10 @@ export function TrendChart(props: {
                   x2={M.left + plotW}
                   y1={y(t)}
                   y2={y(t)}
-                  className={t === 50 ? "tl-median" : "tl-grid"}
+                  className={t === 1.0 ? "tl-median" : "tl-grid"}
                 />
                 <text x={M.left - 8} y={y(t)} className="tl-axis" textAnchor="end" dominantBaseline="middle">
-                  {t}
+                  {t.toFixed(2)}
                 </text>
               </g>
             ))}
@@ -224,7 +228,7 @@ export function TrendChart(props: {
               <>
                 <circle cx={x(lastIdx)} cy={y(last.rolling)} r={4.5} className="tl-end" />
                 <text x={x(lastIdx) + 9} y={y(last.rolling)} className="tl-endlabel" dominantBaseline="middle">
-                  {last.rolling.toFixed(0)}
+                  {rating(last.rolling)}
                 </text>
               </>
             )}
@@ -251,7 +255,7 @@ export function TrendChart(props: {
                   <svg width="14" height="6" aria-hidden>
                     <line x1="1" y1="3" x2="13" y2="3" className="tl-line" />
                   </svg>
-                  <strong>{h.rolling.toFixed(1)}</strong>
+                  <strong>{rating(h.rolling)}</strong>
                   <span className="muted">{rollingWindow}-game avg</span>
                 </div>
               )}
@@ -259,7 +263,7 @@ export function TrendChart(props: {
                 <svg width="14" height="8" aria-hidden>
                   <circle cx="7" cy="4" r="3.5" className="tl-dot solid" />
                 </svg>
-                <strong>{h.score.toFixed(0)}</strong>
+                <strong>{rating(h.score)}</strong>
                 <span className="muted">this game</span>
               </div>
               <div className="tip-meta">
@@ -296,8 +300,8 @@ function TrendTable({ points, onOpen }: { points: TrendPoint[]; onOpen: (logId: 
               <td className="muted nowrap">{formatDate(p.playedAt, true)}</td>
               <td className="nowrap">{splitMap(p.map).name ?? <span className="muted">unknown</span>}</td>
               <td>{p.result && <span className={`result result-${p.result}`}>{p.result}</span>}</td>
-              <td className="num">{p.score.toFixed(0)}</td>
-              <td className="num">{p.rolling === null ? "—" : p.rolling.toFixed(1)}</td>
+              <td className="num">{rating(p.score)}</td>
+              <td className="num">{rating(p.rolling)}</td>
             </tr>
           ))}
         </tbody>
