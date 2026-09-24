@@ -299,6 +299,51 @@ fn parse_match(json: &str) -> Result<Etf2lMatchRow> {
     })
 }
 
+/// How long after its scheduled time an official can still start.
+///
+/// Measured, not guessed: across this account's 56 officials that ETF2L gave
+/// a time for, the log started between 10 and 166 minutes after it, and never
+/// before. Three hours keeps every one of them and sweeps in seven other logs
+/// — five scrims played the same evening and two never downloaded.
+const OFFICIAL_WINDOW_S: i64 = 3 * 3600;
+
+/// Which ETF2L match each log was played inside, by time alone.
+///
+/// This is the only way to know a log is an official *before* downloading it:
+/// trends.tf tags some, and the roster match that finds the rest needs the
+/// player list, which is inside the file. A fetch policy that keeps officials
+/// has to decide earlier than that.
+///
+/// The ETF2L match's own map list cannot help: a combined log's map is free
+/// text the uploader typed — "prod,vigil,ash", or an emoji.
+///
+/// `logs` and `matches` are `(id, time)`, and a log inside two windows goes to
+/// the match it started soonest after.
+pub fn match_by_time(logs: &[(i64, i64)], matches: &[(i64, i64)]) -> Vec<(i64, i64)> {
+    let mut out = Vec::new();
+    for &(log_id, played_at) in logs {
+        let best = matches
+            .iter()
+            .filter(|(_, t)| played_at >= *t && played_at - *t <= OFFICIAL_WINDOW_S)
+            .min_by_key(|(_, t)| played_at - *t);
+        if let Some((match_id, _)) = best {
+            out.push((log_id, *match_id));
+        }
+    }
+    out
+}
+
+/// Work out and store which logs sit inside an official's window. Returns how
+/// many were marked. No network: run it after [`fetch`], before the queue.
+pub async fn mark_by_time(db: &Db) -> Result<usize> {
+    let matches = db.etf2l_match_times().await?;
+    if matches.is_empty() {
+        return Ok(0);
+    }
+    let pairs = match_by_time(&db.index_times().await?, &matches);
+    db.set_etf2l_time_matches(&pairs).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -314,6 +359,89 @@ mod tests {
           {"id":97913,"name":"Flashy","team_id":null,"steam":{"id64":"76561198099396919"}},
           {"id":1,"name":"no steam","team_id":37921,"steam":null}],
         "demos":[],"map_results":[]}}"#;
+
+    #[test]
+    fn a_log_belongs_to_the_official_it_started_just_after() {
+        let hour = 3600;
+        let matches = [(1, 20 * hour), (2, 24 * hour)];
+        let logs = [
+            // The usual case: half an hour after the scheduled time.
+            (100, 20 * hour + 1800),
+            // Late, but within the window a long bo3 takes.
+            (101, 20 * hour + 2 * hour),
+            // Before the scheduled time, so it is somebody else's game.
+            (102, 20 * hour - 600),
+            // Long after the first and still before the second: the scrims
+            // played between two officials belong to neither.
+            (103, 20 * hour + 3 * hour + 1800),
+            // Inside both windows: it belongs to the one it follows.
+            (104, 24 * hour + 60),
+        ];
+        let got = match_by_time(&logs, &matches);
+        assert_eq!(got, vec![(100, 1), (101, 1), (104, 2)]);
+    }
+
+    #[test]
+    fn no_officials_means_nothing_is_marked() {
+        assert!(match_by_time(&[(1, 100)], &[]).is_empty());
+    }
+
+    /// The plumbing, not the rule: a stored official and a stored index row
+    /// come back joined, and the mark lands on the log.
+    #[tokio::test]
+    async fn marking_writes_the_match_onto_the_log() {
+        let db = Db::connect_in_memory().await.unwrap();
+        let scheduled = 1_787_512_500;
+        db.replace_etf2l_matches(&[Etf2lMatchRow {
+            match_id: 92883,
+            competition_id: None,
+            competition: None,
+            comp_type: Some("Highlander".into()),
+            category: None,
+            division: None,
+            tier: None,
+            week: None,
+            round: None,
+            time: Some(scheduled),
+            clan1: None,
+            clan2: None,
+            r1: None,
+            r2: None,
+            default_win: false,
+            maps: vec![],
+            roster: vec![],
+        }])
+        .await
+        .unwrap();
+        db.upsert_logstf_rows(&[
+            hl_db::LogsTfIndexRow {
+                log_id: 1,
+                title: Some("the official"),
+                map: Some("pl_upward_f12"),
+                played_at: Some(scheduled + 1800),
+                player_count: Some(18),
+                raw_json: "{}",
+            },
+            hl_db::LogsTfIndexRow {
+                log_id: 2,
+                title: Some("a scrim the next night"),
+                map: Some("pl_vigil_rc10"),
+                played_at: Some(scheduled + 24 * 3600),
+                player_count: Some(18),
+                raw_json: "{}",
+            },
+        ])
+        .await
+        .unwrap();
+
+        assert_eq!(mark_by_time(&db).await.unwrap(), 1);
+        let marked: Vec<(i64, i64)> =
+            sqlx::query_as("SELECT log_id, etf2l_time_match FROM log_index WHERE etf2l_time_match IS NOT NULL")
+                .fetch_all(db.pool())
+                .await
+                .unwrap();
+        assert_eq!(marked, vec![(1, 92883)]);
+    }
 
     #[test]
     fn parses_a_real_match() {

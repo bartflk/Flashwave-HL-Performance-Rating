@@ -1,7 +1,7 @@
 //! Sync and reprocess.
 //!
 //! ```text
-//! sync:      trends.tf index -> logs.tf search -> dedupe -> fetch queue -> normalize
+//! sync:      trends.tf index -> logs.tf search -> dedupe -> ETF2L -> fetch queue -> normalize
 //! reprocess: stored index    ->                   dedupe ->               normalize
 //! ```
 //!
@@ -104,7 +104,30 @@ pub async fn sync(
         superseded,
     });
 
-    // 4. Fetch and normalize, newest first.
+    // 4. ETF2L, before anything is fetched rather than after.
+    //
+    // Whether a log is an official decides whether it is worth downloading at
+    // all, and the roster match that settles it needs the player list from
+    // inside the file. The scheduled times do not: they place a log as an
+    // official from the index alone. ETF2L being down is not a failed sync —
+    // the marks are simply not refreshed this time.
+    match crate::etf2l::fetch(db, sources, me, |done, total| {
+        progress(Progress::Etf2l { done, total });
+    })
+    .await
+    {
+        Ok(_) => {
+            let marked = crate::etf2l::mark_by_time(db).await?;
+            tracing::info!(marked, "logs placed inside an official's window");
+        }
+        Err(e) => {
+            let error = format!("{e:#}");
+            tracing::warn!(%error, "ETF2L fetch failed");
+            progress(Progress::Etf2lFailed { error });
+        }
+    }
+
+    // 5. Fetch and normalize, newest first.
     let mut queue = db.fetch_queue(MAX_FETCH_ATTEMPTS).await?;
     if let Some(max) = opts.max_fetch {
         queue.truncate(max);

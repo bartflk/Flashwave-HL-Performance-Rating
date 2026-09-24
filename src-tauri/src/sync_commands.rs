@@ -98,16 +98,10 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             if raw.failed > 0 {
                 tracing::warn!(failed = raw.failed, "some raw logs could not be fetched; next sync retries");
             }
-            // ETF2L is context, not the core: if it is down, the sync still succeeds.
-            let etf2l = hl_ingest::etf2l::fetch(&db, &sources, me, |done, total| {
-                let _ = emitter.emit(EV_PROGRESS, Progress::Etf2l { done, total });
-            })
-            .await;
-            if let Err(e) = etf2l {
-                let error = format!("{e:#}");
-                tracing::warn!(%error, "ETF2L fetch failed");
-                let _ = emitter.emit(EV_PROGRESS, Progress::Etf2lFailed { error });
-            }
+            // ETF2L itself was fetched inside the sync, before the queue:
+            // what it says decides which logs are worth downloading. Sorting
+            // the downloaded ones into officials, scrims and pugs needs their
+            // player lists, so that part happens here.
             hl_ingest::etf2l::derive_context(&db, me).await?;
             // Your name and picture for the top bar; a failure keeps the old ones.
             if let Err(e) = hl_ingest::owner::refresh(&db, &sources, me).await {

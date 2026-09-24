@@ -184,9 +184,8 @@ async fn main() -> Result<()> {
             println!("fetched {} log(s), {} failed", summary.fetched, summary.failed);
             let raw = hl_ingest::kills::fetch(&db, &sources, None, print_progress).await?;
             println!("\nraw logs: {} fetched, {} missing, {} failed", raw.fetched, raw.missing, raw.failed);
-            if let Err(e) = hl_ingest::etf2l::fetch(&db, &sources, me, |_, _| {}).await {
-                println!("ETF2L unavailable, classifying from stored data: {e:#}");
-            }
+            // ETF2L was fetched inside the sync, before the queue; sorting the
+            // logs into officials, scrims and pugs needs their player lists.
             classify(&db, me).await?;
             if let Some(tf) = db.get_config().await?.tf_path {
                 hl_ingest::index_demos(&db, std::path::Path::new(&tf)).await?;

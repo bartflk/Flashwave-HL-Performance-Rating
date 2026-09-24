@@ -208,6 +208,47 @@ impl Db {
         .await?)
     }
 
+    /// Every Highlander official ETF2L scheduled: `(match_id, time)`.
+    pub async fn etf2l_match_times(&self) -> Result<Vec<(i64, i64)>> {
+        Ok(sqlx::query_as(
+            "SELECT match_id, time FROM etf2l_match
+             WHERE comp_type = 'Highlander' AND time IS NOT NULL
+             ORDER BY time",
+        )
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    /// When every kept log was played: `(log_id, played_at)`. Indexed rows,
+    /// so this answers for logs that have not been downloaded yet.
+    pub async fn index_times(&self) -> Result<Vec<(i64, i64)>> {
+        Ok(sqlx::query_as(
+            "SELECT log_id, played_at FROM log_index
+             WHERE superseded_by IS NULL AND played_at IS NOT NULL
+             ORDER BY played_at",
+        )
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    /// Record which ETF2L match each log sits inside the scheduled time of.
+    /// Replaces the lot: a log that no longer matches must lose its mark.
+    pub async fn set_etf2l_time_matches(&self, pairs: &[(i64, i64)]) -> Result<usize> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("UPDATE log_index SET etf2l_time_match = NULL WHERE etf2l_time_match IS NOT NULL")
+            .execute(&mut *tx)
+            .await?;
+        for (log_id, match_id) in pairs {
+            sqlx::query("UPDATE log_index SET etf2l_time_match = ?2 WHERE log_id = ?1")
+                .bind(log_id)
+                .bind(match_id)
+                .execute(&mut *tx)
+                .await?;
+        }
+        tx.commit().await?;
+        Ok(pairs.len())
+    }
+
     pub async fn replace_etf2l_matches(&self, rows: &[Etf2lMatchRow]) -> Result<()> {
         let mut tx = self.pool().begin().await?;
         sqlx::query("DELETE FROM etf2l_roster").execute(&mut *tx).await?;
