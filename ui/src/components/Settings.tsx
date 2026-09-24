@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import { errorMessage, type AppStatus, type DemoIndexSummary } from "../api/types";
 import { formatDate } from "../lib/format";
 import { HistoryPanel } from "./HistoryPanel";
+import { startRebuild, useSyncStatus } from "../lib/sync";
 
 export function Settings({
   status,
@@ -12,22 +13,10 @@ export function Settings({
   status: AppStatus;
   onReconfigure: () => void;
 }) {
-  const [rebuild, setRebuild] = useState<{ busy: boolean; error: string | null }>({
-    busy: false,
-    error: null,
-  });
-
-  async function startRebuild() {
-    setRebuild({ busy: true, error: null });
-    try {
-      // Progress and completion arrive through the sync strip's listeners.
-      await api.reprocessStart();
-    } catch (e) {
-      setRebuild({ busy: false, error: errorMessage(e) });
-      return;
-    }
-    setRebuild({ busy: false, error: null });
-  }
+  // Rebuilding reports from the corner like a sync, because it is one: the
+  // same events, the same minutes of work.
+  const sync = useSyncStatus();
+  const busy = sync.state === "running";
 
   return (
     <div className="content">
@@ -63,11 +52,10 @@ export function Settings({
           Use this after an update changes how logs are read.
         </p>
         <div className="row" style={{ marginTop: 14 }}>
-          <button onClick={() => void startRebuild()} disabled={rebuild.busy}>
-            Rebuild from stored data
+          <button onClick={() => void startRebuild()} disabled={busy}>
+            {busy ? "Working…" : "Rebuild from stored data"}
           </button>
         </div>
-        {rebuild.error && <p className="error" style={{ marginTop: 10 }}>{rebuild.error}</p>}
         <dl className="kv" style={{ marginTop: 16 }}>
           <dt>Database</dt>
           <dd className="path-row">

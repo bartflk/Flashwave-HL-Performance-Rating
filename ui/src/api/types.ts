@@ -141,6 +141,8 @@ export type Progress =
   | { kind: "rating"; done: number; total: number }
   | { kind: "etf2l"; done: number; total: number }
   | { kind: "rawLogs"; done: number; total: number }
+  /** The per-map logs a combined log was built from. */
+  | { kind: "parts"; done: number; total: number }
   | { kind: "etf2lFailed"; error: string };
 
 /** Sent once on `sync://done`. */
