@@ -1,4 +1,4 @@
-# HL Performance Rating System — Plan v1.8
+# HL Performance Rating System — Plan v1.9
 
 **Stack:** Tauri 2 + Rust core + React/TypeScript + SQLite
 **Player:** Flashy — `76561198099396919` / `[U:1:139131191]` / ETF2L 97913
@@ -752,6 +752,11 @@ The second column is after five hidden parts were folded away (2,513 rounds) and
 
 ## 11. Highlander theory and the next rating update (for deliberation)
 
+> The rules and mechanics themselves — class limits, match formats, the map
+> pool, Uber and cart numbers — live in [`docs/highlander.md`](docs/highlander.md).
+> This section is the layer above: what the community says *wins* games, and
+> how each claim could be tested against our own data.
+
 Nothing in this section is built or agreed. It collects what the community says wins Highlander games and turns each claim into something this app could measure. It then expands the upcoming improvements from §3 and §8 into concrete proposals, each with a question to settle first. The theory is written as **hypotheses to test against our own data**, not as fact. Wikis and guides describe how people think the game works, and a measured effect can disagree with them.
 
 ### What the theory says
@@ -1391,6 +1396,9 @@ from testers (function, boSe, Taiga) is marked with who asked.
 | Q8 | **Every class gets its own model** (boSe) | large | Pyro, Engineer and Medic are hardest to read from logs.tf, so they gain the most. The Sniper work is the template. |
 | Q9 | **Opponent strength** (open item 8) | medium | ETF2L division is stored for every official; the pool still treats a low game like a Premiership one. |
 | Q10 | **Colour themes in settings** (function) | small | The palette is already CSS variables, so a theme is a small set of overrides. Cheap, and worth doing once the screens settle. |
+| Q11 | **Cart time in a numbers advantage** (§15.1) | medium | The clearest unmeasured waste on payload: seconds in a 9v5 with nobody on the cart. Needs the demo's cart position, which nothing reads yet. |
+| Q12 | **Momentum** (§15.2) | large | Depends on Q11 and on Q6's fight model; it is the story those two tell together, so it is last of the three. |
+| Q13 | **Translations** (tenshi, with boSe on French and obi on Portuguese and Spanish) | medium | Volunteers are waiting, so the cost is the plumbing, not the words. Worth doing after the screens stop moving — every string moved twice is a string translated twice. |
 
 Smaller open items stay in §8 and are folded into whichever job touches them:
 demo linking per map segment (18) and the in-game jump-tick check (5) belong
@@ -1445,3 +1453,100 @@ parsed.
 **Risks.** POV demos hold only what the recording player's client received, so
 teammate positions are partial. Old demos may use protocol versions the parser
 does not know. Both are checked in the spike before anything is built on top.
+
+
+---
+
+## 15. Three from the Discord (Q11-Q13)
+
+Taken from the suggestion threads on 24 September 2026. Each is written down
+as what it measures, what it needs, and what could go wrong — none is agreed.
+
+### 15.1 Cart time in a numbers advantage (Q11)
+
+**The ask** (Flashy): measure and detect when the cart is standing still in a
+9v5 or better, to see how much time is wasted not pushing. Also the average
+cart time after winning a teamfight, 1/2/3 fights in.
+
+**Why it is a real measurement and not a proxy.** A single enemy near the cart
+stops it dead — it does not slow down, it stops (see `docs/highlander.md` §5).
+So a still cart while five enemies are dead is not a resourcing problem or an
+unlucky angle. It is either nobody walking to it, or a defender alive on it
+that nobody has killed. Both are mistakes, and both are the team's, which is
+the first thing this app would measure that is not about one player.
+
+**What it needs.** Cart position over time, which comes from an STV demo and
+nothing else — logs.tf does not record it. The demo parser already reads
+player positions per tick (`hl-demos::parse`); the cart is a separate entity,
+and finding it in `tf-demo-parser`'s entity stream is the unknown. Failing
+that, the cart's *progress* is in the round events, which is coarser but free.
+
+**The measurement, first cut.**
+
+- For every second of a live payload round: cart moving or not, and the
+  numbers difference (already derived — `kill_situation`).
+- **Wasted seconds** = time at +3 or better with the cart still.
+- **Conversion** = seconds of cart movement in the 30 seconds after a won
+  fight, which is the "1/2/3x after teamfights" part of the ask.
+
+**What could go wrong.** A still cart at +4 can be correct: the last defender
+is holding a forward angle and the team is repositioning rather than feeding.
+A number that calls that a mistake will be wrong often enough to be ignored.
+So the first version reports it per round with the clip to watch, rather than
+folding it into a rating.
+
+### 15.2 Momentum (Q12)
+
+**The ask** (Flashy): a statistic for when the cart gets stuck and you start
+killing or dying a lot at one spot.
+
+**What it is.** Not a new measurement so much as a shape over the ones we will
+have: a round is a sequence of states — pushing, stalled, collapsing — and
+momentum is which one you are in and how long you stay there. A hold that
+breaks after four failed pushes reads very differently from one that breaks
+first try, and the scoreboard shows neither.
+
+**What it needs.** Q11's cart timeline, and Q6's fight model for the win
+chance per fight. With both, a round becomes a line: territory on one axis,
+time on the other, with fights marked. Without them it is a guess.
+
+**Why it is last.** It has no measurement of its own. Built before Q6 and Q11
+it would be an opinion drawn as a chart.
+
+**First cut, when it comes.** Per round: a stall is N seconds with no
+territory gained and at least one fight lost; report the number of stalls,
+the longest, and where on the map they happened. The map overview already
+draws positions, so "where" is close to free.
+
+### 15.3 Translations (Q13)
+
+**The ask** (tenshi): the app in the languages people actually speak, so that
+not knowing English well is not a barrier. Flashy's shortlist: Russian,
+Ukrainian, German, Polish, French, Italian, Spanish, English. **boSe offered
+to take French; obi offered Portuguese and Spanish.**
+
+**What it needs.** The strings are currently written into the components. The
+work is:
+
+1. Pull every user-facing string into one catalogue keyed by id. This is the
+   bulk of it, and the part that has to happen before anyone can translate.
+2. A small runtime: a language setting, a `t("key")` lookup, fall back to
+   English when a key is missing so a half-finished language still runs.
+3. One file per language, plain JSON, so a volunteer edits a file and opens a
+   PR without touching the app.
+4. A language picker in Settings, next to the colour themes of Q10.
+
+**Why not yet.** Every string this app has has moved at least once in the last
+week, and several have been rewritten twice. A string moved after it is
+translated is a string translated again, by a volunteer, for nothing. The
+screens should settle first.
+
+**What to be careful about.** The tone is the product here: plain sentences
+that explain rather than label. That does not survive machine translation, and
+it is unfair to hand a volunteer 400 strings with no context. So: ship the
+catalogue with a note per string saying where it appears, and start with one
+language end to end (French, since boSe offered) before opening the rest.
+
+**The numbers are not strings.** Dates, thousands separators and decimals
+already go through `toLocaleString`; the rating's two decimals are deliberate
+and should stay a full stop in every language, because it is HLTV's number.
