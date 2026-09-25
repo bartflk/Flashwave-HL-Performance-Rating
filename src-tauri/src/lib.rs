@@ -20,6 +20,9 @@ pub struct AppState {
     pub busy: Arc<AtomicBool>,
     /// Set while an STV demo is downloading.
     pub downloading: Arc<AtomicBool>,
+    /// Held for the life of the window: the database is this app's alone
+    /// while it runs. Never read; dropping it is the point.
+    pub _lock: hl_ingest::lock::Lock,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -44,6 +47,12 @@ pub fn run() {
                 .app_data_dir()
                 .map_err(|e| format!("resolving the application data directory: {e}"))?
                 .join("hl.sqlite3");
+
+            // Hold the database for as long as this window is open, so no
+            // other tool can write to it at the same time. Two writers on one
+            // SQLite file corrupted this database twice on 25 September 2026.
+            let lock = hl_ingest::lock::hold(&db_path)
+                .map_err(|e| format!("{e:#}"))?;
 
             // A backup asked for last run goes in now, while nothing has the
             // file open. Failing here must not stop the app: the marker is
@@ -138,6 +147,7 @@ pub fn run() {
             app.manage(AppState {
                 db,
                 db_path,
+                _lock: lock,
                 sources,
                 busy: Arc::new(AtomicBool::new(false)),
                 downloading: Arc::new(AtomicBool::new(false)),

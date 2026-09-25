@@ -96,6 +96,11 @@ async fn main() -> Result<()> {
 
     let mut args: Vec<String> = std::env::args().skip(1).collect();
 
+    // Anything that opens the app's database waits for the app to let go.
+    // `--force` is for when you know the window is shut and the lock is not.
+    let forced = args.iter().any(|a| a == "--force");
+    args.retain(|a| a != "--force");
+
     let db_path = match args.iter().position(|a| a == "--db") {
         Some(i) if i + 1 < args.len() => {
             let p = PathBuf::from(args.remove(i + 1));
@@ -107,6 +112,10 @@ async fn main() -> Result<()> {
     };
 
     let command: Vec<&str> = args.iter().map(String::as_str).collect();
+    // Help and the like never open the database, so they never wait for it.
+    if !matches!(command.first().copied(), None | Some("help") | Some("--help") | Some("-h")) {
+        hl_ingest::lock::require_free(&db_path, forced)?;
+    }
     match command.as_slice() {
         [] | ["help"] | ["--help"] | ["-h"] => {
             print!("{USAGE}");
@@ -247,6 +256,23 @@ async fn main() -> Result<()> {
             println!("fights your side turned up to {mine}");
             println!("  you were in                {joined} ({}%)", joined * 100 / mine.max(1));
             println!("  your median arrival        {}s after the first kill", med(&joins));
+            Ok(())
+        }
+
+        // A consistent copy to work on, so measuring never touches the
+        // original. `cp` of a live SQLite file is not this: the write-ahead
+        // log holds pages the main file does not have yet, and copying one
+        // without the other gives a torn database that reads as corrupt.
+        ["copy", to] => {
+            let db = Db::connect(&db_path).await?;
+            let to = PathBuf::from(to);
+            if to.exists() {
+                bail!("{} already exists; pick a name that does not", to.display());
+            }
+            db.vacuum_into(&to).await?;
+            let bytes = std::fs::metadata(&to).map(|m| m.len()).unwrap_or(0);
+            println!("{} -> {} ({:.0} MB)", db_path.display(), to.display(), bytes as f64 / 1e6);
+            println!("Work on the copy: pass --db {}", to.display());
             Ok(())
         }
 

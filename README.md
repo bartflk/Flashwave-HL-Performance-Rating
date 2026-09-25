@@ -99,6 +99,21 @@ In the order it is queued (the detail lives in [PLAN.md](PLAN.md) §13):
 2. Run it. Windows may show **"Windows protected your PC"** because the installer is not code-signed (signing costs money every year). Click **More info → Run anyway**.
 3. The installer adds Flashwave.tf to the Start menu. It needs Microsoft WebView2, which Windows 10 and 11 already have; if not, the installer fetches it.
 
+## Working on it safely
+
+The app holds its database while its window is open, and every command line
+tool refuses to touch it until the window closes. To work on the data, take a
+consistent copy first:
+
+```
+hl copy working-copy.sqlite3
+hl --db working-copy.sqlite3 validate sniper
+```
+
+Never copy the database with `cp`: in WAL mode it is two files, and copying
+one without the other gives a torn database. [docs/database-rules.md](docs/database-rules.md)
+has the whole of it, including what to do if one does break.
+
 ## First run
 
 1. **Your SteamID.** Any format works: SteamID64, `[U:1:…]`, `STEAM_0:…` or a link to your Steam profile.
