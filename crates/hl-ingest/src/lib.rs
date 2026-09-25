@@ -22,6 +22,7 @@ pub mod state;
 pub mod statecheck;
 pub mod fights;
 pub mod situation;
+pub mod teamfights;
 pub mod seasons;
 pub mod owner;
 pub mod parts;

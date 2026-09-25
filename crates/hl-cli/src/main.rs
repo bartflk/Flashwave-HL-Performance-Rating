@@ -198,6 +198,58 @@ async fn main() -> Result<()> {
             rate(&db, &db_path).await
         }
 
+        // Q7: what the teamfights in every stored log look like.
+        ["teamfights"] => {
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?.context("no owner set")?;
+            let (mut fights, mut together, mut mine, mut joined) = (0usize, 0usize, 0usize, 0usize);
+            let mut joins: Vec<i64> = Vec::new();
+            let mut spreads: Vec<i64> = Vec::new();
+            for log_id in db.rawlog_ids().await? {
+                let Some(zip) = db.rawlog(log_id).await? else { continue };
+                let raw = hl_ingest::rawlog::parse(&hl_ingest::rawlog::unzip(&zip)?);
+                let gs = hl_ingest::state::GameState::build(&raw);
+                let f = hl_ingest::fights::analyse(&raw, &gs);
+                // Which fight each kill belongs to, as the situation pass groups them.
+                let fight_of: Vec<Option<usize>> = hl_ingest::situation::kill_states(&raw, &gs, &f.tags)
+                    .into_iter()
+                    .map(|x| x.map(|(_, fight)| fight))
+                    .collect();
+                let tf = hl_ingest::teamfights::teamfights(&raw, &gs, &fight_of);
+                // Which side the owner wore, from their own kills and deaths.
+                let team = raw
+                    .kills
+                    .iter()
+                    .find_map(|k| {
+                        if k.killer.account == me.account_id() { k.killer.team }
+                        else if k.victim.account == me.account_id() { k.victim.team }
+                        else { None }
+                    });
+                let Some(team) = team else { continue };
+                for t in &tf {
+                    if let Some(spread) = t.collapse(team) {
+                        fights += 1;
+                        spreads.push(spread);
+                        if spread <= hl_ingest::teamfights::TOGETHER_S { together += 1; }
+                    }
+                }
+                let h = hl_ingest::teamfights::habits(&tf, me.account_id(), team);
+                mine += h.fights;
+                joined += h.joined;
+                if h.joined > 0 { joins.push(h.median_join_s); }
+            }
+            spreads.sort_unstable();
+            joins.sort_unstable();
+            let med = |v: &[i64]| v.get(v.len() / 2).copied().unwrap_or(0);
+            println!("teamfights seen              {fights}");
+            println!("  your side arrived together {together} ({}%)", together * 100 / fights.max(1));
+            println!("  median arrival spread      {}s", med(&spreads));
+            println!("fights your side turned up to {mine}");
+            println!("  you were in                {joined} ({}%)", joined * 100 / mine.max(1));
+            println!("  your median arrival        {}s after the first kill", med(&joins));
+            Ok(())
+        }
+
         ["find-demos"] => {
             let db = Db::connect(&db_path).await?;
             let me = db.get_me().await?.context("no owner set")?;
