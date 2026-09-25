@@ -1389,7 +1389,7 @@ from testers (function, boSe, Taiga) is marked with who asked.
 | Q1 | **Filters ignored by two tabs** (function) | small | A bug: the map and round filters change the kill map but not Damage-and-kills or Fights, so those two quietly show the whole match. |
 | Q2 | **Database backup before every sync**, and a warning in the release notes about the uninstaller's "delete application data" box | small | A tester who uninstalls can lose their whole history, as happened here on 19 Sep 2026. |
 | Q3 | **Deep demo parse** (§14) | large | The one source of data we hold and do not read: aim, viewangles, distances, scoped time. Everything else is logs.tf's. |
-| Q4 | **Scout picks on KOTH worth more** (boSe) | small | One value in `victim_value.map`; boSe's point is that the Scout is in the uber on KOTH. Check it against `hl validate` first. |
+| ~~Q4~~ | ~~**Scout picks on KOTH worth more** (boSe)~~ | small | **Measured, not applied.** Five values from 1.15 to 2.5 all give the same 72.4% out of sample; the in-sample figure wanders 0.2 points with no trend. The note is in `weights.default.toml`. It says the *Sniper* rating cannot feel it, not that boSe is wrong — testing the claim needs Q8. |
 | Q5 | **§12 step 4: map and side baselines** | medium | Judge a Vigil defence against other Vigil defences. The fairness fix, not an accuracy one. |
 | Q6 | **§12 step 5: fight swing** | large | Win chance per fight, HLTV's Round Swing done properly. Replaces step 3's situation factor if it lands. |
 | Q7 | **Teamfights** (Taiga) | medium | Who collapsed on whom, who was dropped off cooldown, uber exchanges as space. Needs Q6's fight model to value them. |
