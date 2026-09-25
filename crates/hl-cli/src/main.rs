@@ -198,6 +198,19 @@ async fn main() -> Result<()> {
             rate(&db, &db_path).await
         }
 
+        ["find-demos"] => {
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?.context("no owner set")?;
+            let sources = Sources::new()?;
+            let before = db.logs_without_demo_id().await?.len();
+            let f = hl_ingest::demostf::index(&db, &sources, me).await?;
+            println!(
+                "demos.tf listed {} demos; matched {} of {} logs that had no id",
+                f.listed, f.matched, before
+            );
+            Ok(())
+        }
+
         ["reprocess"] => {
             let db = Db::connect(&db_path).await?;
             let started = std::time::Instant::now();

@@ -82,6 +82,52 @@ pub struct DemoStats {
 }
 
 impl Db {
+    /// Kept Highlander logs with a map and a time but no demos.tf id:
+    /// `(log_id, played_at, map)`. What `demostf::index` goes looking for.
+    pub async fn logs_without_demo_id(&self) -> Result<Vec<(i64, i64, Vec<String>)>> {
+        // Each log's maps as its rounds resolved them, falling back to the
+        // map field. A combined log's own field is free text -- "upward +
+        // steel" -- and matches nothing.
+        let rows: Vec<(i64, i64, Option<String>, Option<String>)> = sqlx::query_as(
+            "SELECT i.log_id, i.played_at, i.map,
+                    (SELECT group_concat(DISTINCT rm.map) FROM round_map rm WHERE rm.log_id = i.log_id)
+             FROM log_index i
+             WHERE i.demos_tf_id IS NULL
+               AND i.superseded_by IS NULL
+               AND i.played_at IS NOT NULL
+               AND ( COALESCE(i.format_override, i.format) = 'highlander'
+                  OR (COALESCE(i.format_override, i.format) IS NULL AND COALESCE(i.player_count, 0) >= 16) )
+             ORDER BY i.played_at DESC",
+        )
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|(log_id, at, map, resolved)| {
+                let maps: Vec<String> = match resolved {
+                    Some(r) if !r.is_empty() => r.split(',').map(str::to_string).collect(),
+                    _ => map.filter(|m| !m.is_empty()).into_iter().collect(),
+                };
+                (!maps.is_empty()).then_some((log_id, at, maps))
+            })
+            .collect())
+    }
+
+    /// Record the demos.tf demo each log was matched to. Only fills gaps: a
+    /// log trends.tf already linked keeps the id it was given.
+    pub async fn set_demos_tf_ids(&self, pairs: &[(i64, i64)]) -> Result<()> {
+        let mut tx = self.pool().begin().await?;
+        for (log_id, demo_id) in pairs {
+            sqlx::query("UPDATE log_index SET demos_tf_id = ?2 WHERE log_id = ?1 AND demos_tf_id IS NULL")
+                .bind(log_id)
+                .bind(demo_id)
+                .execute(&mut *tx)
+                .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
     /// Insert or refresh one demo and its markers; returns its id. Ids are
     /// stable across rescans because the path is the key.
     pub async fn upsert_demo(&self, d: &DemoRow<'_>) -> Result<i64> {

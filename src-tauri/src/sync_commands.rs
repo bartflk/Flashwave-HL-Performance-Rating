@@ -110,6 +110,15 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             if let Err(e) = hl_ingest::owner::refresh(&db, &sources, me).await {
                 tracing::warn!(error = %format!("{e:#}"), "owner profile refresh failed");
             }
+            // Which demos.tf demo each log is, for the ones trends.tf never
+            // linked -- 30% of them here. Best effort: demos.tf being down
+            // costs those links, not the sync.
+            match hl_ingest::demostf::index(&db, &sources, me).await {
+                Ok(f) if f.matched > 0 => tracing::info!(listed = f.listed, matched = f.matched, "demos.tf demos matched to logs"),
+                Ok(_) => {}
+                Err(e) => tracing::warn!(error = %format!("{e:#}"), "demos.tf lookup failed"),
+            }
+
             // New logs can link to demos already on disk. This also places
             // every log on the real clock, which the round maps use.
             if let Some(tf) = db.get_config().await?.tf_path {

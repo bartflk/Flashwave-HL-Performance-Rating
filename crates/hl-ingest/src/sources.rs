@@ -168,6 +168,28 @@ impl Sources {
         self.etf2l.get_text_opt(&format!("https://api-v2.etf2l.org{path}")).await
     }
 
+    /// Every SourceTV demo demos.tf holds for one player, newest first.
+    ///
+    /// trends.tf links a demo to 70% of this account's logs and nothing to the
+    /// other 30%, which left a third of matches with no way to reach their
+    /// demo. demos.tf knows about them; it just has to be asked, and a demo
+    /// carries its map and the second it started, which is enough to match it
+    /// to a log.
+    ///
+    /// `before` pages backwards: pass the oldest `time` seen so far.
+    pub async fn demostf_for_player(
+        &self,
+        steamid64: &str,
+        before: Option<i64>,
+    ) -> Result<Vec<DemosTfMeta>> {
+        let mut url = format!("https://api.demos.tf/demos?players[]={steamid64}&limit=100");
+        if let Some(t) = before {
+            url.push_str(&format!("&before={t}"));
+        }
+        let body = self.demostf.get_text(&url).await?;
+        serde_json::from_str(&body).context("parsing the demos.tf demo list")
+    }
+
     pub async fn demostf_meta(&self, demo_id: i64) -> Result<DemosTfMeta> {
         let body = self.demostf.get_text(&format!("https://api.demos.tf/demos/{demo_id}")).await?;
         serde_json::from_str(&body).with_context(|| format!("parsing demos.tf metadata for {demo_id}"))
