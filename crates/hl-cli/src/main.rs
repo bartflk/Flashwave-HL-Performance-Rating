@@ -424,10 +424,19 @@ async fn main() -> Result<()> {
             let db = Db::connect(&db_path).await?;
             let started = std::time::Instant::now();
             let t = hl_ingest::situation::measure(&db).await?;
-            if rest.contains(&"--toml") {
+            if rest.contains(&"--toml") || rest.contains(&"--swing") {
                 let (outcome, table) = if rest.contains(&"--round") { ("round", &t.round) } else { ("fight", &t.fight) };
-                let source = format!("From `hl situation --toml`: winning the {outcome}, {} kills in {} logs.", t.kills, t.logs);
-                print!("{}", hl_ingest::situation::toml_table(&hl_ingest::situation::factors(table), &source));
+                let swing = rest.contains(&"--swing");
+                let what = if swing { "--swing" } else { "--toml" };
+                let source = format!("From `hl situation {what}`: winning the {outcome}, {} kills in {} logs.", t.kills, t.logs);
+                print!(
+                    "{}",
+                    if swing {
+                        hl_ingest::situation::swing_table(&hl_ingest::situation::swings(table), &source)
+                    } else {
+                        hl_ingest::situation::toml_table(&hl_ingest::situation::factors(table), &source)
+                    }
+                );
                 return Ok(());
             }
             print!("{t}");

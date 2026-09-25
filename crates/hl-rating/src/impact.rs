@@ -33,6 +33,10 @@ pub struct Impact {
     pub kills: f64,
     /// The same kills, each also scaled by its situation factor.
     pub kills_situation: f64,
+    /// Win chance this player's kills added up, in points (PLAN 12 step 5):
+    /// a kill at even numbers is worth 0.19, a clean-up at four up 0.05.
+    /// `None` where no `[swing]` table was measured.
+    pub swing: Option<f64>,
     pub assists: f64,
     /// The player's kills in context (PLAN §11 B), where the fights pass has
     /// read the log. `None` without a raw log.
@@ -91,6 +95,12 @@ pub fn impacts<'a>(kills: impl IntoIterator<Item = (KillCtx, Option<&'a str>)>, 
             let e = out.entry(k.killer).or_default();
             e.kills += v;
             e.kills_situation += v * k.situation.map_or(1.0, |(d, a)| w.situation(d, a));
+            // Not multiplied by the victim's value: the swing already says
+            // what the kill was worth, measured, and the state it happened in
+            // is the whole of that.
+            if let Some(s) = k.situation.and_then(|(d, a)| w.swing(d, a)) {
+                *e.swing.get_or_insert(0.0) += s;
+            }
         }
         if let (true, Some(a)) = (k.assist_counts, k.assister) {
             out.entry(a).or_default().assists += v;
@@ -140,12 +150,18 @@ mod tests {
     #[test]
     fn a_kill_counts_its_situation_factor() {
         // The defaults with the situation table swapped for a known one.
+        // Only that table: `[swing]` has rows with the same names, and values
+        // that have to be win chances.
         let mut text = String::new();
+        let mut in_situation = false;
         for line in crate::weights::DEFAULT_TOML.lines() {
+            if line.starts_with('[') {
+                in_situation = line.trim() == "[situation]";
+            }
             text += match line.split_whitespace().next() {
-                Some("theirs") => "theirs = [1, 1, 1, 1, 1.4, 1, 1, 1, 1]",
-                Some("none") => "none = [1, 1, 1, 1, 1, 1, 1, 1, 0.5]",
-                Some("ours") => "ours = [1, 1, 1, 1, 1, 1, 1, 1, 1]",
+                Some("theirs") if in_situation => "theirs = [1, 1, 1, 1, 1.4, 1, 1, 1, 1]",
+                Some("none") if in_situation => "none = [1, 1, 1, 1, 1, 1, 1, 1, 0.5]",
+                Some("ours") if in_situation => "ours = [1, 1, 1, 1, 1, 1, 1, 1, 1]",
                 _ => line,
             };
             text.push('\n');

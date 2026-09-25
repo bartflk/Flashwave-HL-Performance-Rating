@@ -1363,6 +1363,16 @@ On its own the component is slightly *worse* than plain impact kills at picking 
 
 **Validate.** Out-of-sample only; this is the easiest step to overfit. It ships only if it beats step 4 out of sample.
 
+> **What the data said, September 2026.** Built, measured, and not shipped into the weights.
+>
+> The model needed no fitting: `hl situation` already measures, over 194,025 kills, how much a kill in each state raises the chance of winning the fight. At even numbers with no uber it is 50.0% -> 69.2%, so the kill is worth **0.192**; a clean-up at four up is worth **0.047**. `hl situation --swing` writes that out as a `[swing]` table, and the component is the sum of it per 10 minutes — unclamped and unnormalised, which is the whole point of it against step 3's factor.
+>
+> **Alone it is the best single component in the model**: 69.7% of 680 games, z 10.3, just ahead of Kills in context at 69.3%. **Fitted beside Kills in context it is worth nothing**: 0.04 [-0.43, 0.63], "unclear". They measure the same thing from different ends — Kills in context knows *who* was killed (a Medic is worth more than an Engineer), swing knows *when* (the numbers and the uber). Neither subsumes the other, and neither adds much to the other.
+>
+> Out of sample, against the live 72.4%: swapping swing in for Kills in context gives **70.9%**, 0.15/0.05 gives 72.4%, 0.05/0.15 gives 71.4%, and only an even **0.10/0.10 reaches 72.9%** — one peak with worse on both sides and a coefficient the bootstrap calls unclear. That is noise, so the live model is left alone.
+>
+> **Kept anyway:** the component, the measured table, and the generator. Q7's teamfights need a fight model, and this is one.
+
 **Order note.** Step 3's situation factor is a simple version of this. If step 5 lands, step 3's factor can be dropped from impact kills so the same thing is not counted twice.
 
 ### After each step: the balance check
@@ -1402,7 +1412,8 @@ from testers (function, boSe, Taiga) is marked with who asked.
 | ~~Q4~~ | ~~**Scout picks on KOTH worth more** (boSe)~~ | small | **Measured, not applied.** Five values from 1.15 to 2.5 all give the same 72.4% out of sample; the in-sample figure wanders 0.2 points with no trend. The note is in `weights.default.toml`. It says the *Sniper* rating cannot feel it, not that boSe is wrong — testing the claim needs Q8. |
 | ~~Q5~~ | ~~**§12 step 4: map baselines**~~ | medium | **Done, in half.** Per-map pools ship: the Sniper spread across maps halves from 0.192 to 0.097, Vigil 0.90 -> 1.02 and Product 1.10 -> 1.01, with out-of-sample accuracy unmoved at 72.4%. |
 | Q5b | **§12 step 4: the side half** | large | **Blocked on data.** 80% of performances on attack/defence maps play both sides, so a performance cannot be filed under one; splitting its components needs per-round damage and time, which the raw-log parser does not read. See §12 step 4. |
-| Q6 | **§12 step 5: fight swing** | large | Win chance per fight, HLTV's Round Swing done properly. Replaces step 3's situation factor if it lands. |
+| ~~Q6~~ | ~~**§12 step 5: fight swing**~~ | large | **Built and measured; the live model is unchanged.** Alone it is the strongest single component there is (69.7% of 680, z 10.3), but fitted beside Kills in context it is "unclear" [-0.43, 0.63] — they measure the same thing from different ends. Swapping it in is *worse* out of sample (70.9% against 72.4%); only an even 0.10/0.10 split edges ahead, by 0.5 points, inside the noise. The component, the measured `[swing]` table and the `--swing` generator stay: Q7 needs the fight model anyway. |
+| Q6b | **Fight swing's credit split** | medium | **Blocked on data,** with Q5b. HLTV gives a share to the damage dealers in the 5 s before a kill; the raw-log parser does not read damage events, so the killer currently takes the whole swing. |
 | Q7 | **Teamfights** (Taiga) | medium | Who collapsed on whom, who was dropped off cooldown, uber exchanges as space. Needs Q6's fight model to value them. |
 | Q8 | **Every class gets its own model** (boSe) | large | Pyro, Engineer and Medic are hardest to read from logs.tf, so they gain the most. The Sniper work is the template. |
 | Q9 | **Opponent strength** (open item 8) | medium | ETF2L division is stored for every official; the pool still treats a low game like a Premiership one. |

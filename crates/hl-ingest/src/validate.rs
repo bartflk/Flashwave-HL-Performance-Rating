@@ -27,7 +27,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 /// Every component that means something for a Sniper, used or not.
-pub const SNIPER_COMPONENTS: [Component; 15] = [
+pub const SNIPER_COMPONENTS: [Component; 16] = [
     Component::ImpactKills,
     Component::ImpactAssists,
     Component::MedicPicks,
@@ -43,6 +43,7 @@ pub const SNIPER_COMPONENTS: [Component; 15] = [
     Component::FightKast,
     Component::FightKastEngaged,
     Component::SituationKills,
+    Component::FightSwing,
 ];
 
 /// Model v1's Sniper weights, for comparison.

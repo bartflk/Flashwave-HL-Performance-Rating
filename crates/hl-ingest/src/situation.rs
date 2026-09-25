@@ -203,14 +203,51 @@ pub fn factors(t: &HashMap<KillState, Tally>) -> HashMap<KillState, f64> {
 
 /// The factors as a `[situation]` table for `weights.default.toml`.
 pub fn toml_table(f: &HashMap<KillState, f64>, source: &str) -> String {
+    table("situation", f, source, 2, 1.0)
+}
+
+/// What a kill in each state is worth as a change in win chance, rather than
+/// as a factor against the even-numbers kill (PLAN §12 step 5).
+///
+/// The same measurement the factors come from, left in the units it was made
+/// in: at even numbers with no uber a kill takes its team from 50.0% to
+/// 69.2%, so it is worth 0.192. Nothing is normalised and nothing is clamped
+/// — a clean-up at four up really is worth 0.047, and saying so out loud is
+/// the point of the component.
+pub fn swings(t: &HashMap<KillState, Tally>) -> HashMap<KillState, f64> {
+    let mut out = HashMap::new();
+    for adv in -1..=1 {
+        for diff in -MAX_DIFF..=MAX_DIFF {
+            // A thin state borrows from the next one toward even numbers, as
+            // the factors do: a handful of kills is not a win chance.
+            let mut at = KillState { diff, adv };
+            let worth = loop {
+                match t.get(&at) {
+                    Some(x) if x.kills >= MIN_SAMPLES => break x.worth().unwrap_or(0.0),
+                    _ if at.diff != 0 => at.diff -= at.diff.signum(),
+                    _ => break 0.0,
+                }
+            };
+            out.insert(KillState { diff, adv }, worth);
+        }
+    }
+    out
+}
+
+/// The swings as a `[swing]` table for `weights.default.toml`.
+pub fn swing_table(f: &HashMap<KillState, f64>, source: &str) -> String {
+    table("swing", f, source, 3, 0.0)
+}
+
+fn table(name: &str, f: &HashMap<KillState, f64>, source: &str, dp: usize, default: f64) -> String {
     let row = |adv: i8| {
         (-MAX_DIFF..=MAX_DIFF)
-            .map(|diff| format!("{:.2}", f.get(&KillState { diff, adv }).copied().unwrap_or(1.0)))
+            .map(|diff| format!("{:.dp$}", f.get(&KillState { diff, adv }).copied().unwrap_or(default)))
             .collect::<Vec<_>>()
             .join(", ")
     };
     format!(
-        "[situation]\n# {source}\n# Columns: the killer's team alive minus the victim's, -4 to +4.\ntheirs = [{}]\nnone   = [{}]\nours   = [{}]\n",
+        "[{name}]\n# {source}\n# Columns: the killer's team alive minus the victim's, -4 to +4.\ntheirs = [{}]\nnone   = [{}]\nours   = [{}]\n",
         row(-1),
         row(0),
         row(1)

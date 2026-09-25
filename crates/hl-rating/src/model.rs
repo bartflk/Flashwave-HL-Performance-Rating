@@ -120,10 +120,15 @@ pub enum Component {
     FightKastEngaged,
     /// Impact kills, each also scaled by its situation (PLAN §12 step 3).
     SituationKills,
+    /// Win chance the player's kills added up, in points (PLAN §12 step 5).
+    /// Where `SituationKills` scales a kill's value by its state, this *is*
+    /// the state's value, measured and unnormalised: a kill at even numbers
+    /// is worth 0.19 and a clean-up at four up 0.05.
+    FightSwing,
 }
 
 impl Component {
-    pub const ALL: [Component; 20] = [
+    pub const ALL: [Component; 21] = [
         Component::ImpactKills,
         Component::ImpactAssists,
         Component::MedicPicks,
@@ -144,6 +149,7 @@ impl Component {
         Component::FightKast,
         Component::FightKastEngaged,
         Component::SituationKills,
+        Component::FightSwing,
     ];
 
     pub fn key(self) -> &'static str {
@@ -168,6 +174,7 @@ impl Component {
             Component::FightKast => "fight_kast",
             Component::FightKastEngaged => "fight_kast_engaged",
             Component::SituationKills => "situation_kills",
+            Component::FightSwing => "fight_swing",
         }
     }
 
@@ -197,6 +204,7 @@ impl Component {
             Component::FightKast => "Fight KAST",
             Component::FightKastEngaged => "Fight KAST, engaged",
             Component::SituationKills => "Kills in context",
+            Component::FightSwing => "Fight swing",
         }
     }
 
@@ -207,6 +215,7 @@ impl Component {
             Component::FightKast | Component::FightKastEngaged => "% of fights",
             Component::Heal | Component::Dpm => "per min",
             Component::Opening => "net per 10 min",
+            Component::FightSwing => "win % per 10 min",
             _ => "per 10 min",
         }
     }
@@ -316,6 +325,12 @@ pub fn extract(
                     player.vs.iter().map(|v| v.kills as f64 * w.victim(v.other_class)).sum::<f64>()
                 }) * per10,
             ),
+            // Measured from the raw log or not at all: without one there is
+            // no state to value a kill in, so the component is missing and
+            // the other weights take up the slack.
+            Component::FightSwing => {
+                impact.and_then(|i| i.swing).map(|s| s * 100.0 * per10)
+            }
         };
         if let Some(v) = v {
             values.push((*component, v));

@@ -29,6 +29,10 @@ pub struct Weights {
     /// (the victim's team, neither, the killer's), columns by the numbers
     /// difference -4..=4. `None`: every kill counts 1.
     situation: Option<[[f64; 9]; 3]>,
+    /// What a kill in each state is worth as a change in win chance (PLAN
+    /// 12 step 5). Same shape as `situation`, different units: these are
+    /// chances, not factors, so they are small and do not cluster on 1.
+    swing: Option<[[f64; 9]; 3]>,
 }
 
 #[derive(Debug, Clone)]
@@ -84,6 +88,8 @@ struct Raw {
     model: HashMap<String, HashMap<String, f64>>,
     #[serde(default)]
     situation: Option<SituationRaw>,
+    #[serde(default)]
+    swing: Option<SituationRaw>,
 }
 
 #[derive(Deserialize)]
@@ -209,8 +215,26 @@ impl Weights {
             }
         };
 
+        let swing = match raw.swing {
+            None => None,
+            Some(s) => {
+                let mut rows = [[0.0; 9]; 3];
+                for (i, (name, v)) in [("theirs", s.theirs), ("none", s.none), ("ours", s.ours)].into_iter().enumerate() {
+                    if v.len() != 9 {
+                        bail!("[swing]: `{name}` needs 9 values (numbers -4 to +4), has {}", v.len());
+                    }
+                    if v.iter().any(|f| !(0.0..=1.0).contains(f)) {
+                        bail!("[swing]: `{name}` values are win chances, so between 0 and 1");
+                    }
+                    rows[i].copy_from_slice(&v);
+                }
+                Some(rows)
+            }
+        };
+
         Ok(Weights {
             situation,
+            swing,
             victim_value,
             defending,
             maps,
@@ -275,6 +299,15 @@ impl Weights {
     /// What a kill counts for in its situation: `diff` is the killer's team
     /// alive minus the victim's (clamped to ±4), `adv` the uber advantage
     /// (1 the killer's team, -1 the victim's). 1 without a `[situation]` table.
+    /// How much a kill in this state raised its team's chance of winning the
+    /// fight. `None` without a `[swing]` table, which reads as "not
+    /// measured": the component is then missing rather than zero, and the
+    /// model renormalises around it.
+    pub fn swing(&self, diff: i8, adv: i8) -> Option<f64> {
+        let rows = self.swing.as_ref()?;
+        Some(rows[(adv.clamp(-1, 1) + 1) as usize][(diff.clamp(-4, 4) + 4) as usize])
+    }
+
     pub fn situation(&self, diff: i8, adv: i8) -> f64 {
         let Some(rows) = &self.situation else { return 1.0 };
         rows[(adv.clamp(-1, 1) + 1) as usize][(diff.clamp(-4, 4) + 4) as usize]
