@@ -42,9 +42,11 @@ pub async fn rate_all(
 
     // Pass 2: the pools, without the owner in them.
     let baseline = Baseline::build(perfs.iter().map(|(_, p)| p), me.map(|m| m.account_id()));
-    let stored: Vec<(String, String, Vec<f64>)> = baseline
+    let stored: Vec<(String, String, Option<String>, Vec<f64>)> = baseline
         .parts()
-        .map(|(class, c, vals)| (class.as_str().to_string(), c.key().to_string(), vals.to_vec()))
+        .map(|(class, c, map, vals)| {
+            (class.as_str().to_string(), c.key().to_string(), map.map(str::to_string), vals.to_vec())
+        })
         .collect();
     db.replace_baselines(MODEL_VERSION, &stored).await?;
 
@@ -117,6 +119,7 @@ pub async fn rate_logs(db: &Db, w: &Weights, log_ids: &[i64]) -> Result<usize> {
         let Some(json) = db.raw_log(log_id).await? else { continue };
         let Ok(value) = serde_json::from_str::<serde_json::Value>(&json) else { continue };
         let Ok(log) = normalize(log_id, &value) else { continue };
+        let pool_map = log.map.as_deref().map(hl_core::maps::map_base);
 
         // Per log rather than the whole corpus: this runs between fetches.
         let kills = db.kills_for_log(log_id).await?;
@@ -130,7 +133,7 @@ pub async fn rate_logs(db: &Db, w: &Weights, log_ids: &[i64]) -> Result<usize> {
         let rows: Vec<RatingRow> = log
             .players
             .iter()
-            .filter_map(|p| extract(p, &log.flags, w, impact.get(&p.id.account_id())))
+            .filter_map(|p| extract(p, &log.flags, w, impact.get(&p.id.account_id()), pool_map.as_deref()))
             .filter_map(|perf| {
                 let r = rate(&perf, &baseline, w)?.scaled(&scale);
                 Some(RatingRow {
@@ -179,6 +182,7 @@ pub async fn collect_performances(
             }
         };
         let Ok(log) = normalize(log_id, &value) else { continue };
+        let pool_map = log.map.as_deref().map(hl_core::maps::map_base);
         let mut impact = crate::kills::impacts_for(
             kills.get(&log_id).map_or(&[][..], |k| k.as_slice()),
             situations.get(&log_id),
@@ -190,7 +194,7 @@ pub async fn collect_performances(
         perfs.extend(
             log.players
                 .iter()
-                .filter_map(|p| extract(p, &log.flags, w, impact.get(&p.id.account_id())))
+                .filter_map(|p| extract(p, &log.flags, w, impact.get(&p.id.account_id()), pool_map.as_deref()))
                 .map(|p| (log_id, p)),
         );
     }
@@ -209,8 +213,8 @@ pub async fn load_baseline(db: &Db) -> Result<Baseline> {
         .load_baselines(MODEL_VERSION)
         .await?
         .into_iter()
-        .filter_map(|(class, comp, vals)| {
-            Some((TfClass::parse(&class).ok()?, Component::parse(&comp)?, vals))
+        .filter_map(|(class, comp, map, vals)| {
+            Some((TfClass::parse(&class).ok()?, Component::parse(&comp)?, map, vals))
         });
     Ok(Baseline::from_parts(parts))
 }

@@ -211,6 +211,28 @@ pub struct EventRow {
     pub jump: Option<Jump>,
 }
 
+/// Everything a rating needs besides the player: the pools, the scale that
+/// puts a percentile on the 1.00 rating, the map those pools are drawn from,
+/// the weights, and the kills already valued. They travel together through
+/// every part of this page, so they travel as one thing.
+pub struct Rater<'a> {
+    pub w: &'a Weights,
+    pub baseline: &'a Baseline,
+    pub scale: &'a Scale,
+    /// The map the pools are for, or `None` for every map together.
+    pub map: Option<&'a str>,
+    /// Each player's kills valued from the raw log, when there is one.
+    pub impacts: &'a HashMap<u32, Impact>,
+}
+
+impl Rater<'_> {
+    /// One player's rating on their main class, on the 1.00 scale.
+    fn of(&self, p: &PlayerLine, flags: &LogFlags) -> Option<Rating> {
+        let perf = extract(p, flags, self.w, self.impacts.get(&p.id.account_id()), self.map)?;
+        Some(rate(&perf, self.baseline, self.w)?.scaled(self.scale))
+    }
+}
+
 /// `impacts` holds each player's kills valued from the raw log, when there is
 /// one; the stored ratings are built the same way, so the page agrees with them.
 pub fn build(
@@ -221,6 +243,11 @@ pub fn build(
     scale: &Scale,
     impacts: &HashMap<u32, Impact>,
 ) -> MatchDetail {
+    // The pool this log is measured against: its own map, when it has one.
+    // A log whose rounds span several maps belongs to none of them.
+    let pool_map = log.map.as_deref().map(hl_core::maps::map_base);
+    let rater = Rater { w, baseline, scale, map: pool_map.as_deref(), impacts };
+
     let my_team = me.and_then(|m| log.players.iter().find(|p| p.id == m)).map(|p| p.team);
     let left_team = my_team.unwrap_or(Team::Red);
 
@@ -254,8 +281,8 @@ pub fn build(
         my_team,
         result,
         left_team,
-        matchups: matchups(log, left_team, me, w, baseline, scale, impacts),
-        players: players(log, me, w, baseline, scale, impacts),
+        matchups: matchups(log, left_team, me, &rater),
+        players: players(log, me, &rater),
         rounds: rounds(log, &names, me),
         model_version: MODEL_VERSION,
         rating_per_percentile: scale.per_percentile(),
@@ -274,23 +301,20 @@ fn matchups(
     log: &NormalizedLog,
     left: Team,
     me: Option<SteamId>,
-    w: &Weights,
-    baseline: &Baseline,
-    scale: &Scale,
-    impacts: &HashMap<u32, Impact>,
+    rater: &Rater<'_>,
 ) -> Vec<Matchup> {
     let mut rows: Vec<Matchup> = TfClass::ALL
         .iter()
         .map(|&class| {
-            let l = side(log, left, class, w, baseline, scale, impacts);
-            let r = side(log, left.other(), class, w, baseline, scale, impacts);
+            let l = side(log, left, class, rater);
+            let r = side(log, left.other(), class, rater);
             let score = |s: &Option<Side>| s.as_ref().and_then(|s| s.rating.as_ref()).map(|r| r.score);
             let diff = match (score(&l), score(&r)) {
                 (Some(a), Some(b)) => Some(round2(a - b)),
                 _ => None,
             };
             let winner = diff.map(|d| {
-                if d.abs() < w.general.even_margin {
+                if d.abs() < rater.w.general.even_margin {
                     "even"
                 } else if d > 0.0 {
                     "left"
@@ -346,15 +370,7 @@ fn on_class(log: &NormalizedLog, team: Team, class: TfClass) -> Vec<(&PlayerLine
     v
 }
 
-fn side(
-    log: &NormalizedLog,
-    team: Team,
-    class: TfClass,
-    w: &Weights,
-    baseline: &Baseline,
-    scale: &Scale,
-    impacts: &HashMap<u32, Impact>,
-) -> Option<Side> {
+fn side(log: &NormalizedLog, team: Team, class: TfClass, rater: &Rater<'_>) -> Option<Side> {
     let players = on_class(log, team, class);
     let (primary, _) = *players.first()?;
 
@@ -380,11 +396,8 @@ fn side(
         s.assists += line.assists;
         s.dmg += line.dmg;
         if p.main_class() == Some(class) {
-            if let Some(r) = extract(p, &log.flags, w, impacts.get(&p.id.account_id()))
-                .and_then(|perf| rate(&perf, baseline, w))
-                .map(|r| r.scaled(scale))
-            {
-                rated.push((r, line.time_s));
+            if let Some(rating) = rater.of(p, &log.flags) {
+                rated.push((rating, line.time_s));
             }
         }
     }
@@ -421,14 +434,7 @@ fn head_to_head(log: &NormalizedLog, left: Team, class: TfClass) -> Option<(i64,
     Some((count(left)?, count(left.other())?))
 }
 
-fn players(
-    log: &NormalizedLog,
-    me: Option<SteamId>,
-    w: &Weights,
-    baseline: &Baseline,
-    scale: &Scale,
-    impacts: &HashMap<u32, Impact>,
-) -> Vec<PlayerRow> {
+fn players(log: &NormalizedLog, me: Option<SteamId>, rater: &Rater<'_>) -> Vec<PlayerRow> {
     let class_order = |c: Option<TfClass>| {
         c.and_then(|c| TfClass::ALL.iter().position(|x| *x == c)).unwrap_or(99)
     };
@@ -467,9 +473,7 @@ fn players(
                 airshots: s.airshots,
                 cpc: s.cpc,
                 medkits: s.medkits,
-                rating: extract(p, &log.flags, w, impacts.get(&p.id.account_id()))
-                    .and_then(|perf| rate(&perf, baseline, w))
-                    .map(|r| r.scaled(scale)),
+                rating: rater.of(p, &log.flags),
                 is_me: me == Some(p.id),
             }
         })

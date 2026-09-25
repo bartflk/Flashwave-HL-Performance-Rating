@@ -269,7 +269,7 @@ pub async fn run(db: &Db, class: TfClass, live: &Weights, candidates: Vec<Candid
             .iter()
             .map(|&c| {
                 let raw = p.values.iter().find(|(x, _)| *x == c)?.1;
-                let pct = baseline.percentile(class, c, raw)?;
+                let pct = baseline.percentile(class, c, p.map.as_deref(), raw)?;
                 Some(if c.higher_is_better() { pct } else { 1.0 - pct })
             })
             .collect();

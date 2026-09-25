@@ -1331,6 +1331,16 @@ On its own the component is slightly *worse* than plain impact kills at picking 
 
 **Baseline.** Percentile pools per (map, side), and only where a pool has 150 performances or more. Otherwise fall back to (map), then (all maps). The fallback used is shown on each rating.
 
+> **What the data said, September 2026.** The threshold and the split both had to move.
+>
+> At 150, only 27 of 891 (class, map) pools qualify, covering 42% of performances. At **100**, 54 qualify and cover 64% — and those 54 are exactly the current ETF2L pool for every class (product 217, vigil 215, upward 194, ashville 116, steel 115, proot 105). Everything older falls back, which is the right way round. So the threshold is 100.
+>
+> Splitting by side then halves every pool to ~107, under any threshold worth having. Worse, **80% of performances on attack/defence maps play both sides** — stopwatch is ABBA, so almost everyone attacks and defends in the same log. A performance cannot be filed under one side at all; its components have to be split, and that needs per-round damage and time, which the raw-log parser does not read. Side pools themselves are fine (~323-386 per class per side, pooled across maps) — it is the splitting that is blocked.
+>
+> **Shipped:** per-map pools, threshold 100, falling back to every map together. The Sniper spread across maps went from **0.192 to 0.097**; Vigil from 0.903 to 1.017 and Product from 1.095 to 1.012. Out-of-sample accuracy is unchanged at 72.4%, in-sample down 0.6 points — which is what a fairness fix looks like.
+>
+> **Still to do:** the pool's name on the match page ("vs Vigil Snipers, 215 games"); `Baseline::pool_for` is there for it. And the side half, as Q5b.
+
 **Rate.** A performance's percentile on each component is the time-weighted average of its halves' percentiles against their own pools.
 
 **Validate.** Accuracy should hold. The check that matters here is fairness: your average rating by map should flatten, with Vigil defence no longer your lowest just because it is the hardest job.
@@ -1390,7 +1400,8 @@ from testers (function, boSe, Taiga) is marked with who asked.
 | Q2 | **Database backup before every sync**, and a warning in the release notes about the uninstaller's "delete application data" box | small | A tester who uninstalls can lose their whole history, as happened here on 19 Sep 2026. |
 | Q3 | **Deep demo parse** (§14) | large | The one source of data we hold and do not read: aim, viewangles, distances, scoped time. Everything else is logs.tf's. |
 | ~~Q4~~ | ~~**Scout picks on KOTH worth more** (boSe)~~ | small | **Measured, not applied.** Five values from 1.15 to 2.5 all give the same 72.4% out of sample; the in-sample figure wanders 0.2 points with no trend. The note is in `weights.default.toml`. It says the *Sniper* rating cannot feel it, not that boSe is wrong — testing the claim needs Q8. |
-| Q5 | **§12 step 4: map and side baselines** | medium | Judge a Vigil defence against other Vigil defences. The fairness fix, not an accuracy one. |
+| ~~Q5~~ | ~~**§12 step 4: map baselines**~~ | medium | **Done, in half.** Per-map pools ship: the Sniper spread across maps halves from 0.192 to 0.097, Vigil 0.90 -> 1.02 and Product 1.10 -> 1.01, with out-of-sample accuracy unmoved at 72.4%. |
+| Q5b | **§12 step 4: the side half** | large | **Blocked on data.** 80% of performances on attack/defence maps play both sides, so a performance cannot be filed under one; splitting its components needs per-round damage and time, which the raw-log parser does not read. See §12 step 4. |
 | Q6 | **§12 step 5: fight swing** | large | Win chance per fight, HLTV's Round Swing done properly. Replaces step 3's situation factor if it lands. |
 | Q7 | **Teamfights** (Taiga) | medium | Who collapsed on whom, who was dropped off cooldown, uber exchanges as space. Needs Q6's fight model to value them. |
 | Q8 | **Every class gets its own model** (boSe) | large | Pyro, Engineer and Medic are hardest to read from logs.tf, so they gain the most. The Sniper work is the template. |

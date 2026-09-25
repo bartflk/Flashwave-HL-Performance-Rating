@@ -26,7 +26,7 @@ fn baseline(w: &Weights) -> Baseline {
     ];
     let perfs: Vec<_> = logs
         .iter()
-        .flat_map(|l| l.players.iter().filter_map(|p| extract(p, &l.flags, w, None)))
+        .flat_map(|l| l.players.iter().filter_map(|p| extract(p, &l.flags, w, None, None)))
         .collect();
     Baseline::build(&perfs, Some(ME))
 }

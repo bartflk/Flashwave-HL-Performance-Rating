@@ -227,6 +227,10 @@ pub struct Performance {
     pub class: TfClass,
     pub minutes: f64,
     pub values: Vec<(Component, f64)>,
+    /// The map this was played on, without its version — `upward`. `None`
+    /// for a log whose rounds span several maps, which cannot belong to one
+    /// pool; those are measured against every map together.
+    pub map: Option<String>,
 }
 
 /// Raw component values for `player` on their main class, or `None` when they
@@ -235,7 +239,13 @@ pub struct Performance {
 /// `impact` is the player's kills valued one by one from the raw log (victim
 /// class, map, side). Without it, impact falls back to `classkills` at the
 /// general values.
-pub fn extract(player: &PlayerLine, flags: &LogFlags, w: &Weights, impact: Option<&Impact>) -> Option<Performance> {
+pub fn extract(
+    player: &PlayerLine,
+    flags: &LogFlags,
+    w: &Weights,
+    impact: Option<&Impact>,
+    map: Option<&str>,
+) -> Option<Performance> {
     let class = player.main_class()?;
     let line = player.classes.iter().find(|c| c.class == class)?;
     let minutes = line.time_s as f64 / 60.0;
@@ -317,6 +327,7 @@ pub fn extract(player: &PlayerLine, flags: &LogFlags, w: &Weights, impact: Optio
         class,
         minutes,
         values,
+        map: map.map(str::to_string),
     })
 }
 
@@ -324,40 +335,99 @@ pub fn extract(player: &PlayerLine, flags: &LogFlags, w: &Weights, impact: Optio
 #[derive(Debug, Clone, Default)]
 pub struct Baseline {
     by: HashMap<(TfClass, Component), Vec<f64>>,
+    /// The same, per map. A Sniper game on Vigil averages 0.90 and on Product
+    /// 1.10 — three quarters of a deviation of difference that is the map's,
+    /// not the player's. Measured September 2026 over 13,568 performances.
+    by_map: HashMap<(TfClass, Component, String), Vec<f64>>,
 }
+
+/// A per-map pool smaller than this is not a pool, it is a handful of games,
+/// and a percentile drawn from it moves too far on one result. Measured: at
+/// 100 every map of the current ETF2L pool qualifies for every class
+/// (product 217, vigil 215, upward 194, ashville 116, steel 115, proot 105)
+/// and the older maps fall back, which is the right way round.
+pub const MIN_MAP_POOL: usize = 100;
 
 impl Baseline {
     /// Build from performances, leaving out `exclude` — the owner — so they are
     /// measured against the players they face rather than against themselves.
     pub fn build<'a>(perfs: impl IntoIterator<Item = &'a Performance>, exclude: Option<u32>) -> Self {
         let mut by: HashMap<(TfClass, Component), Vec<f64>> = HashMap::new();
+        let mut by_map: HashMap<(TfClass, Component, String), Vec<f64>> = HashMap::new();
         for p in perfs {
             if Some(p.account_id) == exclude {
                 continue;
             }
             for &(c, v) in &p.values {
-                if v.is_finite() {
-                    by.entry((p.class, c)).or_default().push(v);
+                if !v.is_finite() {
+                    continue;
+                }
+                by.entry((p.class, c)).or_default().push(v);
+                // Every game is in the general pool as well as its map's, so
+                // the fallback is a real pool and not the leftovers.
+                if let Some(m) = &p.map {
+                    by_map.entry((p.class, c, m.clone())).or_default().push(v);
                 }
             }
         }
         for vals in by.values_mut() {
             vals.sort_by(f64::total_cmp);
         }
-        Baseline { by }
-    }
-
-    pub fn from_parts(parts: impl IntoIterator<Item = (TfClass, Component, Vec<f64>)>) -> Self {
-        let mut by = HashMap::new();
-        for (class, c, mut vals) in parts {
+        by_map.retain(|_, v| v.len() >= MIN_MAP_POOL);
+        for vals in by_map.values_mut() {
             vals.sort_by(f64::total_cmp);
-            by.insert((class, c), vals);
         }
-        Baseline { by }
+        Baseline { by, by_map }
     }
 
-    pub fn parts(&self) -> impl Iterator<Item = (TfClass, Component, &[f64])> {
-        self.by.iter().map(|((class, c), v)| (*class, *c, v.as_slice()))
+    pub fn from_parts(parts: impl IntoIterator<Item = (TfClass, Component, Option<String>, Vec<f64>)>) -> Self {
+        let mut by = HashMap::new();
+        let mut by_map = HashMap::new();
+        for (class, c, map, mut vals) in parts {
+            vals.sort_by(f64::total_cmp);
+            match map {
+                Some(m) => {
+                    by_map.insert((class, c, m), vals);
+                }
+                None => {
+                    by.insert((class, c), vals);
+                }
+            }
+        }
+        Baseline { by, by_map }
+    }
+
+    /// Every stored pool: `None` for the general one, `Some(map)` for a map's.
+    pub fn parts(&self) -> impl Iterator<Item = (TfClass, Component, Option<&str>, &[f64])> {
+        self.by
+            .iter()
+            .map(|((class, c), v)| (*class, *c, None, v.as_slice()))
+            .chain(
+                self.by_map
+                    .iter()
+                    .map(|((class, c, m), v)| (*class, *c, Some(m.as_str()), v.as_slice())),
+            )
+    }
+
+    /// Which pool a rating on this map and class is measured against, and how
+    /// big it is: `("vigil", 215)`, or `(None, 1502)` when the map has too few
+    /// games of its own.
+    pub fn pool_for(&self, class: TfClass, map: Option<&str>) -> (Option<&str>, usize) {
+        if let Some(m) = map {
+            let n = self
+                .by_map
+                .iter()
+                .filter(|((c, _, mm), _)| *c == class && mm == m)
+                .map(|(_, v)| v.len())
+                .max()
+                .unwrap_or(0);
+            if n >= MIN_MAP_POOL {
+                // The key is owned by the map; hand back the stored spelling.
+                let key = self.by_map.keys().find(|(c, _, mm)| *c == class && mm == m);
+                return (key.map(|(_, _, mm)| mm.as_str()), n);
+            }
+        }
+        (None, self.pool_size(class))
     }
 
     pub fn is_empty(&self) -> bool {
@@ -376,8 +446,21 @@ impl Baseline {
 
     /// Mid-rank percentile in 0..=1: the share of the pool below `value`,
     /// counting ties as half. `None` when there is no pool to compare against.
-    pub fn percentile(&self, class: TfClass, c: Component, value: f64) -> Option<f64> {
-        let vals = self.by.get(&(class, c)).filter(|v| !v.is_empty())?;
+    /// Where `value` sits in the pool for this class, component and map.
+    ///
+    /// The map's own pool when it has one — `by_map` only ever holds pools
+    /// that cleared [`MIN_MAP_POOL`] — and every map together otherwise.
+    pub fn percentile(
+        &self,
+        class: TfClass,
+        c: Component,
+        map: Option<&str>,
+        value: f64,
+    ) -> Option<f64> {
+        let vals = map
+            .and_then(|m| self.by_map.get(&(class, c, m.to_string())))
+            .or_else(|| self.by.get(&(class, c)))
+            .filter(|v| !v.is_empty())?;
         let below = vals.partition_point(|x| *x < value);
         let not_above = vals.partition_point(|x| *x <= value);
         Some((below as f64 + (not_above - below) as f64 / 2.0) / vals.len() as f64)
@@ -418,7 +501,7 @@ pub fn rate(perf: &Performance, baseline: &Baseline, w: &Weights) -> Option<Rati
     let mut parts = Vec::new();
     for &(c, raw) in &perf.values {
         let Some(&weight) = weights.get(&c).filter(|w| **w > 0.0) else { continue };
-        let Some(p) = baseline.percentile(perf.class, c, raw) else { continue };
+        let Some(p) = baseline.percentile(perf.class, c, perf.map.as_deref(), raw) else { continue };
         let p = if c.higher_is_better() { p } else { 1.0 - p };
         parts.push(Part {
             component: c,
@@ -498,6 +581,7 @@ mod tests {
 
     fn perf(account_id: u32, v: f64) -> Performance {
         Performance {
+            map: None,
             account_id,
             class: TfClass::Sniper,
             minutes: 30.0,
@@ -511,9 +595,9 @@ mod tests {
         let pool: Vec<_> = (1..=4).map(|i| perf(i, i as f64)).collect();
         let b = Baseline::build(&pool, None);
         // 2.0 sits above 1 value and ties 1: (1 + 0.5) / 4.
-        assert_eq!(b.percentile(TfClass::Sniper, Component::ImpactKills, 2.0), Some(0.375));
-        assert_eq!(b.percentile(TfClass::Sniper, Component::ImpactKills, 0.0), Some(0.0));
-        assert_eq!(b.percentile(TfClass::Sniper, Component::ImpactKills, 9.0), Some(1.0));
+        assert_eq!(b.percentile(TfClass::Sniper, Component::ImpactKills, None, 2.0), Some(0.375));
+        assert_eq!(b.percentile(TfClass::Sniper, Component::ImpactKills, None, 0.0), Some(0.0));
+        assert_eq!(b.percentile(TfClass::Sniper, Component::ImpactKills, None, 9.0), Some(1.0));
     }
 
     #[test]

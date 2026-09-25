@@ -43,21 +43,22 @@ impl Db {
     pub async fn replace_baselines(
         &self,
         version: &str,
-        rows: &[(String, String, Vec<f64>)],
+        rows: &[(String, String, Option<String>, Vec<f64>)],
     ) -> Result<()> {
         let mut tx = self.pool().begin().await?;
         sqlx::query("DELETE FROM baseline WHERE model_version = ?1")
             .bind(version)
             .execute(&mut *tx)
             .await?;
-        for (class, component, values) in rows {
+        for (class, component, map, values) in rows {
             sqlx::query(
-                "INSERT INTO baseline (model_version, class, component, n, sorted_values)
-                 VALUES (?1, ?2, ?3, ?4, ?5)",
+                "INSERT INTO baseline (model_version, class, component, map, n, sorted_values)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             )
             .bind(version)
             .bind(class)
             .bind(component)
+            .bind(map.as_deref().unwrap_or(""))
             .bind(values.len() as i64)
             .bind(serde_json::to_string(values)?)
             .execute(&mut *tx)
@@ -67,9 +68,12 @@ impl Db {
         Ok(())
     }
 
-    pub async fn load_baselines(&self, version: &str) -> Result<Vec<(String, String, Vec<f64>)>> {
+    pub async fn load_baselines(
+        &self,
+        version: &str,
+    ) -> Result<Vec<(String, String, Option<String>, Vec<f64>)>> {
         let rows = sqlx::query(
-            "SELECT class, component, sorted_values FROM baseline WHERE model_version = ?1",
+            "SELECT class, component, map, sorted_values FROM baseline WHERE model_version = ?1",
         )
         .bind(version)
         .fetch_all(self.pool())
@@ -80,6 +84,9 @@ impl Db {
                 Ok((
                     r.get("class"),
                     r.get("component"),
+                    // '' is the pool of every map, stored that way because a
+                    // primary key column cannot be NULL.
+                    Some(r.get::<String, _>("map")).filter(|m| !m.is_empty()),
                     serde_json::from_str(&json).context("stored baseline is not a JSON array")?,
                 ))
             })
@@ -313,12 +320,13 @@ mod tests {
     async fn a_stored_baseline_comes_back_bit_for_bit() {
         let db = Db::connect_in_memory().await.unwrap();
         let values = vec![0.0, 0.996_677_740_863_787_5, 1.0 / 3.0, f64::MAX];
-        db.replace_baselines("v-test", &[("sniper".into(), "medic_picks".into(), values.clone())])
+        db.replace_baselines("v-test", &[("sniper".into(), "medic_picks".into(), None, values.clone())])
             .await
             .unwrap();
 
         let back = db.load_baselines("v-test").await.unwrap();
         assert_eq!(back.len(), 1);
-        assert_eq!(back[0].2, values, "stored as text, read back as the same floats");
+        assert_eq!(back[0].3, values, "stored as text, read back as the same floats");
+        assert_eq!(back[0].2, None, "the general pool, not a map's");
     }
 }
