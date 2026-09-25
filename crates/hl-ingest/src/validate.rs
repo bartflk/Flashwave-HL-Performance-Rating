@@ -1,9 +1,10 @@
-//! `hl validate sniper`: does a rating pick the team that won?
+//! `hl validate <class>`: does a rating pick the team that won?
 //!
-//! Every kept, decided match with one rated Sniper a side gives a pair. For
-//! each component the question is how often the team whose Sniper was better
-//! at it won; for a set of weights, how often the higher-rated Sniper's team
-//! won; and for a logistic model fitted on the pairs, which components carry
+//! Every kept, decided match with one rated player of that class a side gives
+//! a pair — and Highlander guarantees one of each class a side, so every
+//! class has as many pairs as the Sniper does. For each component the
+//! question is how often the team whose player was better at it won; for a
+//! set of weights, how often the higher-rated player's team won; and for a logistic model fitted on the pairs, which components carry
 //! weight once the others are known (PLAN §3, "Model v2"; §12, step 0).
 //!
 //! Components are extracted afresh for every performance, including ones the
@@ -26,15 +27,16 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt;
 
-/// Every component that means something for a Sniper, used or not.
-pub const SNIPER_COMPONENTS: [Component; 16] = [
+/// What every class is measured on: output, deaths in context, and the
+/// fights pass. None of these is about a particular class — they are what
+/// a log says about anyone who shot at someone.
+const CORE: [Component; 14] = [
     Component::ImpactKills,
     Component::ImpactAssists,
     Component::MedicPicks,
-    Component::Duel,
-    Component::HeadshotShare,
     Component::Deaths,
     Component::Dpm,
+    Component::Caps,
     Component::Opening,
     Component::Untraded,
     Component::UntradedDeaths,
@@ -43,8 +45,28 @@ pub const SNIPER_COMPONENTS: [Component; 16] = [
     Component::FightKast,
     Component::FightKastEngaged,
     Component::SituationKills,
-    Component::FightSwing,
 ];
+
+/// Every component that means something for this class, used by the live
+/// model or not. The validator scores all of them; the model is what comes
+/// out of that, which is the whole of Q8.
+///
+/// A class's extras are the things only it does. A Medic's healing, ubers
+/// and drops are his job and nobody else's; backstabs are the Spy's; the
+/// Sniper duel and headshot share belong to the two classes that can win
+/// a fight at range with one shot.
+pub fn components_for(class: TfClass) -> Vec<Component> {
+    let mut v = CORE.to_vec();
+    v.push(Component::FightSwing);
+    match class {
+        TfClass::Sniper => v.extend([Component::Duel, Component::HeadshotShare]),
+        TfClass::Spy => v.extend([Component::Backstabs, Component::HeadshotShare, Component::Duel]),
+        TfClass::Medic => v.extend([Component::Heal, Component::Ubers, Component::Drops]),
+        _ => {}
+    }
+    v.sort_by_key(|c| Component::ALL.iter().position(|x| x == c));
+    v
+}
 
 /// Model v1's Sniper weights, for comparison.
 pub const SNIPER_V1: [(Component, f64); 7] = [
@@ -128,6 +150,97 @@ pub struct Report {
     /// The same model fitted on the earlier pairs only, scored on the later ones.
     pub fitted_out_of_sample: Accuracy,
     pub fitted_in_sample: Accuracy,
+    /// A model proposed from every pair, rounded to weights a person can
+    /// read (Q8). Fitted on everything, because that is the model that
+    /// ships; what it is worth is `cv_proposed`, not its own `all` column.
+    pub proposed: Vec<(Component, f64)>,
+    /// What proposing a model this way is worth, cross-validated: five
+    /// blocks of time, each scored by a model proposed from the other four.
+    /// Every pair is held out exactly once, so this is comparable to the
+    /// `all` column of a model that was not fitted here.
+    pub cv_proposed: Accuracy,
+    /// The same five held-out blocks, scored by the live and generic models,
+    /// which is just their `all` accuracy — kept beside `cv_proposed` so the
+    /// two numbers are read off the same pairs.
+    pub cv_live: Accuracy,
+    pub cv_generic: Accuracy,
+}
+
+/// How many blocks the cross-validation splits the pairs into.
+///
+/// Blocks are contiguous in time rather than random. Highlander drifts —
+/// maps, the meta, who is playing — and a random fold lets a model peek at
+/// the season it is being scored on. Five blocks over ~690 pairs leaves
+/// about 140 pairs held out at a time and trains on the rest.
+pub const FOLDS: usize = 5;
+
+/// Score the proposal procedure honestly: propose from four blocks, score on
+/// the fifth, five times over.
+pub fn cross_validate(pairs: &[Pair], comps: &[Component]) -> Accuracy {
+    let mut acc = Accuracy::default();
+    for k in 0..FOLDS {
+        let lo = pairs.len() * k / FOLDS;
+        let hi = pairs.len() * (k + 1) / FOLDS;
+        let train: Vec<&Pair> = pairs[..lo].iter().chain(&pairs[hi..]).collect();
+        let test: Vec<&Pair> = pairs[lo..hi].iter().collect();
+        if train.len() < 50 || test.is_empty() {
+            continue;
+        }
+        let model = propose(comps, &fit(&train, comps.len(), 3000));
+        if model.is_empty() {
+            continue;
+        }
+        let a = accuracy(test, comps, &model);
+        acc.correct += a.correct;
+        acc.n += a.n;
+    }
+    acc
+}
+
+/// Turn fitted coefficients into weights fit to write down.
+///
+/// The fit answers "how much does being better at this predict winning, once
+/// the others are known". That is the right question, and its answer is not
+/// yet a model: coefficients come with a sign, a scale nobody reads, and a
+/// long tail of components that carry a hundredth of a point. So:
+///
+/// * a negative or zero coefficient is dropped — the component is already
+///   flipped so that higher is better, and one that still points down is
+///   telling us it is collinear with something else, not that being worse at
+///   it wins games;
+/// * anything under a fifth of the largest is dropped as noise;
+/// * what is left is normalised and rounded to the nearest 0.05, which is as
+///   fine as a weight in this file has ever been meaningful.
+///
+/// Rounding is deliberately coarse. A model written to three decimals is a
+/// fit pretending to be an opinion, and it will not survive the next season.
+pub fn propose(comps: &[Component], coefs: &[f64]) -> Vec<(Component, f64)> {
+    const FLOOR: f64 = 0.2;
+    const STEP: f64 = 0.05;
+    let max = coefs.iter().copied().fold(0.0_f64, f64::max);
+    if max <= 0.0 {
+        return Vec::new();
+    }
+    let kept: Vec<(Component, f64)> = comps
+        .iter()
+        .zip(coefs)
+        .filter(|(_, &c)| c > 0.0 && c >= FLOOR * max)
+        .map(|(&c, &v)| (c, v))
+        .collect();
+    let total: f64 = kept.iter().map(|(_, v)| v).sum();
+    let mut out: Vec<(Component, f64)> = kept
+        .iter()
+        .map(|&(c, v)| (c, (((v / total) / STEP).round() * STEP * 100.0).round() / 100.0))
+        .filter(|(_, w)| *w > 0.0)
+        .collect();
+    // Rounding rarely lands on 1.00; the largest weight takes the difference
+    // so the numbers in the file add up when read.
+    let sum: f64 = out.iter().map(|(_, w)| w).sum();
+    if let Some(top) = out.iter_mut().max_by(|a, b| a.1.total_cmp(&b.1)) {
+        top.1 = ((top.1 + 1.0 - sum) * 100.0).round() / 100.0;
+    }
+    out.sort_by_key(|(c, _)| Component::ALL.iter().position(|x| x == c));
+    out
 }
 
 /// How often the better Sniper at each component was on the winning team.
@@ -251,10 +364,7 @@ pub type Candidate = (String, Vec<(Component, f64)>);
 
 /// Build the pairs and score the live weights, v1 and any candidates.
 pub async fn run(db: &Db, class: TfClass, live: &Weights, candidates: Vec<Candidate>, split: Option<i64>) -> Result<Report> {
-    if class != TfClass::Sniper {
-        bail!("only the Sniper is validated for now");
-    }
-    let comps: Vec<Component> = SNIPER_COMPONENTS.to_vec();
+    let comps: Vec<Component> = components_for(class);
 
     // Every component, whatever the live model uses.
     let every = live.with_model(class, comps.iter().map(|c| (*c, 1.0)).collect());
@@ -288,7 +398,11 @@ pub async fn run(db: &Db, class: TfClass, live: &Weights, candidates: Vec<Candid
         .collect();
     pairs.sort_by_key(|p| (p.played_at, p.log_id));
     if pairs.len() < 50 {
-        bail!("only {} matches with a rated Sniper a side: too few to validate", pairs.len());
+        bail!(
+            "only {} matches with a rated {} a side: too few to validate",
+            pairs.len(),
+            class.display_name()
+        );
     }
 
     let split_at = match split {
@@ -302,12 +416,17 @@ pub async fn run(db: &Db, class: TfClass, live: &Weights, candidates: Vec<Candid
     };
     let (before, after): (Vec<&Pair>, Vec<&Pair>) = pairs.iter().partition(|p| p.played_at < split_at);
 
-    let mut schemes: Vec<Candidate> = vec![
-        ("live".to_string(), live.model_for(class).to_vec()),
-        ("v1".to_string(), SNIPER_V1.to_vec()),
-    ];
+    // What this class is rated by now, and what it would be rated by with
+    // no model of its own: the bar a new model has to clear.
+    let mut schemes: Vec<Candidate> = vec![("live".to_string(), live.model_for(class).to_vec())];
+    if live.has_own_model(class) {
+        schemes.push(("generic".to_string(), live.generic_model().to_vec()));
+    }
+    if class == TfClass::Sniper {
+        schemes.push(("v1".to_string(), SNIPER_V1.to_vec()));
+    }
     schemes.extend(candidates);
-    let schemes = schemes
+    let schemes: Vec<SchemeRow> = schemes
         .into_iter()
         .map(|(name, weights)| SchemeRow {
             all: accuracy(&pairs, &comps, &weights),
@@ -331,7 +450,17 @@ pub async fn run(db: &Db, class: TfClass, live: &Weights, candidates: Vec<Candid
     let early = fit(&before, comps.len(), 3000);
     let as_weights: Vec<(Component, f64)> = comps.iter().zip(&early).map(|(c, w)| (*c, w.max(0.0))).collect();
 
+    // The model that would ship: fitted on everything and rounded. What it
+    // is worth is the cross-validation below, not its own accuracy here.
+    let proposed = propose(&comps, &w);
+    let cv_proposed = cross_validate(&pairs, &comps);
+    let generic = live.generic_model().to_vec();
+
     Ok(Report {
+        proposed,
+        cv_proposed,
+        cv_live: accuracy(&pairs, &comps, live.model_for(class)),
+        cv_generic: accuracy(&pairs, &comps, &generic),
         class,
         pairs: pairs.len(),
         split_at,
@@ -400,6 +529,31 @@ impl fmt::Display for Report {
             pct(self.fitted_in_sample),
             pct(self.fitted_out_of_sample)
         )?;
+        writeln!(
+            f,
+            "
+Over every pair, each held out once ({} blocks of time):
+  {:<24} {}
+  {:<24} {}
+  {:<24} {}",
+            FOLDS,
+            "proposed (cross-validated)",
+            pct(self.cv_proposed),
+            "live",
+            pct(self.cv_live),
+            "generic",
+            pct(self.cv_generic),
+        )?;
+        if !self.proposed.is_empty() {
+            writeln!(f, "
+Proposed, fitted on every pair:
+")?;
+            writeln!(f, "[model.{}]", self.class.as_str())?;
+            let pad = self.proposed.iter().map(|(c, _)| c.key().len()).max().unwrap_or(0);
+            for (c, w) in &self.proposed {
+                writeln!(f, "{:<pad$} = {w:.2}", c.key())?;
+            }
+        }
         Ok(())
     }
 }
@@ -409,6 +563,38 @@ mod tests {
     use super::*;
 
     const C: [Component; 2] = [Component::ImpactKills, Component::Deaths];
+
+    #[test]
+    fn a_class_is_measured_on_what_only_it_does() {
+        assert!(components_for(TfClass::Medic).contains(&Component::Drops));
+        assert!(!components_for(TfClass::Heavy).contains(&Component::Drops));
+        assert!(components_for(TfClass::Spy).contains(&Component::Backstabs));
+        for c in TfClass::ALL {
+            let v = components_for(c);
+            assert!(v.contains(&Component::Deaths), "{} is measured on dying", c.as_str());
+            let mut sorted = v.clone();
+            sorted.dedup();
+            assert_eq!(sorted.len(), v.len(), "{}: no component twice", c.as_str());
+        }
+    }
+
+    #[test]
+    fn a_proposal_drops_the_noise_and_adds_up() {
+        let comps = [
+            Component::ImpactKills,
+            Component::Deaths,
+            Component::Dpm,
+            Component::Caps,
+        ];
+        // Kills and deaths decide it; DPM is a tenth of the largest and caps
+        // point the wrong way.
+        let out = propose(&comps, &[2.0, 1.0, 0.2, -0.5]);
+        assert_eq!(out, [(Component::ImpactKills, 0.65), (Component::Deaths, 0.35)]);
+        let sum: f64 = out.iter().map(|(_, w)| w).sum();
+        assert!((sum - 1.0).abs() < 1e-9, "{sum}");
+        // Nothing helps: no model, rather than a model of noise.
+        assert!(propose(&comps, &[-1.0, -0.5, 0.0, -0.2]).is_empty());
+    }
 
     fn pair(a_won: bool, a: [f64; 2], b: [f64; 2]) -> Pair {
         Pair { log_id: 0, played_at: 0, a_won, a: a.map(Some).to_vec(), b: b.map(Some).to_vec() }

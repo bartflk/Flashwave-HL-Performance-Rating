@@ -24,7 +24,9 @@ pub struct Weights {
     /// payload map is one without being listed.
     attack_defend: Vec<String>,
     pub general: General,
-    models: HashMap<ModelKey, Vec<(Component, f64)>>,
+    /// One model per class, keyed by class name, plus `generic` for the
+    /// classes that have no model of their own yet.
+    models: HashMap<String, Vec<(Component, f64)>>,
     /// Kill factors by situation (PLAN §12 step 3): rows by uber advantage
     /// (the victim's team, neither, the killer's), columns by the numbers
     /// difference -4..=4. `None`: every kill counts 1.
@@ -49,32 +51,16 @@ pub struct General {
     pub even_margin: f64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum ModelKey {
-    Sniper,
-    Medic,
-    Spy,
-    Generic,
-}
+/// The model table a class is rated by: its own if the file has one,
+/// otherwise the shared fallback.
+///
+/// Q8: every class gets its own model. Until one is measured, a class sits on
+/// `generic` — which is a statement about what has been measured, not about
+/// the class, and the fallback is named so the difference is visible.
+pub const GENERIC_MODEL: &str = "generic";
 
-impl ModelKey {
-    fn for_class(c: TfClass) -> Self {
-        match c {
-            TfClass::Sniper => ModelKey::Sniper,
-            TfClass::Medic => ModelKey::Medic,
-            TfClass::Spy => ModelKey::Spy,
-            _ => ModelKey::Generic,
-        }
-    }
-
-    fn name(self) -> &'static str {
-        match self {
-            ModelKey::Sniper => "sniper",
-            ModelKey::Medic => "medic",
-            ModelKey::Spy => "spy",
-            ModelKey::Generic => "generic",
-        }
-    }
+fn model_key(c: TfClass) -> &'static str {
+    c.as_str()
 }
 
 /// The file as written; validated and converted into [`Weights`].
@@ -171,31 +157,32 @@ impl Weights {
         // Longest prefix first, so `pl_upward_f12` beats `pl_upward`.
         maps.sort_by_key(|m| std::cmp::Reverse(m.prefix.len()));
 
+        // A table per class, plus the fallback. Any class may have one; none
+        // has to, and a name that is neither is a typo rather than a model
+        // nothing reads.
+        if !raw.model.contains_key(GENERIC_MODEL) {
+            bail!("missing [model.{GENERIC_MODEL}]: the classes with no model of their own are rated by it");
+        }
         let mut models = HashMap::new();
-        for key in [ModelKey::Sniper, ModelKey::Medic, ModelKey::Spy, ModelKey::Generic] {
-            let table = raw
-                .model
-                .get(key.name())
-                .with_context(|| format!("missing [model.{}]", key.name()))?;
+        for (key, table) in &raw.model {
+            if key != GENERIC_MODEL && TfClass::parse(key).is_err() {
+                bail!("unknown model [model.{key}]; expected a class name or `{GENERIC_MODEL}`");
+            }
             let mut comps = Vec::new();
             for (name, &w) in table {
                 let c = Component::parse(name)
-                    .with_context(|| format!("[model.{}]: unknown component `{name}`", key.name()))?;
+                    .with_context(|| format!("[model.{key}]: unknown component `{name}`"))?;
                 if w < 0.0 {
-                    bail!("[model.{}]: `{name}` has a negative weight", key.name());
+                    bail!("[model.{key}]: `{name}` has a negative weight");
                 }
                 comps.push((c, w));
             }
+            if comps.iter().all(|(_, w)| *w <= 0.0) {
+                bail!("[model.{key}] has no weight in it: every component is zero");
+            }
             // Stable order, so ratings and their breakdowns never reshuffle.
             comps.sort_by_key(|(c, _)| Component::ALL.iter().position(|x| x == c));
-            models.insert(key, comps);
-        }
-        if let Some(unknown) = raw.model.keys().find(|k| {
-            ![ModelKey::Sniper, ModelKey::Medic, ModelKey::Spy, ModelKey::Generic]
-                .iter()
-                .any(|m| m.name() == k.as_str())
-        }) {
-            bail!("unknown model [model.{unknown}]; expected sniper, medic, spy or generic");
+            models.insert(key.clone(), comps);
         }
 
         let situation = match raw.situation {
@@ -313,9 +300,21 @@ impl Weights {
         rows[(adv.clamp(-1, 1) + 1) as usize][(diff.clamp(-4, 4) + 4) as usize]
     }
 
-    /// The components and weights that rate this class.
+    /// The components and weights that rate this class: its own model, or
+    /// the generic one where it has none yet.
     pub fn model_for(&self, class: TfClass) -> &[(Component, f64)] {
-        &self.models[&ModelKey::for_class(class)]
+        self.models.get(model_key(class)).unwrap_or_else(|| &self.models[GENERIC_MODEL])
+    }
+
+    /// The fallback model itself, whoever is still on it.
+    pub fn generic_model(&self) -> &[(Component, f64)] {
+        &self.models[GENERIC_MODEL]
+    }
+
+    /// Whether this class is rated by a model of its own (Q8) or is still on
+    /// the shared fallback. The match page says which.
+    pub fn has_own_model(&self, class: TfClass) -> bool {
+        self.models.contains_key(model_key(class))
     }
 
     /// The same weights with one class's model replaced: for trying a
@@ -323,20 +322,24 @@ impl Weights {
     pub fn with_model(&self, class: TfClass, mut model: Vec<(Component, f64)>) -> Weights {
         model.sort_by_key(|(c, _)| Component::ALL.iter().position(|x| x == c));
         let mut w = self.clone();
-        w.models.insert(ModelKey::for_class(class), model);
+        w.models.insert(model_key(class).to_string(), model);
         w
     }
 
     /// One class's model from TOML: a whole weights file, or just its
-    /// `[model.<name>]` table (`sniper`, `medic`, `spy` or `generic`).
+    /// `[model.<class>]` table, falling back to `[model.generic]`.
     pub fn model_from_toml(text: &str, class: TfClass) -> Result<Vec<(Component, f64)>> {
-        let key = ModelKey::for_class(class).name();
         let value: toml::Value = toml::from_str(text).context("parsing weights TOML")?;
-        let table = value
-            .get("model")
-            .and_then(|m| m.get(key))
-            .and_then(toml::Value::as_table)
-            .with_context(|| format!("no [model.{key}] table"))?;
+        let models = value.get("model").and_then(toml::Value::as_table);
+        let key = model_key(class);
+        let (key, table) = models
+            .and_then(|m| m.get(key).and_then(toml::Value::as_table).map(|t| (key, t)))
+            .or_else(|| {
+                models
+                    .and_then(|m| m.get(GENERIC_MODEL).and_then(toml::Value::as_table))
+                    .map(|t| (GENERIC_MODEL, t))
+            })
+            .with_context(|| format!("no [model.{key}] or [model.{GENERIC_MODEL}] table"))?;
         let mut comps = Vec::new();
         for (name, v) in table {
             let c = Component::parse(name).with_context(|| format!("[model.{key}]: unknown component `{name}`"))?;
@@ -436,10 +439,89 @@ engineer = 3.0
     }
 
     #[test]
-    fn sniper_rates_the_duel_and_heavy_does_not() {
+    fn every_class_has_a_model_of_its_own() {
+        // Q8. Should one ever be taken out again, it falls back rather than
+        // failing, and `has_own_model` is how the app knows the difference.
         let w = Weights::default_weights();
-        let has = |c: TfClass| w.model_for(c).iter().any(|(x, _)| *x == Component::Duel);
-        assert!(has(TfClass::Sniper));
-        assert!(!has(TfClass::Heavy));
+        for c in TfClass::ALL {
+            assert!(w.has_own_model(c), "{} has its own model", c.as_str());
+            assert!(!w.model_for(c).is_empty());
+        }
+    }
+
+    /// The default file with one class's `[model.<class>]` table cut out.
+    fn without_model(class: TfClass) -> String {
+        let head = format!("[model.{}]", class.as_str());
+        let at = DEFAULT_TOML.find(&head).expect("the class has a model to cut");
+        let rest = DEFAULT_TOML[at + head.len()..].find("
+[").expect("another table follows");
+        format!("{}{}", &DEFAULT_TOML[..at], &DEFAULT_TOML[at + head.len() + rest + 1..])
+    }
+
+    #[test]
+    fn a_class_whose_model_is_taken_out_falls_back_to_generic() {
+        let w = Weights::parse(&without_model(TfClass::Pyro)).unwrap();
+        assert!(!w.has_own_model(TfClass::Pyro));
+        assert_eq!(w.model_for(TfClass::Pyro), w.generic_model());
+        assert!(w.has_own_model(TfClass::Heavy), "and nobody else moves");
+    }
+
+    #[test]
+    fn a_class_model_is_picked_up_without_touching_rust() {
+        let text = format!("{}
+[model.pyro]
+dpm = 1.0
+", without_model(TfClass::Pyro));
+        let w = Weights::parse(&text).unwrap();
+        assert!(w.has_own_model(TfClass::Pyro));
+        assert_eq!(w.model_for(TfClass::Pyro), [(Component::Dpm, 1.0)]);
+    }
+
+    #[test]
+    fn a_model_for_something_that_is_not_a_class_is_an_error() {
+        let text = format!("{DEFAULT_TOML}
+[model.sniperr]
+dpm = 1.0
+");
+        let err = format!("{:#}", Weights::parse(&text).unwrap_err());
+        assert!(err.contains("sniperr"), "{err}");
+        let empty = format!("{}
+[model.heavy]
+dpm = 0.0
+", without_model(TfClass::Heavy));
+        assert!(Weights::parse(&empty).is_err(), "a model of all zeroes rates nothing");
+    }
+
+    #[test]
+    fn each_model_rates_what_only_that_class_does() {
+        let w = Weights::default_weights();
+        let has = |c: TfClass, k: Component| w.model_for(c).iter().any(|(x, _)| *x == k);
+        assert!(has(TfClass::Medic, Component::Drops), "a Medic rating that cannot see a drop is not one");
+        assert!(has(TfClass::Spy, Component::Backstabs));
+        assert!(!has(TfClass::Heavy, Component::Backstabs));
+        assert!(!has(TfClass::Sniper, Component::Heal));
+        // Q8: DPM was measured redundant for every class and kept only in
+        // the fallback. If it comes back, it comes back measured.
+        for c in TfClass::ALL {
+            assert!(!has(c, Component::Dpm), "{} rates DPM", c.as_str());
+        }
+        assert!(w.generic_model().iter().any(|(x, _)| *x == Component::Dpm));
+    }
+
+    #[test]
+    fn no_model_is_mostly_about_dying() {
+        // A rating that is three-quarters "who died less" describes the team,
+        // not the player. Q8 holds dying to half of any model.
+        let w = Weights::default_weights();
+        for c in TfClass::ALL {
+            let model = w.model_for(c);
+            let total: f64 = model.iter().map(|(_, x)| x).sum();
+            let survival: f64 = model
+                .iter()
+                .filter(|(k, _)| !k.higher_is_better())
+                .map(|(_, x)| x)
+                .sum();
+            assert!(survival / total <= 0.5 + 1e-9, "{} gives dying {survival}", c.as_str());
+        }
     }
 }

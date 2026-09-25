@@ -39,10 +39,12 @@ COMMANDS:
     state --check [--max N]
                            Rebuild the game state (alive, charges, caps) from every
                            raw log and check it against logs.tf
-    validate sniper [--weights PATH]... [--split YYYY-MM-DD] [--json]
+    validate CLASS [--weights PATH]... [--split YYYY-MM-DD] [--json]
                            How often each component, and each weighting, picks
-                           the team that won (PLAN §12 step 0). --weights takes a
-                           TOML file with a [model.sniper] table; repeatable
+                           the team that won (PLAN §12 step 0, Q8). Any of the
+                           nine classes. Ends with a model proposed from the
+                           fit and what it is worth cross-validated. --weights
+                           takes a TOML file with a [model.CLASS] table; repeatable
     situation [--toml [--round]]
                            What a kill is worth by numbers and uber advantage
                            (PLAN §12 step 3); --toml prints the [situation] table

@@ -1,9 +1,14 @@
-//! Rating model v1: per-class components, scored as percentiles.
+//! The rating model: per-class components, scored as percentiles.
 //!
 //! A performance is one player's time on their main class in one match. Each
 //! component (impact kills, sniper duel, deaths, ...) is compared against every
 //! other performance on that class in the stored history, giving a percentile.
-//! The rating is the weighted average of those percentiles, 0-100.
+//! The rating is the weighted average of those percentiles, put on the scale
+//! HLTV uses: 1.00 is an average game and a standard deviation is 0.25.
+//!
+//! Which components, and in what proportions, is one model per class and
+//! lives in `weights.default.toml` — every one of the nine fitted against
+//! who won and cross-validated (Q8). The file explains each of them.
 //!
 //! Only a player's **main class** is rated. `classkills` is recorded per
 //! player, not per class played, so a flexer's kills cannot be split across
@@ -22,7 +27,9 @@ use std::collections::HashMap;
 /// v4: Sniper Fight KAST.
 /// v5: Sniper kills valued by the situation: a clean-up counts for less.
 /// v6: the score is an HLTV-style rating around 1.00, not a 0-100 percentile.
-pub const MODEL_VERSION: &str = "v6";
+/// v7: a model per class (Q8), each fitted against who won and
+/// cross-validated, in place of six classes sharing one generic model.
+pub const MODEL_VERSION: &str = "v7";
 
 /// How far one standard deviation moves the rating.
 ///

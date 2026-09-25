@@ -186,11 +186,19 @@ Consequences worth keeping in front of the model:
 2. **Side changes it too.** Defending Upward and attacking Upward are
    different games with different expected numbers.
 3. **Class changes everything.** A Medic's output is heals, Übers and drops; a
-   Sniper's is picks and the duel. Nine models, not one — PLAN Q8.
+   Sniper's is picks and the duel. Nine models, not one — done in Q8, and
+   each one's reasoning is written beside its weights in
+   `crates/hl-rating/src/weights.default.toml`. Two of them are worth reading
+   as a check on this document: the Pyro's model puts more weight on assists
+   than on his own kills, and the Engineer's leans on caps, because in both
+   cases the log can only see the job indirectly.
 4. **A kill is not a kill.** Value depends on the victim's class, the map, the
    side, and the state of the fight. This is the v5 situation work.
 5. **Damage flatters spam.** Damage into a choke builds the enemy's Über. Net
-   frags per minute tracks outcome better than K/D.
+   frags per minute tracks outcome better than K/D — and when Q8 fitted all
+   nine models, damage per minute failed to earn a place in any of them. Not
+   because damage does not matter, but because the value of damage arrives
+   twice already: as the kills it sets up, and as the assists it becomes.
 6. **The log is not the game.** Everything above the log's totals — position,
    timing, who was with whom — needs the demo.
 

@@ -129,32 +129,214 @@ theirs = [1, 1, 1, 1, 1, 1, 1, 0.75, 0.5]
 none   = [1, 1, 1, 1, 1, 1, 1, 0.75, 0.5]
 ours   = [1, 1, 1, 1, 1, 1, 1, 0.75, 0.5]
 
+# ---------------------------------------------------------------------------
+# Q8: a model per class
+#
+# Until September 2026 three classes had a model and the other six shared
+# `generic` -- kills, damage, deaths, assists, caps, in fixed proportions
+# nobody had ever checked. A Pyro was rated as though he were a Soldier with
+# a worse gun.
+#
+# Every class now has its own, and each one was produced the same way:
+#
+#   1. `hl validate <class>` builds a pair from every decided match -- one
+#      player of that class a side, which Highlander guarantees -- and scores
+#      every component that means anything for the class.
+#   2. A logistic fit says which components still predict the winner once the
+#      others are known.
+#   3. Those coefficients are rounded into weights (`validate::propose`):
+#      negatives dropped, anything under a fifth of the largest dropped, the
+#      rest normalised and rounded to 0.05. Coarse on purpose -- a model
+#      written to three decimals is a fit pretending to be an opinion.
+#   4. Five-fold cross-validation over blocks of time scores the *procedure*,
+#      so the number quoted is not one it was tuned on.
+#
+# Cross-validated, picking the winner, against what rated the class before:
+#
+#   class     was    now       class     was    now
+#   scout     70.7   74.5      engineer  71.8   73.4
+#   soldier   72.2   73.2      medic     71.1   75.4
+#   pyro      73.5   78.0      spy       71.0   72.9
+#   demoman   72.0   75.6      sniper    72.9   75.9
+#   heavy     72.0   76.8
+#
+# Two findings worth keeping, because each contradicts something:
+#
+# **Damage per minute earns its place nowhere.** Added to every one of these
+# models at 0.10 it moved accuracy by between -0.6 and +0.3 points -- noise,
+# in both directions. It is not that damage does not matter; it is that its
+# value reaches the rating twice already, as the kills it sets up (impact
+# kills) and as the ones it hands a teammate (impact assists). DPM survives
+# only in `generic`, where it is a fallback and not a claim. This is the
+# second time DPM has been measured and found redundant (see v2 above).
+#
+# **Staying alive predicts winning almost too well.** Left to itself the fit
+# gave the Sniper 0.55 and the Medic 0.65 to death-shaped components, and a
+# rating that is mostly "who died less" inherits the team's result rather
+# than describing the player. So: no model gives dying more than half its
+# weight, and `no_model_is_mostly_about_dying` holds every one of the nine to
+# it. The Sniper's cap costs 0.2 points and the Medic's 1.6. A tighter cap of
+# 0.45 was tried and costs another 1.0 on the Demoman and 2.5 on the Medic,
+# which is too much to pay for a rounder number.
+# ---------------------------------------------------------------------------
+
+# Cross-validated 75.9%, against 72.9% for v6 and 68.0% for v1.
+#
+# The fit removes what v2 to v4 had put in -- the duel, headshot share,
+# opening duels, Fight KAST, DPM -- not because they say nothing (Fight KAST
+# alone picks 72.4% of winners) but because deaths, untraded deaths and
+# valued kills already contain them. What is left is the shape of a Sniper's
+# game: what his picks were worth, and how often he was the one picked.
+# Survival is 0.45 here; the uncapped fit wanted 0.55 and scored 0.2 better.
 [model.sniper]
-situation_kills = 0.20
-dpm             = 0.20
+impact_kills    = 0.25
+deaths          = 0.25
+untraded        = 0.10
 untraded_deaths = 0.15
-opening         = 0.10
-medic_picks     = 0.10
-fight_kast      = 0.10
 flank_deaths    = 0.05
+situation_kills = 0.20
+
+# Cross-validated 74.5%, against 70.7% on `generic`.
+#
+# Assists as heavy as kills, which is the Scout read exactly: he arrives
+# first, takes someone to half health and leaves the kill to the Soldier
+# behind him. Caps are in at 0.05 because a Scout capping is a Scout doing
+# the job nobody else on the team can do twice as fast.
+[model.scout]
+impact_kills    = 0.20
+impact_assists  = 0.20
+medic_picks     = 0.05
+caps            = 0.05
+deaths          = 0.20
 untraded        = 0.05
-duel            = 0.05
+untraded_deaths = 0.15
+situation_kills = 0.10
 
+# Cross-validated 73.2%, against 72.2% on `generic` -- the smallest gain of
+# the nine, and the plainest model. The Soldier's contribution to winning is
+# the ordinary one: kill people, set up kills, stay up. Nothing class-shaped
+# survived the fit, and nothing was added to make the table look fuller.
+[model.soldier]
+impact_kills    = 0.35
+impact_assists  = 0.20
+deaths          = 0.20
+untraded_deaths = 0.25
+
+# Cross-validated 78.0%, against 73.5% on `generic` -- the largest gain of
+# the nine, and the clearest case for Q8 existing at all. A Pyro rated on
+# kills and damage is rated on the two things he is worst at. What he is
+# actually paid for is here: assists (the spam and the airblast that make
+# someone else's kill), holding the point, and being alive when the push
+# comes. His own kills carry 0.20 between them, less than his assists.
+[model.pyro]
+impact_kills    = 0.15
+impact_assists  = 0.20
+medic_picks     = 0.05
+caps            = 0.15
+deaths          = 0.20
+untraded_deaths = 0.20
+situation_kills = 0.05
+
+# Cross-validated 75.6%, against 72.0% on `generic`.
+#
+# Fight KAST, engaged is the Demoman's alone among the nine: he is the class
+# that is in every fight and is measured by whether the fight went his team's
+# way, not by whether he got the kill. Deaths to flankers at 0.10 is the
+# Scout and Spy problem stated as a number -- a Demoman who dies to the flank
+# is a Demoman whose team has no damage for the next ten seconds.
+[model.demoman]
+impact_kills       = 0.15
+impact_assists     = 0.05
+medic_picks        = 0.10
+deaths             = 0.30
+untraded           = 0.05
+untraded_deaths    = 0.10
+flank_deaths       = 0.10
+fight_kast_engaged = 0.15
+
+# Cross-validated 76.8%, against 72.0% on `generic`.
+#
+# The heaviest kill weight of the nine, which is right: a Heavy who is not
+# killing people is a Heavy who is walking. Medic picks at 0.10 because the
+# Heavy is the class that can hold an angle on the enemy Medic and win it.
+# Deaths to flankers is here for the Demoman's reason and a stronger one: a
+# dead Heavy takes half a minute to matter again.
+[model.heavy]
+impact_kills       = 0.30
+medic_picks        = 0.10
+untraded           = 0.05
+untraded_deaths    = 0.25
+flank_deaths       = 0.10
+fight_kast_engaged = 0.10
+situation_kills    = 0.10
+
+# Cross-validated 73.4%, against 71.8% on `generic`.
+#
+# Caps at 0.20, the highest of the nine, and it is not really about capping:
+# it is the only thing in the log that knows the Engineer's buildings were
+# where the team needed them. Assists as heavy as kills, because a sentry
+# that softens a push is an assist and a sentry that kills is a bonus.
+#
+# The Engineer is still the class logs.tf reads worst -- no sentry damage, no
+# teleporter uses, no building placement. This is the best model available
+# from what a log says, which is not the same as a good measure of an
+# Engineer.
+[model.engineer]
+impact_kills    = 0.20
+impact_assists  = 0.20
+caps            = 0.20
+deaths          = 0.10
+opening         = 0.05
+untraded        = 0.05
+untraded_deaths = 0.20
+
+# Cross-validated 75.4%, against 71.1% for the old hand-written model and
+# 62.6% on `generic` -- the class `generic` failed hardest, which is what you
+# would expect of a model built around kills for a class that does not take
+# the shot.
+#
+# JUDGEMENT, stated because it goes against the fit. Left alone the fit gives
+# deaths 0.45 and untraded deaths 0.20 and drops ubers and drops entirely:
+# both are collinear with dying, since a Medic who dies does not build and a
+# drop is a death with an uber in hand. That model scores 1.6 points better
+# and no Highlander player would accept it. Drops are the first thing said
+# about a Medic after a lost round, and a rating that cannot see them is not
+# a Medic rating. So ubers and drops are in at 0.15 and 0.10, dying is held
+# to half the model, and the 1.6 points are the price.
 [model.medic]
-heal           = 0.30
-ubers          = 0.25
-drops          = 0.20
-deaths         = 0.15
-impact_assists = 0.10
+impact_assists  = 0.10
+heal            = 0.15
+ubers           = 0.15
+drops           = 0.10
+caps            = 0.10
+deaths          = 0.25
+untraded_deaths = 0.15
 
+# Cross-validated 72.9%, against 71.0% for the old hand-written model -- and
+# 72.3% on `generic`, which the old Spy model *lost to*. That is the finding:
+# a hand-written model can be worse than no model, and only pairing it
+# against the fallback showed it.
+#
+# Kills not traded at 0.15 is the Spy's job stated correctly: a Spy who gets
+# the Medic and dies for it has done the round's work, and one who gets a
+# Soldier and is traded immediately has done nothing. Backstabs are kept at
+# 0.10 -- the fit is indifferent to them because they are already inside the
+# kill value, and a Spy rating with no backstabs in it is not a Spy rating.
+# Adding them measured slightly better, so nothing was paid for it.
 [model.spy]
-impact_kills   = 0.35
-backstabs      = 0.20
-deaths         = 0.20
-dpm            = 0.15
-impact_assists = 0.10
+impact_kills       = 0.20
+impact_assists     = 0.10
+backstabs          = 0.10
+duel               = 0.10
+headshot_share     = 0.05
+untraded           = 0.15
+untraded_deaths    = 0.20
+fight_kast_engaged = 0.10
 
-# Scout, Soldier, Pyro, Demoman, Heavy and Engineer, until each gets its own.
+# The fallback, for a class with no model of its own. Every class has one as
+# of Q8, so nothing reads this today -- it stays because a weights file is
+# allowed to leave a class out, and because it is the bar each of the nine
+# above had to clear.
 [model.generic]
 impact_kills   = 0.35
 dpm            = 0.20

@@ -91,8 +91,9 @@ fn box_score_has_everyone_grouped_by_team() {
 }
 
 /// The rating is the weighted average of its displayed percentiles, put on
-/// the 1.00 scale, and it uses the Sniper model: the duel is in it, caps are
-/// not. The parts stay percentiles — they are the working, not the answer.
+/// the 1.00 scale, and it uses the class's own model (Q8): a Sniper is rated
+/// on his picks and his deaths, not on caps or healing. The parts stay
+/// percentiles — they are the working, not the answer.
 #[test]
 fn ratings_show_their_working() {
     let d = detail();
@@ -103,8 +104,12 @@ fn ratings_show_their_working() {
     assert!((r.score - expected).abs() < 0.01, "score {} vs parts {sum} -> {expected}", r.score);
     assert!((0.0..=3.0).contains(&r.score), "a rating, not a percentile: {}", r.score);
     let keys: Vec<_> = r.parts.iter().map(|p| p.component.key()).collect();
-    assert!(keys.contains(&"duel"));
-    assert!(!keys.contains(&"caps"));
+    assert!(keys.contains(&"situation_kills"), "{keys:?}");
+    // No raw log in this fixture, so the components that need the fights
+    // pass are missing and the rest renormalise around them.
+    assert!(!keys.contains(&"untraded_deaths"), "{keys:?}");
+    assert!(!keys.contains(&"caps"), "{keys:?}");
+    assert!(!keys.contains(&"heal"), "{keys:?}");
 }
 
 /// Without a baseline nothing is rated, and the page says so rather than
