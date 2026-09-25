@@ -45,10 +45,12 @@ COMMANDS:
                            nine classes. Ends with a model proposed from the
                            fit and what it is worth cross-validated. --weights
                            takes a TOML file with a [model.CLASS] table; repeatable
-    situation [--toml [--round]]
+    situation [--toml [--round]] | --victims [--json]
                            What a kill is worth by numbers and uber advantage
                            (PLAN §12 step 3); --toml prints the [situation] table
-                           (from winning the fight, or the round)
+                           (from winning the fight, or the round). --victims
+                           instead asks what killing each class was worth, KOTH
+                           against stopwatch, over what the situation predicted
     aim <LOG_ID> [--json]  Your aim behind every kill in a match, from its demo:
                            crosshair error, flick and range (PLAN §14)
     aim --derive [--all]   Read every linked demo and store the aim behind every
@@ -503,6 +505,18 @@ async fn main() -> Result<()> {
         ["situation", rest @ ..] => {
             let db = Db::connect(&db_path).await?;
             let started = std::time::Instant::now();
+            // Q4: what killing each class was worth, KOTH against stopwatch.
+            if rest.contains(&"--victims") {
+                let v = hl_ingest::situation::victim_worth(&db).await?;
+                if rest.contains(&"--json") {
+                    println!("{}", serde_json::to_string(&v.by.iter().map(|((c, m), w)| (format!("{}/{}", c.as_str(), m.as_str()), w)).collect::<Vec<_>>())?);
+                } else {
+                    print!("{v}");
+                    println!("
+({:.1}s)", started.elapsed().as_secs_f64());
+                }
+                return Ok(());
+            }
             let t = hl_ingest::situation::measure(&db).await?;
             if rest.contains(&"--toml") || rest.contains(&"--swing") {
                 let (outcome, table) = if rest.contains(&"--round") { ("round", &t.round) } else { ("fight", &t.fight) };

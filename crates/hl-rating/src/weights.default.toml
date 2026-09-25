@@ -14,18 +14,51 @@
 # every one of them should be arguable from how Highlander is played -- see
 # docs/highlander.md for the roles they come from.
 #
-# MEASURED, September 2026: boSe suggested the Scout is worth more on KOTH,
-# because on KOTH he is in the Uber rather than off on the flank. The
-# reasoning is sound and the numbers say nothing: at 1.15, 1.4, 1.7, 2.0 and
-# 2.5 on koth_ maps, `hl validate sniper` picks the winner 72.4% of the time
-# out of sample in every single case, and the in-sample figure wanders 0.2
-# points either way with no trend. Left alone.
+# MEASURED TWICE, September 2026. boSe suggested that killing a Scout is
+# worth more on KOTH, because there the Scout is in the übered push rather
+# than off on a flank.
 #
-# What that result does NOT say: that boSe is wrong. It says a *Sniper's*
-# rating cannot feel it. Scout kills are 11% of KOTH kills and they reach the
-# rating through two components shared with eight other classes. Testing the
-# claim properly needs a Scout model and a validator that handles more than
-# the Sniper -- Q8 in PLAN §13.
+# The first attempt asked whether raising the value changed how often the
+# rating picked the winning team. Five values from 1.15 to 2.5 all gave the
+# same answer, and the test could not have worked anyway: Scout kills are a
+# ninth of a Sniper's and reach the rating through one component. Redone
+# after Q8 across all nine models, 1.4 / 1.7 / 2.0 / 2.5 on koth_ maps move
+# the nine accuracies by +0.7 (Soldier) to -0.8 (Engineer) and the total by
+# less than half a point in either direction, with no trend.
+#
+# The second attempt measured the claim directly (`hl situation --victims`):
+# for every kill, how often the killer's team went on to win the round, less
+# what the situation alone predicted, per victim class and per mode, each
+# mode against its own baseline. 71,808 KOTH kills and 38,931 stopwatch.
+#
+#   KOTH, excess round-win chance from the kill, mode average +6.2%:
+#     medic +10.7   pyro +7.1   demoman +7.4   heavy +6.2   sniper +6.1
+#     scout +6.0    engineer +5.9   soldier +4.6   spy +4.4
+#
+#   Stopwatch, mode average -1.9%:
+#     scout +1.1    medic -0.1   spy -0.4   sniper -0.8   heavy -1.6
+#     soldier -2.1   pyro -3.1   demoman -3.9   engineer -7.5
+#
+# The Scout is the average class to kill on KOTH (-0.2 against the mode, well
+# inside a standard error of 0.55) and the *best* class to kill on stopwatch
+# (+3.0 against the mode, about four standard errors). That is not boSe's
+# effect weakened; it is the opposite of it. A guess at why: on payload the
+# Scout is the one who gets back to the cart, and killing him is what stops
+# the last push.
+#
+# Not applied, and the stopwatch half is not applied either, because the
+# label that column is measured against is weak: a stopwatch round is won on
+# the clock, and the mode's average kill lowers the killer's round-win chance
+# (-1.9%), which no honest reading of Highlander supports. The KOTH column is
+# the trustworthy one, and on KOTH the Scout is ordinary.
+#
+# What both attempts really show: `hl validate` cannot feel this table. The
+# Medic's own KOTH premium is the largest effect here by a distance (+10.7
+# against a +6.2 average, which would argue for 3.0 -> 3.6 on KOTH) and
+# raising it moves the nine accuracies by -0.4 points in total. These values
+# are an argued opinion about who matters, held to the eye test and to
+# docs/highlander.md, and the win-prediction test is not sensitive enough to
+# settle them. See Q8b in PLAN §13.
 [victim_value]
 medic    = 3.0
 demoman  = 2.2
@@ -34,7 +67,7 @@ pyro     = 1.5   # with their Pyro dead, your team can spam freely
 heavy    = 1.4
 spy      = 1.3   # important, but rarely decides a teamfight
 soldier  = 1.2
-scout    = 1.15  # above Engineer; no KOTH override, see the note above
+scout    = 1.15  # above Engineer; no KOTH override, and measured twice -- see above
 engineer = 1.1
 
 # Killing a player on the DEFENDING side of an attack/defence map (every

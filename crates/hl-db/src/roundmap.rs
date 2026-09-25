@@ -294,6 +294,20 @@ impl Db {
         Ok(out)
     }
 
+    /// Every log's round maps by round number. The raw log's clock and
+    /// logs.tf's do not agree, so anything working from a parsed raw log
+    /// matches on the round number rather than on a window.
+    pub async fn all_round_map_names(&self) -> Result<HashMap<i64, HashMap<i64, String>>> {
+        let rows = sqlx::query("SELECT log_id, round_num, map FROM round_map WHERE map IS NOT NULL")
+            .fetch_all(self.pool())
+            .await?;
+        let mut out: HashMap<i64, HashMap<i64, String>> = HashMap::new();
+        for r in rows {
+            out.entry(r.get("log_id")).or_default().insert(r.get("round_num"), r.get("map"));
+        }
+        Ok(out)
+    }
+
     pub async fn round_map_stats(&self) -> Result<RoundMapStats> {
         let by = sqlx::query("SELECT COALESCE(source, 'unresolved') AS s, COUNT(*) AS n FROM round_map GROUP BY s ORDER BY n DESC")
             .fetch_all(self.pool())

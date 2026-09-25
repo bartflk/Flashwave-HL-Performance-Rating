@@ -338,3 +338,175 @@ mod tests {
         assert!(toml_table(&f, "test").contains("none   = [1.25, 1.25, 1.25, 1.25, 1.00, 1.00, 0.50, 0.50, 0.50]"));
     }
 }
+
+// ---------------------------------------------------------------------------
+// What killing each class is worth, per kind of map (Q4, second attempt).
+//
+// boSe's claim is that a Scout pick on KOTH is worth more than elsewhere:
+// on KOTH the Scout is in the übered push rather than off on a flank, so
+// killing him costs the enemy the push. The first attempt tested it the long
+// way round, by changing `victim_value` and asking whether the *Sniper*
+// rating picked more winners. It could not have worked: Scout kills are a
+// ninth of a Sniper's, reaching the rating through one component.
+//
+// This measures the claim directly. For every counted kill, the state just
+// before it says what the killer's team's chance of winning the round was.
+// Whether they went on to win it is known. The difference, averaged over
+// every kill on a class, is what killing that class is worth *over what the
+// situation alone predicted* — so a class that tends to die in clean-ups is
+// not credited with the clean-up.
+// ---------------------------------------------------------------------------
+
+/// The kinds of map a Highlander season is played on. KOTH and stopwatch are
+/// different games, which is the whole of boSe's point.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Mode {
+    Koth,
+    Stopwatch,
+    Other,
+}
+
+impl Mode {
+    pub fn of(map: &str) -> Mode {
+        let m = map.to_ascii_lowercase();
+        if m.starts_with("koth_") {
+            Mode::Koth
+        } else if m.starts_with("pl_") || m.starts_with("cp_steel") || m.starts_with("cp_gravelpit") {
+            Mode::Stopwatch
+        } else {
+            Mode::Other
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Mode::Koth => "koth",
+            Mode::Stopwatch => "stopwatch",
+            Mode::Other => "other",
+        }
+    }
+}
+
+/// Kills on one class on one kind of map, and how they went.
+#[derive(Debug, Clone, Copy, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Worth {
+    pub kills: u32,
+    /// Of those, the ones whose killer's team won the round.
+    pub won: u32,
+    /// Summed chance of winning the round that the state alone gave them.
+    pub expected: f64,
+}
+
+impl Worth {
+    /// How often the killer's team won, less how often the situation said
+    /// they would: the part of the outcome the kill can be credited with.
+    pub fn excess(&self) -> Option<f64> {
+        (self.kills >= 200).then(|| {
+            (f64::from(self.won) - self.expected) / f64::from(self.kills)
+        })
+    }
+}
+
+/// Per victim class and kind of map.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VictimWorth {
+    pub by: HashMap<(hl_core::TfClass, Mode), Worth>,
+    pub logs: usize,
+    pub unmapped: usize,
+}
+
+/// Measure it over every stored raw log.
+///
+/// The baseline is per mode, not pooled. A kill converts into a round win far
+/// more often on KOTH than on stopwatch whoever it lands on — KOTH rounds are
+/// short and decided by a fight, stopwatch rounds are long and decided by a
+/// clock — and a pooled baseline turns that into a fake premium on every
+/// class at once. Measured against its own mode, what is left is the class.
+pub async fn victim_worth(db: &hl_db::Db) -> anyhow::Result<VictimWorth> {
+    let maps = db.all_round_map_names().await?;
+    let mut out = VictimWorth::default();
+
+    // One pass over the logs; the baseline needs every kill before any
+    // excess can be worked out, and parsing them twice costs eight seconds.
+    let mut seen: Vec<(Mode, KillState, hl_core::TfClass, bool)> = Vec::new();
+    for log_id in db.rawlog_ids().await? {
+        let Some(zip) = db.rawlog(log_id).await? else { continue };
+        let raw = crate::rawlog::parse(&crate::rawlog::unzip(&zip)?);
+        let gs = GameState::build(&raw);
+        let tags = analyse(&raw, &gs).tags;
+        let states = kill_states(&raw, &gs, &tags);
+        let rounds = maps.get(&log_id);
+        out.logs += 1;
+
+        for (i, s) in states.iter().enumerate() {
+            let Some((state, _)) = *s else { continue };
+            let k = &raw.kills[i];
+            let (Some(kt), Some(vc)) = (k.killer.team, k.victim.class) else { continue };
+            let Some(round) = gs.round_at(k.at) else { continue };
+            let Some(won) = round.winner else { continue };
+            // The map this kill happened on, which in a combined log is the
+            // round's map and not the log's name. Matched by round number:
+            // the raw log's clock is the server's and does not line up with
+            // the round windows logs.tf reports.
+            let Some(map) = rounds.and_then(|m| m.get(&i64::from(round.num))) else {
+                out.unmapped += 1;
+                continue;
+            };
+            seen.push((Mode::of(map), state, vc, won == kt));
+        }
+    }
+
+    // The baseline, per mode: of every team-moment in a state, how often that
+    // team won the round. Each kill is two moments — the killer's, and the
+    // victim's seeing the state flipped and not getting the kill.
+    let mut base: HashMap<(Mode, KillState), (u32, u32)> = HashMap::new();
+    for &(mode, state, _, won) in &seen {
+        let a = base.entry((mode, state)).or_default();
+        a.0 += 1;
+        a.1 += u32::from(won);
+        let b = base.entry((mode, state.flip())).or_default();
+        b.0 += 1;
+        b.1 += u32::from(!won);
+    }
+
+    for (mode, state, vc, won) in seen {
+        let Some(&(n, w)) = base.get(&(mode, state)) else { continue };
+        let e = out.by.entry((vc, mode)).or_default();
+        e.kills += 1;
+        e.won += u32::from(won);
+        e.expected += f64::from(w) / f64::from(n);
+    }
+    Ok(out)
+}
+
+impl fmt::Display for VictimWorth {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            "{} logs; what killing each class was worth over what the situation predicted\n\
+             ({} kills skipped: the round's map is unknown)\n",
+            self.logs, self.unmapped
+        )?;
+        writeln!(f, "{:<10} {:>18} {:>18} {:>10}", "victim", "KOTH", "stopwatch", "KOTH -")?;
+        writeln!(f, "{:<10} {:>18} {:>18} {:>10}", "", "kills   excess", "kills   excess", "stopwatch")?;
+        let mut rows: Vec<_> = hl_core::TfClass::ALL.to_vec();
+        rows.sort_by_key(|c| c.as_str());
+        for c in rows {
+            let k = self.by.get(&(c, Mode::Koth)).copied().unwrap_or_default();
+            let s = self.by.get(&(c, Mode::Stopwatch)).copied().unwrap_or_default();
+            let cell = |w: Worth| match w.excess() {
+                Some(e) => format!("{:>6}  {:>+7.2}%", w.kills, e * 100.0),
+                None => format!("{:>6}  {:>8}", w.kills, "–"),
+            };
+            let diff = match (k.excess(), s.excess()) {
+                (Some(a), Some(b)) => format!("{:>+9.2}%", (a - b) * 100.0),
+                _ => format!("{:>10}", "–"),
+            };
+            writeln!(f, "{:<10} {} {} {}", c.as_str(), cell(k), cell(s), diff)?;
+        }
+        Ok(())
+    }
+}
