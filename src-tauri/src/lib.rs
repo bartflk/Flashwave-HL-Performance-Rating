@@ -56,8 +56,29 @@ pub fn run() {
 
             // Blocking here is deliberate: the window should not appear until
             // migrations have applied, so no command can race an unmigrated db.
-            let db = tauri::async_runtime::block_on(Db::connect(&db_path))
-                .map_err(|e| format!("{e:#}"))?;
+            //
+            // A database that will not open at all used to end here, with the
+            // window showing "Could not start" and no way forward -- while
+            // five backups sat in the folder next door. That happened on 25
+            // September 2026. So the file is moved aside and a fresh one takes
+            // its place, which puts the start on the same path as any other
+            // empty database: the restore offer, which now says which of the
+            // two happened.
+            let db = match tauri::async_runtime::block_on(Db::connect(&db_path)) {
+                Ok(db) => db,
+                Err(first) => {
+                    tracing::error!(error = %format!("{first:#}"), "database would not open");
+                    let moved = hl_ingest::restore::set_aside(&db_path)
+                        .map_err(|e| format!("the database could not be opened ({first:#}), and moving it aside failed too: {e:#}"))?;
+                    let db = tauri::async_runtime::block_on(Db::connect(&db_path))
+                        .map_err(|e| format!("{e:#}"))?;
+                    let note = format!("{}|{first:#}", moved.display());
+                    let _ = tauri::async_runtime::block_on(
+                        db.set_setting(hl_ingest::restore::SET_ASIDE_KEY, &note),
+                    );
+                    db
+                }
+            };
             let sources = Arc::new(Sources::new().map_err(|e| format!("{e:#}"))?);
 
             // Index demos in the background at startup: the window should not

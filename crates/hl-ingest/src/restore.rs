@@ -23,10 +23,28 @@ use std::path::{Path, PathBuf};
 /// the database, holds one path, and is deleted as soon as it is acted on.
 const MARKER: &str = "pending-restore.txt";
 
-/// A backup worth offering, because the database in front of it is empty.
+/// Where the setting recording an unreadable database is kept, in the fresh
+/// database that replaced it.
+pub const SET_ASIDE_KEY: &str = "database_set_aside";
+
+/// A backup worth going back to, and why we are asking.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RestoreOffer {
+    /// `empty` — the database opened and holds nothing.
+    /// `unreadable` — it would not open at all and was moved aside.
+    pub reason: &'static str,
+    /// Where the unreadable file went, so it is not a mystery and can be sent
+    /// to someone who might make sense of it.
+    pub set_aside: Option<String>,
+    /// The backup on offer. `None` means there is nothing to go back to: the
+    /// screen then only explains, which is still better than saying nothing.
+    pub backup: Option<BackupOffer>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BackupOffer {
     pub path: String,
     pub bytes: u64,
     /// Unix seconds.
@@ -36,26 +54,54 @@ pub struct RestoreOffer {
     pub matches: i64,
 }
 
-/// The newest backup holding matches, when the live database holds none.
+/// Whether this start needs to say something before it asks for anything: an
+/// empty database, or one that had to be moved aside to open at all.
 ///
-/// Returns `None` in every ordinary case: a database with matches in it, and a
-/// genuinely new install with nothing to go back to.
+/// Returns `None` in every ordinary case — a database with matches in it, and
+/// a genuinely new install with nothing behind it.
 pub async fn offer(db: &hl_db::Db, db_path: &Path) -> Result<Option<RestoreOffer>> {
     if db.index_stats().await?.indexed > 0 {
         return Ok(None);
     }
+    let set_aside = db.get_setting(SET_ASIDE_KEY).await?;
+    let reason = if set_aside.is_some() { "unreadable" } else { "empty" };
+
+    let mut backup = None;
     for b in backup::list(db_path) {
         let matches = hl_db::Db::peek_matches(Path::new(&b.path)).await;
         if matches > 0 {
-            return Ok(Some(RestoreOffer {
-                path: b.path,
-                bytes: b.bytes,
-                made_at: b.made_at,
-                matches,
-            }));
+            backup = Some(BackupOffer { path: b.path, bytes: b.bytes, made_at: b.made_at, matches });
+            break;
         }
     }
-    Ok(None)
+    // An empty database with nothing behind it is a new install, and has
+    // nothing to be told. An unreadable one is worth explaining either way.
+    if backup.is_none() && reason == "empty" {
+        return Ok(None);
+    }
+    Ok(Some(RestoreOffer { reason, set_aside, backup }))
+}
+
+/// Move a database that will not open out of the way, so a fresh one can take
+/// its place. Returns where it went.
+///
+/// A file this app cannot read is not a file this app should delete: it is the
+/// only copy of whatever was in it, and someone with a hex editor may get more
+/// out of it than we can. The journal files go with it, since they belong to
+/// it and would otherwise be replayed over the replacement.
+pub fn set_aside(db_path: &Path) -> Result<PathBuf> {
+    let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
+    let to = db_path.with_extension(format!("unreadable-{stamp}.sqlite3"));
+    std::fs::rename(db_path, &to)
+        .with_context(|| format!("moving {} aside", db_path.display()))?;
+    for ext in ["sqlite3-wal", "sqlite3-shm"] {
+        let from = db_path.with_extension(ext);
+        if from.exists() {
+            let _ = std::fs::rename(&from, to.with_extension(format!("{ext}.old")));
+        }
+    }
+    tracing::error!(from = %db_path.display(), to = %to.display(), "database would not open; moved aside");
+    Ok(to)
 }
 
 /// Note that this backup should be put back on the next start.
@@ -168,6 +214,39 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// The 25 September 2026 case: a file that will not open at all. It used
+    /// to end the start with "Could not start" and no way forward.
+    #[tokio::test]
+    async fn a_database_that_will_not_open_is_moved_aside_rather_than_fatal() {
+        let dir = temp("unreadable");
+        let db_path = dir.join("hl.sqlite3");
+        // A real one, so the bytes that replace it have somewhere to be.
+        let good = hl_db::Db::connect(&db_path).await.unwrap();
+        good.close().await;
+        // Now break it the way it broke: a header that is not a database.
+        std::fs::write(&db_path, b"SQLite format 3  and then nonsense").unwrap();
+        std::fs::write(dir.join("hl.sqlite3-wal"), b"a journal for a file that is gone").unwrap();
+
+        assert!(hl_db::Db::connect(&db_path).await.is_err(), "the broken file must not open");
+
+        let moved = set_aside(&db_path).unwrap();
+        assert!(moved.exists(), "the old file is kept, not deleted");
+        assert!(!db_path.exists(), "and is out of the way");
+        assert!(!dir.join("hl.sqlite3-wal").exists(), "its journal went with it");
+
+        // A fresh one takes its place, which is the whole point.
+        let fresh = hl_db::Db::connect(&db_path).await.unwrap();
+        fresh.set_setting(SET_ASIDE_KEY, &format!("{}|broken", moved.display())).await.unwrap();
+
+        let offer = offer(&fresh, &db_path).await.unwrap().expect("this is worth saying out loud");
+        assert_eq!(offer.reason, "unreadable");
+        assert!(offer.set_aside.unwrap().starts_with(&moved.display().to_string()));
+        assert!(offer.backup.is_none(), "nothing was backed up in this test");
+
+        fresh.close().await;
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     #[tokio::test]
     async fn an_offer_appears_only_for_an_empty_database_with_something_to_go_back_to() {
         let dir = temp("offer");
@@ -202,7 +281,8 @@ mod tests {
         let empty = hl_db::Db::connect(&fresh_db).await.unwrap();
 
         let found = offer(&empty, &fresh_db).await.unwrap().expect("the copy is worth offering");
-        assert_eq!(found.matches, 1, "and says what is in it");
+        assert_eq!(found.reason, "empty");
+        assert_eq!(found.backup.expect("a backup is on offer").matches, 1, "and says what is in it");
         empty.close().await;
 
         let _ = std::fs::remove_dir_all(&dir);

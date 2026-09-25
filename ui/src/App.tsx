@@ -126,8 +126,8 @@ export default function App() {
             <span>
               Flashwave<span className="hl">.tf</span>
             </span>
-            <span className="beta-tag" title="Test build: expect rough edges, and please report them">
-              beta
+            <span className="beta-tag" title="Early build: expect rough edges, and please report them">
+              alpha
             </span>
           </h1>
           <nav className="tabs">

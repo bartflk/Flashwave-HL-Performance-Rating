@@ -45,8 +45,18 @@ export interface AppStatus {
   restore: RestoreOffer | null;
 }
 
-/** A backup the app can put back, because there is nothing to lose by it. */
+/** Why the app is asking before it does anything else, and what it can offer. */
 export interface RestoreOffer {
+  /** `empty` — the database opened and holds nothing.
+   *  `unreadable` — it would not open at all and was moved aside. */
+  reason: "empty" | "unreadable";
+  /** Where the unreadable file went: `<path>|<the error>`. */
+  setAside: string | null;
+  /** The backup on offer; null when there is nothing to go back to. */
+  backup: BackupOffer | null;
+}
+
+export interface BackupOffer {
   path: string;
   bytes: number;
   /** Unix seconds. */
