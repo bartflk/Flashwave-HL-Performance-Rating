@@ -1,7 +1,7 @@
 {
   "name": "hl-rating",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Team Fortress 2 Highlander performance rating system",
   "scripts": {
     "dev": "tauri dev",

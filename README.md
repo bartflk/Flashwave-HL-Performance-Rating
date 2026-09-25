@@ -14,8 +14,10 @@ Everything runs on your PC: no account, no server, nothing uploaded.
 
 **Ratings**
 
-- A rating per class, **0 to 100**, where 50 is a typical game by the players
-  you face. Your own games are left out of the pool you are measured against.
+- A rating per class on **HLTV's scale**: 1.00 is a typical game by the
+  players you face, 1.40 a strong one, 0.60 a poor one. One standard deviation
+  is worth 0.25. Your own games are left out of the pool you are measured
+  against.
 - The **Sniper model is the deepest**: impact kills valued by victim, class,
   map and side; damage per minute; untraded deaths; opening duels; Medic
   picks; Fight KAST; deaths to flankers; the Sniper duel. Every value and its
@@ -101,7 +103,7 @@ In the order it is queued (the detail lives in [PLAN.md](PLAN.md) §13):
 
 1. **Your SteamID.** Any format works: SteamID64, `[U:1:…]`, `STEAM_0:…` or a link to your Steam profile.
 2. **Your TF2 folder (optional).** Only needed for demo jumps. Auto-detect finds most installs; you can skip it and set it later in Settings.
-3. **Start the first sync.** It finds every match you played, then fetches logs from logs.tf **one every 2 seconds** to go easy on their servers. The detailed kill data comes **100 matches per sync**, so a long history takes a few syncs: press **Sync** again later for the rest. The app is usable while it runs.
+3. **Start the first sync.** It finds every match you played, then fetches the ones worth keeping from logs.tf **one every 2 seconds** to go easy on their servers: the **last two years, plus every official at any age**. Older scrims and pugs stay indexed but not downloaded — Settings, *How far back*, will fetch them too. The detailed kill data comes **100 matches per sync**, so a long history takes a few syncs: press **Sync** again later for the rest. The app is usable while it runs.
 
 ## Where the data comes from
 
