@@ -385,6 +385,16 @@ pub async fn backup_now(state: State<'_, AppState>) -> CmdResult<Option<hl_inges
     Ok(hl_ingest::backup::run(&state.db, &state.db_path, true).await?)
 }
 
+/// Write a copy of the database wherever the person chose.
+///
+/// The automatic copies live beside the database and the uninstaller can
+/// take them with it, so the advice has always been to keep one elsewhere.
+/// This is how. The path comes from the file dialog in the window.
+#[tauri::command]
+pub async fn save_backup_as(state: State<'_, AppState>, path: String) -> CmdResult<hl_ingest::backup::Backup> {
+    Ok(hl_ingest::backup::save_as(&state.db, std::path::Path::new(&path)).await?)
+}
+
 /// Your name and profile picture, as stored.
 #[tauri::command]
 pub async fn get_owner(state: State<'_, AppState>) -> CmdResult<Option<hl_ingest::owner::Owner>> {

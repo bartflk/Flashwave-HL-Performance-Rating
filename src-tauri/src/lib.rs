@@ -190,6 +190,7 @@ pub fn run() {
             sync_commands::set_all_history,
             sync_commands::list_backups,
             sync_commands::backup_now,
+            sync_commands::save_backup_as,
             sync_commands::get_map_view,
             sync_commands::get_map_overview,
             sync_commands::scan_demos,

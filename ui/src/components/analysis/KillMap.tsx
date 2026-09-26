@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type Analysis, type KillView, type MapView, type Overview, type PathRow, type Vec3 } from "../../api/types";
 import { capitalize, splitMap, teamLabel } from "../../lib/format";
-import { DEATH, KILL, inSlice, jumpTo, playerMap, roundClock, type Slice } from "./common";
+import { DEATH, KILL, inSlice, jumpTo, playerMap, roundClock, themeColour, type Slice } from "./common";
 import { LifeList } from "./LifeList";
 import { beginDownload, failDownload, useDownload } from "../../lib/downloads";
 import { useMeasuredWidth } from "../../lib/measure";
@@ -433,6 +433,12 @@ function Canvas(props: {
   a: Analysis;
 }) {
   const { frame, display, image, view, marks, paths, focus, maxHeight, heat, heatColor, hover, onHover, a } = props;
+  // The three colours the canvas draws with, resolved from the theme.
+  const killColour = themeColour("--kill", "#5791c8");
+  const deathColour = themeColour("--death", "#d6763a");
+  const heatResolved = heatColor.startsWith("var(")
+    ? themeColour(heatColor.slice(4, -1), "#5791c8")
+    : heatColor;
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   useEffect(() => {
     setImg(null);
@@ -516,13 +522,15 @@ function Canvas(props: {
       const [sx, sy] = px([first[1], first[2]]);
       const [ex, ey] = px([last[1], last[2]]);
       if (picked) {
-        g.strokeStyle = "rgba(242, 230, 217, 0.9)";
+        g.strokeStyle = `rgba(${themeColour("--text-rgb", "242, 230, 217")}, 0.9)`;
         g.lineWidth = 1.5;
         g.beginPath();
         g.arc(sx, sy, 4, 0, Math.PI * 2);
         g.stroke();
       }
-      g.fillStyle = route.died ? DEATH : KILL;
+      // Canvas takes a colour, not a CSS variable, so these are resolved
+      // here rather than at module load — the theme can change live.
+      g.fillStyle = route.died ? deathColour : killColour;
       g.beginPath();
       g.arc(ex, ey, picked ? 4 : 2.5, 0, Math.PI * 2);
       g.fill();
@@ -538,7 +546,7 @@ function Canvas(props: {
           const alpha = 0.92 * (heat[i] / max) ** 0.9;
           if (alpha < 0.06) continue;
           g.globalAlpha = alpha;
-          g.fillStyle = heatColor;
+          g.fillStyle = heatResolved;
           const [x, y, s] = cellRect(i);
           g.fillRect(x, y, s, s);
         }
@@ -546,7 +554,7 @@ function Canvas(props: {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [img, view, heat, heatColor, frame, display, W, H, scale, paths, focus]);
+  }, [img, view, heat, heatColor, heatResolved, killColour, deathColour, frame, display, W, H, scale, paths, focus]);
 
   const nearest = (e: React.MouseEvent<SVGSVGElement>): Mark | null => {
     const r = e.currentTarget.getBoundingClientRect();

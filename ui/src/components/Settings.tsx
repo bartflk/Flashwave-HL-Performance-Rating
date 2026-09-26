@@ -6,6 +6,7 @@ import { formatDate } from "../lib/format";
 import { HistoryPanel } from "./HistoryPanel";
 import { ImportPanel } from "./ImportPanel";
 import { startRebuild, useSyncStatus } from "../lib/sync";
+import { setTheme, THEMES, useTheme } from "../lib/theme";
 
 export function Settings({
   status,
@@ -21,6 +22,7 @@ export function Settings({
 
   return (
     <div className="content">
+      <ThemePanel />
       <HistoryPanel />
       <ImportPanel />
       <Etf2lPanel />
@@ -79,6 +81,45 @@ export function Settings({
 }
 
 /**
+ * Pick a palette (Q10).
+ *
+ * Every theme is dark. The app is built from translucent light tints over
+ * dark surfaces, so a light theme is not a swap of this list — it is its
+ * own piece of work, and half-doing it would look worse than not offering
+ * it. RED and BLU are never themed: they mean something in TF2, and a
+ * scoreboard that recolours them is lying about which team is which.
+ */
+function ThemePanel() {
+  const theme = useTheme();
+  return (
+    <div className="panel">
+      <h2>Theme</h2>
+      <p className="hint" style={{ marginTop: 6 }}>
+        Applies at once and is remembered on this machine. Team colours stay red and blue.
+      </p>
+      <div className="theme-grid">
+        {THEMES.map((t) => (
+          <button
+            key={t.id}
+            className={theme === t.id ? "theme-card active" : "theme-card"}
+            onClick={() => setTheme(t.id)}
+            aria-pressed={theme === t.id}
+          >
+            <span className={`theme-swatch theme-${t.id}`} aria-hidden>
+              <i className="sw-bg" />
+              <i className="sw-panel" />
+              <i className="sw-accent" />
+            </span>
+            <span className="theme-name">{t.name}</span>
+            <span className="theme-hint muted">{t.hint}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
  * Copies of the database. One is taken before every sync and rebuild, five
  * are kept, and this is where to check they exist — the file holds every log,
  * demo index and rating, and nothing else here can rebuild it from nothing.
@@ -88,6 +129,28 @@ function BackupsPanel() {
   const q = useQuery({ queryKey: ["backups"], queryFn: api.listBackups });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
+
+  /** A name that says what it is and when, so a folder of them sorts. */
+  function suggestedName() {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `flashwave-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.sqlite3`;
+  }
+
+  async function saveElsewhere() {
+    setBusy(true);
+    setError(null);
+    setSaved(null);
+    try {
+      const b = await api.saveBackupAs(suggestedName());
+      if (b) setSaved(b.path);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function backupNow() {
     setBusy(true);
@@ -111,14 +174,23 @@ function BackupsPanel() {
         back to one, close the app and rename the copy over <code>hl.sqlite3</code>.
       </p>
       <p className="hint">
-        Uninstalling the app offers to delete its data. That removes these copies too, so keep one elsewhere if it
-        matters to you.
+        Uninstalling the app offers to delete its data, which removes these copies with it. <strong>Save a copy
+        somewhere else</strong> — another drive, or a folder that gets backed up — and it survives that. The logs
+        inside are the only thing here that cannot be fetched again.
       </p>
       <div className="row" style={{ marginTop: 14 }}>
         <button onClick={() => void backupNow()} disabled={busy}>
           {busy ? "Copying…" : "Back up now"}
         </button>
+        <button onClick={() => void saveElsewhere()} disabled={busy}>
+          {busy ? "Copying…" : "Save a copy elsewhere…"}
+        </button>
       </div>
+      {saved && (
+        <p className="hint" style={{ marginTop: 10 }}>
+          Written to <code>{saved}</code>.
+        </p>
+      )}
       {error && <p className="error" style={{ marginTop: 10 }}>{error}</p>}
       {items.length === 0 ? (
         <p className="hint" style={{ marginTop: 14 }}>No copies yet. The next sync makes one.</p>

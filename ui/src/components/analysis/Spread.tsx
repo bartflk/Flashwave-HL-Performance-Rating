@@ -1,13 +1,14 @@
 import { useState } from "react";
 import type { Analysis } from "../../api/types";
-import { CLASS_ORDER, CLASS_SHORT, DEATH, KILL, playerMap, type Slice } from "./common";
+import { CLASS_ORDER, CLASS_SHORT, DEATH, KILL, playerMap, sliceLabel, type Slice } from "./common";
 import { ClassIcon } from "../ClassIcon";
 
 /**
  * Who the player hurt and who hurt them, class by class: back-to-back bars
  * with what was done to them on the left (orange) and what they did on the
  * right (blue). Side and colour carry the same meaning, so neither is needed
- * alone. Over the whole match: the raw log's damage has no round split here.
+ * alone. Scoped to whatever the filter row selects — the whole match, one
+ * map of a combined log, or one round.
  */
 export function Spread({ a, player, slice }: { a: Analysis; player: number; slice: Slice }) {
   const [asTable, setAsTable] = useState(false);
@@ -33,7 +34,7 @@ export function Spread({ a, player, slice }: { a: Analysis; player: number; slic
     <div className="spread">
       <div className="spread-head">
         <p className="hint">
-          {p?.name ?? "The player"} against each enemy class, {slice.rounds ? "in this round" : "over the whole match"}.
+          {p?.name ?? "The player"} against each enemy class, {sliceLabel(slice)}.
           {!a.damageCapped && " This log predates logs.tf's 450-per-hit cap, so backstabs count in full."}
         </p>
         <button className="linkish" onClick={() => setAsTable((t) => !t)}>

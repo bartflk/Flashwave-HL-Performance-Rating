@@ -649,6 +649,8 @@ export const mockApi: Api = {
   declineRestore: () => delay(undefined as void),
   backupNow: () =>
     delay({ path: "…\hl-now.sqlite3", bytes: 183_900_000, madeAt: Math.floor(Date.now() / 1000) }),
+  saveBackupAs: async (suggested: string) =>
+    delay({ path: "D:/backups/" + suggested, bytes: 183_900_000, madeAt: Math.floor(Date.now() / 1000) }),
 
   getMatchAnalysis: (logId: number) =>
     delay(

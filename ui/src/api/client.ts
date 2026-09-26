@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { save } from "@tauri-apps/plugin-dialog";
 import type {
   Analysis,
   AppConfig,
@@ -102,6 +103,22 @@ const realApi = {
   declineRestore: () => invoke<void>("decline_restore"),
   /** Copy the database now, whatever the last copy's age. */
   backupNow: () => invoke<Backup | null>("backup_now"),
+
+  /**
+   * Ask where to put a copy, then write it there. `null` if the dialog was
+   * dismissed — the automatic copies sit beside the database and go with it
+   * if the app is uninstalled with "delete application data" ticked, so this
+   * is the one that survives that.
+   */
+  saveBackupAs: async (suggested: string): Promise<Backup | null> => {
+    const path = await save({
+      title: "Save a copy of the database",
+      defaultPath: suggested,
+      filters: [{ name: "SQLite database", extensions: ["sqlite3"] }],
+    });
+    if (!path) return null;
+    return invoke<Backup>("save_backup_as", { path });
+  },
   /** What the demo says about your aim in one match (PLAN §14). */
   getAim: (logId: number) => invoke<AimResponse>("get_aim", { logId }),
   /** Null when too few kills are stored on the map to draw it. */

@@ -54,6 +54,30 @@ pub fn list(db_path: &Path) -> Vec<Backup> {
     out
 }
 
+/// Write a copy wherever the person asked for it, and do not prune it.
+///
+/// The Backups panel has always said "keep one elsewhere if it matters to
+/// you" — uninstalling offers to delete the app's data and takes the
+/// automatic copies with it — while giving no way to do that. This is the
+/// way. `VACUUM INTO`, like every other copy this app makes, because the
+/// database is three files in WAL mode and copying one of them tears it.
+pub async fn save_as(db: &hl_db::Db, to: &Path) -> Result<Backup> {
+    if let Some(parent) = to.parent() {
+        std::fs::create_dir_all(parent).with_context(|| format!("creating {}", parent.display()))?;
+    }
+    // Never write over something already there: this is the button people
+    // press when they are worried about losing data.
+    if to.exists() {
+        anyhow::bail!("{} already exists — pick another name.", to.display());
+    }
+    let temp = to.with_extension("part");
+    let _ = std::fs::remove_file(&temp);
+    db.vacuum_into(&temp).await.with_context(|| format!("writing {}", temp.display()))?;
+    std::fs::rename(&temp, to).with_context(|| format!("renaming {}", to.display()))?;
+    let bytes = std::fs::metadata(to).map(|m| m.len()).unwrap_or(0);
+    Ok(Backup { path: to.display().to_string(), made_at: now_s(), bytes })
+}
+
 /// Take a copy unless a recent one exists, then prune to [`KEEP`].
 ///
 /// Returns the copy made, or `None` when the last one was under

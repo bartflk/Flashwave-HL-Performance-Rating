@@ -7,9 +7,29 @@ import { clock } from "../../lib/format";
  * blue is damage and kills you dealt, orange is what was done to you.
  * Validated as a pair on the dark surface (CVD ΔE 19.7, normal 24.2); every
  * view also separates them by shape or side, never by colour alone.
+ *
+ * These two are deliberately the same in every theme (Q10). They are a
+ * validated pair carrying a meaning, like RED and BLU — a theme may repaint
+ * the app around them, not them.
  */
-export const KILL = "#5791c8";
-export const DEATH = "#d6763a";
+/// Both are CSS variables so a theme moves them (Q10). SVG and inline
+/// styles take `var(...)` perfectly well; the only place that cannot is a
+/// canvas, which reads the resolved value through `themeColour` below.
+export const KILL = "var(--kill)";
+export const DEATH = "var(--death)";
+
+/**
+ * The value a CSS variable currently resolves to.
+ *
+ * Canvas takes a colour string and cannot parse `var(--kill)`, so the kill
+ * map asks for the resolved colour instead. Read at draw time, not at
+ * module load: the theme can change while the page is open.
+ */
+export function themeColour(name: string, fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
 
 /** TF2's own class order, as the scoreboard lists them. */
 export const CLASS_ORDER = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
@@ -60,4 +80,26 @@ export interface Slice {
 
 export function inSlice(roundNum: number, s: Slice): boolean {
   return s.rounds === null || s.rounds.has(roundNum);
+}
+
+/**
+ * What the slice covers, in words, for a panel to put in a sentence.
+ *
+ * There are three cases and the views used to know about two. Picking one
+ * map of a combined log sets `rounds` to that map's rounds, which reads as
+ * "a filter is on" and was being described as "in this round" — wrong for a
+ * seven-round map, and wrong in a way that makes the numbers look wrong
+ * rather than the label. Anything saying what it is showing says it here.
+ */
+export function sliceLabel(s: Slice): string {
+  if (s.rounds === null) return "over the whole match";
+  if (s.oneRound) return "in this round";
+  return s.map ? `on ${s.map}` : "in these rounds";
+}
+
+/** The same, as a noun for "counted from ...". */
+export function sliceScope(s: Slice): string {
+  if (s.rounds === null) return "the whole match";
+  if (s.oneRound) return "this round";
+  return s.map ? `this map` : "these rounds";
 }

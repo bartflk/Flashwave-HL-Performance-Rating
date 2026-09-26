@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type Analysis, type AimRow, type AimTotals, type DeathRow, type LifeTotals } from "../../api/types";
 import { AimCharts } from "./AimCharts";
-import { playerMap, type Slice } from "./common";
+import { playerMap, sliceLabel, sliceScope, type Slice } from "./common";
 
 /**
  * Your aim, read from the match's own demo (PLAN §14).
@@ -35,7 +35,7 @@ export function Aim({ a, logId, slice }: { a: Analysis; logId: number; slice: Sl
   const deaths = d.deaths.filter((k) => inSlice(k.roundNum));
   const filtered = slice.rounds !== null;
   if (kills.length === 0 && deaths.length === 0) {
-    return <p className="hint an-empty">No kills or deaths of yours in this round.</p>;
+    return <p className="hint an-empty">No kills or deaths of yours {sliceLabel(slice)}.</p>;
   }
 
   return (
@@ -44,7 +44,7 @@ export function Aim({ a, logId, slice }: { a: Analysis; logId: number; slice: Sl
       {filtered && (
         <p className="hint">
           {kills.length} kill{kills.length === 1 ? "" : "s"} and {deaths.length} death
-          {deaths.length === 1 ? "" : "s"} in this round. The cards above the tabs cover the whole match.
+          {deaths.length === 1 ? "" : "s"} in {sliceScope(slice)}. The cards above the tabs cover the whole match.
         </p>
       )}
       <AimCharts kills={kills} deaths={deaths} />

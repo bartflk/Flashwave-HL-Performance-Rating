@@ -191,7 +191,7 @@
   top: -3px;
   bottom: -3px;
   width: 1px;
-  background: #4f4339;
+  background: var(--line);
 }
 
 /* Thin mark, 4px rounded data-end, square at the baseline. */
@@ -227,7 +227,7 @@
 }
 
 .comp-raw .unit {
-  color: #7a6b5e;
+  color: var(--faint);
 }
 
 /* --- trend chart --- */
@@ -322,7 +322,7 @@
 }
 
 .tl-cross {
-  stroke: #7a6b5e;
+  stroke: var(--faint);
   stroke-width: 1;
 }
 
@@ -509,7 +509,7 @@
 }
 
 .seasons-table tr.sel td {
-  background: rgba(242, 230, 217, 0.07);
+  background: rgba(var(--text-rgb), 0.07);
 }
 
 .seasons-table .muted-row td {
@@ -547,11 +547,11 @@
 }
 
 .verdict.good {
-  color: #8fb6dc;
+  color: var(--blu-hi);
 }
 
 .verdict.bad {
-  color: #e3a07a;
+  color: var(--accent-soft);
 }
 
 .class-tab {

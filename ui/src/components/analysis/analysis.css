@@ -82,14 +82,14 @@
 
 .km-key-kill {
   border-radius: 50%;
-  background: #5791c8;
+  background: var(--kill);
 }
 
 /* A cross, like the mark on the map. */
 .km-key-death {
   background:
-    linear-gradient(45deg, transparent 40%, #d6763a 40%, #d6763a 60%, transparent 60%),
-    linear-gradient(-45deg, transparent 40%, #d6763a 40%, #d6763a 60%, transparent 60%);
+    linear-gradient(45deg, transparent 40%, var(--death) 40%, var(--death) 60%, transparent 60%),
+    linear-gradient(-45deg, transparent 40%, var(--death) 40%, var(--death) 60%, transparent 60%);
 }
 
 .km-canvas {
@@ -166,7 +166,7 @@
 }
 
 .km-round {
-  stroke: #4f4339;
+  stroke: var(--line);
 }
 
 .km-round-label {
@@ -195,7 +195,7 @@
 .chip.on {
   color: var(--text);
   background: var(--panel-2);
-  border-color: #4f4339;
+  border-color: var(--line);
 }
 
 .pbp-round-head {
@@ -234,7 +234,7 @@
 }
 
 .pbp-involved {
-  background: rgba(224, 118, 58, 0.07);
+  background: rgba(var(--accent-rgb), 0.07);
 }
 
 .pbp-time {
@@ -424,17 +424,17 @@
 }
 
 .tl-mate {
-  stroke: rgba(242, 230, 217, 0.45);
+  stroke: rgba(var(--text-rgb), 0.45);
   stroke-width: 1;
 }
 
 .tl-foe {
-  stroke: rgba(168, 153, 139, 0.35);
+  stroke: rgba(var(--muted-rgb), 0.35);
   stroke-width: 1;
 }
 
 .tlc-round {
-  stroke: #4f4339;
+  stroke: var(--line);
 }
 
 .tlc-end {
@@ -516,23 +516,23 @@
 }
 
 .ss-up {
-  fill: #5791c8;
+  fill: var(--kill);
 }
 
 .ss-down {
-  fill: #d6763a;
+  fill: var(--death);
 }
 
 .ss-ad-none {
-  fill: rgba(168, 153, 139, 0.12);
+  fill: rgba(var(--muted-rgb), 0.12);
 }
 
 .ss-uber-build {
-  fill: rgba(242, 230, 217, 0.28);
+  fill: rgba(var(--text-rgb), 0.28);
 }
 
 .ss-uber-ready {
-  fill: rgba(242, 230, 217, 0.75);
+  fill: rgba(var(--text-rgb), 0.75);
 }
 
 .ss-uber-used {
@@ -553,7 +553,7 @@
 }
 
 .ss-key-down {
-  background: #d6763a;
+  background: var(--death);
 }
 
 /* Kill tags in the play-by-play: outlined, so they sit quieter than names. */
@@ -570,22 +570,22 @@
 }
 
 .kill-tag.tag-open {
-  border-color: #5791c8;
-  color: #8fb6dc;
+  border-color: var(--kill);
+  color: var(--blu-hi);
 }
 
 .kill-tag.tag-traded {
-  border-color: #d6763a;
-  color: #e3a07a;
+  border-color: var(--death);
+  color: var(--accent-soft);
 }
 
 .kill-tag.tag-charge {
-  border-color: rgba(242, 230, 217, 0.6);
+  border-color: rgba(var(--text-rgb), 0.6);
   color: var(--text);
 }
 
 .fights-table tr.sel td {
-  background: rgba(242, 230, 217, 0.06);
+  background: rgba(var(--text-rgb), 0.06);
 }
 
 .fights-team th {
@@ -624,7 +624,7 @@
 }
 
 .bf-row:hover {
-  background: rgba(242, 230, 217, 0.03);
+  background: rgba(var(--text-rgb), 0.03);
   border-radius: 4px;
 }
 
@@ -698,7 +698,7 @@
 
 .aim-vs {
   font-size: 0.72rem;
-  color: #7a6b5e;
+  color: var(--faint);
 }
 
 .aim-count {
@@ -724,7 +724,7 @@
 }
 
 .badge-hs {
-  background: rgba(224, 118, 58, 0.16);
+  background: rgba(var(--accent-rgb), 0.16);
   color: var(--accent);
 }
 
@@ -832,11 +832,11 @@
 }
 
 .aim-grid {
-  stroke: rgba(242, 230, 217, 0.07);
+  stroke: rgba(var(--text-rgb), 0.07);
 }
 
 .aim-axis-line {
-  stroke: rgba(242, 230, 217, 0.18);
+  stroke: rgba(var(--text-rgb), 0.18);
 }
 
 .aim-cover-line {
@@ -885,15 +885,15 @@
 
 .board-ring {
   fill: none;
-  stroke: rgba(242, 230, 217, 0.12);
+  stroke: rgba(var(--text-rgb), 0.12);
 }
 
 .board-cross {
-  stroke: rgba(242, 230, 217, 0.08);
+  stroke: rgba(var(--text-rgb), 0.08);
 }
 
 .board-head {
-  fill: rgba(224, 118, 58, 0.25);
+  fill: rgba(var(--accent-rgb), 0.25);
   stroke: var(--accent);
   stroke-width: 1;
 }
@@ -932,8 +932,8 @@
 
 /* Seen from above: the wedge is roughly what the screen showed. */
 .board-fov {
-  fill: rgba(87, 145, 200, 0.12);
-  stroke: rgba(87, 145, 200, 0.3);
+  fill: rgba(var(--kill-rgb), 0.12);
+  stroke: rgba(var(--kill-rgb), 0.3);
 }
 
 .board-you {
@@ -941,8 +941,8 @@
 }
 
 .board-dot-fov {
-  background: rgba(87, 145, 200, 0.35);
-  border: 1px solid rgba(87, 145, 200, 0.6);
+  background: rgba(var(--kill-rgb), 0.35);
+  border: 1px solid rgba(var(--kill-rgb), 0.6);
 }
 
 .death-board {
@@ -952,7 +952,7 @@
 /* The second before a kill, drawn as a line into its dot. */
 .board-trail {
   fill: none;
-  stroke: rgba(242, 230, 217, 0.22);
+  stroke: rgba(var(--text-rgb), 0.22);
   stroke-width: 1.2;
   stroke-linecap: round;
 }
@@ -1037,12 +1037,12 @@
 }
 
 .km-life:hover {
-  background: rgba(242, 230, 217, 0.05);
+  background: rgba(var(--text-rgb), 0.05);
 }
 
 .km-life.picked {
   border-color: var(--accent);
-  background: rgba(224, 118, 58, 0.12);
+  background: rgba(var(--accent-rgb), 0.12);
 }
 
 .km-life-dot {
@@ -1129,5 +1129,5 @@
 }
 
 .km-cap-at {
-  color: #7a6b5e;
+  color: var(--faint);
 }

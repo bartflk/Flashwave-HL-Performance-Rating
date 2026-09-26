@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { Analysis, FightStats } from "../../api/types";
 import { clock, teamLabel } from "../../lib/format";
-import { playerMap, type Slice } from "./common";
+import { playerMap, sliceScope, type Slice } from "./common";
 import { fightsInSlice } from "./roundFights";
 import { ClassIcon } from "../ClassIcon";
 
@@ -38,7 +38,7 @@ export function Fights({ a, player, slice, onPick }: { a: Analysis; player: numb
       </p>
       {partial && (
         <p className="hint">
-          Counted from this round&apos;s kills. Fight KAST, forces and deaths around an uber need the whole match, so
+          Counted from the kills in {sliceScope(slice)}. Fight KAST, forces and deaths around an uber need the whole match, so
           they are blank here.
         </p>
       )}

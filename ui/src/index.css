@@ -13,6 +13,50 @@
   --bad: #e86a62;
   --radius: 8px;
 
+  /* ---- roles the themes swap ------------------------------------------
+     Everything below used to be written as a literal in five stylesheets,
+     which is why the palette could not be changed. Each one is a *role*,
+     not a colour: the accent at three depths for the gradient on a button,
+     the rules and tracks a table is drawn with, the surfaces under them.
+     Q10: a theme is a short list of these, nothing else. */
+  --accent-2: #d6763a;          /* solid accent: fills, strokes, markers */
+  --accent-hi: #e8813f;         /* button gradient, top */
+  --accent-lo: #d97333;         /* button gradient, bottom */
+  --accent-edge: #c4642a;       /* button border */
+  --accent-hi-hover: #f1904d;
+  --accent-lo-hover: #e37f3c;
+  --accent-edge-hover: #d06d2f;
+  --accent-text: #f09a64;       /* accent as readable text */
+  --accent-soft: #e3a07a;       /* accent, quieter still */
+  --text-hi: #f5e7de;           /* brighter than --text, for one heading */
+  --line: #4f4339;              /* chart strokes and strong borders */
+  --line-2: #5c4f44;
+  --faint: #7a6b5e;             /* dimmer than --muted */
+  --rule: #29231f;              /* table rules */
+  --row-alt: #231e1a;           /* the alternating row */
+  --sunken: #2a241f;            /* inset panels and gradients */
+  --raised: #302a24;
+  /* The kill/death pair is NOT themed, for the same reason RED and BLU are
+     not: the two were validated together on the dark surface (CVD dE 19.7)
+     and every analysis view leans on them meaning one thing. A theme that
+     recoloured them would trade a readable chart for a matching one. */
+  --kill: #5791c8;              /* blue: what you did */
+  --death: #d6763a;             /* orange: what was done to you */
+  --blu-hi: #8fb6dc;
+
+  /* The same colours as bare channels, for the translucent tints that
+     CSS cannot make from a hex on its own. */
+  --accent-rgb: 224, 118, 58;
+  --text-rgb: 242, 230, 217;
+  --muted-rgb: 168, 153, 139;
+  --ok-rgb: 111, 174, 106;
+  --bad-rgb: 232, 106, 98;
+  --warn-rgb: 224, 176, 79;
+  --blu-rgb: 134, 171, 201;
+  --red-deep-rgb: 189, 59, 59;
+  --blu-deep-rgb: 57, 92, 120;
+  --kill-rgb: 87, 145, 200;
+
   /* TF2's team colours (#bd3b3b, #395c78), lifted to read as text on brown. */
   --red: #e86a62;
   --blu: #86abc9;
@@ -36,6 +80,117 @@
   --gutter: 28px;
 }
 
+/* ---------------------------------------------------------------------------
+   Themes (Q10, function's ask)
+   --------------------------------------------------------------------------
+   A theme is a list of role overrides and nothing else — no component knows
+   a theme exists. The team colours are deliberately NOT themed: RED and BLU
+   mean something in TF2 and a scoreboard that recolours them is lying.
+
+   All four are dark. A light theme is not a palette swap here: the app is
+   built out of translucent white tints over dark surfaces, and inverting it
+   properly is its own job rather than a fifth entry in this list.
+   -------------------------------------------------------------------------- */
+
+/* Gravel — the default: TF2's press-kit browns and the game's orange. */
+
+/* Dustbowl: hotter and sandier, the desert maps. */
+:root[data-theme="dustbowl"] {
+  --bg: #1d1712;
+  --panel: #2a211a;
+  --panel-2: #362b22;
+  --border: #48382b;
+  --text: #f6e9d7;
+  --muted: #b39d84;
+  --accent: #f0a032;
+  --accent-dim: #96601a;
+  --accent-2: #e59a30;
+  --accent-hi: #f5a93c;
+  --accent-lo: #e2912a;
+  --accent-edge: #c87d1f;
+  --accent-hi-hover: #ffb84f;
+  --accent-lo-hover: #efa036;
+  --accent-edge-hover: #d98a25;
+  --accent-text: #f7bd6c;
+  --accent-soft: #edc294;
+  --text-hi: #fdf2e2;
+  --line: #5a4732;
+  --line-2: #6b543c;
+  --faint: #8b7458;
+  --rule: #2e2419;
+  --row-alt: #262017;
+  --sunken: #2f2519;
+  --raised: #382c20;
+  --accent-rgb: 240, 160, 50;
+  --text-rgb: 246, 233, 215;
+  --muted-rgb: 179, 157, 132;
+}
+
+/* Coldfront: the winter maps — slate and ice, with the orange kept for
+   anything that has to stay legible as "yours". */
+:root[data-theme="coldfront"] {
+  --bg: #14181d;
+  --panel: #1c222a;
+  --panel-2: #252d37;
+  --border: #33404d;
+  --text: #e4ecf4;
+  --muted: #92a3b4;
+  --accent: #58a6d8;
+  --accent-dim: #2d5f80;
+  --accent-2: #4f9bcd;
+  --accent-hi: #5fb0e2;
+  --accent-lo: #4590c2;
+  --accent-edge: #35789f;
+  --accent-hi-hover: #74c0ef;
+  --accent-lo-hover: #549fd0;
+  --accent-edge-hover: #3f87b1;
+  --accent-text: #8ccbf0;
+  --accent-soft: #a9d3ea;
+  --text-hi: #f2f8fd;
+  --line: #3b4956;
+  --line-2: #4a5a69;
+  --faint: #6d7f90;
+  --rule: #1d242c;
+  --row-alt: #191f26;
+  --sunken: #1f262e;
+  --raised: #273039;
+  --accent-rgb: 88, 166, 216;
+  --text-rgb: 228, 236, 244;
+  --muted-rgb: 146, 163, 180;
+}
+
+/* Swiftwater: mossy greens, the one that is not orange or blue. */
+:root[data-theme="swiftwater"] {
+  --bg: #151914;
+  --panel: #1e241c;
+  --panel-2: #283026;
+  --border: #384333;
+  --text: #e9f0e4;
+  --muted: #9aa893;
+  --accent: #7fb861;
+  --accent-dim: #456a33;
+  --accent-2: #74ad57;
+  --accent-hi: #88c069;
+  --accent-lo: #6aa24f;
+  --accent-edge: #53823c;
+  --accent-hi-hover: #9bd07c;
+  --accent-lo-hover: #79b25c;
+  --accent-edge-hover: #5f9245;
+  --accent-text: #a6d38b;
+  --accent-soft: #c0dcae;
+  --text-hi: #f4faf0;
+  --line: #404d3a;
+  --line-2: #4f5e47;
+  --faint: #74846c;
+  --rule: #1e251c;
+  --row-alt: #1a2018;
+  --sunken: #202719;
+  --raised: #29321f;
+  --accent-rgb: 127, 184, 97;
+  --text-rgb: 233, 240, 228;
+  --muted-rgb: 154, 168, 147;
+}
+
 @media (max-width: 700px) {
   :root {
     --gutter: 16px;
@@ -50,7 +205,7 @@ body {
   margin: 0;
   /* A warm glow from the top, like light on the TF2 menu backdrop. */
   background:
-    radial-gradient(ellipse 90% 45% at 50% -8%, rgba(224, 118, 58, 0.09), transparent 70%),
+    radial-gradient(ellipse 90% 45% at 50% -8%, rgba(var(--accent-rgb), 0.09), transparent 70%),
     var(--bg);
   background-attachment: fixed;
   color: var(--text);
@@ -102,7 +257,7 @@ button {
   padding: 8px 16px;
   border-radius: 6px;
   border: 1px solid var(--border);
-  background: linear-gradient(#302a24, #2a241f);
+  background: linear-gradient(var(--raised), var(--sunken));
   color: var(--text);
   cursor: pointer;
   transition: background 120ms ease, border-color 120ms ease;
@@ -120,8 +275,8 @@ button:disabled {
 
 /* The TF2 menu button: orange, bold capitals, a darker lip underneath. */
 button.primary {
-  background: linear-gradient(#e8813f, #d97333);
-  border-color: #c4642a;
+  background: linear-gradient(var(--accent-hi), var(--accent-lo));
+  border-color: var(--accent-edge);
   color: #1f140d;
   font-family: var(--font-display);
   font-weight: 700;
@@ -130,8 +285,8 @@ button.primary {
 }
 
 button.primary:hover:not(:disabled) {
-  background: linear-gradient(#f1904d, #e37f3c);
-  border-color: #d06d2f;
+  background: linear-gradient(var(--accent-hi-hover), var(--accent-lo-hover));
+  border-color: var(--accent-edge-hover);
 }
 
 /* Dropdowns. The browser's own control is kept — it behaves properly with a
@@ -153,7 +308,7 @@ select {
   color-scheme: dark;
   /* Two layers: the arrow, then the same faint lift the buttons have. */
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a8998b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
-    linear-gradient(#302a24, #2a241f);
+    linear-gradient(var(--raised), var(--sunken));
   background-repeat: no-repeat, no-repeat;
   background-position: right 10px center, center;
   transition: background-color 120ms ease, border-color 120ms ease;
@@ -166,7 +321,7 @@ select:hover {
 
 select:focus-visible {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(224, 118, 58, 0.25);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.25);
 }
 
 select:disabled {
@@ -180,7 +335,7 @@ option {
 }
 
 option:disabled {
-  color: #7a6b5e;
+  color: var(--faint);
 }
 
 /* A field and its label: the pattern every filter row uses. */
@@ -214,5 +369,5 @@ input[type="text"]:focus {
 }
 
 input[type="text"]::placeholder {
-  color: #7a6b5e;
+  color: var(--faint);
 }

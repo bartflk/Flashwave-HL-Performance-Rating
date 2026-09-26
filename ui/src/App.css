@@ -185,7 +185,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 12px var(--bleed-pad);
-  background: linear-gradient(#2a241f, #211c18);
+  background: linear-gradient(var(--sunken), #211c18);
 }
 
 /* TF2's colours as a stripe under the bar: RED, the game's orange, BLU. */
@@ -634,12 +634,12 @@ th.num {
 }
 
 .badge-league {
-  background: rgba(224, 118, 58, 0.16);
-  color: #f09a64;
+  background: rgba(var(--accent-rgb), 0.16);
+  color: var(--accent-text);
 }
 
 .badge-demo {
-  background: rgba(111, 174, 106, 0.14);
+  background: rgba(var(--ok-rgb), 0.14);
   color: #7cc496;
 }
 
@@ -650,17 +650,17 @@ th.num {
 /* --- M5: kinds of game --- */
 
 .badge-official {
-  background: rgba(224, 118, 58, 0.16);
-  color: #f09a64;
+  background: rgba(var(--accent-rgb), 0.16);
+  color: var(--accent-text);
 }
 
 .badge-scrim {
-  background: rgba(134, 171, 201, 0.16);
+  background: rgba(var(--blu-rgb), 0.16);
   color: #9cbcd6;
 }
 
 .badge-pug {
-  background: rgba(168, 153, 139, 0.14);
+  background: rgba(var(--muted-rgb), 0.14);
   color: var(--muted);
 }
 
@@ -837,7 +837,7 @@ th.num {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--accent);
-  border: 1px solid rgba(224, 118, 58, 0.55);
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
   border-radius: 4px;
   padding: 2px 5px;
   margin-left: -2px;
@@ -864,7 +864,7 @@ th.num {
 }
 
 .badge-parts {
-  background: rgba(242, 230, 217, 0.08);
+  background: rgba(var(--text-rgb), 0.08);
   color: var(--muted);
 }
 
@@ -893,11 +893,11 @@ th.num {
 }
 
 .dl-done {
-  border-color: rgba(111, 174, 106, 0.5);
+  border-color: rgba(var(--ok-rgb), 0.5);
 }
 
 .dl-failed {
-  border-color: rgba(232, 106, 98, 0.5);
+  border-color: rgba(var(--bad-rgb), 0.5);
 }
 
 .dl-head {
@@ -1015,7 +1015,7 @@ th.num {
 .cf.active {
   border-color: var(--accent);
   color: var(--text);
-  background: rgba(224, 118, 58, 0.12);
+  background: rgba(var(--accent-rgb), 0.12);
 }
 
 .cf-n {
@@ -1032,7 +1032,7 @@ th.num {
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   padding: 28px;
-  box-shadow: 0 0 0 4px rgba(224, 118, 58, 0.08);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.08);
 }
 
 .restore h2 {
@@ -1119,3 +1119,76 @@ th.num {
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border);
 }
+
+/* ---- theme picker (Q10) ---------------------------------------------------
+   Each card shows the three colours that actually change the look: the page
+   behind, a panel on it, and the accent. A name alone would not tell you
+   what you are picking. */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.theme-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 2px 12px;
+  align-items: center;
+  text-align: left;
+  padding: 12px 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: var(--text);
+}
+
+.theme-card:hover {
+  border-color: var(--line-2);
+}
+
+.theme-card.active {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.12);
+}
+
+.theme-swatch {
+  grid-row: 1 / 3;
+  display: flex;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.theme-swatch i {
+  flex: 1;
+}
+
+.theme-name {
+  font-weight: 600;
+}
+
+.theme-hint {
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+/* The swatches name their colours outright: a preview cannot read the
+   variables of a theme that is not applied. */
+.theme-gravel .sw-bg { background: #1b1714; }
+.theme-gravel .sw-panel { background: #2f2924; }
+.theme-gravel .sw-accent { background: #e0763a; }
+.theme-dustbowl .sw-bg { background: #1d1712; }
+.theme-dustbowl .sw-panel { background: #362b22; }
+.theme-dustbowl .sw-accent { background: #f0a032; }
+.theme-coldfront .sw-bg { background: #14181d; }
+.theme-coldfront .sw-panel { background: #252d37; }
+.theme-coldfront .sw-accent { background: #58a6d8; }
+.theme-swiftwater .sw-bg { background: #151914; }
+.theme-swiftwater .sw-panel { background: #283026; }
+.theme-swiftwater .sw-accent { background: #7fb861; }
