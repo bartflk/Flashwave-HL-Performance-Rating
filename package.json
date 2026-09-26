@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
+    "checksums": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/checksums.ps1",
     "ui": "npm --prefix ui run dev",
     "ui:check": "npm --prefix ui run build",
     "icons": "node scripts/generate-icons.mjs",

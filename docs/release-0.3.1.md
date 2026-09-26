@@ -1,8 +1,30 @@
 # Flashwave.tf 0.3.1
 
-Windows only. Download the `-setup.exe` and run it. Windows may say "Windows
-protected your PC" because the installer is not code-signed: click **More
-info**, then **Run anyway**.
+Windows only. Download the `-setup.exe` and run it.
+
+**Windows will say "Windows protected your PC".** The installer is not
+code-signed, so SmartScreen does not recognise it. Two ways past it:
+
+*The quick way.* Click **More info**, then **Run anyway**.
+
+*The better way — check it is really my build first.* Right-click the
+downloaded file → **Properties** → tick **Unblock** → **OK**, then run it.
+No warning at all. Before you do that, confirm the file is the one I built:
+
+```powershell
+Get-FileHash .\Flashwave.tf_0.3.1_x64-setup.exe -Algorithm SHA256
+```
+
+```
+9B4C99BB05B052662A66D1DB22B326C3BF925CE0B1BD4BA24E1793F8FE5E876C
+```
+
+If those do not match, do not run it — tell me.
+
+Unblocking is worth understanding rather than just doing: it strips the tag
+Windows puts on anything downloaded, which is what triggers the check. It is
+the right call for a file you have verified by hash and the wrong one for
+anything else.
 
 **Updating from 0.3 keeps everything.** Same bundle id, same data folder.
 The app re-rates itself on first start — see below, every class moves.
