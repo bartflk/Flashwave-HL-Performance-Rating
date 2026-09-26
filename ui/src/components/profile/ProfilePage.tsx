@@ -52,7 +52,7 @@ export function ProfilePage({ onOpenMatch }: { onOpenMatch: (logId: number) => v
         <div className="panel">
           <h2>No ratings yet</h2>
           <p className="hint" style={{ marginTop: 6 }}>
-            Ratings are built at the end of every sync. Press Sync, or use Rebuild in Settings.
+            Press Sync, or Rebuild in Settings.
           </p>
         </div>
       </div>

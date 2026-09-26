@@ -62,8 +62,7 @@ export function TeammatesPage() {
         <div>
           <h2>Teams and teammates</h2>
           <p className="hint">
-            From {d.games.toLocaleString()} {all ? "Highlander games, pugs included" : "officials and scrims"}. Teams
-            are named from ETF2L rosters.
+            From {d.games.toLocaleString()} {all ? "games, pugs included" : "officials and scrims"}.
           </p>
         </div>
         <div className="segmented" role="tablist" aria-label="Which games">

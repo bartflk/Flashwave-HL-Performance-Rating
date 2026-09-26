@@ -1277,3 +1277,24 @@
 .part-picker .error {
   margin: 0;
 }
+
+/* The "Reading" select sits in the scoreboard's header now, on the right,
+   rather than in a panel of its own for one control. */
+.box-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.part-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.part-picker select {
+  max-width: 320px;
+}

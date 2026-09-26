@@ -11,13 +11,33 @@ import { playerMap, sliceLabel, sliceScope, type Slice } from "./common";
  * before, how far the view travelled, and how far away they were. Only kills
  * the demo carried both players through get an answer, so a Spy killed round
  * a corner is left out.
+ *
+ * **This is the owner's aim and nobody else's.** `demo_aim` has no shooter
+ * column — the pass was written for "the aim behind each of your kills" —
+ * so there is nothing to show for another player. The tab used not to take
+ * `player` at all, which meant picking someone else in the filter row left
+ * these cards showing *your* numbers under *their* name; a tester read his
+ * own 28° crosshair error as a teammate's. Now it says whose it is, and
+ * says plainly when the answer is not available rather than inventing one.
  */
-export function Aim({ a, logId, slice }: { a: Analysis; logId: number; slice: Slice }) {
+export function Aim({ a, logId, player, slice }: { a: Analysis; logId: number; player: number; slice: Slice }) {
   const q = useQuery({ queryKey: ["aim", logId], queryFn: () => api.getAim(logId) });
   const names = playerMap(a);
   // The filter row above applies here too: a round, or a map of a combined
   // log, narrows the kills and deaths the demo is read for.
   const inSlice = (round: number | null) => slice.rounds === null || (round !== null && slice.rounds.has(round));
+
+  const me = a.players.find((p) => p.isMe) ?? null;
+  const theirs = me !== null && player !== me.accountId;
+  if (theirs) {
+    const who = names.get(player)?.name ?? "that player";
+    return (
+      <p className="hint an-empty">
+        Aim is read from your own demo, so it can only answer for your kills — not {who}&apos;s. Pick
+        yourself in the player list above.
+      </p>
+    );
+  }
 
   if (q.isPending) return <p className="hint an-empty">Reading the demo…</p>;
   if (q.isError) return <p className="error">{errorMessage(q.error)}</p>;

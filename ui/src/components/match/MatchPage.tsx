@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Parts } from "./Parts";
 import { api } from "../../api/client";
 import { errorMessage, type MatchContext, type MatchDetail, type PartScore } from "../../api/types";
 import { capitalize, formatDate, minutes, splitMap, teamLabel } from "../../lib/format";
@@ -65,19 +64,23 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
       {q.data && shown && (
         <>
           <Header d={shown} />
-          {q.data.parts.length > 0 && (
-            <PartPicker
-              d={q.data}
-              parts={partsQ.data ?? null}
-              part={part}
-              onPick={(id) => void pick(id)}
-              fetching={fetching}
-              error={partError}
-            />
-          )}
           {/* The scoreboard first, as on logs.tf; the matchups read it next. */}
           <Fold id="scoreboard">
-            <BoxScore d={shown} />
+            <BoxScore
+              d={shown}
+              reading={
+                q.data.parts.length > 0 ? (
+                  <PartPicker
+                    d={q.data}
+                    parts={partsQ.data ?? null}
+                    part={part}
+                    onPick={(id) => void pick(id)}
+                    fetching={fetching}
+                    error={partError}
+                  />
+                ) : undefined
+              }
+            />
           </Fold>
           <Fold id="matchups">
             <Matchups d={shown} />
@@ -86,11 +89,6 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
             <DemoPanel d={q.data} />
             <StvPrompt d={q.data} />
           </Fold>
-          {part === null && (
-            <Fold id="parts">
-              <Parts d={q.data} />
-            </Fold>
-          )}
           <Fold id="rounds">
             <RoundTimeline d={shown} />
           </Fold>
@@ -119,7 +117,7 @@ function PartPicker(props: {
   const { d, parts, part, onPick, fetching, error } = props;
   const rows = parts ?? d.parts.map((p) => ({ ...p, detail: null, parentRounds: [] }));
   return (
-    <section className="panel part-picker">
+    <div className="part-picker">
       <label className="an-field">
         <span className="an-label">Reading</span>
         <select value={part ?? ""} onChange={(e) => onPick(e.target.value === "" ? null : Number(e.target.value))}>
@@ -132,15 +130,10 @@ function PartPicker(props: {
           ))}
         </select>
       </label>
-      <p className="hint">
-        {fetching
-          ? "Fetching that log from logs.tf…"
-          : part === null
-            ? "Several logs in this upload. Pick one to read it alone."
-            : "Every panel below is this log alone, scored on its own."}
-      </p>
+      {fetching && <span className="hint">Fetching…</span>}
+      {part !== null && !fetching && <span className="hint">this log alone</span>}
       {error && <p className="error">{error}</p>}
-    </section>
+    </div>
   );
 }
 
@@ -156,6 +149,9 @@ function Header({ d }: { d: MatchDetail }) {
   const links: Array<[string, string]> = [["logs.tf", `https://logs.tf/${d.logId}`]];
   if (d.demosTfId) links.push(["demos.tf", `https://demos.tf/${d.demosTfId}`]);
   if (etf2lId) links.push(["ETF2L", `https://etf2l.org/matches/${etf2lId}/`]);
+  // The logs this upload was combined from used to be a whole panel of
+  // their own to say one thing. They are links, so they live with the links.
+  for (const p of d.parts) links.push([`#${p.logId}`, `https://logs.tf/${p.logId}`]);
 
   return (
     <header className="panel match-header">

@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { PeriodStats, Season } from "../../api/types";
-import { capitalize } from "../../lib/format";
 import { setPeriod, usePeriod } from "../../lib/period";
 
 const shortDate = (t: number) =>
@@ -29,10 +28,7 @@ export function SeasonsPanel({ cls }: { cls: string }) {
     <section className="panel seasons-panel">
       <header>
         <h2>By season</h2>
-        <p className="hint">
-          Every {capitalize(cls)} game in each season: officials, scrims and pugs. A season runs from the week before your
-          first official in it to the day after your last. Click one to filter the whole profile and the match list to it.
-        </p>
+        <p className="hint">Click a season to filter everything to it.</p>
       </header>
       <div className="table-wrap">
         <table className="match-table seasons-table">

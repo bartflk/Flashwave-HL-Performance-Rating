@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { LogFlags, MatchDetail, PlayerRow } from "../../api/types";
 import { capitalize, clock, rating, teamLabel } from "../../lib/format";
 import { ClassIcon } from "../ClassIcon";
@@ -47,7 +47,7 @@ const COLS: Col[] = [
  * stat, every column sortable. It opens sorted by team then class, your team
  * first.
  */
-export function BoxScore({ d }: { d: MatchDetail }) {
+export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }) {
   const [sort, setSort] = useState<{ key: Key; desc: boolean }>({ key: "team", desc: false });
   const rows = useMemo(() => {
     const byTeamClass = (a: PlayerRow, b: PlayerRow) =>
@@ -78,8 +78,13 @@ export function BoxScore({ d }: { d: MatchDetail }) {
   return (
     <section className="panel box">
       <header className="box-head">
-        <h2>Scoreboard</h2>
-        <p className="hint">Click a column to sort. Hover a class for time played; a dash means the log did not record it.</p>
+        <div>
+          <h2>Scoreboard</h2>
+          <p className="hint">Click a column to sort.</p>
+        </div>
+        {/* Which log the page is reading. It had a panel of its own for one
+            select; it belongs with the numbers it scopes. */}
+        {reading}
       </header>
       <div className="table-wrap">
         <table className="match-table scoreboard">

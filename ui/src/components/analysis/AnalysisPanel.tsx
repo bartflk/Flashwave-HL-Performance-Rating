@@ -205,7 +205,7 @@ function Body({ a, stv, onlyRounds }: { a: Analysis; stv: StvInfo; onlyRounds: n
       {tab === "feed" && <PlayByPlay a={a} player={player} slice={slice} />}
       {tab === "fights" && <Fights a={a} player={player} slice={slice} onPick={setPlayer} />}
       {tab === "spread" && <Spread a={a} player={player} slice={slice} />}
-      {tab === "aim" && <Aim a={a} logId={a.logId} slice={slice} />}
+      {tab === "aim" && <Aim a={a} logId={a.logId} player={player} slice={slice} />}
       {tab === "timeline" && <TimelineChart a={a} player={player} slice={slice} onPick={setPlayer} />}
     </>
   );

@@ -46,7 +46,7 @@ export function Matchups({ d }: { d: MatchDetail }) {
         </div>
         <span
           className="model-tag"
-          title="Every class has its own model. Each component is a percentile against every other player's games on that class in your stored matches (yours excluded), and the rating is their weighted average, put on the scale HLTV uses: 1.00 is the typical player you face, and one standard deviation is worth 0.25."
+          title="1.00 is the typical player you face; one standard deviation is 0.25."
         >
           model {d.modelVersion} · one model per class
         </span>
