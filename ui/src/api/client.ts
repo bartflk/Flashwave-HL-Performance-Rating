@@ -34,12 +34,16 @@ import type {
   PathRow,
   PartScore,
   PlayedFilters,
+  StvQueued,
+  FailedLog,
+  Imported,
 } from "./types";
 
 /** True inside the Tauri window, false in a plain browser tab. */
 export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 export interface StvHandlers {
+  onQueued: (q: StvQueued) => void;
   onProgress: (p: StvProgress) => void;
   onDone: (d: StvFetched) => void;
   onError: (e: CmdError & { logId: number }) => void;
@@ -111,10 +115,20 @@ const realApi = {
   scanDemos: () => invoke<DemoIndexSummary>("scan_demos"),
   demoStats: () => invoke<DemoStats>("demo_stats"),
   fetchStv: (logId: number) => invoke<void>("fetch_stv", { logId }),
+  /** Drop a download that has not started. False if it is already running. */
+  cancelStv: (logId: number) => invoke<boolean>("cancel_stv", { logId }),
+
+  /** Logs the sync gave up on, newest first. */
+  failedLogs: () => invoke<FailedLog[]>("failed_logs"),
+  /** Forget a log's failures, or every log's, so the next sync retries. */
+  retryFailed: (logId?: number) => invoke<number>("retry_failed", { logId: logId ?? null }),
+  /** Fetch one log now, by id or logs.tf link. */
+  importLog: (text: string) => invoke<Imported>("import_log", { text }),
 
   /** STV download events. Returns a function that unsubscribes all three. */
   onStv: async (h: StvHandlers): Promise<UnlistenFn> => {
     const offs = await Promise.all([
+      listen<StvQueued>("stv://queued", (e) => h.onQueued(e.payload)),
       listen<StvProgress>("stv://progress", (e) => h.onProgress(e.payload)),
       listen<StvFetched>("stv://done", (e) => h.onDone(e.payload)),
       listen<CmdError & { logId: number }>("stv://error", (e) => h.onError(e.payload)),

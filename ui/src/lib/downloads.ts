@@ -17,7 +17,10 @@ export interface Download {
   label: string;
   bytes: number;
   total: number | null;
-  state: "running" | "done" | "failed";
+  /** `queued` is waiting its turn behind another download; 0 is running. */
+  state: "queued" | "running" | "done" | "failed";
+  /** Place in the queue while `queued`: 1 is next up. */
+  position?: number;
   error?: string;
   /** Set when it finished, so a card can be dismissed on its own terms. */
   finishedAt?: number;
@@ -36,7 +39,7 @@ function emit() {
 function put(logId: number, patch: Partial<Download>, label?: string) {
   const at = downloads.findIndex((d) => d.logId === logId);
   if (at === -1) {
-    downloads.push({ logId, label: label ?? `log ${logId}`, bytes: 0, total: null, state: "running", ...patch });
+    downloads.push({ logId, label: label ?? `log ${logId}`, bytes: 0, total: null, state: "queued", ...patch });
   } else {
     downloads[at] = { ...downloads[at], ...patch };
   }
@@ -48,19 +51,45 @@ export function watchDownloads() {
   if (started) return;
   started = true;
   void api.onStv({
+    // Position 0 is the one downloading; it will send progress of its own,
+    // so only the wait is worth showing.
+    onQueued: (q) =>
+      put(q.logId, q.position === 0 ? { state: "running", position: 0 } : { state: "queued", position: q.position }),
     onProgress: (p) => put(p.logId, { bytes: p.bytes, total: p.total, state: "running" }),
     onDone: (d) => put(d.logId, { state: "done", finishedAt: Date.now(), bytes: d.bytes }),
     onError: (e) => put(e.logId, { state: "failed", error: e.message, finishedAt: Date.now() }),
   });
 }
 
-/** Note a download about to start, so its card appears at once. */
+/**
+ * Note a download about to start, so its card appears at once.
+ *
+ * It starts *queued*, not running: whether it runs now depends on what else
+ * is in flight, and the backend says which on `stv://queued`. Showing a
+ * progress bar for a download that has not started is what made a full queue
+ * look like a stuck one.
+ */
 export function beginDownload(logId: number, label: string) {
-  put(logId, { bytes: 0, total: null, state: "running" }, label);
+  put(logId, { bytes: 0, total: null, state: "queued" }, label);
 }
 
+/** Mark a download failed from the caller's side: the command was refused. */
+export function failDownload(logId: number, error: string) {
+  put(logId, { state: "failed", error, finishedAt: Date.now() });
+}
+
+/**
+ * Dismiss a card, and drop the download if it has not started yet.
+ *
+ * Hiding the card used to leave the download queued, so it would begin
+ * minutes later with nothing on screen to explain it.
+ */
 export function dismissDownload(logId: number) {
-  downloads = downloads.filter((d) => d.logId !== logId);
+  const d = downloads.find((x) => x.logId === logId);
+  if (d?.state === "queued") {
+    void api.cancelStv(logId).catch(() => {});
+  }
+  downloads = downloads.filter((x) => x.logId !== logId);
   emit();
 }
 

@@ -24,6 +24,19 @@ pub struct TrendsIndexRow<'a> {
     pub raw_json: &'a str,
 }
 
+/// A log that would not download, with whatever the index knows about it.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FailedLog {
+    pub log_id: i64,
+    pub attempts: i64,
+    pub last_attempt_at: String,
+    pub error: String,
+    pub title: Option<String>,
+    pub map: Option<String>,
+    pub played_at: Option<i64>,
+}
+
 /// A logs.tf search row, flattened for storage.
 pub struct LogsTfIndexRow<'a> {
     pub log_id: i64,
@@ -392,6 +405,49 @@ impl Db {
             .await?;
         tx.commit().await?;
         Ok(())
+    }
+
+    /// Every log that would not download, newest first.
+    ///
+    /// A sync used to say "2 failed" and leave it there: no way to see which
+    /// two, why, or what to do (KamikaZe, September 2026). Everything needed
+    /// was already stored — this just asks for it.
+    pub async fn failed_logs(&self) -> Result<Vec<FailedLog>> {
+        let rows = sqlx::query(
+            "SELECT e.log_id, e.attempts, e.last_attempt_at, e.error,
+                    i.title, i.map, i.played_at
+             FROM log_fetch_error e
+             LEFT JOIN log_index i ON i.log_id = e.log_id
+             ORDER BY COALESCE(i.played_at, 0) DESC, e.log_id DESC",
+        )
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| FailedLog {
+                log_id: r.get("log_id"),
+                attempts: r.get("attempts"),
+                last_attempt_at: r.get("last_attempt_at"),
+                error: r.get("error"),
+                title: r.get("title"),
+                map: r.get("map"),
+                played_at: r.get("played_at"),
+            })
+            .collect())
+    }
+
+    /// Forget a log's failures, so the next sync tries it again from scratch.
+    pub async fn clear_fetch_error(&self, log_id: i64) -> Result<()> {
+        sqlx::query("DELETE FROM log_fetch_error WHERE log_id = ?1")
+            .bind(log_id)
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
+
+    /// The same for every failure at once: what "try them all again" means.
+    pub async fn clear_all_fetch_errors(&self) -> Result<u64> {
+        Ok(sqlx::query("DELETE FROM log_fetch_error").execute(self.pool()).await?.rows_affected())
     }
 
     pub async fn record_fetch_error(&self, log_id: i64, error: &str) -> Result<()> {

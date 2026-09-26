@@ -1424,6 +1424,14 @@ from testers (function, boSe, Taiga) is marked with who asked.
 | Q12 | **Momentum** (§15.2) | large | Depends on Q11 and on Q6's fight model; it is the story those two tell together, so it is last of the three. |
 | Q13 | **Translations** (tenshi, with boSe on French and obi on Portuguese and Spanish) | medium | Volunteers are waiting, so the cost is the plumbing, not the words. Worth doing after the screens stop moving — every string moved twice is a string translated twice. |
 
+### Reported by testers, and fixed
+
+| # | What | Reported | Cause |
+|---|---|---|---|
+| ~~B1~~ | ~~**Queued demo downloads never start**~~ | Gilaric | There was no queue. `fetch_stv` took a busy flag and *refused* a second download, while the window had already drawn a card for it — so it sat at "0 MB so far" until you cancelled and started it again, by which time the first had finished. Now there is a real queue: one at a time, in the order asked for, `stv://queued` says where each one is, and dismissing a card that has not started cancels it. |
+| ~~B2~~ | ~~**Rating over time squashes after "Show as table" twice**~~ | Anonymous | The ResizeObserver was attached in a `useEffect(..., [])` to an element the table toggle unmounts. A detached element reports 0×0, so the observer fired once with zero and the width clamped to its 320 minimum; coming back built a *new* element the observer was no longer watching, so it never recovered until a reload. Fixed by `useMeasuredWidth`, a ref callback that follows the element, ignores zero outright, and gives the chart a `viewBox` so a stale measurement scales instead of stubbing. The other three charts use it too. |
+| ~~B3~~ | ~~**"2 failed" with no way to see which**~~ | KamikaZe | A sync counted its failures and said nothing more. Settings now lists every log that would not download with its reason and attempt count, retries one or all of them, and takes a log id or logs.tf link to fetch on the spot — for a match no index ever listed, or one logs.tf holds under a second id. Also `hl failed` and `hl import <id\|url>`. |
+
 Smaller open items stay in §8 and are folded into whichever job touches them:
 demo linking per map segment (18) and the in-game jump-tick check (5) belong
 with Q3; the untested STV download (6) and the file watcher (7) ride along

@@ -316,3 +316,115 @@ async fn recompute_supersessions(db: &Db) -> Result<usize> {
 fn non_empty(s: &Option<String>) -> Option<&str> {
     s.as_deref().filter(|s| !s.trim().is_empty())
 }
+
+// ---------------------------------------------------------------------------
+// Importing one log by hand.
+//
+// A sync gives up on a log after three attempts and says "2 failed" with no
+// way to see which two or do anything about them (KamikaZe, September 2026).
+// Sometimes the answer is that logs.tf is missing the log, or has it under an
+// id trends.tf never listed, or the log is a pug the index never claimed. All
+// of those end the same way: the person knows the log id and wants it in.
+// ---------------------------------------------------------------------------
+
+/// A log asked for by hand: the id, and what happened.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Imported {
+    pub log_id: i64,
+    pub title: Option<String>,
+    pub map: Option<String>,
+    pub played_at: Option<i64>,
+    pub players: usize,
+    /// Whether the owner is in it. A log they did not play is stored all the
+    /// same — it still feeds the pool everyone is rated against — but it will
+    /// not show up in their match list, and saying so avoids a bug report.
+    pub yours: bool,
+}
+
+/// Read a log id out of whatever the person pasted: a number, a logs.tf URL,
+/// or one with the `#` anchor logs.tf puts on a player's row.
+pub fn parse_log_id(text: &str) -> Option<i64> {
+    let t = text.trim().trim_end_matches('/');
+    let tail = t.rsplit('/').next().unwrap_or(t);
+    let digits: String = tail.chars().take_while(char::is_ascii_digit).collect();
+    digits.parse().ok().filter(|id| *id > 0)
+}
+
+/// Fetch one log now, whatever the index thinks of it.
+///
+/// Unlike the sync this does not consult the fetch queue: a log that has
+/// failed three times, or that no index ever listed, is exactly what this is
+/// for. A success clears the failure — `store_raw_log` does that in the same
+/// transaction — so the list of failures is the list of things still wrong.
+pub async fn import_log(
+    db: &Db,
+    sources: &Sources,
+    w: &hl_rating::Weights,
+    log_id: i64,
+) -> Result<Imported> {
+    let json = sources
+        .logstf_log(log_id)
+        .await
+        .with_context(|| format!("logs.tf could not give us log {log_id}"))?;
+    let value: serde_json::Value =
+        serde_json::from_str(&json).with_context(|| format!("log {log_id} is not valid JSON"))?;
+    let log = normalize(log_id, &value)?;
+
+    // Index it from the log itself, so a log no index ever listed still has
+    // a row to be listed, filtered and classified by.
+    db.upsert_logstf_rows(&[LogsTfIndexRow {
+        log_id,
+        title: log.title.as_deref(),
+        map: log.map.as_deref(),
+        played_at: log.played_at,
+        player_count: Some(log.players.len() as i64),
+        raw_json: &json,
+    }])
+    .await?;
+    db.store_raw_log(log_id, &json).await?;
+    db.write_match(&log).await?;
+    db.set_heuristic_format(log_id, classify(&log)).await?;
+    recompute_supersessions(db).await?;
+
+    let yours = match db.get_me().await? {
+        Some(me) => log.players.iter().any(|p| p.id == me),
+        None => false,
+    };
+    if let Err(e) = crate::rating::rate_logs(db, w, &[log_id]).await {
+        tracing::warn!(log_id, error = %format!("{e:#}"), "rating an imported log failed");
+    }
+    Ok(Imported {
+        log_id,
+        title: log.title.clone(),
+        map: log.map.clone(),
+        played_at: log.played_at,
+        players: log.players.len(),
+        yours,
+    })
+}
+
+#[cfg(test)]
+mod import_tests {
+    use super::parse_log_id;
+
+    #[test]
+    fn a_log_id_is_read_out_of_whatever_was_pasted() {
+        assert_eq!(parse_log_id("4042136"), Some(4042136));
+        assert_eq!(parse_log_id("  4042136 "), Some(4042136));
+        assert_eq!(parse_log_id("https://logs.tf/4042136"), Some(4042136));
+        assert_eq!(parse_log_id("https://logs.tf/4042136/"), Some(4042136));
+        assert_eq!(parse_log_id("logs.tf/4042136"), Some(4042136));
+        // logs.tf puts a player anchor on the link you get from a row.
+        assert_eq!(parse_log_id("https://logs.tf/4042136#76561198099396919"), Some(4042136));
+    }
+
+    #[test]
+    fn anything_else_is_refused_rather_than_guessed_at() {
+        assert_eq!(parse_log_id(""), None);
+        assert_eq!(parse_log_id("the vigil game"), None);
+        assert_eq!(parse_log_id("https://logs.tf/"), None);
+        assert_eq!(parse_log_id("0"), None, "there is no log zero");
+        assert_eq!(parse_log_id("https://demos.tf/1507898"), Some(1507898), "close enough: it is a number");
+    }
+}

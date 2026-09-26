@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import { errorMessage, type AppStatus, type DemoIndexSummary } from "../api/types";
 import { formatDate } from "../lib/format";
 import { HistoryPanel } from "./HistoryPanel";
+import { ImportPanel } from "./ImportPanel";
 import { startRebuild, useSyncStatus } from "../lib/sync";
 
 export function Settings({
@@ -21,6 +22,7 @@ export function Settings({
   return (
     <div className="content">
       <HistoryPanel />
+      <ImportPanel />
       <Etf2lPanel />
       <RawlogPanel />
       <DemosPanel />

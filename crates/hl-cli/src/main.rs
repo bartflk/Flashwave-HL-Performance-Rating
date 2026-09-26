@@ -45,6 +45,8 @@ COMMANDS:
                            nine classes. Ends with a model proposed from the
                            fit and what it is worth cross-validated. --weights
                            takes a TOML file with a [model.CLASS] table; repeatable
+    failed                 Logs that would not import, and why
+    import ID|URL          Fetch one log now, whatever the index thinks of it
     situation [--toml [--round]] | --victims [--json]
                            What a kill is worth by numbers and uber advantage
                            (PLAN §12 step 3); --toml prints the [situation] table
@@ -1006,6 +1008,52 @@ teammates (≥{} games)", t.min_games);
                     m.teams.join("/")
                 );
             }
+            Ok(())
+        }
+
+        // Logs that would not import, and importing one by hand.
+        ["failed"] => {
+            let db = Db::connect(&db_path).await?;
+            let rows = db.failed_logs().await?;
+            if rows.is_empty() {
+                println!("nothing failed to import");
+                return Ok(());
+            }
+            println!("{} logs would not import:", rows.len());
+            for r in &rows {
+                println!(
+                    "  {:>9}  {:<22} {:>2} tries, last {}
+             {}",
+                    r.log_id,
+                    r.map.as_deref().unwrap_or("?"),
+                    r.attempts,
+                    r.last_attempt_at,
+                    r.error
+                );
+            }
+            println!("
+Try one again: hl import <id or logs.tf link>");
+            Ok(())
+        }
+
+        ["import", what] => {
+            let db = Db::connect(&db_path).await?;
+            let (weights, warning) = hl_rating::Weights::load(&db_path.with_file_name("weights.toml"));
+            if let Some(w) = warning {
+                eprintln!("warning: {w}");
+            }
+            let log_id = hl_ingest::parse_log_id(what)
+                .with_context(|| format!("`{what}` is not a log id or a logs.tf link"))?;
+            let sources = Sources::new()?;
+            let got = hl_ingest::import_log(&db, &sources, &weights, log_id).await?;
+            println!(
+                "imported {} — {} on {}, {} players{}",
+                got.log_id,
+                got.title.as_deref().unwrap_or("untitled"),
+                got.map.as_deref().unwrap_or("?"),
+                got.players,
+                if got.yours { "" } else { " (you are not in it: it joins the pool, not your matches)" }
+            );
             Ok(())
         }
 

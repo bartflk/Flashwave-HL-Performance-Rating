@@ -539,6 +539,7 @@ const EV_DEMOS_INDEXED: &str = "demos://indexed";
 const EV_STV_PROGRESS: &str = "stv://progress";
 const EV_STV_DONE: &str = "stv://done";
 const EV_STV_ERROR: &str = "stv://error";
+const EV_STV_QUEUED: &str = "stv://queued";
 
 async fn tf_path(state: &AppState) -> CmdResult<std::path::PathBuf> {
     let tf = state
@@ -581,6 +582,69 @@ struct StvError {
     error: CmdError,
 }
 
+/// Where a download is in the queue. 0 is "running now".
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct StvQueued {
+    log_id: i64,
+    position: usize,
+}
+
+/// Demo downloads waiting their turn.
+///
+/// One at a time is deliberate: a SourceTV demo is a hundred megabytes and
+/// the download is followed by parsing it, so two at once would be slower
+/// than two in a row and much heavier on demos.tf. What was wrong was the
+/// *refusal* -- a second request was answered with "a demo download is
+/// already running" and dropped on the floor, while the window had already
+/// drawn a card for it. It sat at "0 MB so far" until the user cancelled and
+/// started it again, by which time the first had finished. Reported by
+/// Gilaric, September 2026.
+///
+/// Now the second request waits. The queue is the order they were asked for,
+/// the head is the one downloading, and everyone is told where they are.
+#[derive(Default)]
+pub struct DemoQueue {
+    waiting: std::sync::Mutex<Vec<i64>>,
+}
+
+impl DemoQueue {
+    /// Join the queue. `None` if this match is already in it -- clicking
+    /// twice is not two downloads.
+    fn join(&self, log_id: i64) -> Option<usize> {
+        let mut q = self.waiting.lock().ok()?;
+        if q.contains(&log_id) {
+            return None;
+        }
+        q.push(log_id);
+        Some(q.len() - 1)
+    }
+
+    /// Leave, wherever in the queue it was. `true` if it was still there.
+    fn leave(&self, log_id: i64) -> bool {
+        let Ok(mut q) = self.waiting.lock() else { return false };
+        let before = q.len();
+        q.retain(|x| *x != log_id);
+        q.len() != before
+    }
+
+    fn contains(&self, log_id: i64) -> bool {
+        self.waiting.lock().map(|q| q.contains(&log_id)).unwrap_or(false)
+    }
+
+    /// The queue as it stands, to tell everyone their new position.
+    fn positions(&self) -> Vec<i64> {
+        self.waiting.lock().map(|q| q.clone()).unwrap_or_default()
+    }
+}
+
+/// Tell every waiting download where it now is.
+fn announce(app: &AppHandle, queue: &DemoQueue) {
+    for (position, log_id) in queue.positions().into_iter().enumerate() {
+        let _ = app.emit(EV_STV_QUEUED, StvQueued { log_id, position });
+    }
+}
+
 /// Download the demos.tf STV demo for a match in the background, then index
 /// and link it. Progress streams on `stv://progress`.
 /// Link a freshly downloaded demo to its match and read it.
@@ -595,14 +659,33 @@ async fn index_and_read(db: &hl_db::Db, tf: &std::path::Path, log_id: i64) -> an
 
 #[tauri::command]
 pub async fn fetch_stv(app: AppHandle, state: State<'_, AppState>, log_id: i64) -> CmdResult<()> {
-    let guard = BusyGuard::acquire(&state.downloading)
-        .ok_or_else(|| CmdError::new("busy", "A demo download is already running."))?;
-    let tf = tf_path(&state).await?;
+    // Joining the queue always succeeds; the wait happens in the task. The
+    // one thing refused is asking twice for the same match.
+    let Some(position) = state.demo_queue.join(log_id) else {
+        return Ok(());
+    };
+    let tf = match tf_path(&state).await {
+        Ok(tf) => tf,
+        Err(e) => {
+            state.demo_queue.leave(log_id);
+            return Err(e);
+        }
+    };
     let db = state.db.clone();
     let sources = state.sources.clone();
+    let queue = state.demo_queue.clone();
+    let turn = state.demo_turn.clone();
+    let _ = app.emit(EV_STV_QUEUED, StvQueued { log_id, position });
 
     tauri::async_runtime::spawn(async move {
-        let _guard = guard;
+        // Wait for the one in front, however it ends: the permit comes back
+        // when the guard is dropped, panic or not.
+        let Ok(_permit) = turn.acquire().await else { return };
+        // Cancelled while it waited: nothing to do, and no event -- the card
+        // is already gone.
+        if !queue.contains(log_id) {
+            return;
+        }
         let emitter = app.clone();
         // Progress events at most every ~1%, not per network chunk.
         let mut last_pct = u64::MAX;
@@ -621,12 +704,117 @@ pub async fn fetch_stv(app: AppHandle, state: State<'_, AppState>, log_id: i64) 
                 if let Err(e) = index_and_read(&db, &tf, log_id).await {
                     tracing::warn!(log_id, error = %format!("{e:#}"), "reading the new STV demo failed");
                 }
+                queue.leave(log_id);
                 let _ = app.emit(EV_STV_DONE, done);
             }
             Err(e) => {
+                queue.leave(log_id);
                 let _ = app.emit(EV_STV_ERROR, StvError { log_id, error: CmdError::from(e) });
             }
         }
+        announce(&app, &queue);
     });
     Ok(())
+}
+
+/// Drop a download that has not started yet.
+///
+/// Dismissing a queued card used to hide it and leave the download queued,
+/// so it started later for no reason anyone could see. One already running
+/// is left alone: the file is half on disk, and stopping it cleanly is a
+/// bigger change than this.
+#[tauri::command]
+pub async fn cancel_stv(app: AppHandle, state: State<'_, AppState>, log_id: i64) -> CmdResult<bool> {
+    if state.demo_queue.positions().first() == Some(&log_id) {
+        return Ok(false);
+    }
+    let dropped = state.demo_queue.leave(log_id);
+    if dropped {
+        announce(&app, &state.demo_queue);
+    }
+    Ok(dropped)
+}
+
+// ---- logs that would not import ---------------------------------------------
+
+/// Every log the sync gave up on, with why.
+///
+/// The sync has always counted them ("2 failed; next sync retries them") and
+/// never said which, so the only way to find out was to read the log file.
+#[tauri::command]
+pub async fn failed_logs(state: State<'_, AppState>) -> CmdResult<Vec<hl_db::FailedLog>> {
+    Ok(state.db.failed_logs().await?)
+}
+
+/// Forget a log's failures so the next sync tries it again. With no `log_id`,
+/// forget all of them.
+#[tauri::command]
+pub async fn retry_failed(state: State<'_, AppState>, log_id: Option<i64>) -> CmdResult<u64> {
+    match log_id {
+        Some(id) => {
+            state.db.clear_fetch_error(id).await?;
+            Ok(1)
+        }
+        None => Ok(state.db.clear_all_fetch_errors().await?),
+    }
+}
+
+/// Fetch one log now, by id or by a logs.tf link.
+///
+/// This ignores the queue and the attempt count on purpose: a log that has
+/// failed three times, or that no index ever listed, is the whole reason this
+/// exists. Runs in the foreground — it is one log, and the person is watching.
+#[tauri::command]
+pub async fn import_log(state: State<'_, AppState>, text: String) -> CmdResult<hl_ingest::Imported> {
+    let log_id = hl_ingest::parse_log_id(&text).ok_or_else(|| {
+        CmdError::new("bad_input", "That is not a log id or a logs.tf link.")
+    })?;
+    let (weights, _) = hl_rating::Weights::load(&state.db_path.with_file_name("weights.toml"));
+    Ok(hl_ingest::import_log(&state.db, &state.sources, &weights, log_id).await?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_queue_keeps_the_order_it_was_asked_in() {
+        let q = DemoQueue::default();
+        assert_eq!(q.join(1), Some(0), "the first one runs straight away");
+        assert_eq!(q.join(2), Some(1));
+        assert_eq!(q.join(3), Some(2));
+        assert_eq!(q.positions(), vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn asking_twice_for_the_same_match_is_not_two_downloads() {
+        let q = DemoQueue::default();
+        assert_eq!(q.join(7), Some(0));
+        assert_eq!(q.join(7), None, "a second click changes nothing");
+        assert_eq!(q.positions(), vec![7]);
+    }
+
+    #[test]
+    fn leaving_moves_everyone_behind_up() {
+        let q = DemoQueue::default();
+        for id in [1, 2, 3] {
+            q.join(id);
+        }
+        assert!(q.leave(2), "it was in the queue");
+        assert_eq!(q.positions(), vec![1, 3], "3 is now next, not third");
+        assert!(!q.leave(2), "and leaving twice is not an error, just nothing");
+        assert!(q.contains(1));
+        assert!(!q.contains(2));
+    }
+
+    #[test]
+    fn a_finished_download_lets_the_next_one_join_again() {
+        // The head leaves when it finishes; a match can then be asked for
+        // again, which is what re-downloading a demo is.
+        let q = DemoQueue::default();
+        q.join(5);
+        assert_eq!(q.join(5), None);
+        q.leave(5);
+        assert_eq!(q.join(5), Some(0));
+    }
 }

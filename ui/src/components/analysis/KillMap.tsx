@@ -1,11 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { Analysis, KillView, MapView, Overview, PathRow, Vec3 } from "../../api/types";
+import { errorMessage, type Analysis, type KillView, type MapView, type Overview, type PathRow, type Vec3 } from "../../api/types";
 import { capitalize, splitMap, teamLabel } from "../../lib/format";
 import { DEATH, KILL, inSlice, jumpTo, playerMap, roundClock, type Slice } from "./common";
 import { LifeList } from "./LifeList";
-import { beginDownload, useDownload } from "../../lib/downloads";
+import { beginDownload, failDownload, useDownload } from "../../lib/downloads";
+import { useMeasuredWidth } from "../../lib/measure";
 import type { StvInfo } from "./AnalysisPanel";
 
 /**
@@ -132,7 +133,9 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
 
   const fetchStv = async () => {
     beginDownload(a.logId, `${capitalize(splitMap(a.map).name ?? "this match")}, log ${a.logId}`);
-    await api.fetchStv(a.logId).catch(() => {});
+    // A refused command must reach the card, or it sits there claiming to
+    // be downloading something nobody ever started.
+    await api.fetchStv(a.logId).catch((e) => failDownload(a.logId, errorMessage(e)));
   };
 
   const [heatOf, setHeatOf] = useState<HeatOf>("deaths");
@@ -438,19 +441,9 @@ function Canvas(props: {
     el.onload = () => setImg(el);
     el.src = image;
   }, [image]);
-  const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
-  const [boxW, setBoxW] = useState(800);
+  const [boxW, wrap] = useMeasuredWidth(320, 800);
 
-  useLayoutEffect(() => {
-    const el = wrap.current;
-    if (!el) return;
-    // Measure now as well: an observer only reports once the page renders.
-    setBoxW(el.clientWidth - 20);
-    const ro = new ResizeObserver((e) => setBoxW(e[0].contentRect.width));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   const scale = Math.min(boxW / display.width, maxHeight / display.height);
   const W = Math.floor(display.width * scale);
@@ -646,16 +639,7 @@ function HoverCard({ m, a, pos, W }: { m: Mark; a: Analysis; pos: [number, numbe
 /** Every mark along the match's game time: kills above the line, deaths below. */
 function TimeStrip(props: { a: Analysis; slice: Slice; marks: Mark[]; hover: Mark | null; onHover: (m: Mark | null) => void }) {
   const { a, slice, marks, hover, onHover } = props;
-  const wrap = useRef<HTMLDivElement>(null);
-  const [w, setW] = useState(800);
-  useLayoutEffect(() => {
-    const el = wrap.current;
-    if (!el) return;
-    setW(el.clientWidth);
-    const ro = new ResizeObserver((e) => setW(e[0].contentRect.width));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const [w, wrap] = useMeasuredWidth(320, 800);
   const H = 44;
   const mid = H / 2;
   const span = Math.max(1, slice.endS - slice.startS);

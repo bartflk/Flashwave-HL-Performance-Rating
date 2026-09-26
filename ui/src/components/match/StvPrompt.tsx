@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/client";
 import { errorMessage, type MatchDetail } from "../../api/types";
-import { beginDownload, useDownload } from "../../lib/downloads";
+import { beginDownload, failDownload, useDownload } from "../../lib/downloads";
 
 /**
  * "There is a SourceTV demo for this match. Want it?"
@@ -52,6 +52,7 @@ export function StvPrompt({ d }: { d: MatchDetail }) {
       await api.fetchStv(d.logId);
     } catch (e) {
       setError(errorMessage(e));
+      failDownload(d.logId, errorMessage(e));
       setOpen(true);
     }
   }

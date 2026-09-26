@@ -11,7 +11,7 @@ pub mod sources;
 pub mod sync;
 
 pub use sources::Sources;
-pub use sync::{reprocess, sync, Progress, SyncOptions, SyncSummary};
+pub use sync::{import_log, parse_log_id, reprocess, sync, Imported, Progress, SyncOptions, SyncSummary};
 
 pub use detail::match_detail;
 mod detail;

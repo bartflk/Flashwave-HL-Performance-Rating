@@ -415,6 +415,34 @@ export interface DemoIndexSummary {
   markers: number;
 }
 
+/** A log the sync could not download, and why. */
+export interface FailedLog {
+  logId: number;
+  attempts: number;
+  lastAttemptAt: string;
+  error: string;
+  title: string | null;
+  map: string | null;
+  playedAt: number | null;
+}
+
+/** What came back from importing a log by hand. */
+export interface Imported {
+  logId: number;
+  title: string | null;
+  map: string | null;
+  playedAt: number | null;
+  players: number;
+  /** False when the owner is not in it: stored, but not in their matches. */
+  yours: boolean;
+}
+
+/** Where a queued download sits. 0 means it is the one running. */
+export interface StvQueued {
+  logId: number;
+  position: number;
+}
+
 export interface StvProgress {
   logId: number;
   bytes: number;

@@ -294,6 +294,32 @@ let allHistory = false;
 
 let handlers: SyncHandlers | null = null;
 let stvHandlers: StvHandlers | null = null;
+const stvQueue: number[] = [];
+
+function announceStv() {
+  stvQueue.forEach((logId, position) => stvHandlers?.onQueued({ logId, position }));
+}
+
+/** Download whatever is at the head of the queue, then move on to the next. */
+function runStv() {
+  const logId = stvQueue[0];
+  if (logId === undefined) return;
+  const total = 48_000_000;
+  let bytes = 0;
+  const step = () => {
+    bytes = Math.min(total, bytes + 6_000_000);
+    stvHandlers?.onProgress({ logId, bytes, total });
+    if (bytes < total) {
+      setTimeout(step, 150);
+      return;
+    }
+    stvHandlers?.onDone({ logId, demoId: 999, fileName: "match-20260823-1956-pl_upward_f12.dem", bytes, logShare: 0.37 });
+    stvQueue.shift();
+    announceStv();
+    runStv();
+  };
+  setTimeout(step, 150);
+}
 let busy = false;
 /** Logs still waiting to be fetched; a completed sync clears it. */
 let pending = 24;
@@ -680,17 +706,22 @@ export const mockApi: Api = {
     delay({ scanned: 101, unreadable: 0, removed: 0, logsPlaced: 759, links: 26, demosLinked: 25, matchesWithDemo: 23, markers: 883 }),
   demoStats: () => delay({ demos: 101, linked: 25, stv: 0, markers: 883, matchesWithDemo: 23 }),
 
-  // Simulates a download so the progress UI can be exercised in a browser.
+  // Simulates a download, one at a time, so the queue UI can be exercised
+  // in a browser: ask for three and the second and third wait their turn.
   fetchStv: async (logId: number) => {
-    const total = 48_000_000;
-    let bytes = 0;
-    const step = () => {
-      bytes = Math.min(total, bytes + 6_000_000);
-      stvHandlers?.onProgress({ logId, bytes, total });
-      if (bytes < total) setTimeout(step, 150);
-      else stvHandlers?.onDone({ logId, demoId: 999, fileName: "match-20260823-1956-pl_upward_f12.dem", bytes, logShare: 0.37 });
-    };
-    setTimeout(step, 150);
+    if (stvQueue.includes(logId)) return;
+    stvQueue.push(logId);
+    announceStv();
+    if (stvQueue.length === 1) runStv();
+  },
+
+  cancelStv: async (logId: number) => {
+    if (stvQueue[0] === logId) return false;
+    const at = stvQueue.indexOf(logId);
+    if (at === -1) return false;
+    stvQueue.splice(at, 1);
+    announceStv();
+    return true;
   },
 
   onStv: async (h) => {
@@ -698,6 +729,28 @@ export const mockApi: Api = {
     return () => {
       if (stvHandlers === h) stvHandlers = null;
     };
+  },
+
+  failedLogs: () =>
+    delay([
+      {
+        logId: 3998211,
+        attempts: 3,
+        lastAttemptAt: "2026-09-25 22:14:03",
+        error: "logs.tf answered 404",
+        title: "Highlander: bandwagon vs FUNCTION",
+        map: "pl_vigil_rc10",
+        playedAt: 1758300000,
+      },
+    ]),
+  retryFailed: async () => 1,
+  importLog: async (text: string) => {
+    // The same rule as the backend's parse_log_id: the last path segment,
+    // up to its first non-digit, so a logs.tf link with a #player anchor works.
+    const tail = text.trim().replace(/\/+$/, "").split("/").pop() ?? "";
+    const logId = Number(/^\d+/.exec(tail)?.[0] ?? 0);
+    if (!logId) throw new Error("That is not a log id or a logs.tf link.");
+    return { logId, title: "Highlander", map: "koth_product_final", playedAt: 1758300000, players: 18, yours: true };
   },
 
   indexStats: () => delay(fakeStats(pending)),

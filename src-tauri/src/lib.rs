@@ -18,8 +18,10 @@ pub struct AppState {
     pub sources: Arc<Sources>,
     /// Set while a sync or reprocess is running; a second one is refused.
     pub busy: Arc<AtomicBool>,
-    /// Set while an STV demo is downloading.
-    pub downloading: Arc<AtomicBool>,
+    /// Demo downloads waiting their turn, and the one permit they take in
+    /// turns to hold. One at a time, in the order they were asked for.
+    pub demo_queue: Arc<sync_commands::DemoQueue>,
+    pub demo_turn: Arc<tokio::sync::Semaphore>,
     /// Held for the life of the window: the database is this app's alone
     /// while it runs. Never read; dropping it is the point.
     pub _lock: hl_ingest::lock::Lock,
@@ -150,7 +152,8 @@ pub fn run() {
                 _lock: lock,
                 sources,
                 busy: Arc::new(AtomicBool::new(false)),
-                downloading: Arc::new(AtomicBool::new(false)),
+                demo_queue: Arc::new(sync_commands::DemoQueue::default()),
+                demo_turn: Arc::new(tokio::sync::Semaphore::new(1)),
             });
             Ok(())
         })
@@ -192,6 +195,10 @@ pub fn run() {
             sync_commands::scan_demos,
             sync_commands::demo_stats,
             sync_commands::fetch_stv,
+            sync_commands::cancel_stv,
+            sync_commands::failed_logs,
+            sync_commands::retry_failed,
+            sync_commands::import_log,
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

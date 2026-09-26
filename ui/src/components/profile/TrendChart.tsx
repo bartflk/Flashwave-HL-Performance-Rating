@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { TrendPoint } from "../../api/types";
 import { formatDate, rating, splitMap } from "../../lib/format";
+import { useMeasuredWidth } from "../../lib/measure";
 
 /**
  * Rating over time, as an emphasis chart: the rolling average is the story
@@ -37,15 +38,10 @@ export function TrendChart(props: {
   const [asTable, setAsTable] = useState(false);
   const [hover, setHover] = useState<number | null>(null);
 
-  const wrap = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(800);
-  useEffect(() => {
-    const el = wrap.current;
-    if (!el) return;
-    const ro = new ResizeObserver((entries) => setWidth(Math.max(320, entries[0].contentRect.width)));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  // A ref callback, not an effect: "Show as table" unmounts the chart and
+  // brings back a different element, and an observer attached once would be
+  // left watching the old one. See useMeasuredWidth.
+  const [width, wrap] = useMeasuredWidth(320, 800);
 
   const shown = useMemo(
     () => (range === "all" ? points : points.slice(-Number(range))),
@@ -99,7 +95,10 @@ export function TrendChart(props: {
 
   function nearest(clientX: number, svg: SVGSVGElement): number {
     const rect = svg.getBoundingClientRect();
-    const px = clientX - rect.left;
+    // The svg scales to its box, so a screen pixel is not always a viewBox
+    // unit; between a resize and the observer reporting it, they differ.
+    const scale = rect.width > 0 ? width / rect.width : 1;
+    const px = (clientX - rect.left) * scale;
     const t = (px - M.left) / Math.max(1, plotW);
     return Math.max(0, Math.min(shown.length - 1, Math.round(t * (shown.length - 1))));
   }
@@ -169,7 +168,8 @@ export function TrendChart(props: {
       ) : (
         <div className="trend-wrap" ref={wrap}>
           <svg
-            width={width}
+            width="100%"
+            viewBox={`0 0 ${width} ${H}`}
             height={H}
             role="img"
             aria-label={`Rating over ${shown.length} games; latest ${rollingWindow}-game average ${last?.rolling ?? "n/a"}`}

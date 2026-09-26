@@ -100,6 +100,7 @@ function DownloadCard({ d, onOpenMatch }: { d: Download; onOpenMatch: (logId: nu
     <div className={`dl dl-${d.state}`}>
       <div className="dl-head">
         <span className="dl-title">
+          {d.state === "queued" && "Waiting to download"}
           {d.state === "running" && "Downloading demo"}
           {d.state === "done" && "Demo ready"}
           {d.state === "failed" && "Download failed"}
@@ -109,6 +110,12 @@ function DownloadCard({ d, onOpenMatch }: { d: Download; onOpenMatch: (logId: nu
         </button>
       </div>
       <p className="dl-label">{d.label}</p>
+
+      {d.state === "queued" && (
+        <p className="dl-sub">
+          {d.position === 1 ? "Next, once the one before it finishes." : `${d.position ?? 1} ahead of it in the queue.`}
+        </p>
+      )}
 
       {d.state === "running" && (
         <>

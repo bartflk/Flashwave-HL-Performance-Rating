@@ -1,6 +1,7 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Analysis, AnalysisPlayer } from "../../api/types";
 import { clock } from "../../lib/format";
+import { useMeasuredWidth } from "../../lib/measure";
 import { inSlice, roundClock, type Slice } from "./common";
 import { chargeLabel, sides, StateStrip } from "./StateStrip";
 
@@ -33,16 +34,7 @@ export function TimelineChart(props: {
   const [asTable, setAsTable] = useState(false);
   const [hoverT, setHoverT] = useState<number | null>(null);
 
-  const wrap = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(900);
-  useLayoutEffect(() => {
-    const el = wrap.current;
-    if (!el) return;
-    setWidth(Math.max(320, el.clientWidth));
-    const ro = new ResizeObserver((e) => setWidth(Math.max(320, e[0].contentRect.width)));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const [width, wrap] = useMeasuredWidth(320, 900);
 
   const t0 = slice.startS;
   const t1 = Math.max(slice.endS, t0 + 1);
