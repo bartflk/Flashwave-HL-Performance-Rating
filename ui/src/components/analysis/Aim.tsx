@@ -20,7 +20,15 @@ import { playerMap, sliceLabel, sliceScope, type Slice } from "./common";
  * own 28° crosshair error as a teammate's. Now it says whose it is, and
  * says plainly when the answer is not available rather than inventing one.
  */
-export function Aim({ a, logId, player, slice }: { a: Analysis; logId: number; player: number; slice: Slice }) {
+export function Aim(props: {
+  a: Analysis;
+  logId: number;
+  player: number;
+  slice: Slice;
+  /** Switch the filter row's player, so the message can fix itself. */
+  onPick: (accountId: number) => void;
+}) {
+  const { a, logId, player, slice, onPick } = props;
   const q = useQuery({ queryKey: ["aim", logId], queryFn: () => api.getAim(logId) });
   const names = playerMap(a);
   // The filter row above applies here too: a round, or a map of a combined
@@ -28,14 +36,19 @@ export function Aim({ a, logId, player, slice }: { a: Analysis; logId: number; p
   const inSlice = (round: number | null) => slice.rounds === null || (round !== null && slice.rounds.has(round));
 
   const me = a.players.find((p) => p.isMe) ?? null;
-  const theirs = me !== null && player !== me.accountId;
-  if (theirs) {
+  if (me !== null && player !== me.accountId) {
+    // Telling someone to go and change a dropdown is worse than changing it
+    // for them. The tab is the owner's kills only — `demo_aim` has no
+    // shooter column — so the useful thing is a way back, not an argument.
     const who = names.get(player)?.name ?? "that player";
     return (
-      <p className="hint an-empty">
-        Aim is read from your own demo, so it can only answer for your kills — not {who}&apos;s. Pick
-        yourself in the player list above.
-      </p>
+      <div className="an-empty">
+        <p className="hint">
+          Aim comes from your own demo, so it only covers <strong>your</strong> kills on any class —
+          there is nothing recorded for {who}.
+        </p>
+        <button onClick={() => onPick(me.accountId)}>Show my aim</button>
+      </div>
     );
   }
 

@@ -1298,3 +1298,44 @@
 .part-picker select {
   max-width: 320px;
 }
+
+/* Players up/down and uber advantage, per round, on the lanes' own axis. */
+.round-state {
+  display: grid;
+  grid-template-columns: var(--lane-label-w, 54px) 1fr;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 6px;
+}
+
+.rst-label {
+  font-size: 0.72rem;
+  color: var(--faint);
+  text-align: right;
+}
+
+.rst-track {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--sunken);
+  overflow: hidden;
+}
+
+.rst-track span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.rst-up {
+  background: var(--kill);
+}
+
+.rst-down {
+  background: var(--death);
+}
+
+.rst-even {
+  background: transparent;
+}

@@ -1,4 +1,6 @@
-import type { EventRow, Jump, MatchDetail, RoundRow, Team } from "../../api/types";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../../api/client";
+import type { Analysis, EventRow, Jump, MatchDetail, RoundRow, Team } from "../../api/types";
 import { copy } from "../../lib/toast";
 import { clock, teamLabel } from "../../lib/format";
 
@@ -13,6 +15,12 @@ import { clock, teamLabel } from "../../lib/format";
  * it actually wore.
  */
 export function RoundTimeline({ d }: { d: MatchDetail }) {
+  // Same key as the kill-by-kill panel, so this is the cache, not a fetch.
+  const raw = useQuery({
+    queryKey: ["analysis", d.logId],
+    queryFn: () => api.getMatchAnalysis(d.logId),
+    staleTime: 5 * 60_000,
+  });
   if (d.rounds.length === 0) {
     return (
       <section className="panel">
@@ -56,6 +64,8 @@ export function RoundTimeline({ d }: { d: MatchDetail }) {
           <Round
             key={r.roundNum}
             r={r}
+            a={raw.data ?? null}
+            myTeam={d.myTeam}
             left={left}
             right={right}
             us={us}
@@ -74,6 +84,9 @@ const MINE = new Set(["my_kill", "my_death", "killstreak"]);
 
 function Round(props: {
   r: RoundRow;
+  /** The raw log, for the uber and numbers strip. Null until it loads. */
+  a: Analysis | null;
+  myTeam: Team | null;
   left: Team;
   right: Team;
   us: boolean;
@@ -81,7 +94,7 @@ function Round(props: {
   showMine: boolean;
   demoName: (j: Jump) => string | undefined;
 }) {
-  const { r, left, right, us, names, showMine, demoName } = props;
+  const { r, a, myTeam, left, right, us, names, showMine, demoName } = props;
   const len = r.lengthS ?? Math.max(1, ...r.events.map((e) => e.atS));
   const events = r.events.filter((e) => e.kind !== "round_win");
   // An event with no team (rare) goes in the second lane rather than nowhere.
@@ -143,6 +156,8 @@ function Round(props: {
         </div>
       </div>
 
+      <RoundState r={r} a={a} mine={myTeam ?? left} />
+
       <div className="round-stats">
         <StatRow label="Kills" a={stat(left, r.redKills, r.blueKills)} b={stat(right, r.redKills, r.blueKills)} left={left} right={right} />
         <StatRow label="Ubers" a={stat(left, r.redUbers, r.blueUbers)} b={stat(right, r.redUbers, r.blueUbers)} left={left} right={right} />
@@ -152,6 +167,82 @@ function Round(props: {
             <span className={`team-${r.firstcap.toLowerCase()}`}>{names[r.firstcap === left ? 0 : 1]}</span>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Who held the uber and who was up players, for one round.
+ *
+ * The same two facts the kill-by-kill timeline shows under its chart, but
+ * per round and next to the caps they explain — a round lost while a player
+ * down for most of it reads very differently from one lost even.
+ *
+ * The state series is one sample a game second, laid out with the rounds end
+ * to end, so a round is the slice between its own start and end.
+ */
+function RoundState({ r, a, mine }: { r: RoundRow; a: Analysis | null; mine: Team }) {
+  if (!a) return null;
+  const span = a.rounds.find((x) => x.roundNum === r.roundNum);
+  if (!span || span.endS <= span.startS) return null;
+
+  const red = mine === "Red";
+  const s = a.state;
+  const from = Math.max(0, Math.floor(span.startS));
+  const to = Math.min(s.advantage.length, Math.ceil(span.endS));
+  if (to <= from) return null;
+
+  const width = (n: number) => `${(n / (to - from)) * 100}%`;
+  const at = (i: number) => `${((i - from) / (to - from)) * 100}%`;
+
+  // Runs of the same value, so a strip is a few boxes rather than hundreds.
+  const runs = (pick: (i: number) => number) => {
+    const out: Array<{ v: number; i: number; n: number }> = [];
+    for (let i = from; i < to; i++) {
+      const v = pick(i);
+      const last = out[out.length - 1];
+      if (last && last.v === v) last.n += 1;
+      else out.push({ v, i, n: 1 });
+    }
+    return out;
+  };
+
+  const numbers = runs((i) => {
+    const ours = (red ? s.redAlive : s.blueAlive)[i] ?? 0;
+    const theirs = (red ? s.blueAlive : s.redAlive)[i] ?? 0;
+    return Math.sign(ours - theirs);
+  });
+  const adv = runs((i) => {
+    const v = s.advantage[i] ?? 0;
+    return red ? v : -v;
+  });
+
+  const upFor = numbers.filter((x) => x.v > 0).reduce((n, x) => n + x.n, 0);
+  const downFor = numbers.filter((x) => x.v < 0).reduce((n, x) => n + x.n, 0);
+  const pct = (n: number) => Math.round((n / (to - from)) * 100);
+
+  return (
+    <div className="round-state" title={`Up a player ${pct(upFor)}% of the round, down ${pct(downFor)}%`}>
+      <span className="rst-label">Players</span>
+      <div className="rst-track">
+        {numbers.map((x) => (
+          <span
+            key={`n${x.i}`}
+            className={x.v > 0 ? "rst-up" : x.v < 0 ? "rst-down" : "rst-even"}
+            style={{ left: at(x.i), width: width(x.n) }}
+          />
+        ))}
+      </div>
+      <span className="rst-label">Uber</span>
+      <div className="rst-track">
+        {adv.map((x) => (
+          <span
+            key={`a${x.i}`}
+            className={x.v > 0 ? "rst-up" : x.v < 0 ? "rst-down" : "rst-even"}
+            style={{ left: at(x.i), width: width(x.n) }}
+          />
+        ))}
       </div>
     </div>
   );
