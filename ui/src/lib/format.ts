@@ -54,6 +54,15 @@ export function rating(n: number | null | undefined): string {
 /** The band a rating is drawn across, so 1.00 lands exactly in the middle. */
 export const RATING_BAND = { min: 0.4, max: 1.6 };
 
+/**
+ * The gap between two ratings that fills a head-to-head bar to the end.
+ *
+ * Two standard deviations. The bar used to have a floor of 15, which was
+ * right when a rating ran 0-100 and nonsense once it ran around 1.00: a
+ * real 0.43 gap drew a 1% sliver and every matchup looked even.
+ */
+export const RATING_GAP_FULL = 0.5;
+
 /** A rating as a position on that band, 0 to 100, for a bar or a track. */
 export function ratingPercent(n: number): number {
   const { min, max } = RATING_BAND;

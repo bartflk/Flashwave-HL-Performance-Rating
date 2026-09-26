@@ -31,10 +31,8 @@ export function Fights({ a, player, slice, onPick }: { a: Analysis; player: numb
   return (
     <div className="fights">
       <p className="hint">
-        A fight starts when nobody has died for 10 s. <strong>Fight KAST</strong> is the share of fights a player was
-        alive for where they got a kill or assist, survived, or had their death traded. A kill is <strong>traded</strong>{" "}
-        when the killer&apos;s team loses someone within 3 s, and a <strong>clean-up</strong> when the killer&apos;s team
-        was already up a player. Both windows were measured on this account&apos;s 195,000 kills.
+        A fight starts after 10 s with no kill. A kill is <strong>traded</strong> when the killer&apos;s team loses
+        someone within 3 s.
       </p>
       {partial && (
         <p className="hint">

@@ -215,8 +215,7 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
   if (slice.map === null && slice.multiMap) {
     return (
       <p className="hint an-empty">
-        This match covers {new Set(a.segments.map((x) => x.map)).size} maps. Pick one above to see where its kills
-        happened: positions on different maps cannot share one drawing.
+        {new Set(a.segments.map((x) => x.map)).size} maps in this match — pick one above.
       </p>
     );
   }

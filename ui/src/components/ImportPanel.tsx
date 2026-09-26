@@ -69,15 +69,13 @@ export function ImportPanel() {
 
       {rows.length === 0 ? (
         <p className="hint" style={{ marginTop: 6 }}>
-          Nothing has failed. A log that will not download after three tries appears here with the
-          reason, so a failed sync is something you can look at rather than a number.
+          Nothing has failed.
         </p>
       ) : (
         <>
           <p className="hint" style={{ marginTop: 6 }}>
-            {rows.length === 1 ? "One log" : `${rows.length} logs`} would not download. Most of the
-            time logs.tf was busy and trying again is enough; a log it does not have will keep
-            failing, and that is logs.tf missing it rather than anything here.
+            {rows.length === 1 ? "One log" : `${rows.length} logs`} would not download. Usually logs.tf was busy —
+            try again.
           </p>
           <div className="table-wrap" style={{ marginTop: 12 }}>
             <table className="match-table">
@@ -121,8 +119,7 @@ export function ImportPanel() {
 
       <h3 style={{ marginTop: 22 }}>Add a log by hand</h3>
       <p className="hint" style={{ marginTop: 6 }}>
-        A log id or a logs.tf link. Useful for a match no index ever listed — a pug, or a log
-        uploaded under a second id. It is fetched now, not at the next sync.
+        A log id or logs.tf link. Fetched now, not at the next sync.
       </p>
       <div className="row" style={{ marginTop: 10, gap: 8 }}>
         <input

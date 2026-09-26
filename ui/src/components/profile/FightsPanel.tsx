@@ -12,8 +12,7 @@ export function FightsPanel({ card, cls }: { card: FightsCard; cls: string }) {
       <header>
         <h2>Fights</h2>
         <p className="hint">
-          Your {card.games} rated {capitalize(cls)} games against {card.poolGames.toLocaleString()} games by the{" "}
-          {capitalize(cls)}s you have faced. A fight starts after 10 s without a kill; a trade is a kill back within 3 s.
+          Your {card.games} games against {card.poolGames.toLocaleString()} by the {capitalize(cls)}s you have faced.
         </p>
       </header>
       <div className="table-wrap">

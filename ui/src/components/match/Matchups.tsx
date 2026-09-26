@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { MatchDetail, Matchup, Part, Side, Team } from "../../api/types";
-import { capitalize, rating, teamLabel } from "../../lib/format";
+import { capitalize, rating, RATING_GAP_FULL, teamLabel } from "../../lib/format";
 import { ClassIcon } from "../ClassIcon";
 
 /**
@@ -19,7 +19,9 @@ export function Matchups({ d }: { d: MatchDetail }) {
 
   // Scale bars to the biggest gap in this match, with a floor so a match of
   // small gaps does not render them as dramatic.
-  const maxGap = Math.max(15, ...d.matchups.map((m) => Math.abs(m.diff ?? 0)));
+  // The widest gap in this match, but never so small that an even match
+  // draws a full bar: RATING_GAP_FULL is two standard deviations.
+  const maxGap = Math.max(RATING_GAP_FULL, ...d.matchups.map((m) => Math.abs(m.diff ?? 0)));
 
   const wonByLeft = d.matchups.filter((m) => m.winner === "left").length;
   const wonByRight = d.matchups.filter((m) => m.winner === "right").length;
@@ -262,8 +264,7 @@ function Breakdown({ m, left, right, perPct }: { m: Matchup; left: Team; right: 
         </div>
       </div>
       <p className="hint bd-hint">
-        Bars are the percentile against every player on the class in your matches, flipped for deaths so longer is
-        always better. The coloured number is how many rating points that row swung, and to whom.
+        Percentile against the players on this class in your matches; deaths flipped so longer is better.
       </p>
     </div>
   );

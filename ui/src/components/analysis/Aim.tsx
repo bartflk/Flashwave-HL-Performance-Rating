@@ -25,8 +25,7 @@ export function Aim({ a, logId, slice }: { a: Analysis; logId: number; slice: Sl
   if (!d || d.kills.length === 0) {
     return (
       <p className="hint an-empty">
-        No demo is linked to this match, so there is nothing to read. Point the app at your TF2 folder in Settings,
-        and demos you recorded are matched to your logs automatically.
+        No demo linked to this match. Set your TF2 folder in Settings.
       </p>
     );
   }
@@ -44,7 +43,7 @@ export function Aim({ a, logId, slice }: { a: Analysis; logId: number; slice: Sl
       {filtered && (
         <p className="hint">
           {kills.length} kill{kills.length === 1 ? "" : "s"} and {deaths.length} death
-          {deaths.length === 1 ? "" : "s"} in {sliceScope(slice)}. The cards above the tabs cover the whole match.
+          {deaths.length === 1 ? "" : "s"} in {sliceScope(slice)}.
         </p>
       )}
       <AimCharts kills={kills} deaths={deaths} />

@@ -60,8 +60,7 @@ export function Spread({ a, player, slice }: { a: Analysis; player: number; slic
         />
       </div>
       <p className="hint spread-foot">
-        Damage taken is summed from the raw log. On logs combined from several parts it can differ from logs.tf&apos;s
-        figure; damage dealt matches logs.tf exactly.
+        On combined logs, damage taken can differ from logs.tf&apos;s figure.
       </p>
     </div>
   );

@@ -35,14 +35,11 @@ export function AnalysisPanel({ d, onlyRounds }: { d: MatchDetail; onlyRounds?: 
     <section className="panel analysis">
       <header className="an-head">
         <h2>Kill by kill</h2>
-        <p className="hint">From the match&apos;s raw server log: every kill with where both players stood.</p>
       </header>
       {q.isPending && <p className="hint">Reading the raw log…</p>}
       {q.isError && <p className="error">{errorMessage(q.error)}</p>}
       {q.data === null && (
-        <p className="hint">
-          This match&apos;s raw log is not stored yet. Sync fetches it; logs.tf has none for a few very old matches.
-        </p>
+        <p className="hint">Raw log not stored yet — run a sync.</p>
       )}
       {q.data && (
         <Body

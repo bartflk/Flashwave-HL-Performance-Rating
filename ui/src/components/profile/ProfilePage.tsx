@@ -211,8 +211,7 @@ function Opposition({ bands }: { bands: OppositionBand[] }) {
       <header>
         <h2>Who you played</h2>
         <p className="hint">
-          Your rating by how good the opposite number on your class is, averaged over their other
-          games. Games whose opponent has too little history to judge are left out.
+          Your rating by how good the opposite number was, averaged over their other games.
         </p>
       </header>
       <div className="ks-rows">

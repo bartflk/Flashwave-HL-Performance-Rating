@@ -136,7 +136,7 @@ function PartPicker(props: {
         {fetching
           ? "Fetching that log from logs.tf…"
           : part === null
-            ? "This upload holds several logs. Pick one to read the whole page as that map alone."
+            ? "Several logs in this upload. Pick one to read it alone."
             : "Every panel below is this log alone, scored on its own."}
       </p>
       {error && <p className="error">{error}</p>}

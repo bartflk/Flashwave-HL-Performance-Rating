@@ -10,6 +10,15 @@ use std::sync::Arc;
 use tauri::Manager;
 
 /// Shared application state.
+/// The version as a person should read it, in one place.
+///
+/// The installers carry a plain `0.4.0` because MSI allows digits only; the
+/// window title and Settings both say this instead. It is derived from
+/// `CARGO_PKG_VERSION`, which comes from the workspace `Cargo.toml`, so
+/// bumping that is enough — the window title used to be a literal in
+/// `tauri.conf.json` and shipped 0.4.0 still calling itself 0.3.
+pub const DISPLAY_VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " alpha");
+
 pub struct AppState {
     pub db: Db,
     pub db_path: PathBuf,
@@ -41,6 +50,12 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
+            // The window title carries the version, and a literal in
+            // tauri.conf.json is a literal somebody forgets: 0.4.0 shipped
+            // with a title saying 0.3. Set it from the one constant instead.
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.set_title(&format!("Flashwave.tf {DISPLAY_VERSION}"));
+            }
             // Errors are stringified rather than passed through as `anyhow`:
             // Tauri's setup wants a `Box<dyn Error>`, and `{:#}` keeps the
             // whole cause chain in the message.

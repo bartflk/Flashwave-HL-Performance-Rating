@@ -38,9 +38,7 @@ export function PlayersPage({ onOpenMatch }: { onOpenMatch: (logId: number) => v
       <div className="panel">
         <h2>Look someone up</h2>
         <p className="hint" style={{ marginTop: 6 }}>
-          Anyone who has played in a match you have stored — teammates, opponents, mercs. Search by name
-          or paste a Steam ID. Their record here is their record <strong>in your matches</strong>, not
-          their whole career.
+          Anyone from your stored matches. Name or Steam ID.
         </p>
         <input
           className="player-search"
@@ -180,11 +178,6 @@ function PlayerCard({ accountId, onOpenMatch }: { accountId: number; onOpenMatch
             ))}
           </div>
         )}
-        <p className="hint pl-note">
-          Rated by the same model as you, against the same pool — which is built from these players.
-          One difference worth knowing: you are held out of your own baseline so you are never compared
-          with yourself, and everyone else is in it.
-        </p>
       </div>
 
       {profile && (

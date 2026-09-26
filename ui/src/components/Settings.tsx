@@ -52,8 +52,7 @@ export function Settings({
       <div className="panel">
         <h2>Data</h2>
         <p className="hint" style={{ marginTop: 6 }}>
-          Every match is rebuilt from the logs already stored on this machine — no downloading.
-          Use this after an update changes how logs are read.
+          Rebuilds every match from stored logs. No downloading.
         </p>
         <div className="row" style={{ marginTop: 14 }}>
           <button onClick={() => void startRebuild()} disabled={busy}>
@@ -94,9 +93,6 @@ function ThemePanel() {
   return (
     <div className="panel">
       <h2>Theme</h2>
-      <p className="hint" style={{ marginTop: 6 }}>
-        Applies at once and is remembered on this machine. Team colours stay red and blue.
-      </p>
       <div className="theme-grid">
         {THEMES.map((t) => (
           <button
@@ -170,13 +166,11 @@ function BackupsPanel() {
     <div className="panel">
       <h2>Backups</h2>
       <p className="hint">
-        A copy of the database is made before every sync and rebuild, and the newest five are kept beside it. To go
-        back to one, close the app and rename the copy over <code>hl.sqlite3</code>.
+        Taken before every sync and rebuild; the newest five are kept. To restore one, close the app and rename it
+        over <code>hl.sqlite3</code>.
       </p>
       <p className="hint">
-        Uninstalling the app offers to delete its data, which removes these copies with it. <strong>Save a copy
-        somewhere else</strong> — another drive, or a folder that gets backed up — and it survives that. The logs
-        inside are the only thing here that cannot be fetched again.
+        <strong>Uninstalling can delete these.</strong> Keep a copy on another drive.
       </p>
       <div className="row" style={{ marginTop: 14 }}>
         <button onClick={() => void backupNow()} disabled={busy}>
@@ -243,8 +237,7 @@ function DemosPanel() {
     <div className="panel">
       <h2>Demos</h2>
       <p className="hint" style={{ marginTop: 6 }}>
-        Your recordings in <code>tf</code>, <code>tf/demos</code> and <code>tf/demos/stv</code> are
-        matched to logs by map and time. Scanned at startup and after every sync.
+        Demos in <code>tf</code>, <code>tf/demos</code> and <code>tf/demos/stv</code>, matched to logs by map and time.
       </p>
       {s && (
         <dl className="kv" style={{ marginTop: 14 }}>
@@ -261,10 +254,6 @@ function DemosPanel() {
           <dd>{s.markers} killstreak markers from Demo Support</dd>
         </dl>
       )}
-      <p className="hint" style={{ marginTop: 10 }}>
-        Unlinked demos are usually pubs, MvM, reviews of other people&apos;s games, or matches
-        with no logs.tf log that includes you.
-      </p>
       <div className="row" style={{ marginTop: 14 }}>
         <button onClick={() => void rescan()} disabled={scan.busy}>
           {scan.busy ? "Scanning…" : "Rescan demos"}
