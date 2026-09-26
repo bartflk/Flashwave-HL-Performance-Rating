@@ -29,6 +29,7 @@ import type {
   MapView,
   MatchDetail,
   Overview,
+  Profile,
   MatchPage,
   MatchQuery,
   MatchSummary,
