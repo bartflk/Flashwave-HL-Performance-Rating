@@ -3,9 +3,17 @@ import { api } from "../api/client";
 import { setPeriod, usePeriod } from "../lib/period";
 
 /** A day as the date input wants it, `YYYY-MM-DD`, from unix seconds (UTC). */
-const toInput = (t: number | null) => (t === null ? "" : new Date(t * 1000).toISOString().slice(0, 10));
+const toInput = (t: number | null) =>
+  // `new Date(NaN).toISOString()` throws a RangeError, and this value comes
+  // from storage, so one bad number would blank the window on every load.
+  t === null || !Number.isFinite(t) ? "" : new Date(t * 1000).toISOString().slice(0, 10);
 /** The start (or end) of a picked day, in unix seconds. */
-const fromInput = (v: string, end: boolean) => (v ? Date.parse(`${v}T00:00:00Z`) / 1000 + (end ? 86_399 : 0) : null);
+const fromInput = (v: string, end: boolean) => {
+  if (!v) return null;
+  const t = Date.parse(`${v}T00:00:00Z`);
+  // A half-typed year parses to NaN in some browsers rather than "".
+  return Number.isFinite(t) ? t / 1000 + (end ? 86_399 : 0) : null;
+};
 
 const shortDate = (t: number) =>
   new Date(t * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });

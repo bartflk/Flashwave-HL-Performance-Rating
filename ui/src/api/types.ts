@@ -415,6 +415,12 @@ export interface DemoIndexSummary {
   markers: number;
 }
 
+/** A demo TF2 finished writing while the app was open. */
+export interface NewDemo {
+  fileName: string;
+  bytes: number;
+}
+
 /** A player found by search — someone who played in one of your matches. */
 export interface PlayerHit {
   accountId: number;

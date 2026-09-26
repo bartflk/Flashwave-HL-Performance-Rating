@@ -12,8 +12,10 @@ import { TeammatesPage } from "./components/teammates/TeammatesPage";
 import { PlayersPage } from "./components/players/PlayersPage";
 import { ToastHost } from "./lib/toast";
 import { Notifications } from "./components/Notifications";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { watchDownloads } from "./lib/downloads";
 import { watchSync } from "./lib/sync";
+import { watchDemos } from "./lib/demowatch";
 import { OwnerBadge } from "./components/OwnerBadge";
 import { RestoreBanner } from "./components/RestoreBanner";
 import "./App.css";
@@ -42,6 +44,8 @@ export default function App() {
   // matches, so the app follows them rather than the panel that started one.
   const qc = useQueryClient();
   useEffect(watchDownloads, []);
+  // A demo appearing means a match was just played: sync and say so.
+  useEffect(watchDemos, []);
   useEffect(() => watchSync(qc), [qc]);
   // Pages stay mounted once visited, so their filters and scroll survive a
   // trip to a match and back.
@@ -156,34 +160,38 @@ export default function App() {
       </header>
 
       <div hidden={tab !== "matches" || openLog !== null}>
-        <Matches onOpen={setOpenLog} />
+        <ErrorBoundary what="The match list"><Matches onOpen={setOpenLog} /></ErrorBoundary>
       </div>
       {visited.has("profile") && (
         <div hidden={tab !== "profile" || openLog !== null}>
-          <ProfilePage onOpenMatch={setOpenLog} />
+          <ErrorBoundary what="The profile"><ProfilePage onOpenMatch={setOpenLog} /></ErrorBoundary>
         </div>
       )}
       {visited.has("teammates") && (
         <div hidden={tab !== "teammates" || openLog !== null}>
-          <TeammatesPage />
+          <ErrorBoundary what="Teammates"><TeammatesPage /></ErrorBoundary>
         </div>
       )}
       {visited.has("players") && (
         <div hidden={tab !== "players" || openLog !== null}>
-          <PlayersPage onOpenMatch={setOpenLog} />
+          <ErrorBoundary what="Players"><PlayersPage onOpenMatch={setOpenLog} /></ErrorBoundary>
         </div>
       )}
       {tab === "settings" && openLog === null && (
-        <Settings
+        <ErrorBoundary what="Settings"><Settings
           status={data}
           onReconfigure={() => {
             setForceSetup(true);
             go("matches");
           }}
-        />
+        /></ErrorBoundary>
       )}
       {/* "Back" returns to whichever tab the match was opened from. */}
-      {openLog !== null && <MatchPage logId={openLog} onBack={() => setOpenLog(null)} />}
+      {openLog !== null && (
+        <ErrorBoundary what="The match page" key={openLog}>
+          <MatchPage logId={openLog} onBack={() => setOpenLog(null)} />
+        </ErrorBoundary>
+      )}
       <Notifications onOpenMatch={setOpenLog} />
       <ToastHost />
     </div>

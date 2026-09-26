@@ -727,6 +727,8 @@ export const mockApi: Api = {
     return true;
   },
 
+  onNewDemo: async () => () => {},
+
   onStv: async (h) => {
     stvHandlers = h;
     return () => {

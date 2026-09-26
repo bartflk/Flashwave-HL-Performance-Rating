@@ -40,6 +40,7 @@ import type {
   Imported,
   PlayerHit,
   PlayerResponse,
+  NewDemo,
 } from "./types";
 
 /** True inside the Tauri window, false in a plain browser tab. */
@@ -160,6 +161,13 @@ const realApi = {
     ]);
     return () => offs.forEach((off) => off());
   },
+
+  /**
+   * A demo TF2 has just finished writing. Fires once per file, and only for
+   * demos that appear while the app is running.
+   */
+  onNewDemo: async (h: (d: NewDemo) => void): Promise<UnlistenFn> =>
+    listen<NewDemo>("demos://new", (e) => h(e.payload)),
 
   /** Subscribe to sync events. Returns a function that unsubscribes all three. */
   onSync: async (h: SyncHandlers): Promise<UnlistenFn> => {

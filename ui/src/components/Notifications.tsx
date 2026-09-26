@@ -1,5 +1,6 @@
 import { dismissDownload, useDownloads, type Download } from "../lib/downloads";
 import { dismissSync, fractionOf, labelOf, useSyncStatus } from "../lib/sync";
+import { dismissDemoSeen, useDemoSeen } from "../lib/demowatch";
 
 /**
  * The corner: everything running in the background, one card each.
@@ -12,14 +13,44 @@ import { dismissSync, fractionOf, labelOf, useSyncStatus } from "../lib/sync";
 export function Notifications({ onOpenMatch }: { onOpenMatch: (logId: number) => void }) {
   const downloads = useDownloads();
   const sync = useSyncStatus();
-  if (downloads.length === 0 && sync.state === "idle") return null;
+  const demo = useDemoSeen();
+  if (downloads.length === 0 && sync.state === "idle" && !demo) return null;
 
   return (
     <div className="downloads" role="status" aria-live="polite">
+      <DemoSeenCard />
       <SyncCard />
       {downloads.map((d) => (
         <DownloadCard key={d.logId} d={d} onOpenMatch={onOpenMatch} />
       ))}
+    </div>
+  );
+}
+
+/**
+ * "You just played a game." Shown from the moment TF2 finishes writing the
+ * demo until the match is on the page.
+ */
+function DemoSeenCard() {
+  const d = useDemoSeen();
+  if (!d) return null;
+  const gaveUp = d.state === "gaveup";
+  return (
+    <div className={gaveUp ? "dl dl-failed" : "dl dl-running"}>
+      <div className="dl-head">
+        <span className="dl-title">{gaveUp ? "No log yet" : "New demo"}</span>
+        <button className="dl-close" onClick={() => dismissDemoSeen()} title="Dismiss">
+          ×
+        </button>
+      </div>
+      <p className="dl-label">{d.fileName}</p>
+      <p className="dl-sub">
+        {gaveUp
+          ? "logs.tf has nothing for this match yet. Press Sync once it is uploaded."
+          : d.tries === 1
+            ? "Looking for the log…"
+            : `Still looking — logs.tf can take a minute (try ${d.tries}).`}
+      </p>
     </div>
   );
 }

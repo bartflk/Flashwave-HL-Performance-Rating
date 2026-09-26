@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
+import { noteError } from "./problems";
 import { errorMessage, type Progress, type SyncDone } from "../api/types";
 
 /**
@@ -76,6 +77,18 @@ export function watchSync(qc: QueryClient) {
           : p.kind === "gaveUp"
             ? `${p.source} stopped answering after ${p.done.toLocaleString()} of ${p.total.toLocaleString()}; the rest waits for the next sync.`
             : null;
+      // Every failure is written down with its reason. The counter alone
+      // ("2 failed") was all anyone ever saw, and it cannot be acted on.
+      if (p.kind === "fetchFailed") {
+        noteError({ what: `fetching log ${p.logId}`, message: explain(p.error), detail: p.error });
+      } else if (p.kind === "sourceFailed") {
+        noteError({ what: p.source, message: explain(p.error), detail: p.error });
+      } else if (p.kind === "gaveUp") {
+        noteError({
+          what: p.source,
+          message: `stopped answering after ${p.done} of ${p.total}; the rest waits for the next sync`,
+        });
+      }
       set({
         state: "running",
         progress: p,
@@ -98,8 +111,40 @@ export function watchSync(qc: QueryClient) {
       });
       invalidateAll(qc);
     },
-    onError: (e) => set({ state: "error", message: e.message }),
+    onError: (e) => {
+      noteError({ what: "the sync", message: explain(e.message), detail: e.message });
+      set({ state: "error", message: e.message });
+    },
   });
+}
+
+/**
+ * A server's error in words a player can act on.
+ *
+ * The raw chain is kept as the detail; this is the line shown first. Three
+ * of these cover almost everything a sync hits, and the difference between
+ * them matters: one is worth retrying, one never will be, and one is not
+ * about this app at all.
+ */
+export function explain(raw: string): string {
+  const m = raw.toLowerCase();
+  if (m.includes("10060") || m.includes("timed out") || m.includes("error sending request")) {
+    return "could not reach the server — it may be down, or the connection dropped";
+  }
+  if (m.includes("404") || m.includes("not found")) {
+    return "the server does not have this log";
+  }
+  if (m.includes("429") || m.includes("too many")) {
+    return "asked for too much too quickly; it will be retried";
+  }
+  if (m.includes("500") || m.includes("502") || m.includes("503")) {
+    return "the server answered with an error of its own";
+  }
+  if (m.includes("json") || m.includes("expected")) {
+    return "the answer was not in the shape we expect";
+  }
+  // Long chains read badly in a list; the whole thing is in the detail.
+  return raw.length > 160 ? `${raw.slice(0, 157)}…` : raw;
 }
 
 /** Ask for a sync, and show it as running from the click rather than from the

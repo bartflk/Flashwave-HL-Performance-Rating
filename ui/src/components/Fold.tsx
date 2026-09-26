@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 const KEY = (id: string) => `hl.fold.${id}`;
 
@@ -54,7 +55,7 @@ export function Fold({ id, children }: { id: string; children: ReactNode }) {
         }
       }}
     >
-      {children}
+      <ErrorBoundary what={`This panel (${id})`}>{children}</ErrorBoundary>
     </div>
   );
 }

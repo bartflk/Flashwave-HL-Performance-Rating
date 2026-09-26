@@ -1,6 +1,7 @@
 mod commands;
 mod error;
 mod sync_commands;
+mod watch;
 
 use hl_db::Db;
 use hl_ingest::Sources;
@@ -159,6 +160,14 @@ pub fn run() {
                         }
                     }
                 });
+            }
+
+            // Watch the demos folder, so a match you have just played shows
+            // up on the page while you are alt-tabbing out of the game.
+            if let Ok(cfg) = tauri::async_runtime::block_on(db.get_config()) {
+                if let Some(tf) = cfg.tf_path {
+                    watch::spawn(app.handle().clone(), std::path::PathBuf::from(tf));
+                }
             }
 
             app.manage(AppState {

@@ -442,9 +442,12 @@
 
 .filter-row {
   display: grid;
-  grid-template-columns: auto 230px 210px 1fr;
+  grid-template-columns: auto minmax(230px, auto) 210px 1fr;
   align-items: center;
   gap: 14px;
+  /* Anything taller than one line pushes the row down rather than sitting
+     on top of what follows. */
+  row-gap: 10px;
 }
 
 .filter-row .an-field {
@@ -680,6 +683,30 @@ th.num {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  /* The grid cell this sits in is 230px. Two date inputs are wider than
+     that, so when "Custom dates" adds them they used to wrap inside the
+     cell and collide with the row below. It may now spill across the row
+     instead: the filter row has an auto-height track for it. */
+  min-width: 0;
+}
+
+/* The two dates get their own line under the filters rather than fighting
+   for a column. Reported by a tester: picking custom dates overlapped the
+   controls beside and below it. */
+.period-dates {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.period-dates input[type="date"] {
+  min-width: 140px;
+}
+
+.filter-row .period-picker {
+  /* Let the whole row grow when the dates appear instead of overlapping. */
+  align-self: center;
 }
 
 .period-field {
@@ -1192,3 +1219,19 @@ th.num {
 .theme-swiftwater .sw-bg { background: #151914; }
 .theme-swiftwater .sw-panel { background: #283026; }
 .theme-swiftwater .sw-accent { background: #7fb861; }
+
+/* A panel that crashed. Deliberately plain: it is an apology, not a feature. */
+.crash {
+  border-color: var(--bad);
+}
+
+.crash-msg {
+  margin: 12px 0;
+  padding: 10px 12px;
+  background: var(--sunken);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  color: var(--text);
+}

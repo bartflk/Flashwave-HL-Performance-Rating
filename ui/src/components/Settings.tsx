@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { errorMessage, type AppStatus, type DemoIndexSummary } from "../api/types";
@@ -7,6 +7,7 @@ import { HistoryPanel } from "./HistoryPanel";
 import { ImportPanel } from "./ImportPanel";
 import { startRebuild, useSyncStatus } from "../lib/sync";
 import { setTheme, THEMES, useTheme } from "../lib/theme";
+import { clearProblems, markProblemsSeen, report, useProblems } from "../lib/problems";
 
 export function Settings({
   status,
@@ -22,6 +23,7 @@ export function Settings({
 
   return (
     <div className="content">
+      <ProblemsPanel version={status.version} />
       <ThemePanel />
       <HistoryPanel />
       <ImportPanel />
@@ -75,6 +77,74 @@ export function Settings({
       </div>
 
       <BackupsPanel />
+    </div>
+  );
+}
+
+/**
+ * Everything that went wrong, and a button that turns it into a message.
+ *
+ * A tester with a problem had nothing to send but a screenshot of a black
+ * window. This is the thing to paste instead.
+ */
+function ProblemsPanel({ version }: { version: string }) {
+  const problems = useProblems();
+  const [copied, setCopied] = useState(false);
+  useEffect(() => markProblemsSeen(), [problems.length]);
+
+  if (problems.length === 0) {
+    return (
+      <div className="panel">
+        <h2>Problems</h2>
+        <p className="hint" style={{ marginTop: 6 }}>
+          Nothing has gone wrong since the app started.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="panel">
+      <h2>Problems</h2>
+      <p className="hint" style={{ marginTop: 6 }}>
+        {problems.length} since the app started. Copy this into Discord if you are reporting something.
+      </p>
+      <div className="row" style={{ marginTop: 12 }}>
+        <button
+          onClick={() => {
+            void navigator.clipboard?.writeText(report({ version }));
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 2000);
+          }}
+        >
+          {copied ? "Copied" : "Copy report"}
+        </button>
+        <button className="linkish" onClick={() => clearProblems()}>
+          Clear
+        </button>
+      </div>
+      <div className="table-wrap" style={{ marginTop: 14 }}>
+        <table className="match-table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>What</th>
+              <th>Why</th>
+            </tr>
+          </thead>
+          <tbody>
+            {problems.slice(0, 50).map((p) => (
+              <tr key={p.id}>
+                <td className="muted nowrap">{new Date(p.at).toLocaleTimeString()}</td>
+                <td className="nowrap">
+                  {p.what}
+                  {p.count > 1 && <span className="muted"> ×{p.count}</span>}
+                </td>
+                <td className="muted">{p.message}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
