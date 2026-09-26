@@ -108,6 +108,19 @@ get to repaint them.
   somewhere else and gave no way to do it; **Save a copy elsewhere…** now
   does.
 
+## Smaller
+
+- The **head-to-head bar** on the match page was still scaled for the old
+  0–100 rating, so a real gap between two players drew a sliver and every
+  matchup looked even. It now fills against a 0.5 gap.
+- **Three maps were reading their own names wrong** and so had no overview
+  image: `koth_product_rcx`, `pl_badwater_pro_v12` and `tow_tetsudo_b10a`.
+  Product has an image, so that one had been drawing without it.
+  (Most maps still without an overview are simply not in the placement
+  table yet — that needs per-map calibration, not better matching.)
+- **Fewer explanations.** A lot of panels described themselves at length to
+  someone already looking at them. What is left is what you cannot infer.
+
 ## Also
 
 Scout picks on KOTH were measured again properly, and the answer is the
@@ -120,6 +133,6 @@ are in `PLAN.md` under Q4.
 **SHA-256**
 
 ```
-B4CA3A1A8D279044344C46169DADF88CA28505449D6B9D9E408AEE29AC9103A0  Flashwave.tf_0.4.0_x64-setup.exe
-818D39959FE8B0E670996CD7AE12ECDC994F902C96BA1D5D293D2BA9123EF4E4  Flashwave.tf_0.4.0_x64_en-US.msi
+0C4CA1FF0DCD398E51AF4BBA6A0D0C0FBB072A5A9BB72F6FDB946043A948E498  Flashwave.tf_0.4.0_x64-setup.exe
+BA3AC7AB5B3503AF4AFFCFC5E4E362A91A378A046C59EED9AD92F79792EB7169  Flashwave.tf_0.4.0_x64_en-US.msi
 ```
