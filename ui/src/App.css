@@ -448,6 +448,20 @@
   /* Anything taller than one line pushes the row down rather than sitting
      on top of what follows. */
   row-gap: 10px;
+  /* The season's date range lives in the bottom-right corner, and the space
+     for it is always reserved. It used to sit beside the period select and
+     grow it, which knocked the whole row out of line the moment a season
+     was picked — reserving the line means picking one changes nothing. */
+  position: relative;
+  padding-bottom: 16px;
+}
+
+.period-range {
+  position: absolute;
+  right: 0;
+  bottom: -2px;
+  font-size: 0.82rem;
+  white-space: nowrap;
 }
 
 .filter-row .an-field {

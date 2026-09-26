@@ -61,7 +61,7 @@ export function PeriodPicker() {
         </select>
       </label>
       {period.kind === "season" && (
-        <span className="hint">
+        <span className="period-range hint">
           {shortDate(period.from)} – {shortDate(period.to)}
         </span>
       )}
