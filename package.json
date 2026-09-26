@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
+    "release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release.ps1",
     "checksums": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/checksums.ps1",
     "ui": "npm --prefix ui run dev",
     "ui:check": "npm --prefix ui run build",
@@ -14,5 +15,9 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2"
+  },
+  "dependencies": {
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-updater": "^2.12.0"
   }
 }

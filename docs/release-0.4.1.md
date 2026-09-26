@@ -72,9 +72,21 @@ saying so.
 
 ---
 
+## From now on, updates come to you
+
+This version adds an in-app updater. When there is a newer release the app
+offers it in a card: download, install, restart. No more hunting for the
+installer and talking Windows out of blocking it -- that only happens on a
+first install now.
+
+Every update is signed with a key only I hold, and the app refuses anything
+that does not match. That is not code signing and does nothing for the
+SmartScreen warning below; it means nobody can push you an update that did
+not come from me.
+
 **SHA-256**
 
 ```
-A0345B9540F249781E5F6A73F3A25D195285C982A9B2B40ED25DA4B42B254377  Flashwave.tf_0.4.1_x64-setup.exe
-6A4069EE7CEE522EF8B916F13E780D133A3C3923DC19A22D8BAFE88125B79B2A  Flashwave.tf_0.4.1_x64_en-US.msi
+A14DB9647086D05A45A6F44A50EB8752ECEFDDDEBD141D5EA02A8A163B22853D  Flashwave.tf_0.4.1_x64-setup.exe
+48E73EF6F33DBB412A27581D288B8D13D3D1C1DF352358BACE5DF8B4981509DE  Flashwave.tf_0.4.1_x64_en-US.msi
 ```

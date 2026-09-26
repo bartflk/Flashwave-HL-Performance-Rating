@@ -16,6 +16,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { watchDownloads } from "./lib/downloads";
 import { watchSync } from "./lib/sync";
 import { watchDemos } from "./lib/demowatch";
+import { checkForUpdate } from "./lib/update";
 import { OwnerBadge } from "./components/OwnerBadge";
 import { RestoreBanner } from "./components/RestoreBanner";
 import "./App.css";
@@ -46,6 +47,10 @@ export default function App() {
   useEffect(watchDownloads, []);
   // A demo appearing means a match was just played: sync and say so.
   useEffect(watchDemos, []);
+  // Look once at startup. Quiet if there is nothing, or if GitHub is down.
+  useEffect(() => {
+    void checkForUpdate();
+  }, []);
   useEffect(() => watchSync(qc), [qc]);
   // Pages stay mounted once visited, so their filters and scroll survive a
   // trip to a match and back.

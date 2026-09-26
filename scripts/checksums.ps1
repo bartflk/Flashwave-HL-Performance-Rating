@@ -1,7 +1,7 @@
 # SHA-256 for everything the last build produced.
 #
 # The installer is not code-signed, so testers are asked to tick "Unblock" to
-# get past SmartScreen — which is only a reasonable thing to ask if they can
+# get past SmartScreen -- which is only a reasonable thing to ask if they can
 # first check the file is the one that was built here. That is what this is
 # for. Paste the output into the release notes; testers compare with
 #

@@ -1,6 +1,7 @@
 import { dismissDownload, useDownloads, type Download } from "../lib/downloads";
 import { dismissSync, fractionOf, labelOf, useSyncStatus } from "../lib/sync";
 import { dismissDemoSeen, useDemoSeen } from "../lib/demowatch";
+import { dismissUpdate, installUpdate, restartNow, useUpdate } from "../lib/update";
 
 /**
  * The corner: everything running in the background, one card each.
@@ -14,15 +15,87 @@ export function Notifications({ onOpenMatch }: { onOpenMatch: (logId: number) =>
   const downloads = useDownloads();
   const sync = useSyncStatus();
   const demo = useDemoSeen();
-  if (downloads.length === 0 && sync.state === "idle" && !demo) return null;
+  const update = useUpdate();
+  const quiet = update.state === "idle" || update.state === "checking";
+  if (downloads.length === 0 && sync.state === "idle" && !demo && quiet) return null;
 
   return (
     <div className="downloads" role="status" aria-live="polite">
+      <UpdateCard />
       <DemoSeenCard />
       <SyncCard />
       {downloads.map((d) => (
         <DownloadCard key={d.logId} d={d} onOpenMatch={onOpenMatch} />
       ))}
+    </div>
+  );
+}
+
+/**
+ * A new version, and the two clicks it takes to be on it.
+ *
+ * Nothing happens without being asked. The app holds a lock on the
+ * database while its window is open, so an installer swapping files under
+ * a running process is precisely the shape of the thing that corrupted it
+ * twice — download, then restart, in that order and on purpose.
+ */
+function UpdateCard() {
+  const u = useUpdate();
+  if (u.state === "idle" || u.state === "checking") return null;
+
+  const pct =
+    u.state === "downloading" && u.total ? Math.min(100, (u.got / u.total) * 100) : null;
+
+  return (
+    <div className={u.state === "failed" ? "dl dl-failed" : "dl dl-running"}>
+      <div className="dl-head">
+        <span className="dl-title">
+          {u.state === "available" && "Update available"}
+          {u.state === "downloading" && "Downloading update"}
+          {u.state === "ready" && "Update ready"}
+          {u.state === "failed" && "Update failed"}
+        </span>
+        <button className="dl-close" onClick={() => dismissUpdate()} title="Dismiss">
+          ×
+        </button>
+      </div>
+
+      {u.state === "available" && (
+        <>
+          <p className="dl-label">Version {u.version}</p>
+          {u.notes && <p className="dl-sub up-notes">{u.notes.replace(/\s+/g, " ").slice(0, 160)}</p>}
+          <button className="dl-go" onClick={() => void installUpdate()}>
+            Download and install
+          </button>
+        </>
+      )}
+
+      {u.state === "downloading" && (
+        <>
+          <p className="dl-label">Version {u.version}</p>
+          <div className="dl-bar" aria-hidden>
+            <span
+              className={pct === null ? "dl-fill dl-unknown" : "dl-fill"}
+              style={pct === null ? undefined : { width: `${pct}%` }}
+            />
+          </div>
+          <p className="dl-sub">
+            {(u.got / 1_000_000).toFixed(0)} MB
+            {u.total ? ` of ${(u.total / 1_000_000).toFixed(0)} MB` : " so far"}
+          </p>
+        </>
+      )}
+
+      {u.state === "ready" && (
+        <>
+          <p className="dl-sub">Version {u.version} is installed. Restart to use it.</p>
+          <button className="dl-go" onClick={() => void restartNow()}>
+            Restart now
+          </button>
+        </>
+      )}
+
+      {u.state === "failed" && <p className="dl-sub dl-error">{u.message}</p>}
     </div>
   );
 }

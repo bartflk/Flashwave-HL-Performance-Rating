@@ -50,6 +50,18 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVGMTBEOTBCQTY1RkNFQTIKUldTaXpsK21DOWtRWDhHYXovRTdYb2NzenBXTXNybHFZUnJ1cTBoQzBmcVVRZEhERE1NZzJLRTIK",
+      "endpoints": [
+        "https://github.com/bartflk/Flashwave-HL-Performance-Rating/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
