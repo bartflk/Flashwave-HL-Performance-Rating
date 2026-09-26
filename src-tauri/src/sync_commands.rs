@@ -828,3 +828,63 @@ mod tests {
         assert_eq!(q.join(5), Some(0));
     }
 }
+
+// ---- looking other people up (Q14) -----------------------------------------
+
+/// What a player's page shows.
+///
+/// Everything here is *in your matches*. Their record against people you
+/// have never played is not in this database and is not claimed.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerResponse {
+    pub summary: hl_db::PlayerSummary,
+    /// Their profile on the chosen class, built exactly the way yours is —
+    /// same model, same pool, same breakdown.
+    pub profile: Option<hl_rating::Profile>,
+    /// The class this profile is for; their most played, unless asked.
+    pub class: Option<String>,
+}
+
+/// Find a player by name or by any form of Steam ID.
+#[tauri::command]
+pub async fn search_players(state: State<'_, AppState>, query: String) -> CmdResult<Vec<hl_db::PlayerHit>> {
+    Ok(state.db.search_players(&query, 25).await?)
+}
+
+/// One player's page.
+///
+/// The profile is `load_profile` with their account instead of the owner's,
+/// which is the whole reason this feature is small: they are rated by the
+/// same model against the same pool, because that pool is *built* from
+/// these players. One asymmetry is worth knowing and is shown in the UI —
+/// the owner is held out of the baseline so they are never compared with
+/// themselves, and everybody else is in it.
+#[tauri::command]
+pub async fn get_player(
+    state: State<'_, AppState>,
+    account_id: u32,
+    class: Option<String>,
+) -> CmdResult<PlayerResponse> {
+    let owner = state
+        .db
+        .get_me()
+        .await?
+        .ok_or_else(|| CmdError::new("missing_config", "Set your SteamID first."))?;
+    let summary = state
+        .db
+        .player_summary(account_id, owner.account_id(), hl_rating::MODEL_VERSION)
+        .await?
+        .ok_or_else(|| CmdError::new("not_found", "Nobody by that id has played in your matches."))?;
+
+    let chosen = match class.or_else(|| summary.classes.first().map(|c| c.class.clone())) {
+        Some(c) => Some(hl_core::TfClass::parse(&c)?),
+        None => None,
+    };
+    let them = hl_core::SteamId::from_account_id(account_id);
+    let profile = match chosen {
+        Some(c) => hl_ingest::load_profile(&state.db, them, c, None, None).await?,
+        None => None,
+    };
+    Ok(PlayerResponse { summary, profile, class: chosen.map(|c| c.as_str().to_string()) })
+}

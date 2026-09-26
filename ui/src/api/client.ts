@@ -38,6 +38,8 @@ import type {
   StvQueued,
   FailedLog,
   Imported,
+  PlayerHit,
+  PlayerResponse,
 } from "./types";
 
 /** True inside the Tauri window, false in a plain browser tab. */
@@ -134,6 +136,12 @@ const realApi = {
   fetchStv: (logId: number) => invoke<void>("fetch_stv", { logId }),
   /** Drop a download that has not started. False if it is already running. */
   cancelStv: (logId: number) => invoke<boolean>("cancel_stv", { logId }),
+
+  /** Find someone who played in one of your matches (Q14). */
+  searchPlayers: (query: string) => invoke<PlayerHit[]>("search_players", { query }),
+  /** One player's page: their summary, and their profile on one class. */
+  getPlayer: (accountId: number, className: string | null) =>
+    invoke<PlayerResponse>("get_player", { accountId, class: className }),
 
   /** Logs the sync gave up on, newest first. */
   failedLogs: () => invoke<FailedLog[]>("failed_logs"),

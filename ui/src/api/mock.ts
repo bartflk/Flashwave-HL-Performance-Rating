@@ -733,6 +733,42 @@ export const mockApi: Api = {
     };
   },
 
+  searchPlayers: async (query: string) => {
+    const all = [
+      { accountId: 279623496, name: "boSe.", games: 158, lastSeen: 1757621600, topClass: "scout" },
+      { accountId: 137154322, name: "W.", games: 24, lastSeen: 1748370090, topClass: "heavy" },
+      { accountId: 111222333, name: "Taiga", games: 61, lastSeen: 1756000000, topClass: "medic" },
+    ];
+    const q = query.toLowerCase();
+    return delay(all.filter((p) => p.name.toLowerCase().includes(q) || String(p.accountId) === query));
+  },
+
+  getPlayer: async (accountId: number, className: string | null) => {
+    const p = (profileSniper as unknown as { profile: Profile }).profile;
+    return delay({
+      summary: {
+        accountId,
+        steamid64: "76561198239889224",
+        name: "boSe.",
+        alsoKnownAs: ["boSe", "Stephane Merveille", "boSih"],
+        games: 158,
+        firstSeen: 1690000000,
+        lastSeen: 1757621600,
+        withYou: 151,
+        againstYou: 7,
+        youBeatThem: 3,
+        theyBeatYou: 4,
+        classes: [
+          { class: "scout", games: 88, avg: 1.14 },
+          { class: "heavy", games: 57, avg: 1.22 },
+          { class: "engineer", games: 8, avg: 0.93 },
+        ],
+      },
+      profile: { ...p, games: 88, careerAvg: 1.14 },
+      class: className ?? "scout",
+    });
+  },
+
   failedLogs: () =>
     delay([
       {

@@ -415,6 +415,43 @@ export interface DemoIndexSummary {
   markers: number;
 }
 
+/** A player found by search — someone who played in one of your matches. */
+export interface PlayerHit {
+  accountId: number;
+  name: string;
+  games: number;
+  lastSeen: number | null;
+  topClass: string | null;
+}
+
+export interface PlayerClassRow {
+  class: string;
+  games: number;
+  avg: number;
+}
+
+/** The header of another player's page. Everything is "in your matches". */
+export interface PlayerSummary {
+  accountId: number;
+  steamid64: string;
+  name: string;
+  alsoKnownAs: string[];
+  games: number;
+  firstSeen: number | null;
+  lastSeen: number | null;
+  withYou: number;
+  againstYou: number;
+  youBeatThem: number;
+  theyBeatYou: number;
+  classes: PlayerClassRow[];
+}
+
+export interface PlayerResponse {
+  summary: PlayerSummary;
+  profile: Profile | null;
+  class: string | null;
+}
+
 /** A log the sync could not download, and why. */
 export interface FailedLog {
   logId: number;

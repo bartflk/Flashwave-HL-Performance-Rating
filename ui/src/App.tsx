@@ -9,6 +9,7 @@ import { SyncSummary } from "./components/SyncSummary";
 import { MatchPage } from "./components/match/MatchPage";
 import { ProfilePage } from "./components/profile/ProfilePage";
 import { TeammatesPage } from "./components/teammates/TeammatesPage";
+import { PlayersPage } from "./components/players/PlayersPage";
 import { ToastHost } from "./lib/toast";
 import { Notifications } from "./components/Notifications";
 import { watchDownloads } from "./lib/downloads";
@@ -18,7 +19,7 @@ import { RestoreBanner } from "./components/RestoreBanner";
 import "./App.css";
 import "./components/match/match.css";
 
-type Tab = "matches" | "profile" | "teammates" | "settings";
+type Tab = "matches" | "profile" | "teammates" | "players" | "settings";
 
 // Settings is not one of these: it is the cog on the far right, where a
 // setting belongs, rather than a fourth thing to read.
@@ -26,6 +27,7 @@ const TABS: Array<[Tab, string]> = [
   ["matches", "Matches"],
   ["profile", "Profile"],
   ["teammates", "Teammates"],
+  ["players", "Players"],
 ];
 
 export default function App() {
@@ -164,6 +166,11 @@ export default function App() {
       {visited.has("teammates") && (
         <div hidden={tab !== "teammates" || openLog !== null}>
           <TeammatesPage />
+        </div>
+      )}
+      {visited.has("players") && (
+        <div hidden={tab !== "players" || openLog !== null}>
+          <PlayersPage onOpenMatch={setOpenLog} />
         </div>
       )}
       {tab === "settings" && openLog === null && (

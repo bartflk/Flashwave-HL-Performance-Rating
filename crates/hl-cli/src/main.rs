@@ -45,6 +45,7 @@ COMMANDS:
                            nine classes. Ends with a model proposed from the
                            fit and what it is worth cross-validated. --weights
                            takes a TOML file with a [model.CLASS] table; repeatable
+    who NAME|STEAMID       Look up another player in your matches
     failed                 Logs that would not import, and why
     import ID|URL          Fetch one log now, whatever the index thinks of it
     situation [--toml [--round]] | --victims [--json]
@@ -1072,6 +1073,53 @@ Try one again: hl import <id or logs.tf link>");
                 got.players,
                 if got.yours { "" } else { " (you are not in it: it joins the pool, not your matches)" }
             );
+            Ok(())
+        }
+
+        // Q14: look someone else up.
+        ["who", rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            let me = db.get_me().await?.context("no owner set")?;
+            let query = rest.iter().find(|a| !a.starts_with("--")).context("who <name or steamid>")?;
+            let hits = db.search_players(query, 25).await?;
+            if hits.is_empty() {
+                println!("nobody matching `{query}` has played in your matches");
+                return Ok(());
+            }
+            if hits.len() > 1 && !rest.contains(&"--first") {
+                println!("{} players match `{query}`:", hits.len());
+                for h in &hits {
+                    println!(
+                        "  {:>10}  {:<24} {:>4} games  {}",
+                        h.account_id,
+                        h.name.chars().take(24).collect::<String>(),
+                        h.games,
+                        h.top_class.as_deref().unwrap_or("")
+                    );
+                }
+                println!("
+Pick one: hl who <steamid>");
+                return Ok(());
+            }
+            let hit = &hits[0];
+            let s = db
+                .player_summary(hit.account_id, me.account_id(), hl_rating::MODEL_VERSION)
+                .await?
+                .context("no games")?;
+            println!("{} — {} games in your matches", s.name, s.games);
+            if !s.also_known_as.is_empty() {
+                println!("also known as {}", s.also_known_as.join(", "));
+            }
+            println!("{}  ({})", s.steamid64, s.account_id);
+            println!(
+                "with you {}, against you {} ({}-{} to you)",
+                s.with_you, s.against_you, s.you_beat_them, s.they_beat_you
+            );
+            println!("
+class       games  rating");
+            for c in &s.classes {
+                println!("{:<12} {:>4}   {:>5.2}", c.class, c.games, c.avg);
+            }
             Ok(())
         }
 

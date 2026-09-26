@@ -9,6 +9,7 @@ mod context;
 mod demos;
 mod fights;
 mod matches;
+mod players;
 mod ratings;
 mod rawlog;
 mod roundmap;
@@ -25,6 +26,7 @@ pub use roundmap::{
     PartRow, ResolverLog, RoundMapRow, RoundMapStats, RoundRow, RoundWindow, Segment, SegmentRow,
 };
 pub use ratings::{HistoryDbRow, RatingRow, VsTotals};
+pub use players::{PlayerClass, PlayerHit, PlayerSummary};
 pub use matches::{
     FailedLog, IndexInfo, IndexStats, LogsTfIndexRow, MatchFilter, MatchPage, MatchSummary, PartSummary, MyLine,
     TrendsIndexRow,
