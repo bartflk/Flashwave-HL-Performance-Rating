@@ -52,6 +52,43 @@ pub struct Profile {
     pub contexts: Vec<ContextSplit>,
     /// The kind of game the profile is filtered to, if any.
     pub filter: Option<String>,
+    /// How the player does against weaker, even and stronger opposition (Q9).
+    pub opposition: Vec<OppositionBand>,
+}
+
+/// An opponent's average this far from 1.00 either way is an even match.
+///
+/// Fixed rather than thirds of whatever is on screen: a band that moves when
+/// a filter changes cannot be compared with the one you just looked at, and
+/// 1.00 already means something on this scale.
+pub const EVEN_BAND: f64 = 0.05;
+
+/// A strength is only worth using once the opponent has this many other
+/// games. Below it the average is one or two nights, not a player.
+pub const MIN_OPPONENT_GAMES: i64 = 5;
+
+/// How the player does against opposition of a given standard.
+///
+/// **This is shown, not applied.** Measured over 8,679 performances in
+/// September 2026: facing an opponent 0.20 better costs 0.076 rating points,
+/// and correcting the rating for it changes how well a player's first half
+/// of a season predicts their second by 0.000. The reason is in the numbers
+/// — opponent strength varies *within* one player's games (sd 0.070) more
+/// than it varies *between* players (sd 0.046), so there is no standing
+/// level of difficulty to subtract. Correcting anyway would only smuggle a
+/// prior about the player into a number that is supposed to be about one
+/// game. So the rating stays as it is, and this says who it was against.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OppositionBand {
+    /// `weaker`, `even` or `stronger`.
+    pub band: String,
+    pub games: usize,
+    /// The player's average rating in those games.
+    pub avg: f64,
+    /// What the opponents average over their other games.
+    pub opponent_avg: f64,
+    pub win_rate: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -162,6 +199,7 @@ pub fn build(class: TfClass, mut rows: Vec<HistoryRow>) -> Option<Profile> {
         rolling_window: ROLLING_WINDOW,
         extras: Vec::new(),
         contexts: Vec::new(),
+        opposition: Vec::new(),
         filter: None,
     })
 }
@@ -184,6 +222,44 @@ pub fn context_splits(rows: &[HistoryRow]) -> Vec<ContextSplit> {
                 games: of.len(),
                 avg: round2(mean(&of.iter().map(|r| r.rating.score).collect::<Vec<_>>())),
                 win_rate: win_rate(&of),
+            })
+        })
+        .collect()
+}
+
+/// Games, average and win rate against weaker, even and stronger opposition.
+///
+/// `strength` is the opponent's average elsewhere, per log; a game whose
+/// opponent is not in it (no opposite number rated, or too few games of
+/// their own to say) is left out rather than guessed at, so the bands can
+/// add up to fewer games than the profile has.
+pub fn opposition_splits(rows: &[HistoryRow], strength: &HashMap<i64, f64>) -> Vec<OppositionBand> {
+    let band_of = |s: f64| {
+        if s < 1.0 - EVEN_BAND {
+            "weaker"
+        } else if s > 1.0 + EVEN_BAND {
+            "stronger"
+        } else {
+            "even"
+        }
+    };
+    ["weaker", "even", "stronger"]
+        .into_iter()
+        .filter_map(|band| {
+            let of: Vec<(HistoryRow, f64)> = rows
+                .iter()
+                .filter_map(|r| strength.get(&r.log_id).map(|s| (r.clone(), *s)))
+                .filter(|(_, s)| band_of(*s) == band)
+                .collect();
+            (!of.is_empty()).then(|| {
+                let games: Vec<HistoryRow> = of.iter().map(|(r, _)| r.clone()).collect();
+                OppositionBand {
+                    band: band.to_string(),
+                    games: of.len(),
+                    avg: round2(mean(&games.iter().map(|r| r.rating.score).collect::<Vec<_>>())),
+                    opponent_avg: round2(mean(&of.iter().map(|(_, s)| *s).collect::<Vec<_>>())),
+                    win_rate: win_rate(&games),
+                }
             })
         })
         .collect()
@@ -271,6 +347,51 @@ fn round2(x: f64) -> f64 {
 mod tests {
     use super::*;
     use crate::model::Part;
+
+    #[test]
+    fn opposition_bands_split_on_a_fixed_line_either_side_of_one() {
+        let rows: Vec<HistoryRow> = (1..=6).map(|i| row(i, 1.0, "W")).collect();
+        let strength: HashMap<i64, f64> = [
+            (1, 0.80), // weaker
+            (2, 0.94), // weaker, just
+            (3, 0.95), // even: the boundary is inclusive
+            (4, 1.05), // even, the other boundary
+            (5, 1.06), // stronger, just
+            (6, 1.30), // stronger
+        ]
+        .into_iter()
+        .collect();
+        let bands = opposition_splits(&rows, &strength);
+        let games: Vec<(String, usize)> = bands.iter().map(|b| (b.band.clone(), b.games)).collect();
+        assert_eq!(
+            games,
+            vec![("weaker".into(), 2), ("even".into(), 2), ("stronger".into(), 2)],
+            "and always in that order"
+        );
+        assert_eq!(bands[0].opponent_avg, 0.87, "the opponents' own average is reported too");
+    }
+
+    #[test]
+    fn a_game_whose_opponent_is_unknown_is_left_out_rather_than_guessed() {
+        let rows: Vec<HistoryRow> = (1..=4).map(|i| row(i, 1.0, "W")).collect();
+        // Only two of the four have an opponent we can judge.
+        let strength: HashMap<i64, f64> = [(1, 0.80), (2, 0.85)].into_iter().collect();
+        let bands = opposition_splits(&rows, &strength);
+        assert_eq!(bands.len(), 1);
+        assert_eq!(bands[0].games, 2, "not four: an unknown opponent is not an even one");
+        assert!(opposition_splits(&rows, &HashMap::new()).is_empty());
+    }
+
+    #[test]
+    fn the_band_averages_are_the_players_own_rating_not_the_opponents() {
+        let rows = vec![row(1, 1.40, "W"), row(2, 0.60, "L")];
+        let strength: HashMap<i64, f64> = [(1, 0.80), (2, 0.82)].into_iter().collect();
+        let bands = opposition_splits(&rows, &strength);
+        assert_eq!(bands.len(), 1);
+        assert_eq!(bands[0].avg, 1.0, "their own average");
+        assert_eq!(bands[0].opponent_avg, 0.81);
+        assert_eq!(bands[0].win_rate, Some(50.0));
+    }
 
     fn row(i: i64, score: f64, result: &str) -> HistoryRow {
         HistoryRow {

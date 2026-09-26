@@ -456,8 +456,15 @@
   background: var(--muted);
 }
 
-.ks-fill.ks-official {
+.ks-fill.ks-official,
+.ks-fill.ks-stronger {
   background: var(--accent);
+}
+
+/* Who you played: the accent marks the hard games, so the eye goes to the
+   row that says the most. A row that is not a button must not look like one. */
+.kind-split div.ks-row {
+  cursor: default;
 }
 
 .ks-value {

@@ -519,6 +519,18 @@ export interface Profile {
   contexts: ContextSplit[];
   /** The kind the rest of the profile is filtered to. */
   filter: ContextKind | null;
+  /** How the player does against weaker, even and stronger opposition. */
+  opposition: OppositionBand[];
+}
+
+export interface OppositionBand {
+  band: "weaker" | "even" | "stronger";
+  games: number;
+  /** The player's average rating in those games. */
+  avg: number;
+  /** What those opponents average over their other games. */
+  opponentAvg: number;
+  winRate: number | null;
 }
 
 export interface ContextSplit {

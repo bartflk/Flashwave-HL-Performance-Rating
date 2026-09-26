@@ -6320,6 +6320,29 @@
         "score": 0.52,
         "title": "aaaaaaaaaaaaa"
       }
+    ],
+    "opposition": [
+      {
+        "band": "weaker",
+        "games": 116,
+        "avg": 1.13,
+        "opponentAvg": 0.82,
+        "winRate": 67.3
+      },
+      {
+        "band": "even",
+        "games": 86,
+        "avg": 1.04,
+        "opponentAvg": 1.01,
+        "winRate": 50.6
+      },
+      {
+        "band": "stronger",
+        "games": 161,
+        "avg": 1.01,
+        "opponentAvg": 1.16,
+        "winRate": 48.4
+      }
     ]
   }
 }

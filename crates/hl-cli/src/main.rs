@@ -360,13 +360,13 @@ async fn main() -> Result<()> {
                 return Ok(());
             }
             println!("{} — {} rated games\n", class.display_name(), p.games);
-            println!("career     {:>5.1}", p.career_avg);
+            println!("career     {:>5.2}", p.career_avg);
             println!(
-                "form       {:>5.1}   (last {}{})",
+                "form       {:>5.2}   (last {}{})",
                 p.form_avg,
                 p.form_window,
                 p.prev_form_avg
-                    .map(|prev| format!(", {:+.1} on the {} before", p.form_avg - prev, p.form_window))
+                    .map(|prev| format!(", {:+.2} on the {} before", p.form_avg - prev, p.form_window))
                     .unwrap_or_default()
             );
             if let Some(wr) = p.win_rate {
@@ -377,12 +377,30 @@ async fn main() -> Result<()> {
             }
             for c in &p.contexts {
                 println!(
-                    "{:<24} {:>5.1}   {} games{}",
+                    "{:<24} {:>5.2}   {} games{}",
                     format!("{}s", c.kind),
                     c.avg,
                     c.games,
                     c.win_rate.map(|w| format!(", {w:.0}% won")).unwrap_or_default()
                 );
+            }
+            if !p.opposition.is_empty() {
+                println!();
+                println!("against               you   opponent  games");
+                for o in &p.opposition {
+                    println!(
+                        "{:<18} {:>6.2} {:>9.2} {:>6}{}",
+                        match o.band.as_str() {
+                            "weaker" => "weaker opponents",
+                            "stronger" => "stronger opponents",
+                            _ => "an even match",
+                        },
+                        o.avg,
+                        o.opponent_avg,
+                        o.games,
+                        o.win_rate.map(|w| format!("   {w:.0}% won")).unwrap_or_default()
+                    );
+                }
             }
             println!("\ncomponent         weight    form    career  recent avg");
             for c in &p.components {

@@ -267,6 +267,17 @@ pub async fn load_profile(
         None => history,
     };
     let contexts = profile::context_splits(&history);
+    // Q9: who each of those games was against. Computed over the whole
+    // history like the context split, so it stays comparable while the rest
+    // of the profile is filtered.
+    let strength: std::collections::HashMap<i64, f64> = db
+        .class_opponents(me.account_id(), class.as_str(), MODEL_VERSION)
+        .await?
+        .into_iter()
+        .filter(|(_, _, _, games)| *games >= profile::MIN_OPPONENT_GAMES)
+        .map(|(log_id, _, strength, _)| (log_id, strength))
+        .collect();
+    let opposition = profile::opposition_splits(&history, &strength);
     let history: Vec<HistoryRow> = match kind {
         Some(k) => history.into_iter().filter(|r| r.kind.as_deref() == Some(k)).collect(),
         None => history,
@@ -275,6 +286,7 @@ pub async fn load_profile(
         return Ok(None);
     };
     p.contexts = contexts;
+    p.opposition = opposition;
     p.filter = kind.map(str::to_string);
     // Career records count every game, so a period shows none.
     if period.is_some() {

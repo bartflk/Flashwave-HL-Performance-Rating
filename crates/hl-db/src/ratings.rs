@@ -237,6 +237,59 @@ impl Db {
         Ok(rows.into_iter().map(|r| (r.get("class"), r.get("n"))).collect())
     }
 
+    /// For each of the owner's games on a class, the opposite number and how
+    /// they rate over their *other* games (Q9).
+    ///
+    /// Highlander puts exactly one of each class a side, so "the opponent" is
+    /// well defined without any guessing: the player of the same class on the
+    /// other team. Their own game here is left out of their average, or every
+    /// player's strength would include the match being judged by it.
+    ///
+    /// Returns `(log_id, opponent account, their average elsewhere, how many
+    /// games that average is over)`.
+    pub async fn class_opponents(
+        &self,
+        account_id: u32,
+        class: &str,
+        version: &str,
+    ) -> Result<Vec<(i64, u32, f64, i64)>> {
+        let rows = sqlx::query(
+            "WITH mine AS (
+                 SELECT r.log_id, p.team
+                 FROM rating r
+                 JOIN match_player p ON p.log_id = r.log_id AND p.account_id = r.account_id
+                 WHERE r.account_id = ?1 AND r.class = ?2 AND r.model_version = ?3
+             ),
+             opp AS (
+                 SELECT m.log_id, r.account_id AS opp_id
+                 FROM mine m
+                 JOIN match_player p ON p.log_id = m.log_id AND p.team <> m.team
+                 JOIN rating r ON r.log_id = m.log_id AND r.account_id = p.account_id
+                                AND r.class = ?2 AND r.model_version = ?3
+             )
+             SELECT o.log_id, o.opp_id,
+                    (SELECT AVG(x.score) FROM rating x
+                      WHERE x.account_id = o.opp_id AND x.class = ?2
+                        AND x.model_version = ?3 AND x.log_id <> o.log_id) AS strength,
+                    (SELECT COUNT(*) FROM rating x
+                      WHERE x.account_id = o.opp_id AND x.class = ?2
+                        AND x.model_version = ?3 AND x.log_id <> o.log_id) AS games
+             FROM opp o",
+        )
+        .bind(account_id)
+        .bind(class)
+        .bind(version)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let strength: Option<f64> = r.get("strength");
+                Some((r.get("log_id"), r.get::<i64, _>("opp_id") as u32, strength?, r.get("games")))
+            })
+            .collect())
+    }
+
     pub async fn rating_history(
         &self,
         account_id: u32,

@@ -584,6 +584,22 @@
         "score": 0.85,
         "title": "TF2Center Lobby #267805"
       }
+    ],
+    "opposition": [
+      {
+        "band": "weaker",
+        "games": 9,
+        "avg": 1.06,
+        "opponentAvg": 0.88,
+        "winRate": 66.7
+      },
+      {
+        "band": "stronger",
+        "games": 7,
+        "avg": 0.91,
+        "opponentAvg": 1.13,
+        "winRate": 42.9
+      }
     ]
   }
 }
