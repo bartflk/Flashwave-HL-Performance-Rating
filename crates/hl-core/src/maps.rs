@@ -21,7 +21,22 @@ pub fn map_base(map: &str) -> String {
         }
         m.truncate(i);
     }
-    m
+    match m.as_str() {
+        "viaduct" => "pro_viaduct".into(),
+        "proplant_fence" | "proplant_v8_nnb" => "proplant".into(),
+        "proside" | "lakeside_r" | "lakeside_r2" => "lakeside".into(),
+        "swiftwater_ugc" => "swiftwater".into(),
+        "problitz" => "barnblitz".into(),
+        "ashville_rc1_nb7" => "ashville".into(),
+        "badwater_snowy2" => "badwater".into(),
+        "gravelpit_x" => "gravelpit".into(),
+        "eruption_b10_test2" | "eruption_b10_test_2" => "eruption".into(),
+        "vigil_rc8_test4" => "vigil".into(),
+        "biohazard_cal" => "biohazard".into(),
+        _ if m.starts_with("cornwater_") => "cornwater".into(),
+        _ if m.starts_with("millstone_ugc_") => "millstone".into(),
+        _ => m,
+    }
 }
 
 /// A map as people name it: the gamemode kept, the version gone.
@@ -41,7 +56,7 @@ pub fn map_name(map: &str) -> String {
 /// runs something that is not payload or king of the hill.
 const PREFIXES: &[&str] = &[
     "pl_", "koth_", "cp_", "ctf_", "plr_", "arena_", "tc_", "mvm_", "tow_", "pass_", "sd_", "pd_",
-    "vsh_", "rd_", "trade_", "jump_",
+    "vsh_", "rd_", "trade_", "jump_", "dm_",
 ];
 
 /// Whether a trailing word is a version rather than part of the name:
@@ -51,7 +66,8 @@ fn is_version(s: &str) -> bool {
     // `rcx` and `finalx` have no digit at all and are still versions —
     // `koth_product_rcx` was reading as a map called `product_rcx`, which is
     // why it had no overview image while every other Product did.
-    let known = matches!(alpha, "final" | "rc" | "b" | "f" | "v" | "a" | "pro" | "rcx" | "finalx");
+    let known = matches!(alpha, "final" | "rc" | "b" | "f" | "v" | "a" | "pro" | "rcx" | "finalx")
+        || (alpha == "r" && rest.starts_with(|c: char| c.is_ascii_digit()));
     known
         && rest.chars().all(|c| c.is_ascii_alphanumeric())
         && (rest.is_empty()
@@ -81,9 +97,8 @@ mod tests {
 
     #[test]
     fn a_name_that_merely_looks_like_a_version_survives() {
-        // `pro_viaduct` is a map whose name begins with the word, not a
-        // version of `viaduct`; stripping from the front is not our job.
-        assert_eq!(map_base("koth_pro_viaduct_rc4"), "pro_viaduct");
+        // Viaduct's pool entry uses the pro_viaduct identity.
+        assert_eq!(map_base("koth_viaduct_rc4"), "pro_viaduct");
         // Real names that end in a word from the version list.
         assert_eq!(map_base("cp_process_final"), "process");
         assert_eq!(map_base("pl_upward"), "upward");
@@ -100,6 +115,8 @@ mod tests {
         assert_eq!(map_name("tow_tetsudo_b10c"), "tow_tetsudo");
         assert_eq!(map_name("koth_cascade"), "koth_cascade");
         assert_eq!(map_name("PL_Vigil_RC10"), "pl_vigil");
+        assert_eq!(map_name("dm_airfusion_final"), "dm_airfusion");
+        assert_eq!(map_name("koth_viaduct"), "koth_pro_viaduct");
         // Two different maps stay two.
         assert_ne!(map_name("koth_proot_b5b"), map_name("koth_proplant_v8"));
     }
@@ -115,5 +132,49 @@ mod tests {
         assert_eq!(map_base("pl_swiftwater"), "swiftwater");
         assert_eq!(map_base("koth_ashville_final1"), "ashville");
         assert_eq!(map_base("cp_gullywash"), "gullywash");
+        assert_eq!(map_base("koth_ultiduo_r"), "ultiduo_r");
+        assert_eq!(map_base("koth_ultiduo_r_b7"), "ultiduo_r");
+    }
+
+    #[test]
+    fn related_map_names_share_their_canonical_base() {
+        for (variant, canonical) in [
+            ("viaduct", "pro_viaduct"),
+            ("pro_viaduct", "pro_viaduct"),
+            ("proplant_fence", "proplant"),
+            ("proplant_v8_nnb", "proplant"),
+            ("proside", "lakeside"),
+            ("tow_tetsudo_b10a", "tetsudo"),
+            ("swiftwater_ugc", "swiftwater"),
+            ("problitz", "barnblitz"),
+            ("lakeside_r2", "lakeside"),
+            ("lakeside_r", "lakeside"),
+            ("ashville_rc1_nb7", "ashville"),
+            ("prowater", "prowater"),
+            ("gravelpit_x", "gravelpit"),
+            ("millstone_ugc_4", "millstone"),
+            ("millstone_ugc_7", "millstone"),
+            ("cornwater_b7c_fix", "cornwater"),
+            ("cornwater", "cornwater"),
+            ("eruption_b10_test2", "eruption"),
+            ("eruption_b10_test_2", "eruption"),
+            ("vigil_rc8_test4", "vigil"),
+            ("proworks", "proworks"),
+            ("badwater_snowy2", "badwater"),
+            ("biohazard_cal", "biohazard"),
+            ("caverns_r1", "caverns"),
+            ("lockdown_r6", "lockdown"),
+            ("tigcrik_r2", "tigcrik"),
+        ] {
+            assert_eq!(map_base(variant), canonical, "{variant}");
+        }
+        assert_eq!(map_base("koth_prowater_rc2"), "prowater");
+        assert_ne!(map_base("prowater"), map_base("badwater"));
+        assert_ne!(map_base("cornwater_b7c_fix"), map_base("badwater"));
+        assert_ne!(map_base("proworks"), map_base("metalworks"));
+        assert_eq!(map_base("dm_airfusion_final"), "airfusion");
+        assert_eq!(map_base("dm_biohazard_cal"), "biohazard");
+        assert_eq!(map_base("dm_caverns_r1"), "caverns");
+        assert_eq!(map_base("dm_lostvillage_two_final"), "lostvillage_two");
     }
 }

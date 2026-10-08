@@ -111,8 +111,31 @@ mod tests {
         assert_eq!((vigil.image.as_str(), vigil.placement.as_str(), vigil.matches), ("built in", "built in", 0));
         assert_eq!(vigil.name, "pl_vigil_rc10", "the shipped shape's name");
         assert_eq!(vigil.callouts, "built in");
-        let lakeside = o.maps.iter().find(|m| m.base == "lakeside").expect("a shape but no image");
-        assert_eq!(lakeside.image, "none");
+        let lakeside = o
+            .maps
+            .iter()
+            .find(|m| m.base == "lakeside")
+            .expect("lakeside is listed");
+        assert_eq!(lakeside.image, "built in");
+        assert_eq!(lakeside.placement, "built in");
+        for (base, placement) in [
+            ("prowater", "built in"),
+            ("cornwater", "built in"),
+            ("proworks", "built in"),
+            ("pro_viaduct", "none"),
+        ] {
+            let map = o
+                .maps
+                .iter()
+                .find(|m| m.base == base)
+                .unwrap_or_else(|| panic!("{base} is listed separately"));
+            assert_eq!(map.image, "built in", "{base}");
+            assert_eq!(map.placement, placement, "{base}");
+        }
+        assert!(
+            !o.maps.iter().any(|m| m.base == "alloy"),
+            "Alloy is not shipped until its image is redone"
+        );
         assert_eq!(o.unknown_matches, 0);
     }
 }
