@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type Fixture, type LeagueRecord, type Podium, type SeasonTile, type Stay, type TeamEtf2l, type TeamHonours, type TeamInfo, type TeamTransfers, type TeamView } from "../../api/types";
@@ -24,9 +24,16 @@ import { YouOnThisTeam, YourTeamsStrip } from "./YourTeams";
 
 type View = { kind: "seasons" } | { kind: "season"; season: number } | { kind: "team"; teamId: number; from: View };
 
+/** One step back within Teams, as the ‹ Back button does; `null` on the grid. */
+function stepBack(v: View): View | null {
+  if (v.kind === "team") return v.from;
+  if (v.kind === "season") return { kind: "seasons" };
+  return null;
+}
+
 const PLACE = ["gold", "silver", "bronze"] as const;
 
-export function TeamsPage() {
+export function TeamsPage({ active }: { active: boolean }) {
   // A team asked for from elsewhere (a match header) opens straight on it.
   const [view, setView] = useState<View>(() => {
     const pending = takePendingTeam();
@@ -38,11 +45,49 @@ export function TeamsPage() {
   const openTeam = (teamId: number) => setView((from) => ({ kind: "team", teamId, from: from.kind === "team" ? from.from : from }));
   useEffect(() => onOpenTeam((teamId) => setView({ kind: "team", teamId, from: { kind: "seasons" } })), []);
   useEffect(() => onOpenSeason((season) => setView({ kind: "season", season })), []);
+  // Mouse 4 / Alt+Left step back within Teams (team → season → grid) before the
+  // app's own history sees them: capture phase on window runs first, and
+  // stopPropagation keeps the app from also going back a tab. On the grid, or
+  // with Teams hidden, they are left alone.
+  const viewRef = useRef(view);
+  const activeRef = useRef(active);
+  useEffect(() => {
+    viewRef.current = view;
+    activeRef.current = active;
+  });
+  useEffect(() => {
+    const target = () => (activeRef.current ? stepBack(viewRef.current) : null);
+    const onMouse = (e: MouseEvent) => {
+      if (e.button !== 3) return; // 3 is the mouse's back button
+      const to = target();
+      if (!to) return;
+      e.preventDefault();
+      e.stopPropagation();
+      // Same rule as navigation.ts: act on the way up only.
+      if (e.type === "mouseup") setView(to);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || e.key !== "ArrowLeft") return;
+      const to = target();
+      if (!to) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setView(to);
+    };
+    window.addEventListener("mousedown", onMouse, true);
+    window.addEventListener("mouseup", onMouse, true);
+    window.addEventListener("keydown", onKey, true);
+    return () => {
+      window.removeEventListener("mousedown", onMouse, true);
+      window.removeEventListener("mouseup", onMouse, true);
+      window.removeEventListener("keydown", onKey, true);
+    };
+  }, []);
   let body;
   if (view.kind === "team") {
-    body = <TeamScreen teamId={view.teamId} onBack={() => setView(view.from)} onTeam={openTeam} backLabel={view.from.kind === "season" ? t("Season") : t("All seasons")} />;
+    body = <TeamScreen teamId={view.teamId} onBack={() => setView(stepBack(view) ?? { kind: "seasons" })} onTeam={openTeam} backLabel={view.from.kind === "season" ? t("Season") : t("All seasons")} />;
   } else if (view.kind === "season") {
-    body = <SeasonScreen season={view.season} onBack={() => setView({ kind: "seasons" })} onTeam={openTeam} />;
+    body = <SeasonScreen season={view.season} onBack={() => setView(stepBack(view) ?? { kind: "seasons" })} onTeam={openTeam} />;
   } else {
     body = <SeasonsGrid onSeason={(season) => setView({ kind: "season", season })} onTeam={openTeam} />;
   }

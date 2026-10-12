@@ -191,7 +191,7 @@ export default function App() {
       )}
       {visited.has("teams") && (
         <div hidden={tab !== "teams" || openLog !== null}>
-          <ErrorBoundary what="Teams"><TeamsPage /></ErrorBoundary>
+          <ErrorBoundary what="Teams"><TeamsPage active={tab === "teams" && openLog === null} /></ErrorBoundary>
         </div>
       )}
       {visited.has("players") && (
