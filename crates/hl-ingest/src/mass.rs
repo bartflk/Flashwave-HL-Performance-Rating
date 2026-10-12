@@ -113,7 +113,12 @@ pub async fn search(
         let rows = sources.demostf_for_player(&id64, before).await?;
         let Some(earliest) = rows.iter().filter_map(|d| d.time).min() else { break };
         before = Some(earliest);
-        let mut on_map: Vec<DemosTfMeta> = rows.into_iter().filter(|d| d.map.as_deref().is_some_and(|m| map_base(m) == want_base)).collect();
+        // Gone from demos.tf (before 14 October 2019): no download, so not offered (Q62).
+        let done_listing = earliest < crate::demostf::OLDEST_AVAILABLE;
+        let mut on_map: Vec<DemosTfMeta> = rows
+            .into_iter()
+            .filter(|d| d.available() && d.map.as_deref().is_some_and(|m| map_base(m) == want_base))
+            .collect();
         on_map.sort_by_key(|d| std::cmp::Reverse(d.time.unwrap_or(0)));
         seen_on_map += on_map.len();
         progress(SearchStep::Listing { page, found: seen_on_map });
@@ -128,7 +133,7 @@ pub async fn search(
                 break 'pages;
             }
         }
-        if out.len() >= want {
+        if out.len() >= want || done_listing {
             break;
         }
     }

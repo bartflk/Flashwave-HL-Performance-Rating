@@ -1,5 +1,5 @@
 import type { MatchDetail } from "../../api/types";
-import { useStv } from "../../lib/stv";
+import { noStvReason, useStv } from "../../lib/stv";
 import { t, tx } from "../../lib/i18n";
 
 /**
@@ -49,7 +49,7 @@ export function StvLocked({ d, kind }: { d: MatchDetail; kind: Kind }) {
           ) : stv.canFetch ? (
             <button className="km-chip on" onClick={goToDemoLinking}>{t("Get the STV demo ↑")}</button>
           ) : (
-            <span className="hint">{t("demos.tf has no STV demo for this match.")}</span>
+            <span className="hint">{noStvReason(d)}</span>
           )}
         </div>
       </div>
@@ -104,7 +104,7 @@ function Fetch({ d, compact }: { d: MatchDetail; compact?: boolean }) {
     );
   }
   if (!stv.canFetch) {
-    return <span className="hint">{t("demos.tf has no STV demo for this match.")}</span>;
+    return <span className="hint">{noStvReason(d)}</span>;
   }
   return (
     <button className={compact ? "primary stv-fetch-btn" : "primary"} onClick={() => void stv.fetch()}>

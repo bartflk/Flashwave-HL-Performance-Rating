@@ -299,6 +299,10 @@ async fn fetch_demostf(
     progress: impl FnMut(u64, Option<u64>),
 ) -> Result<StvFetched> {
     let meta = sources.demostf_meta(demos_tf_id).await?;
+    // Q62: demos.tf keeps the listing of a demo whose file it no longer has.
+    if !meta.available() {
+        anyhow::bail!("demos.tf no longer has the file of demo {demos_tf_id}: its demos from before 14 October 2019 are gone");
+    }
 
     // demos.tf names are already filesystem-safe; guard anyway.
     let safe: String = meta

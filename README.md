@@ -159,7 +159,7 @@ has the whole of it, including what to do if one does break.
 | [logs.tf](https://logs.tf) | Match stats and the raw server log behind each match (every kill with positions, every hit, heal and uber) for what drops.tf has not got yet: a game just played, or a log it lost |
 | [trends.tf](https://trends.tf) | Which matches you played, which logs were combined from which |
 | [ETF2L](https://etf2l.org) | Officials, divisions, rosters and seasons |
-| [demos.tf](https://demos.tf) | STV demos, downloaded only when you ask |
+| [demos.tf](https://demos.tf) by Icewind | STV demos, downloaded only when you ask. Its files go back to 14 October 2019: older demos are still listed, but marked deleted |
 | [more.tf](https://more.tf) | The top-down map images under the kill map, shipped with their permission |
 | [Official TF2 Wiki](https://wiki.teamfortress.com/wiki/Tournament_Medal_-_ETF2L_Highlander) | The ETF2L Highlander medal icon on player profiles (Valve's in-game item art, Season 17 design) |
 | [flagcdn](https://flagcdn.com) | Country flags on player profiles, player cards and team pages (public domain, bundled with the app) |

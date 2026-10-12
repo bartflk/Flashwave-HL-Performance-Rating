@@ -59,6 +59,17 @@ impl Walk {
     }
 }
 
+/// The upload time of the oldest demo demos.tf can still hand over (Q62):
+/// demo 314574, 14 October 2019. Every demo before it is listed with
+/// `backend: "deleted"` and no link, including 312627, which a tester thought
+/// was the oldest. Found by bisecting demos.tf's ids on 12 October 2026.
+pub const OLDEST_AVAILABLE: i64 = 1_571_085_763;
+
+/// Whether demos.tf can have a downloadable demo of a match played then.
+pub fn demostf_reaches(played_at: i64) -> bool {
+    played_at >= OLDEST_AVAILABLE - LATE_S
+}
+
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Found {
@@ -86,6 +97,10 @@ pub fn match_demos(logs: &[Unlinked], demos: &[DemosTfMeta]) -> Vec<(i64, i64, O
     let mut mapped: Vec<(i64, i64, i64)> = Vec::new(); // (gap, log_id, demo_id)
     let mut unmapped: Vec<(i64, i64, i64)> = Vec::new();
     for d in demos {
+        // A demo whose file demos.tf no longer has is no download (Q62).
+        if d.backend.as_deref() == Some("deleted") {
+            continue;
+        }
         let (Some(at), Some(map)) = (d.time, d.map.as_deref()) else { continue };
         let map = map_base(map);
         for (log_id, played_at, log_maps) in logs {
@@ -139,7 +154,8 @@ pub async fn index(db: &Db, sources: &Sources, me: SteamId) -> Result<Found> {
     if logs.is_empty() {
         return Ok(Found::default());
     }
-    let oldest = logs.iter().map(|(_, at, _)| *at).min().unwrap_or(0);
+    // Nothing older than demos.tf's oldest file is worth walking to (Q62).
+    let oldest = logs.iter().map(|(_, at, _)| *at).min().unwrap_or(0).max(OLDEST_AVAILABLE - LATE_S);
     let was = db.get_setting(WALK_KEY).await?.as_deref().and_then(Walk::parse);
 
     let steamid64 = me.to_steamid64();
@@ -205,7 +221,17 @@ mod tests {
             map: Some(map.into()),
             duration: None,
             time: Some(time),
+            backend: None,
         }
+    }
+
+    #[test]
+    fn a_demo_demostf_no_longer_has_is_never_matched() {
+        let gone = DemosTfMeta { backend: Some("deleted".into()), ..demo(312627, "cp_sunshine", 1_570_463_416) };
+        let logs = vec![(1, 1_570_463_000, vec!["cp_sunshine".into()])];
+        assert!(match_demos(&logs, &[gone]).is_empty());
+        assert!(!demostf_reaches(1_500_000_000));
+        assert!(demostf_reaches(1_790_000_000));
     }
 
     /// `(log, demo)` pairs, without the map, for the older tests.

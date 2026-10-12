@@ -5,6 +5,7 @@ import { api, inTauri } from "../../api/client";
 import { errorMessage, type DemoLinked, type DemoView, type MatchDetail, type ReRead } from "../../api/types";
 import { copy } from "../../lib/toast";
 import { beginDownload, failDownload, useDownload } from "../../lib/downloads";
+import { beforeDemosTf } from "../../lib/stv";
 import { locale, t, tx } from "../../lib/i18n";
 
 /**
@@ -52,7 +53,9 @@ export function DemoPanel({ d }: { d: MatchDetail }) {
   const hasStv = d.demos.some((x) => x.kind === "stv" && !x.deleted);
   // demos.tf first; ETF2L's own upload for a match demos.tf has none of (Q48).
   const fromEtf2l = d.demosTfId === null && (d.etf2lDemos ?? 0) > 0;
-  const canFetch = (d.demosTfId !== null || fromEtf2l) && !hasStv;
+  // Q62: demos.tf no longer has any file from before 14 October 2019.
+  const tooOld = beforeDemosTf(d.playedAt);
+  const canFetch = ((d.demosTfId !== null && !tooOld) || fromEtf2l) && !hasStv;
 
   return (
     <section className="panel demo-panel">
@@ -98,7 +101,13 @@ export function DemoPanel({ d }: { d: MatchDetail }) {
               )}
             </>
           ) : (
-            <p className="hint">{hasStv ? t("This match's SourceTV demo is on this machine.") : t("Neither demos.tf nor ETF2L has a SourceTV demo for this match.")}</p>
+            <p className="hint">
+              {hasStv
+                ? t("This match's SourceTV demo is on this machine.")
+                : tooOld
+                  ? t("demos.tf's demos go back to 14 October 2019; this match is older.")
+                  : t("Neither demos.tf nor ETF2L has a SourceTV demo for this match.")}
+            </p>
           )}
           {error && <p className="error">{error}</p>}
           <ByLink d={d} />

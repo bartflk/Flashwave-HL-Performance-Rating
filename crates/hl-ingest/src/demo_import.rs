@@ -430,8 +430,8 @@ pub async fn link_demostf(
     progress: impl FnMut(u64, Option<u64>),
 ) -> Result<DemoLinked> {
     let meta = sources.demostf_meta(demos_tf_id).await?;
-    if meta.url.is_empty() {
-        return Err(WrongDemo(format!("demos.tf has no file for demo {demos_tf_id} any more.")).into());
+    if !meta.available() {
+        return Err(WrongDemo(format!("demos.tf no longer has the file of demo {demos_tf_id}: its demos from before 14 October 2019 are gone.")).into());
     }
     let safe: String = meta.name.chars().map(|c| if c.is_ascii_alphanumeric() || "-_.".contains(c) { c } else { '_' }).collect();
     let dir = tf.join(hl_demos::scan::STV_DIR);

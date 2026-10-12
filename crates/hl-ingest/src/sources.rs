@@ -74,6 +74,17 @@ pub struct DemosTfMeta {
     pub duration: Option<i64>,
     /// Upload time, unix seconds UTC: moments after the recording ended.
     pub time: Option<i64>,
+    /// Where demos.tf keeps the file: `freezer`, `fridge`, ... or `deleted`
+    /// when the file is gone (Q62: every demo before 14 October 2019).
+    #[serde(default)]
+    pub backend: Option<String>,
+}
+
+impl DemosTfMeta {
+    /// demos.tf still has the file: not marked deleted, and a link to it.
+    pub fn available(&self) -> bool {
+        self.backend.as_deref() != Some("deleted") && !self.url.is_empty()
+    }
 }
 
 impl Sources {
