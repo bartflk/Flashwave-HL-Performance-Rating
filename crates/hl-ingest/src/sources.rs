@@ -430,6 +430,24 @@ impl Sources {
         serde_json::from_str(&body).context("parsing the demos.tf demo list")
     }
 
+    /// Who played what in a demos.tf demo, from its page: `(steamid64, class,
+    /// team)` with demos.tf's own spellings (`heavyweapons`, `red`). The
+    /// list endpoint has no players, so finding a player's demos on one class
+    /// asks this once per demo (Q69).
+    pub async fn demostf_players(&self, demo_id: i64) -> Result<Vec<(String, String, String)>> {
+        let body = self.demostf.get_text(&format!("https://api.demos.tf/demos/{demo_id}")).await?;
+        let v: Value = serde_json::from_str(&body).with_context(|| format!("parsing demos.tf demo {demo_id}"))?;
+        Ok(v["players"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|p| {
+                let id = p["steamid"].as_str().map(str::to_string).or_else(|| p["steamid"].as_i64().map(|n| n.to_string()))?;
+                Some((id, p["class"].as_str().unwrap_or("").to_string(), p["team"].as_str().unwrap_or("").to_string()))
+            })
+            .collect())
+    }
+
     pub async fn demostf_meta(&self, demo_id: i64) -> Result<DemosTfMeta> {
         let body = self.demostf.get_text(&format!("https://api.demos.tf/demos/{demo_id}")).await?;
         serde_json::from_str(&body).with_context(|| format!("parsing demos.tf metadata for {demo_id}"))

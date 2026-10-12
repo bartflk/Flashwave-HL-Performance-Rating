@@ -5,6 +5,7 @@ import { errorMessage, type LifeOnMap } from "../../api/types";
 import { capitalize, formatDate } from "../../lib/format";
 import { k, t, tx } from "../../lib/i18n";
 import { ClassIcon } from "../ClassIcon";
+import { MassImportButton } from "./MassImport";
 
 /**
  * A player's lives on one map (Q57, Emiel): pick a map and a class, and
@@ -111,9 +112,12 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
   if (mapsQ.isError) return <p className="error">{errorMessage(mapsQ.error)}</p>;
   if (maps.length === 0) {
     return (
-      <p className="hint lm-empty">
-        {tx("No demo on this machine followed {0}. Routes come from SourceTV demos (download one from a match's Demo linking panel) and from their own recordings.", { "0": <strong>{name}</strong> })}
-      </p>
+      <div className="lm-empty">
+        <p className="hint">
+          {tx("No demo on this machine followed {0}. Routes come from SourceTV demos (download one from a match's Demo linking panel) and from their own recordings.", { "0": <strong>{name}</strong> })}
+        </p>
+        <MassImportButton accountId={accountId} name={name} map={null} cls={null} />
+      </div>
     );
   }
 
@@ -175,6 +179,10 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
             </button>
           ))}
         </div>
+        {/* Q69: far more than this machine recorded, from demos.tf. */}
+        <span className="lm-head-actions">
+          <MassImportButton accountId={accountId} name={name} map={map} cls={cls} />
+        </span>
       </div>
 
       <div className="lm-situations" role="group" aria-label={t("Situation")}>

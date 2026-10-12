@@ -244,6 +244,25 @@
 .lm-picture { position: absolute; opacity: 0.55; pointer-events: none; user-select: none; }
 .lm-canvas { position: absolute; left: 0; top: 0; display: block; }
 .lm-canvas-top { cursor: crosshair; }
+/* Q69: the mass import window. */
+.modal.mi { max-width: 760px; max-height: calc(100vh - 48px); display: flex; flex-direction: column; padding: 20px; }
+.mi-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.mi-head h2 { margin: 0; font-size: 1.1rem; }
+.mi-head .linkish { font-size: 1.4rem; line-height: 1; }
+.mi-body { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.mi-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; }
+.mi-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mi-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.mi-list { overflow-y: auto; max-height: 46vh; }
+.mi-list .match-table td { padding: 4px 8px; }
+.mi-list .team-red { color: var(--red); font-weight: 700; font-size: 0.8rem; }
+.mi-list .team-blue { color: var(--blu); font-weight: 700; font-size: 0.8rem; }
+.mi-batch { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.mi-batch-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.mi-batch-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 4px; }
+.mi-failed { margin: 6px 0 0; padding-left: 18px; }
+.lm-head-actions { margin-left: auto; }
+
 /* Q65-Q67: the view, recency and situation controls, and the cell readout. */
 .lm-recent input { width: 72px; }
 .lm-situations { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; }

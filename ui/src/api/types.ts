@@ -590,6 +590,67 @@ export interface LivesOnMap {
   lives: LifeOnMap[];
 }
 
+/** Q69: one demo demos.tf has for a player on a map. */
+export interface MassCandidate {
+  demosTfId: number;
+  /** Upload time, unix seconds. */
+  time: number;
+  durationS: number | null;
+  map: string;
+  name: string;
+  /** The class they played, when a class was searched for. */
+  class: string | null;
+  team: "Red" | "Blue" | null;
+  /** Already on this machine. */
+  here: boolean;
+  /** Its match is already in the database. */
+  localLog: number | null;
+}
+
+export type MassSearchStep =
+  | { step: "listing"; page: number; found: number }
+  | { step: "classes"; checked: number; of: number; hit: boolean };
+
+export interface MassRunStep {
+  batchId: number;
+  done: number;
+  total: number;
+  demosTfId: number | null;
+  stage: "log" | "download" | "read";
+  bytes: number;
+  ofBytes: number | null;
+}
+
+export interface MassSummary {
+  batchId: number;
+  done: number;
+  failed: number;
+  skipped: number;
+  bytesOnDisk: number;
+}
+
+export interface MassDemo {
+  demosTfId: number;
+  demoId: number | null;
+  logId: number | null;
+  status: "queued" | "done" | "failed" | "skipped";
+  error: string | null;
+  /** On disk; null once deleted. */
+  sizeBytes: number | null;
+}
+
+export interface MassBatch {
+  batchId: number;
+  accountId: number;
+  map: string;
+  class: string | null;
+  createdAt: number;
+  finishedAt: number | null;
+  /** null until asked; then whether the files are kept. */
+  kept: boolean | null;
+  demos: MassDemo[];
+}
+
 /** Q60: a page kept to come back to. */
 export type BookmarkKind = "match" | "player" | "team" | "season";
 export interface Bookmark {

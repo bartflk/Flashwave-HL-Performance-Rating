@@ -1676,6 +1676,34 @@ async fn run() -> Result<()> {
             Ok(())
         }
 
+        ["mass-search", player, map, rest @ ..] => {
+            // Q69: what demos.tf has for a player on a map (a class optional),
+            // as the mass import window lists it. Reads lists only.
+            let db = Db::connect(&db_path).await?;
+            let account: u32 = match player.parse::<u64>() {
+                Ok(a) if a < 1u64 << 32 => a as u32,
+                _ => SteamId::parse(player)?.account_id(),
+            };
+            let class = rest.first().copied().filter(|c| c.parse::<usize>().is_err());
+            let want = rest.iter().find_map(|a| a.parse::<usize>().ok()).unwrap_or(10);
+            let sources = Sources::new()?;
+            let found = hl_ingest::mass::search(&db, &sources, account, map, class, want, |s| eprintln!("  {s:?}")).await?;
+            println!("{} demo(s)", found.len());
+            for c in &found {
+                println!(
+                    "  {:>8} {:>10} {:<22} {:<9} {:<5} {}{}",
+                    c.demos_tf_id,
+                    c.time,
+                    c.map,
+                    c.class.as_deref().unwrap_or("-"),
+                    c.team.as_deref().unwrap_or("-"),
+                    if c.here { "on disk " } else { "" },
+                    c.local_log.map(|l| format!("log {l} here")).unwrap_or_default()
+                );
+            }
+            Ok(())
+        }
+
         ["rankings", class, rest @ ..] => {
             // Q36: one season's ranking of a class in a division.
             let db = Db::connect(&db_path).await?;

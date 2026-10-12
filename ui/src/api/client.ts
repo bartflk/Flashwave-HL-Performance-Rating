@@ -68,6 +68,11 @@ import type {
   PlayedFilters,
   PlayedFilterQuery,
   Bookmark,
+  MassBatch,
+  MassCandidate,
+  MassRunStep,
+  MassSearchStep,
+  MassSummary,
   MapWithLives,
   LivesOnMap,
   StvQueued,
@@ -299,6 +304,29 @@ const realApi = {
   setMatchKind: (logId: number, kind: ContextKind | null) => invoke<boolean>("set_match_kind", { logId, kind }),
   livesMaps: (accountId: number) => invoke<MapWithLives[]>("lives_maps", { accountId }),
   livesOnMap: (accountId: number, map: string) => invoke<LivesOnMap>("lives_on_map", { accountId, map }),
+  /** Q69: mass import of a player's demos on one map. */
+  massSearch: (accountId: number, map: string, cls: string | null, want: number) =>
+    invoke<MassCandidate[]>("mass_search", { accountId, map, class: cls, want }),
+  massStart: (accountId: number, map: string, cls: string | null, picks: Array<{ demosTfId: number; time: number; map: string }>) =>
+    invoke<number>("mass_start", { accountId, map, class: cls, picks }),
+  massCancel: () => invoke<void>("mass_cancel"),
+  massBatches: () => invoke<MassBatch[]>("mass_batches"),
+  massKeep: (batchId: number, keep: boolean) => invoke<number>("mass_keep", { batchId, keep }),
+  massForget: (batchId: number) => invoke<void>("mass_forget", { batchId }),
+  onMass: async (h: {
+    onSearch: (s: MassSearchStep) => void;
+    onProgress: (s: MassRunStep) => void;
+    onDone: (s: MassSummary) => void;
+    onError: (e: { batchId: number; error: CmdError }) => void;
+  }): Promise<UnlistenFn> => {
+    const offs = await Promise.all([
+      listen<MassSearchStep>("mass://search", (e) => h.onSearch(e.payload)),
+      listen<MassRunStep>("mass://progress", (e) => h.onProgress(e.payload)),
+      listen<MassSummary>("mass://done", (e) => h.onDone(e.payload)),
+      listen<{ batchId: number; error: CmdError }>("mass://error", (e) => h.onError(e.payload)),
+    ]);
+    return () => offs.forEach((off) => off());
+  },
   getBookmarks: () => invoke<Bookmark[]>("get_bookmarks"),
   setBookmark: (bookmark: Bookmark, on: boolean) => invoke<Bookmark[]>("set_bookmark", { bookmark, on }),
   rereadMatch: (logId: number) => invoke<ReRead>("reread_match", { logId }),

@@ -23,10 +23,10 @@ const EV_DONE: &str = "sync://done";
 const EV_ERROR: &str = "sync://error";
 
 /// Clears the busy flag however the task ends — success, error or panic.
-struct BusyGuard(Arc<AtomicBool>);
+pub(crate) struct BusyGuard(Arc<AtomicBool>);
 
 impl BusyGuard {
-    fn acquire(flag: &Arc<AtomicBool>) -> Option<Self> {
+    pub(crate) fn acquire(flag: &Arc<AtomicBool>) -> Option<Self> {
         flag.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
             .ok()
             .map(|_| BusyGuard(flag.clone()))
@@ -593,8 +593,10 @@ pub async fn set_auto_delete_demos(state: State<'_, AppState>, on: bool) -> CmdR
 /// fetched and can fetch again.
 async fn sweep_read_demos(db: &hl_db::Db) -> anyhow::Result<usize> {
     let mut n = 0;
+    // A mass import the owner chose to keep (Q69) is not swept.
+    let kept: std::collections::HashSet<i64> = db.kept_mass_demo_ids().await?.into_iter().collect();
     for d in db.downloaded_demos(hl_ingest::aim::VERSION, hl_ingest::aim::TIMELINE_VERSION).await? {
-        if !d.read {
+        if !d.read || kept.contains(&d.demo_id) {
             continue;
         }
         let Some((path, already)) = db.demo_path(d.demo_id).await? else { continue };
@@ -844,7 +846,7 @@ const EV_STV_QUEUED: &str = "stv://queued";
 /// What happens between the last byte and "ready": linking, reading, keeping.
 const EV_STV_STAGE: &str = "stv://stage";
 
-async fn tf_path(state: &AppState) -> CmdResult<std::path::PathBuf> {
+pub(crate) async fn tf_path(state: &AppState) -> CmdResult<std::path::PathBuf> {
     let tf = state
         .db
         .get_config()

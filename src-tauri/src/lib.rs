@@ -1,5 +1,6 @@
 mod commands;
 mod error;
+mod mass;
 mod sync_commands;
 pub mod league;
 mod watch;
@@ -37,6 +38,8 @@ pub struct AppState {
     /// turns to hold. One at a time, in the order they were asked for.
     pub demo_queue: Arc<sync_commands::DemoQueue>,
     pub demo_turn: Arc<tokio::sync::Semaphore>,
+    /// Stops a running mass import (Q69) after the demo it is on.
+    pub mass_cancel: Arc<AtomicBool>,
     /// Held for the life of the window: the database is this app's alone
     /// while it runs. Never read; dropping it is the point.
     pub _lock: hl_ingest::lock::Lock,
@@ -211,6 +214,7 @@ pub fn run() {
                 league_activity,
                 demo_queue: Arc::new(sync_commands::DemoQueue::default()),
                 demo_turn: Arc::new(tokio::sync::Semaphore::new(1)),
+                mass_cancel: Arc::default(),
             });
             Ok(())
         })
@@ -300,6 +304,12 @@ pub fn run() {
             sync_commands::link_demo,
             sync_commands::link_demostf,
             sync_commands::set_match_kind,
+            mass::mass_search,
+            mass::mass_start,
+            mass::mass_cancel,
+            mass::mass_batches,
+            mass::mass_keep,
+            mass::mass_forget,
             sync_commands::lives_maps,
             sync_commands::lives_on_map,
             sync_commands::get_bookmarks,

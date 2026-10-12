@@ -34,6 +34,12 @@ import team37805 from "./fixtures/team_37805.json";
 import type {
   Bookmark,
   BuildingRow,
+  CmdError,
+  MassBatch,
+  MassCandidate,
+  MassRunStep,
+  MassSearchStep,
+  MassSummary,
   LifeOnMap,
   LivesOnMap as LivesOnMapView,
   MapWithLives,
@@ -357,6 +363,17 @@ let leagueSample: LeagueSample = {
   logstfResting: false,
   targetPerTier: 300,
 };
+
+/** Q69: the browser build's mass imports, for the page's life. */
+type MassHandlers = {
+  onSearch: (s: MassSearchStep) => void;
+  onProgress: (s: MassRunStep) => void;
+  onDone: (s: MassSummary) => void;
+  onError: (e: { batchId: number; error: CmdError }) => void;
+};
+let massListeners: MassHandlers[] = [];
+let mockBatches: MassBatch[] = [];
+let mockMassCancel = false;
 
 /** Q60: the browser build's bookmarks, for the page's life. */
 let mockBookmarks: Bookmark[] = [{ kind: "season", id: 46, label: "Season 46", added: 0 }];
@@ -867,6 +884,89 @@ export const mockApi: Api = {
       b("dispenser", null, bx + 470, by + 180, 3),
       b("sentry", null, ax - 900, ay - 300, 2),
     ];
+  },
+  // Q69: a pretend demos.tf, and a pretend run that takes a moment per demo.
+  massSearch: async (_accountId: number, map: string, cls: string | null, want: number) => {
+    for (let page = 1; page <= 3; page++) {
+      massListeners.forEach((h) => h.onSearch({ step: "listing", page, found: page * 9 }));
+      await delay(null, 150);
+    }
+    const out: MassCandidate[] = Array.from({ length: Math.min(want, 40) }, (_, i) => ({
+      demosTfId: 1_515_729 - i * 37,
+      time: 1_791_313_449 - i * 86_400 * 3,
+      durationS: 1500,
+      map: `koth_${map}_final`,
+      name: `match-${i}.dem`,
+      class: cls,
+      team: i % 2 === 0 ? "Blue" : "Red",
+      here: i === 3,
+      localLog: i % 3 === 0 ? 4_115_749 - i : null,
+    }));
+    return out;
+  },
+  massStart: async (accountId: number, map: string, cls: string | null, picks: Array<{ demosTfId: number }>) => {
+    const batchId = mockBatches.length + 1;
+    const batch: MassBatch = {
+      batchId,
+      accountId,
+      map,
+      class: cls,
+      createdAt: Math.floor(Date.now() / 1000),
+      finishedAt: null,
+      kept: null,
+      demos: picks.map((p) => ({ demosTfId: p.demosTfId, demoId: null, logId: null, status: "queued", error: null, sizeBytes: null })),
+    };
+    mockBatches.unshift(batch);
+    void (async () => {
+      for (const [i, d] of batch.demos.entries()) {
+        if (mockMassCancel) {
+          d.status = "skipped";
+          continue;
+        }
+        for (const f of [0.3, 0.7, 1]) {
+          massListeners.forEach((h) => h.onProgress({ batchId, done: i, total: batch.demos.length, demosTfId: d.demosTfId, stage: "download", bytes: f * 60e6, ofBytes: 60e6 }));
+          await delay(null, 120);
+        }
+        const failed = i === 2;
+        Object.assign(d, failed ? { status: "failed", error: "has this match's players, but none of its kills line up" } : { status: "done", demoId: 100 + i, logId: 4_100_000 + i, sizeBytes: 60e6 });
+      }
+      batch.finishedAt = Math.floor(Date.now() / 1000);
+      const sum: MassSummary = {
+        batchId,
+        done: batch.demos.filter((d) => d.status === "done").length,
+        failed: batch.demos.filter((d) => d.status === "failed").length,
+        skipped: batch.demos.filter((d) => d.status === "skipped").length,
+        bytesOnDisk: batch.demos.reduce((n, d) => n + (d.sizeBytes ?? 0), 0),
+      };
+      mockMassCancel = false;
+      massListeners.forEach((h) => h.onDone(sum));
+    })();
+    return batchId;
+  },
+  massCancel: async () => {
+    mockMassCancel = true;
+  },
+  massBatches: () => delay(mockBatches.map((b) => ({ ...b, demos: b.demos.map((d) => ({ ...d })) }))),
+  massKeep: async (batchId: number, keep: boolean) => {
+    const b = mockBatches.find((x) => x.batchId === batchId);
+    if (!b) return 0;
+    b.kept = keep;
+    let freed = 0;
+    if (!keep)
+      for (const d of b.demos) {
+        freed += d.sizeBytes ?? 0;
+        d.sizeBytes = null;
+      }
+    return freed;
+  },
+  massForget: async (batchId: number) => {
+    mockBatches = mockBatches.filter((b) => b.batchId !== batchId);
+  },
+  onMass: async (h: MassHandlers) => {
+    massListeners.push(h);
+    return () => {
+      massListeners = massListeners.filter((x) => x !== h);
+    };
   },
   setMatchKind: (logId: number, kind: ContextKind | null) => {
     const m = FAKE_MATCHES.find((x) => x.logId === logId);
