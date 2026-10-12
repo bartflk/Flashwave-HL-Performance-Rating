@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type Analysis, type KillView, type MapView, type Overview, type BuildingRow, type PathRow, type Vec3 } from "../../api/types";
@@ -10,6 +10,7 @@ import { useMeasuredWidth } from "../../lib/measure";
 import type { StvInfo } from "./AnalysisPanel";
 import { t as tr, tx } from "../../lib/i18n";
 import { MapPicker } from "./MapPicker";
+import { drawIcon, useMapIcons, type IconName, type MapIcons } from "./mapIcons";
 import { CalloutEditor, useCallouts, zoneAt, ZoneShapes, type HandleDrag } from "./Callouts";
 import type { CalloutFile, CalloutZone } from "../../api/types";
 
@@ -20,7 +21,7 @@ import type { CalloutFile, CalloutZone } from "../../api/types";
  * `overview.rs`), and otherwise drawn from data: every kill stored on this
  * map records where both players stood, and the density of those positions
  * traces the playable space (see `mapview.rs`). A kill is a blue dot where the victim
- * fell, a death an orange cross where the player fell; a hollow ring marks
+ * fell, a death an orange skull where the player fell; a hollow ring marks
  * where the shooter stood, joined by a line. Click any of them to copy the
  * demo tick.
  */
@@ -597,6 +598,8 @@ function Canvas(props: {
   // The three colours the canvas draws with, resolved from the theme.
   const killColour = themeColour("--kill", "#5791c8");
   const deathColour = themeColour("--death", "#d6763a");
+  const icons = useMapIcons();
+  const skullFilter = `km-skull-${useId().replace(/:/g, "")}`;
   const heatResolved = heatColor.startsWith("var(")
     ? themeColour(heatColor.slice(4, -1), "#5791c8")
     : heatColor;
@@ -731,7 +734,7 @@ function Canvas(props: {
     for (const [i, b] of buildings.entries()) {
       const live = focus === null || (b.demoId === focus.demoId && b.fromTick <= focus.toTick && b.toTick >= focus.fromTick);
       if (focus !== null && !live) continue;
-      drawBuilding(g, px([b.x, b.y]), b.kind === "teleporter" ? (b.end ?? ends.get(i) ?? "teleporter") : b.kind, b.team, focus === null ? 0.7 : 1);
+      drawBuilding(g, px([b.x, b.y]), b.kind === "teleporter" ? (b.end ?? ends.get(i) ?? "teleporter") : b.kind, b.team, focus === null ? 0.7 : 1, icons);
     }
 
     // Heat: one hue, transparent to full, so more is brighter. No floor:
@@ -752,7 +755,7 @@ function Canvas(props: {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [img, view, heat, heatColor, heatResolved, killColour, deathColour, frame, display, W, H, scale, paths, buildings, focus, zoom]);
+  }, [img, view, heat, heatColor, heatResolved, killColour, deathColour, frame, display, W, H, scale, paths, buildings, focus, zoom, icons]);
 
   const nearest = (e: React.MouseEvent<SVGSVGElement>): Mark | null => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -928,6 +931,21 @@ function Canvas(props: {
               onDeleteCorner={onEditZones ? deleteCorner : undefined}
             />
           ) : null}
+          <defs>
+            {/* The kill feed's skull for a death (Q72): tinted the death
+                colour over a dark rim, so it reads on a light map. */}
+            <filter id={skullFilter} x="-30%" y="-30%" width="160%" height="160%">
+              <feMorphology in="SourceAlpha" operator="dilate" radius={1.2} result="rim" />
+              <feFlood floodColor="rgb(20, 16, 12)" floodOpacity={0.85} />
+              <feComposite in2="rim" operator="in" result="dark" />
+              <feFlood style={{ floodColor: DEATH }} />
+              <feComposite in2="SourceAlpha" operator="in" result="fill" />
+              <feMerge>
+                <feMergeNode in="dark" />
+                <feMergeNode in="fill" />
+              </feMerge>
+            </filter>
+          </defs>
           {marks.map((m, i) => {
             const [x, y] = px(m.at);
             const from = m.from ? px(m.from) : null;
@@ -940,11 +958,7 @@ function Canvas(props: {
                 {m.kind === "kill" ? (
                   <circle cx={x} cy={y} r={4.5} fill={color} className="km-mark" />
                 ) : (
-                  <>
-                    {/* A dark halo first, so the cross reads on a light map. */}
-                    <path d={`M${x - 4},${y - 4}L${x + 4},${y + 4}M${x - 4},${y + 4}L${x + 4},${y - 4}`} className="km-halo" />
-                    <path d={`M${x - 4},${y - 4}L${x + 4},${y + 4}M${x - 4},${y + 4}L${x + 4},${y - 4}`} stroke={color} strokeWidth={2.5} strokeLinecap="round" />
-                  </>
+                  <image href="/icons/skull.png" x={x - 8} y={y - 5} width={16} height={10.3} filter={`url(#${skullFilter})`} />
                 )}
               </g>
             );
@@ -1273,11 +1287,16 @@ function teleEnds(buildings: BuildingRow[], paths: PathRow[]): Map<number, "entr
 const RED = "214, 92, 84";
 const BLU = "99, 148, 196";
 
-/** One building's marker: a triangle for a sentry, a square for a
- *  dispenser, a ring for a teleporter entrance and a filled disc for an
- *  exit (a diamond when which end is not known), in its team's colour. */
-function drawBuilding(g: CanvasRenderingContext2D, [x, y]: [number, number], kind: string, team: number | null, alpha: number) {
+/** How tall each building's icon is drawn, in pixels. */
+const ICON_H: Record<string, number> = { sentry: 18, dispenser: 15, entrance: 13, exit: 13, teleporter: 6 };
+
+/** One building's marker: TF2's HUD icon in its team's colour (Q72), the
+ *  teleporter's arrow saying which end it is (none when not known). Until
+ *  the icons load, or if one is missing: a triangle for a sentry, a square
+ *  for a dispenser, a ring for an entrance, a disc for an exit, a diamond. */
+function drawBuilding(g: CanvasRenderingContext2D, [x, y]: [number, number], kind: string, team: number | null, alpha: number, icons: MapIcons | null, scale = 1) {
   const rgb = team === 2 ? RED : team === 3 ? BLU : "200, 190, 175";
+  if (kind in ICON_H && drawIcon(g, icons, kind as IconName, [x, y], ICON_H[kind] * scale, `rgb(${rgb})`, alpha)) return;
   g.save();
   g.globalAlpha = alpha;
   g.lineWidth = 2;
@@ -1326,16 +1345,19 @@ function drawBuilding(g: CanvasRenderingContext2D, [x, y]: [number, number], kin
 /** The legend's little copy of a marker. */
 function BuildingKey({ kind, label }: { kind: string; label: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const icons = useMapIcons();
   useEffect(() => {
     const c = ref.current;
     const g = c?.getContext("2d");
     if (!c || !g) return;
-    g.clearRect(0, 0, c.width, c.height);
-    drawBuilding(g, [8, 8], kind, 3, 1);
-  }, [kind]);
+    // Drawn at twice the size it shows, so the icon stays sharp.
+    g.setTransform(2, 0, 0, 2, 0, 0);
+    g.clearRect(0, 0, 16, 16);
+    drawBuilding(g, [8, 8], kind, 3, 1, icons, kind === "teleporter" ? 1 : 0.7);
+  }, [kind, icons]);
   return (
     <span className="km-building-key">
-      <canvas ref={ref} width={16} height={16} />
+      <canvas ref={ref} width={32} height={32} />
       {label}
     </span>
   );

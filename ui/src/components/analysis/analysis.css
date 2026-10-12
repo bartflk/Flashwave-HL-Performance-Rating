@@ -85,11 +85,12 @@
   background: var(--kill);
 }
 
-/* A cross, like the mark on the map. */
+/* The kill feed's skull, like the mark on the map (Q72). */
 .km-key-death {
-  background:
-    linear-gradient(45deg, transparent 40%, var(--death) 40%, var(--death) 60%, transparent 60%),
-    linear-gradient(-45deg, transparent 40%, var(--death) 40%, var(--death) 60%, transparent 60%);
+  width: 15px;
+  background: var(--death);
+  -webkit-mask: url(/icons/skull.png) center / contain no-repeat;
+  mask: url(/icons/skull.png) center / contain no-repeat;
 }
 
 .km-canvas {
@@ -507,14 +508,6 @@
 .km-canvas,
 .tlc-wrap {
   overflow: hidden;
-}
-
-/* Marks keep a dark edge so they read on a map image as well as the outline. */
-.km-halo {
-  stroke: var(--bg);
-  stroke-width: 5;
-  stroke-linecap: round;
-  fill: none;
 }
 
 .km-shooter {
