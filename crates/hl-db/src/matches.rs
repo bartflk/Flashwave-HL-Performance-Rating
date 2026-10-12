@@ -120,7 +120,11 @@ pub const SORTS: [(&str, &str); 8] = [
 /// as logs.tf counts them (inside a round, no feigns). `None` for any other
 /// key, or a class that is not one; a match with no raw log counts as NULL
 /// and sinks, rather than as a misleading 0.
-fn class_count_sql(f: &MatchFilter) -> Option<String> {
+///
+/// Returned as `(joins, expression)`. The count is one grouped pass over
+/// the owner's kills, joined in once (Q70): a correlated count per match
+/// made SQLite walk all of the owner's kills for every match, 21 s on 757.
+fn class_count_sql(f: &MatchFilter) -> Option<(String, &'static str)> {
     let (how, class) = f.sort.as_deref()?.split_once(':')?;
     let class = hl_core::TfClass::parse(class).ok()?.as_str();
     let (mine, theirs) = match how {
@@ -128,18 +132,20 @@ fn class_count_sql(f: &MatchFilter) -> Option<String> {
         "diedto" => ("k.victim", "k.killer_class"),
         _ => return None,
     };
-    Some(format!(
-        "CASE WHEN p.account_id IS NULL OR NOT EXISTS (SELECT 1 FROM kill_event kx WHERE kx.log_id = m.log_id) THEN NULL
-              ELSE (SELECT COUNT(*) FROM kill_event k
-                    WHERE k.log_id = m.log_id AND k.live = 1 AND COALESCE(k.custom, '') <> 'feign_death'
-                      AND k.killer <> k.victim AND {mine} = p.account_id AND {theirs} = '{class}') END"
-    ))
+    let joins = format!(
+        "LEFT JOIN (SELECT k.log_id, COUNT(*) AS n FROM kill_event k
+                    WHERE {mine} = ?1 AND {theirs} = '{class}' AND k.live = 1
+                      AND COALESCE(k.custom, '') <> 'feign_death' AND k.killer <> k.victim
+                    GROUP BY k.log_id) cc ON cc.log_id = m.log_id
+         LEFT JOIN rawlog rl ON rl.log_id = m.log_id"
+    );
+    Some((joins, "CASE WHEN p.account_id IS NULL OR rl.log_id IS NULL THEN NULL ELSE COALESCE(cc.n, 0) END"))
 }
 
 fn order_by(f: &MatchFilter) -> String {
     let key = f.sort.as_deref().unwrap_or("date");
     let by_class = class_count_sql(f);
-    let expr = by_class.as_deref().unwrap_or_else(|| SORTS.iter().find(|(k, _)| *k == key).map_or("m.played_at", |(_, e)| *e));
+    let expr = by_class.as_ref().map(|(_, e)| *e).unwrap_or_else(|| SORTS.iter().find(|(k, _)| *k == key).map_or("m.played_at", |(_, e)| *e));
     let dir = if f.ascending { "ASC" } else { "DESC" };
     // NULLs last whichever way round it is: an unplayed match has no line.
     format!("ORDER BY ({expr}) IS NULL, ({expr}) {dir}, m.played_at DESC, m.log_id DESC")
@@ -335,6 +341,15 @@ impl Db {
                 Ok((r.get("log_id"), r.get::<Option<i64>, _>("duration_s").unwrap_or(0), parts))
             })
             .collect()
+    }
+
+    /// The combined log `log_id` is a part of, if any (Q71).
+    pub async fn superseded_by(&self, log_id: i64) -> Result<Option<i64>> {
+        Ok(sqlx::query_scalar("SELECT superseded_by FROM log_index WHERE log_id = ?1")
+            .bind(log_id)
+            .fetch_optional(self.pool())
+            .await?
+            .flatten())
     }
 
     /// Replace every supersession in one transaction. Recomputed from scratch
@@ -782,7 +797,7 @@ impl Db {
 
         let where_sql = where_sql(2, 9, 10);
         let order = order_by(filter);
-        let class_count = class_count_sql(filter).unwrap_or_else(|| "NULL".into());
+        let (class_joins, class_count) = class_count_sql(filter).unwrap_or_else(|| (String::new(), "NULL"));
         let rows = sqlx::query(&format!(
             "SELECT m.log_id, m.played_at, m.map, m.title, m.duration_s,
                     ({class_count}) AS class_count,
@@ -803,6 +818,7 @@ impl Db {
                 AND r.class = p.main_class AND r.model_version = ?8
              LEFT JOIN match_context c ON c.log_id = m.log_id
              LEFT JOIN etf2l_match e ON e.match_id = c.etf2l_match_id
+             {class_joins}
              {where_sql}
              {order}
              LIMIT ?6 OFFSET ?7"
@@ -1141,8 +1157,8 @@ mod tests {
 
     #[test]
     fn a_class_sort_names_a_real_class() {
-        assert!(class_count_sql(&filter(Some("killed:soldier"), false)).unwrap().contains("k.victim_class = 'soldier'"));
-        assert!(class_count_sql(&filter(Some("diedto:heavyweapons"), false)).unwrap().contains("k.killer_class = 'heavy'"));
+        assert!(class_count_sql(&filter(Some("killed:soldier"), false)).unwrap().0.contains("k.victim_class = 'soldier'"));
+        assert!(class_count_sql(&filter(Some("diedto:heavyweapons"), false)).unwrap().0.contains("k.killer_class = 'heavy'"));
         // Nothing but a class goes into the SQL.
         assert!(class_count_sql(&filter(Some("killed:x' OR 1=1 --"), false)).is_none());
         assert!(class_count_sql(&filter(Some("hugged:spy"), false)).is_none());

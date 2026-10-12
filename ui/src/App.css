@@ -524,6 +524,9 @@
 .fi-refresh-icon { display: inline-block; font-size: 1rem; line-height: 1; }
 .fi-refresh.busy .fi-refresh-icon { animation: fi-spin 1s linear infinite; }
 @keyframes fi-spin { to { transform: rotate(360deg); } }
+/* Q70: rows from before a new sort or filter, while it loads. */
+.table-wrap.stale { opacity: 0.45; transition: opacity 0.15s; pointer-events: none; }
+
 /* Q58: import a log from the Matches page, beside Refresh in one cell. */
 .fi-actions { display: inline-flex; align-items: center; gap: 6px; justify-self: end; }
 .fi-import { position: relative; }

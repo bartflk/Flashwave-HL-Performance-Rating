@@ -459,6 +459,9 @@ pub struct Imported {
     /// same — it still feeds the pool everyone is rated against — but it will
     /// not show up in their match list, and saying so avoids a bug report.
     pub yours: bool,
+    /// The combined log this one is a part of (Q71): the list shows that
+    /// one instead, so a match is counted once.
+    pub part_of: Option<i64>,
 }
 
 /// Read a log id out of whatever the person pasted: a number, a logs.tf URL,
@@ -519,6 +522,9 @@ pub async fn store_log_json(db: &Db, w: &hl_rating::Weights, log_id: i64, json: 
     if let Err(e) = crate::rating::rate_logs(db, w, &[log_id]).await {
         tracing::warn!(log_id, error = %format!("{e:#}"), "rating an imported log failed");
     }
+    // Q71: one part of a combined log is folded into it and leaves the list;
+    // the import says which log to look for instead.
+    let part_of = db.superseded_by(log_id).await?;
     Ok(Imported {
         log_id,
         title: log.title.clone(),
@@ -526,6 +532,7 @@ pub async fn store_log_json(db: &Db, w: &hl_rating::Weights, log_id: i64, json: 
         played_at: log.played_at,
         players: log.players.len(),
         yours,
+        part_of,
     })
 }
 

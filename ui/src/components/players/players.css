@@ -238,15 +238,12 @@
 .lm-check { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); }
 .lm-count { margin: 0 0 10px; }
 .lm-empty { margin: 8px 0; }
-.lm-stage { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--panel-2); }
-.lm-stage svg { display: block; width: 100%; height: auto; max-height: 78vh; }
-.lm-life path { fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.lm-life.red path, .lm-life.red circle { stroke: var(--red); fill: var(--red); }
-.lm-life.blu path, .lm-life.blu circle { stroke: var(--blu); fill: var(--blu); }
-.lm-life.none path, .lm-life.none circle { stroke: var(--muted); fill: var(--muted); }
-.lm-life path { fill: none !important; }
-.lm-life .lm-hit { stroke: transparent !important; stroke-width: 12; opacity: 1; cursor: pointer; }
-.lm-life.on path:not(.lm-hit) { stroke-width: 4; }
+/* Q64: the picture underneath, the routes on one canvas, the hovered route
+   on a second one above it. */
+.lm-stage { position: relative; min-height: 200px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--panel-2); }
+.lm-picture { position: absolute; opacity: 0.55; pointer-events: none; user-select: none; }
+.lm-canvas { position: absolute; left: 0; top: 0; display: block; }
+.lm-canvas-top { cursor: crosshair; }
 .lm-hover { margin: 8px 0 0; font-size: 0.88rem; }
 .lm-hover .team-red { color: var(--red); font-weight: 700; }
 .lm-hover .team-blue { color: var(--blu); font-weight: 700; }

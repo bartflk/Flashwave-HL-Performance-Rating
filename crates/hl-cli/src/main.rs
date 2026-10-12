@@ -2176,6 +2176,9 @@ Try one again: hl import <id or logs.tf link>");
                 got.players,
                 if got.yours { "" } else { " (you are not in it: it joins the pool, not your matches)" }
             );
+            if let Some(combined) = got.part_of {
+                println!("it is part of combined log {combined}, which is what the match list shows");
+            }
             Ok(())
         }
 

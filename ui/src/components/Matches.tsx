@@ -91,6 +91,9 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
   const classRows = keep(filters.data?.classes, cls) ?? [];
 
   const items = matches.data?.items ?? [];
+  // Q70: the previous rows stay up while a new sort or filter loads; dimmed
+  // and labelled, so they are not taken for the result.
+  const stale = matches.isPlaceholderData;
   const total = matches.data?.total ?? 0;
 
   return (
@@ -139,7 +142,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
           </label>
         )}
         <span className="fi-count">
-          {matches.isPending ? t("Loading…") : t("{0} match{1}", { "0": total.toLocaleString(), "1": total === 1 ? "" : "es" })}
+          {matches.isPending ? t("Loading…") : stale ? t("Sorting…") : t("{0} match{1}", { "0": total.toLocaleString(), "1": total === 1 ? "" : "es" })}
         </span>
         <div className="fi-actions">
         <button
@@ -217,7 +220,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
       )}
 
       {items.length > 0 && (
-        <div className="table-wrap">
+        <div className={stale ? "table-wrap stale" : "table-wrap"} aria-busy={stale}>
           <table className="match-table">
             <thead>
               <tr>
@@ -338,7 +341,8 @@ function ImportLog({ onOpen }: { onOpen: (logId: number) => void }) {
       void qc.invalidateQueries({ queryKey: ["failed_logs"] });
       if (got.yours) {
         setOpen(false);
-        onOpen(got.logId);
+        // A part of a combined log is shown as the combined one (Q71).
+        onOpen(got.partOf ?? got.logId);
       } else {
         setNote(t("Added. You are not in this one, so it joins the pool everyone is rated against rather than your match list."));
       }

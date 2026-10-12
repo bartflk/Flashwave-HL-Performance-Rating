@@ -128,6 +128,7 @@ export function ImportPanel() {
 
       {got && (
         <p className="hint" style={{ marginTop: 10 }}>{tx("Added {0}, {players} players.{2}", { "0": <strong>{got.map ?? got.title ?? t("log {logId}", { logId: got.logId })}</strong>, "2": got.yours ? t(" It is in your matches now.") : t(" You are not in this one, so it joins the pool everyone is rated against rather than your match list."), players: got.players })}
+          {got.partOf !== null && <> {t("It is part of combined log {0}, which is what your match list shows.", { "0": got.partOf })}</>}
         </p>
       )}
       {error && <p className="error" style={{ marginTop: 10 }}>{error}</p>}

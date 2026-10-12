@@ -917,6 +917,8 @@ export interface Imported {
   players: number;
   /** False when the owner is not in it: stored, but not in their matches. */
   yours: boolean;
+  /** Q71: the combined log this one is a part of; the list shows that one. */
+  partOf: number | null;
 }
 
 /** Where a queued download sits. 0 means it is the one running. */

@@ -884,7 +884,8 @@ export const mockApi: Api = {
     // Wandering routes from each side's half, so the view has a pattern.
     const r = rng(map.length * 7);
     const classes = ["sniper", "sniper", "engineer", "scout", "spy"];
-    const lives: LifeOnMap[] = Array.from({ length: 60 }, (_, i) => {
+    // Product at Emiel's scale (Q64: about 3,000 lives), Upward small.
+    const lives: LifeOnMap[] = Array.from({ length: map === "product" ? 3000 : 60 }, (_, i) => {
       const team = i % 2 === 0 ? "Red" : "Blue";
       let [x, y] = [team === "Red" ? -2_200 + r() * 600 : 1_600 + r() * 600, -800 + r() * 1_600];
       const points: Array<[number, number]> = [];
@@ -1052,6 +1053,7 @@ export const mockApi: Api = {
     delay<DemoImported>(
       {
         logId: -781931655,
+        partOf: null,
         title: `${path.split(/[\\/]/).pop()?.replace(/\.dem$/, "")} (from the demo)`,
         map: "koth_proot_b5b",
         playedAt: 1790375521,
@@ -1402,7 +1404,9 @@ export const mockApi: Api = {
     const tail = text.trim().replace(/\/+$/, "").split("/").pop() ?? "";
     const logId = Number(/^\d+/.exec(tail)?.[0] ?? 0);
     if (!logId) throw new Error("That is not a log id or a logs.tf link.");
-    return { logId, title: "Highlander", map: "koth_product_final", playedAt: 1758300000, players: 18, yours: true };
+    // 4132222 is the part of a combined log a tester could not find (Q71).
+    const partOf = logId === 4132222 ? 4132265 : null;
+    return { logId, title: "Highlander", map: "koth_product_final", playedAt: 1758300000, players: 18, yours: true, partOf };
   },
 
   indexStats: () => delay(fakeStats(pending)),

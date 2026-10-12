@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type LifeOnMap } from "../../api/types";
@@ -46,14 +46,19 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
   const [deathsOnly, setDeathsOnly] = useState(false);
   const [hover, setHover] = useState<LifeOnMap | null>(null);
 
-  const all = livesQ.data?.lives ?? [];
+  const all = useMemo(() => livesQ.data?.lives ?? [], [livesQ.data]);
   // The classes they played here, most lives first; the side filter applies.
   const classes = useMemo(() => {
     const n = new Map<string, number>();
     for (const l of all) if (l.class && (side === "both" || l.team === side)) n.set(l.class, (n.get(l.class) ?? 0) + 1);
     return [...n.entries()].sort((a, b) => b[1] - a[1]);
   }, [all, side]);
-  const shown = all.filter((l) => (cls === null || l.class === cls) && (side === "both" || l.team === side) && (!deathsOnly || l.died));
+  // The same array until a filter changes (Q64): hovering re-renders this
+  // component, and a new array would redraw every route on each move.
+  const shown = useMemo(
+    () => all.filter((l) => (cls === null || l.class === cls) && (side === "both" || l.team === side) && (!deathsOnly || l.died)),
+    [all, cls, side, deathsOnly],
+  );
   const sides = { Red: all.filter((l) => (cls === null || l.class === cls) && l.team === "Red").length, Blue: all.filter((l) => (cls === null || l.class === cls) && l.team === "Blue").length };
 
   if (mapsQ.isPending) return <p className="hint">{t("Loading…")}</p>;
@@ -170,43 +175,183 @@ function Drawing({
     const size = Math.max(x1 - x0, y1 - y0) + pad * 2;
     return { minX: x0 - pad, maxY: y1 + pad, w: size, h: size };
   }, [lives, overview]);
-  if (!frame) return <p className="hint">{t("Nothing to draw with these filters.")}</p>;
 
-  const W = 1000;
-  const H = (W * frame.h) / frame.w;
-  const px = (x: number) => ((x - frame.minX) / frame.w) * W;
-  const py = (y: number) => ((frame.maxY - y) / frame.h) * H;
-  // One SVG path per life, broken where it jumped.
-  const d = (l: LifeOnMap) => {
-    let s = "";
-    let prev: [number, number] | null = null;
-    for (const p of l.points) {
-      const far = prev !== null && Math.hypot(p[0] - prev[0], p[1] - prev[1]) > JUMP;
-      s += `${prev === null || far ? "M" : "L"}${px(p[0]).toFixed(1)} ${py(p[1]).toFixed(1)}`;
-      prev = p;
-    }
-    return s;
-  };
+  const box = useRef<HTMLDivElement>(null);
+  const base = useRef<HTMLCanvasElement>(null);
+  const top = useRef<HTMLCanvasElement>(null);
+  // The stage's width in CSS pixels; the height follows the frame's aspect.
+  const [width, setWidth] = useState(0);
+  const framed = frame !== null;
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    // Measured at once, not only when the observer first reports: a window
+    // that is not painting (minimised, or behind another) delays that.
+    setWidth(el.clientWidth);
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [framed]);
+  const height = frame && width > 0 ? Math.min((width * frame.h) / frame.w, window.innerHeight * 0.78) : 0;
   // Fainter the more there are, so a hundred routes still read as a pattern.
   const opacity = Math.max(0.12, Math.min(0.7, 9 / Math.sqrt(lives.length + 1)));
 
+  // Game units to CSS pixels at the current size, the frame centred.
+  const proj = useMemo(() => {
+    if (!frame || width === 0 || height === 0) return null;
+    const scale = Math.min(width / frame.w, height / frame.h);
+    const ox = (width - frame.w * scale) / 2;
+    const oy = (height - frame.h * scale) / 2;
+    return { scale, ox, oy, px: (x: number) => ox + (x - frame.minX) * scale, py: (y: number) => oy + (frame.maxY - y) * scale };
+  }, [frame, width, height]);
+
+  // Every point by grid cell, for hover: a cell is 1% of the frame.
+  const grid = useMemo(() => {
+    if (!frame) return null;
+    const cell = Math.max(frame.w, frame.h) / 100;
+    const cells = new Map<string, Array<[number, number, number]>>();
+    lives.forEach((l, i) => {
+      for (const [x, y] of l.points) {
+        const k = `${Math.floor(x / cell)},${Math.floor(y / cell)}`;
+        let c = cells.get(k);
+        if (!c) cells.set(k, (c = []));
+        c.push([x, y, i]);
+      }
+    });
+    return { cell, cells };
+  }, [lives, frame]);
+
+  // All the routes. Each life is stroked on its own, so where many overlap
+  // the line builds up and the usual lanes stand out (one path per side
+  // would paint every overlap once, flat).
+  useEffect(() => {
+    const ctx = prepare(base.current, width, height);
+    if (!ctx || !proj) return;
+    const col = colours();
+    ctx.lineWidth = 1.6;
+    for (const team of ["Red", "Blue", "none"] as const) {
+      const mine = lives.filter((l) => (l.team ?? "none") === team);
+      if (mine.length === 0) continue;
+      ctx.globalAlpha = opacity;
+      ctx.strokeStyle = col[team];
+      for (const l of mine) {
+        ctx.beginPath();
+        trace(ctx, l, proj);
+        ctx.stroke();
+      }
+      // Where a life ended in a death.
+      ctx.globalAlpha = Math.min(1, opacity * 1.6);
+      ctx.fillStyle = col[team];
+      ctx.beginPath();
+      for (const l of mine) {
+        const last = l.points[l.points.length - 1];
+        if (!l.died || !last) continue;
+        ctx.moveTo(proj.px(last[0]) + 3, proj.py(last[1]));
+        ctx.arc(proj.px(last[0]), proj.py(last[1]), 3, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+  }, [lives, proj, opacity, width, height]);
+
+  // The hovered route on the canvas above, at full strength.
+  useEffect(() => {
+    const ctx = prepare(top.current, width, height);
+    if (!ctx || !proj || !hover) return;
+    const col = colours()[hover.team ?? "none"];
+    ctx.strokeStyle = col;
+    ctx.fillStyle = col;
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    trace(ctx, hover, proj);
+    ctx.stroke();
+    const last = hover.points[hover.points.length - 1];
+    if (hover.died && last) {
+      ctx.beginPath();
+      ctx.arc(proj.px(last[0]), proj.py(last[1]), 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }, [hover, proj, width, height]);
+
+  if (!frame) return <p className="hint">{t("Nothing to draw with these filters.")}</p>;
+
+  // The nearest point under the mouse, within HOVER_PX, picks the route.
+  function onMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (!proj || !grid || !frame) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const gx = frame.minX + (e.clientX - r.left - proj.ox) / proj.scale;
+    const gy = frame.maxY - (e.clientY - r.top - proj.oy) / proj.scale;
+    const cx = Math.floor(gx / grid.cell);
+    const cy = Math.floor(gy / grid.cell);
+    const reach = HOVER_PX / proj.scale;
+    let best: [number, number] | null = null; // [distance, life]
+    for (let dx = -1; dx <= 1; dx++)
+      for (let dy = -1; dy <= 1; dy++)
+        for (const [x, y, i] of grid.cells.get(`${cx + dx},${cy + dy}`) ?? []) {
+          const d = Math.hypot(x - gx, y - gy);
+          if (d <= reach && (best === null || d < best[0])) best = [d, i];
+        }
+    const l = best ? lives[best[1]] : null;
+    if (l !== hover) onHover(l);
+  }
+
   return (
-    <div className="lm-stage">
-      <svg viewBox={`0 0 ${W} ${H.toFixed(0)}`} role="img" aria-label={t("Routes on the map")} onMouseLeave={() => onHover(null)}>
-        {overview && <image href={overview.image} x={0} y={0} width={W} height={H} preserveAspectRatio="none" opacity={0.55} />}
-        {lives.map((l, i) => {
-          const last = l.points[l.points.length - 1];
-          const on = hover === l;
-          return (
-            <g key={i} className={`lm-life ${l.team === "Red" ? "red" : l.team === "Blue" ? "blu" : "none"}${on ? " on" : ""}`} onMouseEnter={() => onHover(l)}>
-              <path d={d(l)} style={{ opacity: on ? 1 : opacity }} />
-              {/* A wider invisible twin, so a thin line is easy to hover. */}
-              <path d={d(l)} className="lm-hit" />
-              {l.died && last && <circle cx={px(last[0])} cy={py(last[1])} r={on ? 7 : 4} style={{ opacity: on ? 1 : Math.min(1, opacity * 1.6) }} />}
-            </g>
-          );
-        })}
-      </svg>
+    <div className="lm-stage" ref={box} style={{ height: height || undefined }}>
+      {overview && proj && (
+        <img
+          className="lm-picture"
+          src={overview.image}
+          alt=""
+          style={{ left: proj.ox, top: proj.oy, width: frame.w * proj.scale, height: frame.h * proj.scale }}
+        />
+      )}
+      <canvas ref={base} className="lm-canvas" style={{ width, height }} aria-hidden />
+      <canvas
+        ref={top}
+        className="lm-canvas lm-canvas-top"
+        style={{ width, height }}
+        role="img"
+        aria-label={t("Routes on the map")}
+        onMouseMove={onMove}
+        onMouseLeave={() => onHover(null)}
+      />
     </div>
   );
+}
+
+/** Hover picks the nearest point within this many CSS pixels. */
+const HOVER_PX = 12;
+
+type Proj = { px: (x: number) => number; py: (y: number) => number };
+
+/** One life's route into the current path, broken where it jumped. */
+function trace(ctx: CanvasRenderingContext2D, l: LifeOnMap, p: Proj) {
+  let prev: [number, number] | null = null;
+  for (const pt of l.points) {
+    const far = prev !== null && Math.hypot(pt[0] - prev[0], pt[1] - prev[1]) > JUMP;
+    if (prev === null || far) ctx.moveTo(p.px(pt[0]), p.py(pt[1]));
+    else ctx.lineTo(p.px(pt[0]), p.py(pt[1]));
+    prev = pt;
+  }
+}
+
+/** A canvas sized for the screen's pixel density, cleared. */
+function prepare(c: HTMLCanvasElement | null, width: number, height: number): CanvasRenderingContext2D | null {
+  if (!c || width === 0 || height === 0) return null;
+  const dpr = window.devicePixelRatio || 1;
+  c.width = Math.round(width * dpr);
+  c.height = Math.round(height * dpr);
+  const ctx = c.getContext("2d");
+  if (!ctx) return null;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  return ctx;
+}
+
+/** The team colours from the theme, so light and dark both hold. */
+function colours(): Record<"Red" | "Blue" | "none", string> {
+  const cs = getComputedStyle(document.documentElement);
+  const v = (n: string) => cs.getPropertyValue(n).trim() || "#999";
+  return { Red: v("--red"), Blue: v("--blu"), none: v("--muted") };
 }
