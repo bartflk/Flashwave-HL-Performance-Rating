@@ -299,7 +299,7 @@ function SourcesPanel() {
     ["trends.tf", "https://trends.tf", t("Which matches you played, which logs belong together, and each player's ETF2L career.")],
     ["ETF2L", "https://etf2l.org", t("Officials, divisions, rosters, transfers, seasons and fixtures.")],
     ["demos.tf", "https://demos.tf", t("SourceTV demos, downloaded only when you ask. Its files go back to 14 October 2019; older demos are listed but gone.")],
-    ["more.tf", "https://more.tf", t("The top-down map images under the kill map, shipped with their permission, and logs while logs.tf is resting.")],
+    ["more.tf", "https://more.tf", t("The top-down map images under the kill map, and logs while logs.tf is resting.")],
   ];
   return (
     <div className="panel">
