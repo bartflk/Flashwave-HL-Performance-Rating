@@ -1798,9 +1798,6 @@ th .sort.active {
 }
 
 /* The Paths layer's building markers in the legend (Emiel). */
-.km-buildings-key { display: inline-flex; flex-wrap: wrap; gap: 4px 12px; margin-left: 14px; }
-.km-building-key { display: inline-flex; align-items: center; gap: 4px; }
-.km-building-key canvas { width: 16px; height: 16px; }
 
 /* Settings › Data sources: the name column wide enough for "trends.tf ↗". */
 .sources-list { grid-template-columns: 7.5em minmax(0, 1fr); row-gap: 8px; }

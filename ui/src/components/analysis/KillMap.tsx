@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type Analysis, type KillView, type MapView, type Overview, type BuildingRow, type PathRow, type Vec3 } from "../../api/types";
@@ -11,6 +11,7 @@ import type { StvInfo } from "./AnalysisPanel";
 import { t as tr, tx } from "../../lib/i18n";
 import { MapPicker } from "./MapPicker";
 import { drawIcon, useMapIcons, type IconName, type MapIcons } from "./mapIcons";
+import { LegendChip, MapMenu, Seg, Switch, ZoomControls } from "./MapChrome";
 import { CalloutEditor, useCallouts, zoneAt, ZoneShapes, type HandleDrag } from "./Callouts";
 import type { CalloutFile, CalloutZone } from "../../api/types";
 
@@ -181,6 +182,8 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
   const [heatOf, setHeatOf] = useState<HeatOf>("deaths");
   const [scope, setScope] = useState<Scope>("match");
   const [asTable, setAsTable] = useState(false);
+  // The table lists kills and deaths, so it belongs to that layer alone.
+  const table = asTable && layer === "dots";
   const [hover, setHover] = useState<Mark | null>(null);
 
   // A new player invalidates the enemy filter; career scope is the owner's only.
@@ -226,6 +229,30 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
     return order.map((t) => [label(t), of(t)] as [string, typeof a.players]);
   }, [a.players]);
 
+  // The Movement legend's switches: lives by how they ended, and each kind
+  // of building (Flashy: the icons were not toggleable).
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
+  const toggleHidden = (key: string) =>
+    setHidden((h) => {
+      const next = new Set(h);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+  const shownRoutes = useMemo(() => routes.filter((r) => !hidden.has(r.died ? "died" : "lived")), [routes, hidden]);
+  const placed = useMemo(() => {
+    const all = buildingQ.data ?? [];
+    const ends = teleEnds(all, routes);
+    return all.map((b, i) => ({ b, kind: b.kind === "teleporter" ? (b.end ?? ends.get(i) ?? "teleporter") : b.kind }));
+  }, [buildingQ.data, routes]);
+  const kindCount = (kind: string) => placed.filter((p) => p.kind === kind).length;
+  const buildingKinds: Array<[string, string]> = [
+    ["sentry", tr("Sentries")],
+    ["dispenser", tr("Dispensers")],
+    ["entrance", tr("Teleporter entrances")],
+    ["exit", tr("Teleporter exits")],
+    ["teleporter", tr("Teleporters")],
+  ];
+
   const routeCounts = useMemo(() => {
     const by = new Map<number, number>();
     const rows = (pathQ.data ?? []).filter((r) => slice.rounds === null || (r.roundNum !== null && slice.rounds.has(r.roundNum)));
@@ -235,10 +262,15 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
 
   const kills = sliceKills;
   const marks: Mark[] = [];
+  // Counted whether shown or not: the legend says what a hidden layer holds.
+  let nKills = 0;
+  let nDeaths = 0;
   for (const k of kills) {
     if (!k.victimPos) continue;
     const isKill = k.killer === player && k.victim !== player && (enemy === null || k.victim === enemy);
     const isDeath = k.victim === player && (enemy === null || k.killer === enemy);
+    if (isKill) nKills++;
+    if (isDeath) nDeaths++;
     if ((isKill && showKills) || (isDeath && showDeaths)) {
       marks.push({
         k,
@@ -248,8 +280,6 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
       });
     }
   }
-  const nKills = marks.filter((m) => m.kind === "kill").length;
-  const nDeaths = marks.length - nKills;
   const name = me?.name ?? "player";
 
   if (slice.map === null && slice.multiMap) {
@@ -268,33 +298,20 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
 
   return (
     <div className={full ? "killmap full" : "killmap"} ref={box}>
-      <div className="km-controls">
-        <label className="an-field">
-          <span className="an-label">{tr("Against")}</span>
-          <select value={enemy ?? ""} onChange={(e) => setEnemy(e.target.value === "" ? null : Number(e.target.value))}>
-            <option value="">{tr("Everyone")}</option>
-            {enemies.map((p) => (
-              <option key={p.accountId} value={p.accountId}>
-                {p.name}
-                {p.mainClass ? ` · ${classLabel(p.mainClass)}` : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="segmented" role="tablist" aria-label={tr("Layer")}>
-          <button role="tab" aria-selected={layer === "dots"} className={layer === "dots" ? "seg active" : "seg"} onClick={() => setLayer("dots")}>{tr("Each kill")}</button>
-          <button
-            role="tab"
-            aria-selected={layer === "paths"}
-            className={layer === "paths" ? "seg active" : "seg"}
-            title={tr("Where you walked, one line per life, from your own demo")}
-            onClick={() => setLayer("paths")}
-          >{tr("Movement")}</button>
-          <button role="tab" aria-selected={layer === "heat"} className={layer === "heat" ? "seg active" : "seg"} onClick={() => setLayer("heat")}>{tr("Heatmap")}</button>
-        </div>
-        {layer === "paths" && (
-          <label className="an-field">
-            <span className="an-label">{tr("Movement of")}</span>
+      <div className="km-bar">
+        <Seg
+          label={tr("Layer")}
+          value={layer}
+          onChange={setLayer}
+          options={[
+            { v: "dots", label: tr("Kills and deaths") },
+            { v: "paths", label: tr("Movement"), title: tr("Where you walked, one line per life, from your own demo") },
+            { v: "heat", label: tr("Heatmap") },
+          ]}
+        />
+        {layer === "paths" ? (
+          <label className="km-field">
+            <span>{tr("Movement of")}</span>
             <select
               value={pathWho === null ? String(player) : String(pathWho)}
               onChange={(e) => {
@@ -327,103 +344,60 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
               ))}
             </select>
           </label>
-        )}
-        {layer === "dots" ? (
-          <>
-            <label className="check">
-              <input type="checkbox" checked={showKills} onChange={(e) => setShowKills(e.target.checked)} />
-              <span className="km-key km-key-kill" aria-hidden />{" "}{tr("Kills")}{" "}{nKills}
-            </label>
-            <label className="check">
-              <input type="checkbox" checked={showDeaths} onChange={(e) => setShowDeaths(e.target.checked)} />
-              <span className="km-key km-key-death" aria-hidden />{" "}{tr("Deaths")}{" "}{nDeaths}
-            </label>
-          </>
         ) : (
-          <>
-            <div className="segmented" role="tablist" aria-label={tr("Heatmap of")}>
-              <button role="tab" aria-selected={heatOf === "kills"} className={heatOf === "kills" ? "seg active" : "seg"} onClick={() => setHeatOf("kills")}>{tx("Where {name} got kills", { name: name })}</button>
-              <button role="tab" aria-selected={heatOf === "deaths"} className={heatOf === "deaths" ? "seg active" : "seg"} onClick={() => setHeatOf("deaths")}>{tx("Where {name} died", { name: name })}</button>
-            </div>
-            {careerOk && (
-              <div className="segmented" role="tablist" aria-label={tr("Over")}>
-                <button role="tab" aria-selected={scope === "match"} className={scope === "match" ? "seg active" : "seg"} onClick={() => setScope("match")}>{tr("This match")}</button>
-                <button role="tab" aria-selected={scope === "career"} className={scope === "career" ? "seg active" : "seg"} onClick={() => setScope("career")}>{tx("All {myGames} of your {1} matches", { "1": shortMap ?? "", myGames: view!.myGames })}</button>
-              </div>
-            )}
-          </>
+          <label className="km-field">
+            <span>{tr("Against")}</span>
+            <select value={enemy ?? ""} onChange={(e) => setEnemy(e.target.value === "" ? null : Number(e.target.value))}>
+              <option value="">{tr("Everyone")}</option>
+              {enemies.map((p) => (
+                <option key={p.accountId} value={p.accountId}>
+                  {p.name}
+                  {p.mainClass ? ` · ${classLabel(p.mainClass)}` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {/* What the heatmap counts, and over which matches: only for the
+            heatmap, where they mean something. */}
+        {layer === "heat" && (
+          <Seg
+            label={tr("Heatmap of")}
+            value={heatOf}
+            onChange={setHeatOf}
+            options={[
+              { v: "kills", label: tr("Kills"), title: tr("Where {name} got kills", { name: name }) },
+              { v: "deaths", label: tr("Deaths"), title: tr("Where {name} died", { name: name }) },
+            ]}
+          />
+        )}
+        {layer === "heat" && careerOk && (
+          <Seg
+            label={tr("Over")}
+            value={scope}
+            onChange={setScope}
+            options={[
+              { v: "match", label: tr("This match") },
+              { v: "career", label: tx("All {myGames} of your {1} matches", { "1": shortMap ?? "", myGames: view!.myGames }) },
+            ]}
+          />
+        )}
+        {layer === "dots" && (
+          <div className="km-bar-end">
+            <Seg
+              label={tr("Show as")}
+              value={asTable ? "table" : "map"}
+              onChange={(v) => setAsTable(v === "table")}
+              options={[
+                { v: "map", label: tr("Map") },
+                { v: "table", label: tr("Table") },
+              ]}
+            />
+          </div>
         )}
       </div>
 
-      <div className="km-tools">
-        {mapName && !asTable && (
-          <div className="km-group" role="group" aria-label={tr("Callouts")}>
-            <span className="km-group-label">{tr("Callouts")}</span>
-            {callouts && (callouts.zones.length > 0 || editing) && (
-              <>
-                <button
-                  className={showZones || editing ? "km-chip on" : "km-chip"}
-                  aria-pressed={showZones || editing}
-                  onClick={() => setShowZones((v) => !v)}
-                  title={callouts.draft ? tr("Draft callouts, not yet checked in game") : callouts.author ? tr("Callouts by {0}", { "0": callouts.author }) : undefined}
-                >
-                  {showZones || editing ? tr("Shown") : tr("Hidden")}
-                  {callouts.draft && <span className="km-draft">{tr("draft")}</span>}
-                </button>
-                {callouts.author && <span className="km-by muted">{tr("by {0}", { "0": callouts.author })}</span>}
-                <label className="km-slider" title={tr("How solid the zones are")}>
-                  <span>{tr("Opacity")}</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={Math.round(zoneOpacity * 100)}
-                    onChange={(e) => {
-                      const v = Number(e.target.value) / 100;
-                      setZoneOpacity(v);
-                      storeNumber("hl.km.zoneOpacity", v);
-                    }}
-                    disabled={!(showZones || editing)}
-                  />
-                </label>
-                <button className={zoneLabels ? "km-chip on" : "km-chip"} aria-pressed={zoneLabels} onClick={() => setZoneLabels((v) => !v)}>
-                  {tr("Names")}
-                </button>
-              </>
-            )}
-            <button className={editing ? "km-chip on" : "km-chip"} aria-pressed={editing} onClick={() => setEditing((e) => !e)}>
-              {editing ? tr("Stop editing") : tr("Edit")}
-            </button>
-          </div>
-        )}
-        {!asTable && (
-          <div className="km-group" role="group" aria-label={tr("Zoom")}>
-            <span className="km-group-label">{tr("Zoom")}</span>
-            <button className="km-chip km-icon" onClick={() => zoomBy(1 / 1.5)} disabled={zoom.z <= 1} aria-label={tr("Zoom out")}>−</button>
-            <span className="km-zoom-n">{Math.round(zoom.z * 100)}%</span>
-            <button className="km-chip km-icon" onClick={() => zoomBy(1.5)} disabled={zoom.z >= MAX_ZOOM} aria-label={tr("Zoom in")}>+</button>
-            <button className="km-chip" onClick={() => setZoom(NO_ZOOM)} disabled={zoom.z === 1}>{tr("Whole map")}</button>
-          </div>
-        )}
-        <div className="km-group km-group-end">
-          <button className="km-chip" onClick={() => setAsTable((t) => !t)}>
-            {asTable ? tr("Show map") : tr("Show as table")}
-          </button>
-          <button
-            className={full ? "km-chip on" : "km-chip"}
-            onClick={toggleFull}
-            title={full ? tr("Leave full screen (Escape)") : tr("Fill the window with the map")}
-          >
-            {full ? tr("Exit full screen") : tr("Full screen")}
-          </button>
-        </div>
-      </div>
-      {!asTable && zoom.z === 1 && (
-        <p className="hint km-zoom-hint">{tr("Scroll on the map to zoom in; drag to move around.")}</p>
-      )}
-
-      {asTable ? (
+      {table ? (
         <MarkTable marks={marks} a={a} />
       ) : (
         <>
@@ -452,8 +426,8 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
             image={overview?.image ?? null}
             view={view}
             marks={layer === "dots" ? marks : []}
-            paths={layer === "paths" ? routes : []}
-            buildings={layer === "paths" ? (buildingQ.data ?? []) : []}
+            paths={layer === "paths" ? shownRoutes : []}
+            buildings={layer === "paths" ? placed.filter((p) => !hidden.has(p.kind)) : []}
             focus={focus}
             maxHeight={full ? Math.max(360, window.innerHeight - FULL_CHROME) : MAX_H}
             heat={heat}
@@ -461,7 +435,108 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
             hover={hover}
             onHover={setHover}
             a={a}
-          />
+          >
+            {/* The map's own controls float on it: callouts top left, zoom
+                top right, and the legend (which is also the layers' switches)
+                under it. */}
+            {mapName && (
+              <div className="km-ov km-ov-tl">
+                <MapMenu label={tr("Callouts")} on={zones.length > 0}>
+                  {callouts && callouts.zones.length > 0 ? (
+                    <>
+                      {(callouts.author || callouts.draft) && (
+                        <p className="km-menu-by">
+                          {callouts.author && tr("by {0}", { "0": callouts.author })}
+                          {callouts.draft && (
+                            <span className="km-draft" title={tr("Draft callouts, not yet checked in game")}>{tr("draft")}</span>
+                          )}
+                        </p>
+                      )}
+                      <Switch on={showZones || editing} onChange={() => setShowZones((v) => !v)} disabled={editing}>
+                        {tr("Zones")}
+                      </Switch>
+                      <Switch on={zoneLabels} onChange={() => setZoneLabels((v) => !v)} disabled={!(showZones || editing)}>
+                        {tr("Names")}
+                      </Switch>
+                      <label className="km-slider" title={tr("How solid the zones are")}>
+                        <span>{tr("Opacity")}</span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={5}
+                          value={Math.round(zoneOpacity * 100)}
+                          onChange={(e) => {
+                            const v = Number(e.target.value) / 100;
+                            setZoneOpacity(v);
+                            storeNumber("hl.km.zoneOpacity", v);
+                          }}
+                          disabled={!(showZones || editing)}
+                        />
+                      </label>
+                    </>
+                  ) : (
+                    <p className="hint km-menu-by">{tr("No callouts for this map yet.")}</p>
+                  )}
+                  <button className="km-menu-action" onClick={() => setEditing((e) => !e)}>
+                    {editing ? tr("Stop editing") : tr("Edit callouts")}
+                  </button>
+                </MapMenu>
+              </div>
+            )}
+            <ZoomControls
+              z={zoom.z}
+              max={MAX_ZOOM}
+              onIn={() => zoomBy(1.5)}
+              onOut={() => zoomBy(1 / 1.5)}
+              onFit={() => setZoom(NO_ZOOM)}
+              full={full}
+              onFull={toggleFull}
+            />
+            <div className="km-legend">
+              {layer === "dots" && (
+                <>
+                  <LegendChip on={showKills} onToggle={() => setShowKills((v) => !v)} swatch={<span className="km-key km-key-kill" />} label={tr("Kills")} count={nKills} />
+                  <LegendChip on={showDeaths} onToggle={() => setShowDeaths((v) => !v)} swatch={<span className="km-key km-key-death" />} label={tr("Deaths")} count={nDeaths} />
+                </>
+              )}
+              {layer === "paths" && (
+                <>
+                  <LegendChip
+                    on={!hidden.has("lived")}
+                    onToggle={() => toggleHidden("lived")}
+                    swatch={<span className="km-key km-key-route" />}
+                    label={tr("Survived")}
+                    count={routes.filter((r) => !r.died).length}
+                  />
+                  <LegendChip
+                    on={!hidden.has("died")}
+                    onToggle={() => toggleHidden("died")}
+                    swatch={<span className="km-key km-key-route died" />}
+                    label={tr("Died")}
+                    count={routes.filter((r) => r.died).length}
+                  />
+                  {buildingKinds.filter(([kind]) => kindCount(kind) > 0).map(([kind, label]) => (
+                    <LegendChip
+                      key={kind}
+                      on={!hidden.has(kind)}
+                      onToggle={() => toggleHidden(kind)}
+                      swatch={<BuildingKey kind={kind} />}
+                      label={label}
+                      count={kindCount(kind)}
+                    />
+                  ))}
+                </>
+              )}
+              {layer === "heat" && (
+                <div className="km-scale">
+                  <span>{tr("fewer")}</span>
+                  <span className="km-scale-bar" style={{ background: `linear-gradient(90deg, transparent, ${heatOf === "kills" ? KILL : DEATH})` }} />
+                  <span>{tx("more {0}", { "0": heatOf === "kills" ? tr("kills") : tr("deaths") })}</span>
+                </div>
+              )}
+            </div>
+          </Canvas>
           {editing && callouts && mapName && (
             <CalloutEditor
               key={mapName}
@@ -488,7 +563,7 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
           )}
           {layer === "paths" && !editing && (
             <LifeList
-              rows={routes}
+              rows={shownRoutes}
               tickRate={tickRate}
               focus={focus}
               onFocus={setFocus}
@@ -499,26 +574,6 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
             />
           )}
           </div>
-          {layer === "paths" && (
-            <div className="km-scale" aria-hidden>
-              {tx("{0} a life{1} one that ended in a death", { "0": <span className="km-key km-key-path" />, "1": <span className="km-key km-key-path-died" /> })}
-              {(buildingQ.data?.length ?? 0) > 0 && (
-                <span className="km-buildings-key">
-                  <BuildingKey kind="sentry" label={tr("sentry")} />
-                  <BuildingKey kind="dispenser" label={tr("dispenser")} />
-                  <BuildingKey kind="entrance" label={tr("teleporter entrance")} />
-                  <BuildingKey kind="exit" label={tr("exit")} />
-                </span>
-              )}
-            </div>
-          )}
-          {layer === "heat" && (
-            <div className="km-scale" aria-hidden>
-              <span>{tr("fewer")}</span>
-              <span className="km-scale-bar" style={{ background: `linear-gradient(90deg, transparent, ${heatOf === "kills" ? KILL : DEATH})` }} />
-              <span>{tx("more {0}", { "0": heatOf === "kills" ? tr("kills") : tr("deaths") })}</span>
-            </div>
-          )}
           <p className="hint km-note">
             {mapName === null
               ? stvLinked
@@ -582,8 +637,10 @@ function Canvas(props: {
   marks: Mark[];
   /** Routes to draw under the marks, one per life. */
   paths: PathRow[];
-  /** Engineer buildings, drawn over the routes. */
-  buildings: BuildingRow[];
+  /** Engineer buildings, drawn over the routes, a teleporter's end resolved. */
+  buildings: Array<{ b: BuildingRow; kind: string }>;
+  /** Controls that float on the map. */
+  children?: ReactNode;
   /** One route to pick out, with the rest faded. */
   focus: PathRow | null;
   /** How tall the map may be; the window's height in full screen. */
@@ -594,7 +651,7 @@ function Canvas(props: {
   onHover: (m: Mark | null) => void;
   a: Analysis;
 }) {
-  const { frame, display, image, view, marks, paths, buildings, focus, maxHeight, heat, heatColor, hover, onHover, a, zones, zoneCounts, drawing, selectedZone, onMapClick, onEditZones, zoom, onZoom, onStage, zoneOpacity, zoneLabels } = props;
+  const { frame, display, image, view, marks, paths, buildings, focus, maxHeight, heat, heatColor, hover, onHover, a, zones, zoneCounts, drawing, selectedZone, onMapClick, onEditZones, zoom, onZoom, onStage, zoneOpacity, zoneLabels, children } = props;
   // The three colours the canvas draws with, resolved from the theme.
   const killColour = themeColour("--kill", "#5791c8");
   const deathColour = themeColour("--death", "#d6763a");
@@ -730,11 +787,10 @@ function Canvas(props: {
 
     // Buildings over the routes. With a life picked, only what stood while
     // it was walked; otherwise every one, faded.
-    const ends = teleEnds(buildings, paths);
-    for (const [i, b] of buildings.entries()) {
+    for (const { b, kind } of buildings) {
       const live = focus === null || (b.demoId === focus.demoId && b.fromTick <= focus.toTick && b.toTick >= focus.fromTick);
       if (focus !== null && !live) continue;
-      drawBuilding(g, px([b.x, b.y]), b.kind === "teleporter" ? (b.end ?? ends.get(i) ?? "teleporter") : b.kind, b.team, focus === null ? 0.7 : 1, icons);
+      drawBuilding(g, px([b.x, b.y]), kind, b.team, focus === null ? 0.7 : 1, icons);
     }
 
     // Heat: one hue, transparent to full, so more is brighter. No floor:
@@ -966,6 +1022,7 @@ function Canvas(props: {
         </svg>
         {hover && <HoverCard m={hover} a={a} pos={px(hover.at)} W={W} />}
       </div>
+      {children}
     </div>
   );
 }
@@ -1343,7 +1400,7 @@ function drawBuilding(g: CanvasRenderingContext2D, [x, y]: [number, number], kin
 }
 
 /** The legend's little copy of a marker. */
-function BuildingKey({ kind, label }: { kind: string; label: string }) {
+function BuildingKey({ kind }: { kind: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const icons = useMapIcons();
   useEffect(() => {
@@ -1353,12 +1410,7 @@ function BuildingKey({ kind, label }: { kind: string; label: string }) {
     // Drawn at twice the size it shows, so the icon stays sharp.
     g.setTransform(2, 0, 0, 2, 0, 0);
     g.clearRect(0, 0, 16, 16);
-    drawBuilding(g, [8, 8], kind, 3, 1, icons, kind === "teleporter" ? 1 : 0.7);
+    drawBuilding(g, [8, 8], kind, null, 1, icons, kind === "teleporter" ? 1 : 0.7);
   }, [kind, icons]);
-  return (
-    <span className="km-building-key">
-      <canvas ref={ref} width={32} height={32} />
-      {label}
-    </span>
-  );
+  return <canvas ref={ref} width={32} height={32} className="km-building-key" />;
 }

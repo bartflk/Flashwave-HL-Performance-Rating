@@ -1,3 +1,4 @@
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { PathRow } from "../../api/types";
 import { t, tx } from "../../lib/i18n";
 
@@ -39,6 +40,29 @@ export function LifeList(props: {
   fetching: boolean;
 }) {
   const { rows, tickRate, focus, onFocus, partial, stv, onFetchStv, fetching } = props;
+  // No scroll bar: an arrow at the top or bottom says there is more that
+  // way, and scrolls a page when clicked (Flashy's UX pass).
+  const list = useRef<HTMLOListElement>(null);
+  const [more, setMore] = useState({ up: false, down: false });
+  const measure = useCallback(() => {
+    const el = list.current;
+    if (!el) return;
+    const up = el.scrollTop > 2;
+    const down = el.scrollTop + el.clientHeight < el.scrollHeight - 2;
+    setMore((m) => (m.up === up && m.down === down ? m : { up, down }));
+  }, []);
+  useLayoutEffect(() => {
+    measure();
+    const el = list.current;
+    if (!el) return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [measure, rows]);
+  const page = (dir: 1 | -1) => {
+    const el = list.current;
+    if (el) el.scrollBy({ top: dir * el.clientHeight * 0.8, behavior: "smooth" });
+  };
   const offer =
     stv === "available" ? (
       <div className="km-stv">
@@ -71,7 +95,10 @@ export function LifeList(props: {
           {rows.length > MAX_ROWS ? t("longest {MAX_ROWS} of {rows}", { MAX_ROWS: MAX_ROWS, rows: rows.length }) : t("{rows} in view", { rows: rows.length })}
         </span>
       </div>
-      <ol className="km-lives-list">
+      <div className={`km-lives-scroll${more.up ? " more-up" : ""}${more.down ? " more-down" : ""}`}>
+      <button className="km-dorito up" onClick={() => page(-1)} hidden={!more.up} aria-label={t("Scroll up")} tabIndex={-1}>
+      </button>
+      <ol className="km-lives-list" ref={list} onScroll={measure}>
         {shown.map((r) => {
           const picked = focus !== null && focus.seq === r.seq && focus.demoId === r.demoId;
           return (
@@ -101,7 +128,7 @@ export function LifeList(props: {
                     <li key={`${at}-${i}`}>
                       <span className="km-cap-n">{tx("{0} cap", { "0": ordinal(i + 1) })}</span>
                       <span className="km-cap-point">{tx("point {point}", { point: point })}</span>
-                      <span className="km-cap-at">{tx("{0} in", { "0": clock(at) })}</span>
+                      <span className="km-cap-at" title={t("{0} into the life", { "0": clock(at) })}>{clock(at)}</span>
                     </li>
                   ))}
                 </ol>
@@ -110,6 +137,9 @@ export function LifeList(props: {
           );
         })}
       </ol>
+      <button className="km-dorito down" onClick={() => page(1)} hidden={!more.down} aria-label={t("Scroll down")} tabIndex={-1}>
+      </button>
+      </div>
       {offer}
       {focus && (
         <p className="hint">{tx("Showing one {0}. Click it again, or press Escape, for all of them.", { "0": focus.died ? t("life that ended in a death") : t("life") })}</p>
