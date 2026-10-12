@@ -14,6 +14,7 @@ import {
 import { Achievements, PlayerHeader, RecentOfficials, SeasonsTable, TeamStays, TrendsCareer } from "../players/PlayerProfile";
 import "../players/players.css";
 import { TeammatesPanel } from "./TeammatesPanel";
+import { LivesOnMapTab } from "../players/LivesOnMap";
 import { capitalize, formatDate, rating, ratingPercent, splitMap } from "../../lib/format";
 import { KIND_LABEL, KIND_PLURAL } from "../ContextBadge";
 import { bounds, usePeriod } from "../../lib/period";
@@ -47,6 +48,7 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
   if (q.data?.profile) lastSplit.current = q.data.profile.contexts;
 
   const me = useOwnProfile(steamid);
+  const ownAccount = steamid ? accountOf(steamid) : null;
 
   if (q.isPending) return <div className="profile-page"><p className="hint">{t("Loading profile…")}</p></div>;
   if (q.isError) return <div className="profile-page"><p className="error">{errorMessage(q.error)}</p></div>;
@@ -141,6 +143,16 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
         </>
       )}
 
+      {/* Q68 (Emiel): your own routes, without looking yourself up under Players. */}
+      {ownAccount !== null && (
+        <>
+          <h2 className="profile-section-title" id="profile-lives">{t("Lives on a map")}</h2>
+          <section className="panel">
+            <LivesOnMapTab accountId={ownAccount} name={me?.name ?? t("you")} />
+          </section>
+        </>
+      )}
+
       <h2 className="profile-section-title" id="profile-teammates">{t("Teammates")}</h2>
       <section className="panel">
         <TeammatesPanel />
@@ -194,6 +206,7 @@ function JumpBar() {
     <nav className="profile-jump" aria-label={t("On this page")}>
       <button className="linkish" onClick={() => go("profile-rating")}>{t("Rating")}</button>
       <button className="linkish" onClick={() => go("profile-career")}>{t("Career")}</button>
+      <button className="linkish" onClick={() => go("profile-lives")}>{t("Lives on a map")}</button>
       <button className="linkish" onClick={() => go("profile-teammates")}>{t("Teammates")}</button>
     </nav>
   );

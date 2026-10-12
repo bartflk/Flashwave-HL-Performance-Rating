@@ -244,6 +244,15 @@
 .lm-picture { position: absolute; opacity: 0.55; pointer-events: none; user-select: none; }
 .lm-canvas { position: absolute; left: 0; top: 0; display: block; }
 .lm-canvas-top { cursor: crosshair; }
+/* Q65-Q67: the view, recency and situation controls, and the cell readout. */
+.lm-recent input { width: 72px; }
+.lm-situations { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; }
+.lm-cell {
+  position: absolute; left: 8px; bottom: 8px; margin: 0; padding: 4px 8px;
+  border-radius: 6px; background: rgba(0, 0, 0, 0.6); color: var(--text); font-size: 0.82rem; pointer-events: none;
+}
+.lm-cell .team-red { color: var(--red); font-weight: 700; }
+.lm-cell .team-blue { color: var(--blu); font-weight: 700; }
 .lm-hover { margin: 8px 0 0; font-size: 0.88rem; }
 .lm-hover .team-red { color: var(--red); font-weight: 700; }
 .lm-hover .team-blue { color: var(--blu); font-weight: 700; }

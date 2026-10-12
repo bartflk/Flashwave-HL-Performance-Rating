@@ -65,6 +65,56 @@ pub struct LifeOnMap {
     pub seconds: f64,
     /// `(x, y)` in map units, about four a second.
     pub points: Vec<(i32, i32)>,
+    /// Q67: their team captured a point during the life.
+    pub capped: bool,
+    /// Q67: the life began within [`AFTER_CAP_S`] of the other team taking a
+    /// point in the same round: the respawn after losing one.
+    pub after_enemy_cap: bool,
+    /// Q67: others were killing each other both in the [`FIGHT_BEFORE_S`]
+    /// before the life began and the [`FIGHT_AFTER_S`] after: spawned into a
+    /// fight in progress.
+    pub mid_fight: bool,
+}
+
+/// How soon after the other team's cap a life counts as the one after it.
+pub const AFTER_CAP_S: f64 = 20.0;
+/// The window around a life's start in which other players' kills mean a
+/// fight was going on.
+pub const FIGHT_BEFORE_S: f64 = 5.0;
+pub const FIGHT_AFTER_S: f64 = 10.0;
+
+/// A life's start on the log's clock, and whether those three hold. Pure, for
+/// testing: `caps` are `(at, team, point)` on the log's clock, `rounds`
+/// `(number, start, end)`, `kills` `(at, killer, victim)`.
+pub fn situation(
+    start: Option<f64>,
+    team: Option<&str>,
+    round: Option<i64>,
+    me: u32,
+    caps: &[(i64, String, i64)],
+    rounds: &[(i64, f64, f64)],
+    kills: &[(i64, u32, u32)],
+) -> (bool, bool) {
+    let Some(start) = start else { return (false, false) };
+    let round_start = round.and_then(|r| rounds.iter().find(|(n, ..)| *n == r)).map(|(_, s, _)| *s).unwrap_or(f64::MIN);
+    let after_cap = team.is_some_and(|team| {
+        caps.iter().any(|(at, by, _)| {
+            let at = *at as f64;
+            by != team && at >= round_start && at <= start && start - at <= AFTER_CAP_S
+        })
+    });
+    // A fight going on across the moment the life began: others killing
+    // each other both just before it and just after. Any kill nearby alone
+    // was nearly every life (139 of 143 on Product): with 18 players there
+    // is always one somewhere.
+    let others = |from: f64, to: f64| {
+        kills.iter().any(|&(at, killer, victim)| {
+            let at = at as f64;
+            killer != me && victim != me && at >= from && at <= to
+        })
+    };
+    let fight = others(start - FIGHT_BEFORE_S, start) && others(start, start + FIGHT_AFTER_S);
+    (after_cap, fight)
 }
 
 /// Everything the view draws, and the counts it states.
@@ -123,7 +173,15 @@ pub async fn on_map(db: &Db, account_id: u32, map: &str) -> Result<LivesOnMap> {
             out.stv_matches += 1;
         }
         let paths = db.paths_for_log(log_id).await?;
+        // For the situation filters (Q67): the log's caps, rounds and kills,
+        // and where each demo starts on the log's clock.
+        let offset = db.log_clock_offset(log_id).await?;
+        let caps = db.cap_events(log_id).await?;
+        let rounds: Vec<(i64, f64, f64)> = db.round_spans(log_id).await?.into_iter().map(|(n, s, len)| (n, s as f64, (s + len) as f64)).collect();
+        let kills: Vec<(i64, u32, u32)> = db.kills_for_log(log_id).await?.into_iter().filter(|k| k.live).map(|k| (k.at_raw, k.killer, k.victim)).collect();
+        let linked = db.demos_for_log(log_id).await?;
         for (demo_id, (stv, seqs)) in demos {
+            let clock = linked.iter().find(|d| d.demo_id == demo_id).and_then(|d| Some((d.start_utc?, d.tick_rate?)));
             let lives: Vec<&hl_db::PathRow> = paths.iter().filter(|p| p.demo_id == demo_id && p.account_id == account_id && seqs.contains(&p.seq)).collect();
             if lives.is_empty() {
                 continue;
@@ -158,17 +216,27 @@ pub async fn on_map(db: &Db, account_id: u32, map: &str) -> Result<LivesOnMap> {
                 None => vec![(None, None); lives.len()],
             };
             for (l, (class, team)) in lives.into_iter().zip(who) {
+                let team = team.and_then(team_name);
+                // The life's start on the log's clock, as the routes pass places it.
+                let start = match (clock, offset) {
+                    (Some((s, r)), Some(o)) => Some(s + l.from_tick as f64 / r - o as f64),
+                    _ => None,
+                };
+                let (after_enemy_cap, mid_fight) = situation(start, team, l.round_num, account_id, &caps, &rounds, &kills);
                 out.lives.push(LifeOnMap {
                     log_id,
                     played_at,
                     demo_id,
                     stv,
                     class: class.and_then(class_name).map(str::to_string),
-                    team: team.and_then(team_name).map(str::to_string),
+                    team: team.map(str::to_string),
                     round_num: l.round_num,
                     died: l.died,
                     seconds: ((l.to_tick - l.from_tick).max(0) as f64 / rate * 10.0).round() / 10.0,
                     points: l.points.iter().map(|&(_, x, y, _)| (x, y)).collect(),
+                    capped: !l.caps.is_empty(),
+                    after_enemy_cap,
+                    mid_fight,
                 });
             }
         }
@@ -193,6 +261,28 @@ fn stored(row: hl_db::TimelineRow) -> Stored {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_life_after_the_other_team_capped_and_one_into_a_fight() {
+        let rounds = [(1, 100.0, 400.0), (2, 400.0, 700.0)];
+        let caps = vec![(200, "Blue".to_string(), 2), (395, "Red".to_string(), 3)];
+        let kills = [(300, 7, 8), (305, 9, 1)];
+        // RED, spawning 12 s after BLU took a point: after a cap.
+        assert!(situation(Some(212.0), Some("Red"), Some(1), 1, &caps, &rounds, &kills).0);
+        // Too long after, or their own team's cap, or the cap in the round before.
+        assert!(!situation(Some(240.0), Some("Red"), Some(1), 1, &caps, &rounds, &kills).0);
+        assert!(!situation(Some(212.0), Some("Blue"), Some(1), 1, &caps, &rounds, &kills).0);
+        assert!(!situation(Some(402.0), Some("Blue"), Some(2), 1, &caps, &rounds, &kills).0);
+        // Others fighting 4 s before the life began and 1 s after: mid-fight.
+        // Only before is not; the kill on themselves does not count, nor one
+        // long after.
+        assert!(situation(Some(304.0), Some("Red"), Some(1), 1, &caps, &rounds, &[(300, 7, 8), (305, 9, 4)]).1);
+        assert!(!situation(Some(304.0), Some("Red"), Some(1), 1, &caps, &rounds, &[(300, 7, 8)]).1);
+        assert!(!situation(Some(308.0), Some("Red"), Some(1), 1, &caps, &rounds, &[(305, 9, 1)]).1);
+        assert!(!situation(Some(250.0), Some("Red"), Some(1), 1, &caps, &rounds, &kills).1);
+        // No clock, no answer.
+        assert_eq!(situation(None, Some("Red"), Some(1), 1, &caps, &rounds, &kills), (false, false));
+    }
 
     #[test]
     fn class_and_team_numbers_read_as_names() {

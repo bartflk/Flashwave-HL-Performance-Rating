@@ -575,6 +575,12 @@ export interface LifeOnMap {
   seconds: number;
   /** `[x, y]` in map units, about four a second. */
   points: Array<[number, number]>;
+  /** Q67: their team took a point during the life. */
+  capped: boolean;
+  /** Q67: began within 20 s of the other team taking a point, same round. */
+  afterEnemyCap: boolean;
+  /** Q67: others were killing each other just before and just after it began. */
+  midFight: boolean;
 }
 
 export interface LivesOnMap {

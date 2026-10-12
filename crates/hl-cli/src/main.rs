@@ -1655,6 +1655,15 @@ async fn run() -> Result<()> {
                 Some(map) => {
                     let v = hl_ingest::lives::on_map(&db, account, map).await?;
                     println!("{}: {} lives in {} matches ({} with an STV)", v.map, v.lives.len(), v.matches, v.stv_matches);
+                    let n = |f: fn(&hl_ingest::lives::LifeOnMap) -> bool| v.lives.iter().filter(|l| f(l)).count();
+                    println!(
+                        "  died {}, round end {}, with a cap {}, after the other team capped {}, mid-fight {}",
+                        n(|l| l.died),
+                        n(|l| !l.died),
+                        n(|l| l.capped),
+                        n(|l| l.after_enemy_cap),
+                        n(|l| l.mid_fight)
+                    );
                     let mut by: std::collections::BTreeMap<(String, String), usize> = std::collections::BTreeMap::new();
                     for l in &v.lives {
                         *by.entry((l.class.clone().unwrap_or("?".into()), l.team.clone().unwrap_or("?".into()))).or_default() += 1;

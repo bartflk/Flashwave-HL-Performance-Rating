@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type LifeOnMap } from "../../api/types";
 import { capitalize, formatDate } from "../../lib/format";
-import { t, tx } from "../../lib/i18n";
+import { k, t, tx } from "../../lib/i18n";
 import { ClassIcon } from "../ClassIcon";
 
 /**
@@ -15,6 +15,23 @@ import { ClassIcon } from "../ClassIcon";
  */
 
 type Side = "both" | "Red" | "Blue";
+type Ending = "any" | "died" | "survived";
+type View = "auto" | "routes" | "density";
+type Situation = "capped" | "afterCap" | "midFight";
+
+/** The situation filters (Q67): `[key, label, what it means]`. */
+const SITUATIONS: Array<[Situation, string, string]> = [
+  ["capped", k("With a cap"), k("Their team took a point during the life")],
+  ["afterCap", k("After the other team capped"), k("The life began within 20 s of the other team taking a point in the same round")],
+  ["midFight", k("Spawned mid-fight"), k("Others were killing each other both in the 5 s before the life began and the 10 s after")],
+];
+
+/** "Auto" shows where they usually go from this many lives up (Q65):
+ *  past it, separate lines are a solid smear. */
+const DENSITY_FROM = 300;
+
+/** The density grid's cells across the frame. */
+const CELLS = 140;
 
 /** A step longer than this went through a teleporter or a respawn: the line
  *  breaks rather than crossing the map. Points are about four a second, so
@@ -43,7 +60,13 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
 
   const [cls, setCls] = useState<string | null>(null);
   const [side, setSide] = useState<Side>("both");
-  const [deathsOnly, setDeathsOnly] = useState(false);
+  const [ending, setEnding] = useState<Ending>("any");
+  // Q67: situations, each narrowing the lives further.
+  const [situations, setSituations] = useState<Set<Situation>>(new Set());
+  // Q66: only the most recent N matches (of this class and side); null is all.
+  const [lastN, setLastN] = useState<number | null>(null);
+  // Q65: every route, or where they usually go; "auto" picks by how many.
+  const [view, setView] = useState<View>("auto");
   const [hover, setHover] = useState<LifeOnMap | null>(null);
 
   const all = useMemo(() => livesQ.data?.lives ?? [], [livesQ.data]);
@@ -53,13 +76,36 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
     for (const l of all) if (l.class && (side === "both" || l.team === side)) n.set(l.class, (n.get(l.class) ?? 0) + 1);
     return [...n.entries()].sort((a, b) => b[1] - a[1]);
   }, [all, side]);
+  // The class and side asked for, then the most recent N of their matches.
+  const recent = useMemo(() => {
+    const mine = all.filter((l) => (cls === null || l.class === cls) && (side === "both" || l.team === side));
+    if (lastN === null) return { lives: mine, matches: new Set(mine.map((l) => l.logId)).size };
+    const byDate = [...new Map(mine.map((l) => [l.logId, l.playedAt ?? 0])).entries()].sort((a, b) => b[1] - a[1]);
+    const keep = new Set(byDate.slice(0, lastN).map(([id]) => id));
+    return { lives: mine.filter((l) => keep.has(l.logId)), matches: keep.size };
+  }, [all, cls, side, lastN]);
   // The same array until a filter changes (Q64): hovering re-renders this
   // component, and a new array would redraw every route on each move.
   const shown = useMemo(
-    () => all.filter((l) => (cls === null || l.class === cls) && (side === "both" || l.team === side) && (!deathsOnly || l.died)),
-    [all, cls, side, deathsOnly],
+    () =>
+      recent.lives.filter(
+        (l) =>
+          (ending === "any" || (ending === "died") === l.died) &&
+          (!situations.has("capped") || l.capped) &&
+          (!situations.has("afterCap") || l.afterEnemyCap) &&
+          (!situations.has("midFight") || l.midFight),
+      ),
+    [recent, ending, situations],
   );
   const sides = { Red: all.filter((l) => (cls === null || l.class === cls) && l.team === "Red").length, Blue: all.filter((l) => (cls === null || l.class === cls) && l.team === "Blue").length };
+  const mode: "routes" | "density" = view === "auto" ? (shown.length > DENSITY_FROM ? "density" : "routes") : view;
+  const toggle = (s: Situation) =>
+    setSituations((was) => {
+      const next = new Set(was);
+      if (next.has(s)) next.delete(s);
+      else next.add(s);
+      return next;
+    });
 
   if (mapsQ.isPending) return <p className="hint">{t("Loading…")}</p>;
   if (mapsQ.isError) return <p className="error">{errorMessage(mapsQ.error)}</p>;
@@ -99,9 +145,51 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
             </button>
           ))}
         </div>
-        <label className="lm-check">
-          <input type="checkbox" checked={deathsOnly} onChange={(e) => setDeathsOnly(e.target.checked)} /> {t("Only lives that ended in a death")}
+        <label className="an-field lm-recent" title={t("Only their most recent matches with this class and side; empty for all")}>
+          <span className="an-label">{t("Last")}</span>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            inputMode="numeric"
+            placeholder={t("all")}
+            value={lastN ?? ""}
+            onChange={(e) => {
+              const n = Math.floor(Number(e.target.value));
+              setLastN(e.target.value === "" || !Number.isFinite(n) || n < 1 ? null : n);
+            }}
+          />
+          <span className="an-label">{t("matches")}</span>
         </label>
+        <div className="segmented lm-view" role="tablist" aria-label={t("Show")}>
+          {(["auto", "routes", "density"] as View[]).map((m) => (
+            <button
+              key={m}
+              role="tab"
+              aria-selected={view === m}
+              className={view === m ? "seg active" : "seg"}
+              onClick={() => setView(m)}
+              title={m === "auto" ? t("Most used from {0} lives, every route below that", { "0": DENSITY_FROM }) : undefined}
+            >
+              {m === "auto" ? t("Auto") : m === "routes" ? t("Every route") : t("Most used")}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="lm-situations" role="group" aria-label={t("Situation")}>
+        <div className="segmented" role="tablist" aria-label={t("How the life ended")}>
+          {(["any", "died", "survived"] as Ending[]).map((e) => (
+            <button key={e} role="tab" aria-selected={ending === e} className={ending === e ? "seg active" : "seg"} onClick={() => setEnding(e)}>
+              {e === "any" ? t("Any end") : e === "died" ? t("Ended in a death") : t("Lived to the round's end")}
+            </button>
+          ))}
+        </div>
+        {SITUATIONS.map(([s, label, hint]) => (
+          <button key={s} className={situations.has(s) ? "km-chip on" : "km-chip"} aria-pressed={situations.has(s)} onClick={() => toggle(s)} title={t(hint)}>
+            {t(label)}
+          </button>
+        ))}
       </div>
 
       {classes.length > 0 && (
@@ -128,14 +216,15 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
             "4": v.stvMatches,
             "5": v.matches - v.stvMatches,
           })}
+          {lastN !== null && <> {tx("Only the last {0} of them with this class and side.", { "0": recent.matches })}</>}
         </p>
       )}
       {livesQ.isPending && <p className="hint">{t("Reading the routes…")}</p>}
       {livesQ.isError && <p className="error">{errorMessage(livesQ.error)}</p>}
 
-      {v && <Drawing lives={shown} overview={overviewQ.data ?? null} hover={hover} onHover={setHover} />}
+      {v && <Drawing lives={shown} overview={overviewQ.data ?? null} hover={hover} onHover={setHover} mode={mode} />}
 
-      {hover && (
+      {hover && mode === "routes" && (
         <p className="lm-hover">
           <span className={`team-${(hover.team ?? "").toLowerCase()}`}>{hover.team === "Red" ? "RED" : hover.team === "Blue" ? "BLU" : "?"}</span>{" "}
           {hover.class ? capitalize(hover.class) : t("unknown class")} · {formatDate(hover.playedAt)}
@@ -153,12 +242,16 @@ function Drawing({
   overview,
   hover,
   onHover,
+  mode,
 }: {
   lives: LifeOnMap[];
   overview: { minX: number; maxY: number; size: number; aspect: number; image: string } | null;
   hover: LifeOnMap | null;
   onHover: (l: LifeOnMap | null) => void;
+  mode: "routes" | "density";
 }) {
+  // Q65: the cell under the mouse in the density view, and its counts.
+  const [cellHover, setCellHover] = useState<{ red: number; blue: number; other: number } | null>(null);
   // The frame in game units: the picture's, else the routes' own bounds.
   const frame = useMemo(() => {
     if (overview) return { minX: overview.minX, maxY: overview.maxY, w: overview.size, h: overview.size * overview.aspect };
@@ -221,10 +314,38 @@ function Drawing({
     return { cell, cells };
   }, [lives, frame]);
 
+  // Q65: how many lives passed through each cell, per side. Each life counts
+  // once per cell, so a camper does not outweigh a hundred passers-by.
+  const density = useMemo(() => (frame && mode === "density" ? densityOf(lives, frame) : null), [lives, frame, mode]);
+
+  // The density view: each cell its side's colour, stronger the more lives
+  // passed through it. Square root, so the quieter lanes still show.
+  useEffect(() => {
+    if (mode !== "density") return;
+    const ctx = prepare(base.current, width, height);
+    if (!ctx || !proj || !density || !frame) return;
+    const col = colours();
+    const size = density.cell * proj.scale;
+    for (const [team, counts] of [["Red", density.red], ["Blue", density.blue], ["none", density.other]] as const) {
+      const max = counts.reduce((m, n) => Math.max(m, n), 0);
+      if (max === 0) continue;
+      ctx.fillStyle = col[team];
+      for (let i = 0; i < counts.length; i++) {
+        const n = counts[i];
+        if (n === 0) continue;
+        const cx = i % density.cols;
+        const cy = Math.floor(i / density.cols);
+        ctx.globalAlpha = 0.12 + 0.83 * Math.sqrt(n / max);
+        ctx.fillRect(proj.ox + cx * size, proj.oy + cy * size, size + 0.5, size + 0.5);
+      }
+    }
+  }, [mode, density, proj, frame, width, height]);
+
   // All the routes. Each life is stroked on its own, so where many overlap
   // the line builds up and the usual lanes stand out (one path per side
   // would paint every overlap once, flat).
   useEffect(() => {
+    if (mode !== "routes") return;
     const ctx = prepare(base.current, width, height);
     if (!ctx || !proj) return;
     const col = colours();
@@ -251,12 +372,12 @@ function Drawing({
       }
       ctx.fill();
     }
-  }, [lives, proj, opacity, width, height]);
+  }, [mode, lives, proj, opacity, width, height]);
 
   // The hovered route on the canvas above, at full strength.
   useEffect(() => {
     const ctx = prepare(top.current, width, height);
-    if (!ctx || !proj || !hover) return;
+    if (!ctx || !proj || !hover || mode !== "routes") return;
     const col = colours()[hover.team ?? "none"];
     ctx.strokeStyle = col;
     ctx.fillStyle = col;
@@ -270,16 +391,27 @@ function Drawing({
       ctx.arc(proj.px(last[0]), proj.py(last[1]), 6, 0, Math.PI * 2);
       ctx.fill();
     }
-  }, [hover, proj, width, height]);
+  }, [hover, proj, width, height, mode]);
 
   if (!frame) return <p className="hint">{t("Nothing to draw with these filters.")}</p>;
 
-  // The nearest point under the mouse, within HOVER_PX, picks the route.
+  // The nearest point under the mouse, within HOVER_PX, picks the route; in
+  // the density view, the cell under it says how many lives went through.
   function onMove(e: React.MouseEvent<HTMLCanvasElement>) {
     if (!proj || !grid || !frame) return;
     const r = e.currentTarget.getBoundingClientRect();
     const gx = frame.minX + (e.clientX - r.left - proj.ox) / proj.scale;
     const gy = frame.maxY - (e.clientY - r.top - proj.oy) / proj.scale;
+    if (mode === "density") {
+      if (!density) return;
+      const cx = Math.floor((gx - frame.minX) / density.cell);
+      const cy = Math.floor((frame.maxY - gy) / density.cell);
+      const i = cy * density.cols + cx;
+      const inside = cx >= 0 && cy >= 0 && cx < density.cols && cy < density.rows;
+      const at = inside ? { red: density.red[i], blue: density.blue[i], other: density.other[i] } : null;
+      setCellHover(at && at.red + at.blue + at.other > 0 ? at : null);
+      return;
+    }
     const cx = Math.floor(gx / grid.cell);
     const cy = Math.floor(gy / grid.cell);
     const reach = HOVER_PX / proj.scale;
@@ -312,10 +444,57 @@ function Drawing({
         role="img"
         aria-label={t("Routes on the map")}
         onMouseMove={onMove}
-        onMouseLeave={() => onHover(null)}
+        onMouseLeave={() => {
+          onHover(null);
+          setCellHover(null);
+        }}
       />
+      {mode === "density" && cellHover && density && (
+        <p className="lm-cell">
+          {tx("{0} of the {1} lives passed here ({2}%)", {
+            "0": cellHover.red + cellHover.blue + cellHover.other,
+            "1": lives.length,
+            "2": Math.round(((cellHover.red + cellHover.blue + cellHover.other) / Math.max(1, lives.length)) * 100),
+          })}
+          {cellHover.red > 0 && cellHover.blue > 0 && <> · <span className="team-red">RED {cellHover.red}</span> · <span className="team-blue">BLU {cellHover.blue}</span></>}
+        </p>
+      )}
     </div>
   );
+}
+
+/** Lives through each cell of a `CELLS`-wide grid over the frame, per side:
+ *  each life counted once per cell it crossed (Q65). Steps between points are
+ *  filled in so a fast move does not skip cells; a jump (a teleporter, a
+ *  respawn) is not. */
+function densityOf(lives: LifeOnMap[], frame: { minX: number; maxY: number; w: number; h: number }) {
+  const cell = Math.max(frame.w, frame.h) / CELLS;
+  const cols = Math.ceil(frame.w / cell);
+  const rows = Math.ceil(frame.h / cell);
+  const red = new Uint32Array(cols * rows);
+  const blue = new Uint32Array(cols * rows);
+  const other = new Uint32Array(cols * rows);
+  const seen = new Set<number>();
+  for (const l of lives) {
+    const into = l.team === "Red" ? red : l.team === "Blue" ? blue : other;
+    seen.clear();
+    let prev: [number, number] | null = null;
+    for (const p of l.points) {
+      const from: [number, number] = prev !== null && Math.hypot(p[0] - prev[0], p[1] - prev[1]) <= JUMP ? prev : p;
+      const steps = Math.max(1, Math.ceil(Math.hypot(p[0] - from[0], p[1] - from[1]) / (cell / 2)));
+      for (let s = 0; s <= steps; s++) {
+        const x = from[0] + ((p[0] - from[0]) * s) / steps;
+        const y = from[1] + ((p[1] - from[1]) * s) / steps;
+        const cx = Math.floor((x - frame.minX) / cell);
+        const cy = Math.floor((frame.maxY - y) / cell);
+        if (cx < 0 || cy < 0 || cx >= cols || cy >= rows) continue;
+        seen.add(cy * cols + cx);
+      }
+      prev = p;
+    }
+    for (const i of seen) into[i] += 1;
+  }
+  return { cell, cols, rows, red, blue, other };
 }
 
 /** Hover picks the nearest point within this many CSS pixels. */
