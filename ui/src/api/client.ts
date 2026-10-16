@@ -59,6 +59,7 @@ import type {
   NewsPost,
   ResultRow,
   TeamHit,
+  LeagueMatch,
   NewLogs,
   Stay,
   DemoImported,
@@ -231,6 +232,7 @@ const realApi = {
   getNewsPost: (id: number) => invoke<NewsPost | null>("get_news_post", { id }),
   getRecentResults: (limit?: number) => invoke<ResultRow[]>("get_recent_results", { limit }),
   searchTeams: (query: string) => invoke<TeamHit[]>("search_teams", { query }),
+  getLeagueMatch: (matchId: number) => invoke<LeagueMatch | null>("get_league_match", { matchId }),
   checkNewLogs: () => invoke<NewLogs | null>("check_new_logs"),
   getPlayerTeams: (accountId: number) => invoke<Stay[]>("get_player_teams", { accountId }),
   /** Q28: a map's callouts; the owner's copy wins over the built-in one. */

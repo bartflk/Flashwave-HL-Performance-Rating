@@ -52,6 +52,7 @@ import type {
   NewsPost,
   ResultRow,
   TeamHit,
+  LeagueMatch,
   NewLogs,
   MatchSides,
   Stay,
@@ -1245,6 +1246,36 @@ export const mockApi: Api = {
         defaultWin: r.defaultWin,
       })),
     ),
+  // One of DD14's officials, with DD14's roster as its lineup; a fixture's
+  // id is not in the database, so the page reads it from the fixtures.
+  getLeagueMatch: (matchId: number) => {
+    const base = team37805 as unknown as TeamView;
+    const r = base.results.find((x) => x.matchId === matchId);
+    if (!r) return delay<LeagueMatch | null>(null);
+    const half = (n: number | null) => (n === null ? 0 : Math.round(n / 2));
+    return delay<LeagueMatch | null>({
+      matchId: r.matchId,
+      time: r.time ?? 0,
+      season: r.season,
+      division: r.division,
+      tier: 1,
+      round: r.round,
+      week: null,
+      clan1: { id: 37805, name: "DD14", avatar: base.avatar },
+      clan2: { id: r.opponentId, name: r.opponent, avatar: null },
+      r1: r.scoreFor,
+      r2: r.scoreAgainst,
+      defaultWin: r.defaultWin,
+      maps: r.defaultWin ? [] : r.maps.map((map) => ({ map, clan1: half(r.scoreFor), clan2: half(r.scoreAgainst), goldenCap: false })),
+      players: base.roster.map((p) => ({ accountId: p.accountId, name: p.name, teamId: 37805, class: p.class, rating: p.rating })),
+      meetings: [{ matchId: 1, time: 1_780_000_000, season: 35, division: "Mid", round: "Week 4", scoreA: 4, scoreB: 2, defaultWin: false }],
+      logs: [
+        { logId: 4109131, map: r.maps[0] ?? null, stored: true },
+        { logId: 4109132, map: r.maps[1] ?? null, stored: false },
+      ],
+      url: `https://etf2l.org/matches/${r.matchId}/`,
+    });
+  },
   searchTeams: (query: string) => {
     const q = query.trim().toLowerCase();
     const all = (leagues as unknown as LeagueView).divisions.flatMap((d) => d.teams);

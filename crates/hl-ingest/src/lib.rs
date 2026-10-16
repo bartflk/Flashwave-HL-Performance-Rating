@@ -70,6 +70,7 @@ pub mod transfers;
 pub mod team_info;
 pub mod fixtures;
 pub mod news;
+pub mod league_match;
 pub mod etf2l_demos;
 pub mod buildings;
 pub mod lives;

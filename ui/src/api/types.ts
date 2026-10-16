@@ -337,6 +337,16 @@ export interface ResultRow {
   defaultWin: boolean;
 }
 
+/** One official for the match page (Q74). */
+export interface LeagueMatch extends ResultRow {
+  maps: Array<{ map: string; clan1: number; clan2: number; goldenCap: boolean }>;
+  players: Array<{ accountId: number; name: string; teamId: number | null; class: string | null; rating: number | null }>;
+  /** Earlier officials between the two, from clan1's side. */
+  meetings: Array<{ matchId: number; time: number | null; season: number; division: string | null; round: string | null; scoreA: number | null; scoreB: number | null; defaultWin: boolean }>;
+  logs: Array<{ logId: number; map: string | null; stored: boolean }>;
+  url: string;
+}
+
 /** A team found by name (Q74). */
 export interface TeamHit {
   teamId: number;

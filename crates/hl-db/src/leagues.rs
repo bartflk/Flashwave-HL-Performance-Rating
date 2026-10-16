@@ -488,40 +488,123 @@ pub struct TeamHit {
     pub last_played: Option<i64>,
 }
 
+/// One official's map, from its own page: rounds each side took.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MatchMap {
+    pub map: String,
+    pub clan1: i64,
+    pub clan2: i64,
+    pub golden_cap: bool,
+}
+
+/// Who played an official, and for which side.
+#[derive(Debug, Clone)]
+pub struct MatchPlayerRow {
+    pub account_id: u32,
+    pub team_id: Option<i64>,
+    pub name: Option<String>,
+}
+
+/// A log of an official: the owner's (openable in the app) or the league
+/// sample's.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MatchLog {
+    pub log_id: i64,
+    pub map: Option<String>,
+    /// In the owner's matches, so the app can open it.
+    pub stored: bool,
+}
+
+const RESULT_SELECT: &str = "SELECT m.match_id, m.time, c.season, m.division, m.tier, m.round, m.week, m.r1, m.r2, m.default_win,
+        m.clan1_id, t1.name AS n1, t1.avatar AS a1, m.clan2_id, t2.name AS n2, t2.avatar AS a2
+   FROM etf2l_season_match m
+   JOIN etf2l_competition c ON c.competition_id = m.competition_id
+   LEFT JOIN etf2l_team t1 ON t1.team_id = m.clan1_id
+   LEFT JOIN etf2l_team t2 ON t2.team_id = m.clan2_id";
+
+fn result_row(r: &sqlx::sqlite::SqliteRow) -> ResultRow {
+    ResultRow {
+        match_id: r.get("match_id"),
+        // An official not yet given a date has none.
+        time: r.get::<Option<i64>, _>("time").unwrap_or(0),
+        season: r.get("season"),
+        division: r.get("division"),
+        tier: r.get("tier"),
+        round: r.get("round"),
+        week: r.get("week"),
+        clan1: TeamRef { id: r.get("clan1_id"), name: r.get::<Option<String>, _>("n1").unwrap_or_default(), avatar: r.get("a1") },
+        clan2: TeamRef { id: r.get("clan2_id"), name: r.get::<Option<String>, _>("n2").unwrap_or_default(), avatar: r.get("a2") },
+        r1: r.get("r1"),
+        r2: r.get("r2"),
+        default_win: r.get::<i64, _>("default_win") != 0,
+    }
+}
+
 impl Db {
     /// The latest played officials of every team, newest first: a score in,
     /// or a default win.
     pub async fn recent_results(&self, limit: i64) -> Result<Vec<ResultRow>> {
-        let rows = sqlx::query(
-            "SELECT m.match_id, m.time, c.season, m.division, m.tier, m.round, m.week, m.r1, m.r2, m.default_win,
-                    m.clan1_id, t1.name AS n1, t1.avatar AS a1, m.clan2_id, t2.name AS n2, t2.avatar AS a2
-               FROM etf2l_season_match m
-               JOIN etf2l_competition c ON c.competition_id = m.competition_id
-               LEFT JOIN etf2l_team t1 ON t1.team_id = m.clan1_id
-               LEFT JOIN etf2l_team t2 ON t2.team_id = m.clan2_id
+        let rows = sqlx::query(&format!(
+            "{RESULT_SELECT}
               WHERE m.time IS NOT NULL AND (m.r1 IS NOT NULL OR m.default_win <> 0)
               ORDER BY m.time DESC
-              LIMIT ?1",
-        )
+              LIMIT ?1"
+        ))
         .bind(limit)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows.iter().map(result_row).collect())
+    }
+
+    /// One official, played or not, as the results list has it.
+    pub async fn league_match(&self, match_id: i64) -> Result<Option<ResultRow>> {
+        let row = sqlx::query(&format!("{RESULT_SELECT} WHERE m.match_id = ?1")).bind(match_id).fetch_optional(self.pool()).await?;
+        Ok(row.as_ref().map(result_row))
+    }
+
+    /// An official's maps in the order played.
+    pub async fn league_match_maps(&self, match_id: i64) -> Result<Vec<MatchMap>> {
+        let rows = sqlx::query("SELECT map, clan1, clan2, golden_cap FROM etf2l_season_map WHERE match_id = ?1 ORDER BY match_order")
+            .bind(match_id)
+            .fetch_all(self.pool())
+            .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| MatchMap { map: r.get("map"), clan1: r.get("clan1"), clan2: r.get("clan2"), golden_cap: r.get::<i64, _>("golden_cap") != 0 })
+            .collect())
+    }
+
+    /// Who played an official.
+    pub async fn league_match_players(&self, match_id: i64) -> Result<Vec<MatchPlayerRow>> {
+        let rows = sqlx::query("SELECT account_id, team_id, name FROM etf2l_season_player WHERE match_id = ?1 ORDER BY team_id, name")
+            .bind(match_id)
+            .fetch_all(self.pool())
+            .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| MatchPlayerRow { account_id: r.get::<i64, _>("account_id") as u32, team_id: r.get("team_id"), name: r.get("name") })
+            .collect())
+    }
+
+    /// An official's logs: the owner's, linked by their context, and the
+    /// league sample's; each once, the owner's first.
+    pub async fn league_match_logs(&self, match_id: i64) -> Result<Vec<MatchLog>> {
+        let rows = sqlx::query(
+            "SELECT c.log_id, m.map, 1 AS stored, COALESCE(m.played_at, 0) AS at FROM match_context c LEFT JOIN match m ON m.log_id = c.log_id
+              WHERE c.etf2l_match_id = ?1
+             UNION
+             SELECT l.log_id, l.map, EXISTS (SELECT 1 FROM match m WHERE m.log_id = l.log_id), l.played_at FROM league_log l
+              WHERE l.etf2l_match_id = ?1 AND l.log_id NOT IN (SELECT log_id FROM match_context WHERE etf2l_match_id = ?1)
+             ORDER BY at",
+        )
+        .bind(match_id)
         .fetch_all(self.pool())
         .await?;
         Ok(rows
             .into_iter()
-            .map(|r| ResultRow {
-                match_id: r.get("match_id"),
-                time: r.get("time"),
-                season: r.get("season"),
-                division: r.get("division"),
-                tier: r.get("tier"),
-                round: r.get("round"),
-                week: r.get("week"),
-                clan1: TeamRef { id: r.get("clan1_id"), name: r.get::<Option<String>, _>("n1").unwrap_or_default(), avatar: r.get("a1") },
-                clan2: TeamRef { id: r.get("clan2_id"), name: r.get::<Option<String>, _>("n2").unwrap_or_default(), avatar: r.get("a2") },
-                r1: r.get("r1"),
-                r2: r.get("r2"),
-                default_win: r.get::<i64, _>("default_win") != 0,
-            })
+            .map(|r| MatchLog { log_id: r.get("log_id"), map: r.get("map"), stored: r.get::<i64, _>("stored") != 0 })
             .collect())
     }
 

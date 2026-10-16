@@ -11,6 +11,7 @@ import { SeasonScreen, SeasonsGrid, TeamAvatar, TeamScreen, seasonTitle, useFixt
 import { YourTeamsCompact, YourTeamsStrip, useYourTeams } from "../teams/YourTeams";
 import { Countdown, clockTime, fullDate } from "./Countdown";
 import { NewsCard, NewsList, NewsReader, useNews } from "./News";
+import { FixtureRow, LeagueMatchPage, MatchesPage } from "./Matches";
 import "../teams/teams.css";
 import "./etf2l.css";
 
@@ -26,10 +27,12 @@ import "./etf2l.css";
  * history sees it.
  */
 
-type Section = "home" | "seasons" | "teams" | "players" | "news";
+type Section = "home" | "matches" | "seasons" | "teams" | "players" | "news";
 
 type Loc =
   | { at: "home" }
+  | { at: "matches" }
+  | { at: "match"; id: number; fixture?: Fixture; from: Loc }
   | { at: "seasons" }
   | { at: "season"; season: number }
   | { at: "team"; teamId: number; from: Loc }
@@ -42,13 +45,13 @@ type Loc =
 function sectionOf(l: Loc): Section {
   if (l.at === "season") return "seasons";
   if (l.at === "post") return "news";
-  if (l.at === "team") return sectionOf(l.from);
+  if (l.at === "team" || l.at === "match") return sectionOf(l.from);
   return l.at;
 }
 
-/** What a new team page goes back to: never another team's page. */
+/** What a new team or match page goes back to: never another of those. */
 function base(l: Loc): Loc {
-  return l.at === "team" ? l.from : l;
+  return l.at === "team" || l.at === "match" ? l.from : l;
 }
 
 const same = (a: Loc, b: Loc) => JSON.stringify(a) === JSON.stringify(b);
@@ -67,6 +70,10 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
     window.scrollTo({ top: 0 });
   };
   const openTeam = (teamId: number) => setStack((s) => [...s, { at: "team", teamId, from: base(s[s.length - 1]) }]);
+  const openMatch = (id: number, fixture?: Fixture) => {
+    setStack((s) => [...s, { at: "match", id, fixture, from: base(s[s.length - 1]) }]);
+    window.scrollTo({ top: 0 });
+  };
   useEffect(() => onOpenTeam((teamId) => setStack((s) => [...s, { at: "team", teamId, from: base(s[s.length - 1]) }])), []);
   useEffect(() => onOpenSeason((season) => setStack((s) => [...s, { at: "season", season }])), []);
   useEffect(() => onPlayerAsked(() => setStack((s) => (s[s.length - 1].at === "players" ? s : [...s, { at: "players" }]))), []);
@@ -112,6 +119,7 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
 
   const menu: Array<[Section, string]> = [
     ["home", t("Home")],
+    ["matches", t("Matches")],
     ["seasons", t("Seasons")],
     ["teams", t("Teams")],
     ["players", t("Players")],
@@ -135,7 +143,9 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
       </header>
       <Crumbs loc={loc} go={go} />
 
-      {loc.at === "home" && <Home onTeam={openTeam} go={go} />}
+      {loc.at === "home" && <Home onTeam={openTeam} onMatch={openMatch} go={go} />}
+      {loc.at === "matches" && <MatchesPage onTeam={openTeam} onMatch={openMatch} />}
+      {loc.at === "match" && <LeagueMatchPage key={loc.id} matchId={loc.id} fixture={loc.fixture} onTeam={openTeam} onOpenLog={onOpenMatch} />}
       {loc.at === "news" && <NewsList onPost={(id) => go({ at: "post", id })} />}
       {loc.at === "post" && <NewsReader key={loc.id} id={loc.id} />}
       {loc.at === "seasons" && <SeasonsGrid onSeason={(season) => go({ at: "season", season })} />}
@@ -157,6 +167,10 @@ function Crumbs({ loc, go }: { loc: Loc; go: (l: Loc) => void }) {
   const tiles = useQuery({ queryKey: ["seasons_overview"], queryFn: api.getSeasonsOverview, staleTime: 5 * 60_000 }).data;
   const teamId = loc.at === "team" ? loc.teamId : null;
   const team = useQuery({ queryKey: ["team", teamId], queryFn: () => api.getTeam(teamId!), enabled: teamId !== null }).data;
+  const matchId = loc.at === "match" ? loc.id : null;
+  const lm = useQuery({ queryKey: ["league_match", matchId], queryFn: () => api.getLeagueMatch(matchId!), enabled: matchId !== null }).data;
+  const mf = loc.at === "match" ? loc.fixture : undefined;
+  const matchTitle = lm ? `${lm.clan1.name} vs ${lm.clan2.name}` : mf ? `${mf.clan1.name} vs ${mf.clan2.name}` : null;
   const postId = loc.at === "post" ? loc.id : null;
   const post = useQuery({ queryKey: ["etf2l_news_post", postId], queryFn: () => api.getNewsPost(postId!), enabled: postId !== null, staleTime: 30 * 60_000 }).data;
   const trail: Array<[string, Loc]> = [];
@@ -168,11 +182,14 @@ function Crumbs({ loc, go }: { loc: Loc; go: (l: Loc) => void }) {
       trail.push([t("Seasons"), { at: "seasons" }]);
       const tile = tiles?.find((s) => s.season === l.season);
       trail.push([tile ? seasonTitle(tile) : t("Season {0}", { "0": l.season }), l]);
+    } else if (l.at === "match") {
+      add(l.from);
+      trail.push([matchTitle ?? t("Match"), l]);
     } else if (l.at === "post") {
       trail.push([t("News"), { at: "news" }]);
       trail.push([post?.title ?? t("Post"), l]);
     } else if (l.at !== "home") {
-      trail.push([{ seasons: t("Seasons"), teams: t("Teams"), players: t("Players"), news: t("News") }[l.at], l]);
+      trail.push([{ matches: t("Matches"), seasons: t("Seasons"), teams: t("Teams"), players: t("Players"), news: t("News") }[l.at], l]);
     }
   };
   add(loc);
@@ -286,7 +303,7 @@ function dayOffset(time: number): number {
   return Math.round((a - b) / 86_400_000);
 }
 
-function Home({ onTeam, go }: { onTeam: (id: number) => void; go: (l: Loc) => void }) {
+function Home({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: (id: number, f?: Fixture) => void; go: (l: Loc) => void }) {
   const fixtures = useFixtures();
   const mine = new Set(useYourTeams().map((e) => e.teamId));
   // Your next official, if one of your teams has one coming.
@@ -299,10 +316,13 @@ function Home({ onTeam, go }: { onTeam: (id: number) => void; go: (l: Loc) => vo
   return (
     <div className="e2-home">
       <div className="e2-main">
-        {next && <NextMatch f={next} side={mine.has(next.clan1.id) ? next.clan1.id : next.clan2.id} onTeam={onTeam} />}
+        {next && <NextMatch f={next} side={mine.has(next.clan1.id) ? next.clan1.id : next.clan2.id} onTeam={onTeam} onOpen={() => onMatch(next.matchId, next)} />}
         <section className="panel e2-panel">
           <div className="e2-panel-head">
             <h2>{t("Officials")}</h2>
+            <button className="e2-more e2-more-left" onClick={() => go({ at: "matches" })}>
+              {t("All matches")} ›
+            </button>
             <div className="km-seg" role="radiogroup" aria-label={t("When")}>
               {(
                 [
@@ -322,7 +342,7 @@ function Home({ onTeam, go }: { onTeam: (id: number) => void; go: (l: Loc) => vo
           ) : (
             <ol className="e2-fixtures">
               {shown.map((f) => (
-                <FixtureRow key={f.matchId} f={f} mine={mine} onTeam={onTeam} showDay={when === "week"} />
+                <FixtureRow key={f.matchId} f={f} mine={mine} onTeam={onTeam} onOpen={() => onMatch(f.matchId, f)} showDay={when === "week"} />
               ))}
             </ol>
           )}
@@ -337,7 +357,7 @@ function Home({ onTeam, go }: { onTeam: (id: number) => void; go: (l: Loc) => vo
           <YourTeamsCompact onTeam={onTeam} />
         </section>
         <LiveSeason go={go} fixtures={fixtures} />
-        <RecentResults onTeam={onTeam} />
+        <RecentResults onTeam={onTeam} onMatch={onMatch} go={go} />
       </aside>
     </div>
   );
@@ -345,7 +365,7 @@ function Home({ onTeam, go }: { onTeam: (id: number) => void; go: (l: Loc) => vo
 
 /** Your team's next official, large: the two sides, the countdown between
  *  them, and what is known of it. */
-function NextMatch({ f, side, onTeam }: { f: Fixture; side: number; onTeam: (id: number) => void }) {
+function NextMatch({ f, side, onTeam, onOpen }: { f: Fixture; side: number; onTeam: (id: number) => void; onOpen: () => void }) {
   const flip = f.clan2.id === side;
   const [a, b] = flip ? [f.clan2, f.clan1] : [f.clan1, f.clan2];
   const r = flip ? { ...f.h2h, won: f.h2h.lost, lost: f.h2h.won } : f.h2h;
@@ -377,36 +397,11 @@ function NextMatch({ f, side, onTeam }: { f: Fixture; side: number; onTeam: (id:
       <div className="e2-nm-foot">
         <span>{r.played === 0 ? t("First meeting in an official") : <>{t("Head-to-head")} <strong>{wl(r)}</strong></>}</span>
         <span className="muted">{f.maps.length > 0 ? f.maps.join(" · ") : t("Maps still to be picked")}</span>
+        <button className="e2-more" onClick={onOpen}>
+          {t("Match page")} ›
+        </button>
       </div>
     </section>
-  );
-}
-
-function FixtureRow({ f, mine, onTeam, showDay }: { f: Fixture; mine: Set<number>; onTeam: (id: number) => void; showDay: boolean }) {
-  const ours = mine.has(f.clan1.id) || mine.has(f.clan2.id);
-  const team = (x: Fixture["clan1"]) => (
-    <button className="e2-team" onClick={() => onTeam(x.id)} title={t("Open {0}", { "0": x.name })}>
-      <TeamAvatar src={x.avatar} />
-      <span>{x.name}</span>
-    </button>
-  );
-  return (
-    <li className={ours ? "e2-fx ours" : "e2-fx"}>
-      <span className="e2-fx-time" title={fullDate(f.time)}>
-        {showDay && <span className="muted">{formatDate(f.time)} </span>}
-        {clockTime(f.time)}
-      </span>
-      <Countdown time={f.time} />
-      <span className="e2-fx-div">{f.division && f.tier !== null && <DivisionBadge d={{ name: f.division, tier: f.tier }} />}</span>
-      <span className="e2-fx-teams">
-        {team(f.clan1)}
-        <span className="e2-vs">{t("vs")}</span>
-        {team(f.clan2)}
-      </span>
-      <span className="e2-fx-h2h muted" title={t("Head-to-head in officials")}>
-        {f.h2h.played > 0 ? wl(f.h2h) : ""}
-      </span>
-    </li>
   );
 }
 
@@ -458,12 +453,19 @@ function LiveSeason({ go, fixtures }: { go: (l: Loc) => void; fixtures: Fixture[
   );
 }
 
-function RecentResults({ onTeam }: { onTeam: (id: number) => void }) {
+function RecentResults({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: (id: number) => void; go: (l: Loc) => void }) {
   const q = useQuery({ queryKey: ["recent_results"], queryFn: () => api.getRecentResults(8), staleTime: 5 * 60_000 });
   const rows = q.data ?? [];
   if (rows.length === 0) return null;
   const side = (r: ResultRow, x: ResultRow["clan1"], score: number | null, won: boolean) => (
-    <button className={won ? "e2-res-team won" : "e2-res-team"} onClick={() => onTeam(x.id)} title={t("Open {0}", { "0": x.name })}>
+    <button
+      className={won ? "e2-res-team won" : "e2-res-team"}
+      onClick={(e) => {
+        e.stopPropagation();
+        onTeam(x.id);
+      }}
+      title={t("Open {0}", { "0": x.name })}
+    >
       <span>{x.name}</span>
       <span className="e2-res-score">{r.defaultWin && score === null ? "–" : (score ?? "–")}</span>
     </button>
@@ -472,13 +474,16 @@ function RecentResults({ onTeam }: { onTeam: (id: number) => void }) {
     <section className="panel e2-panel">
       <div className="e2-panel-head">
         <h2>{t("Recent results")}</h2>
+        <button className="e2-more" onClick={() => go({ at: "matches" })}>
+          {t("All results")} ›
+        </button>
       </div>
       <ol className="e2-results">
         {rows.map((r) => {
           const a = r.r1 ?? 0;
           const b = r.r2 ?? 0;
           return (
-            <li key={r.matchId} title={fullDate(r.time)}>
+            <li key={r.matchId} title={fullDate(r.time)} className="e2-res-row" onClick={() => onMatch(r.matchId)}>
               {side(r, r.clan1, r.r1, a > b)}
               {side(r, r.clan2, r.r2, b > a)}
               <span className="e2-res-meta">

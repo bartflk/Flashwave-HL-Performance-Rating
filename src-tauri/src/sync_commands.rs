@@ -1557,7 +1557,13 @@ pub async fn get_news_post(state: State<'_, AppState>, id: i64) -> CmdResult<Opt
 /// The latest played officials of every team (Q74's results).
 #[tauri::command]
 pub async fn get_recent_results(state: State<'_, AppState>, limit: Option<i64>) -> CmdResult<Vec<hl_db::ResultRow>> {
-    Ok(state.db.recent_results(limit.unwrap_or(10).clamp(1, 100)).await?)
+    Ok(state.db.recent_results(limit.unwrap_or(10).clamp(1, 300)).await?)
+}
+
+/// One official for the ETF2L tab's match page (Q74).
+#[tauri::command]
+pub async fn get_league_match(state: State<'_, AppState>, match_id: i64) -> CmdResult<Option<hl_ingest::league_match::LeagueMatch>> {
+    Ok(hl_ingest::league_match::league_match(&state.db, match_id).await?)
 }
 
 /// Teams by name (Q74's search).
