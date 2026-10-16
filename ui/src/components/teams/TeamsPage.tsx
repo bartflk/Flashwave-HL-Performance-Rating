@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type Fixture, type LeagueRecord, type Podium, type SeasonTile, type Stay, type TeamEtf2l, type TeamHonours, type TeamInfo, type TeamTransfers, type TeamView } from "../../api/types";
 import { formatDate, formatMonth, formatStay, rating } from "../../lib/format";
-import { onOpenSeason, onOpenTeam, openPlayer, takePendingSeason, takePendingTeam } from "../../lib/goto";
+import { openPlayer } from "../../lib/goto";
 import { BookmarkButton } from "../Bookmarks";
 import { locale, t, tx } from "../../lib/i18n";
 import { ClassIcon } from "../ClassIcon";
@@ -13,109 +13,33 @@ import { MedalGlyph } from "../players/MedalGlyph";
 import { DivisionBadge, medalTitles, seasonLong, seasonShort } from "../players/PlayerProfile";
 import "../players/players.css";
 import "./teams.css";
-import { YouOnThisTeam, YourTeamsStrip } from "./YourTeams";
+import { YouOnThisTeam } from "./YourTeams";
 
 /**
- * Teams (Q29, and Flashy's UX passes): every ETF2L Highlander season as a
- * tile -- its banner from ETF2L's news, who won it, how you did -- then a
- * season's podiums and division tables, then a team's own page, built like
- * a player's profile, with its ETF2L description and awards.
+ * The league's screens (Q29, and Flashy's UX passes), shown inside the ETF2L
+ * tab (Q74): every ETF2L Highlander season as a tile -- its banner from
+ * ETF2L's news, who won it, how you did -- then a season's podiums and
+ * division tables, then a team's own page, built like a player's profile,
+ * with its ETF2L description and awards. The tab owns where you are and the
+ * breadcrumbs; these only draw.
  */
 
-type View = { kind: "seasons" } | { kind: "season"; season: number } | { kind: "team"; teamId: number; from: View };
-
-/** One step back within Teams, as the ‹ Back button does; `null` on the grid. */
-function stepBack(v: View): View | null {
-  if (v.kind === "team") return v.from;
-  if (v.kind === "season") return { kind: "seasons" };
-  return null;
-}
-
 const PLACE = ["gold", "silver", "bronze"] as const;
-
-export function TeamsPage({ active }: { active: boolean }) {
-  // A team asked for from elsewhere (a match header) opens straight on it.
-  const [view, setView] = useState<View>(() => {
-    const pending = takePendingTeam();
-    if (pending !== null) return { kind: "team", teamId: pending, from: { kind: "seasons" } };
-    // Or a season, from a bookmark (Q60).
-    const season = takePendingSeason();
-    return season === null ? { kind: "seasons" } : { kind: "season", season };
-  });
-  const openTeam = (teamId: number) => setView((from) => ({ kind: "team", teamId, from: from.kind === "team" ? from.from : from }));
-  useEffect(() => onOpenTeam((teamId) => setView({ kind: "team", teamId, from: { kind: "seasons" } })), []);
-  useEffect(() => onOpenSeason((season) => setView({ kind: "season", season })), []);
-  // Mouse 4 / Alt+Left step back within Teams (team → season → grid) before the
-  // app's own history sees them: capture phase on window runs first, and
-  // stopPropagation keeps the app from also going back a tab. On the grid, or
-  // with Teams hidden, they are left alone.
-  const viewRef = useRef(view);
-  const activeRef = useRef(active);
-  useEffect(() => {
-    viewRef.current = view;
-    activeRef.current = active;
-  });
-  useEffect(() => {
-    const target = () => (activeRef.current ? stepBack(viewRef.current) : null);
-    const onMouse = (e: MouseEvent) => {
-      if (e.button !== 3) return; // 3 is the mouse's back button
-      const to = target();
-      if (!to) return;
-      e.preventDefault();
-      e.stopPropagation();
-      // Same rule as navigation.ts: act on the way up only.
-      if (e.type === "mouseup") setView(to);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (!e.altKey || e.key !== "ArrowLeft") return;
-      const to = target();
-      if (!to) return;
-      e.preventDefault();
-      e.stopPropagation();
-      setView(to);
-    };
-    window.addEventListener("mousedown", onMouse, true);
-    window.addEventListener("mouseup", onMouse, true);
-    window.addEventListener("keydown", onKey, true);
-    return () => {
-      window.removeEventListener("mousedown", onMouse, true);
-      window.removeEventListener("mouseup", onMouse, true);
-      window.removeEventListener("keydown", onKey, true);
-    };
-  }, []);
-  let body;
-  if (view.kind === "team") {
-    body = <TeamScreen teamId={view.teamId} onBack={() => setView(stepBack(view) ?? { kind: "seasons" })} onTeam={openTeam} backLabel={view.from.kind === "season" ? t("Season") : t("All seasons")} />;
-  } else if (view.kind === "season") {
-    body = <SeasonScreen season={view.season} onBack={() => setView(stepBack(view) ?? { kind: "seasons" })} onTeam={openTeam} />;
-  } else {
-    body = <SeasonsGrid onSeason={(season) => setView({ kind: "season", season })} onTeam={openTeam} />;
-  }
-  return <div className="content teams-page">{body}</div>;
-}
-
-function BackButton({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button className="ts-back" onClick={onClick}>
-      <span aria-hidden>‹</span> {label}
-    </button>
-  );
-}
 
 // ---- 1. Every season as a tile ----------------------------------------
 
 /** Every upcoming Highlander official (Q48), read from ETF2L at most every half hour. */
-function useFixtures() {
+export function useFixtures() {
   return useQuery({ queryKey: ["fixtures"], queryFn: api.getFixtures, staleTime: 10 * 60_000 }).data ?? [];
 }
 
 /** When a match is: "Sun 4 Oct, 20:15". */
-function kickoff(unix: number): string {
+export function kickoff(unix: number): string {
   return new Date(unix * 1000).toLocaleString(locale(), { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 }
 
 /** One upcoming match. `side` puts that team on the left and reads the record from its side. */
-function FixtureCard({ f, side, onTeam }: { f: Fixture; side?: number; onTeam: (id: number) => void }) {
+export function FixtureCard({ f, side, onTeam }: { f: Fixture; side?: number; onTeam: (id: number) => void }) {
   const flip = side !== undefined && f.clan2.id === side;
   const [a, b] = flip ? [f.clan2, f.clan1] : [f.clan1, f.clan2];
   const r = flip ? { ...f.h2h, won: f.h2h.lost, lost: f.h2h.won } : f.h2h;
@@ -155,9 +79,8 @@ function FixtureCard({ f, side, onTeam }: { f: Fixture; side?: number; onTeam: (
   );
 }
 
-function SeasonsGrid({ onSeason, onTeam }: { onSeason: (season: number) => void; onTeam: (id: number) => void }) {
+export function SeasonsGrid({ onSeason }: { onSeason: (season: number) => void }) {
   const q = useQuery({ queryKey: ["seasons_overview"], queryFn: api.getSeasonsOverview, staleTime: 5 * 60_000 });
-  const fixtures = useFixtures();
   return (
     <>
       <header className="ts-pagehead">
@@ -165,17 +88,6 @@ function SeasonsGrid({ onSeason, onTeam }: { onSeason: (season: number) => void;
         <h1>{t("Seasons")}</h1>
         <p className="hint">{t("Pick a season for its podiums, its divisions and every team in them.")}</p>
       </header>
-      <YourTeamsStrip onTeam={onTeam} />
-      {fixtures.length > 0 && (
-        <>
-          <h2 className="ts-section">{tx("Coming up ({0})", { "0": fixtures.length })}</h2>
-          <section className="ts-fixtures">
-            {fixtures.slice(0, 6).map((f) => (
-              <FixtureCard key={f.matchId} f={f} onTeam={onTeam} />
-            ))}
-          </section>
-        </>
-      )}
       {q.isPending && <p className="hint">{t("Loading seasons…")}</p>}
       {q.isError && <p className="error">{errorMessage(q.error)}</p>}
       {q.data && q.data.length === 0 && (
@@ -194,13 +106,13 @@ function SeasonsGrid({ onSeason, onTeam }: { onSeason: (season: number) => void;
   );
 }
 
-function seasonTitle(s: { season: number; seasonName: string }): string {
+export function seasonTitle(s: { season: number; seasonName: string }): string {
   if (s.season >= 100) return s.seasonName;
   return s.seasonName && !s.seasonName.startsWith("Season") ? t("Season {0} · {1}", { "0": s.season, "1": s.seasonName }) : t("Season {0}", { "0": s.season });
 }
 
 /** The season's banner, shrunk once by the app: small for a tile, large for the header. */
-function useBanner(s: { season: number; seasonName: string }, large = false) {
+export function useBanner(s: { season: number; seasonName: string }, large = false) {
   return useQuery({ queryKey: ["season_banner", s.season, large], queryFn: () => api.getSeasonBanner(s.season, s.seasonName, large), staleTime: Infinity }).data ?? null;
 }
 
@@ -272,7 +184,7 @@ function SeasonCard({ s, live, onOpen }: { s: SeasonTile; live: boolean; onOpen:
 
 // ---- 2. One season: podiums, then the division tables ----------------
 
-function SeasonScreen({ season, onBack, onTeam }: { season: number; onBack: () => void; onTeam: (id: number) => void }) {
+export function SeasonScreen({ season, onTeam }: { season: number; onTeam: (id: number) => void }) {
   const tiles = useQuery({ queryKey: ["seasons_overview"], queryFn: api.getSeasonsOverview, staleTime: 5 * 60_000 });
   const tile = tiles.data?.find((s) => s.season === season);
   const tables = useQuery({ queryKey: ["leagues", season], queryFn: () => api.getLeagues(season), placeholderData: keepPreviousData });
@@ -282,7 +194,6 @@ function SeasonScreen({ season, onBack, onTeam }: { season: number; onBack: () =
   const v = tables.data;
   return (
     <>
-      <BackButton label={t("All seasons")} onClick={onBack} />
       <section className={`ts-hero ${banner ? "" : teamTint(season)}`} style={banner ? { backgroundImage: `url("${banner}")` } : undefined}>
         <div className="ts-hero-text">
           <span className="ts-eyebrow">{t("ETF2L Highlander")}</span>
@@ -420,7 +331,7 @@ function PodiumCard({ p, onTeam }: { p: Podium; onTeam: (id: number) => void }) 
 
 type TeamTab = "overview" | "lineup" | "seasons" | "history" | "results";
 
-function TeamScreen({ teamId, onBack, onTeam, backLabel }: { teamId: number; onBack: () => void; onTeam: (id: number) => void; backLabel: string }) {
+export function TeamScreen({ teamId, onTeam }: { teamId: number; onTeam: (id: number) => void }) {
   const q = useQuery({ queryKey: ["team", teamId], queryFn: () => api.getTeam(teamId) });
   const h = useQuery({ queryKey: ["team_honours", teamId], queryFn: () => api.getTeamHonours(teamId) });
   const e = useQuery({ queryKey: ["team_etf2l", teamId], queryFn: () => api.getTeamEtf2l(teamId), staleTime: 60 * 60_000 });
@@ -429,7 +340,6 @@ function TeamScreen({ teamId, onBack, onTeam, backLabel }: { teamId: number; onB
   const [tab, setTab] = useState<TeamTab>("overview");
   return (
     <>
-      <BackButton label={backLabel} onClick={onBack} />
       {q.isPending && <p className="hint">{t("Loading team…")}</p>}
       {q.isError && <p className="error">{errorMessage(q.error)}</p>}
       {q.data === null && (
@@ -1124,11 +1034,11 @@ function ResultsTable({ rows, onTeam }: { rows: TeamView["results"]; onTeam: (id
   );
 }
 
-function TeamAvatar({ src }: { src: string | null }) {
+export function TeamAvatar({ src }: { src: string | null }) {
   return src ? <img src={src} alt="" className="teams-avatar" /> : <span className="teams-avatar" />;
 }
 
-function wl(r: LeagueRecord): string {
+export function wl(r: LeagueRecord): string {
   return r.drawn > 0 ? `${r.won}-${r.lost}-${r.drawn}` : `${r.won}-${r.lost}`;
 }
 

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { TeamEra } from "../../api/types";
@@ -12,7 +13,7 @@ import { ClassIcon } from "../ClassIcon";
  * scrims -- with your record and rating, and who played most with you.
  */
 
-function useYourTeams(): TeamEra[] {
+export function useYourTeams(): TeamEra[] {
   return useQuery({ queryKey: ["teammates", false], queryFn: () => api.getTeammates(false), staleTime: 5 * 60_000 }).data?.teams ?? [];
 }
 
@@ -53,6 +54,37 @@ export function YourTeamsStrip({ onTeam }: { onTeam: (teamId: number) => void })
         })}
       </div>
     </section>
+  );
+}
+
+/** Your teams in one line each (Q74's Home, Flashy: smaller than the cards):
+ *  badge, name, record and your rating, the newest few. */
+export function YourTeamsCompact({ onTeam, max = 3 }: { onTeam: (teamId: number) => void; max?: number }) {
+  const all = useYourTeams().filter((e) => e.games >= 3);
+  const [open, setOpen] = useState(false);
+  if (all.length === 0) return null;
+  const shown = open ? all : all.slice(0, max);
+  return (
+    <ul className="yt-compact">
+      {shown.map((e) => (
+        <li key={e.teamId}>
+          <button onClick={() => onTeam(e.teamId)} title={t("Open {0}", { "0": e.name })}>
+            <span className="yt-c-name">{e.name || t("Unnamed team")}</span>
+            <span className="yt-c-wl">
+              {e.wins}–{e.losses}
+            </span>
+            <span className="yt-c-rating">{e.myAvg === null ? "—" : rating(e.myAvg)}</span>
+          </button>
+        </li>
+      ))}
+      {all.length > max && (
+        <li>
+          <button className="yt-c-more" onClick={() => setOpen((o) => !o)}>
+            {open ? t("Fewer") : tx("All your teams ({0})", { "0": all.length })}
+          </button>
+        </li>
+      )}
+    </ul>
   );
 }
 

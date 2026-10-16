@@ -1496,6 +1496,7 @@ from testers (function, boSe, Taiga) is marked with who asked.
 | ~~Q71~~ | ~~**Two logs "not loading": 4132222 and its combined 4132265** (a user, 9 Oct)~~ | small | **Done (12 Oct).** An import says when the log is part of a combined one (`Imported::part_of`, from `log_index.superseded_by`, recomputed on every import): Settings adds "It is part of combined log 4132265, which is what your match list shows", the Matches page's Import opens the combined log, and `hl import` prints it. Checked: `hl import https://logs.tf/4132222#76561198042977455` on a copy holding 4132265 names it. Still to do: ask the reporter for their version (0.9.0 asked logs.tf only) and Settings > Problems if it still fails. |
 | ~~Q72~~ | ~~**TF2 icons on the map: deaths, sentries, dispensers, teleporter ends** (Flashy, Emiel)~~ | small | **Done (13 Oct).** Deaths on the kill map are the kill feed's skull (`Killicon_skull.png`); buildings on the Movement layer are the Engineer HUD's icons, cut from the wiki's `BuildingHUD.png` (sentry, dispenser, teleporter entrance and exit, and the bare pad when the end is not known), all Valve's art via the Official TF2 Wiki and credited in the README. They ship as white cut-outs in `ui/public/icons` and are tinted in the team's colour with a dark rim (`ui/src/components/analysis/mapIcons.ts`), the old shapes kept as a fallback. Sentries and dispensers were already shown (checked 12 Oct: not a bug). Not done: a mini-sentry or level icon, since the demo data does not say which a sentry is beyond its level. |
 | ~~Q73~~ | ~~**Kill map UX pass** (Flashy)~~ | medium | **Done (16 Oct).** The layer is a pill toggle (Kills and deaths / Movement / Heatmap) with its own options beside it; the heatmap's Kills/Deaths and This match/All matches only show on the heatmap (they showed on Movement and did nothing), and Map/Table only on Kills and deaths. Zoom in and out, whole map and full screen float in the map's top right; the callouts are one menu in the top left (zones and names switches, opacity, edit). The legend under the map is a row of chips with counts, each one switching its layer: kills, deaths, survived and died lives, and each kind of building. The lives list has no scroll bar: a fade and a small arrow at the end that has more, which scrolls a page; a cap fits on one line. `MapChrome.tsx` holds the pieces. |
+| Q74 | **One ETF2L tab, laid out like etf2l.org** (Flashy) | large | Teams and Players become one top tab, *ETF2L*, with its own menu (Home, Matches, Seasons, Teams, Players, News, Recruitment) and a search over players and teams. See §27. **Steps 1-2 built (16 Oct):** the tab, its menu, breadcrumbs (mouse 4 steps back inside it), the search over players and teams (non-league players greyed), and Home: your next match, officials with countdowns, the latest news (opens on etf2l.org until step 3), your teams one line each, the live season, recent results. Teams has a team search above your team cards. Still to build: News in the app, Matches and the match page, a season's fixtures by week, Recruitment. |
 
 ### Reported by testers, and fixed
 
@@ -2777,3 +2778,59 @@ Q34 first (it is built; the check needs one backup), then Q35 (all from
 data already here), Q36 (on Q34), Q38 (on Q35's player seasons), Q37 (a
 page parser, independent), and Q39 whenever the fits can be run in one
 sitting. Q35-Q38 are new features: a minor release.
+
+
+## 27. The ETF2L tab (Q74, Flashy, 16 Oct 2026)
+
+Teams and Players merge into one top tab named **ETF2L**, with the flow of
+etf2l.org (news and today's matches up front, seasons, teams, players,
+recruitment) in the app's own style. Highlander only throughout.
+
+**Menu inside the tab:** Home · Matches · Seasons · Teams · Players · News ·
+Recruitment, and a search box on the right over players and teams.
+Breadcrumbs (`ETF2L › Seasons › Season 36 › Team`) replace ‹ Back; mouse 4
+steps back one level as Teams does now. Bookmarks open inside the tab. The
+forum and the rules are left out.
+
+**Home:** your team's next match with a countdown; today / tomorrow / this
+week's officials with countdowns; the latest news; on the right a compact
+"Your teams" (one line each, three at most), the live season (week, roster
+lock), and recent results.
+
+**Countdown everywhere a fixture shows:** "in 2 d 4 h", "in 3 h 12 m", "in
+14:32" ticking in the last hour, LIVE for three hours after the start (the
+existing rule), then the score; local time beside it, the date on hover.
+
+**Matches:** upcoming (by day, filter by division and "my teams") and recent
+results; a new match page with the countdown or score, head-to-head, maps,
+both rosters with class and rating, and the logs when they are stored.
+
+**Seasons:** today's Teams grid, season page and team pages, plus fixtures
+and results by week on a season.
+
+**Teams:** search every Highlander team, your teams in full, this season's
+teams by division; a team page shows its next match.
+
+**Players:** today's Players page. People from your logs who never played
+ETF2L stay searchable but greyed out (Flashy: "just gray them out").
+
+**News, in the app** (Flashy: in the app where the API has it): ETF2L's
+WordPress posts in the Highlander category (`/wp-json/wp/v2/posts?categories=18`,
+full HTML in `content.rendered`), listed with banner, title, date and
+excerpt, and read in the app with the HTML cleaned to text, headings, lists,
+links and images; "Read on ETF2L" at the end. Cached for 30 minutes.
+
+**Recruitment** (Flashy: would be nice): `/recruitment/players` and
+`/recruitment/teams` on the ETF2L API, kept to `type == "Highlander"`:
+name, classes, skill, comment count, a link to the post; a player opens
+their profile, a team its page. Filters by class and skill.
+
+**Data:** fixtures (Q48), seasons, tables, team pages and player search are
+built. New: the news list and post, recruitment, team search, recent
+results (from the stored officials), a fixture's details (ETF2L's match
+endpoint), and the countdown component. The 1 November API switch is
+already handled in `sources.rs`.
+
+**Order:** (1) the tab, its menu and breadcrumbs, the old pages inside;
+(2) Home; (3) News; (4) Matches and the match page; (5) Teams landing and a
+season's fixtures; (6) Recruitment. Each can ship alone.

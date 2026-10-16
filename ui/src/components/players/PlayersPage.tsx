@@ -97,7 +97,9 @@ function Results({
       {hits.map((h) => (
         <button
           key={h.accountId}
-          className={picked === h.accountId ? "player-hit active" : "player-hit"}
+          // Never played an official: from your matches only, greyed (Flashy, Q74).
+          className={`player-hit${picked === h.accountId ? " active" : ""}${h.officials === 0 ? " out" : ""}`}
+          title={h.officials === 0 ? t("Not in the league: only in your matches") : undefined}
           onClick={() => onPick(h.accountId)}
           aria-pressed={picked === h.accountId}
         >

@@ -10,8 +10,7 @@ import { Matches } from "./components/Matches";
 import { SyncSummary } from "./components/SyncSummary";
 import { MatchPage } from "./components/match/MatchPage";
 import { ProfilePage } from "./components/profile/ProfilePage";
-import { TeamsPage } from "./components/teams/TeamsPage";
-import { PlayersPage } from "./components/players/PlayersPage";
+import { Etf2lPage } from "./components/etf2l/Etf2lPage";
 import { ToastHost } from "./lib/toast";
 import { CalloutDrop } from "./components/CalloutPresets";
 import { Notifications } from "./components/Notifications";
@@ -29,15 +28,15 @@ import { BookmarksMenu } from "./components/Bookmarks";
 import "./App.css";
 import "./components/match/match.css";
 
-type Tab = "matches" | "profile" | "teams" | "players" | "settings" | "rating";
+type Tab = "matches" | "profile" | "etf2l" | "settings" | "rating";
 
 // Settings is not one of these: it is the cog on the far right, where a
 // setting belongs, rather than a fourth thing to read.
 const TABS: Array<[Tab, string]> = [
   ["matches", "Matches"],
   ["profile", "Profile"],
-  ["teams", "Teams"],
-  ["players", "Players"],
+  // Teams and Players, as one tab laid out like etf2l.org (Q74).
+  ["etf2l", "ETF2L"],
 ];
 
 export default function App() {
@@ -189,14 +188,9 @@ export default function App() {
           <ErrorBoundary what="The profile"><ProfilePage steamid={data.config.steamid} onOpenMatch={setOpenLog} /></ErrorBoundary>
         </div>
       )}
-      {visited.has("teams") && (
-        <div hidden={tab !== "teams" || openLog !== null}>
-          <ErrorBoundary what="Teams"><TeamsPage active={tab === "teams" && openLog === null} /></ErrorBoundary>
-        </div>
-      )}
-      {visited.has("players") && (
-        <div hidden={tab !== "players" || openLog !== null}>
-          <ErrorBoundary what="Players"><PlayersPage onOpenMatch={setOpenLog} /></ErrorBoundary>
+      {visited.has("etf2l") && (
+        <div hidden={tab !== "etf2l" || openLog !== null}>
+          <ErrorBoundary what="ETF2L"><Etf2lPage active={tab === "etf2l" && openLog === null} onOpenMatch={setOpenLog} /></ErrorBoundary>
         </div>
       )}
       {tab === "rating" && openLog === null && (

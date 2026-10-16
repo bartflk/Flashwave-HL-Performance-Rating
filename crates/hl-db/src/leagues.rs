@@ -447,6 +447,125 @@ impl Db {
     }
 }
 
+/// One played official, any team's, for the ETF2L tab's results (Q74).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResultRow {
+    pub match_id: i64,
+    pub time: i64,
+    pub season: i64,
+    pub division: Option<String>,
+    pub tier: Option<i64>,
+    pub round: Option<String>,
+    pub week: Option<i64>,
+    pub clan1: TeamRef,
+    pub clan2: TeamRef,
+    pub r1: Option<i64>,
+    pub r2: Option<i64>,
+    pub default_win: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TeamRef {
+    pub id: i64,
+    pub name: String,
+    pub avatar: Option<String>,
+}
+
+/// A team found by name (Q74's search), with how much of the league it has
+/// played.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TeamHit {
+    pub team_id: i64,
+    pub name: String,
+    pub country: Option<String>,
+    pub avatar: Option<String>,
+    pub officials: i64,
+    /// The last season it played, and when.
+    pub last_season: Option<i64>,
+    pub last_played: Option<i64>,
+}
+
+impl Db {
+    /// The latest played officials of every team, newest first: a score in,
+    /// or a default win.
+    pub async fn recent_results(&self, limit: i64) -> Result<Vec<ResultRow>> {
+        let rows = sqlx::query(
+            "SELECT m.match_id, m.time, c.season, m.division, m.tier, m.round, m.week, m.r1, m.r2, m.default_win,
+                    m.clan1_id, t1.name AS n1, t1.avatar AS a1, m.clan2_id, t2.name AS n2, t2.avatar AS a2
+               FROM etf2l_season_match m
+               JOIN etf2l_competition c ON c.competition_id = m.competition_id
+               LEFT JOIN etf2l_team t1 ON t1.team_id = m.clan1_id
+               LEFT JOIN etf2l_team t2 ON t2.team_id = m.clan2_id
+              WHERE m.time IS NOT NULL AND (m.r1 IS NOT NULL OR m.default_win <> 0)
+              ORDER BY m.time DESC
+              LIMIT ?1",
+        )
+        .bind(limit)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| ResultRow {
+                match_id: r.get("match_id"),
+                time: r.get("time"),
+                season: r.get("season"),
+                division: r.get("division"),
+                tier: r.get("tier"),
+                round: r.get("round"),
+                week: r.get("week"),
+                clan1: TeamRef { id: r.get("clan1_id"), name: r.get::<Option<String>, _>("n1").unwrap_or_default(), avatar: r.get("a1") },
+                clan2: TeamRef { id: r.get("clan2_id"), name: r.get::<Option<String>, _>("n2").unwrap_or_default(), avatar: r.get("a2") },
+                r1: r.get("r1"),
+                r2: r.get("r2"),
+                default_win: r.get::<i64, _>("default_win") != 0,
+            })
+            .collect())
+    }
+
+    /// Teams whose name holds `query`, any case: exact and prefix matches
+    /// first, then the ones that played most recently.
+    pub async fn search_teams(&self, query: &str, limit: i64) -> Result<Vec<TeamHit>> {
+        let q = query.trim().to_lowercase();
+        if q.is_empty() {
+            return Ok(Vec::new());
+        }
+        // `!` escapes, so a % or _ in a name is a character, not a wildcard.
+        let like = format!("%{}%", q.replace('!', "!!").replace('%', "!%").replace('_', "!_"));
+        let rows = sqlx::query(
+            "SELECT t.team_id, t.name, t.country, t.avatar,
+                    (SELECT COUNT(*) FROM etf2l_season_match m WHERE m.clan1_id = t.team_id OR m.clan2_id = t.team_id) AS officials,
+                    (SELECT MAX(c.season) FROM etf2l_season_match m JOIN etf2l_competition c ON c.competition_id = m.competition_id
+                      WHERE (m.clan1_id = t.team_id OR m.clan2_id = t.team_id) AND c.season < 100) AS last_season,
+                    (SELECT MAX(m.time) FROM etf2l_season_match m WHERE m.clan1_id = t.team_id OR m.clan2_id = t.team_id) AS last_played
+               FROM etf2l_team t
+              WHERE lower(t.name) LIKE ?1 ESCAPE '!'
+              ORDER BY (lower(t.name) = ?2) DESC, (lower(t.name) LIKE ?3 ESCAPE '!') DESC, last_played DESC
+              LIMIT ?4",
+        )
+        .bind(&like)
+        .bind(&q)
+        .bind(format!("{}%", &like[1..like.len() - 1]))
+        .bind(limit)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| TeamHit {
+                team_id: r.get("team_id"),
+                name: r.get("name"),
+                country: r.get("country"),
+                avatar: r.get("avatar"),
+                officials: r.get("officials"),
+                last_season: r.get("last_season"),
+                last_played: r.get("last_played"),
+            })
+            .collect())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::Db;
@@ -466,5 +585,24 @@ mod tests {
         assert_eq!(names.get(&7).map(String::as_str), Some("owner era"), "time 300 beats 200 and 100");
         assert_eq!(names.get(&8).map(String::as_str), Some("eight"), "a blank name is skipped");
         assert_eq!(names.get(&9).map(String::as_str), Some("nine renamed"));
+    }
+
+    #[tokio::test]
+    async fn results_are_newest_first_and_teams_found_by_name() {
+        let db = Db::connect_in_memory().await.unwrap();
+        for sql in [
+            "INSERT INTO etf2l_competition (competition_id, season, season_name, division, stage, name, fetched_at) VALUES (1, 36, 'Autumn 2026', 'Open', 'regular', 'HL 36', 0)",
+            "INSERT INTO etf2l_team (team_id, name) VALUES (1, 'Comp Chaos'), (2, 'Chaos Theory'), (3, 'BRETT'), (4, '100%_real')",
+            "INSERT INTO etf2l_season_match (match_id, competition_id, time, clan1_id, clan2_id, r1, r2) VALUES (10, 1, 100, 1, 3, 4, 0), (11, 1, 300, 2, 3, 1, 3), (12, 1, 500, 1, 2, NULL, NULL)",
+        ] {
+            sqlx::query(sql).execute(db.pool()).await.unwrap();
+        }
+        let r = db.recent_results(10).await.unwrap();
+        assert_eq!(r.iter().map(|x| x.match_id).collect::<Vec<_>>(), vec![11, 10], "the unplayed one is left out");
+        assert_eq!((r[0].clan1.name.as_str(), r[0].r2), ("Chaos Theory", Some(3)));
+        let t = db.search_teams("chaos", 10).await.unwrap();
+        assert_eq!(t.iter().map(|x| x.team_id).collect::<Vec<_>>(), vec![2, 1], "prefix first");
+        assert_eq!((t[1].officials, t[1].last_season), (2, Some(36)));
+        assert_eq!(db.search_teams("%", 10).await.unwrap().len(), 1, "a % is a character, not a wildcard");
     }
 }

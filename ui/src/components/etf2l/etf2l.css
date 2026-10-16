@@ -1,0 +1,330 @@
+/* The ETF2L tab (Q74): etf2l.org's flow in the app's own style. */
+
+/* The tab's header: the menu on the left, the search on the right, like
+   etf2l.org's bar with its search box top right. */
+.e2-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 20px;
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.e2-brand { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.e2-eyebrow {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.e2-menu { display: flex; flex-wrap: wrap; gap: 2px; }
+.e2-menu > button {
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  padding: 6px 12px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+.e2-menu > button:hover { color: var(--text); background: rgba(var(--text-rgb), 0.05); }
+.e2-menu > button.on { color: var(--text); background: rgba(var(--accent-rgb), 0.16); box-shadow: inset 0 -2px 0 var(--accent); }
+
+/* Search: players and teams in one box, the answers in a panel under it. */
+.e2-search { position: relative; width: min(320px, 100%); }
+.e2-search input { width: 100%; }
+.e2-search-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(420px, 92vw);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+.e2-search-panel h4 {
+  margin: 6px 6px 2px;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.e2-hit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 500;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+.e2-hit:hover { background: rgba(var(--accent-rgb), 0.12); }
+.e2-hit-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e2-hit-meta { color: var(--muted); font-size: 0.76rem; white-space: nowrap; }
+/* Someone who never played an official: there, but greyed (Flashy). */
+.e2-hit-out { color: var(--faint); }
+.e2-hit-out .e2-hit-meta { color: var(--faint); font-style: italic; }
+
+/* Breadcrumbs, in place of ‹ Back. */
+.e2-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 12px;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+.e2-crumbs button {
+  border: 0;
+  background: none;
+  padding: 2px 4px;
+  color: var(--muted);
+  font-size: inherit;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+.e2-crumbs button:hover { color: var(--accent); background: none; }
+.e2-crumb { display: inline-flex; align-items: center; gap: 4px; }
+.e2-crumb [aria-current="page"] { color: var(--text); font-weight: 600; padding: 2px 4px; }
+.e2-sep { color: var(--faint); }
+
+/* Home: a main column and a rail, as etf2l.org's front page. */
+.e2-home {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .e2-home { grid-template-columns: minmax(0, 1fr); }
+}
+.e2-main,
+.e2-rail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.e2-panel { display: flex; flex-direction: column; gap: 10px; }
+.e2-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.e2-panel-head h2 { margin: 0; font-size: 1rem; }
+.e2-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* Your next match: the fixture card with a large countdown under it. */
+.e2-next {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  border-radius: var(--radius);
+  background: rgba(var(--accent-rgb), 0.06);
+}
+
+/* Today's officials, one per line. */
+.e2-fixtures { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.e2-fx {
+  display: grid;
+  grid-template-columns: auto 92px 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 4px;
+  border-top: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+.e2-fx:first-child { border-top: 0; }
+.e2-fx.ours { background: rgba(var(--accent-rgb), 0.07); border-radius: 6px; }
+.e2-fx-time { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; white-space: nowrap; }
+.e2-fx-teams { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; }
+.e2-vs { color: var(--faint); font-size: 0.78rem; }
+.e2-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: inherit;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+.e2-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.e2-team:hover { color: var(--accent); background: none; }
+.e2-fx-h2h { font-size: 0.78rem; white-space: nowrap; }
+@media (max-width: 640px) {
+  .e2-fx { grid-template-columns: auto 1fr; }
+  .e2-fx-div,
+  .e2-fx-h2h { display: none; }
+  .e2-fx-teams { grid-column: 1 / -1; }
+}
+
+/* The countdown. */
+.cd {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.cd-soon { color: var(--accent); font-weight: 600; }
+.cd-live { color: var(--bad); font-weight: 700; letter-spacing: 0.04em; }
+.cd-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--bad); animation: cd-pulse 1.4s ease-in-out infinite; }
+@keyframes cd-pulse { 50% { opacity: 0.35; } }
+.cd-big { font-size: 1.15rem; font-weight: 700; color: var(--text); }
+.cd-big.cd-live { color: var(--bad); }
+
+/* News: banner, date, title, the opening. */
+.e2-news .ts-section { margin-top: 0; }
+.e2-news-list { display: flex; flex-direction: column; gap: 10px; }
+.e2-news-card {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 14px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  cursor: pointer;
+}
+.e2-news-card:hover { border-color: var(--line-2); background: var(--panel); }
+.e2-news-card img,
+.e2-news-noimg {
+  width: 200px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 6px;
+  background: rgba(var(--muted-rgb), 0.15);
+}
+.e2-news-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.e2-news-date { font-size: 0.76rem; color: var(--muted); }
+.e2-news-text strong { font-size: 0.98rem; line-height: 1.3; }
+.e2-news-excerpt {
+  font-size: 0.84rem;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+@media (max-width: 640px) {
+  .e2-news-card { grid-template-columns: minmax(0, 1fr); }
+  .e2-news-card img,
+  .e2-news-noimg { width: 100%; }
+}
+
+/* Your teams, one line each. */
+.yt-compact { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.yt-compact button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 42px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 500;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+.yt-compact button:hover { background: rgba(var(--accent-rgb), 0.1); }
+.yt-c-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.yt-c-wl { color: var(--muted); font-variant-numeric: tabular-nums; }
+.yt-c-rating { text-align: right; font-variant-numeric: tabular-nums; }
+.yt-compact .yt-c-more { display: block; color: var(--accent); font-size: 0.8rem; }
+
+/* The live season. */
+.e2-live .km-chip { align-self: flex-start; }
+.e2-live .hint { margin: 0; }
+.e2-live-chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.18);
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Recent results: two teams, the winner bold, the score at the side. */
+.e2-results { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.e2-results li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  padding: 7px 0;
+  border-top: 1px solid var(--border);
+}
+.e2-results li:first-child { border-top: 0; }
+.e2-res-team {
+  grid-column: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 500;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+.e2-res-team span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e2-res-team.won { color: var(--text); font-weight: 700; }
+.e2-res-team:hover { color: var(--accent); background: none; }
+.e2-res-score { font-variant-numeric: tabular-nums; }
+.e2-res-meta { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 2px; font-size: 0.72rem; }
+
+.e2-teamhits { list-style: none; margin: 0; padding: 0; }
+.e2-page .player-search { margin-bottom: 12px; }
+
+/* Players: someone who never played an official, greyed (Flashy). */
+.player-hit.out { opacity: 0.55; }
+.player-hit.out:hover,
+.player-hit.out.active { opacity: 0.85; }

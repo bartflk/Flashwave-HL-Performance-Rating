@@ -16,6 +16,7 @@ import teamHonours35600 from "./fixtures/team_honours_35600.json";
 import teamTransfers35600 from "./fixtures/team_transfers_35600.json";
 import teamInfo35600 from "./fixtures/team_info_35600.json";
 import upcomingFixtures from "./fixtures/fixtures.json";
+import newsPosts from "./fixtures/news.json";
 import playerTeams139131191 from "./fixtures/player_teams_139131191.json";
 import cart4109131 from "./fixtures/cart_4109131.json";
 import match3863290 from "./fixtures/match_3863290.json";
@@ -46,6 +47,9 @@ import type {
   DemoIndexSummary,
   ReRead,
   Fixture,
+  NewsItem,
+  ResultRow,
+  TeamHit,
   NewLogs,
   MatchSides,
   Stay,
@@ -303,6 +307,8 @@ const MOCK_HITS: CatalogueHit[] = [
   { accountId: 139131191, name: "Flashy", highest: { name: "Mid", tier: 2 }, mainClass: "sniper", medals: [1, 0, 0], officials: 25, lastSeen: 1_790_532_000 },
   { accountId: 227974365, name: "rzeke", highest: { name: "Premiership", tier: 0 }, mainClass: "spy", medals: [2, 1, 1], officials: 88, lastSeen: 1_790_532_000 },
   { accountId: 164932866, name: "Mifune", highest: { name: "High", tier: 1 }, mainClass: "engineer", medals: [0, 1, 0], officials: 41, lastSeen: 1_789_000_000 },
+  // Only in your pugs, never in an official: greyed in the lists (Q74).
+  { accountId: 412000001, name: "Flamingo", highest: null, mainClass: "scout", medals: [0, 0, 0], officials: 0, lastSeen: 1_789_500_000 },
 ];
 
 const mockTeam = (id: number, name: string) => ({ id, name, avatar: null });
@@ -1206,8 +1212,43 @@ export const mockApi: Api = {
   // a team page shows its next match.
   getFixtures: () =>
     delay(
-      (upcomingFixtures as unknown as Fixture[]).map((f, i) => (i === 0 ? { ...f, clan1: { id: 37805, name: "DD14", avatar: null } } : f)),
+      (upcomingFixtures as unknown as Fixture[]).map((f, i) => {
+        // Moved to the days ahead of now, so the countdowns have something to count.
+        const time = Math.floor(Date.now() / 1000) + [-1800, 3 * 3600, 26 * 3600, 50 * 3600, 4 * 86400][i % 5] + Math.floor(i / 5) * 86400;
+        return i === 0 ? { ...f, time, clan1: { id: 37805, name: "DD14", avatar: null } } : { ...f, time };
+      }),
     ),
+  // ETF2L's Highlander posts, 16 October 2026.
+  getNews: () => delay(newsPosts as unknown as NewsItem[]),
+  // DD14's season so far, read as everyone's results.
+  getRecentResults: (limit = 10) =>
+    delay<ResultRow[]>(
+      (team37805 as unknown as TeamView).results.slice(0, limit).map((r) => ({
+        matchId: r.matchId,
+        time: r.time ?? 0,
+        season: r.season,
+        division: r.division,
+        tier: 2,
+        round: r.round,
+        week: null,
+        clan1: { id: 37805, name: "DD14", avatar: "https://etf2l.org/wp-content/uploads/avatars/6a18b9b147176.png" },
+        clan2: { id: r.opponentId, name: r.opponent, avatar: null },
+        r1: r.scoreFor,
+        r2: r.scoreAgainst,
+        defaultWin: r.defaultWin,
+      })),
+    ),
+  searchTeams: (query: string) => {
+    const q = query.trim().toLowerCase();
+    const all = (leagues as unknown as LeagueView).divisions.flatMap((d) => d.teams);
+    return delay<TeamHit[]>(
+      q.length < 2
+        ? []
+        : all
+            .filter((x) => x.name.toLowerCase().includes(q))
+            .map((x) => ({ teamId: x.teamId, name: x.name, country: null, avatar: x.avatar, officials: x.record.played, lastSeason: 36, lastPlayed: null })),
+    );
+  },
   checkNewLogs: () => delay<NewLogs | null>({ count: 2, source: "logs.tf", since: Math.floor(Date.now() / 1000) - 2 * 86400 }),
   getPlayerTeams: () => delay(playerTeams139131191 as unknown as Stay[]),
   // SBQRRA's ETF2L page, 3 October 2026.

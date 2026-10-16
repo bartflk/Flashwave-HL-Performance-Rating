@@ -1542,6 +1542,24 @@ pub async fn get_fixtures(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest
     Ok(hl_ingest::fixtures::upcoming(&state.db, &state.sources).await?)
 }
 
+/// ETF2L's latest Highlander news (Q74), read at most every half hour.
+#[tauri::command]
+pub async fn get_news(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::news::NewsItem>> {
+    Ok(hl_ingest::news::latest(&state.db, &state.sources).await?)
+}
+
+/// The latest played officials of every team (Q74's results).
+#[tauri::command]
+pub async fn get_recent_results(state: State<'_, AppState>, limit: Option<i64>) -> CmdResult<Vec<hl_db::ResultRow>> {
+    Ok(state.db.recent_results(limit.unwrap_or(10).clamp(1, 100)).await?)
+}
+
+/// Teams by name (Q74's search).
+#[tauri::command]
+pub async fn search_teams(state: State<'_, AppState>, query: String) -> CmdResult<Vec<hl_db::TeamHit>> {
+    Ok(state.db.search_teams(&query, 20).await?)
+}
+
 /// A team as ETF2L's API has it (Q48): tag, links, former names, roles, cups.
 #[tauri::command]
 pub async fn get_team_info(state: State<'_, AppState>, team_id: i64) -> CmdResult<hl_ingest::team_info::TeamInfo> {

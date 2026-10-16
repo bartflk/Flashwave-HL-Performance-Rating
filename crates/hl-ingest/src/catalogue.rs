@@ -1810,7 +1810,7 @@ fn team_awards(html: &str) -> Vec<TeamAward> {
 }
 
 /// HTML to plain text: line breaks kept, tags dropped, entities read.
-fn html_text(fragment: &str) -> String {
+pub(crate) fn html_text(fragment: &str) -> String {
     // A newline in the source is a space in HTML; <br> and </p> are breaks.
     let mut s = fragment.replace(['\r', '\n'], " ").replace("<br />", "\n").replace("<br/>", "\n").replace("<br>", "\n").replace("</p>", "\n\n").replace("</li>", "\n");
     // Tags out.

@@ -5,26 +5,40 @@
  */
 const EVENT = "hl:goto";
 
-export type Destination = "rating" | "players" | "teams";
+export type Destination = "rating" | "etf2l";
 
 const PLAYER_EVENT = "hl:player";
 let pendingPlayer: number | null = null;
 
-/** The Players tab, on one player's profile (Q40's "Open profile"). */
+/** The ETF2L tab's Players, on one player's profile (Q40's "Open profile"). */
 export function openPlayer(accountId: number) {
   pendingPlayer = accountId;
-  goTo("players");
+  goTo("etf2l");
   window.dispatchEvent(new CustomEvent<number>(PLAYER_EVENT, { detail: accountId }));
 }
 
-/** For the Players tab: the player asked for before it was first shown. */
+/** For the Players page: the player asked for before it was first shown. */
 export function takePendingPlayer(): number | null {
   const p = pendingPlayer;
   pendingPlayer = null;
   return p;
 }
 
-/** For the Players tab: a player asked for while it is mounted. */
+/** For the ETF2L tab: whether a player is waiting to be shown, so it opens
+ *  on Players. Leaves the player for the Players page to take. */
+export function hasPendingPlayer(): boolean {
+  return pendingPlayer !== null;
+}
+
+/** For the ETF2L tab: a player was asked for, so show Players. Unlike
+ *  `onOpenPlayer` it leaves the player for the Players page to take. */
+export function onPlayerAsked(show: () => void): () => void {
+  const handler = () => show();
+  window.addEventListener(PLAYER_EVENT, handler);
+  return () => window.removeEventListener(PLAYER_EVENT, handler);
+}
+
+/** For the Players page: a player asked for while it is mounted. */
 export function onOpenPlayer(open: (accountId: number) => void): () => void {
   const handler = (e: Event) => {
     pendingPlayer = null;
@@ -37,21 +51,21 @@ export function onOpenPlayer(open: (accountId: number) => void): () => void {
 const TEAM_EVENT = "hl:team";
 let pendingTeam: number | null = null;
 
-/** The Teams tab, on one team's page (from a match header). */
+/** The ETF2L tab, on one team's page (from a match header). */
 export function openTeam(teamId: number) {
   pendingTeam = teamId;
-  goTo("teams");
+  goTo("etf2l");
   window.dispatchEvent(new CustomEvent<number>(TEAM_EVENT, { detail: teamId }));
 }
 
-/** For the Teams tab: the team asked for before it was first shown. */
+/** For the ETF2L tab: the team asked for before it was first shown. */
 export function takePendingTeam(): number | null {
   const id = pendingTeam;
   pendingTeam = null;
   return id;
 }
 
-/** For the Teams tab: a team asked for while it is mounted. */
+/** For the ETF2L tab: a team asked for while it is mounted. */
 export function onOpenTeam(open: (teamId: number) => void): () => void {
   const handler = (e: Event) => {
     pendingTeam = null;
@@ -64,21 +78,21 @@ export function onOpenTeam(open: (teamId: number) => void): () => void {
 const SEASON_EVENT = "hl:season";
 let pendingSeason: number | null = null;
 
-/** The Teams tab, on one season's page (Q60: from a bookmark). */
+/** The ETF2L tab, on one season's page (Q60: from a bookmark). */
 export function openSeason(season: number) {
   pendingSeason = season;
-  goTo("teams");
+  goTo("etf2l");
   window.dispatchEvent(new CustomEvent<number>(SEASON_EVENT, { detail: season }));
 }
 
-/** For the Teams tab: the season asked for before it was first shown. */
+/** For the ETF2L tab: the season asked for before it was first shown. */
 export function takePendingSeason(): number | null {
   const s = pendingSeason;
   pendingSeason = null;
   return s;
 }
 
-/** For the Teams tab: a season asked for while it is mounted. */
+/** For the ETF2L tab: a season asked for while it is mounted. */
 export function onOpenSeason(open: (season: number) => void): () => void {
   const handler = (e: Event) => {
     pendingSeason = null;

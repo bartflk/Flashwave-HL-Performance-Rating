@@ -306,6 +306,43 @@ export interface Fixture {
   h2h: LeagueRecord;
 }
 
+/** One ETF2L Highlander news post (Q74). */
+export interface NewsItem {
+  id: number;
+  time: number;
+  title: string;
+  link: string;
+  excerpt: string;
+  image: string | null;
+}
+
+/** A played official, any team's (Q74). */
+export interface ResultRow {
+  matchId: number;
+  time: number;
+  season: number;
+  division: string | null;
+  tier: number | null;
+  round: string | null;
+  week: number | null;
+  clan1: { id: number; name: string; avatar: string | null };
+  clan2: { id: number; name: string; avatar: string | null };
+  r1: number | null;
+  r2: number | null;
+  defaultWin: boolean;
+}
+
+/** A team found by name (Q74). */
+export interface TeamHit {
+  teamId: number;
+  name: string;
+  country: string | null;
+  avatar: string | null;
+  officials: number;
+  lastSeason: number | null;
+  lastPlayed: number | null;
+}
+
 /** What the startup look found, before any sync. */
 export interface NewLogs {
   count: number;
