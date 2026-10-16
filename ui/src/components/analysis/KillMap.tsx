@@ -244,6 +244,8 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
     const ends = teleEnds(all, routes);
     return all.map((b, i) => ({ b, kind: b.kind === "teleporter" ? (b.end ?? ends.get(i) ?? "teleporter") : b.kind }));
   }, [buildingQ.data, routes]);
+  const nDied = routes.filter((r) => r.died).length;
+  const nLived = routes.length - nDied;
   const kindCount = (kind: string) => placed.filter((p) => p.kind === kind).length;
   const buildingKinds: Array<[string, string]> = [
     ["sentry", tr("Sentries")],
@@ -502,20 +504,20 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
               )}
               {layer === "paths" && (
                 <>
-                  <LegendChip
+                  {(nLived > 0 || hidden.has("lived")) && <LegendChip
                     on={!hidden.has("lived")}
                     onToggle={() => toggleHidden("lived")}
                     swatch={<span className="km-key km-key-route" />}
                     label={tr("Survived")}
-                    count={routes.filter((r) => !r.died).length}
-                  />
-                  <LegendChip
+                    count={nLived}
+                  />}
+                  {(nDied > 0 || hidden.has("died")) && <LegendChip
                     on={!hidden.has("died")}
                     onToggle={() => toggleHidden("died")}
                     swatch={<span className="km-key km-key-route died" />}
                     label={tr("Died")}
-                    count={routes.filter((r) => r.died).length}
-                  />
+                    count={nDied}
+                  />}
                   {buildingKinds.filter(([kind]) => kindCount(kind) > 0).map(([kind, label]) => (
                     <LegendChip
                       key={kind}
