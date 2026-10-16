@@ -316,6 +316,11 @@ export interface NewsItem {
   image: string | null;
 }
 
+/** A news post to read: its HTML, built into the page by `NewsPost.tsx`. */
+export interface NewsPost extends NewsItem {
+  html: string;
+}
+
 /** A played official, any team's (Q74). */
 export interface ResultRow {
   matchId: number;

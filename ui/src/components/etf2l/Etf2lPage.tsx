@@ -7,9 +7,10 @@ import { hasPendingPlayer, onOpenSeason, onOpenTeam, onPlayerAsked, openPlayer, 
 import { t, tx } from "../../lib/i18n";
 import { DivisionBadge } from "../players/PlayerProfile";
 import { PlayersPage } from "../players/PlayersPage";
-import { FixtureCard, SeasonScreen, SeasonsGrid, TeamAvatar, TeamScreen, seasonTitle, useFixtures, wl } from "../teams/TeamsPage";
+import { SeasonScreen, SeasonsGrid, TeamAvatar, TeamScreen, seasonTitle, useFixtures, wl } from "../teams/TeamsPage";
 import { YourTeamsCompact, YourTeamsStrip, useYourTeams } from "../teams/YourTeams";
 import { Countdown, clockTime, fullDate } from "./Countdown";
+import { NewsCard, NewsList, NewsReader, useNews } from "./News";
 import "../teams/teams.css";
 import "./etf2l.css";
 
@@ -25,7 +26,7 @@ import "./etf2l.css";
  * history sees it.
  */
 
-type Section = "home" | "seasons" | "teams" | "players";
+type Section = "home" | "seasons" | "teams" | "players" | "news";
 
 type Loc =
   | { at: "home" }
@@ -33,11 +34,14 @@ type Loc =
   | { at: "season"; season: number }
   | { at: "team"; teamId: number; from: Loc }
   | { at: "teams" }
-  | { at: "players" };
+  | { at: "players" }
+  | { at: "news" }
+  | { at: "post"; id: number };
 
 /** The menu entry a place belongs to: a team under whatever it was opened from. */
 function sectionOf(l: Loc): Section {
   if (l.at === "season") return "seasons";
+  if (l.at === "post") return "news";
   if (l.at === "team") return sectionOf(l.from);
   return l.at;
 }
@@ -111,6 +115,7 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
     ["seasons", t("Seasons")],
     ["teams", t("Teams")],
     ["players", t("Players")],
+    ["news", t("News")],
   ];
 
   return (
@@ -131,6 +136,8 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
       <Crumbs loc={loc} go={go} />
 
       {loc.at === "home" && <Home onTeam={openTeam} go={go} />}
+      {loc.at === "news" && <NewsList onPost={(id) => go({ at: "post", id })} />}
+      {loc.at === "post" && <NewsReader key={loc.id} id={loc.id} />}
       {loc.at === "seasons" && <SeasonsGrid onSeason={(season) => go({ at: "season", season })} />}
       {loc.at === "season" && <SeasonScreen season={loc.season} onTeam={openTeam} />}
       {loc.at === "team" && <TeamScreen key={loc.teamId} teamId={loc.teamId} onTeam={openTeam} />}
@@ -150,6 +157,8 @@ function Crumbs({ loc, go }: { loc: Loc; go: (l: Loc) => void }) {
   const tiles = useQuery({ queryKey: ["seasons_overview"], queryFn: api.getSeasonsOverview, staleTime: 5 * 60_000 }).data;
   const teamId = loc.at === "team" ? loc.teamId : null;
   const team = useQuery({ queryKey: ["team", teamId], queryFn: () => api.getTeam(teamId!), enabled: teamId !== null }).data;
+  const postId = loc.at === "post" ? loc.id : null;
+  const post = useQuery({ queryKey: ["etf2l_news_post", postId], queryFn: () => api.getNewsPost(postId!), enabled: postId !== null, staleTime: 30 * 60_000 }).data;
   const trail: Array<[string, Loc]> = [];
   const add = (l: Loc) => {
     if (l.at === "team") {
@@ -159,8 +168,11 @@ function Crumbs({ loc, go }: { loc: Loc; go: (l: Loc) => void }) {
       trail.push([t("Seasons"), { at: "seasons" }]);
       const tile = tiles?.find((s) => s.season === l.season);
       trail.push([tile ? seasonTitle(tile) : t("Season {0}", { "0": l.season }), l]);
+    } else if (l.at === "post") {
+      trail.push([t("News"), { at: "news" }]);
+      trail.push([post?.title ?? t("Post"), l]);
     } else if (l.at !== "home") {
-      trail.push([{ seasons: t("Seasons"), teams: t("Teams"), players: t("Players") }[l.at], l]);
+      trail.push([{ seasons: t("Seasons"), teams: t("Teams"), players: t("Players"), news: t("News") }[l.at], l]);
     }
   };
   add(loc);
@@ -287,13 +299,7 @@ function Home({ onTeam, go }: { onTeam: (id: number) => void; go: (l: Loc) => vo
   return (
     <div className="e2-home">
       <div className="e2-main">
-        {next && (
-          <section className="e2-next">
-            <span className="e2-label">{t("Your next match")}</span>
-            <FixtureCard f={next} side={mine.has(next.clan1.id) ? next.clan1.id : next.clan2.id} onTeam={onTeam} />
-            <Countdown time={next.time} big />
-          </section>
-        )}
+        {next && <NextMatch f={next} side={mine.has(next.clan1.id) ? next.clan1.id : next.clan2.id} onTeam={onTeam} />}
         <section className="panel e2-panel">
           <div className="e2-panel-head">
             <h2>{t("Officials")}</h2>
@@ -321,7 +327,7 @@ function Home({ onTeam, go }: { onTeam: (id: number) => void; go: (l: Loc) => vo
             </ol>
           )}
         </section>
-        <News />
+        <LatestNews go={go} />
       </div>
       <aside className="e2-rail">
         <section className="panel e2-panel">
@@ -334,6 +340,45 @@ function Home({ onTeam, go }: { onTeam: (id: number) => void; go: (l: Loc) => vo
         <RecentResults onTeam={onTeam} />
       </aside>
     </div>
+  );
+}
+
+/** Your team's next official, large: the two sides, the countdown between
+ *  them, and what is known of it. */
+function NextMatch({ f, side, onTeam }: { f: Fixture; side: number; onTeam: (id: number) => void }) {
+  const flip = f.clan2.id === side;
+  const [a, b] = flip ? [f.clan2, f.clan1] : [f.clan1, f.clan2];
+  const r = flip ? { ...f.h2h, won: f.h2h.lost, lost: f.h2h.won } : f.h2h;
+  const team = (x: Fixture["clan1"], end: "l" | "r") => (
+    <button className={`e2-nm-team ${end}`} onClick={() => onTeam(x.id)} title={t("Open {0}", { "0": x.name })}>
+      <TeamAvatar src={x.avatar} />
+      <span>{x.name}</span>
+    </button>
+  );
+  return (
+    <section className="e2-nm">
+      <div className="e2-nm-top">
+        <span className="e2-label">{t("Your next match")}</span>
+        <span className="e2-nm-what">
+          {f.division && f.tier !== null && <DivisionBadge d={{ name: f.division, tier: f.tier }} />}
+          {f.round && <span className="muted">{f.round}</span>}
+        </span>
+      </div>
+      <div className="e2-nm-row">
+        {team(a, "l")}
+        <div className="e2-nm-mid">
+          <Countdown time={f.time} big />
+          <span className="muted" title={fullDate(f.time)}>
+            {formatDate(f.time)} · {clockTime(f.time)}
+          </span>
+        </div>
+        {team(b, "r")}
+      </div>
+      <div className="e2-nm-foot">
+        <span>{r.played === 0 ? t("First meeting in an official") : <>{t("Head-to-head")} <strong>{wl(r)}</strong></>}</span>
+        <span className="muted">{f.maps.length > 0 ? f.maps.join(" · ") : t("Maps still to be picked")}</span>
+      </div>
+    </section>
   );
 }
 
@@ -365,24 +410,22 @@ function FixtureRow({ f, mine, onTeam, showDay }: { f: Fixture; mine: Set<number
   );
 }
 
-function News() {
-  const q = useQuery({ queryKey: ["etf2l_news"], queryFn: api.getNews, staleTime: 10 * 60_000 });
+function LatestNews({ go }: { go: (l: Loc) => void }) {
+  const q = useNews();
   const items = (q.data ?? []).slice(0, 3);
   if (q.isPending) return <p className="hint">{t("Loading the news…")}</p>;
   if (items.length === 0) return null;
   return (
-    <section className="e2-news">
-      <h2 className="ts-section">{t("Latest news")}</h2>
-      <div className="e2-news-list">
+    <section className="e2-block">
+      <div className="e2-block-head">
+        <h2 className="ts-section">{t("Latest news")}</h2>
+        <button className="e2-more" onClick={() => go({ at: "news" })}>
+          {t("All news")} ›
+        </button>
+      </div>
+      <div className="np-grid np-grid-home">
         {items.map((n) => (
-          <button key={n.id} className="e2-news-card" onClick={() => void api.openExternal(n.link)} title={t("Read on ETF2L")}>
-            {n.image ? <img src={n.image} alt="" loading="lazy" /> : <span className="e2-news-noimg" aria-hidden />}
-            <span className="e2-news-text">
-              <span className="e2-news-date">{formatDate(n.time, true)}</span>
-              <strong>{n.title}</strong>
-              <span className="e2-news-excerpt">{n.excerpt}</span>
-            </span>
-          </button>
+          <NewsCard key={n.id} n={n} onOpen={() => go({ at: "post", id: n.id })} />
         ))}
       </div>
     </section>
@@ -462,7 +505,9 @@ function TeamsLanding({ onTeam }: { onTeam: (id: number) => void }) {
         <span className="ts-eyebrow">{t("ETF2L Highlander")}</span>
         <h1>{t("Teams")}</h1>
       </header>
-      <input className="player-search" type="search" value={q} placeholder={t("A team's name")} onChange={(e) => setQ(e.target.value)} aria-label={t("Search teams")} />
+      <div className="e2-search e2-search-big">
+        <input type="search" value={q} placeholder={t("A team's name")} onChange={(e) => setQ(e.target.value)} aria-label={t("Search teams")} />
+      </div>
       {term.length >= 2 && (
         <section className="panel e2-panel">
           {(hits.data ?? []).length === 0 && !hits.isFetching ? (

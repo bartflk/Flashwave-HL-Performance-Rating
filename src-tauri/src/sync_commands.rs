@@ -1548,6 +1548,12 @@ pub async fn get_news(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::ne
     Ok(hl_ingest::news::latest(&state.db, &state.sources).await?)
 }
 
+/// One ETF2L news post to read in the app (Q74).
+#[tauri::command]
+pub async fn get_news_post(state: State<'_, AppState>, id: i64) -> CmdResult<Option<hl_ingest::news::NewsPost>> {
+    Ok(hl_ingest::news::post(&state.db, &state.sources, id).await?)
+}
+
 /// The latest played officials of every team (Q74's results).
 #[tauri::command]
 pub async fn get_recent_results(state: State<'_, AppState>, limit: Option<i64>) -> CmdResult<Vec<hl_db::ResultRow>> {

@@ -362,7 +362,11 @@ option:disabled {
   white-space: nowrap;
 }
 
-input[type="text"] {
+/* A text box with no type is a text box too: the Players lookup had none
+   and showed the browser's own white field (Flashy). */
+input[type="text"],
+input[type="search"],
+input:where(:not([type])) {
   font: inherit;
   width: 100%;
   padding: 9px 12px;
@@ -373,11 +377,15 @@ input[type="text"] {
   outline: none;
 }
 
-input[type="text"]:focus {
+input[type="text"]:focus,
+input[type="search"]:focus,
+input:where(:not([type])):focus {
   border-color: var(--accent-dim);
 }
 
-input[type="text"]::placeholder {
+input[type="text"]::placeholder,
+input[type="search"]::placeholder,
+input:where(:not([type]))::placeholder {
   color: var(--faint);
 }
 

@@ -17,6 +17,7 @@ import teamTransfers35600 from "./fixtures/team_transfers_35600.json";
 import teamInfo35600 from "./fixtures/team_info_35600.json";
 import upcomingFixtures from "./fixtures/fixtures.json";
 import newsPosts from "./fixtures/news.json";
+import newsHtml from "./fixtures/news_html.json";
 import playerTeams139131191 from "./fixtures/player_teams_139131191.json";
 import cart4109131 from "./fixtures/cart_4109131.json";
 import match3863290 from "./fixtures/match_3863290.json";
@@ -48,6 +49,7 @@ import type {
   ReRead,
   Fixture,
   NewsItem,
+  NewsPost,
   ResultRow,
   TeamHit,
   NewLogs,
@@ -1220,6 +1222,11 @@ export const mockApi: Api = {
     ),
   // ETF2L's Highlander posts, 16 October 2026.
   getNews: () => delay(newsPosts as unknown as NewsItem[]),
+  getNewsPost: (id: number) => {
+    const item = (newsPosts as unknown as NewsItem[]).find((n) => n.id === id);
+    const html = (newsHtml as Record<string, string>)[String(id)];
+    return delay<NewsPost | null>(item && html ? { ...item, html } : null);
+  },
   // DD14's season so far, read as everyone's results.
   getRecentResults: (limit = 10) =>
     delay<ResultRow[]>(

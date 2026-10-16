@@ -36,6 +36,16 @@ pub struct NewsItem {
     pub image: Option<String>,
 }
 
+/// One post to read: the list's entry and its HTML as WordPress gives it.
+/// The app builds the page from the HTML itself, keeping only the safe parts.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewsPost {
+    #[serde(flatten)]
+    pub item: NewsItem,
+    pub html: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Held {
     at: i64,
@@ -123,6 +133,22 @@ pub async fn latest(db: &Db, sources: &Sources) -> Result<Vec<NewsItem>> {
             Ok(held.map(|h| h.items).unwrap_or_default())
         }
     }
+}
+
+/// One post, from the kept list when it is there, else asked for alone
+/// (an older post linked from somewhere).
+pub async fn post(db: &Db, sources: &Sources, id: i64) -> Result<Option<NewsPost>> {
+    if let Some(h) = held(db).await? {
+        if let (Some(item), Some((_, html))) = (h.items.iter().find(|n| n.id == id), h.html.iter().find(|(i, _)| *i == id)) {
+            return Ok(Some(NewsPost { item: item.clone(), html: html.clone() }));
+        }
+    }
+    let url = crate::http::url(
+        "https://etf2l.org/wp-json/wp/v2/posts",
+        [("include", id.to_string().as_str()), ("_fields", "id,date_gmt,title,link,excerpt,content")],
+    );
+    let Some(body) = sources.fetch_text_interactive(&url).await? else { return Ok(None) };
+    Ok(parse(&body).and_then(|p| p.into_iter().next()).map(|(item, html)| NewsPost { item, html }))
 }
 
 #[cfg(test)]
