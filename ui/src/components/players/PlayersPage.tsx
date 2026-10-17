@@ -47,12 +47,22 @@ export function PlayersPage({ onOpenMatch }: { onOpenMatch: (logId: number) => v
     enabled: term.length >= 2,
     placeholderData: keepPreviousData,
   });
+  // And everyone in thirteen years of logs.tf, from the summary built in.
+  const older = useQuery({
+    queryKey: ["logstf_search", term],
+    queryFn: () => api.logstfSearch(term),
+    enabled: term.length >= 2,
+    placeholderData: keepPreviousData,
+    staleTime: Infinity,
+  });
+  const known = new Set((hits.data ?? []).map((h) => h.accountId));
+  const history = (older.data ?? []).filter((p) => !known.has(p.accountId));
 
   return (
     <div className="content players">
       <div className="panel">
         <h2>{t("Look someone up")}</h2>
-        <p className="hint" style={{ marginTop: 6 }}>{t("Anyone who played an ETF2L official in the last six years, or is in your matches. Name or Steam ID.")}</p>
+        <p className="hint" style={{ marginTop: 6 }}>{t("Anyone who played an ETF2L official in the last six years, is in your matches, or played Highlander on logs.tf since 2012. Any name they used, or a Steam ID.")}</p>
         <input
           className="player-search"
           value={query}
@@ -65,6 +75,27 @@ export function PlayersPage({ onOpenMatch }: { onOpenMatch: (logId: number) => v
         />
         {term.length >= 2 && (
           <Results hits={hits.data ?? []} loading={hits.isFetching} onPick={setPicked} picked={picked} />
+        )}
+        {term.length >= 2 && history.length > 0 && (
+          <div className="lt-hits">
+            <h3>
+              {t("In all of logs.tf")} <span className="muted">{t("Highlander players since 2012, by any name they used")}</span>
+            </h3>
+            <div className="player-hits">
+              {history.map((p) => (
+                <button key={p.accountId} className={`player-hit${picked === p.accountId ? " active" : ""}`} onClick={() => setPicked(p.accountId)} aria-pressed={picked === p.accountId}>
+                  {p.mainClass ? <ClassIcon cls={p.mainClass} size={22} /> : <span style={{ width: 22 }} />}
+                  <span className="ph-name">
+                    {p.name}
+                    {p.aliases.length > 0 && <span className="lt-aka"> · {p.aliases.slice(0, 3).join(" · ")}</span>}
+                  </span>
+                  <span className="ph-meta muted">
+                    {tx("{0} HL logs", { "0": p.logs.toLocaleString() })} · {p.firstYear === p.lastYear ? p.firstYear : `${p.firstYear}–${p.lastYear}`}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 

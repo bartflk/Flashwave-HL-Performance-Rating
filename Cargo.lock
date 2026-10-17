@@ -1862,6 +1862,7 @@ name = "hl-cli"
 version = "0.10.0"
 dependencies = [
  "anyhow",
+ "flate2",
  "hl-core",
  "hl-db",
  "hl-demos",

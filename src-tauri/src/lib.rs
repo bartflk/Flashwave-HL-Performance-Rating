@@ -244,6 +244,8 @@ pub fn run() {
             sync_commands::set_league_sample,
             sync_commands::get_league_activity,
             sync_commands::search_catalogue,
+            sync_commands::logstf_search,
+            sync_commands::logstf_career,
             sync_commands::get_player_profile,
             sync_commands::get_trends_career,
             sync_commands::get_seasons_overview,

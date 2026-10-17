@@ -1503,6 +1503,23 @@ pub async fn search_catalogue(state: State<'_, AppState>, query: String) -> CmdR
     Ok(hl_ingest::catalogue::search(&state.db, &query, 30).await?)
 }
 
+/// Anyone in thirteen years of logs.tf, by any name they used or their Steam
+/// ID: the summary built into the app. The first call unpacks it.
+#[tauri::command]
+pub async fn logstf_search(query: String) -> CmdResult<Vec<hl_ingest::logstf::LogsTfPlayer>> {
+    tauri::async_runtime::spawn_blocking(move || hl_ingest::logstf::search(&query, 30))
+        .await
+        .map_err(|e| CmdError::new("internal", e.to_string()))
+}
+
+/// One player's logs.tf career by class, from the built-in summary.
+#[tauri::command]
+pub async fn logstf_career(account_id: u32) -> CmdResult<Option<hl_ingest::logstf::LogsTfCareer>> {
+    tauri::async_runtime::spawn_blocking(move || hl_ingest::logstf::career(account_id))
+        .await
+        .map_err(|e| CmdError::new("internal", e.to_string()))
+}
+
 /// One player's profile: teams, divisions, medals, officials (Q35).
 #[tauri::command]
 pub async fn get_player_profile(state: State<'_, AppState>, account_id: u32) -> CmdResult<hl_ingest::catalogue::Profile> {

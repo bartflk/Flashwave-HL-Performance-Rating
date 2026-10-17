@@ -35,6 +35,8 @@ import fightsSniper from "./fixtures/fights_sniper.json";
 import leagues from "./fixtures/leagues.json";
 import team37805 from "./fixtures/team_37805.json";
 import type {
+  LogsTfCareer,
+  LogsTfPlayer,
   Bookmark,
   BuildingRow,
   CmdError,
@@ -1737,6 +1739,27 @@ export const mockApi: Api = {
   searchCatalogue: (query: string) =>
     delay(MOCK_HITS.filter((h) => h.name.toLowerCase().includes(query.trim().toLowerCase()))),
   getPlayerProfile: (accountId: number) => delay(mockProfile(accountId)),
+  // The logs.tf summary: the owner's numbers from the real one, and a few others.
+  logstfSearch: (query: string) => {
+    const q = query.trim().toLowerCase();
+    return delay(MOCK_LOGSTF.filter((p) => q.length >= 2 && [p.name, ...p.aliases].some((n) => n.toLowerCase().includes(q))));
+  },
+  logstfCareer: (accountId: number) => {
+    const player = MOCK_LOGSTF.find((p) => p.accountId === accountId) ?? null;
+    if (!player) return delay(null);
+    const career: LogsTfCareer = {
+      player,
+      classes: [
+        { pool: "competitive", class: "sniper", games: 1016, rating: 1.03, form: 0.95, best: 1.61, won: 507, lost: 467, firstYear: 2014, lastYear: 2026, rank: 1496, of: 3767 },
+        { pool: "competitive", class: "demoman", games: 14, rating: 1.18, form: 1.18, best: 1.53, won: 6, lost: 6, firstYear: 2014, lastYear: 2026, rank: null, of: null },
+        { pool: "pickup", class: "sniper", games: 18, rating: 1.08, form: 1.08, best: 1.37, won: 5, lost: 10, firstYear: 2014, lastYear: 2026, rank: null, of: null },
+      ],
+      years: [2014, 2015, 2016, 2017, 2018, 2020, 2023, 2024, 2025, 2026].map((year, i) => ({ class: "sniper", year, games: 40 + i * 9, rating: [0.94, 0.98, 1.02, 1.05, 1.01, 1.07, 1.04, 1.06, 1.02, 0.99][i] })),
+      builtAt: 1_792_300_000,
+      model: "v11",
+    };
+    return delay(career);
+  },
   // The numbers the owner's real profile gave on a copy of the database.
   // The browser build: every player of the match gets a division by the
   // account number, a few from a nearby season.
@@ -1825,3 +1848,9 @@ export const mockApi: Api = {
     };
   },
 };
+
+const MOCK_LOGSTF: LogsTfPlayer[] = [
+  { accountId: 139131191, steamid64: "76561198099396919", name: "flashy", aliases: ["Flashy", "F l a s h y", "SBQR flashy"], logs: 1130, competitive: 1081, pickup: 49, firstYear: 2014, lastYear: 2026, mainClass: "sniper" },
+  { accountId: 40001, steamid64: "76561197960305729", name: "flashbang", aliases: ["fb"], logs: 212, competitive: 40, pickup: 172, firstYear: 2015, lastYear: 2017, mainClass: "soldier" },
+  { accountId: 40002, steamid64: "76561197960305730", name: "proximo", aliases: [], logs: 1404, competitive: 1210, pickup: 194, firstYear: 2014, lastYear: 2018, mainClass: "demoman" },
+];

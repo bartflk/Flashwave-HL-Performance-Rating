@@ -15,6 +15,7 @@ import {
 } from "../../api/types";
 import { Achievements, DivisionBadge, PlayerHeader, RecentOfficials, RosterChip, SeasonsTable, TeamAvatar, TeamStays, TrendsCareer } from "../players/PlayerProfile";
 import { Etf2lMark } from "../Etf2lMark";
+import { LogsTfCareer } from "../players/LogsTfCareer";
 import { openLeagueMatch } from "../../lib/goto";
 import "../players/players.css";
 import { TeammatesPanel } from "./TeammatesPanel";
@@ -619,6 +620,10 @@ function Career({ me }: { me: PlayerProfile }) {
             <span className="muted">{tx("{0} officials", { "0": me.officials.length })}</span>
           </header>
           <OfficialsByCompetition officials={me.officials} />
+        </section>
+        <section className="panel">
+          <h2>{t("logs.tf career")}</h2>
+          <LogsTfCareer accountId={me.accountId} />
         </section>
         <section className="panel">
           <h2>{t("Teams by season")}</h2>

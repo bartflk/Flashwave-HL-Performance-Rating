@@ -13,6 +13,7 @@ import { Country } from "../Country";
 import { BookmarkButton } from "../Bookmarks";
 import { LivesOnMapTab } from "./LivesOnMap";
 import { Etf2lMark } from "../Etf2lMark";
+import { LogsTfCareer } from "./LogsTfCareer";
 
 /**
  * A player's profile, HLTV-style (Q35, Flashy; PLAN §26): who they are,
@@ -358,6 +359,10 @@ function Overview({ p }: { p: Profile }) {
         <PlayerStatsCard accountId={p.accountId} />
         <h3 className="pp-career-title">{t("ETF2L officials on trends.tf")}</h3>
         <TrendsCareer accountId={p.accountId} />
+      </section>
+      <section className="pp-overview-wide">
+        <h3>{t("logs.tf career")}</h3>
+        <LogsTfCareer accountId={p.accountId} />
       </section>
     </div>
   );

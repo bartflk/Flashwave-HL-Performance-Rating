@@ -749,7 +749,7 @@ fn round2(x: f64) -> f64 {
 }
 
 /// The calendar year of a unix time (UTC).
-fn year_of(unix: i64) -> i32 {
+pub fn year_of(unix: i64) -> i32 {
     // Days to civil date (Howard Hinnant's algorithm), the year part only.
     let z = unix.div_euclid(86_400) + 719_468;
     let era = z.div_euclid(146_097);

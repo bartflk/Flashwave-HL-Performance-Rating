@@ -2307,3 +2307,43 @@ export interface DemoLinked {
   playersShared: number;
   path: string;
 }
+
+/** Someone in the logs.tf summary built into the app. */
+export interface LogsTfPlayer {
+  accountId: number;
+  steamid64: string;
+  name: string;
+  /** The other names they used most. */
+  aliases: string[];
+  /** Highlander logs; of them competitive (officials, team games) and pickup (lobbies, pugs). */
+  logs: number;
+  competitive: number;
+  pickup: number;
+  firstYear: number;
+  lastYear: number;
+  mainClass: string | null;
+}
+
+export interface LogsTfClassCareer {
+  pool: "competitive" | "pickup";
+  class: string;
+  games: number;
+  rating: number;
+  form: number;
+  best: number;
+  won: number;
+  lost: number;
+  firstYear: number;
+  lastYear: number;
+  /** Among the class's regulars (100+ games) in the pool. */
+  rank: number | null;
+  of: number | null;
+}
+
+export interface LogsTfCareer {
+  player: LogsTfPlayer;
+  classes: LogsTfClassCareer[];
+  years: Array<{ class: string; year: number; games: number; rating: number }>;
+  builtAt: number;
+  model: string;
+}

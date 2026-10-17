@@ -66,6 +66,7 @@ pub mod league_sample;
 pub mod league_rating;
 pub mod catalogue;
 pub mod trends_career;
+pub mod logstf;
 pub mod transfers;
 pub mod team_info;
 pub mod fixtures;

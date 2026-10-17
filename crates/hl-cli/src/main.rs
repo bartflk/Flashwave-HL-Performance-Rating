@@ -10,6 +10,7 @@ use hl_ingest::{Progress, Sources, SyncOptions};
 use std::path::PathBuf;
 
 mod logsdump;
+mod logstf_summary;
 
 const USAGE: &str = "\
 hl — Highlander rating system dev harness
@@ -34,6 +35,8 @@ COMMANDS:
     logsdump <DUMP.sql> <OUT.sqlite3> [--limit ROWS]
                            Index every player in a logs.tf database dump and rate
                            every Highlander game in it, into a file of its own
+    logsdump-summary <INDEX.sqlite3> <OUT.tsv.gz>
+                           The few MB of that index the app ships (names, careers)
     demos                  Scan the TF2 folder for demos and link them to matches
     rawlogs [--max N] [--check]
                            Fetch logs.tf raw logs and derive every kill; --check
@@ -166,7 +169,7 @@ async fn run() -> Result<()> {
     // `snapshot --check` reads only the snapshot built into this binary.
     let touches_db = !matches!(command.first().copied(), None | Some("help") | Some("--help") | Some("-h"))
         && !(command.first() == Some(&"snapshot") && command.contains(&"--check"))
-        && command.first() != Some(&"logsdump");
+        && !matches!(command.first().copied(), Some("logsdump" | "logsdump-summary"));
     if touches_db {
         hl_ingest::lock::require_free(&db_path, forced)?;
     }
@@ -186,6 +189,9 @@ async fn run() -> Result<()> {
             };
             logsdump::run(std::path::Path::new(dump), std::path::Path::new(out), limit).await
         }
+
+        // The part of that index the app ships: names, careers, years.
+        ["logsdump-summary", index, out] => logstf_summary::run(std::path::Path::new(index), std::path::Path::new(out)).await,
 
         ["status"] => {
             let db = Db::connect(&db_path).await?;

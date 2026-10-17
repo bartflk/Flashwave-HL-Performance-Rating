@@ -942,6 +942,15 @@ pub async fn profile(db: &Db, sources: &Sources, account: u32) -> Result<Profile
             aliases.push(n);
         }
     }
+    // And what thirteen years of logs.tf knew them as (the bundled summary):
+    // someone the app has never met still gets a name, not a Steam ID.
+    if let Some((n, more)) = crate::logstf::names(account) {
+        for n in std::iter::once(n).chain(more) {
+            if !n.is_empty() && !aliases.contains(&n) {
+                aliases.push(n);
+            }
+        }
+    }
     let name = etf2l.as_ref().and_then(|p| p.name.clone()).or_else(|| aliases.first().cloned()).unwrap_or_else(|| steamid.to_steamid64());
     aliases.retain(|a| *a != name);
     let raw = match raw_of(etf2l.as_ref().and_then(|p| p.etf2l_id), &raws) {

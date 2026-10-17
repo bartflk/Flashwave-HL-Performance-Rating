@@ -549,3 +549,33 @@
 .pp-alias-4 { background: color-mix(in srgb, #d9a441 16%, var(--panel)); }
 button.pp-alias-more { background: none; border-style: dashed; color: var(--accent-text); font: inherit; font-size: 0.8rem; cursor: pointer; }
 button.pp-alias-more:hover { border-color: var(--accent-dim); background: rgba(var(--accent-rgb), 0.08); }
+
+/* ---- The logs.tf career: a table a pool, the main class's years ---- */
+.pp-overview-wide { grid-column: 1 / -1; }
+.lt-career { display: flex; flex-direction: column; gap: 12px; }
+.lt-summary { margin: 0; font-size: 0.9rem; }
+.lt-table .lt-class { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; }
+.lt-table .lt-rating { font-weight: 700; }
+.lt-table .lt-rating.up { color: #8fc27a; }
+.lt-table .lt-rating.down { color: #d98a80; }
+.lt-table.muted-pool { opacity: 0.85; }
+.lt-table .pf-w { color: #8fc27a; }
+.lt-table .pf-l { color: #d98a80; }
+.lt-note { margin: 0; font-size: 0.78rem; }
+.lt-years h4 { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font: 700 0.82rem var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.lt-bars { position: relative; display: flex; align-items: flex-end; gap: 6px; height: 130px; padding: 18px 4px 20px; border: 1px solid var(--border); border-radius: 10px; background: color-mix(in srgb, var(--bg) 55%, var(--panel)); }
+.lt-mid { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed color-mix(in srgb, var(--text) 30%, transparent); margin-bottom: 20px; }
+.lt-bar-col { position: relative; flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 18px; }
+.lt-bar { width: 70%; max-width: 34px; border-radius: 4px 4px 0 0; background: color-mix(in srgb, var(--accent) 70%, transparent); }
+.lt-bar.down { background: color-mix(in srgb, var(--muted) 55%, transparent); }
+.lt-val { font-size: 0.68rem; font-variant-numeric: tabular-nums; color: var(--muted); margin-bottom: 2px; }
+.lt-year { position: absolute; bottom: -18px; font-size: 0.7rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lt-hits { margin-top: 16px; }
+.lt-hits h3 { margin: 0 0 8px; font-size: 0.9rem; }
+.lt-hits h3 .muted { margin-left: 8px; font-weight: 400; font-size: 0.8rem; }
+.lt-aka { color: var(--muted); font-weight: 400; font-size: 0.82rem; }
+/* Both pools' tables on the same columns, numbers to the right. */
+.lt-table { table-layout: fixed; }
+.lt-table th:first-child { width: 22%; }
+.lt-table th:nth-child(7) { width: 14%; }
+.lt-table th.num, .lt-table td.num { text-align: right; }
