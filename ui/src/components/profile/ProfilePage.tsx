@@ -34,8 +34,9 @@ import "./profile.css";
 import { t, tx, k } from "../../lib/i18n";
 import { classLabel } from "../analysis/common";
 import { Loading } from "../Spinner";
-import { StatTip } from "../StatTip";
+import { ComponentTip, StatTip } from "../StatTip";
 import type { GlossaryKey } from "../../lib/glossary";
+import { SortTh, useSort } from "../../lib/sort";
 
 /** Below this many rated games a profile is shown, but flagged as thin. */
 const THIN_SAMPLE = 20;
@@ -751,7 +752,7 @@ function Components({ items, formWindow }: { items: ComponentSummary[]; formWind
         {items.map((c) => (
           <div className="comp-row" key={c.component}>
             <div className="comp-label">
-              <span>{t(c.label)}</span>
+              <ComponentTip component={c.component} label={t(c.label)} weight={c.weight} />
               {c === weakest && <span className="tag weak">{t("weakest")}</span>}
               {c === strongest && <span className="tag strong">{t("strongest")}</span>}
             </div>
@@ -777,12 +778,29 @@ function Components({ items, formWindow }: { items: ComponentSummary[]; formWind
 }
 
 function GameList(props: { title: string; games: GameRef[]; onOpen: (logId: number) => void }) {
-  const { title, games, onOpen } = props;
+  const { title, games: all, onOpen } = props;
+  const sort = useSort(`games-${title}`, all, {
+    rating: (g) => g.score,
+    date: (g) => g.playedAt,
+    map: (g) => splitMap(g.map).name ?? null,
+    result: (g) => g.result ?? null,
+    kind: (g) => g.kind ?? g.league ?? null,
+  });
+  const games = sort.sorted;
   return (
     <section className="panel">
       <h2>{title}</h2>
       <div className="table-wrap" style={{ marginTop: 12 }}>
         <table className="match-table">
+          <thead>
+            <tr>
+              <SortTh k="rating" s={sort} className="num" tip="rating">{t("Rating")}</SortTh>
+              <SortTh k="date" s={sort}>{t("Date")}</SortTh>
+              <SortTh k="map" s={sort}>{t("Map")}</SortTh>
+              <SortTh k="result" s={sort}>{t("Result")}</SortTh>
+              <SortTh k="kind" s={sort}>{t("Kind")}</SortTh>
+            </tr>
+          </thead>
           <tbody>
             {games.map((g) => {
               const { mode, name } = splitMap(g.map);

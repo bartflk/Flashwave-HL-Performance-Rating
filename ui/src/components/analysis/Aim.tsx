@@ -5,6 +5,8 @@ import { AimCharts } from "./AimCharts";
 import { classLabel, playerMap, sliceLabel, sliceScope, type Slice } from "./common";
 import { t, t as tr, tx, k } from "../../lib/i18n";
 import { Loading } from "../Spinner";
+import { SortTh, useSort } from "../../lib/sort";
+import { tip } from "../../lib/glossary";
 
 /**
  * Classes whose kills land where the crosshair was. For everyone else the
@@ -96,43 +98,7 @@ export function Aim(props: {
       <AimCharts kills={kills} deaths={deaths} />
       <details className="aim-details">
         <summary>{t("Every kill, in numbers")}</summary>
-        <div className="table-wrap">
-        <table className="match-table aim-table">
-          <thead>
-            <tr>
-              <th>{t("Victim")}</th>
-              <th className="num" title={t("Degrees between their view and the victim's head when the kill landed")}>{t("Crosshair")}</th>
-              <th className="num" title={t("The same, one second before the kill: how far the crosshair had to travel")}>{t("A second before")}</th>
-              <th className="num" title={t("How far the view turned in the half second before the shot")}>{t("Flick")}</th>
-              <th className="num" title={t("Distance in map units; a Sniper sightline is around 1,500")}>{t("Range")}</th>
-              <th className="num" title={t("How far above the shooter the victim stood")}>{t("Height")}</th>
-              <th>{t("Shot")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {kills.map((k) => (
-              <tr key={k.tick} className={k.victimSeen ? undefined : "muted-row"}>
-                <td className="nowrap player-name">{(k.victim !== null && names.get(k.victim)?.name) || "—"}</td>
-                <td className="num">
-                  <Deg v={k.errorDeg} good={3} bad={15} />
-                </td>
-                <td className="num">
-                  <Deg v={k.beforeDeg} good={3} bad={30} />
-                </td>
-                <td className="num">{k.flickDeg.toFixed(1)}°</td>
-                <td className="num">{k.rangeUnits.toFixed(0)}</td>
-                <td className="num">{k.height.toFixed(0)}</td>
-                <td className="nowrap">
-                  {k.headshot && <span className="badge badge-hs">{t("headshot")}</span>}
-                  {!k.victimSeen && (
-                    <span className="muted" title={t("The demo did not carry them the whole time, so these numbers are stale")}>{t("not on screen")}</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
+        <KillsTable kills={kills} names={names} />
       </details>
       {deaths.length > 0 && (
         <details className="aim-details">
@@ -182,17 +148,25 @@ function Summary(props: { t: AimTotals; career: AimTotals | null; life: LifeTota
 }
 
 /** The deaths: who got them, from how far, and who was close enough to help. */
-function Deaths({ rows, names }: { rows: DeathRow[]; names: ReturnType<typeof playerMap> }) {
+function Deaths({ rows: all, names }: { rows: DeathRow[]; names: ReturnType<typeof playerMap> }) {
+  const sort = useSort("aim-deaths", all, {
+    killer: (r) => (r.killer !== null ? names.get(r.killer)?.name ?? null : null),
+    range: (r) => r.killerRange,
+    mate: (r) => r.nearestMate,
+    cover: (r) => r.matesNear,
+    state: (r) => (r.scoped ? 1 : 0) + (r.matesNear === 0 ? 2 : 0),
+  });
+  const rows = sort.sorted;
   return (
     <div className="table-wrap">
       <table className="match-table aim-table">
         <thead>
           <tr>
-            <th>{t("Killed by")}</th>
-            <th className="num" title={t("How far away they were; blank when the demo never carried them")}>{t("Their range")}</th>
-            <th className="num" title={t("Distance to the nearest living teammate the demo carried")}>{t("Nearest teammate")}</th>
-            <th className="num" title={t("Teammates within 900 units")}>{t("Cover")}</th>
-            <th>{t("State")}</th>
+            <SortTh k="killer" s={sort}>{t("Killed by")}</SortTh>
+            <SortTh k="range" s={sort} className="num" tip={tip(t("Their range"), t("How far away they were; blank when the demo never carried them"), t(AIM_HOW), "STV demo")}>{t("Their range")}</SortTh>
+            <SortTh k="mate" s={sort} className="num" tip={tip(t("Nearest teammate"), t("Distance to the nearest living teammate the demo carried"), t(AIM_HOW), "STV demo")}>{t("Nearest teammate")}</SortTh>
+            <SortTh k="cover" s={sort} className="num" tip={tip(t("Cover"), t("Teammates within 900 units"), t(AIM_HOW), "STV demo")}>{t("Cover")}</SortTh>
+            <SortTh k="state" s={sort}>{t("State")}</SortTh>
           </tr>
         </thead>
         <tbody>
@@ -223,3 +197,58 @@ function Deg({ v, good, bad }: { v: number; good: number; bad: number }) {
 }
 
 export type { AimRow };
+
+/** How the demo's aim numbers are read. */
+const AIM_HOW = k("Read from the STV demo: where each player looked, tick by tick, against where the victim's head was.");
+
+/** Every kill, in numbers, sortable (Q79). */
+function KillsTable({ kills, names }: { kills: AimRow[]; names: ReturnType<typeof playerMap> }) {
+  const sort = useSort("aim-kills", kills, {
+    victim: (x) => (x.victim !== null ? names.get(x.victim)?.name ?? null : null),
+    error: (x) => -x.errorDeg,
+    before: (x) => -x.beforeDeg,
+    flick: (x) => x.flickDeg,
+    range: (x) => x.rangeUnits,
+    height: (x) => x.height,
+    shot: (x) => (x.headshot ? 1 : 0),
+  });
+  return (
+    <div className="table-wrap">
+    <table className="match-table aim-table">
+      <thead>
+        <tr>
+          <SortTh k="victim" s={sort}>{t("Victim")}</SortTh>
+          <SortTh k="error" s={sort} className="num" tip={tip(t("Crosshair"), t("Degrees between their view and the victim's head when the kill landed"), t(AIM_HOW), "STV demo")}>{t("Crosshair")}</SortTh>
+          <SortTh k="before" s={sort} className="num" tip={tip(t("A second before"), t("The same, one second before the kill: how far the crosshair had to travel"), t(AIM_HOW), "STV demo")}>{t("A second before")}</SortTh>
+          <SortTh k="flick" s={sort} className="num" tip={tip(t("Flick"), t("How far the view turned in the half second before the shot"), t(AIM_HOW), "STV demo")}>{t("Flick")}</SortTh>
+          <SortTh k="range" s={sort} className="num" tip={tip(t("Range"), t("Distance in map units; a Sniper sightline is around 1,500"), t(AIM_HOW), "STV demo")}>{t("Range")}</SortTh>
+          <SortTh k="height" s={sort} className="num" tip={tip(t("Height"), t("How far above the shooter the victim stood"), t(AIM_HOW), "STV demo")}>{t("Height")}</SortTh>
+          <SortTh k="shot" s={sort}>{t("Shot")}</SortTh>
+        </tr>
+      </thead>
+      <tbody>
+        {sort.sorted.map((k) => (
+          <tr key={k.tick} className={k.victimSeen ? undefined : "muted-row"}>
+            <td className="nowrap player-name">{(k.victim !== null && names.get(k.victim)?.name) || "—"}</td>
+            <td className="num">
+              <Deg v={k.errorDeg} good={3} bad={15} />
+            </td>
+            <td className="num">
+              <Deg v={k.beforeDeg} good={3} bad={30} />
+            </td>
+            <td className="num">{k.flickDeg.toFixed(1)}°</td>
+            <td className="num">{k.rangeUnits.toFixed(0)}</td>
+            <td className="num">{k.height.toFixed(0)}</td>
+            <td className="nowrap">
+              {k.headshot && <span className="badge badge-hs">{t("headshot")}</span>}
+              {!k.victimSeen && (
+                <span className="muted" title={t("The demo did not carry them the whole time, so these numbers are stale")}>{t("not on screen")}</span>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    </div>
+  );
+}

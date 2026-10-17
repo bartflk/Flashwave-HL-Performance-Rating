@@ -21,6 +21,7 @@ import { RELEASES } from "../lib/changelog";
 import { Markdown } from "./Markdown";
 import { clearProblems, markProblemsSeen, report, useProblems } from "../lib/problems";
 import { Spinner } from "./Spinner";
+import { SortTh, useSort } from "../lib/sort";
 
 /** The groups of Settings, in order, for the side menu and the page. */
 type Group = { id: string; title: string; sections: { id: string; title: string; icon: IconName }[] };
@@ -406,6 +407,7 @@ function ChangelogPanel() {
  */
 function ProblemsPanel({ version }: { version: string }) {
   const problems = useProblems();
+  const sort = useSort("problems", problems.slice(0, 50), { when: (p) => p.at, what: (p) => tr(p.what), why: (p) => p.message });
   const [copied, setCopied] = useState(false);
   useEffect(() => markProblemsSeen(), [problems.length]);
 
@@ -438,13 +440,13 @@ function ProblemsPanel({ version }: { version: string }) {
         <table className="match-table">
           <thead>
             <tr>
-              <th>{tr("When")}</th>
-              <th>{tr("What")}</th>
-              <th>{tr("Why")}</th>
+              <SortTh k="when" s={sort}>{tr("When")}</SortTh>
+              <SortTh k="what" s={sort}>{tr("What")}</SortTh>
+              <SortTh k="why" s={sort}>{tr("Why")}</SortTh>
             </tr>
           </thead>
           <tbody>
-            {problems.slice(0, 50).map((p) => (
+            {sort.sorted.map((p) => (
               <tr key={p.id}>
                 <td className="muted nowrap">{new Date(p.at).toLocaleTimeString()}</td>
                 <td className="nowrap">
@@ -1030,6 +1032,7 @@ function DownloadedDemosPanel() {
   }
 
   const items = q.data ?? [];
+  const demoSort = useSort("downloaded-demos", items, { demo: (d) => d.map ?? d.fileName, size: (d) => d.sizeBytes, state: (d) => (d.read ? 1 : 0) });
   const total = items.reduce((n, d) => n + d.sizeBytes, 0);
   const ready = items.filter((d) => d.read);
   const readySize = ready.reduce((n, d) => n + d.sizeBytes, 0);
@@ -1061,14 +1064,14 @@ function DownloadedDemosPanel() {
             <table className="match-table">
               <thead>
                 <tr>
-                  <th>{tr("Demo")}</th>
-                  <th className="num">{tr("Size")}</th>
-                  <th>{tr("State")}</th>
+                  <SortTh k="demo" s={demoSort}>{tr("Demo")}</SortTh>
+                  <SortTh k="size" s={demoSort} className="num">{tr("Size")}</SortTh>
+                  <SortTh k="state" s={demoSort}>{tr("State")}</SortTh>
                   <th />
                 </tr>
               </thead>
               <tbody>
-                {items.map((d) => (
+                {demoSort.sorted.map((d) => (
                   <tr key={d.demoId}>
                     <td className="nowrap">{d.map ?? d.fileName}</td>
                     <td className="num">{gb(d.sizeBytes)}</td>

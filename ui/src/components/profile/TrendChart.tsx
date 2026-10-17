@@ -3,6 +3,8 @@ import type { TrendPoint } from "../../api/types";
 import { formatDate, rating, splitMap } from "../../lib/format";
 import { useMeasuredWidth } from "../../lib/measure";
 import { t as tr, tx, k } from "../../lib/i18n";
+import { SortTh, useSort } from "../../lib/sort";
+import { tip } from "../../lib/glossary";
 
 /**
  * Rating over time, as an emphasis chart: the rolling average is the story
@@ -274,17 +276,23 @@ export function TrendChart(props: {
 
 /** The same data without a chart: every value reachable without hovering. */
 function TrendTable({ points, onOpen }: { points: TrendPoint[]; onOpen: (logId: number) => void }) {
-  const rows = [...points].reverse();
+  const sort = useSort(
+    "trend-table",
+    points,
+    { date: (p) => p.playedAt, map: (p) => splitMap(p.map).name ?? null, result: (p) => p.result ?? null, rating: (p) => p.score, avg: (p) => p.rolling },
+    { key: "date", dir: "desc" },
+  );
+  const rows = sort.sorted;
   return (
     <div className="table-wrap trend-table">
       <table className="match-table">
         <thead>
           <tr>
-            <th>{tr("Date")}</th>
-            <th>{tr("Map")}</th>
-            <th>{tr("Result")}</th>
-            <th className="num">{tr("Rating")}</th>
-            <th className="num">{tr("10-game avg")}</th>
+            <SortTh k="date" s={sort}>{tr("Date")}</SortTh>
+            <SortTh k="map" s={sort}>{tr("Map")}</SortTh>
+            <SortTh k="result" s={sort}>{tr("Result")}</SortTh>
+            <SortTh k="rating" s={sort} className="num" tip="rating">{tr("Rating")}</SortTh>
+            <SortTh k="avg" s={sort} className="num" tip={tip(tr("10-game avg"), tr("The average of this game and the nine before it."), tr("The line on the chart: it smooths one night's luck out of the trend."), "this app")}>{tr("10-game avg")}</SortTh>
           </tr>
         </thead>
         <tbody>

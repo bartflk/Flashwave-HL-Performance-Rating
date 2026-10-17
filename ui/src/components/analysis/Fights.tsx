@@ -4,7 +4,12 @@ import { clock, teamLabel } from "../../lib/format";
 import { playerMap, sliceScope, type Slice } from "./common";
 import { fightsInSlice } from "./roundFights";
 import { ClassIcon } from "../ClassIcon";
-import { t, tx } from "../../lib/i18n";
+import { k, t, tx } from "../../lib/i18n";
+import { SortTh, useSort } from "../../lib/sort";
+import { tip } from "../../lib/glossary";
+
+/** How every Fights column is counted. */
+const HOW = k("From the server log's kills, each with its time: a fight starts after 10 s with no kill, a kill is traded when the killer's team loses someone within 3 s.");
 
 /**
  * Every player's kills in context (PLAN §11 B and D): who opened fights,
@@ -26,6 +31,36 @@ export function Fights({ a, player, slice, onPick }: { a: Analysis; player: numb
   const name = (id: number) => players.get(id)?.name ?? "?";
 
   const pct = (n: number, d: number) => (d > 0 ? `${Math.round((n / d) * 100)}%` : "–");
+  const share = (n: number, d: number) => (d > 0 ? n / d : null);
+  // Both teams' rows in one sort, shown team by team (Q79); opening kills
+  // first, as before.
+  const rows = useMemo(
+    () =>
+      a.players
+        .map((p) => ({ p, f: byId.get(p.accountId) }))
+        .filter((r): r is { p: (typeof a.players)[number]; f: FightStats } => r.f !== undefined),
+    [a, byId],
+  );
+  const sort = useSort(
+    "fights",
+    rows,
+    {
+      name: (r) => r.p.name,
+      kast: (r) => (partial ? null : share(r.f.fightsKast, r.f.fightsPresent)),
+      opening: (r) => r.f.openingKills - r.f.openingDeaths,
+      firstPicks: (r) => r.f.firstPicks - r.f.firstDeaths,
+      traded: (r) => share(r.f.tradedKills, r.f.kills),
+      diedAfter: (r) => r.f.diedAfterKill,
+      trades: (r) => r.f.tradeKills,
+      cleanups: (r) => r.f.cleanupKills,
+      charge: (r) => r.f.chargedPicks,
+      forces: (r) => (partial ? null : r.f.forces),
+      uber: (r) => (partial ? null : r.f.deathsBeforeUber + r.f.deathsDuringUber + r.f.deathsAfterUber),
+      deathsTraded: (r) => share(r.f.tradedDeaths, r.f.deaths),
+      diedTo: (r) => r.f.deathsToSniper + r.f.deathsToFlank + r.f.deathsToCombo,
+    },
+    { key: "opening", dir: "desc" },
+  );
   /** Whole-match only: these need the fights pass, not the kills alone. */
   const whole = (v: number | string) => (partial ? <span className="muted">–</span> : v);
 
@@ -39,19 +74,19 @@ export function Fights({ a, player, slice, onPick }: { a: Analysis; player: numb
         <table className="match-table fights-table">
           <thead>
             <tr>
-              <th>{t("Player")}</th>
-              <th className="num" title={t("Fights alive for where they got a kill or assist, survived, or had their death traded")}>{t("Fight KAST")}</th>
-              <th className="num" title={t("First kills of fights won and lost")}>{t("Opening duels")}</th>
-              <th className="num" title={t("First kills of rounds: got one / was one")}>{t("First picks")}</th>
-              <th className="num" title={t("Share of this player's kills where their team lost someone within 3 s")}>{t("Traded")}</th>
-              <th className="num" title={t("Died within 3 s of their own kill")}>{t("Died after kill")}</th>
-              <th className="num" title={t("Avenged a teammate killed within 3 s before")}>{t("Trades")}</th>
-              <th className="num" title={t("Kills while their team was already up a player")}>{t("Clean-ups")}</th>
-              <th className="num" title={t("Combo players killed while their team held a ready charge; Medics among them dropped")}>{t("Into charge")}</th>
-              <th className="num" title={t("Enemy ubers popped right after this player's damage on the Medic")}>{t("Forces")}</th>
-              <th className="num" title={t("Deaths in the 10 s before their team popped, during it, and in the 10 s after")}>{t("Around own uber")}</th>
-              <th className="num" title={t("Deaths your team killed back within 3 s")}>{t("Deaths traded")}</th>
-              <th className="num" title={t("Died to the enemy Sniper / a flanker (Scout, Spy, Soldier) / the combo (Medic, Demoman, Heavy, Pyro)")}>{t("Died to Sniper / flank / combo")}</th>
+              <SortTh k="name" s={sort}>{t("Player")}</SortTh>
+              <SortTh k="kast" s={sort} className="num" tip={tip(t("Fight KAST"), t("Fights alive for where they got a kill or assist, survived, or had their death traded"), t(HOW), "server log")}>{t("Fight KAST")}</SortTh>
+              <SortTh k="opening" s={sort} className="num" tip={tip(t("Opening duels"), t("First kills of fights won and lost"), t(HOW), "server log")}>{t("Opening duels")}</SortTh>
+              <SortTh k="firstPicks" s={sort} className="num" tip={tip(t("First picks"), t("First kills of rounds: got one / was one"), t(HOW), "server log")}>{t("First picks")}</SortTh>
+              <SortTh k="traded" s={sort} className="num" tip={tip(t("Traded"), t("Share of this player's kills where their team lost someone within 3 s"), t(HOW), "server log")}>{t("Traded")}</SortTh>
+              <SortTh k="diedAfter" s={sort} className="num" tip={tip(t("Died after kill"), t("Died within 3 s of their own kill"), t(HOW), "server log")}>{t("Died after kill")}</SortTh>
+              <SortTh k="trades" s={sort} className="num" tip={tip(t("Trades"), t("Avenged a teammate killed within 3 s before"), t(HOW), "server log")}>{t("Trades")}</SortTh>
+              <SortTh k="cleanups" s={sort} className="num" tip={tip(t("Clean-ups"), t("Kills while their team was already up a player"), t(HOW), "server log")}>{t("Clean-ups")}</SortTh>
+              <SortTh k="charge" s={sort} className="num" tip={tip(t("Into charge"), t("Combo players killed while their team held a ready charge; Medics among them dropped"), t(HOW), "server log")}>{t("Into charge")}</SortTh>
+              <SortTh k="forces" s={sort} className="num" tip={tip(t("Forces"), t("Enemy ubers popped right after this player's damage on the Medic"), t(HOW), "server log")}>{t("Forces")}</SortTh>
+              <SortTh k="uber" s={sort} className="num" tip={tip(t("Around own uber"), t("Deaths in the 10 s before their team popped, during it, and in the 10 s after"), t(HOW), "server log")}>{t("Around own uber")}</SortTh>
+              <SortTh k="deathsTraded" s={sort} className="num" tip={tip(t("Deaths traded"), t("Deaths your team killed back within 3 s"), t(HOW), "server log")}>{t("Deaths traded")}</SortTh>
+              <SortTh k="diedTo" s={sort} className="num" tip={tip(t("Died to Sniper / flank / combo"), t("Died to the enemy Sniper / a flanker (Scout, Spy, Soldier) / the combo (Medic, Demoman, Heavy, Pyro)"), t(HOW), "server log")}>{t("Died to Sniper / flank / combo")}</SortTh>
             </tr>
           </thead>
           {teams.map((team) => (
@@ -61,11 +96,8 @@ export function Fights({ a, player, slice, onPick }: { a: Analysis; player: numb
                   {teamLabel(team)}
                 </th>
               </tr>
-              {a.players
-                .filter((p) => p.team === team)
-                .map((p) => ({ p, f: byId.get(p.accountId) }))
-                .filter((r): r is { p: typeof r.p; f: FightStats } => r.f !== undefined)
-                .sort((x, y) => y.f.openingKills - x.f.openingKills)
+              {sort.sorted
+                .filter((r) => r.p.team === team)
                 .map(({ p, f }) => (
                   <tr key={p.accountId} className={p.accountId === player ? "clickable sel" : "clickable"} onClick={() => onPick(p.accountId)}>
                     <td className="nowrap class-cell">

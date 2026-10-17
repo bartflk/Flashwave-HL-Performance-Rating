@@ -5,6 +5,7 @@ import { useMeasuredWidth } from "../../lib/measure";
 import { inSlice, roundClock, type Slice } from "./common";
 import { chargeLabel, sides, StateStrip } from "./StateStrip";
 import { t as tr, tx, k } from "../../lib/i18n";
+import { SortTh, useSort } from "../../lib/sort";
 
 type Metric = "kills" | "deaths" | "damage";
 
@@ -112,6 +113,7 @@ export function TimelineChart(props: {
 
   const fmt = (v: number) => (metric === "damage" ? v.toLocaleString() : String(v));
 
+  const sort = useSort("timeline-table", series, { name: (x) => x.p.name, value: (x) => x.final }, { key: "value", dir: "desc" });
   return (
     <div className="tlc">
       <div className="tlc-controls">
@@ -148,12 +150,12 @@ export function TimelineChart(props: {
           <table className="match-table">
             <thead>
               <tr>
-                <th>{tr("Player")}</th>
-                <th className="num">{METRICS.find(([m]) => m === metric)![1]}</th>
+                <SortTh k="name" s={sort}>{tr("Player")}</SortTh>
+                <SortTh k="value" s={sort} className="num">{METRICS.find(([m]) => m === metric)![1]}</SortTh>
               </tr>
             </thead>
             <tbody>
-              {[...series].sort((s1, s2) => s2.final - s1.final).map((s) => (
+              {sort.sorted.map((s) => (
                 <tr key={s.p.accountId} className="clickable" onClick={() => onPick(s.p.accountId)}>
                   <td className={`team-${s.p.team.toLowerCase()}`}>
                     {s.p.name}

@@ -1,6 +1,8 @@
 import type { AimTotals, LifeTotals } from "../../api/types";
 import { t, tx, k } from "../../lib/i18n";
 import { classLabel } from "../analysis/common";
+import { SortTh, useSort } from "../../lib/sort";
+import { tip } from "../../lib/glossary";
 
 /**
  * What your demos say about your aim, over whatever the profile is filtered
@@ -18,7 +20,6 @@ export function AimPanel(props: {
   cls: string;
 }) {
   const { aim, life, aimAll, lifeAll, cls } = props;
-  if (!aim && !life) return null;
 
   const rows: Array<{ label: string; value: string; note: string; usual: string | null; better?: "low" | "high"; here?: number; all?: number }> = [];
   if (aim) {
@@ -56,6 +57,12 @@ export function AimPanel(props: {
     );
   }
 
+  const sort = useSort("profile-aim", rows, {
+    label: (r) => t(r.label),
+    here: (r) => r.here ?? null,
+    usual: (r) => r.all ?? null,
+  });
+  if (!aim && !life) return null;
   return (
     <section className="panel aim-panel">
       <header>
@@ -66,14 +73,14 @@ export function AimPanel(props: {
         <table className="match-table">
           <thead>
             <tr>
-              <th>{t("Measure")}</th>
-              <th className="num">{t("Here")}</th>
-              <th className="num">{t("Usually")}</th>
+              <SortTh k="label" s={sort}>{t("Measure")}</SortTh>
+              <SortTh k="here" s={sort} className="num" tip={tip(t("Here"), t("The measure over the games this filter covers."), t("Read from the STV demos on this machine; matches without a demo are not in it."), "STV demo")}>{t("Here")}</SortTh>
+              <SortTh k="usual" s={sort} className="num" tip={tip(t("Usually"), t("The same measure over every demo read on this class."), t("Green when this filter beats it by more than a twentieth, red when it falls short."), "STV demo")}>{t("Usually")}</SortTh>
               <th>{t("What it means")}</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {sort.sorted.map((r) => (
               <tr key={r.label}>
                 <td className="nowrap">{t(r.label)}</td>
                 <td className={`num ${verdict(r)}`}>{r.value}</td>

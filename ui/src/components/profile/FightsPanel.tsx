@@ -1,6 +1,9 @@
 import type { FightLine, FightsCard } from "../../api/types";
 import { t, tx } from "../../lib/i18n";
 import { classLabel } from "../analysis/common";
+import { SortTh, useSort } from "../../lib/sort";
+import { StatTip } from "../StatTip";
+import { tip } from "../../lib/glossary";
 
 /**
  * Your kills in context against the players you face on the class: who opens
@@ -8,6 +11,14 @@ import { classLabel } from "../analysis/common";
  * own kill. Same filters as the rest of the profile.
  */
 export function FightsPanel({ card, cls }: { card: FightsCard; cls: string }) {
+  // Each row is its own statistic in its own unit: it sorts by name, by the
+  // two values, or by how far better or worse than the pool (Q79).
+  const sort = useSort("profile-fights", card.lines, {
+    label: (l) => t(l.label),
+    you: (l) => l.you,
+    pool: (l) => l.pool,
+    verdict: (l) => (l.you === null || l.pool === null || l.pool === 0 || l.better === 0 ? null : ((l.you - l.pool) / Math.abs(l.pool)) * l.better),
+  });
   return (
     <section className="panel fights-panel">
       <header>
@@ -18,17 +29,18 @@ export function FightsPanel({ card, cls }: { card: FightsCard; cls: string }) {
         <table className="match-table fights-card">
           <thead>
             <tr>
-              <th />
-              <th className="num">{t("You")}</th>
-              <th className="num">{t("Players you face")}</th>
-              <th />
+              <SortTh k="label" s={sort}>{t("Statistic")}</SortTh>
+              <SortTh k="you" s={sort} className="num">{t("You")}</SortTh>
+              <SortTh k="pool" s={sort} className="num">{t("Players you face")}</SortTh>
+              <SortTh k="verdict" s={sort} tip={tip(t("Against them"), t("How far better or worse than the players you face, in percent of their number."), t("Within 5% either way reads as about the same."), "server log")}>{t("Against them")}</SortTh>
             </tr>
           </thead>
           <tbody>
-            {card.lines.map((l) => (
-              <tr key={l.label} title={t(l.hint)}>
+            {sort.sorted.map((l) => (
+              <tr key={l.label}>
                 <td>
-                  {t(l.label)} <span className="muted">· {t(l.unit)}</span>
+                  <StatTip entry={tip(t(l.label), t(l.hint), t("Your games on this class against the opposite numbers you faced, from the server logs of your matches."), "server log")}>{t(l.label)}</StatTip>{" "}
+                  <span className="muted">· {t(l.unit)}</span>
                 </td>
                 <td className="num">{fmt(l, l.you)}</td>
                 <td className="num muted">{fmt(l, l.pool)}</td>

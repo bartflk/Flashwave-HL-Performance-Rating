@@ -3,6 +3,8 @@ import type { Analysis, TeamfightView } from "../../api/types";
 import { clock } from "../../lib/format";
 import { playerMap, type Slice } from "./common";
 import { t, tx } from "../../lib/i18n";
+import { SortTh, useSort } from "../../lib/sort";
+import { tip } from "../../lib/glossary";
 
 /** Arrivals this close together count as one collapse. Mirrors `TOGETHER_S`. */
 const TOGETHER_S = 3;
@@ -63,6 +65,14 @@ export function Teamfights({ a, player, slice }: { a: Analysis; player: number; 
     .sort((x, y) => x - y);
   const median = joins.length > 0 ? joins[Math.floor(joins.length / 2)] : null;
   const who = names.get(player)?.name ?? "this player";
+  const sort = useSort("teamfights", rows, {
+    round: (r) => r.f.roundNum * 100000 + r.f.t,
+    time: (r) => r.f.t,
+    us: (r) => r.us.share,
+    them: (r) => r.them.share,
+    lost: (r) => r.us.lost - r.them.lost,
+    me: (r) => r.f.arrivals.find((x) => x.accountId === player)?.joinedS ?? null,
+  });
 
   if (fights.length === 0) {
     return <p className="hint an-empty">{t("No teamfights here: every fight was too small to say who collapsed on it.")}</p>;
@@ -96,16 +106,16 @@ export function Teamfights({ a, player, slice }: { a: Analysis; player: number; 
         <table className="match-table">
           <thead>
             <tr>
-              <th>{t("Round")}</th>
-              <th className="num">{t("Time")}</th>
-              <th className="num" title={t("How many of your side were in within {TOGETHER_S}s of your first arrival", { TOGETHER_S: TOGETHER_S })}>{t("You, in together")}</th>
-              <th className="num">{t("Them")}</th>
-              <th className="num">{t("Lost")}</th>
-              <th className="num">{who.length > 14 ? `${who.slice(0, 13)}…` : who}</th>
+              <SortTh k="round" s={sort}>{t("Round")}</SortTh>
+              <SortTh k="time" s={sort} className="num">{t("Time")}</SortTh>
+              <SortTh k="us" s={sort} className="num" tip={tip(t("You, in together"), t("How many of your side were in within {TOGETHER_S}s of your first arrival", { TOGETHER_S: TOGETHER_S }), t("A player is in a fight from their first damage, kill or death, read from the server log."), "server log")}>{t("You, in together")}</SortTh>
+              <SortTh k="them" s={sort} className="num">{t("Them")}</SortTh>
+              <SortTh k="lost" s={sort} className="num">{t("Lost")}</SortTh>
+              <SortTh k="me" s={sort} className="num">{who.length > 14 ? `${who.slice(0, 13)}…` : who}</SortTh>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ f, us, them }) => {
+            {sort.sorted.map(({ f, us, them }) => {
               const mine = f.arrivals.find((x) => x.accountId === player);
               return (
                 <tr key={`${f.roundNum}-${f.t}`} className={won({ f, us, them }) ? undefined : "muted-row"}>

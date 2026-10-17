@@ -662,7 +662,7 @@ function Lineup({ v, roles }: { v: TeamView; roles: Map<number, string> }) {
               <SortTh k="class" s={sort}>{t("Class")}</SortTh>
               <SortTh k="officials" s={sort} className="num">{t("Officials")}</SortTh>
               <SortTh k="last" s={sort} className="num">{t("Last played")}</SortTh>
-              <SortTh k="rating" s={sort}>{t("Rating")}</SortTh>
+              <SortTh k="rating" s={sort} tip="rating">{t("Rating")}</SortTh>
             </tr>
           </thead>
           <tbody>

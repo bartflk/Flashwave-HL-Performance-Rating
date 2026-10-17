@@ -6,6 +6,8 @@ import { clock } from "../../lib/format";
 import { copy } from "../../lib/toast";
 import { t, tx } from "../../lib/i18n";
 import { Name } from "./Spychecks";
+import { SortTh, useSort } from "../../lib/sort";
+import { tip } from "../../lib/glossary";
 
 /**
  * Q44 and Q45, read off the match's kept demo timelines: every player's
@@ -46,6 +48,7 @@ export function PingPanel({ d }: { d: MatchDetail }) {
     );
   }
   const r = q.data;
+  const sort = useSort("pings", r?.pings ?? [], { name: (p) => p.name, avg: (p) => p.avg, min: (p) => p.min, max: (p) => p.max, spikes: (p) => p.spikes.length });
   if (!r) return null;
   const top = Math.max(60, ...r.pings.map((p) => p.max));
   return (
@@ -60,16 +63,16 @@ export function PingPanel({ d }: { d: MatchDetail }) {
           <table className="match-table ping-table">
             <thead>
               <tr>
-                <th>{t("Player")}</th>
-                <th className="num">{t("Average")}</th>
-                <th className="num">{t("Lowest")}</th>
-                <th className="num">{t("Highest")}</th>
+                <SortTh k="name" s={sort}>{t("Player")}</SortTh>
+                <SortTh k="avg" s={sort} className="num" tip={tip(t("Average"), t("Their ping as the server measured it, about once a second."), t("Read from this match's STV demo."), "STV demo")}>{t("Average")}</SortTh>
+                <SortTh k="min" s={sort} className="num">{t("Lowest")}</SortTh>
+                <SortTh k="max" s={sort} className="num">{t("Highest")}</SortTh>
                 <th>{t("Over the match")}</th>
-                <th className="num">{t("Spikes")}</th>
+                <SortTh k="spikes" s={sort} className="num" tip={tip(t("Spikes"), t("Stretches 40 ms or more above the player's own usual ping."), t("Read from this match's STV demo."), "STV demo")}>{t("Spikes")}</SortTh>
               </tr>
             </thead>
             <tbody>
-              {r.pings.map((p) => (
+              {sort.sorted.map((p) => (
                 <tr key={p.accountId}>
                   <td><Name {...who(p.accountId, p.name)} /></td>
                   <td className="num"><strong>{Math.round(p.avg)}</strong> {t("ms")}</td>
@@ -128,6 +131,11 @@ export function ReflectPanel({ d }: { d: MatchDetail }) {
     );
   }
   const r = q.data;
+  const pyros = useSort("reflect-pyros", r?.pyros ?? [], {
+    name: (p) => p.name, reflects: (p) => p.reflects, hit: (p) => (p.hits + p.misses > 0 ? p.hits / (p.hits + p.misses) : null), missed: (p) => p.misses,
+    back: (p) => p.sentBack, unseen: (p) => p.unknown, damage: (p) => p.damage, kills: (p) => p.kills, threat: (p) => (p.judged > 0 ? p.threats / p.judged : null),
+  });
+  const each = useSort("reflect-each", r?.reflects ?? [], { time: (x) => x.atS, what: (x) => x.what, ended: (x) => x.outcome, damage: (x) => x.damage, threat: (x) => (x.threat === null ? null : x.threat ? 1 : 0) });
   if (!r) return null;
   const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%` : "–");
   return (
@@ -149,19 +157,19 @@ export function ReflectPanel({ d }: { d: MatchDetail }) {
           <table className="match-table reflect-table">
             <thead>
               <tr>
-                <th>{t("Pyro")}</th>
-                <th className="num">{t("Reflects")}</th>
-                <th className="num" title={t("Hits out of those that landed (hits and misses)")}>{t("Hit")}</th>
-                <th className="num">{t("Missed")}</th>
-                <th className="num" title={t("Reflected back again by the other side")}>{t("Sent back")}</th>
-                <th className="num" title={t("Out of view, or the demo ended")}>{t("Not seen")}</th>
-                <th className="num">{t("Damage")}</th>
-                <th className="num">{t("Kills")}</th>
-                <th className="num" title={t("Of the reflects the demo showed flying long enough to tell")}>{t("Headed at team (est.)")}</th>
+                <SortTh k="name" s={pyros}>{t("Pyro")}</SortTh>
+                <SortTh k="reflects" s={pyros} className="num">{t("Reflects")}</SortTh>
+                <SortTh k="hit" s={pyros} className="num" tip={tip(t("Hit"), t("Hits out of those that landed (hits and misses)"), t("Read from this match's STV demo."), "STV demo")}>{t("Hit")}</SortTh>
+                <SortTh k="missed" s={pyros} className="num">{t("Missed")}</SortTh>
+                <SortTh k="back" s={pyros} className="num" tip={tip(t("Sent back"), t("Reflected back again by the other side"), t("Read from this match's STV demo."), "STV demo")}>{t("Sent back")}</SortTh>
+                <SortTh k="unseen" s={pyros} className="num" tip={tip(t("Not seen"), t("Out of view, or the demo ended"), t("Read from this match's STV demo."), "STV demo")}>{t("Not seen")}</SortTh>
+                <SortTh k="damage" s={pyros} className="num">{t("Damage")}</SortTh>
+                <SortTh k="kills" s={pyros} className="num">{t("Kills")}</SortTh>
+                <SortTh k="threat" s={pyros} className="num" tip={tip(t("Headed at team (est.)"), t("Of the reflects the demo showed flying long enough to tell"), t("Read from this match's STV demo."), "STV demo")}>{t("Headed at team (est.)")}</SortTh>
               </tr>
             </thead>
             <tbody>
-              {r.pyros.map((p) => (
+              {pyros.sorted.map((p) => (
                 <tr key={p.accountId}>
                   <td><Name {...who(p.accountId, p.name)} /></td>
                   <td className="num"><strong>{p.reflects}</strong></td>
@@ -188,16 +196,16 @@ export function ReflectPanel({ d }: { d: MatchDetail }) {
               <table className="match-table spy-table">
                 <thead>
                   <tr>
-                    <th className="num">{t("Time")}</th>
+                    <SortTh k="time" s={each} className="num">{t("Time")}</SortTh>
                     <th>{t("By")}</th>
-                    <th>{t("What")}</th>
-                    <th>{t("Ended")}</th>
-                    <th>{t("On")}</th>
-                    <th>{t("Headed at team")}</th>
+                    <SortTh k="what" s={each}>{t("What")}</SortTh>
+                    <SortTh k="ended" s={each}>{t("Ended")}</SortTh>
+                    <SortTh k="damage" s={each}>{t("On")}</SortTh>
+                    <SortTh k="threat" s={each}>{t("Headed at team")}</SortTh>
                   </tr>
                 </thead>
                 <tbody>
-                  {r.reflects.map((x, i) => (
+                  {each.sorted.map((x, i) => (
                     <tr
                       key={i}
                       className="spy-row"

@@ -14,6 +14,8 @@ import { drawIcon, useMapIcons, type IconName, type MapIcons } from "./mapIcons"
 import { LegendChip, MapMenu, Seg, Switch, ZoomControls } from "./MapChrome";
 import { CalloutEditor, useCallouts, zoneAt, ZoneShapes, type HandleDrag } from "./Callouts";
 import type { CalloutFile, CalloutZone } from "../../api/types";
+import { SortTh, useSort } from "../../lib/sort";
+import { tip } from "../../lib/glossary";
 
 /**
  * Where the player's kills and deaths happened, top-down.
@@ -1118,20 +1120,29 @@ function TimeStrip(props: { a: Analysis; slice: Slice; marks: Mark[]; hover: Mar
 }
 
 /** The same marks without the map: every value reachable without hovering. */
-function MarkTable({ marks, a }: { marks: Mark[]; a: Analysis }) {
+function MarkTable({ marks: all, a }: { marks: Mark[]; a: Analysis }) {
   const players = playerMap(a);
+  const sort = useSort("killmap-marks", all, {
+    when: (m) => m.k.t,
+    kind: (m) => m.kind,
+    killer: (m) => players.get(m.k.killer)?.name ?? null,
+    victim: (m) => players.get(m.k.victim)?.name ?? null,
+    weapon: (m) => m.k.weapon,
+    distance: (m) => m.k.distance,
+  });
+  const marks = sort.sorted;
   if (marks.length === 0) return <p className="hint an-empty">{tr("Nothing to show for this filter.")}</p>;
   return (
     <div className="table-wrap">
       <table className="match-table">
         <thead>
           <tr>
-            <th>{tr("When")}</th>
-            <th></th>
-            <th>{tr("Killer")}</th>
-            <th>{tr("Victim")}</th>
-            <th>{tr("Weapon")}</th>
-            <th className="num">{tr("Distance")}</th>
+            <SortTh k="when" s={sort}>{tr("When")}</SortTh>
+            <SortTh k="kind" s={sort}>{""}</SortTh>
+            <SortTh k="killer" s={sort}>{tr("Killer")}</SortTh>
+            <SortTh k="victim" s={sort}>{tr("Victim")}</SortTh>
+            <SortTh k="weapon" s={sort}>{tr("Weapon")}</SortTh>
+            <SortTh k="distance" s={sort} className="num" tip={tip(tr("Distance"), tr("How far apart killer and victim were, in map units; a Sniper sightline is around 1,500."), tr("From the server log's positions at the kill."), "server log")}>{tr("Distance")}</SortTh>
             <th></th>
           </tr>
         </thead>

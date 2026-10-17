@@ -579,3 +579,7 @@ button.pp-alias-more:hover { border-color: var(--accent-dim); background: rgba(v
 .lt-table th:first-child { width: 22%; }
 .lt-table th:nth-child(7) { width: 14%; }
 .lt-table th.num, .lt-table td.num { text-align: right; }
+
+/* Medals together and MVPs together, each group with its one "?". */
+.pp-title-group { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.pp-titles { align-items: center; gap: 10px; }

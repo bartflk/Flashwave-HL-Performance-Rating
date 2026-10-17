@@ -139,3 +139,9 @@ export const GLOSSARY = {
 } satisfies Record<string, Entry>;
 
 export type GlossaryKey = keyof typeof GLOSSARY;
+
+/** A column's own explanation, where a glossary entry would be overkill:
+ *  its name, what it is, how it is counted, and from what. */
+export function tip(label: string, what: string, how: string, ...source: Source[]): Entry {
+  return { label, what, how, source };
+}

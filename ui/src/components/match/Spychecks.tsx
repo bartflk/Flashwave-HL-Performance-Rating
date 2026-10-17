@@ -5,6 +5,7 @@ import { errorMessage, type MatchDetail, type SpyPlayer, type Team } from "../..
 import { clock, teamLabel } from "../../lib/format";
 import { copy } from "../../lib/toast";
 import { t, tx } from "../../lib/i18n";
+import { SortTh, useSort } from "../../lib/sort";
 
 /**
  * Q27 (ivg): hits on a Spy nobody could see. Read off the match's kept STV
@@ -14,6 +15,8 @@ import { t, tx } from "../../lib/i18n";
 export function Spychecks({ d }: { d: MatchDetail }) {
   const q = useQuery({ queryKey: ["spychecks", d.logId], queryFn: () => api.getSpychecks(d.logId) });
   const [open, setOpen] = useState(false);
+  const nameOf = (id: number) => d.players.find((x) => x.accountId === id)?.name ?? null;
+  const sort = useSort("spychecks", q.data?.checks ?? [], { time: (c) => c.atS, by: (c) => nameOf(c.attacker), spy: (c) => nameOf(c.spy), damage: (c) => c.damage, killed: (c) => (c.killed ? 1 : 0) });
   if (q.isError) {
     return (
       <section className="panel spy-panel">
@@ -67,15 +70,15 @@ export function Spychecks({ d }: { d: MatchDetail }) {
               <table className="match-table spy-table">
                 <thead>
                   <tr>
-                    <th className="num">{t("Time")}</th>
-                    <th>{t("By")}</th>
-                    <th>{t("Spy")}</th>
-                    <th className="num">{t("Damage")}</th>
-                    <th />
+                    <SortTh k="time" s={sort} className="num">{t("Time")}</SortTh>
+                    <SortTh k="by" s={sort}>{t("By")}</SortTh>
+                    <SortTh k="spy" s={sort}>{t("Spy")}</SortTh>
+                    <SortTh k="damage" s={sort} className="num">{t("Damage")}</SortTh>
+                    <SortTh k="killed" s={sort}>{""}</SortTh>
                   </tr>
                 </thead>
                 <tbody>
-                  {r.checks.map((c, i) => {
+                  {sort.sorted.map((c, i) => {
                     const a = who(c.attacker);
                     const s = who(c.spy);
                     return (

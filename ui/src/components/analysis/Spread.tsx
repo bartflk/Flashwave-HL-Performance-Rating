@@ -3,6 +3,7 @@ import type { Analysis } from "../../api/types";
 import { CLASS_ORDER, DEATH, KILL, classLabel, playerMap, sliceLabel, type Slice } from "./common";
 import { ClassIcon } from "../ClassIcon";
 import { t as tr, tx } from "../../lib/i18n";
+import { SortTh, useSort } from "../../lib/sort";
 
 /**
  * Who the player hurt and who hurt them, class by class: back-to-back bars
@@ -73,6 +74,7 @@ function Butterfly(props: {
   format: (n: number) => string;
 }) {
   const { title, leftLabel, rightLabel, rows, asTable, format } = props;
+  const sort = useSort(`spread-${title}`, rows, { cls: (r) => classLabel(r.cls, true), left: (r) => r.left, right: (r) => r.right });
   // One scale for both sides, so a long bar on either side means the same.
   const max = Math.max(1, ...rows.flatMap((r) => [r.left, r.right]));
   const totalL = rows.reduce((n, r) => n + r.left, 0);
@@ -95,13 +97,13 @@ function Butterfly(props: {
         <table className="match-table bf-table">
           <thead>
             <tr>
-              <th>{tr("Class")}</th>
-              <th className="num">{leftLabel}</th>
-              <th className="num">{rightLabel}</th>
+              <SortTh k="cls" s={sort}>{tr("Class")}</SortTh>
+              <SortTh k="left" s={sort} className="num">{leftLabel}</SortTh>
+              <SortTh k="right" s={sort} className="num">{rightLabel}</SortTh>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {sort.sorted.map((r) => (
               <tr key={r.cls}>
                 <td>{classLabel(r.cls, true)}</td>
                 <td className="num">{format(r.left)}</td>

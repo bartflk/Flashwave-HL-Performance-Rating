@@ -7,6 +7,7 @@ import { t, tx } from "../lib/i18n";
 import { MapAligner } from "./MapAligner";
 import { CalloutPresetButtons } from "./CalloutPresets";
 import { Loading } from "./Spinner";
+import { SortTh, useSort } from "../lib/sort";
 
 /**
  * Settings, Maps (Q31, Flashy): every map the app knows, where its top-down
@@ -42,11 +43,18 @@ export function MapsPanel() {
     }
   };
 
+  const listed = q.data ? (all ? q.data.maps : q.data.maps.filter((m) => m.matches > 0 || m.image === "yours" || m.callouts === "yours")) : [];
+  const sort = useSort("maps-panel", listed, {
+    map: (m) => capitalize(splitMap(m.name).name ?? m.base),
+    matches: (m) => m.matches,
+    image: (m) => m.image,
+    callouts: (m) => m.callouts,
+  });
   if (q.isPending) return <div className="panel"><h2>{t("Maps")}</h2><Loading>{t("Loading…")}</Loading></div>;
   if (q.isError) return <div className="panel"><h2>{t("Maps")}</h2><p className="error">{errorMessage(q.error)}</p></div>;
 
   // Maps you played, and any map with something of yours; the rest on ask.
-  const shown = all ? q.data.maps : q.data.maps.filter((m) => m.matches > 0 || m.image === "yours" || m.callouts === "yours");
+  const shown = sort.sorted;
   const hidden = q.data.maps.length - shown.length;
   const name = (m: MapRow) => capitalize(splitMap(m.name).name ?? m.base);
 
@@ -65,10 +73,10 @@ export function MapsPanel() {
         <table className="match-table maps-table">
           <thead>
             <tr>
-              <th>{t("Map")}</th>
-              <th className="num">{t("Matches")}</th>
-              <th>{t("Image")}</th>
-              <th>{t("Callouts")}</th>
+              <SortTh k="map" s={sort}>{t("Map")}</SortTh>
+              <SortTh k="matches" s={sort} className="num">{t("Matches")}</SortTh>
+              <SortTh k="image" s={sort}>{t("Image")}</SortTh>
+              <SortTh k="callouts" s={sort}>{t("Callouts")}</SortTh>
             </tr>
           </thead>
           <tbody>

@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import { errorMessage } from "../api/types";
 import { locale, t } from "../lib/i18n";
 import { Spinner } from "./Spinner";
+import { SortTh, useSort } from "../lib/sort";
 
 /**
  * The league sample (Flashy): officials from every ETF2L division, fetched
@@ -15,6 +16,15 @@ export function LeagueSamplePanel() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["league_sample"], queryFn: api.getLeagueSample, refetchInterval: 10_000 });
   const s = q.data;
+  const sort = useSort("league-sample", s?.tiers ?? [], {
+    division: (x) => -x.tier,
+    matches: (x) => x.matches,
+    logs: (x) => (x.logs > 0 ? (x.jsonLogstf + x.jsonDropstf + x.jsonMoretf) / x.logs : null),
+    raw: (x) => (x.logs > 0 ? (x.raw + x.rawMissing) / x.logs : null),
+    rosters: (x) => (x.matches > 0 ? x.rosters / x.matches : null),
+    maps: (x) => x.maps,
+    from: (x) => x.oldest,
+  });
 
   const toggle = async (on: boolean) => {
     await api.setLeagueSample(on);
@@ -61,17 +71,17 @@ export function LeagueSamplePanel() {
               <table className="league-table">
                 <thead>
                   <tr>
-                    <th>{t("Division")}</th>
-                    <th>{t("Matches")}</th>
-                    <th>{t("Logs")}</th>
-                    <th>{t("Server logs")}</th>
-                    <th>{t("Rosters")}</th>
-                    <th>{t("Maps")}</th>
-                    <th>{t("From")}</th>
+                    <SortTh k="division" s={sort}>{t("Division")}</SortTh>
+                    <SortTh k="matches" s={sort}>{t("Matches")}</SortTh>
+                    <SortTh k="logs" s={sort}>{t("Logs")}</SortTh>
+                    <SortTh k="raw" s={sort}>{t("Server logs")}</SortTh>
+                    <SortTh k="rosters" s={sort}>{t("Rosters")}</SortTh>
+                    <SortTh k="maps" s={sort}>{t("Maps")}</SortTh>
+                    <SortTh k="from" s={sort}>{t("From")}</SortTh>
                   </tr>
                 </thead>
                 <tbody>
-                  {s.tiers.map((x) => (
+                  {sort.sorted.map((x) => (
                     <tr key={x.tier}>
                       <th scope="row">{x.division}</th>
                       <td>{x.matches}</td>

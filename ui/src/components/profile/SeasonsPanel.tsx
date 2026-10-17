@@ -3,6 +3,8 @@ import { api } from "../../api/client";
 import type { PeriodStats, Season } from "../../api/types";
 import { setPeriod, usePeriod } from "../../lib/period";
 import { locale, t } from "../../lib/i18n";
+import { SortTh, useSort } from "../../lib/sort";
+import { tip } from "../../lib/glossary";
 
 const shortDate = (t: number) =>
   new Date(t * 1000).toLocaleDateString(locale(), { day: "numeric", month: "short", year: "2-digit", timeZone: "UTC" });
@@ -17,8 +19,21 @@ const pct = (v: number | null) => (v === null ? "–" : `${Math.round(v * 100)}%
 export function SeasonsPanel({ cls }: { cls: string }) {
   const q = useQuery({ queryKey: ["seasons-view", cls], queryFn: () => api.getSeasons(cls) });
   const period = usePeriod();
+  const sort = useSort("profile-seasons", q.data?.seasons ?? [], {
+    season: (x) => x.season.from,
+    games: (x) => x.stats.games,
+    record: (x) => (x.stats.wins + x.stats.losses > 0 ? x.stats.wins / (x.stats.wins + x.stats.losses) : null),
+    rating: (x) => x.stats.rating,
+    dpm: (x) => x.stats.dpm,
+    kd: (x) => x.stats.kd,
+    kills: (x) => x.stats.killsPer10,
+    deaths: (x) => x.stats.deathsPer10,
+    opening: (x) => x.stats.openingWon,
+    traded: (x) => x.stats.traded,
+    kast: (x) => x.stats.fightKast,
+  });
   if (!q.data || q.data.seasons.length === 0) return null;
-  const { seasons, allTime } = q.data;
+  const { allTime } = q.data;
 
   const pick = (s: Season) =>
     period.kind === "season" && period.key === s.key
@@ -35,21 +50,21 @@ export function SeasonsPanel({ cls }: { cls: string }) {
         <table className="match-table seasons-table">
           <thead>
             <tr>
-              <th>{t("Season")}</th>
-              <th className="num" title={t("Officials / scrims / pugs")}>{t("Games")}</th>
-              <th className="num">{t("Record")}</th>
-              <th className="num" title={t("Average rating")}>{t("Rating")}</th>
-              <th className="num" title={t("Damage per minute on the class")}>{t("DPM")}</th>
-              <th className="num">K/D</th>
-              <th className="num" title={t("Kills per 10 minutes")}>{t("Kills/10")}</th>
-              <th className="num" title={t("Deaths per 10 minutes")}>{t("Deaths/10")}</th>
-              <th className="num" title={t("First kills of fights: yours against you dying")}>{t("Opening duels")}</th>
-              <th className="num" title={t("Your kills where your team lost someone within 3 s")}>{t("Traded")}</th>
-              <th className="num" title={t("Fights with a kill or assist, survival, or a traded death")}>{t("Fight KAST")}</th>
+              <SortTh k="season" s={sort}>{t("Season")}</SortTh>
+              <SortTh k="games" s={sort} className="num" tip={tip(t("Games"), t("Officials / scrims / pugs"), t("Over the season's rated games on the class."), "this app")}>{t("Games")}</SortTh>
+              <SortTh k="record" s={sort} className="num">{t("Record")}</SortTh>
+              <SortTh k="rating" s={sort} className="num" tip={tip(t("Rating"), t("Average rating"), t("Over the season's rated games on the class."), "logs.tf", "server log")}>{t("Rating")}</SortTh>
+              <SortTh k="dpm" s={sort} className="num" tip={tip(t("DPM"), t("Damage per minute on the class"), t("Over the season's rated games on the class."), "logs.tf")}>{t("DPM")}</SortTh>
+              <SortTh k="kd" s={sort} className="num" tip="kd">K/D</SortTh>
+              <SortTh k="kills" s={sort} className="num" tip={tip(t("Kills/10"), t("Kills per 10 minutes"), t("Over the season's rated games on the class."), "logs.tf")}>{t("Kills/10")}</SortTh>
+              <SortTh k="deaths" s={sort} className="num" tip={tip(t("Deaths/10"), t("Deaths per 10 minutes"), t("Over the season's rated games on the class."), "logs.tf")}>{t("Deaths/10")}</SortTh>
+              <SortTh k="opening" s={sort} className="num" tip={tip(t("Opening duels"), t("First kills of fights: yours against you dying"), t("Over the season's rated games on the class."), "server log")}>{t("Opening duels")}</SortTh>
+              <SortTh k="traded" s={sort} className="num" tip={tip(t("Traded"), t("Your kills where your team lost someone within 3 s"), t("Over the season's rated games on the class."), "server log")}>{t("Traded")}</SortTh>
+              <SortTh k="kast" s={sort} className="num" tip={tip(t("Fight KAST"), t("Fights with a kill or assist, survival, or a traded death"), t("Over the season's rated games on the class."), "server log")}>{t("Fight KAST")}</SortTh>
             </tr>
           </thead>
           <tbody>
-            {seasons.map(({ season: s, stats }) => {
+            {sort.sorted.map(({ season: s, stats }) => {
               const active = period.kind === "season" && period.key === s.key;
               return (
                 <tr

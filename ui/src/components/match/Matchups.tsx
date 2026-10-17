@@ -7,6 +7,7 @@ import { classLabel } from "../analysis/common";
 import { goTo } from "../../lib/goto";
 import { DivTag, SideDivisions, useMatchDivisions } from "./Divisions";
 import { PlayerPopCard, nameProps, usePlayerCard } from "../players/PlayerPopCard";
+import { ComponentTip, StatTip } from "../StatTip";
 
 /**
  * The nine class matchups: the headline of the match page.
@@ -52,10 +53,9 @@ export function Matchups({ d }: { d: MatchDetail }) {
           <SideDivisions d={d} divisions={divisions} />
         </div>
         <div className="mu-head-right">
-          <span
-            className="model-tag"
-            title={t("1.00 is the typical player you face; one standard deviation is 0.25.")}
-          >{tx("model {modelVersion} · one model per class", { modelVersion: d.modelVersion })}</span>
+          <span className="model-tag">
+            <StatTip k="rating">{tx("model {modelVersion} · one model per class", { modelVersion: d.modelVersion })}</StatTip>
+          </span>
           <button className="km-chip mu-guide-link" onClick={() => goTo("rating")}>{t("How ratings work →")}</button>
         </div>
       </header>
@@ -265,11 +265,13 @@ function Breakdown({ m, left, right, perPct }: { m: Matchup; left: Team; right: 
 
         <div className="bd-rows">
           {rows.map(({ p, a, b, swing }) => (
-            <div className="bd-row" key={p.component} title={t("{label}, {unit}. Weight {2}%.", { "2": Math.round(p.weight * 100), label: t(p.label), unit: t(p.unit) })}>
+            <div className="bd-row" key={p.component}>
               <span className={a && b && a.percentile > b.percentile ? "bd-val better" : "bd-val"}>{a ? fmtRaw(a) : "—"}</span>
               <Bar part={a} team={lc} align="left" better={!!a && (!b || a.percentile >= b.percentile)} />
               <span className="bd-label">
-                <span className="bd-name">{t(p.label)}</span>
+                <span className="bd-name">
+                  <ComponentTip component={p.component} label={t(p.label)} weight={p.weight} />
+                </span>
                 <span className="bd-meta">
                   {t(p.unit)} · {Math.round(p.weight * 100)}%
                   {swing !== null && Math.abs(swing) >= 0.1 && (

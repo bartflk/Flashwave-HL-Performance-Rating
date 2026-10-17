@@ -4,6 +4,8 @@ import { errorMessage, type CartFight, type CartHold, type CartRound, type Match
 import { clock } from "../../lib/format";
 import { copy } from "../../lib/toast";
 import { t, tx } from "../../lib/i18n";
+import { SortTh, useSort } from "../../lib/sort";
+import { tip } from "../../lib/glossary";
 
 /**
  * Q11 (Flashy): the cart in a numbers advantage. Seconds BLU was up three
@@ -22,6 +24,8 @@ export function CartPanel({ d }: { d: MatchDetail }) {
     );
   }
   const v = q.data;
+  const stalls = useSort("cart-stalls", v?.stalls ?? [], { round: (x) => x.round * 100000 + x.atS, at: (x) => x.atS, still: (x) => x.seconds, up: (x) => x.mostUp, why: (x) => (x.emptyS * 2 >= x.seconds ? 0 : 1) });
+  const holds = useSort("cart-holds", v?.holds ?? [], { round: (x) => x.round * 100000 + x.fromS, at: (x) => x.fromS, held: (x) => x.seconds, where: (x) => x.zone ?? null, pushes: (x) => x.pushesFailed, lost: (x) => x.lostAttackers - x.lostDefenders, then: (x) => (x.broke ? 1 : 0) });
   if (!v) return null;
   const wasted = v.rounds.reduce((a, r) => a + r.upStillS, 0);
   const empty = v.rounds.reduce((a, r) => a + r.upStillEmptyS, 0);
@@ -77,15 +81,15 @@ export function CartPanel({ d }: { d: MatchDetail }) {
             <table className="match-table cart-table">
               <thead>
                 <tr>
-                  <th>{t("Round")}</th>
-                  <th className="num">{t("At")}</th>
-                  <th className="num">{t("Still for")}</th>
-                  <th className="num">{t("Up")}</th>
-                  <th>{t("Why")}</th>
+                  <SortTh k="round" s={stalls}>{t("Round")}</SortTh>
+                  <SortTh k="at" s={stalls} className="num">{t("At")}</SortTh>
+                  <SortTh k="still" s={stalls} className="num">{t("Still for")}</SortTh>
+                  <SortTh k="up" s={stalls} className="num">{t("Up")}</SortTh>
+                  <SortTh k="why" s={stalls}>{t("Why")}</SortTh>
                 </tr>
               </thead>
               <tbody>
-                {v.stalls.map((s, i) => (
+                {stalls.sorted.map((s, i) => (
                   <tr
                     key={i}
                     className="spy-row"
@@ -119,17 +123,17 @@ export function CartPanel({ d }: { d: MatchDetail }) {
               <table className="match-table cart-table">
                 <thead>
                   <tr>
-                    <th>{t("Round")}</th>
-                    <th className="num">{t("At")}</th>
-                    <th className="num">{t("Held for")}</th>
-                    <th>{t("Where")}</th>
-                    <th className="num" title={t("Fights in the hold that BLU did not win")}>{t("Pushes turned back")}</th>
-                    <th className="num" title={t("Players each side lost in the hold: BLU – RED")}>{t("Lost")}</th>
-                    <th>{t("Then")}</th>
+                    <SortTh k="round" s={holds}>{t("Round")}</SortTh>
+                    <SortTh k="at" s={holds} className="num">{t("At")}</SortTh>
+                    <SortTh k="held" s={holds} className="num">{t("Held for")}</SortTh>
+                    <SortTh k="where" s={holds}>{t("Where")}</SortTh>
+                    <SortTh k="pushes" s={holds} className="num" tip={tip(t("Pushes turned back"), t("Fights in the hold that BLU did not win"), t("From the STV demo: the cart's position and who stood near it, every tick."), "STV demo")}>{t("Pushes turned back")}</SortTh>
+                    <SortTh k="lost" s={holds} className="num" tip={tip(t("Lost"), t("Players each side lost in the hold: BLU – RED"), t("From the STV demo: the cart's position and who stood near it, every tick."), "STV demo")}>{t("Lost")}</SortTh>
+                    <SortTh k="then" s={holds}>{t("Then")}</SortTh>
                   </tr>
                 </thead>
                 <tbody>
-                  {v.holds.map((h, i) => (
+                  {holds.sorted.map((h, i) => (
                     <tr key={i} className="spy-row" title={t("Copy demo_gototick {tick}", { tick: h.jumpTick })} onClick={() => jump(h.jumpTick, t("Hold at {0}", { "0": clock(h.fromS) }))}>
                       <td>{h.round + 1}</td>
                       <td className="num">{clock(h.fromS)}</td>

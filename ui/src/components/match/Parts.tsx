@@ -1,6 +1,7 @@
 import type { MatchDetail } from "../../api/types";
 import { capitalize, formatDate, minutes, splitMap } from "../../lib/format";
 import { t, tx } from "../../lib/i18n";
+import { SortTh, useSort } from "../../lib/sort";
 
 /**
  * The per-round logs a combined log was built from.
@@ -10,6 +11,14 @@ import { t, tx } from "../../lib/i18n";
  * links to logs.tf.
  */
 export function Parts({ d }: { d: MatchDetail }) {
+  const sort = useSort("log-parts", d.parts, {
+    log: (p) => p.logId,
+    when: (p) => p.playedAt,
+    map: (p) => splitMap(p.map).name ?? null,
+    length: (p) => p.durationS ?? null,
+    players: (p) => p.playerCount ?? null,
+    title: (p) => p.title ?? null,
+  });
   if (d.parts.length === 0) return null;
 
   return (
@@ -22,16 +31,16 @@ export function Parts({ d }: { d: MatchDetail }) {
         <table className="match-table">
           <thead>
             <tr>
-              <th>{t("Log")}</th>
-              <th>{t("When")}</th>
-              <th>{t("Map")}</th>
-              <th className="num">{t("Length")}</th>
-              <th className="num">{t("Players")}</th>
-              <th>{t("Title")}</th>
+              <SortTh k="log" s={sort}>{t("Log")}</SortTh>
+              <SortTh k="when" s={sort}>{t("When")}</SortTh>
+              <SortTh k="map" s={sort}>{t("Map")}</SortTh>
+              <SortTh k="length" s={sort} className="num">{t("Length")}</SortTh>
+              <SortTh k="players" s={sort} className="num">{t("Players")}</SortTh>
+              <SortTh k="title" s={sort}>{t("Title")}</SortTh>
             </tr>
           </thead>
           <tbody>
-            {d.parts.map((p) => {
+            {sort.sorted.map((p) => {
               const { mode, name } = splitMap(p.map);
               return (
                 <tr key={p.logId}>

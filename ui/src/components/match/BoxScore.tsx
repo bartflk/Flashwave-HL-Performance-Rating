@@ -6,6 +6,8 @@ import { t as tr, tx, k } from "../../lib/i18n";
 import { classLabel } from "../analysis/common";
 import { DivTag, useMatchDivisions } from "./Divisions";
 import { PlayerPopCard, nameProps, usePlayerCard } from "../players/PlayerPopCard";
+import { StatTip } from "../StatTip";
+import { tip } from "../../lib/glossary";
 
 const CLASS_ORDER = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
 
@@ -24,6 +26,10 @@ type Col = {
 };
 
 const per = (n: number, p: PlayerRow) => (p.timeS > 0 ? n / (p.timeS / 60) : 0);
+
+/** How the scoreboard's columns are counted. */
+const BOX_HOW = k("logs.tf's own count for the whole match, or the part picked; blank where the log did not track it (the oldest logs have no damage taken, headshots or airshots).");
+const SPAWN_HOW = k("Worked out from the server log: each cap's reset of the respawn wave, against the teammates who were dead and waiting.");
 
 const COLS: Col[] = [
   { key: "k", label: "K", title: k("Kills"), value: (p) => p.kills },
@@ -115,8 +121,15 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
               </th>
               <th>C</th>
               {COLS.map((c) => (
-                <th key={c.key} className="num sortable" title={tr(c.title)} onClick={() => click(c.key)}>
-                  {tr(c.label)}
+                <th key={c.key} className="num sortable" onClick={() => click(c.key)}>
+                  {/* What the column is and where it comes from (Q80). */}
+                  {c.key === "rating" ? (
+                    <StatTip k="rating" inline>{tr(c.label)}</StatTip>
+                  ) : (
+                    <StatTip entry={tip(tr(c.label), tr(c.title), c.key === "spawn" ? tr(SPAWN_HOW) : tr(BOX_HOW), c.key === "spawn" ? "server log" : "logs.tf")} inline>
+                      {tr(c.label)}
+                    </StatTip>
+                  )}
                   {arrow(c.key)}
                 </th>
               ))}

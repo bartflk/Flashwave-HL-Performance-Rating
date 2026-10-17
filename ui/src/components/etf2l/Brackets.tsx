@@ -11,6 +11,7 @@ import { TeamAvatar, useFixtures } from "../teams/TeamsPage";
 import { useYourTeams } from "../teams/YourTeams";
 import { clockTime, Countdown, fullDate } from "./Countdown";
 import { Loading } from "../Spinner";
+import { SortTh, useSort } from "../../lib/sort";
 
 /**
  * Each division of a season, as ETF2L runs it (Flashy: "bracket and group
@@ -167,7 +168,16 @@ function GroupStage({ rows, order, mine, onTeam, onMatch }: { rows: ResultRow[];
     const i = order.indexOf(id);
     return i < 0 ? Number.POSITIVE_INFINITY : i;
   };
-  const list = [...teams.values()].sort((a, b) => rank(a.id) - rank(b.id) || b.won - a.won || b.for - b.against - (a.for - a.against) || a.name.localeCompare(b.name));
+  const standing = [...teams.values()].sort((a, b) => rank(a.id) - rank(b.id) || b.won - a.won || b.for - b.against - (a.for - a.against) || a.name.localeCompare(b.name));
+  const placed = standing.map((l, i) => ({ ...l, place: i + 1 }));
+  const sort = useSort("group-stage", placed, {
+    place: (l) => -l.place,
+    team: (l) => l.name,
+    played: (l) => l.played,
+    wl: (l) => (l.won + l.lost > 0 ? l.won / (l.won + l.lost) : null),
+    score: (l) => l.for - l.against,
+  });
+  const list = sort.sorted;
   const cell = (team: number, r: Round): ReactNode => {
     const m = r.matches.find((x) => x.clan1.id === team || x.clan2.id === team);
     if (!m) return <span className="br-cell none">·</span>;
@@ -192,11 +202,11 @@ function GroupStage({ rows, order, mine, onTeam, onMatch }: { rows: ResultRow[];
         <table className="match-table br-table">
           <thead>
             <tr>
-              <th className="num">#</th>
-              <th>{t("Team")}</th>
-              <th className="num">{t("Played")}</th>
-              <th className="num">{t("W-L")}</th>
-              <th className="num">{t("Score")}</th>
+              <SortTh k="place" s={sort} className="num">#</SortTh>
+              <SortTh k="team" s={sort}>{t("Team")}</SortTh>
+              <SortTh k="played" s={sort} className="num">{t("Played")}</SortTh>
+              <SortTh k="wl" s={sort} className="num">{t("W-L")}</SortTh>
+              <SortTh k="score" s={sort} className="num" title={t("Maps won and lost; sorts by the difference")}>{t("Score")}</SortTh>
               {rounds.map((r) => (
                 <th key={r.label} className="num br-week" title={r.label}>
                   {r.label.replace(/^(Week|Round) /, "")}
@@ -205,9 +215,9 @@ function GroupStage({ rows, order, mine, onTeam, onMatch }: { rows: ResultRow[];
             </tr>
           </thead>
           <tbody>
-            {list.map((l, i) => (
+            {list.map((l) => (
               <tr key={l.id} className={mine.has(l.id) ? "br-mine" : undefined}>
-                <td className="num muted">{i + 1}</td>
+                <td className="num muted">{l.place}</td>
                 <td>
                   <button className="e2-team" onClick={() => onTeam(l.id)} title={t("Open {0}", { "0": l.name })}>
                     <TeamAvatar src={l.avatar} />

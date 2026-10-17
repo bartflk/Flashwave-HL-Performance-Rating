@@ -1,6 +1,8 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { GLOSSARY, type GlossaryKey } from "../lib/glossary";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../api/client";
+import { GLOSSARY, type Entry, type GlossaryKey } from "../lib/glossary";
 import { goTo } from "../lib/goto";
 import { t } from "../lib/i18n";
 
@@ -13,8 +15,11 @@ import { t } from "../lib/i18n";
  * panel that clips its overflow -- a profile's header, a scrolling table --
  * never cuts it off; it is kept inside the window's edges.
  */
-export function StatTip({ k: key, children, inline }: { k: GlossaryKey; children?: ReactNode; inline?: boolean }) {
-  const e = GLOSSARY[key];
+export function StatTip({ k: key, entry, children, inline }: { k?: GlossaryKey; entry?: Entry; children?: ReactNode; inline?: boolean }) {
+  // A glossary entry, or one written where the number is (a table's own
+  // columns: Fights, Aim, the scoreboard).
+  const e: Entry = entry ?? GLOSSARY[key ?? "rating"];
+  const id = useId();
   const more = "more" in e ? e.more : undefined;
   const anchor = useRef<HTMLSpanElement>(null);
   const card = useRef<HTMLSpanElement>(null);
@@ -46,7 +51,7 @@ export function StatTip({ k: key, children, inline }: { k: GlossaryKey; children
       ref={anchor}
       className={inline ? "stip inline" : "stip"}
       tabIndex={0}
-      aria-describedby={open ? `stip-${key}` : undefined}
+      aria-describedby={open ? id : undefined}
       onMouseEnter={show}
       onMouseLeave={leave}
       onFocus={show}
@@ -63,7 +68,7 @@ export function StatTip({ k: key, children, inline }: { k: GlossaryKey; children
             ref={card}
             className="stip-card"
             role="tooltip"
-            id={`stip-${key}`}
+            id={id}
             style={pos ? { left: pos.left, top: pos.top } : { left: -9999, top: 0 }}
             onMouseEnter={show}
             onMouseLeave={leave}
@@ -96,4 +101,25 @@ export function StatTip({ k: key, children, inline }: { k: GlossaryKey; children
         )}
     </span>
   );
+}
+
+/**
+ * A rating component (kills in context, untraded deaths, ...) explained from
+ * the model's own description of it -- the same text the How ratings work
+ * page shows, written next to the component in Rust.
+ */
+export function ComponentTip({ component, label, weight, children }: { component: string; label: string; weight?: number; children?: ReactNode }) {
+  const q = useQuery({ queryKey: ["rating_guide"], queryFn: api.getRatingGuide, staleTime: Infinity });
+  const info = q.data?.classes.flatMap((c) => c.components).find((c) => c.key === component);
+  const entry: Entry = {
+    label,
+    what: info?.description ?? label,
+    how:
+      weight !== undefined
+        ? t("{0}% of this class's rating. Each game's number becomes a percentile against every game on the class in the pool; where fewer is better it is flipped.", { "0": Math.round(weight * 100) })
+        : t("Each game's number becomes a percentile against every game on the class in the pool; where fewer is better it is flipped."),
+    source: info?.source === "serverLog" ? ["server log"] : ["logs.tf"],
+    more: "rating",
+  };
+  return <StatTip entry={entry}>{children ?? label}</StatTip>;
 }

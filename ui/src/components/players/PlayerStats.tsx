@@ -11,6 +11,8 @@ import { DivisionBadge } from "./PlayerProfile";
 import "../rating/rating.css";
 import { Loading, Spinner } from "../Spinner";
 import { SortTh, useSort } from "../../lib/sort";
+import { StatTip } from "../StatTip";
+import { tip } from "../../lib/glossary";
 
 /**
  * Ratings for everyone (Q36, Flashy): a player's rating per class on the
@@ -51,7 +53,9 @@ export function PlayerStatsCard({ accountId }: { accountId: number }) {
         <span className="ps-rating-label">
           {classLabel(c.class)} · {c.recent !== null ? t("last 3 months played") : t("career")}
         </span>
-        <span className="ps-rating-value">{rating(headline)}</span>
+        <span className="ps-rating-value">
+          <StatTip k="rating">{rating(headline)}</StatTip>
+        </span>
       </div>
       <p className="hint ps-sub">
         {c.recent !== null
@@ -61,7 +65,11 @@ export function PlayerStatsCard({ accountId }: { accountId: number }) {
       <ul className="ps-bars">
         {c.groups.map(([g, v]) => (
           <li key={g}>
-            <span className="ps-bar-label">{t(GROUP_LABEL[g] ?? g)}</span>
+            <span className="ps-bar-label">
+              <StatTip entry={tip(t(GROUP_LABEL[g] ?? g), t("Where their games sit against every game on the class in the league, 0 to 100, for this group of the rating's parts."), t("The group's parts, each a percentile, averaged by their weight in the class's model."), "logs.tf", "server log")}>
+                {t(GROUP_LABEL[g] ?? g)}
+              </StatTip>
+            </span>
             <span className="ps-bar-value">
               {Math.round(v)}
               <span className="muted">/100</span>

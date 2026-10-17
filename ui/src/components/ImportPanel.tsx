@@ -6,6 +6,7 @@ import { formatDate } from "../lib/format";
 import { t, tx } from "../lib/i18n";
 import { DemoImport } from "./DemoImport";
 import { Spinner } from "./Spinner";
+import { SortTh, useSort } from "../lib/sort";
 
 /**
  * Logs that would not import, and a way to add one by hand.
@@ -137,17 +138,19 @@ export function ImportPanel() {
 /** Every try a failing log gets, as the database counts them (MAX_FETCH_TRIES). */
 const MAX_TRIES = 6;
 
-function FailedTable({ rows, busy, action, onTry }: { rows: FailedLog[]; busy: boolean; action: string; onTry: (logId: number) => void }) {
+function FailedTable({ rows: all, busy, action, onTry }: { rows: FailedLog[]; busy: boolean; action: string; onTry: (logId: number) => void }) {
+  const sort = useSort("failed-logs", all, { played: (r) => r.playedAt, map: (r) => r.map ?? r.title ?? null, log: (r) => r.logId, tries: (r) => r.attempts, why: (r) => (r.gone ? "deleted" : r.error) });
+  const rows = sort.sorted;
   return (
     <div className="table-wrap" style={{ marginTop: 12 }}>
       <table className="match-table">
         <thead>
           <tr>
-            <th>{t("Played")}</th>
-            <th>{t("Map")}</th>
-            <th className="num">{t("Log")}</th>
-            <th className="num">{t("Tries")}</th>
-            <th>{t("Why")}</th>
+            <SortTh k="played" s={sort}>{t("Played")}</SortTh>
+            <SortTh k="map" s={sort}>{t("Map")}</SortTh>
+            <SortTh k="log" s={sort} className="num">{t("Log")}</SortTh>
+            <SortTh k="tries" s={sort} className="num">{t("Tries")}</SortTh>
+            <SortTh k="why" s={sort}>{t("Why")}</SortTh>
             <th />
           </tr>
         </thead>
