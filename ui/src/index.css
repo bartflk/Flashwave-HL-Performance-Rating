@@ -392,3 +392,18 @@ input:where(:not([type]))::placeholder {
 /* A country: its flag, then its name. */
 .country { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; }
 .country .flag { width: 20px; height: 15px; object-fit: cover; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35); flex: none; }
+
+/* ETF2L's mark: its 16 px favicon on a light tile, so the slate emblem reads
+   on dark themes; inline, on the text's middle. */
+.etf2l-mark {
+  display: inline-block;
+  flex: none;
+  box-sizing: content-box;
+  padding: 1px;
+  border-radius: 3px;
+  background: #e9eef3;
+  vertical-align: -2px;
+  image-rendering: auto;
+}
+.tab .etf2l-mark { margin-right: 6px; vertical-align: -2px; }
+.badge .etf2l-mark { margin-right: 4px; vertical-align: -2px; padding: 0; border-radius: 2px; }

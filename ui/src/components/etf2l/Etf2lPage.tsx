@@ -18,6 +18,7 @@ import { TeamsLanding } from "./Teams";
 import { RecruitPostPage, RecruitPreview, RecruitmentPage, type Kind as RecruitKind } from "./Recruitment";
 import "../teams/teams.css";
 import "./etf2l.css";
+import { Etf2lMark } from "../Etf2lMark";
 
 /**
  * The ETF2L tab (Q74, Flashy; PLAN §27): Teams and Players as one tab laid
@@ -148,7 +149,9 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
     <div className="content e2-page">
       <header className="e2-head">
         <div className="e2-brand">
-          <span className="e2-eyebrow">{t("ETF2L Highlander")}</span>
+          <span className="e2-eyebrow">
+            <Etf2lMark size={16} /> {t("ETF2L Highlander")}
+          </span>
           <nav className="e2-menu" aria-label={t("ETF2L")}>
             {menu.map(([id, label]) => (
               <button key={id} className={section === id ? "on" : undefined} aria-current={section === id ? "page" : undefined} onClick={() => go({ at: id })}>

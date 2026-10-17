@@ -7,11 +7,14 @@ import {
   type ContextKind,
   type ContextSplit,
   type GameRef,
+  type Official,
   type OppositionBand, type DivisionBand,
   type PlayerProfile,
   type Profile,
 } from "../../api/types";
-import { Achievements, PlayerHeader, RecentOfficials, SeasonsTable, TeamStays, TrendsCareer } from "../players/PlayerProfile";
+import { Achievements, DivisionBadge, PlayerHeader, RecentOfficials, RosterChip, SeasonsTable, TeamAvatar, TeamStays, TrendsCareer } from "../players/PlayerProfile";
+import { Etf2lMark } from "../Etf2lMark";
+import { openLeagueMatch } from "../../lib/goto";
 import "../players/players.css";
 import { TeammatesPanel } from "./TeammatesPanel";
 import { LivesOnMapTab } from "../players/LivesOnMap";
@@ -37,6 +40,15 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
   const [kind, setKind] = useState<ContextKind | null>(null);
   const period = usePeriod();
   const { from, to } = bounds(period);
+  const [tab, setTabState] = useState<PfTab>(readTab);
+  const setTab = (v: PfTab) => {
+    setTabState(v);
+    try {
+      localStorage.setItem(TAB_KEY, v);
+    } catch {
+      // Blocked storage: the tab still changes.
+    }
+  };
   const q = useQuery({
     queryKey: ["profile", cls, kind, from, to],
     queryFn: () => api.getProfile(cls, kind, from, to),
@@ -69,96 +81,138 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
     );
   }
 
+  // The class, kind and period apply to these; Career and Teammates are
+  // about you, not one class.
+  const classBound = tab === "overview" || tab === "rating" || tab === "fights" || tab === "maps";
+  const aim = q.data.aim || q.data.life;
+
   return (
     <div className={q.isPlaceholderData ? "profile-page refetching" : "profile-page"}>
       {hero}
-      <JumpBar />
 
-      <h2 className="profile-section-title" id="profile-rating">{t("Rating")}</h2>
-      <nav className="class-tabs" aria-label={t("Class")}>
-        {classes.map(([c, n]) => (
-          <button
-            key={c}
-            className={c === active ? "class-tab active" : "class-tab"}
-            onClick={() => {
-              setCls(c);
-              lastSplit.current = [];
-            }}
-            title={n < THIN_SAMPLE ? t("Only {n} rated games — read with care", { n: n }) : undefined}
-          >
-            <ClassIcon cls={c} size={20} /> {classLabel(c)} <span className="count">{n}</span>
+      <nav className="pf-tabs" role="tablist" aria-label={t("Profile sections")}>
+        {PF_TABS.filter(([id]) => id !== "career" || me).map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "pf-tab on" : "pf-tab"} onClick={() => setTab(id)}>
+            {t(label)}
           </button>
         ))}
       </nav>
 
-      <div className="profile-filters">
-        <KindFilter kind={kind} onChange={setKind} split={lastSplit.current} />
-        <PeriodPicker />
-      </div>
+      {classBound && (
+        <div className="pf-toolbar">
+          <nav className="class-tabs" aria-label={t("Class")}>
+            {classes.map(([c, n]) => (
+              <button
+                key={c}
+                className={c === active ? "class-tab active" : "class-tab"}
+                onClick={() => {
+                  setCls(c);
+                  lastSplit.current = [];
+                }}
+                title={n < THIN_SAMPLE ? t("Only {n} rated games — read with care", { n: n }) : undefined}
+              >
+                <ClassIcon cls={c} size={20} /> {classLabel(c)} <span className="count">{n}</span>
+              </button>
+            ))}
+          </nav>
+          <div className="profile-filters">
+            <KindFilter kind={kind} onChange={setKind} split={lastSplit.current} />
+            <PeriodPicker />
+          </div>
+        </div>
+      )}
 
-      {profile ? (
-        <ProfileBody p={profile} onOpenMatch={onOpenMatch} onKind={setKind} />
-      ) : (
+      {classBound && !profile && (
         <div className="panel">
           <p className="hint">{tx("No rated {active} {1}{2}.", { "1": kind ? t(KIND_PLURAL[kind]).toLowerCase() : t("games"), "2": period.kind !== "all" ? t(" in this period") : "", active: classLabel(active) })}</p>
         </div>
       )}
 
-      {profile && fights && (
-        <Fold id="profile-fights">
-          <FightsPanel card={fights} cls={profile.class} />
-        </Fold>
-      )}
+      {tab === "overview" && profile && <Overview p={profile} me={me} onOpenMatch={onOpenMatch} onKind={setKind} onCareer={() => setTab("career")} />}
 
-      {profile && (q.data?.aim || q.data?.life) && (
-        <Fold id="profile-aim">
-          <AimPanel aim={q.data.aim} life={q.data.life} aimAll={q.data.aimAll} lifeAll={q.data.lifeAll} cls={profile.class} />
-        </Fold>
-      )}
-
-      {active && (
-        <Fold id="profile-seasons">
-          <SeasonsPanel cls={active} />
-        </Fold>
-      )}
-
-      {me && (
+      {tab === "rating" && (
         <>
-          <h2 className="profile-section-title" id="profile-career">{t("Career")}</h2>
-          <div className="career-grid">
-            <section className="panel">
-              <h3>{t("Teams by season")}</h3>
-              <SeasonsTable p={me} />
-              <TeamStays accountId={me.accountId} />
-              <h3 className="career-sub">{t("Recent officials")}</h3>
-              <RecentOfficials p={me} count={6} />
-            </section>
-            <section className="panel">
-              <h3>{t("ETF2L officials on trends.tf")}</h3>
-              <TrendsCareer accountId={me.accountId} />
-              <h3 className="career-sub">{tx("Achievements ({0})", { "0": me.medals.length + (me.mvps?.length ?? 0) })}</h3>
-              <Achievements medals={me.medals} mvps={me.mvps ?? []} />
-            </section>
-          </div>
+          {profile && (
+            <>
+              <Fold id="profile-components">
+                <Components items={profile.components} formWindow={Math.min(profile.formWindow, profile.games)} />
+              </Fold>
+              <Opposition bands={profile.opposition} byDivision={profile.byDivision ?? []} />
+            </>
+          )}
+          {active && (
+            <Fold id="profile-seasons">
+              <SeasonsPanel cls={active} />
+            </Fold>
+          )}
         </>
       )}
 
-      {/* Q68 (Emiel): your own routes, without looking yourself up under Players. */}
-      {ownAccount !== null && (
+      {tab === "fights" && profile && (
         <>
-          <h2 className="profile-section-title" id="profile-lives">{t("Lives on a map")}</h2>
-          <section className="panel">
-            <LivesOnMapTab accountId={ownAccount} name={me?.name ?? t("you")} />
-          </section>
+          {fights && (
+            <Fold id="profile-fights">
+              <FightsPanel card={fights} cls={profile.class} />
+            </Fold>
+          )}
+          {aim && (
+            <Fold id="profile-aim">
+              <AimPanel aim={q.data.aim} life={q.data.life} aimAll={q.data.aimAll} lifeAll={q.data.lifeAll} cls={profile.class} />
+            </Fold>
+          )}
+          {!fights && !aim && (
+            <div className="panel">
+              <p className="hint">{t("Nothing read yet for this class: fights come from your matches' server logs, aim from their STV demos.")}</p>
+            </div>
+          )}
         </>
       )}
 
-      <h2 className="profile-section-title" id="profile-teammates">{t("Teammates")}</h2>
-      <section className="panel">
-        <TeammatesPanel />
-      </section>
+      {tab === "maps" && (
+        <>
+          {profile && <Tendencies cls={profile.class} />}
+          {/* Q68 (Emiel): your own routes, without looking yourself up under Players. */}
+          {ownAccount !== null && (
+            <section className="panel">
+              <h2>{t("Lives on a map")}</h2>
+              <LivesOnMapTab accountId={ownAccount} name={me?.name ?? t("you")} />
+            </section>
+          )}
+        </>
+      )}
+
+      {tab === "career" && me && <Career me={me} />}
+
+      {tab === "teammates" && (
+        <section className="panel">
+          <TeammatesPanel />
+        </section>
+      )}
     </div>
   );
+}
+
+/** The profile's sections, as tabs: one page was ~8,000 px of panels. */
+type PfTab = "overview" | "rating" | "fights" | "maps" | "career" | "teammates";
+const PF_TABS: Array<[PfTab, string]> = [
+  ["overview", k("Overview")],
+  ["rating", k("Rating")],
+  ["fights", k("Fights & aim")],
+  ["maps", k("Maps")],
+  ["career", k("Career")],
+  ["teammates", k("Teammates")],
+];
+const TAB_KEY = "hl.profile.tab";
+
+/** The tab last open, per machine; Overview when there is none. */
+function readTab(): PfTab {
+  try {
+    const v = localStorage.getItem(TAB_KEY);
+    if (v && PF_TABS.some(([id]) => id === v)) return v as PfTab;
+  } catch {
+    // Blocked storage: start on Overview.
+  }
+  return "overview";
 }
 
 /** Your own player profile: the one anyone could look up, with you in it. */
@@ -196,19 +250,6 @@ function Signature({ p }: { p: Profile }) {
         {p.winRate !== null && ` · ${t("{0}% won", { "0": p.winRate.toFixed(0) })}`}
       </span>
     </div>
-  );
-}
-
-/** Rating, Career, Teammates: one page, so a way to jump within it. */
-function JumpBar() {
-  const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  return (
-    <nav className="profile-jump" aria-label={t("On this page")}>
-      <button className="linkish" onClick={() => go("profile-rating")}>{t("Rating")}</button>
-      <button className="linkish" onClick={() => go("profile-career")}>{t("Career")}</button>
-      <button className="linkish" onClick={() => go("profile-lives")}>{t("Lives on a map")}</button>
-      <button className="linkish" onClick={() => go("profile-teammates")}>{t("Teammates")}</button>
-    </nav>
   );
 }
 
@@ -423,74 +464,197 @@ function Tendencies({ cls }: { cls: string }) {
   );
 }
 
-function ProfileBody(props: {
+/**
+ * The first look: the headline numbers across the top; the rating over time
+ * and the best and worst games beside a column of the officials/scrims/pugs
+ * split and your latest officials -- the HLTV/FACEIT profile shape.
+ */
+function Overview(props: {
   p: Profile;
+  me: PlayerProfile | null;
   onOpenMatch: (logId: number) => void;
   onKind: (k: ContextKind | null) => void;
+  onCareer: () => void;
 }) {
-  const { p, onOpenMatch, onKind } = props;
-  const delta = p.prevFormAvg === null ? null : p.formAvg - p.prevFormAvg;
+  const { p, me, onOpenMatch, onKind, onCareer } = props;
   const thin = p.games < THIN_SAMPLE;
   const scope = p.filter ? t(KIND_PLURAL[p.filter]).toLowerCase() : t("games");
-
   return (
     <>
       {thin && (
         <p className="thin-note">{tx("Only {games} rated {1} {scope}. Treat these numbers as a rough sketch, not a verdict.", { "1": classLabel(p.class), games: p.games, scope: scope })}</p>
       )}
-
-      <section className="kpis">
-        <div className="kpi hero">
-          <span className="kpi-label">{tx("Form · last {0} {scope}", { "0": Math.min(p.formWindow, p.games), scope: scope })}</span>
-          <span className="kpi-value">{rating(p.formAvg)}</span>
-          {delta !== null && (
-            <span className={delta >= 0 ? "kpi-delta up" : "kpi-delta down"}>
-              {tx("{0} {1} vs the {formWindow} before", { "0": delta >= 0 ? "▲" : "▼", "1": Math.abs(delta).toFixed(2), formWindow: p.formWindow })}</span>
+      <Kpis p={p} />
+      <div className="pf-grid">
+        <div className="pf-main">
+          <Fold id="profile-trend">
+            <TrendChart points={p.trend} rollingWindow={p.rollingWindow} onOpen={onOpenMatch} />
+          </Fold>
+          <section className="games-grid">
+            <GameList title={t("Best games")} games={p.best} onOpen={onOpenMatch} />
+            <GameList title={t("Worst games")} games={p.worst} onOpen={onOpenMatch} />
+          </section>
+        </div>
+        <aside className="pf-side">
+          <KindSplit split={p.contexts} active={p.filter} onKind={onKind} />
+          {me && (
+            <section className="panel pf-card">
+              <header className="pf-card-head">
+                <h2>
+                  <Etf2lMark size={14} /> {t("Recent officials")}
+                </h2>
+                <button className="linkish" onClick={onCareer}>
+                  {t("All in Career")} ›
+                </button>
+              </header>
+              <RecentOfficials p={me} count={5} />
+            </section>
           )}
-        </div>
-        <div className="kpi">
-          <span className="kpi-label">{t("Career")}</span>
-          <span className="kpi-value">{rating(p.careerAvg)}</span>
-          <span className="kpi-sub">
-            {tx("{games} rated {scope}", { games: p.games, scope: scope })}
+        </aside>
+      </div>
+    </>
+  );
+}
+
+function Kpis({ p }: { p: Profile }) {
+  const delta = p.prevFormAvg === null ? null : p.formAvg - p.prevFormAvg;
+  const scope = p.filter ? t(KIND_PLURAL[p.filter]).toLowerCase() : t("games");
+  return (
+    <section className="kpis">
+      <div className="kpi hero">
+        <span className="kpi-label">{tx("Form · last {0} {scope}", { "0": Math.min(p.formWindow, p.games), scope: scope })}</span>
+        <span className="kpi-value">{rating(p.formAvg)}</span>
+        {delta !== null && (
+          <span className={delta >= 0 ? "kpi-delta up" : "kpi-delta down"}>
+            {tx("{0} {1} vs the {formWindow} before", { "0": delta >= 0 ? "▲" : "▼", "1": Math.abs(delta).toFixed(2), formWindow: p.formWindow })}
           </span>
-        </div>
-        {p.winRate !== null && (
-          <div className="kpi">
-            <span className="kpi-label">{t("Win rate")}</span>
-            <span className="kpi-value">{p.winRate.toFixed(0)}%</span>
-            <span className="kpi-sub">{t("ties excluded")}</span>
-          </div>
         )}
-        {/* Career records span every kind of game, so they only show unfiltered. */}
-        {p.filter === null && p.extras.map((e) => (
+      </div>
+      <div className="kpi">
+        <span className="kpi-label">{t("Career")}</span>
+        <span className="kpi-value">{rating(p.careerAvg)}</span>
+        <span className="kpi-sub">{tx("{games} rated {scope}", { games: p.games, scope: scope })}</span>
+      </div>
+      {p.winRate !== null && (
+        <div className="kpi">
+          <span className="kpi-label">{t("Win rate")}</span>
+          <span className="kpi-value">{p.winRate.toFixed(0)}%</span>
+          <span className="kpi-sub">{t("ties excluded")}</span>
+        </div>
+      )}
+      {/* Career records span every kind of game, so they only show unfiltered. */}
+      {p.filter === null &&
+        p.extras.map((e) => (
           <div className="kpi" key={e.label} title={e.hint ? extraText(e.hint) : undefined}>
             <span className="kpi-label">{extraText(e.label)}</span>
             <span className="kpi-value">{e.value}</span>
             {e.detail && <span className="kpi-sub">{extraText(e.detail)}</span>}
           </div>
         ))}
-      </section>
+    </section>
+  );
+}
 
-      <KindSplit split={p.contexts} active={p.filter} onKind={onKind} />
+/**
+ * Career, the way etf2l.org lays a player out: every official by
+ * competition, newest first, then the teams season by season and trends.tf's
+ * count; beside them the teams registered now, the team history from the
+ * transfers, and the medals.
+ */
+function Career({ me }: { me: PlayerProfile }) {
+  return (
+    <div className="pf-grid">
+      <div className="pf-main">
+        <section className="panel">
+          <header className="pf-card-head">
+            <h2>
+              <Etf2lMark size={14} /> {t("Matches played")}
+            </h2>
+            <span className="muted">{tx("{0} officials", { "0": me.officials.length })}</span>
+          </header>
+          <OfficialsByCompetition officials={me.officials} />
+        </section>
+        <section className="panel">
+          <h2>{t("Teams by season")}</h2>
+          <SeasonsTable p={me} />
+        </section>
+        <section className="panel">
+          <h2>{t("ETF2L officials on trends.tf")}</h2>
+          <TrendsCareer accountId={me.accountId} />
+        </section>
+      </div>
+      <aside className="pf-side">
+        {me.etf2lTeams.length > 0 && (
+          <section className="panel pf-card">
+            <h2>{t("Registered teams")}</h2>
+            <div className="pf-rosters">
+              {me.etf2lTeams.map((r) => (
+                <RosterChip key={r.id} r={r} />
+              ))}
+            </div>
+          </section>
+        )}
+        <section className="panel pf-card pf-stays">
+          <TeamStays accountId={me.accountId} />
+        </section>
+        <section className="panel pf-card">
+          <h2>{tx("Achievements ({0})", { "0": me.medals.length + (me.mvps?.length ?? 0) })}</h2>
+          <Achievements medals={me.medals} mvps={me.mvps ?? []} />
+        </section>
+      </aside>
+    </div>
+  );
+}
 
-      <Opposition bands={p.opposition} byDivision={p.byDivision ?? []} />
-
-      <Tendencies cls={p.class} />
-
-      <Fold id="profile-components">
-        <Components items={p.components} formWindow={Math.min(p.formWindow, p.games)} />
-      </Fold>
-
-      <Fold id="profile-trend">
-        <TrendChart points={p.trend} rollingWindow={p.rollingWindow} onOpen={onOpenMatch} />
-      </Fold>
-
-      <section className="games-grid">
-        <GameList title={t("Best games")} games={p.best} onOpen={onOpenMatch} />
-        <GameList title={t("Worst games")} games={p.worst} onOpen={onOpenMatch} />
-      </section>
-    </>
+/** Every official, grouped by competition as etf2l.org's "Matches played":
+ *  the newest competition open, the rest folded with their record. */
+function OfficialsByCompetition({ officials }: { officials: Official[] }) {
+  const groups: Array<{ name: string; rows: Official[] }> = [];
+  for (const o of officials) {
+    const g = groups.find((x) => x.name === o.competition);
+    if (g) g.rows.push(o);
+    else groups.push({ name: o.competition, rows: [o] });
+  }
+  if (groups.length === 0) return <p className="hint">{t("No ETF2L official in the seasons read.")}</p>;
+  return (
+    <div className="pf-comps">
+      {groups.map((g, i) => {
+        const won = g.rows.filter((o) => o.won === true).length;
+        const lost = g.rows.filter((o) => o.won === false).length;
+        const first = g.rows[0];
+        return (
+          <details key={g.name} className="pf-comp" open={i === 0}>
+            <summary>
+              <span className="pf-comp-caret" aria-hidden>
+                ›
+              </span>
+              {first.division && first.tier !== null ? <DivisionBadge d={{ name: first.division, tier: first.tier }} /> : <span />}
+              <span className="pf-comp-name">{g.name}</span>
+              <span className="muted pf-comp-n">{tx("{0} officials", { "0": g.rows.length })}</span>
+              <span className="pf-comp-wl">
+                <span className="w">{won}</span>–<span className="l">{lost}</span>
+              </span>
+            </summary>
+            <ul className="pf-comp-rows">
+              {g.rows.map((o) => (
+                <li key={o.matchId}>
+                  <button className={o.won === true ? "won" : o.won === false ? "lost" : undefined} onClick={() => openLeagueMatch(o.matchId)} title={t("Open the match and its logs")}>
+                    <span className="muted pf-when">{o.time ? formatDate(o.time, true) : "–"}</span>
+                    <span className="muted pf-round">{o.round ?? ""}</span>
+                    <span className="pf-teams">
+                      <TeamAvatar src={o.team.avatar} /> {o.team.name} <span className="muted">{t("vs")}</span> <TeamAvatar src={o.opponent.avatar} /> <strong>{o.opponent.name}</strong>
+                    </span>
+                    <span className="pf-score">
+                      {o.scoreFor ?? "–"} : {o.scoreAgainst ?? "–"}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </details>
+        );
+      })}
+    </div>
   );
 }
 
@@ -569,7 +733,10 @@ function GameList(props: { title: string; games: GameRef[]; onOpen: (logId: numb
                   <td>{g.result && <span className={`result result-${g.result}`}>{g.result}</span>}</td>
                   <td>
                     {g.kind ? (
-                      <span className={`badge badge-${g.kind}`}>{g.kind === "official" ? t("ETF2L") : KIND_LABEL[g.kind].toUpperCase()}</span>
+                      <span className={`badge badge-${g.kind}`}>
+                        {g.kind === "official" && <Etf2lMark size={12} />}
+                        {g.kind === "official" ? t("ETF2L") : KIND_LABEL[g.kind].toUpperCase()}
+                      </span>
                     ) : (
                       g.league && <span className="badge badge-league">{g.league.toUpperCase()}</span>
                     )}

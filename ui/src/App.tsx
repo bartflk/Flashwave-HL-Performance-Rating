@@ -27,6 +27,7 @@ import { RestoreBanner } from "./components/RestoreBanner";
 import { BookmarksMenu } from "./components/Bookmarks";
 import "./App.css";
 import "./components/match/match.css";
+import { Etf2lMark } from "./components/Etf2lMark";
 
 type Tab = "matches" | "profile" | "etf2l" | "settings" | "rating";
 
@@ -159,6 +160,7 @@ export default function App() {
           <nav className="tabs">
             {TABS.map(([id, label]) => (
               <button key={id} className={tab === id ? "tab active" : "tab"} onClick={() => go(id)}>
+                {id === "etf2l" && <Etf2lMark size={14} />}
                 {t(label)}
               </button>
             ))}

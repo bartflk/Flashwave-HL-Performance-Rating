@@ -10,6 +10,7 @@ import { CLASS_ORDER, classLabel } from "../analysis/common";
 import { Seg } from "../analysis/MapChrome";
 import { ClassIcon } from "../ClassIcon";
 import { HtmlBody } from "./News";
+import { Etf2lMark } from "../Etf2lMark";
 
 /**
  * ETF2L's recruitment, Highlander only (Q74; Flashy: "recruitments would be
@@ -306,7 +307,11 @@ export function CommentList({ comments }: { comments: EtfComment[] }) {
         <li key={i} className={c.staff ? "staff" : undefined}>
           <div className="rc-c-head">
             <strong>{c.author}</strong>
-            {c.staff && <span className="rc-c-staff">{t("ETF2L")}</span>}
+            {c.staff && (
+              <span className="rc-c-staff">
+                <Etf2lMark size={11} /> {t("ETF2L")}
+              </span>
+            )}
             {c.teams && <span className="muted">{c.teams}</span>}
             {c.time && (
               <span className="muted rc-c-time" title={formatDate(c.time, true)}>

@@ -12,6 +12,7 @@ import { MedalGlyph } from "./MedalGlyph";
 import { Country } from "../Country";
 import { BookmarkButton } from "../Bookmarks";
 import { LivesOnMapTab } from "./LivesOnMap";
+import { Etf2lMark } from "../Etf2lMark";
 
 /**
  * A player's profile, HLTV-style (Q35, Flashy; PLAN §26): who they are,
@@ -106,60 +107,51 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
               {p.aliases.length > shownAliases.length && ` ${t("and {0} more", { "0": p.aliases.length - shownAliases.length })}`}
             </p>
           )}
-          <dl className="pp-facts">
+          <div className="pp-meta">
             {p.country && (
-              <>
-                <dt>{t("Country")}</dt>
-                <dd>
-                  <Country raw={p.country} />
-                </dd>
-              </>
+              <span className="pp-chip" title={t("Country")}>
+                <Country raw={p.country} />
+              </span>
             )}
-            <dt>{t("Main class")}</dt>
-            <dd className="pp-classes">
+            <span className="pp-chip" title={t("Most played in the logs held: your matches and the league sample")}>
               {played ? (
-                <span title={t("Most played in the logs held: your matches and the league sample")}>
-                  <ClassIcon cls={played} size={18} /> {classLabel(played)}
-                </span>
+                <>
+                  <ClassIcon cls={played} size={16} /> {classLabel(played)}
+                </>
               ) : (
-                <span className="muted">–</span>
+                <span className="muted">{t("Main class")} –</span>
               )}
               {declared.length > 0 && (
                 <span className="muted" title={t("Signed up as on ETF2L")}>
                   {" "}· {t("signed up as")} {declared.map((c) => classLabel(c)).join(", ")}
                 </span>
               )}
-            </dd>
-            <dt>{t("Current team")}</dt>
-            <dd>
-              {p.current ? (
-                <span className="pp-team">
-                  <TeamAvatar src={p.current.team.avatar} />
-                  {p.current.team.name}
-                  <span className="muted">
-                    {" "}· {p.current.division} · {seasonShort(p.current.season, p.current.seasonName)}
-                  </span>
+            </span>
+            {p.current ? (
+              <span className="pp-chip pp-chip-team" title={t("Current team")}>
+                <TeamAvatar src={p.current.team.avatar} />
+                <strong>{p.current.team.name}</strong>
+                <span className="muted">
+                  {p.current.division} · {seasonShort(p.current.season, p.current.seasonName)}
                 </span>
-              ) : (
-                <span className="muted">{t("No ETF2L official in the seasons read")}</span>
-              )}
-            </dd>
-            {p.etf2lTeams.length > 0 && (
-              <>
-                <dt>{t("ETF2L rosters")}</dt>
-                <dd className="pp-rosters">
-                  {p.etf2lTeams.map((r) => (
-                    <RosterChip key={r.id} r={r} />
-                  ))}
-                </dd>
-              </>
+              </span>
+            ) : (
+              <span className="pp-chip muted">{t("No ETF2L official in the seasons read")}</span>
             )}
-            <dt>{t("Officials")}</dt>
-            <dd>
+            <span className="pp-chip" title={t("Officials")}>
+              <Etf2lMark size={13} />
               {tx("{0} in {1} season{2}", { "0": p.officials.length, "1": new Set(p.seasons.map((s) => s.season)).size, "2": new Set(p.seasons.map((s) => s.season)).size === 1 ? "" : "s" })}
               {p.registered !== null && <span className="muted"> · {t("on ETF2L since {0}", { "0": monthYear(p.registered) })}</span>}
-            </dd>
-          </dl>
+            </span>
+          </div>
+          {p.etf2lTeams.length > 0 && (
+            <div className="pp-rosters-row">
+              <span className="pp-rosters-label">{t("ETF2L rosters")}</span>
+              {p.etf2lTeams.map((r) => (
+                <RosterChip key={r.id} r={r} />
+              ))}
+            </div>
+          )}
           <HeaderRanks accountId={p.accountId} />
           {(titles.length > 0 || mvpTitles(p.mvps ?? []).length > 0) && (
             <div className="pp-titles">
@@ -178,42 +170,52 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
             </div>
           )}
         </div>
-        <div className={aside ? "pp-side" : undefined}>
-          {aside}
-          <ProfileLinks p={p} />
-        </div>
+        {aside && <div className="pp-side">{aside}</div>}
       </div>
-      {p.medals.length + (p.mvps?.length ?? 0) > 0 && (
-        <div className="pp-trophies" aria-label={t("Medals")}>
-          {p.medals.map((m, i) => (
-            <MedalIcon key={i} m={m} />
-          ))}
-          {(p.mvps ?? []).map((m, i) => (
-            <MvpIcon key={`mvp-${i}`} m={m} />
-          ))}
-        </div>
-      )}
+      <div className="pp-foot">
+        {p.medals.length + (p.mvps?.length ?? 0) > 0 ? (
+          <div className="pp-trophies" aria-label={t("Medals")}>
+            {p.medals.map((m, i) => (
+              <MedalIcon key={i} m={m} />
+            ))}
+            {(p.mvps ?? []).map((m, i) => (
+              <MvpIcon key={`mvp-${i}`} m={m} />
+            ))}
+          </div>
+        ) : (
+          <span />
+        )}
+        <ProfileLinks p={p} />
+      </div>
     </div>
   );
 }
 
 function ProfileLinks({ p }: { p: Profile }) {
+  const id = p.steamid64;
+  const links: Array<[string, string, boolean]> = [
+    ...(p.etf2lId !== null ? [["ETF2L", `https://etf2l.org/forum/user/${p.etf2lId}/`, true] as [string, string, boolean]] : []),
+    ["trends.tf", `https://trends.tf/player/${id}/`, false],
+    ["logs.tf", `https://logs.tf/profile/${id}`, false],
+    ["demos.tf", `https://demos.tf/profiles/${id}`, false],
+    ["RGL", `https://rgl.gg/Public/PlayerProfile?p=${id}`, false],
+    ["UGC", `https://www.ugcleague.com/players_page.cfm?player_id=${id}`, false],
+    ["Steam", `https://steamcommunity.com/profiles/${id}`, false],
+  ];
   return (
-    <div className="pp-links">
-          {p.etf2lId !== null && (
-            <a href={`https://etf2l.org/forum/user/${p.etf2lId}/`} target="_blank" rel="noreferrer">
-              {t("ETF2L ↗")}
-            </a>
-          )}
-          <a href={`https://trends.tf/player/${p.steamid64}/`} target="_blank" rel="noreferrer">{t("trends.tf ↗")}</a>
-          <a href={`https://logs.tf/profile/${p.steamid64}`} target="_blank" rel="noreferrer">{t("logs.tf ↗")}</a>
-          <a href={`https://steamcommunity.com/profiles/${p.steamid64}`} target="_blank" rel="noreferrer">{t("Steam ↗")}</a>
-    </div>
+    <nav className="pp-links" aria-label={t("Elsewhere")}>
+      {links.map(([label, href, etf2l]) => (
+        <a key={label} href={href} target="_blank" rel="noreferrer">
+          {etf2l && <Etf2lMark size={12} />}
+          {label} <span aria-hidden>↗</span>
+        </a>
+      ))}
+    </nav>
   );
 }
 
 /** "[9S] The 9 Stooges · hl fun", linking to the team on ETF2L. */
-function RosterChip({ r }: { r: Etf2lRoster }) {
+export function RosterChip({ r }: { r: Etf2lRoster }) {
   const kind = r.kind?.replace("Highlander", "HL").replace(" Team", "").toLowerCase();
   return (
     <a className="pp-roster" href={`https://etf2l.org/teams/${r.id}/`} target="_blank" rel="noreferrer" title={[r.name, r.kind, r.country].filter(Boolean).join(" · ")}>
@@ -328,7 +330,7 @@ export function DivisionBadge({ d }: { d: CatDivision }) {
   );
 }
 
-function TeamAvatar({ src }: { src: string | null }) {
+export function TeamAvatar({ src }: { src: string | null }) {
   return src ? <img className="pp-team-avatar" src={src} alt="" /> : <span className="pp-team-avatar" />;
 }
 

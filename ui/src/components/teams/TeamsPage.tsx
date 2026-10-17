@@ -14,6 +14,7 @@ import { DivisionBadge, medalTitles, seasonLong, seasonShort } from "../players/
 import "../players/players.css";
 import "./teams.css";
 import { YouOnThisTeam } from "./YourTeams";
+import { Etf2lMark } from "../Etf2lMark";
 
 /**
  * The league's screens (Q29, and Flashy's UX passes), shown inside the ETF2L
@@ -459,7 +460,7 @@ function TeamHeader({ v, honours, info }: { v: TeamView; honours: TeamHonours | 
           <span className="hint">{p === null ? "" : t("{0}% won", { "0": p })}</span>
           <span className="ts-links">
             <a href={`https://etf2l.org/teams/${v.teamId}/`} target="_blank" rel="noreferrer" className="ts-link">
-              {t("ETF2L ↗")}
+              <Etf2lMark size={13} /> {t("ETF2L ↗")}
             </a>
             {info?.homepage && (
               <a href={info.homepage} target="_blank" rel="noreferrer" className="ts-link">
@@ -853,7 +854,7 @@ function RosterHistoryView({ v, etf2lUrl, roles }: { v: TeamTransfers; etf2lUrl:
             <>
               {" "}
               <a href={etf2lUrl} target="_blank" rel="noreferrer">
-                {t("ETF2L ↗")}
+                <Etf2lMark size={13} /> {t("ETF2L ↗")}
               </a>
             </>
           )}

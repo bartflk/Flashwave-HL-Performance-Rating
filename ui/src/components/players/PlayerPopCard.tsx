@@ -11,6 +11,7 @@ import { MedalGlyph } from "./MedalGlyph";
 import { Country } from "../Country";
 import { DivisionBadge, medalTitles, seasonShort } from "./PlayerProfile";
 import "./players.css";
+import { Etf2lMark } from "../Etf2lMark";
 
 /**
  * A player card from the scoreboard (Q40, Flashy; PLAN §26): click a name
@@ -262,7 +263,7 @@ export function PlayerPopCard({ target, divisions, onClose }: { target: CardTarg
         </button>
         {p?.etf2lId != null && (
           <a href={`https://etf2l.org/forum/user/${p.etf2lId}/`} target="_blank" rel="noreferrer">
-            {t("ETF2L ↗")}
+            <Etf2lMark size={13} /> {t("ETF2L ↗")}
           </a>
         )}
         {p && (

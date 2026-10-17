@@ -578,65 +578,6 @@
 .tend-n { text-align: right; font-variant-numeric: tabular-nums; }
 .tend-stand { margin: 8px 0 0; font-size: 0.8rem; }
 
-/* --- your own profile: identity first, then rating, career, teammates --- */
-
-.profile-section-title {
-  margin: 14px 0 -4px;
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  scroll-margin-top: 72px;
-}
-
-.profile-section-title::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
-.profile-jump {
-  display: flex;
-  gap: 18px;
-  font-size: 0.88rem;
-  margin-top: -6px;
-}
-
-.profile-jump .linkish {
-  color: var(--muted);
-}
-
-.profile-jump .linkish:hover {
-  color: var(--accent-text);
-}
-
-.career-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.career-grid h3 {
-  margin: 0 0 10px;
-  font-size: 0.95rem;
-}
-
-.career-grid .career-sub {
-  margin-top: 22px;
-}
-
-@media (max-width: 1000px) {
-  .career-grid {
-    grid-template-columns: 1fr;
-  }
-}
 
 /* --- teammates, on the profile --- */
 
@@ -697,17 +638,146 @@
   align-self: flex-start;
 }
 
-/* In the career column the medal sits beside two lines, not four columns. */
-.career-grid .pp-achievements li {
+/* In the side column the medal sits beside its lines, not four columns. */
+.pf-side .pp-achievements li {
   grid-template-columns: 64px 1fr;
   grid-template-rows: auto auto auto;
   gap: 2px 12px;
 }
 
-.career-grid .pp-achievements li > :first-child {
+.pf-side .pp-achievements li > :first-child {
   grid-row: 1 / span 3;
 }
 
-.career-grid .pp-achievements li > .muted {
+.pf-side .pp-achievements li > .muted {
   font-size: 0.84rem;
 }
+
+/* ---- Profile, tidied (Flashy: "sauce up the profile page"): the hero, a
+   sticky row of tabs, the class toolbar, then one section at a time. ---- */
+
+.pf-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  margin-top: -4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  backdrop-filter: blur(6px);
+  overflow-x: auto;
+}
+.pf-tab {
+  flex: none;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--muted);
+  font: 700 0.86rem var(--font-display);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.pf-tab:hover { color: var(--text); background: var(--panel-2); border: 0; }
+.pf-tab.on {
+  color: var(--text-hi);
+  background: rgba(var(--accent-rgb), 0.14);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* The class and filters, as one bar the tabs below read from. */
+.pf-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--sunken);
+}
+.pf-toolbar .class-tab { background: var(--panel); }
+.pf-toolbar .class-tab.active { background: rgba(var(--accent-rgb), 0.14); border-color: var(--accent-dim); }
+
+/* Main column and a side column, as HLTV and FACEIT profiles. */
+.pf-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+.pf-main, .pf-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@media (max-width: 1100px) {
+  .pf-grid { grid-template-columns: minmax(0, 1fr); }
+}
+.pf-main .games-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.pf-card h2 { display: flex; align-items: center; gap: 8px; }
+.pf-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.pf-card-head h2 { margin: 0; display: flex; align-items: center; gap: 8px; }
+.pf-card:empty, .pf-stays:empty { display: none; }
+.pf-stays .pp-stays h3 { margin-top: 0; }
+
+/* The officials/scrims/pugs split, narrowed for the side column: the meta
+   under the bar instead of beside it. */
+.pf-side .kind-split .ks-row { grid-template-columns: 5.5em minmax(0, 1fr) 2.6em; row-gap: 2px; }
+.pf-side .kind-split .ks-meta { grid-column: 2 / -1; font-size: 0.76rem; }
+.pf-side .kind-split header .hint { font-size: 0.78rem; }
+
+.pf-side .pp-matches li { grid-template-columns: minmax(0, 1fr) auto; }
+.pf-side .pp-matches .pp-where { grid-column: 1 / -1; grid-row: 2; }
+.pf-side .pp-matches .pp-go { display: none; }
+
+.pf-rosters { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+
+/* Matches played, by competition (etf2l.org's list). */
+.pf-comps { display: flex; flex-direction: column; gap: 6px; }
+.pf-comp { border: 1px solid var(--border); border-radius: 8px; background: var(--sunken); overflow: hidden; }
+.pf-comp summary {
+  display: grid;
+  grid-template-columns: 12px auto minmax(0, 1fr) auto 3.4em;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.9rem;
+}
+.pf-comp summary::-webkit-details-marker { display: none; }
+.pf-comp summary:hover { background: rgba(var(--accent-rgb), 0.06); }
+.pf-comp-caret { color: var(--muted); transition: transform 120ms ease; }
+.pf-comp[open] .pf-comp-caret { transform: rotate(90deg); }
+.pf-comp[open] summary { border-bottom: 1px solid var(--border); }
+.pf-comp-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-comp-n { font-size: 0.8rem; }
+.pf-comp-wl { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+.pf-comp-wl .w { color: #8fc27a; }
+.pf-comp-wl .l { color: #d98a80; }
+.pf-comp-rows { list-style: none; margin: 0; padding: 4px; }
+.pf-comp-rows button {
+  display: grid;
+  grid-template-columns: 7.5em 7em minmax(0, 1fr) 3.6em;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.86rem;
+  text-align: left;
+  cursor: pointer;
+}
+.pf-comp-rows button:hover { background: rgba(var(--accent-rgb), 0.1); }
+.pf-comp-rows button.won { border-left-color: #7fb36a; }
+.pf-comp-rows button.lost { border-left-color: #c96a5e; }
+.pf-when, .pf-round { font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-teams { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; overflow: hidden; }
+.pf-teams .teams-avatar { width: 18px; height: 18px; border-radius: 4px; flex: none; }
+.pf-score { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+@media (max-width: 700px) {
+  .pf-comp-rows button { grid-template-columns: minmax(0, 1fr) 3.6em; }
+  .pf-when, .pf-round { display: none; }
+}
+.pf-side .pp-vs { font-size: 0.86rem; }
+.pf-side .pp-achievements li { padding: 8px 0; }

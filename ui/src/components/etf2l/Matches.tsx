@@ -15,6 +15,7 @@ import { useYourTeams } from "../teams/YourTeams";
 import { Countdown, clockTime, fullDate } from "./Countdown";
 import { laneOf, tierOf } from "./Brackets";
 import { CommentList } from "./Recruitment";
+import { Etf2lMark } from "../Etf2lMark";
 
 /**
  * The ETF2L tab's Matches (Q74, Flashy; PLAN §27): what is coming, with a
@@ -454,7 +455,7 @@ export function LeagueMatchPage({ matchId, fixture, onTeam, onOpenLog }: { match
             </section>
           )}
           <button className="km-chip e2-etf2l-link" onClick={() => void api.openExternal(url)}>
-            {t("Open on ETF2L")} ↗
+            <Etf2lMark size={14} /> {t("Open on ETF2L")} ↗
           </button>
         </aside>
       </div>

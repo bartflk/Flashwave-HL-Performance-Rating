@@ -442,3 +442,54 @@
 .pp-matches li.pp-open:hover .pp-go { color: var(--accent); }
 .pp-matches li.pp-open { grid-template-columns: 1fr auto auto; }
 .pp-matches li.pp-open .pp-go { grid-row: 1 / span 2; grid-column: 3; align-self: center; }
+
+/* ---- The header, tidied: chips under the name, rosters on a line, and a
+   footer with the medals left and the links right. ---- */
+.pp-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.pp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+  font-size: 0.85rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.pp-chip-team strong { font-weight: 700; }
+.pp-chip .teams-avatar { width: 18px; height: 18px; border-radius: 4px; }
+.pp-rosters-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 10px; font-size: 0.84rem; }
+.pp-rosters-label { color: var(--muted); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin-right: 2px; }
+.pp-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  flex-wrap: wrap;
+  padding: 10px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--sunken);
+  position: relative;
+  z-index: 1;
+}
+.pp-own .pp-foot { background: rgba(0, 0, 0, 0.18); padding: 10px 26px; }
+.pp-foot .pp-trophies { padding: 0; border: 0; background: none; flex: 1 1 auto; min-width: 0; }
+.pp-own .pp-foot .pp-trophies { background: none; }
+.pp-foot .pp-links,
+.pp-own .pp-foot .pp-links { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; margin-left: auto; }
+.pp-foot .pp-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+.pp-foot .pp-links a:hover { border-color: var(--accent-dim); color: var(--accent-text); text-decoration: none; }
+.pp-foot .pp-links a span { color: var(--muted); font-size: 0.72rem; }

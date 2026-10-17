@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { errorMessage, type ContextKind, type MatchContext } from "../api/types";
 import { t } from "../lib/i18n";
+import { Etf2lMark } from "./Etf2lMark";
 
 export const KIND_LABEL: Record<ContextKind, string> = {
   official: "Official",
@@ -45,6 +46,7 @@ export function ContextBadge({ c }: { c: MatchContext }) {
   const div = c.kind === "official" ? divisionLabel(c.official?.division ?? null) : null;
   return (
     <span className={`badge badge-${c.kind}${c.linkMethod === "manual" ? " badge-manual" : ""}`} title={kindReason(c)}>
+      {c.kind === "official" && <Etf2lMark size={12} />}
       {c.kind === "official" ? t("ETF2L") : KIND_LABEL[c.kind].toUpperCase()}
       {div && <span className="badge-sub"> · {div}</span>}
       {c.linkMethod === "manual" && <span className="badge-hand" aria-label={t("set by hand")}> ✎</span>}
