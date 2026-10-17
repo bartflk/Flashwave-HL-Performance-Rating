@@ -897,3 +897,5 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
 .rc-h-time { font-size: 0.78rem; white-space: nowrap; }
 .rc-history .e2-team { justify-content: flex-start; text-align: left; }
 .rc-history .e2-team span { white-space: normal; }
+.e2-leader-won { display: inline-flex; align-items: center; }
+.e2-leaders-key { margin: 0; font-size: 0.76rem; }

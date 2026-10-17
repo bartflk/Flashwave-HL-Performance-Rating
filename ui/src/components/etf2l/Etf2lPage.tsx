@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { Fixture, RecruitPost, ResultRow, SeasonTile } from "../../api/types";
+import type { CatTeam, Fixture, LeagueTableRow, RecruitPost, ResultRow, SeasonTile } from "../../api/types";
 import { formatDate } from "../../lib/format";
 import { hasPendingPlayer, onOpenSeason, onOpenTeam, onPlayerAsked, openPlayer, takePendingSeason, takePendingTeam } from "../../lib/goto";
 import { t, tx } from "../../lib/i18n";
 import { DivisionBadge } from "../players/PlayerProfile";
+import { MedalGlyph } from "../players/MedalGlyph";
 import { PlayersPage } from "../players/PlayersPage";
 import { SeasonScreen, SeasonsGrid, TeamAvatar, TeamScreen, seasonTitle, useBanner, useFixtures, wl } from "../teams/TeamsPage";
 import { YourTeamsCompact, YourTeamsStrip, useYourTeams } from "../teams/YourTeams";
@@ -410,7 +411,9 @@ function Home({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: 
 /** The season across the top: its banner, where it is, what is in it. */
 function SeasonStrip({ tile, fixtures, go }: { tile: SeasonTile; fixtures: Fixture[]; go: (l: Loc) => void }) {
   const banner = useBanner(tile, true);
-  const live = !tile.champion;
+  // Live while it still has officials coming, or ended in the last few days:
+  // a lower division's final is played first and does not end the season.
+  const live = fixtures.some((f) => f.season === tile.season) || tile.to * 1000 > Date.now() - 3 * 86_400_000;
   const stage = live ? stageOf(fixtures, tile.season) : null;
   const upcoming = fixtures.filter((f) => f.season === tile.season).length;
   return (
@@ -443,12 +446,6 @@ function SeasonStrip({ tile, fixtures, go }: { tile: SeasonTile; fixtures: Fixtu
             <span>
               <strong>{upcoming}</strong>
               <em>{t("scheduled")}</em>
-            </span>
-          )}
-          {tile.champion && (
-            <span>
-              <strong>{tile.champion.name}</strong>
-              <em>{t("champion")}</em>
             </span>
           )}
         </div>
@@ -535,34 +532,59 @@ function tierOf(division: string): number {
   return 4;
 }
 
-/** Who leads each division of the season. */
+/** Each division of the season: its winner once its final is played (a gold
+ *  medal), its leader until then. The champions live here rather than on
+ *  the banner (Flashy). */
 function DivisionLeaders({ season, onTeam, go }: { season: number | null; onTeam: (id: number) => void; go: (l: Loc) => void }) {
   const tables = useLeagueTables(season);
-  const divs = (tables?.divisions ?? []).filter((d) => d.teams.length > 0);
-  if (season === null || divs.length === 0) return null;
+  const podiums = useQuery({ queryKey: ["season_podiums", season], queryFn: () => api.getSeasonPodiums(season!), enabled: season !== null, staleTime: 5 * 60_000 }).data ?? [];
+  const winner = (division: string) => podiums.find((p) => p.division === division)?.medals.find((m) => m.place === 1)?.team ?? null;
+  type Row = { division: string; tier: number; won: CatTeam | null; lead: LeagueTableRow | null };
+  const rows: Row[] = (tables?.divisions ?? [])
+    .filter((d) => d.teams.length > 0)
+    .map((d) => ({ division: d.division, tier: tierOf(d.division), won: winner(d.division), lead: d.teams[0] }));
+  // Divisions with a podium but no table here (a cup's, an older format's).
+  for (const p of podiums) {
+    const first = p.medals.find((m) => m.place === 1);
+    if (first && !rows.some((r) => r.division === p.division)) rows.push({ division: p.division, tier: p.tier ?? tierOf(p.division), won: first.team, lead: null });
+  }
+  rows.sort((a, b) => a.tier - b.tier);
+  if (season === null || rows.length === 0) return null;
+  const done = rows.every((r) => r.won !== null);
   return (
     <section className="panel e2-panel">
       <div className="e2-panel-head">
-        <h2>{t("Division leaders")}</h2>
+        <h2>{done ? t("Division champions") : t("Divisions")}</h2>
         <button className="e2-more" onClick={() => go({ at: "season", season })}>
           {t("Standings")} ›
         </button>
       </div>
       <ul className="e2-leaders">
-        {divs.map((d) => {
-          const top = d.teams[0];
+        {rows.map((r) => {
+          const team = r.won ?? r.lead;
+          if (!team) return null;
+          const id = "id" in team ? team.id : team.teamId;
           return (
-            <li key={d.division}>
-              <DivisionBadge d={{ name: d.division, tier: tierOf(d.division) }} />
-              <button className="e2-team" onClick={() => onTeam(top.teamId)} title={t("Open {0}", { "0": top.name })}>
-                <TeamAvatar src={top.avatar} />
-                <span>{top.name}</span>
+            <li key={r.division}>
+              <DivisionBadge d={{ name: r.division, tier: r.tier }} />
+              <button className="e2-team" onClick={() => onTeam(id)} title={t("Open {0}", { "0": team.name })}>
+                <TeamAvatar src={team.avatar ?? null} />
+                <span>{team.name}</span>
               </button>
-              <span className="e2-leader-wl">{wl(top.record)}</span>
+              {r.won ? (
+                <span className="e2-leader-won" title={t("Won the division")}>
+                  <MedalGlyph size={16} place={1} />
+                </span>
+              ) : (
+                <span className="e2-leader-wl" title={t("Leading so far")}>
+                  {r.lead ? wl(r.lead.record) : ""}
+                </span>
+              )}
             </li>
           );
         })}
       </ul>
+      {!done && <p className="hint e2-leaders-key">{t("A medal for a division whose final is played; the others show who leads.")}</p>}
     </section>
   );
 }
