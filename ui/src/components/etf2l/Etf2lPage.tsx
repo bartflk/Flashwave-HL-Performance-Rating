@@ -1,17 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { Fixture, ResultRow } from "../../api/types";
+import type { Fixture, ResultRow, SeasonTile } from "../../api/types";
 import { formatDate } from "../../lib/format";
 import { hasPendingPlayer, onOpenSeason, onOpenTeam, onPlayerAsked, openPlayer, takePendingSeason, takePendingTeam } from "../../lib/goto";
 import { t, tx } from "../../lib/i18n";
 import { DivisionBadge } from "../players/PlayerProfile";
 import { PlayersPage } from "../players/PlayersPage";
-import { SeasonScreen, SeasonsGrid, TeamAvatar, TeamScreen, seasonTitle, useFixtures, wl } from "../teams/TeamsPage";
+import { SeasonScreen, SeasonsGrid, TeamAvatar, TeamScreen, seasonTitle, useBanner, useFixtures, wl } from "../teams/TeamsPage";
 import { YourTeamsCompact, YourTeamsStrip, useYourTeams } from "../teams/YourTeams";
 import { Countdown, clockTime, fullDate } from "./Countdown";
 import { NewsCard, NewsList, NewsReader, useNews } from "./News";
-import { FixtureRow, LeagueMatchPage, MatchesPage } from "./Matches";
+import { FixtureRow, LeagueMatchPage, MatchesPage, SeasonFixtures } from "./Matches";
+import { RecruitPreview, RecruitmentPage } from "./Recruitment";
 import "../teams/teams.css";
 import "./etf2l.css";
 
@@ -27,7 +28,7 @@ import "./etf2l.css";
  * history sees it.
  */
 
-type Section = "home" | "matches" | "seasons" | "teams" | "players" | "news";
+type Section = "home" | "matches" | "seasons" | "teams" | "players" | "news" | "recruitment";
 
 type Loc =
   | { at: "home" }
@@ -39,6 +40,7 @@ type Loc =
   | { at: "teams" }
   | { at: "players" }
   | { at: "news" }
+  | { at: "recruitment" }
   | { at: "post"; id: number };
 
 /** The menu entry a place belongs to: a team under whatever it was opened from. */
@@ -124,6 +126,7 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
     ["teams", t("Teams")],
     ["players", t("Players")],
     ["news", t("News")],
+    ["recruitment", t("Recruitment")],
   ];
 
   return (
@@ -149,7 +152,13 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
       {loc.at === "news" && <NewsList onPost={(id) => go({ at: "post", id })} />}
       {loc.at === "post" && <NewsReader key={loc.id} id={loc.id} />}
       {loc.at === "seasons" && <SeasonsGrid onSeason={(season) => go({ at: "season", season })} />}
-      {loc.at === "season" && <SeasonScreen season={loc.season} onTeam={openTeam} />}
+      {loc.at === "season" && (
+        <>
+          <SeasonScreen season={loc.season} onTeam={openTeam} />
+          <SeasonFixtures season={loc.season} onTeam={openTeam} onMatch={(id) => openMatch(id)} />
+        </>
+      )}
+      {loc.at === "recruitment" && <RecruitmentPage onTeam={openTeam} />}
       {loc.at === "team" && <TeamScreen key={loc.teamId} teamId={loc.teamId} onTeam={openTeam} />}
       {loc.at === "teams" && <TeamsLanding onTeam={openTeam} />}
       {playersSeen && (
@@ -189,7 +198,7 @@ function Crumbs({ loc, go }: { loc: Loc; go: (l: Loc) => void }) {
       trail.push([t("News"), { at: "news" }]);
       trail.push([post?.title ?? t("Post"), l]);
     } else if (l.at !== "home") {
-      trail.push([{ matches: t("Matches"), seasons: t("Seasons"), teams: t("Teams"), players: t("Players"), news: t("News") }[l.at], l]);
+      trail.push([{ matches: t("Matches"), seasons: t("Seasons"), teams: t("Teams"), players: t("Players"), news: t("News"), recruitment: t("Recruitment") }[l.at], l]);
     }
   };
   add(loc);
@@ -303,9 +312,35 @@ function dayOffset(time: number): number {
   return Math.round((a - b) / 86_400_000);
 }
 
+function useSeasonTiles() {
+  return useQuery({ queryKey: ["seasons_overview"], queryFn: api.getSeasonsOverview, staleTime: 5 * 60_000 }).data;
+}
+
+function useLeagueTables(season: number | null) {
+  return useQuery({ queryKey: ["leagues", season], queryFn: () => api.getLeagues(season!), enabled: season !== null, staleTime: 5 * 60_000 }).data;
+}
+
+/** "1st", "2nd", "3rd", "4th". */
+function place(n: number): string {
+  return n === 1 ? t("1st") : n === 2 ? t("2nd") : n === 3 ? t("3rd") : t("{0}th", { "0": n });
+}
+
+/** The stage the season is at: the round most of the coming week's officials are in. */
+function stageOf(fixtures: Fixture[], season: number): string | null {
+  const soon = fixtures.filter((f) => f.season === season && dayOffset(f.time) <= 7);
+  const count = new Map<string, number>();
+  for (const f of soon) {
+    const k = f.week !== null ? t("Week {0}", { "0": f.week }) : f.round;
+    if (k) count.set(k, (count.get(k) ?? 0) + 1);
+  }
+  return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+}
+
 function Home({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: (id: number, f?: Fixture) => void; go: (l: Loc) => void }) {
   const fixtures = useFixtures();
   const mine = new Set(useYourTeams().map((e) => e.teamId));
+  const tiles = useSeasonTiles();
+  const latest = tiles?.[0] ?? null;
   // Your next official, if one of your teams has one coming.
   const next = fixtures.find((f) => mine.has(f.clan1.id) || mine.has(f.clan2.id)) ?? null;
   const [when, setWhen] = useState<When>(() => (fixtures.some((f) => dayOffset(f.time) <= 0) ? "today" : "week"));
@@ -313,13 +348,20 @@ function Home({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: 
     const d = dayOffset(f.time);
     return when === "today" ? d <= 0 : when === "tomorrow" ? d === 1 : d <= 7;
   });
+  // The season the listed officials are in, said once when they share one.
+  const seasons = [...new Set(shown.map((f) => f.season))];
+  const seasonLine = seasons.length === 1 && seasons[0] !== null && latest?.season === seasons[0] ? seasonTitle(latest) : null;
   return (
     <div className="e2-home">
+      {latest && <SeasonStrip tile={latest} fixtures={fixtures} go={go} />}
       <div className="e2-main">
         {next && <NextMatch f={next} side={mine.has(next.clan1.id) ? next.clan1.id : next.clan2.id} onTeam={onTeam} onOpen={() => onMatch(next.matchId, next)} />}
         <section className="panel e2-panel">
           <div className="e2-panel-head">
-            <h2>{t("Officials")}</h2>
+            <div className="e2-titles">
+              <h2>{t("Officials")}</h2>
+              {seasonLine && <span className="muted">{seasonLine}</span>}
+            </div>
             <button className="e2-more e2-more-left" onClick={() => go({ at: "matches" })}>
               {t("All matches")} ›
             </button>
@@ -342,7 +384,7 @@ function Home({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: 
           ) : (
             <ol className="e2-fixtures">
               {shown.map((f) => (
-                <FixtureRow key={f.matchId} f={f} mine={mine} onTeam={onTeam} onOpen={() => onMatch(f.matchId, f)} showDay={when === "week"} />
+                <FixtureRow key={f.matchId} f={f} mine={mine} onTeam={onTeam} onOpen={() => onMatch(f.matchId, f)} showDay={when === "week"} showRound />
               ))}
             </ol>
           )}
@@ -350,16 +392,172 @@ function Home({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: 
         <LatestNews go={go} />
       </div>
       <aside className="e2-rail">
-        <section className="panel e2-panel">
-          <div className="e2-panel-head">
-            <h2>{t("Your teams")}</h2>
-          </div>
-          <YourTeamsCompact onTeam={onTeam} />
-        </section>
-        <LiveSeason go={go} fixtures={fixtures} />
+        <YourSeason season={latest?.season ?? null} fixtures={fixtures} onTeam={onTeam} onMatch={onMatch} />
+        <DivisionLeaders season={latest?.season ?? null} onTeam={onTeam} go={go} />
         <RecentResults onTeam={onTeam} onMatch={onMatch} go={go} />
+        <RecruitPreview onAll={() => go({ at: "recruitment" })} onTeam={onTeam} />
       </aside>
     </div>
+  );
+}
+
+/** The season across the top: its banner, where it is, what is in it. */
+function SeasonStrip({ tile, fixtures, go }: { tile: SeasonTile; fixtures: Fixture[]; go: (l: Loc) => void }) {
+  const banner = useBanner(tile, true);
+  const live = !tile.champion;
+  const stage = live ? stageOf(fixtures, tile.season) : null;
+  const upcoming = fixtures.filter((f) => f.season === tile.season).length;
+  return (
+    <section className={`e2-strip ${banner ? "" : "e2-strip-plain"}`} style={banner ? { backgroundImage: `url("${banner}")` } : undefined}>
+      <div className="e2-strip-text">
+        <span className="e2-strip-eyebrow">
+          {t("ETF2L Highlander")}
+          {live && <span className="e2-live-chip">{t("Live")}</span>}
+        </span>
+        <h1>{seasonTitle(tile)}</h1>
+        <span className="e2-strip-dates">
+          {formatDate(tile.from, true)} – {formatDate(tile.to, true)}
+        </span>
+        <div className="e2-strip-stats">
+          {stage && (
+            <span>
+              <strong>{stage}</strong>
+              <em>{t("now")}</em>
+            </span>
+          )}
+          <span>
+            <strong>{tile.teams}</strong>
+            <em>{t("teams")}</em>
+          </span>
+          <span>
+            <strong>{tile.matches}</strong>
+            <em>{t("officials played")}</em>
+          </span>
+          {live && (
+            <span>
+              <strong>{upcoming}</strong>
+              <em>{t("scheduled")}</em>
+            </span>
+          )}
+          {tile.champion && (
+            <span>
+              <strong>{tile.champion.name}</strong>
+              <em>{t("champion")}</em>
+            </span>
+          )}
+        </div>
+        <span className="e2-strip-divs">
+          {tile.divisions.map((d) => (
+            <DivisionBadge key={d.name} d={d} />
+          ))}
+        </span>
+      </div>
+      <div className="e2-strip-actions">
+        <button className="km-chip" onClick={() => go({ at: "season", season: tile.season })}>
+          {t("Standings & fixtures")} ›
+        </button>
+        <button className="km-chip" onClick={() => go({ at: "seasons" })}>
+          {t("All seasons")} ›
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/** Your teams in the season: division, place, record and next match. Without
+ *  a team in it, your teams as before. */
+function YourSeason({ season, fixtures, onTeam, onMatch }: { season: number | null; fixtures: Fixture[]; onTeam: (id: number) => void; onMatch: (id: number, f?: Fixture) => void }) {
+  const tables = useLeagueTables(season);
+  const yours = useYourTeams();
+  const rows = (tables?.divisions ?? []).flatMap((d) =>
+    d.teams
+      .map((row, i) => ({ row, division: d.division, place: i + 1, of: d.teams.length, tier: tierOf(d.division) }))
+      .filter((x) => yours.some((e) => e.teamId === x.row.teamId)),
+  );
+  return (
+    <section className="panel e2-panel">
+      <div className="e2-panel-head">
+        <h2>{rows.length > 0 ? t("Your season") : t("Your teams")}</h2>
+      </div>
+      {rows.length === 0 ? (
+        <YourTeamsCompact onTeam={onTeam} />
+      ) : (
+        <ul className="e2-yours">
+          {rows.map(({ row, division, place: p, of, tier }) => {
+            const next = fixtures.find((f) => f.clan1.id === row.teamId || f.clan2.id === row.teamId);
+            return (
+              <li key={row.teamId}>
+                <button className="e2-yours-team" onClick={() => onTeam(row.teamId)}>
+                  <TeamAvatar src={row.avatar} />
+                  <span className="e2-yours-name">{row.name}</span>
+                  <DivisionBadge d={{ name: division, tier }} />
+                </button>
+                <div className="e2-yours-stats">
+                  <span>
+                    <strong>{place(p)}</strong> {tx("of {0}", { "0": of })}
+                  </span>
+                  <span>
+                    <strong>{wl(row.record)}</strong>
+                  </span>
+                  <span className="muted">
+                    {row.scoreFor}:{row.scoreAgainst}
+                  </span>
+                </div>
+                {next && (
+                  <button className="e2-yours-next" onClick={() => onMatch(next.matchId, next)}>
+                    <span className="muted">{t("Next")}</span>
+                    <span className="e2-yours-opp">{next.clan1.id === row.teamId ? next.clan2.name : next.clan1.name}</span>
+                    <Countdown time={next.time} />
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** The ladder's tier for a division name, for its badge's colour. */
+function tierOf(division: string): number {
+  const d = division.toLowerCase();
+  if (d.startsWith("prem")) return 0;
+  if (d.startsWith("high")) return 1;
+  if (d.startsWith("mid")) return 2;
+  if (d.startsWith("low")) return 3;
+  return 4;
+}
+
+/** Who leads each division of the season. */
+function DivisionLeaders({ season, onTeam, go }: { season: number | null; onTeam: (id: number) => void; go: (l: Loc) => void }) {
+  const tables = useLeagueTables(season);
+  const divs = (tables?.divisions ?? []).filter((d) => d.teams.length > 0);
+  if (season === null || divs.length === 0) return null;
+  return (
+    <section className="panel e2-panel">
+      <div className="e2-panel-head">
+        <h2>{t("Division leaders")}</h2>
+        <button className="e2-more" onClick={() => go({ at: "season", season })}>
+          {t("Standings")} ›
+        </button>
+      </div>
+      <ul className="e2-leaders">
+        {divs.map((d) => {
+          const top = d.teams[0];
+          return (
+            <li key={d.division}>
+              <DivisionBadge d={{ name: d.division, tier: tierOf(d.division) }} />
+              <button className="e2-team" onClick={() => onTeam(top.teamId)} title={t("Open {0}", { "0": top.name })}>
+                <TeamAvatar src={top.avatar} />
+                <span>{top.name}</span>
+              </button>
+              <span className="e2-leader-wl">{wl(top.record)}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -381,7 +579,7 @@ function NextMatch({ f, side, onTeam, onOpen }: { f: Fixture; side: number; onTe
         <span className="e2-label">{t("Your next match")}</span>
         <span className="e2-nm-what">
           {f.division && f.tier !== null && <DivisionBadge d={{ name: f.division, tier: f.tier }} />}
-          {f.round && <span className="muted">{f.round}</span>}
+          <span className="muted">{[f.season !== null ? t("Season {0}", { "0": f.season }) : null, f.round].filter(Boolean).join(" · ")}</span>
         </span>
       </div>
       <div className="e2-nm-row">
@@ -407,7 +605,7 @@ function NextMatch({ f, side, onTeam, onOpen }: { f: Fixture; side: number; onTe
 
 function LatestNews({ go }: { go: (l: Loc) => void }) {
   const q = useNews();
-  const items = (q.data ?? []).slice(0, 3);
+  const items = (q.data ?? []).slice(0, 5);
   if (q.isPending) return <p className="hint">{t("Loading the news…")}</p>;
   if (items.length === 0) return null;
   return (
@@ -419,45 +617,24 @@ function LatestNews({ go }: { go: (l: Loc) => void }) {
         </button>
       </div>
       <div className="np-grid np-grid-home">
-        {items.map((n) => (
-          <NewsCard key={n.id} n={n} onOpen={() => go({ at: "post", id: n.id })} />
+        {items.map((n, i) => (
+          <NewsCard key={n.id} n={n} lead={i === 0} onOpen={() => go({ at: "post", id: n.id })} />
         ))}
       </div>
     </section>
   );
 }
 
-function LiveSeason({ go, fixtures }: { go: (l: Loc) => void; fixtures: Fixture[] }) {
-  const tiles = useQuery({ queryKey: ["seasons_overview"], queryFn: api.getSeasonsOverview, staleTime: 5 * 60_000 }).data;
-  const live = tiles?.[0] && !tiles[0].champion ? tiles[0] : null;
-  const week = useMemo(() => {
-    const weeks = fixtures.filter((f) => f.season === live?.season && f.week !== null).map((f) => f.week!);
-    return weeks.length > 0 ? Math.min(...weeks) : null;
-  }, [fixtures, live]);
-  if (!live) return null;
-  return (
-    <section className="panel e2-panel e2-live">
-      <div className="e2-panel-head">
-        <h2>{seasonTitle(live)}</h2>
-        <span className="e2-live-chip">{t("Live")}</span>
-      </div>
-      <p className="hint">
-        {week !== null ? tx("Week {0} next", { "0": week }) : null}
-        {week !== null && " · "}
-        {tx("{0} teams", { "0": live.teams })}
-      </p>
-      <button className="km-chip" onClick={() => go({ at: "season", season: live.season })}>
-        {t("Open season")} ›
-      </button>
-    </section>
-  );
+/** "Thu 15 Oct · 21:00". */
+function when(time: number): string {
+  return `${new Date(time * 1000).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })} · ${clockTime(time)}`;
 }
 
 function RecentResults({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: (id: number) => void; go: (l: Loc) => void }) {
   const q = useQuery({ queryKey: ["recent_results"], queryFn: () => api.getRecentResults(8), staleTime: 5 * 60_000 });
   const rows = q.data ?? [];
   if (rows.length === 0) return null;
-  const side = (r: ResultRow, x: ResultRow["clan1"], score: number | null, won: boolean) => (
+  const side = (x: ResultRow["clan1"], score: number | null, won: boolean) => (
     <button
       className={won ? "e2-res-team won" : "e2-res-team"}
       onClick={(e) => {
@@ -466,8 +643,11 @@ function RecentResults({ onTeam, onMatch, go }: { onTeam: (id: number) => void; 
       }}
       title={t("Open {0}", { "0": x.name })}
     >
-      <span>{x.name}</span>
-      <span className="e2-res-score">{r.defaultWin && score === null ? "–" : (score ?? "–")}</span>
+      <span className="e2-res-name">
+        <TeamAvatar src={x.avatar} />
+        <span>{x.name}</span>
+      </span>
+      <span className="e2-res-score">{score ?? "–"}</span>
     </button>
   );
   return (
@@ -484,11 +664,12 @@ function RecentResults({ onTeam, onMatch, go }: { onTeam: (id: number) => void; 
           const b = r.r2 ?? 0;
           return (
             <li key={r.matchId} title={fullDate(r.time)} className="e2-res-row" onClick={() => onMatch(r.matchId)}>
-              {side(r, r.clan1, r.r1, a > b)}
-              {side(r, r.clan2, r.r2, b > a)}
+              {side(r.clan1, r.r1, a > b)}
+              {side(r.clan2, r.r2, b > a)}
               <span className="e2-res-meta">
                 {r.division && r.tier !== null && <DivisionBadge d={{ name: r.division, tier: r.tier }} />}
-                {r.defaultWin && <span className="muted">{t("default")}</span>}
+                <span>{r.defaultWin ? t("default") : (r.week !== null ? t("Week {0}", { "0": r.week }) : r.round) ?? ""}</span>
+                <span className="e2-res-when">{when(r.time)}</span>
               </span>
             </li>
           );

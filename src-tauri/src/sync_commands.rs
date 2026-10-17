@@ -1560,6 +1560,18 @@ pub async fn get_recent_results(state: State<'_, AppState>, limit: Option<i64>) 
     Ok(state.db.recent_results(limit.unwrap_or(10).clamp(1, 300)).await?)
 }
 
+/// ETF2L's Highlander recruitment posts (Q74), read at most every half hour.
+#[tauri::command]
+pub async fn get_recruitment(state: State<'_, AppState>) -> CmdResult<hl_ingest::recruitment::Recruitment> {
+    Ok(hl_ingest::recruitment::latest(&state.db, &state.sources).await?)
+}
+
+/// Every official of one season, played or to come (Q74's fixtures by week).
+#[tauri::command]
+pub async fn get_season_results(state: State<'_, AppState>, season: i64) -> CmdResult<Vec<hl_db::ResultRow>> {
+    Ok(state.db.season_results(season).await?)
+}
+
 /// One official for the ETF2L tab's match page (Q74).
 #[tauri::command]
 pub async fn get_league_match(state: State<'_, AppState>, match_id: i64) -> CmdResult<Option<hl_ingest::league_match::LeagueMatch>> {

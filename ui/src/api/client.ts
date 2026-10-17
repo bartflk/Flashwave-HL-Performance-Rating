@@ -60,6 +60,7 @@ import type {
   ResultRow,
   TeamHit,
   LeagueMatch,
+  Recruitment,
   NewLogs,
   Stay,
   DemoImported,
@@ -233,6 +234,8 @@ const realApi = {
   getRecentResults: (limit?: number) => invoke<ResultRow[]>("get_recent_results", { limit }),
   searchTeams: (query: string) => invoke<TeamHit[]>("search_teams", { query }),
   getLeagueMatch: (matchId: number) => invoke<LeagueMatch | null>("get_league_match", { matchId }),
+  getRecruitment: () => invoke<Recruitment>("get_recruitment"),
+  getSeasonResults: (season: number) => invoke<ResultRow[]>("get_season_results", { season }),
   checkNewLogs: () => invoke<NewLogs | null>("check_new_logs"),
   getPlayerTeams: (accountId: number) => invoke<Stay[]>("get_player_teams", { accountId }),
   /** Q28: a map's callouts; the owner's copy wins over the built-in one. */

@@ -260,6 +260,8 @@ pub fn run() {
             sync_commands::get_recent_results,
             sync_commands::search_teams,
             sync_commands::get_league_match,
+            sync_commands::get_recruitment,
+            sync_commands::get_season_results,
             sync_commands::check_new_logs,
             sync_commands::get_player_teams,
             sync_commands::get_player_stats,

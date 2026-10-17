@@ -558,6 +558,16 @@ impl Db {
         Ok(rows.iter().map(result_row).collect())
     }
 
+    /// Every official of one season, played or still to come, by time; the
+    /// ones not yet given a date last.
+    pub async fn season_results(&self, season: i64) -> Result<Vec<ResultRow>> {
+        let rows = sqlx::query(&format!("{RESULT_SELECT} WHERE c.season = ?1 ORDER BY m.time IS NULL, m.time, m.match_id"))
+            .bind(season)
+            .fetch_all(self.pool())
+            .await?;
+        Ok(rows.iter().map(result_row).collect())
+    }
+
     /// One official, played or not, as the results list has it.
     pub async fn league_match(&self, match_id: i64) -> Result<Option<ResultRow>> {
         let row = sqlx::query(&format!("{RESULT_SELECT} WHERE m.match_id = ?1")).bind(match_id).fetch_optional(self.pool()).await?;
@@ -687,5 +697,8 @@ mod tests {
         assert_eq!(t.iter().map(|x| x.team_id).collect::<Vec<_>>(), vec![2, 1], "prefix first");
         assert_eq!((t[1].officials, t[1].last_season), (2, Some(36)));
         assert_eq!(db.search_teams("%", 10).await.unwrap().len(), 1, "a % is a character, not a wildcard");
+        let s = db.season_results(36).await.unwrap();
+        assert_eq!(s.iter().map(|x| x.match_id).collect::<Vec<_>>(), vec![10, 11, 12], "the whole season, the unplayed one too");
+        assert!(db.season_results(35).await.unwrap().is_empty());
     }
 }

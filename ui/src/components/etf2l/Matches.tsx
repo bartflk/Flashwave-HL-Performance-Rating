@@ -48,11 +48,11 @@ function TeamLink({ x, onTeam }: { x: { id: number; name: string; avatar: string
   );
 }
 
-export function FixtureRow(props: { f: Fixture; mine: Set<number>; onTeam: (id: number) => void; onOpen: () => void; showDay?: boolean }) {
-  const { f, mine, onTeam, onOpen, showDay } = props;
+export function FixtureRow(props: { f: Fixture; mine: Set<number>; onTeam: (id: number) => void; onOpen: () => void; showDay?: boolean; showRound?: boolean }) {
+  const { f, mine, onTeam, onOpen, showDay, showRound } = props;
   const ours = mine.has(f.clan1.id) || mine.has(f.clan2.id);
   return (
-    <li className={ours ? "e2-fx ours" : "e2-fx"} {...rowKeys(onOpen)} title={t("Open the match")}>
+    <li className={`e2-fx${ours ? " ours" : ""}${showRound ? " with-round" : ""}`} {...rowKeys(onOpen)} title={t("Open the match")}>
       <span className="e2-fx-time" title={fullDate(f.time)}>
         {showDay && <span className="muted">{formatDate(f.time)} </span>}
         {clockTime(f.time)}
@@ -64,6 +64,7 @@ export function FixtureRow(props: { f: Fixture; mine: Set<number>; onTeam: (id: 
         <span className="e2-vs">{t("vs")}</span>
         <TeamLink x={f.clan2} onTeam={onTeam} />
       </span>
+      {showRound && <span className="e2-fx-round muted">{f.week !== null ? t("Week {0}", { "0": f.week }) : (f.round ?? "")}</span>}
       <span className="e2-fx-h2h muted" title={t("Head-to-head in officials")}>
         {f.h2h.played > 0 ? wl(f.h2h) : ""}
       </span>
@@ -469,5 +470,94 @@ function Meetings({ m, fx, head }: { m: LeagueMatch | null | undefined; fx?: Fix
         </ol>
       )}
     </section>
+  );
+}
+
+// ---- A season's fixtures and results, week by week -------------------------
+
+/** What a round is called in the list: "Week 3", or the playoff stage. */
+function roundOf(r: ResultRow): string {
+  return r.week !== null ? t("Week {0}", { "0": r.week }) : (r.round ?? t("Unscheduled"));
+}
+
+export function SeasonFixtures({ season, onTeam, onMatch }: { season: number; onTeam: (id: number) => void; onMatch: (id: number) => void }) {
+  const q = useQuery({ queryKey: ["season_results", season], queryFn: () => api.getSeasonResults(season), staleTime: 5 * 60_000 });
+  const my = new Set(useYourTeams().map((e) => e.teamId));
+  const rows = q.data ?? [];
+  // Rounds in the order they were played.
+  const rounds = useMemo(() => {
+    const out: string[] = [];
+    for (const r of rows) {
+      const k = roundOf(r);
+      if (!out.includes(k)) out.push(k);
+    }
+    return out;
+  }, [rows]);
+  // Open on the round being played: the first with a match not yet scored.
+  const current = rounds.find((k) => rows.some((r) => roundOf(r) === k && r.r1 === null && !r.defaultWin)) ?? rounds[rounds.length - 1];
+  const [picked, setPicked] = useState<string | null>(null);
+  const round = picked && rounds.includes(picked) ? picked : current;
+  if (q.isPending) return <p className="hint">{t("Loading the fixtures…")}</p>;
+  if (rows.length === 0) return null;
+  const inRound = rows.filter((r) => roundOf(r) === round);
+  const divisions: Array<[string, ResultRow[]]> = [];
+  for (const r of [...inRound].sort((a, b) => (a.tier ?? 9) - (b.tier ?? 9))) {
+    const d = r.division ?? t("Other");
+    const last = divisions[divisions.length - 1];
+    if (last && last[0] === d) last[1].push(r);
+    else divisions.push([d, [r]]);
+  }
+  return (
+    <>
+      <h2 className="ts-section">{t("Fixtures & results")}</h2>
+      <div className="e2-rounds" role="tablist" aria-label={t("Round")}>
+        {rounds.map((k) => (
+          <button key={k} role="tab" aria-selected={k === round} className={k === round ? "on" : undefined} onClick={() => setPicked(k)}>
+            {k}
+            {k === current && <span className="e2-round-now" aria-hidden />}
+          </button>
+        ))}
+      </div>
+      <div className="e2-round-grid">
+        {divisions.map(([d, list]) => (
+          <section key={d} className="panel e2-panel">
+            <div className="e2-panel-head">
+              <h2>{d}</h2>
+              <span className="muted">{list.length === 1 ? t("1 match") : tx("{0} matches", { "0": list.length })}</span>
+            </div>
+            <ol className="e2-results-list e2-round-list">
+              {list.map((r) =>
+                r.r1 !== null || r.defaultWin ? (
+                  <ResultLine key={r.matchId} r={r} mine={my} onTeam={onTeam} onOpen={() => onMatch(r.matchId)} />
+                ) : (
+                  <UpcomingLine key={r.matchId} r={r} mine={my} onTeam={onTeam} onOpen={() => onMatch(r.matchId)} />
+                ),
+              )}
+            </ol>
+          </section>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/** A match of the season not played yet: its date and countdown, the two sides. */
+function UpcomingLine({ r, mine, onTeam, onOpen }: { r: ResultRow; mine: Set<number>; onTeam: (id: number) => void; onOpen: () => void }) {
+  const ours = mine.has(r.clan1.id) || mine.has(r.clan2.id);
+  return (
+    <li className={ours ? "e2-rl ours" : "e2-rl"} {...rowKeys(onOpen)} title={t("Open the match")}>
+      <span className="e2-fx-time muted" title={r.time > 0 ? fullDate(r.time) : undefined}>
+        {r.time > 0 ? formatDate(r.time) : "—"}
+      </span>
+      <span className="e2-fx-div">{r.time > 0 && <Countdown time={r.time} />}</span>
+      <span className="e2-rl-side l">
+        <TeamLink x={r.clan1} onTeam={onTeam} />
+      </span>
+      <span className="e2-rl-score e2-rl-vs">{t("vs")}</span>
+      <span className="e2-rl-side r">
+        <TeamLink x={r.clan2} onTeam={onTeam} />
+      </span>
+      <span className="e2-rl-note muted">{r.time > 0 ? clockTime(r.time) : ""}</span>
+    </li>
   );
 }

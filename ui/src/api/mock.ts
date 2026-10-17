@@ -18,6 +18,7 @@ import teamInfo35600 from "./fixtures/team_info_35600.json";
 import upcomingFixtures from "./fixtures/fixtures.json";
 import newsPosts from "./fixtures/news.json";
 import newsHtml from "./fixtures/news_html.json";
+import recruitment from "./fixtures/recruitment.json";
 import playerTeams139131191 from "./fixtures/player_teams_139131191.json";
 import cart4109131 from "./fixtures/cart_4109131.json";
 import match3863290 from "./fixtures/match_3863290.json";
@@ -53,6 +54,7 @@ import type {
   ResultRow,
   TeamHit,
   LeagueMatch,
+  Recruitment,
   NewLogs,
   MatchSides,
   Stay,
@@ -1275,6 +1277,43 @@ export const mockApi: Api = {
       ],
       url: `https://etf2l.org/matches/${r.matchId}/`,
     });
+  },
+  // ETF2L's Highlander recruitment, 17 October 2026.
+  getRecruitment: () => delay(recruitment as unknown as Recruitment),
+  // A season from the tables' teams: each division's teams paired off week by
+  // week, the past ones scored, the rest still to come.
+  getSeasonResults: (season: number) => {
+    const v = leagues as unknown as LeagueView;
+    const now = Math.floor(Date.now() / 1000);
+    const rows: ResultRow[] = [];
+    let id = 900000;
+    v.divisions.forEach((d, di) => {
+      const ts = d.teams;
+      for (let week = 1; week <= 7; week++) {
+        for (let i = 0; i + 1 < ts.length; i += 2) {
+          const a = ts[(i + week) % ts.length];
+          const b = ts[(i + week + 1) % ts.length];
+          if (a.teamId === b.teamId) continue;
+          const time = now + (week - 5) * 7 * 86400 + di * 3600;
+          const played = time < now;
+          rows.push({
+            matchId: id++,
+            time,
+            season,
+            division: d.division,
+            tier: di,
+            round: week <= 5 ? `Week ${week}` : week === 6 ? "Quarter Finals" : "Semi Finals",
+            week: week <= 5 ? week : null,
+            clan1: { id: a.teamId, name: a.name, avatar: a.avatar },
+            clan2: { id: b.teamId, name: b.name, avatar: b.avatar },
+            r1: played ? (week + i) % 3 === 0 ? 2 : 4 : null,
+            r2: played ? (week + i) % 3 === 0 ? 4 : 2 : null,
+            defaultWin: false,
+          });
+        }
+      }
+    });
+    return delay(rows.sort((x, y) => x.time - y.time));
   },
   searchTeams: (query: string) => {
     const q = query.trim().toLowerCase();

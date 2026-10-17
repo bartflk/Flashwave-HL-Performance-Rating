@@ -337,6 +337,27 @@ export interface ResultRow {
   defaultWin: boolean;
 }
 
+/** An ETF2L recruitment post, Highlander (Q74). */
+export interface RecruitPost {
+  id: number;
+  name: string;
+  classes: string[];
+  skill: string | null;
+  comments: number;
+  lastComment: number | null;
+  avatar: string | null;
+  /** A player's account, to open their profile. */
+  accountId: number | null;
+  /** A team's ETF2L id, to open its page. */
+  teamId: number | null;
+  link: string;
+}
+
+export interface Recruitment {
+  players: RecruitPost[];
+  teams: RecruitPost[];
+}
+
 /** One official for the match page (Q74). */
 export interface LeagueMatch extends ResultRow {
   maps: Array<{ map: string; clan1: number; clan2: number; goldenCap: boolean }>;
