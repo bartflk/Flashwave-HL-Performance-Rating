@@ -13,7 +13,7 @@ import { DivisionBadge } from "../players/PlayerProfile";
 import { TeamAvatar, useFixtures, wl } from "../teams/TeamsPage";
 import { useYourTeams } from "../teams/YourTeams";
 import { Countdown, clockTime, fullDate } from "./Countdown";
-import { laneOf } from "./Brackets";
+import { laneOf, tierOf } from "./Brackets";
 import { CommentList } from "./Recruitment";
 
 /**
@@ -254,10 +254,11 @@ export function LeagueMatchPage({ matchId, fixture, onTeam, onOpenLog }: { match
   if (q.isPending) return <p className="hint">{t("Loading the match…")}</p>;
   if (q.isError) return <p className="error">{errorMessage(q.error)}</p>;
   const m = q.data;
-  // Known to the database (played or listed in its season), or only to
-  // ETF2L's list of scheduled matches.
-  const head = m ?? (fx ? fromFixture(fx) : null);
-  if (!head) return <p className="hint">{t("This match is not in the officials read so far.")}</p>;
+  // Known to the database (played or listed in its season), to ETF2L's list
+  // of scheduled matches, or only to its own page on etf2l.org: a player's
+  // or team's older officials, from before the seasons read.
+  const head = m ?? (fx ? fromFixture(fx) : page ? fromPage(matchId, page) : null);
+  if (!head) return pq.isPending ? <p className="hint">{t("Reading the match's page on ETF2L…")}</p> : <p className="hint">{t("This match is not in the officials read so far.")}</p>;
   const played = head.r1 !== null || head.defaultWin;
   const time = fx?.time ?? head.time;
   const maps = m?.maps ?? [];
@@ -340,7 +341,7 @@ export function LeagueMatchPage({ matchId, fixture, onTeam, onOpenLog }: { match
                     {x.logs.length > 0 && (
                       <span className="mp-logs">
                         {x.logs.map((id) => {
-                          const stored = m?.logs.some((l) => l.logId === id && l.stored) ?? false;
+                          const stored = (m?.logs.some((l) => l.logId === id && l.stored) ?? false) || page.storedLogs.includes(id);
                           return (
                             <button key={id} className="km-chip" onClick={() => (stored ? onOpenLog(id) : void api.openExternal(`https://logs.tf/${id}`))} title={stored ? t("Open in the app") : t("Open on logs.tf")}>
                               {t("Log")} {stored ? "›" : "↗"}
@@ -663,4 +664,29 @@ function ScheduleCard({ page }: { page: Etf2lMatchPage }) {
       </dl>
     </section>
   );
+}
+
+/** An official only its etf2l.org page knows: its teams, score and round,
+ *  the season and division read from the competition's name. */
+function fromPage(matchId: number, p: Etf2lMatchPage): ResultRow | null {
+  if (p.teams.length < 2) return null;
+  const comp = p.competition ?? "";
+  const season = Number(/Season (\d+)/.exec(comp)?.[1] ?? 0);
+  const division = comp.includes(":") ? comp.slice(comp.lastIndexOf(":") + 1).trim() || null : null;
+  const team = (x: { id: number; name: string }) => ({ id: x.id, name: x.name, avatar: null });
+  return {
+    matchId,
+    time: p.scheduled ?? 0,
+    season,
+    division,
+    tier: division ? Math.floor(tierOf(division)) : null,
+    round: p.round,
+    week: null,
+    stage: /playoff/i.test(comp) ? "Playoffs" : "regular",
+    clan1: team(p.teams[0]),
+    clan2: team(p.teams[1]),
+    r1: p.score ? p.score[0] : null,
+    r2: p.score ? p.score[1] : null,
+    defaultWin: false,
+  };
 }

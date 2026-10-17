@@ -3,7 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type Fixture, type LeagueRecord, type Podium, type SeasonTile, type Stay, type TeamEtf2l, type TeamHonours, type TeamInfo, type TeamTransfers, type TeamView } from "../../api/types";
 import { formatDate, formatMonth, formatStay, rating } from "../../lib/format";
-import { openPlayer } from "../../lib/goto";
+import { openLeagueMatch, openPlayer } from "../../lib/goto";
 import { BookmarkButton } from "../Bookmarks";
 import { locale, t, tx } from "../../lib/i18n";
 import { ClassIcon } from "../ClassIcon";
@@ -544,10 +544,24 @@ function TeamOverview({
             const won = r.scoreFor !== null && r.scoreAgainst !== null && r.scoreFor > r.scoreAgainst;
             const lost = r.scoreFor !== null && r.scoreAgainst !== null && r.scoreFor < r.scoreAgainst;
             return (
-              <li key={r.matchId} className={won ? "won" : lost ? "lost" : undefined}>
+              <li
+                key={r.matchId}
+                className={`pp-open${won ? " won" : lost ? " lost" : ""}`}
+                role="link"
+                tabIndex={0}
+                onClick={() => openLeagueMatch(r.matchId)}
+                onKeyDown={(e) => e.key === "Enter" && openLeagueMatch(r.matchId)}
+                title={t("Open the match and its logs")}
+              >
                 <span className="pp-vs">
                   {t("vs")}{" "}
-                  <button className="linkish" onClick={() => onTeam(r.opponentId)}>
+                  <button
+                    className="linkish"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTeam(r.opponentId);
+                    }}
+                  >
                     <strong>{r.opponent}</strong>
                   </button>
                 </span>
@@ -558,6 +572,9 @@ function TeamOverview({
                   {r.maps[0] ? ` · ${r.maps[0]}` : ""}
                 </span>
                 <span className="pp-score">{r.defaultWin ? t("default") : `${r.scoreFor ?? "–"} : ${r.scoreAgainst ?? "–"}`}</span>
+                <span className="pp-go" aria-hidden>
+                  ›
+                </span>
               </li>
             );
           })}
@@ -1007,6 +1024,7 @@ function ResultsTable({ rows, onTeam }: { rows: TeamView["results"]; onTeam: (id
             <th>{t("Against")}</th>
             <th>{t("Map")}</th>
             <th className="num">{t("Score")}</th>
+            <th />
           </tr>
         </thead>
         <tbody>
@@ -1014,19 +1032,28 @@ function ResultsTable({ rows, onTeam }: { rows: TeamView["results"]; onTeam: (id
             const won = r.scoreFor !== null && r.scoreAgainst !== null && r.scoreFor > r.scoreAgainst;
             const lost = r.scoreFor !== null && r.scoreAgainst !== null && r.scoreFor < r.scoreAgainst;
             return (
-              <tr key={r.matchId}>
+              <tr key={r.matchId} className="ts-result-row" onClick={() => openLeagueMatch(r.matchId)} title={t("Open the match and its logs")}>
                 <td className="nowrap muted">{r.time ? formatDate(r.time) : "–"}</td>
                 <td className="nowrap muted">
                   {seasonShort(r.season)} {r.division}
                 </td>
                 <td>
-                  <button className="linkish" onClick={() => onTeam(r.opponentId)}>
+                  <button
+                    className="linkish"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTeam(r.opponentId);
+                    }}
+                  >
                     {r.opponent}
                   </button>
                   {r.stage !== "regular" && <span className="badge">{r.round ?? r.stage}</span>}
                 </td>
                 <td className="nowrap">{r.maps[0] ?? "–"}</td>
                 <td className={won ? "num team-won" : lost ? "num team-lost" : "num"}>{r.defaultWin ? t("default") : `${r.scoreFor ?? "–"}:${r.scoreAgainst ?? "–"}`}</td>
+                <td className="num">
+                  <span className="ts-open-match">{t("Match")} ›</span>
+                </td>
               </tr>
             );
           })}

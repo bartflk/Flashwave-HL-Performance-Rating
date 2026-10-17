@@ -1270,6 +1270,14 @@ export const mockApi: Api = {
         { map: null, image: null, score: null, logs: [] },
       ],
       demos: [{ label: "Map 1 (pl_vigil_rc10): First Person by piro (54 Downloads)", link: "https://etf2l.org/wp-content/uploads/demos/17782" }],
+      competition: "Highlander Season 36 (Autumn 2026): High",
+      round: "Grand Final",
+      teams: [
+        { id: 37805, name: "DD14" },
+        { id: 37863, name: ":pregnant_man:" },
+      ],
+      score: null,
+      storedLogs: [4109131],
       comments: [
         { author: "ETF2L Staff", teams: "", time: 1792090437, staff: true, html: "<p>Welcome to the Highlander Season 36: High Grand Final!</p><p>This match will be played as a best-of-three.</p><p>DD14 having won the Upper Bracket Final is the higher seed and is Team A.</p><p>Team A bans a map<br />Team B bans a map<br />Team B picks a map<br />Team A picks a map<br />Team A bans a map<br />The remaining map is the decider</p>" },
         { author: "Heed", teams: "MPREG", time: 1792169438, html: "<p>we can play sunday 20 or next week tuesday 20</p>" },

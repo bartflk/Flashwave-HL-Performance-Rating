@@ -270,3 +270,9 @@
 .yt-core { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
 .yt-mate { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: var(--sunken); border: 1px solid var(--border); color: var(--text); font-size: 0.86rem; cursor: pointer; }
 .yt-mate:hover { border-color: var(--accent-dim); color: var(--accent-text); }
+
+/* A team's results open their match page and logs (Flashy). */
+.ts-result-row { cursor: pointer; }
+.ts-result-row:hover td { background: rgba(var(--accent-rgb), 0.06); }
+.ts-open-match { color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
+.ts-result-row:hover .ts-open-match { color: var(--accent); }

@@ -1583,7 +1583,7 @@ pub async fn get_season_results(state: State<'_, AppState>, season: i64) -> CmdR
 /// comments, none of which ETF2L's API carries.
 #[tauri::command]
 pub async fn get_match_page(state: State<'_, AppState>, match_id: i64) -> CmdResult<Option<hl_ingest::match_page::MatchPage>> {
-    Ok(hl_ingest::match_page::page(&state.sources, match_id).await?)
+    Ok(hl_ingest::match_page::page(&state.db, &state.sources, match_id).await?)
 }
 
 /// One official for the ETF2L tab's match page (Q74).

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type CatDivision, type Etf2lRoster, type Medal, type Mvp, type PlayerProfile as Profile } from "../../api/types";
 import { formatDate, formatMonth, formatStay } from "../../lib/format";
+import { openLeagueMatch } from "../../lib/goto";
 import { ClassIcon } from "../ClassIcon";
 import { classLabel } from "../analysis/common";
 import { locale, t, tx } from "../../lib/i18n";
@@ -356,7 +357,15 @@ export function RecentOfficials({ p, count = 10 }: { p: Profile; count?: number 
         {recent.length === 0 && <p className="hint">{t("No ETF2L official in the seasons read.")}</p>}
         <ul className="pp-matches">
           {recent.map((o) => (
-            <li key={o.matchId} className={o.won === true ? "won" : o.won === false ? "lost" : undefined}>
+            <li
+              key={o.matchId}
+              className={`pp-open${o.won === true ? " won" : o.won === false ? " lost" : ""}`}
+              role="link"
+              tabIndex={0}
+              onClick={() => openLeagueMatch(o.matchId)}
+              onKeyDown={(e) => e.key === "Enter" && openLeagueMatch(o.matchId)}
+              title={t("Open the match and its logs")}
+            >
               <span className="pp-vs">
                 <TeamAvatar src={o.team.avatar} /> {o.team.name} <span className="muted">{t("vs")}</span> <TeamAvatar src={o.opponent.avatar} /> <strong>{o.opponent.name}</strong>
               </span>
@@ -369,6 +378,9 @@ export function RecentOfficials({ p, count = 10 }: { p: Profile; count?: number 
               </span>
               <span className="pp-score">
                 {o.scoreFor ?? "–"} : {o.scoreAgainst ?? "–"}
+              </span>
+              <span className="pp-go" aria-hidden>
+                ›
               </span>
             </li>
           ))}

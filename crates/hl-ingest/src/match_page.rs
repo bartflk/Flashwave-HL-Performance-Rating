@@ -27,6 +27,24 @@ pub struct MatchPage {
     pub maps: Vec<PageMap>,
     pub demos: Vec<PageDemo>,
     pub comments: Vec<RecruitComment>,
+    /// The match itself as the page heads it, for an official older than
+    /// the seasons the app has read (a player's or team's old officials).
+    pub competition: Option<String>,
+    pub round: Option<String>,
+    pub teams: Vec<PageTeam>,
+    /// The final score, in the page's team order; none before it is played.
+    pub score: Option<(i64, i64)>,
+    /// The logs in the maps that are in the owner's matches, so the app can
+    /// open them itself.
+    #[serde(default)]
+    pub stored_logs: Vec<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PageTeam {
+    pub id: i64,
+    pub name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -100,7 +118,29 @@ pub fn parse(page: &str, link: &str) -> Option<MatchPage> {
         }
     }
 
+    // The page's head: competition, division and round, the two teams and
+    // the score under them.
+    let competition = between(head, "<h1 class=\"c\">", "</h1>").map(text).filter(|s| !s.is_empty());
+    let round_name = head.split("<h3 class=\"c\">").skip(1).filter_map(|h| h.split("</h3>").next()).map(text).last().filter(|s| !s.is_empty());
+    let mut teams = Vec::new();
+    let mut score_line = None;
+    if let Some(result) = between(head, "<p class=\"result\">", "</p>") {
+        for part in result.split("href=\"https://etf2l.org/teams/").skip(1) {
+            let id = part.split('"').next().and_then(|n| n.trim_end_matches('/').parse().ok());
+            let name = between(part, ">", "</a>").map(text);
+            if let (Some(id), Some(name)) = (id, name) {
+                teams.push(PageTeam { id, name });
+            }
+        }
+        score_line = result.rsplit("<br>").next().and_then(score);
+    }
+
     Some(MatchPage {
+        competition,
+        round: round_name,
+        teams,
+        score: score_line,
+        stored_logs: Vec::new(),
         link: link.to_string(),
         round_from: round.first().copied(),
         round_to: round.get(1).copied(),
@@ -115,11 +155,18 @@ pub fn parse(page: &str, link: &str) -> Option<MatchPage> {
     })
 }
 
-/// One official's page, read when it is opened.
-pub async fn page(sources: &Sources, match_id: i64) -> Result<Option<MatchPage>> {
+/// One official's page, read when it is opened; its logs that are in the
+/// owner's matches marked so the app opens them itself.
+pub async fn page(db: &hl_db::Db, sources: &Sources, match_id: i64) -> Result<Option<MatchPage>> {
     let link = format!("https://etf2l.org/matches/{match_id}/");
     let Some(html) = sources.fetch_text_interactive(&link).await? else { return Ok(None) };
-    Ok(parse(&html, &link))
+    let Some(mut p) = parse(&html, &link) else { return Ok(None) };
+    for id in p.maps.iter().flat_map(|m| m.logs.iter().copied()).collect::<Vec<_>>() {
+        if db.has_match(id).await? {
+            p.stored_logs.push(id);
+        }
+    }
+    Ok(Some(p))
 }
 
 #[cfg(test)]
@@ -153,6 +200,12 @@ mod tests {
             </div>
             <div style="clear: both"></div>
         </div>
+        <p class="result">
+        <img src="/images/flags/Germany.gif" alt="Germany" /> <span class="winr"><a href="https://etf2l.org/teams/37863">:pregnant_man:</a></span>
+        <b>vs</b>
+        <img src="/images/flags/France.gif" alt="France" /> <span><a href="https://etf2l.org/teams/37805">DD14</a></span>
+        <br>
+    6 - 0    </p>
     <h2>Demos</h2>
     <ul>
          <li>Map 2 (pl_vigil_rc10): <a href="https://etf2l.org/wp-content/uploads/demos/17782">First Person</a> by <a href="https://etf2l.org/forum/user/139825">piro</a> (54 Downloads)</li>
@@ -182,6 +235,10 @@ mod tests {
         assert!(p.demos[0].label.starts_with("Map 2 (pl_vigil_rc10): First Person by piro"), "{}", p.demos[0].label);
         assert_eq!(p.comments.len(), 1);
         assert!(p.comments[0].staff && p.comments[0].author == "ETF2L Staff");
+        assert_eq!(p.competition.as_deref(), Some("Highlander Season 36 (Autumn 2026): High"));
+        assert_eq!(p.round.as_deref(), Some("Round 6"));
+        assert_eq!(p.teams.iter().map(|t| (t.id, t.name.as_str())).collect::<Vec<_>>(), vec![(37863, ":pregnant_man:"), (37805, "DD14")]);
+        assert_eq!(p.score, Some((6, 0)));
     }
 
     #[test]

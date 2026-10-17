@@ -574,6 +574,12 @@ impl Db {
         Ok(rows.iter().map(result_row).collect())
     }
 
+    /// Whether a log is one of the owner's stored matches, which the app
+    /// can open itself.
+    pub async fn has_match(&self, log_id: i64) -> Result<bool> {
+        Ok(sqlx::query_scalar::<_, i64>("SELECT 1 FROM match WHERE log_id = ?1").bind(log_id).fetch_optional(self.pool()).await?.is_some())
+    }
+
     /// One official, played or not, as the results list has it.
     pub async fn league_match(&self, match_id: i64) -> Result<Option<ResultRow>> {
         let row = sqlx::query(&format!("{RESULT_SELECT} WHERE m.match_id = ?1")).bind(match_id).fetch_optional(self.pool()).await?;

@@ -102,6 +102,34 @@ export function onOpenSeason(open: (season: number) => void): () => void {
   return () => window.removeEventListener(SEASON_EVENT, handler);
 }
 
+const LEAGUE_MATCH_EVENT = "hl:league-match";
+let pendingLeagueMatch: number | null = null;
+
+/** The ETF2L tab, on one official's match page, with its logs (Flashy: a
+ *  player's or team's latest officials could not be opened). */
+export function openLeagueMatch(matchId: number) {
+  pendingLeagueMatch = matchId;
+  goTo("etf2l");
+  window.dispatchEvent(new CustomEvent<number>(LEAGUE_MATCH_EVENT, { detail: matchId }));
+}
+
+/** For the ETF2L tab: the official asked for before it was first shown. */
+export function takePendingLeagueMatch(): number | null {
+  const id = pendingLeagueMatch;
+  pendingLeagueMatch = null;
+  return id;
+}
+
+/** For the ETF2L tab: an official asked for while it is mounted. */
+export function onOpenLeagueMatch(open: (matchId: number) => void): () => void {
+  const handler = (e: Event) => {
+    pendingLeagueMatch = null;
+    open((e as CustomEvent<number>).detail);
+  };
+  window.addEventListener(LEAGUE_MATCH_EVENT, handler);
+  return () => window.removeEventListener(LEAGUE_MATCH_EVENT, handler);
+}
+
 export function goTo(page: Destination) {
   window.dispatchEvent(new CustomEvent<Destination>(EVENT, { detail: page }));
 }

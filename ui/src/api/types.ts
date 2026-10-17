@@ -389,6 +389,13 @@ export interface Etf2lMatchPage {
   maps: Array<{ map: string | null; image: string | null; score: [number, number] | null; logs: number[] }>;
   demos: Array<{ label: string; link: string }>;
   comments: EtfComment[];
+  /** The page's own head, for an official older than the seasons read. */
+  competition: string | null;
+  round: string | null;
+  teams: Array<{ id: number; name: string }>;
+  score: [number, number] | null;
+  /** Logs in the maps that are in your matches: opened in the app. */
+  storedLogs: number[];
 }
 
 export interface Recruitment {

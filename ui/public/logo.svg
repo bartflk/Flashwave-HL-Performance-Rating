@@ -1,11 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-<circle cx="256" cy="256" r="244" fill="#e0763a"/>
-<circle cx="256" cy="256" r="212" fill="#2b2420"/>
-<rect x="245" y="60" width="22" height="46" rx="11" fill="#f2e6d9"/>
-<rect x="245" y="406" width="22" height="46" rx="11" fill="#f2e6d9"/>
-<rect x="60" y="245" width="46" height="22" rx="11" fill="#f2e6d9"/>
-<rect x="406" y="245" width="46" height="22" rx="11" fill="#f2e6d9"/>
-<rect x="178" y="260" width="44" height="70" rx="8" fill="#f2e6d9"/>
-<rect x="234" y="218" width="44" height="112" rx="8" fill="#f2e6d9"/>
-<rect x="290" y="174" width="44" height="156" rx="8" fill="#e0763a"/>
+<circle cx="256" cy="256" r="236" fill="#2b2420"/>
+<circle cx="256" cy="256" r="236" fill="none" stroke="#cf7336" stroke-width="34"/>
+<path d="M96 330 C150 290 200 370 256 330 C312 290 362 370 416 330" fill="none" stroke="#f2e6d9" stroke-width="30" stroke-linecap="round"/>
+<path d="M120 390 C170 356 214 420 262 390 C310 360 352 418 396 392" fill="none" stroke="#cf7336" stroke-width="22" stroke-linecap="round"/>
+<polygon points="282,86 176,250 240,250 216,346 336,190 270,190 300,86" fill="#f2e6d9"/>
 </svg>

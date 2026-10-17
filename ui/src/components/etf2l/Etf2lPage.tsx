@@ -3,7 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { CatTeam, Fixture, LeagueTableRow, RecruitPost, ResultRow, SeasonTile } from "../../api/types";
 import { formatDate } from "../../lib/format";
-import { hasPendingPlayer, onOpenSeason, onOpenTeam, onPlayerAsked, openPlayer, takePendingSeason, takePendingTeam } from "../../lib/goto";
+import { hasPendingPlayer, onOpenLeagueMatch, onOpenSeason, onOpenTeam, onPlayerAsked, openPlayer, takePendingLeagueMatch, takePendingSeason, takePendingTeam } from "../../lib/goto";
 import { t, tx } from "../../lib/i18n";
 import { DivisionBadge } from "../players/PlayerProfile";
 import { MedalGlyph } from "../players/MedalGlyph";
@@ -65,6 +65,8 @@ const same = (a: Loc, b: Loc) => JSON.stringify(a) === JSON.stringify(b);
 
 export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatch: (logId: number) => void }) {
   const [stack, setStack] = useState<Loc[]>(() => {
+    const match = takePendingLeagueMatch();
+    if (match !== null) return [{ at: "match", id: match, from: { at: "home" } }];
     const team = takePendingTeam();
     if (team !== null) return [{ at: "team", teamId: team, from: { at: "home" } }];
     const season = takePendingSeason();
@@ -83,6 +85,14 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
   };
   useEffect(() => onOpenTeam((teamId) => setStack((s) => [...s, { at: "team", teamId, from: base(s[s.length - 1]) }])), []);
   useEffect(() => onOpenSeason((season) => setStack((s) => [...s, { at: "season", season }])), []);
+  useEffect(
+    () =>
+      onOpenLeagueMatch((id) => {
+        setStack((s) => [...s, { at: "match", id, from: base(s[s.length - 1]) }]);
+        window.scrollTo({ top: 0 });
+      }),
+    [],
+  );
   useEffect(() => onPlayerAsked(() => setStack((s) => (s[s.length - 1].at === "players" ? s : [...s, { at: "players" }]))), []);
 
   // Mouse 4 / Alt+Left step back within the tab first (Flashy's Teams rule,
@@ -186,7 +196,14 @@ function Crumbs({ loc, go }: { loc: Loc; go: (l: Loc) => void }) {
   const matchId = loc.at === "match" ? loc.id : null;
   const lm = useQuery({ queryKey: ["league_match", matchId], queryFn: () => api.getLeagueMatch(matchId!), enabled: matchId !== null }).data;
   const mf = loc.at === "match" ? loc.fixture : undefined;
-  const matchTitle = lm ? `${lm.clan1.name} vs ${lm.clan2.name}` : mf ? `${mf.clan1.name} vs ${mf.clan2.name}` : null;
+  const mp = useQuery({ queryKey: ["match_page", matchId], queryFn: () => api.getMatchPage(matchId!), enabled: matchId !== null, staleTime: 2 * 60_000 }).data;
+  const matchTitle = lm
+    ? `${lm.clan1.name} vs ${lm.clan2.name}`
+    : mf
+      ? `${mf.clan1.name} vs ${mf.clan2.name}`
+      : mp && mp.teams.length >= 2
+        ? `${mp.teams[0].name} vs ${mp.teams[1].name}`
+        : null;
   const postId = loc.at === "post" ? loc.id : null;
   const post = useQuery({ queryKey: ["etf2l_news_post", postId], queryFn: () => api.getNewsPost(postId!), enabled: postId !== null, staleTime: 30 * 60_000 }).data;
   const trail: Array<[string, Loc]> = [];
