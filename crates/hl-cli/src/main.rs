@@ -1585,9 +1585,15 @@ async fn run() -> Result<()> {
             let cat = hl_ingest::catalogue::Catalogue::load(&db).await?;
             let names = db.log_names().await?;
             let rated = db.rated_games(hl_rating::MODEL_VERSION, None).await?;
-            let only: Option<i64> = rest.first().and_then(|s| s.parse().ok());
+            let only: Option<i64> = rest.iter().find_map(|s| s.parse().ok());
+            let json = rest.contains(&"--json");
             for m in cat.mvps(&rated) {
                 if only.is_some_and(|s| s != m.season) {
+                    continue;
+                }
+                // One per line, for audits that join on the account.
+                if json {
+                    println!("{}", serde_json::to_string(&m)?);
                     continue;
                 }
                 let who = names.get(&m.account_id).and_then(|n| n.first().cloned()).unwrap_or_else(|| m.account_id.to_string());
