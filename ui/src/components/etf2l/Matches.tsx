@@ -133,7 +133,8 @@ function byDay<T>(rows: T[], time: (r: T) => number): Array<[string, T[]]> {
 }
 
 export function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void; onMatch: (id: number, f?: Fixture) => void }) {
-  const [mode, setMode] = useState<Mode>("upcoming");
+  // The week as a calendar first: the upcoming list is on Home already (Flashy).
+  const [mode, setMode] = useState<Mode>("week");
   const [division, setDivision] = useState("");
   const [onlyMine, setOnlyMine] = useState(false);
   const [limit, setLimit] = useState(60);
@@ -162,8 +163,8 @@ export function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void;
           value={mode}
           onChange={setMode}
           options={[
-            { v: "upcoming", label: tx("Upcoming ({0})", { "0": fixtures.length }) },
             { v: "week", label: t("Week") },
+            { v: "upcoming", label: tx("Upcoming ({0})", { "0": fixtures.length }) },
             { v: "results", label: t("Results") },
           ]}
         />
