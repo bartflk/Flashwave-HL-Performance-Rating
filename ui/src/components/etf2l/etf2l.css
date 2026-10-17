@@ -1219,3 +1219,11 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
 }
 .br-champ strong { color: #f3e3bd; font-size: 0.9rem; letter-spacing: 0.02em; text-transform: none; overflow: hidden; text-overflow: ellipsis; }
 .br-third-head { font-size: 0.84rem; }
+
+/* A log button: the full match page in the app, logs.tf beside it. */
+.mp-logbtn { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mp-logstf { font-size: 0.74rem; color: var(--muted); text-decoration: none; }
+.mp-logstf:hover { color: var(--accent); }
+.mp-logerr { font-size: 0.76rem; flex-basis: 100%; }
+.e2-logs { flex-direction: column; align-items: flex-start; }
+.mp-logs { flex-direction: column; align-items: flex-start; }

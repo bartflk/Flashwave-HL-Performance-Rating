@@ -1,5 +1,5 @@
 import { useMemo, useState, type KeyboardEvent } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { Etf2lMatchPage, Fixture, LeagueMatch, ResultRow, TeamRosterRow } from "../../api/types";
 import { errorMessage } from "../../api/types";
@@ -342,11 +342,7 @@ export function LeagueMatchPage({ matchId, fixture, onTeam, onOpenLog }: { match
                       <span className="mp-logs">
                         {x.logs.map((id) => {
                           const stored = (m?.logs.some((l) => l.logId === id && l.stored) ?? false) || page.storedLogs.includes(id);
-                          return (
-                            <button key={id} className="km-chip" onClick={() => (stored ? onOpenLog(id) : void api.openExternal(`https://logs.tf/${id}`))} title={stored ? t("Open in the app") : t("Open on logs.tf")}>
-                              {t("Log")} {stored ? "›" : "↗"}
-                            </button>
-                          );
+                          return <LogButton key={id} logId={id} label={t("Log")} stored={stored} matchId={matchId} onOpenLog={onOpenLog} />;
                         })}
                       </span>
                     )}
@@ -425,14 +421,7 @@ export function LeagueMatchPage({ matchId, fixture, onTeam, onOpenLog }: { match
               </div>
               <div className="e2-logs">
                 {m.logs.map((l) => (
-                  <button
-                    key={l.logId}
-                    className="km-chip"
-                    onClick={() => (l.stored ? onOpenLog(l.logId) : void api.openExternal(`https://logs.tf/${l.logId}`))}
-                    title={l.stored ? t("Open in the app") : t("Open on logs.tf")}
-                  >
-                    {l.map ?? `#${l.logId}`} {l.stored ? "›" : "↗"}
-                  </button>
+                  <LogButton key={l.logId} logId={l.logId} label={l.map ?? `#${l.logId}`} stored={l.stored} matchId={matchId} onOpenLog={onOpenLog} />
                 ))}
               </div>
             </section>
@@ -689,4 +678,51 @@ function fromPage(matchId: number, p: Etf2lMatchPage): ResultRow | null {
     r2: p.score ? p.score[1] : null,
     defaultWin: false,
   };
+}
+
+/**
+ * A log of an official, opened as a full match page in the app: scoreboard,
+ * matchups, kill map (Flashy: "I want to see the log like in the matches
+ * page"). One that is not in your matches is fetched first, as "Add a log by
+ * hand" does -- it then joins the pool everyone is rated against, and stays
+ * out of your match list. logs.tf is a small link beside it.
+ */
+function LogButton({ logId, label, stored, matchId, onOpenLog }: { logId: number; label: string; stored: boolean; matchId: number; onOpenLog: (logId: number) => void }) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const open = async () => {
+    if (stored) return onOpenLog(logId);
+    setBusy(true);
+    setError(null);
+    try {
+      await api.importLog(String(logId));
+      void qc.invalidateQueries({ queryKey: ["match_page", matchId] });
+      void qc.invalidateQueries({ queryKey: ["league_match", matchId] });
+      onOpenLog(logId);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <span className="mp-logbtn">
+      <button className="km-chip" onClick={() => void open()} disabled={busy} title={stored ? t("Open the log in the app") : t("Fetch the log and open it in the app")}>
+        {busy ? t("Fetching…") : `${label} ›`}
+      </button>
+      <a
+        className="mp-logstf"
+        href={`https://logs.tf/${logId}`}
+        onClick={(e) => {
+          e.preventDefault();
+          void api.openExternal(`https://logs.tf/${logId}`);
+        }}
+        title={t("Open on logs.tf")}
+      >
+        logs.tf ↗
+      </a>
+      {error && <span className="error mp-logerr">{error}</span>}
+    </span>
+  );
 }
