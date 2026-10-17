@@ -11,7 +11,7 @@ import { SettingsIcon, type IconName } from "./settings/icons";
 import { MapsPanel } from "./MapsPanel";
 import { ImportPanel } from "./ImportPanel";
 import { startRebuild, useSyncStatus } from "../lib/sync";
-import { setTheme, THEMES, useTheme } from "../lib/theme";
+import { contrast, deleteCustomTheme, luminance, previewTheme, readThemeCode, saveCustomTheme, setTheme, themeById, themeCode, useTheme, useThemes, type Base, type Theme } from "../lib/theme";
 import { DEFAULT_SCALE, SCALES, setScale, stepScale, useScale } from "../lib/scale";
 import { allLanguages, languageFile, setLanguage, t, t as tr, useLanguage, userLanguageFiles, tx } from "../lib/i18n";
 import { loadUserLanguages } from "../lib/userLang";
@@ -159,7 +159,7 @@ export function Settings({
               info={t("ETF2L names come from the official rosters already read, so they cost no requests. Anyone who never played an official keeps the name from the log.")}>
               <NamesPanel />
             </SettingsSection>
-            <SettingsSection id="theme" icon="palette" title={t("Theme")} keywords="theme colours dark"
+            <SettingsSection id="theme" icon="palette" title={t("Theme")} keywords="theme colours colors dark custom own make share code"
               summary={t("The app's colours")}>
               <ThemePanel />
             </SettingsSection>
@@ -600,27 +600,147 @@ function NamesPanel() {
 
 function ThemePanel() {
   const theme = useTheme();
+  const themes = useThemes();
+  // The theme being made or edited; null while the editor is shut.
+  const [editing, setEditing] = useState<{ id?: string; name: string; base: Base } | null>(null);
+  const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  // Show the palette as it is edited; put the chosen theme back on closing.
+  useEffect(() => {
+    previewTheme(editing ? editing.base : null);
+  }, [editing]);
+  useEffect(() => () => previewTheme(null), []);
+
+  const startFrom = (th: Theme, id?: string) => setEditing({ id, name: id ? th.name : t("{0}, my version", { "0": th.name }), base: { ...th.base } });
+  const copy = async (th: Theme) => {
+    await navigator.clipboard?.writeText(themeCode(th));
+    setCopied(th.id);
+    window.setTimeout(() => setCopied(null), 1600);
+  };
+  const add = () => {
+    const got = readThemeCode(code);
+    if (!got) {
+      setCodeError(t("That is not a theme code. One starts with hltheme:"));
+      return;
+    }
+    setCodeError(null);
+    setCode("");
+    saveCustomTheme(got.name, got.base);
+  };
+
+  const b = editing?.base;
+  const lowContrast = b ? contrast(b.text, b.bg) < 7 || contrast(b.text, b.panel) < 4.5 : false;
+  const light = b ? luminance(b.bg) > 0.25 : false;
+  const field = (key: keyof Base, label: string) =>
+    b && (
+      <label className="th-field">
+        <span>{label}</span>
+        <input type="color" value={b[key]} onChange={(e) => setEditing({ ...editing!, base: { ...b, [key]: e.target.value } })} />
+        <input
+          type="text"
+          value={b[key]}
+          maxLength={7}
+          onChange={(e) => {
+            const v = e.target.value.trim();
+            if (/^#[0-9a-f]{6}$/i.test(v)) setEditing({ ...editing!, base: { ...b, [key]: v.toLowerCase() } });
+          }}
+          aria-label={label}
+        />
+      </label>
+    );
+
   return (
     <div className="panel">
       <h2>{t("Theme")}</h2>
       <div className="theme-grid">
-        {THEMES.map((t) => (
-          <button
-            key={t.id}
-            className={theme === t.id ? "theme-card active" : "theme-card"}
-            onClick={() => setTheme(t.id)}
-            aria-pressed={theme === t.id}
-          >
-            <span className={`theme-swatch theme-${t.id}`} aria-hidden>
-              <i className="sw-bg" />
-              <i className="sw-panel" />
-              <i className="sw-accent" />
-            </span>
-            <span className="theme-name">{t.name}</span>
-            <span className="theme-hint muted">{tr(t.hint)}</span>
-          </button>
+        {themes.map((th) => (
+          <div key={th.id} className={theme === th.id && !editing ? "theme-card active" : "theme-card"}>
+            <button className="theme-pick" onClick={() => setTheme(th.id)} aria-pressed={theme === th.id}>
+              <span className="theme-swatch" aria-hidden>
+                <i style={{ background: th.base.bg }} />
+                <i style={{ background: th.base.panel }} />
+                <i style={{ background: th.base.accent }} />
+              </span>
+              <span className="theme-name">{th.name}</span>
+              <span className="theme-hint muted">{th.custom ? t("your own") : th.hint ? tr(th.hint) : ""}</span>
+            </button>
+            {th.custom && (
+              <span className="theme-tools">
+                <button className="linkish" onClick={() => startFrom(th, th.id)}>
+                  {t("Edit")}
+                </button>
+                <button className="linkish" onClick={() => void copy(th)}>
+                  {copied === th.id ? t("Copied") : t("Share")}
+                </button>
+                <button className="linkish" onClick={() => deleteCustomTheme(th.id)}>
+                  {t("Delete")}
+                </button>
+              </span>
+            )}
+          </div>
         ))}
+        {!editing && (
+          <button className="theme-card theme-new" onClick={() => startFrom(themeById(theme))}>
+            <span className="theme-new-plus" aria-hidden>
+              +
+            </span>
+            <span className="theme-name">{t("Make your own")}</span>
+            <span className="theme-hint muted">{t("starts from the theme you use now")}</span>
+          </button>
+        )}
       </div>
+
+      {editing && b && (
+        <section className="th-editor">
+          <div className="th-row">
+            <label className="th-name">
+              <span>{t("Name")}</span>
+              <input type="text" value={editing.name} maxLength={40} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
+            </label>
+            <span className="hint">{t("The whole app shows the theme as you change it.")}</span>
+          </div>
+          <div className="th-fields">
+            {field("bg", t("Background"))}
+            {field("panel", t("Panels"))}
+            {field("text", t("Text"))}
+            {field("accent", t("Accent"))}
+          </div>
+          {lowContrast && <p className="warn-text">{t("The text is hard to read on this background: make one lighter or the other darker.")}</p>}
+          {light && <p className="warn-text">{t("The app is built for dark backgrounds; a light one will look washed out in places.")}</p>}
+          <div className="th-actions">
+            <button
+              onClick={() => {
+                saveCustomTheme(editing.name, b, editing.id);
+                setEditing(null);
+              }}
+            >
+              {editing.id ? t("Save changes") : t("Save theme")}
+            </button>
+            <button className="linkish" onClick={() => setEditing(null)}>
+              {t("Cancel")}
+            </button>
+          </div>
+        </section>
+      )}
+
+      <div className="th-import">
+        <input
+          type="text"
+          value={code}
+          placeholder={t("Paste a theme code someone shared (hltheme:…)")}
+          onChange={(e) => {
+            setCode(e.target.value);
+            setCodeError(null);
+          }}
+          onKeyDown={(e) => e.key === "Enter" && code.trim() && add()}
+        />
+        <button disabled={!code.trim()} onClick={add}>
+          {t("Add theme")}
+        </button>
+      </div>
+      {codeError && <p className="error">{codeError}</p>}
     </div>
   );
 }
