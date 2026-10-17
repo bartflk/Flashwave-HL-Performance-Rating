@@ -3,6 +3,13 @@
 /* Wider than the other pages (Flashy: "the body is very slim"): a front
    page with a rail beside it needs the room. */
 .content.e2-page {
+  /* TF2's colours, as on the match page: the HUD's tan, RED and BLU. Every
+     tan accent in the tab (your team's bracket line, headings, hovers) was
+     drawn with these undefined until now. */
+  --tf2-tan: #cf7336;
+  --tf2-cream: #ebe3cb;
+  --tf2-red: #b8383b;
+  --tf2-blu: #5885a2;
   max-width: calc(1440px + 2 * var(--gutter));
   gap: 20px;
 }
@@ -1150,3 +1157,65 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
 .tm-place { color: var(--faint); font-variant-numeric: tabular-nums; text-align: right; font-size: 0.8rem; }
 .tm-row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tm-row-wl { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.82rem; }
+
+/* ---- The bracket, bigger and with more pop (Flashy) ------------------------ */
+.br-bracket {
+  background:
+    radial-gradient(90% 120% at 100% 0%, rgba(var(--accent-rgb), 0.07), transparent 55%),
+    var(--panel);
+}
+.br-scroll { padding: 6px 4px 12px; }
+.br-band {
+  height: 34px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(var(--text-rgb), 0.08), rgba(var(--text-rgb), 0.03));
+  border-color: rgba(var(--text-rgb), 0.1);
+}
+.br-head { height: 34px; font-size: 0.84rem; letter-spacing: 0.1em; }
+.br-lines path { stroke: rgba(var(--text-rgb), 0.5); stroke-width: 2; stroke-linejoin: round; }
+.br-lines path.mine { stroke: var(--tf2-tan); stroke-width: 3; }
+.br-card {
+  border: 1px solid rgba(var(--text-rgb), 0.14);
+  border-radius: 9px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel-2) 85%, white 3%), var(--panel-2));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.br-card:hover { border-color: var(--tf2-tan); transform: translateY(-1px); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45); }
+.br-side { grid-template-columns: minmax(0, 1fr) 44px; height: 36px; }
+.br-side + .br-side { border-top: 1px solid rgba(var(--text-rgb), 0.1); }
+.br-team { gap: 10px; padding: 0 12px; font-size: 0.95rem; }
+.br-team .teams-avatar { width: 22px; height: 22px; border-radius: 5px; }
+.br-side.won { background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.14), rgba(var(--accent-rgb), 0.03)); }
+.br-side.lost .br-team { opacity: 0.6; }
+.br-score { font-size: 1.15rem; border-left-color: rgba(var(--text-rgb), 0.1); background: rgba(0, 0, 0, 0.22); }
+.br-side.won .br-score {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 85%, white 15%), var(--accent));
+  color: #1a1410;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+.br-when { font-size: 0.78rem; padding-top: 5px; }
+/* The grand final: a gold frame, and its champion over it once played. */
+.br-card.final {
+  border: 1.5px solid #d9a441;
+  box-shadow: 0 0 0 3px rgba(217, 164, 65, 0.14), 0 10px 28px rgba(0, 0, 0, 0.5);
+}
+.br-card.final .br-team { font-size: 1.02rem; }
+.br-card.final .br-side.won .br-score { background: linear-gradient(180deg, #f0c45e, #d9a441); }
+.br-champ {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #d9a441;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.br-champ strong { color: #f3e3bd; font-size: 0.9rem; letter-spacing: 0.02em; text-transform: none; overflow: hidden; text-overflow: ellipsis; }
+.br-third-head { font-size: 0.84rem; }

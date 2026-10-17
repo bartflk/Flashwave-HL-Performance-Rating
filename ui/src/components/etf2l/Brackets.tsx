@@ -5,6 +5,8 @@ import type { Fixture, ResultRow } from "../../api/types";
 import { formatDate } from "../../lib/format";
 import { t, tx } from "../../lib/i18n";
 import { DivisionBadge } from "../players/PlayerProfile";
+import { MedalGlyph } from "../players/MedalGlyph";
+import { useMeasuredWidth } from "../../lib/measure";
 import { TeamAvatar, useFixtures } from "../teams/TeamsPage";
 import { useYourTeams } from "../teams/YourTeams";
 import { clockTime, Countdown, fullDate } from "./Countdown";
@@ -257,13 +259,16 @@ function orderColumns(cols: ResultRow[][]): ResultRow[][] {
 
 // The bracket's measures, in pixels: every card is placed by hand rather
 // than left to the page's flow, so the lines can be drawn exactly.
-const CARD_W = 214;
-const ROW_H = 27;
-const CARD_H = ROW_H * 2 + 1;
-const COL_GAP = 52;
-const V_GAP = 30;
-const HEAD_H = 30;
-const LANE_GAP = 26;
+// The card's width follows the panel (Flashy: "make the bracket bigger"):
+// the columns share the room, between these two widths.
+const MIN_W = 230;
+const MAX_W = 440;
+const ROW_H = 36;
+const CARD_H = ROW_H * 2 + 3;
+const COL_GAP = 64;
+const V_GAP = 40;
+const HEAD_H = 34;
+const LANE_GAP = 36;
 
 type Placed = { m: ResultRow; col: number; x: number; y: number };
 
@@ -275,7 +280,7 @@ const shares = (a: ResultRow, b: ResultRow) => [a.clan1.id, a.clan2.id].some((id
  * the column before the final, as Challonge draws it; a match after the
  * first round sits level with the matches that feed it.
  */
-function layout(rounds: Round[]) {
+function layout(rounds: Round[], CARD_W: number) {
   const finals = rounds.filter((r) => r.lane === "final");
   const top = rounds.filter((r) => r.lane === "upper" || r.lane === "main");
   const bottom = rounds.filter((r) => r.lane === "lower");
@@ -342,24 +347,28 @@ function layout(rounds: Round[]) {
     const x1 = p.x + CARD_W;
     const y1 = p.y + CARD_H / 2;
     const x2 = next.x;
-    const y2 = next.y + (next.m.clan1.id === o.win ? ROW_H / 2 : ROW_H + 1 + ROW_H / 2);
+    const y2 = next.y + (next.m.clan1.id === o.win ? ROW_H / 2 + 1 : ROW_H + 2 + ROW_H / 2);
     const mid = x2 - COL_GAP / 2;
     lines.push({ d: `M${x1},${y1} H${mid} V${y2} H${x2}`, mine: o.win });
   }
-  return { placed, heads, bands, width, height, lines };
+  const finalIds = new Set(finals.flatMap((r) => r.matches.map((m) => m.matchId)));
+  return { placed, heads, bands, width, height, lines, finalIds };
 }
 
 function Bracket({ rows, mine, onTeam, onMatch }: { rows: ResultRow[]; mine: Set<number>; onTeam: (id: number) => void; onMatch: (id: number) => void }) {
   const rounds = roundsOf(rows);
   const third = rounds.filter((r) => r.lane === "third").flatMap((r) => r.matches);
   const main = rounds.filter((r) => r.lane !== "third");
-  const { placed, heads, bands, width, height, lines } = useMemo(() => layout(main), [rows]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [room, measure] = useMeasuredWidth(MIN_W);
+  const cols = Math.max(main.filter((r) => r.lane === "upper" || r.lane === "main").length, main.filter((r) => r.lane === "lower").length) + main.filter((r) => r.lane === "final").length;
+  const CARD_W = Math.round(Math.max(MIN_W, Math.min(MAX_W, (room - Math.max(0, cols - 1) * COL_GAP) / Math.max(1, cols))));
+  const { placed, heads, bands, width, height, lines, finalIds } = useMemo(() => layout(main, CARD_W), [rows, CARD_W]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <section className="panel e2-panel br-bracket">
       <div className="e2-panel-head">
         <h2>{t("Playoffs")}</h2>
       </div>
-      <div className="br-scroll">
+      <div className="br-scroll" ref={measure}>
         <div className="br-box" style={{ width, height }}>
           {bands.map((y) => (
             <span key={y} className="br-band" style={{ top: y, width }} aria-hidden />
@@ -376,7 +385,8 @@ function Bracket({ rows, mine, onTeam, onMatch }: { rows: ResultRow[]; mine: Set
           </svg>
           {placed.map((p) => (
             <div key={p.m.matchId} className="br-at" style={{ left: p.x, top: p.y, width: CARD_W }}>
-              <MatchCard m={p.m} mine={mine} onTeam={onTeam} onOpen={() => onMatch(p.m.matchId)} />
+              {finalIds.has(p.m.matchId) && <Champion m={p.m} />}
+              <MatchCard m={p.m} mine={mine} final={finalIds.has(p.m.matchId)} onTeam={onTeam} onOpen={() => onMatch(p.m.matchId)} />
             </div>
           ))}
         </div>
@@ -399,7 +409,21 @@ function Bracket({ rows, mine, onTeam, onMatch }: { rows: ResultRow[]; mine: Set
 
 /** One match, two rows: each team with its score in a box, the winner's
  *  lit; a match to come says when under it. */
-function MatchCard({ m, mine, onTeam, onOpen }: { m: ResultRow; mine: Set<number>; onTeam: (id: number) => void; onOpen: () => void }) {
+/** Over a played final: who won the division, in gold. */
+function Champion({ m }: { m: ResultRow }) {
+  const o = outcome(m);
+  if (!o) return null;
+  const team = o.win === m.clan1.id ? m.clan1 : m.clan2;
+  return (
+    <span className="br-champ">
+      <MedalGlyph size={16} place={1} />
+      <span>{t("Champion")}</span>
+      <strong>{team.name}</strong>
+    </span>
+  );
+}
+
+function MatchCard({ m, mine, final, onTeam, onOpen }: { m: ResultRow; mine: Set<number>; final?: boolean; onTeam: (id: number) => void; onOpen: () => void }) {
   const o = outcome(m);
   const side = (x: ResultRow["clan1"], score: number | null) => (
     <div className={`br-side${o?.win === x.id ? " won" : o?.lose === x.id ? " lost" : ""}${mine.has(x.id) ? " mine" : ""}`}>
@@ -420,7 +444,7 @@ function MatchCard({ m, mine, onTeam, onOpen }: { m: ResultRow; mine: Set<number
   return (
     <>
       <article
-        className={played(m) ? "br-card" : "br-card todo"}
+        className={`br-card${played(m) ? "" : " todo"}${final ? " final" : ""}`}
         role="link"
         tabIndex={0}
         onClick={onOpen}
