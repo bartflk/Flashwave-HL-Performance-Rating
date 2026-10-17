@@ -353,6 +353,18 @@ export interface RecruitPost {
   link: string;
 }
 
+/** A recruitment post as its page shows it: message, dates, comments. */
+export interface RecruitDetail {
+  link: string;
+  posted: number | null;
+  postedBy: string | null;
+  lastOnline: number | null;
+  /** The message as HTML, built into the page like a news post. */
+  html: string;
+  history: Array<{ action: string; team: string; teamId: number | null; time: number | null }>;
+  comments: Array<{ author: string; teams: string; time: number | null; html: string }>;
+}
+
 export interface Recruitment {
   players: RecruitPost[];
   teams: RecruitPost[];

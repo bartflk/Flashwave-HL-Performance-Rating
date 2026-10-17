@@ -95,6 +95,13 @@ export function NewsReader({ id }: { id: number }) {
   );
 }
 
+/** Some of ETF2L's HTML (a recruitment post, a comment), built the same way
+ *  as a news post. */
+export function HtmlBody({ html, className = "np-body" }: { html: string; className?: string }) {
+  const body = useMemo(() => build(html), [html]);
+  return <div className={className}>{body}</div>;
+}
+
 /** A link's target made absolute; null for anything but http(s). */
 function absolute(href: string | null): string | null {
   if (!href) return null;

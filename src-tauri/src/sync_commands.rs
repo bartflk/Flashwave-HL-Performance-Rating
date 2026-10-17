@@ -1566,6 +1566,13 @@ pub async fn get_recruitment(state: State<'_, AppState>) -> CmdResult<hl_ingest:
     Ok(hl_ingest::recruitment::latest(&state.db, &state.sources).await?)
 }
 
+/// One recruitment post as its etf2l.org page has it: the message, when it
+/// was posted, the comments (the API carries none of these).
+#[tauri::command]
+pub async fn get_recruit_post(state: State<'_, AppState>, id: i64) -> CmdResult<Option<hl_ingest::recruitment::RecruitDetail>> {
+    Ok(hl_ingest::recruitment::detail(&state.sources, id).await?)
+}
+
 /// Every official of one season, played or to come (Q74's fixtures by week).
 #[tauri::command]
 pub async fn get_season_results(state: State<'_, AppState>, season: i64) -> CmdResult<Vec<hl_db::ResultRow>> {

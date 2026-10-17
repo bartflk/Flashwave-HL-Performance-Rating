@@ -55,6 +55,7 @@ import type {
   TeamHit,
   LeagueMatch,
   Recruitment,
+  RecruitDetail,
   NewLogs,
   MatchSides,
   Stay,
@@ -1280,6 +1281,23 @@ export const mockApi: Api = {
   },
   // ETF2L's Highlander recruitment, 17 October 2026.
   getRecruitment: () => delay(recruitment as unknown as Recruitment),
+  // Two posts as etf2l.org drew them on 17 October 2026.
+  getRecruitPost: (id: number) =>
+    delay<RecruitDetail | null>({
+      link: `https://etf2l.org/recruitment/${id}/`,
+      posted: Math.floor(Date.now() / 1000) - 26 * 3600,
+      postedBy: id % 2 === 0 ? "wavy" : null,
+      lastOnline: Math.floor(Date.now() / 1000) - 3 * 3600,
+      html: "<p>looking for a MAIN spot in a GOATED team with high ambitions</p><p>hmu on discord: 420slammer</p>",
+      history: [
+        { action: "Joined", team: "ЭТО МОЁ БОЛОТО [Highlander]", teamId: 37921, time: 1785362973 },
+        { action: "Left", team: "strawberry frosted donut [Highlander]", teamId: 37657, time: 1781608150 },
+      ],
+      comments: [
+        { author: "MEGA BABOON", teams: "MNHT", time: Math.floor(Date.now() / 1000) - 20 * 3600, html: "<p>beast</p>" },
+        { author: "bluR-", teams: "JOLLY - MPREG", time: Math.floor(Date.now() / 1000) - 16 * 3600, html: "<p>great guy deserves a goat team</p>" },
+      ],
+    }),
   // A season from the tables' teams: each division's teams paired off week by
   // week, the past ones scored, the rest still to come.
   getSeasonResults: (season: number) => {

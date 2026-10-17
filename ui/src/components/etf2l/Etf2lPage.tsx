@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { Fixture, ResultRow, SeasonTile } from "../../api/types";
+import type { Fixture, RecruitPost, ResultRow, SeasonTile } from "../../api/types";
 import { formatDate } from "../../lib/format";
 import { hasPendingPlayer, onOpenSeason, onOpenTeam, onPlayerAsked, openPlayer, takePendingSeason, takePendingTeam } from "../../lib/goto";
 import { t, tx } from "../../lib/i18n";
@@ -12,7 +12,7 @@ import { YourTeamsCompact, YourTeamsStrip, useYourTeams } from "../teams/YourTea
 import { Countdown, clockTime, fullDate } from "./Countdown";
 import { NewsCard, NewsList, NewsReader, useNews } from "./News";
 import { FixtureRow, LeagueMatchPage, MatchesPage, SeasonFixtures } from "./Matches";
-import { RecruitPreview, RecruitmentPage } from "./Recruitment";
+import { RecruitPostPage, RecruitPreview, RecruitmentPage, type Kind as RecruitKind } from "./Recruitment";
 import "../teams/teams.css";
 import "./etf2l.css";
 
@@ -41,12 +41,14 @@ type Loc =
   | { at: "players" }
   | { at: "news" }
   | { at: "recruitment" }
+  | { at: "recruit"; post: RecruitPost; kind: RecruitKind }
   | { at: "post"; id: number };
 
 /** The menu entry a place belongs to: a team under whatever it was opened from. */
 function sectionOf(l: Loc): Section {
   if (l.at === "season") return "seasons";
   if (l.at === "post") return "news";
+  if (l.at === "recruit") return "recruitment";
   if (l.at === "team" || l.at === "match") return sectionOf(l.from);
   return l.at;
 }
@@ -158,7 +160,8 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
           <SeasonFixtures season={loc.season} onTeam={openTeam} onMatch={(id) => openMatch(id)} />
         </>
       )}
-      {loc.at === "recruitment" && <RecruitmentPage onTeam={openTeam} />}
+      {loc.at === "recruitment" && <RecruitmentPage onOpen={(post, kind) => go({ at: "recruit", post, kind })} />}
+      {loc.at === "recruit" && <RecruitPostPage key={loc.post.id} p={loc.post} kind={loc.kind} onTeam={openTeam} />}
       {loc.at === "team" && <TeamScreen key={loc.teamId} teamId={loc.teamId} onTeam={openTeam} />}
       {loc.at === "teams" && <TeamsLanding onTeam={openTeam} />}
       {playersSeen && (
@@ -194,6 +197,9 @@ function Crumbs({ loc, go }: { loc: Loc; go: (l: Loc) => void }) {
     } else if (l.at === "match") {
       add(l.from);
       trail.push([matchTitle ?? t("Match"), l]);
+    } else if (l.at === "recruit") {
+      trail.push([t("Recruitment"), { at: "recruitment" }]);
+      trail.push([l.post.name, l]);
     } else if (l.at === "post") {
       trail.push([t("News"), { at: "news" }]);
       trail.push([post?.title ?? t("Post"), l]);
@@ -395,7 +401,7 @@ function Home({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: 
         <YourSeason season={latest?.season ?? null} fixtures={fixtures} onTeam={onTeam} onMatch={onMatch} />
         <DivisionLeaders season={latest?.season ?? null} onTeam={onTeam} go={go} />
         <RecentResults onTeam={onTeam} onMatch={onMatch} go={go} />
-        <RecruitPreview onAll={() => go({ at: "recruitment" })} onTeam={onTeam} />
+        <RecruitPreview onAll={() => go({ at: "recruitment" })} onOpen={(post, kind) => go({ at: "recruit", post, kind })} />
       </aside>
     </div>
   );
