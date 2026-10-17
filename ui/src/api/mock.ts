@@ -1242,6 +1242,7 @@ export const mockApi: Api = {
         tier: 2,
         round: r.round,
         week: null,
+        stage: r.stage,
         clan1: { id: 37805, name: "DD14", avatar: "https://etf2l.org/wp-content/uploads/avatars/6a18b9b147176.png" },
         clan2: { id: r.opponentId, name: r.opponent, avatar: null },
         r1: r.scoreFor,
@@ -1264,6 +1265,7 @@ export const mockApi: Api = {
       tier: 1,
       round: r.round,
       week: null,
+      stage: r.stage,
       clan1: { id: 37805, name: "DD14", avatar: base.avatar },
       clan2: { id: r.opponentId, name: r.opponent, avatar: null },
       r1: r.scoreFor,
@@ -1298,37 +1300,60 @@ export const mockApi: Api = {
         { author: "bluR-", teams: "JOLLY - MPREG", time: Math.floor(Date.now() / 1000) - 16 * 3600, html: "<p>great guy deserves a goat team</p>" },
       ],
     }),
-  // A season from the tables' teams: each division's teams paired off week by
-  // week, the past ones scored, the rest still to come.
+  // A season from the tables' teams: five weeks of groups, then playoffs as
+  // ETF2L runs them -- the top three divisions a four-team double
+  // elimination, Low and Open an eight-team single elimination and a 3rd
+  // place match. The higher seed wins, except where a score says otherwise;
+  // the last round is still to come.
   getSeasonResults: (season: number) => {
     const v = leagues as unknown as LeagueView;
     const now = Math.floor(Date.now() / 1000);
     const rows: ResultRow[] = [];
     let id = 900000;
+    type T = LeagueView["divisions"][number]["teams"][number];
+    const team = (x: T) => ({ id: x.teamId, name: x.name, avatar: x.avatar });
+    const add = (division: string, tier: number, stage: string, round: string, week: number | null, at: number, a: T, b: T, aWins: boolean | null) => {
+      rows.push({
+        matchId: id++,
+        time: at,
+        season,
+        division,
+        tier: stage === "regular" ? tier : null,
+        round,
+        week,
+        stage,
+        clan1: team(a),
+        clan2: team(b),
+        r1: aWins === null ? null : aWins ? 6 : 2,
+        r2: aWins === null ? null : aWins ? 2 : 6,
+        defaultWin: false,
+      });
+      return aWins === null ? null : aWins ? [a, b] : [b, a];
+    };
     v.divisions.forEach((d, di) => {
       const ts = d.teams;
-      for (let week = 1; week <= 7; week++) {
+      const t0 = now - 8 * 7 * 86400 + di * 3600;
+      for (let week = 1; week <= 5; week++) {
         for (let i = 0; i + 1 < ts.length; i += 2) {
           const a = ts[(i + week) % ts.length];
           const b = ts[(i + week + 1) % ts.length];
-          if (a.teamId === b.teamId) continue;
-          const time = now + (week - 5) * 7 * 86400 + di * 3600;
-          const played = time < now;
-          rows.push({
-            matchId: id++,
-            time,
-            season,
-            division: d.division,
-            tier: di,
-            round: week <= 5 ? `Week ${week}` : week === 6 ? "Quarter Finals" : "Semi Finals",
-            week: week <= 5 ? week : null,
-            clan1: { id: a.teamId, name: a.name, avatar: a.avatar },
-            clan2: { id: b.teamId, name: b.name, avatar: b.avatar },
-            r1: played ? (week + i) % 3 === 0 ? 2 : 4 : null,
-            r2: played ? (week + i) % 3 === 0 ? 4 : 2 : null,
-            defaultWin: false,
-          });
+          if (a.teamId !== b.teamId) add(d.division, di, "regular", `Week ${week}`, week, t0 + (week - 1) * 7 * 86400, a, b, ts.indexOf(a) < ts.indexOf(b));
         }
+      }
+      const at = (k: number) => t0 + (5 + k) * 7 * 86400;
+      if (di < 3 && ts.length >= 4) {
+        // Upper Bracket Final (1 v 2), Lower Bracket Semi (3 v 4), then the
+        // loser of the first against the winner of the second, then the final.
+        const [ubW, ubL] = add(d.division, di, "regular", "Upper Bracket Final", 6, at(0), ts[0], ts[1], false)!;
+        const [lsW] = add(d.division, di, "regular", "Lower Bracket Semi Final", 7, at(1), ts[2], ts[3], true)!;
+        const lf = add(d.division, di, "regular", "Lower Bracket Final", 8, at(2), ubL, lsW, true)!;
+        add(d.division, di, "regular", "Grand Final", 9, di === 0 ? now + 3 * 86400 : at(3), ubW, lf[0], di === 0 ? null : true);
+      } else if (ts.length >= 8) {
+        const qf = [0, 3, 2, 1].map((k) => add(d.division, di, "Playoffs", "Quarter Final", 1, at(0), ts[k], ts[7 - k], k !== 3)!);
+        const sf1 = add(d.division, di, "Playoffs", "Semi-Finals", 2, at(1), qf[0][0], qf[1][0], true)!;
+        const sf2 = add(d.division, di, "Playoffs", "Semi-Finals", 2, at(1), qf[2][0], qf[3][0], false)!;
+        add(d.division, di, "3rd Place", "3rd Place", 1, at(2), sf1[1], sf2[1], true);
+        add(d.division, di, "Playoffs", "Grand Final", 3, now + 2 * 86400, sf1[0], sf2[0], null);
       }
     });
     return delay(rows.sort((x, y) => x.time - y.time));

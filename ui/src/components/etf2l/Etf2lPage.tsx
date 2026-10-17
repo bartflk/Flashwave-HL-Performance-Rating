@@ -13,6 +13,7 @@ import { YourTeamsCompact, YourTeamsStrip, useYourTeams } from "../teams/YourTea
 import { Countdown, clockTime, fullDate } from "./Countdown";
 import { NewsCard, NewsList, NewsReader, useNews } from "./News";
 import { FixtureRow, LeagueMatchPage, MatchesPage, SeasonFixtures } from "./Matches";
+import { SeasonDivisions, laneOf } from "./Brackets";
 import { RecruitPostPage, RecruitPreview, RecruitmentPage, type Kind as RecruitKind } from "./Recruitment";
 import "../teams/teams.css";
 import "./etf2l.css";
@@ -157,7 +158,8 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
       {loc.at === "seasons" && <SeasonsGrid onSeason={(season) => go({ at: "season", season })} />}
       {loc.at === "season" && (
         <>
-          <SeasonScreen season={loc.season} onTeam={openTeam} />
+          <SeasonScreen season={loc.season} onTeam={openTeam} tables={false} />
+          <SeasonDivisions season={loc.season} onTeam={openTeam} onMatch={(id) => openMatch(id)} />
           <SeasonFixtures season={loc.season} onTeam={openTeam} onMatch={(id) => openMatch(id)} />
         </>
       )}
@@ -332,15 +334,29 @@ function place(n: number): string {
   return n === 1 ? t("1st") : n === 2 ? t("2nd") : n === 3 ? t("3rd") : t("{0}th", { "0": n });
 }
 
-/** The stage the season is at: the round most of the coming week's officials are in. */
-function stageOf(fixtures: Fixture[], season: number): string | null {
+/** Where the season is (Flashy: group stage or playoffs?): read from the
+ *  coming week's officials -- their round names and competitions, as the
+ *  brackets read them. A season whose lower divisions are in their playoffs
+ *  while the top ones still play groups gives both, playoffs first. */
+function stagesOf(fixtures: Fixture[], season: number): Array<{ phase: string; round: string | null }> {
   const soon = fixtures.filter((f) => f.season === season && dayOffset(f.time) <= 7);
-  const count = new Map<string, number>();
-  for (const f of soon) {
-    const k = f.week !== null ? t("Week {0}", { "0": f.week }) : f.round;
-    if (k) count.set(k, (count.get(k) ?? 0) + 1);
-  }
-  return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  const lane = (f: Fixture) =>
+    laneOf({ round: f.round, stage: /3rd place/i.test(f.competition) ? "3rd Place" : /playoffs/i.test(f.competition) ? "Playoffs" : "regular" });
+  const label = (f: Fixture) => (lane(f) === "group" ? (f.week !== null ? t("Week {0}", { "0": f.week }) : f.round) : f.round);
+  const top = (list: Fixture[]) => {
+    const count = new Map<string, number>();
+    for (const f of list) {
+      const k = label(f);
+      if (k) count.set(k, (count.get(k) ?? 0) + 1);
+    }
+    return [...count.entries()].sort((x, y) => y[1] - x[1])[0]?.[0] ?? null;
+  };
+  const playoffs = soon.filter((f) => lane(f) !== "group");
+  const groups = soon.filter((f) => lane(f) === "group");
+  const out: Array<{ phase: string; round: string | null }> = [];
+  if (playoffs.length > 0) out.push({ phase: t("Playoffs"), round: top(playoffs) });
+  if (groups.length > 0) out.push({ phase: t("Group stage"), round: top(groups) });
+  return out;
 }
 
 function Home({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: (id: number, f?: Fixture) => void; go: (l: Loc) => void }) {
@@ -414,7 +430,7 @@ function SeasonStrip({ tile, fixtures, go }: { tile: SeasonTile; fixtures: Fixtu
   // Live while it still has officials coming, or ended in the last few days:
   // a lower division's final is played first and does not end the season.
   const live = fixtures.some((f) => f.season === tile.season) || tile.to * 1000 > Date.now() - 3 * 86_400_000;
-  const stage = live ? stageOf(fixtures, tile.season) : null;
+  const stages = live ? stagesOf(fixtures, tile.season) : [];
   const upcoming = fixtures.filter((f) => f.season === tile.season).length;
   return (
     <section className={`e2-strip ${banner ? "" : "e2-strip-plain"}`} style={banner ? { backgroundImage: `url("${banner}")` } : undefined}>
@@ -428,12 +444,12 @@ function SeasonStrip({ tile, fixtures, go }: { tile: SeasonTile; fixtures: Fixtu
           {formatDate(tile.from, true)} – {formatDate(tile.to, true)}
         </span>
         <div className="e2-strip-stats">
-          {stage && (
-            <span>
-              <strong>{stage}</strong>
-              <em>{t("now")}</em>
+          {stages.map((st) => (
+            <span key={st.phase}>
+              <strong>{st.phase}</strong>
+              <em>{st.round ?? t("now")}</em>
             </span>
-          )}
+          ))}
           <span>
             <strong>{tile.teams}</strong>
             <em>{t("teams")}</em>

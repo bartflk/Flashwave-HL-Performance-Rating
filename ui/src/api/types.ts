@@ -330,6 +330,8 @@ export interface ResultRow {
   tier: number | null;
   round: string | null;
   week: number | null;
+  /** "regular", "Playoffs", "3rd Place", "Qualifiers", "Cup". */
+  stage: string;
   clan1: { id: number; name: string; avatar: string | null };
   clan2: { id: number; name: string; avatar: string | null };
   r1: number | null;

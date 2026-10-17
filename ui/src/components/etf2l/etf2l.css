@@ -899,3 +899,108 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
 .rc-history .e2-team span { white-space: normal; }
 .e2-leader-won { display: inline-flex; align-items: center; }
 .e2-leaders-key { margin: 0; font-size: 0.76rem; }
+
+/* ---- A division's group stage and bracket -------------------------------- */
+.br-divs .div-badge { pointer-events: none; }
+.br-divs > button { padding: 6px 10px; }
+
+/* The group stage: standings, then a result per week. */
+.br-table td,
+.br-table th { padding-top: 6px; padding-bottom: 6px; }
+.br-table .e2-team span { max-width: 240px; }
+.br-week { min-width: 54px; color: var(--muted); }
+.br-mine td { background: rgba(var(--accent-rgb), 0.07); }
+.br-mine td:first-child { box-shadow: inset 3px 0 0 var(--tf2-tan); }
+.br-cell {
+  display: inline-block;
+  min-width: 46px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 5px;
+  background: rgba(var(--text-rgb), 0.04);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+.br-cell.won { background: rgba(127, 179, 106, 0.18); color: #a9d695; }
+.br-cell.lost { background: rgba(214, 92, 84, 0.16); color: #e79a93; }
+.br-cell.drawn { background: rgba(var(--muted-rgb), 0.2); color: var(--text); }
+.br-cell.todo { font-weight: 500; }
+.br-cell.none { background: none; cursor: default; color: var(--faint); }
+.br-cell:hover:not(.none) { outline: 1px solid var(--line-2); }
+
+/* The bracket: rounds as columns, lines drawn over them. */
+.br-scroll { overflow-x: auto; margin: 0 -4px; padding: 4px; }
+.br-box { position: relative; min-width: max-content; }
+.br-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.br-lines path { fill: none; stroke: var(--line-2); stroke-width: 1.6; }
+.br-lines path.loser { stroke-dasharray: 4 4; opacity: 0.7; }
+.br-lines path.mine { stroke: var(--tf2-tan); stroke-width: 2.2; }
+.br-grid {
+  display: grid;
+  grid-template-rows: auto auto auto;
+  column-gap: 56px;
+  row-gap: 18px;
+  align-items: stretch;
+}
+.br-head {
+  font: 700 0.76rem var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tf2-tan);
+  padding-bottom: 2px;
+}
+.br-col { display: flex; flex-direction: column; justify-content: space-around; gap: 14px; }
+.br-final { justify-content: center; }
+.br-lower { padding-top: 10px; border-top: 1px dashed var(--border); }
+.br-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 220px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.br-card:hover { border-color: var(--line-2); }
+.br-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.br-side { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 10px; }
+.br-side + .br-side { border-top: 1px solid var(--border); }
+.br-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+.br-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px; }
+.br-team:hover { color: var(--tf2-tan); background: none; }
+.br-side.won .br-team { color: var(--text); font-weight: 700; }
+.br-side.lost .br-team { opacity: 0.75; }
+.br-side.mine .br-team span { color: var(--tf2-tan); }
+.br-score { font: 700 0.98rem var(--font-display); font-variant-numeric: tabular-nums; color: var(--muted); min-width: 1.2em; text-align: right; }
+.br-side.won .br-score { color: var(--text); }
+.br-when { display: flex; justify-content: space-between; gap: 8px; padding: 5px 10px; border-top: 1px solid var(--border); font-size: 0.76rem; color: var(--muted); }
+.br-key { display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; }
+.br-key-line { display: inline-block; width: 22px; border-top: 2px solid var(--line-2); margin-left: 6px; }
+.br-key-line.loser { border-top-style: dashed; }
+.br-third { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--border); }
+.br-third-row { display: flex; flex-wrap: wrap; gap: 14px; }
+.br-third-row .br-card { width: 260px; }

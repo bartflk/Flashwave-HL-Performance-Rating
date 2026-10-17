@@ -184,7 +184,9 @@ function SeasonCard({ s, live, onOpen }: { s: SeasonTile; live: boolean; onOpen:
 
 // ---- 2. One season: podiums, then the division tables ----------------
 
-export function SeasonScreen({ season, onTeam }: { season: number; onTeam: (id: number) => void }) {
+/** `tables` off where the page draws each division itself (the ETF2L tab's
+ *  group stage and bracket). */
+export function SeasonScreen({ season, onTeam, tables: showTables = true }: { season: number; onTeam: (id: number) => void; tables?: boolean }) {
   const tiles = useQuery({ queryKey: ["seasons_overview"], queryFn: api.getSeasonsOverview, staleTime: 5 * 60_000 });
   const tile = tiles.data?.find((s) => s.season === season);
   const tables = useQuery({ queryKey: ["leagues", season], queryFn: () => api.getLeagues(season), placeholderData: keepPreviousData });
@@ -246,9 +248,9 @@ export function SeasonScreen({ season, onTeam }: { season: number; onTeam: (id: 
         </section>
       )}
 
-      <h2 className="ts-section">{t("Divisions")}</h2>
-      {tables.isError && <p className="error">{errorMessage(tables.error)}</p>}
-      {v && v.divisions.length > 0 && (
+      {showTables && <h2 className="ts-section">{t("Divisions")}</h2>}
+      {showTables && tables.isError && <p className="error">{errorMessage(tables.error)}</p>}
+      {showTables && v && v.divisions.length > 0 && (
         <div className="teams-divisions">
           {v.divisions.map((d) => (
             <section key={d.division} className="panel ts-division">
@@ -288,7 +290,7 @@ export function SeasonScreen({ season, onTeam }: { season: number; onTeam: (id: 
           ))}
         </div>
       )}
-      {v && v.pendingDetails > 0 && <p className="hint">{t("{0} matches still to be read in detail; the per-map numbers fill in over the next syncs.", { "0": v.pendingDetails })}</p>}
+      {showTables && v && v.pendingDetails > 0 && <p className="hint">{t("{0} matches still to be read in detail; the per-map numbers fill in over the next syncs.", { "0": v.pendingDetails })}</p>}
     </>
   );
 }

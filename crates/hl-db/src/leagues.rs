@@ -458,6 +458,8 @@ pub struct ResultRow {
     pub tier: Option<i64>,
     pub round: Option<String>,
     pub week: Option<i64>,
+    /// "regular", "Playoffs", "3rd Place", "Qualifiers", "Cup".
+    pub stage: String,
     pub clan1: TeamRef,
     pub clan2: TeamRef,
     pub r1: Option<i64>,
@@ -517,7 +519,10 @@ pub struct MatchLog {
     pub stored: bool,
 }
 
-const RESULT_SELECT: &str = "SELECT m.match_id, m.time, c.season, m.division, m.tier, m.round, m.week, m.r1, m.r2, m.default_win,
+// A playoff kept as its own competition ("Low Playoffs") has no division on
+// its matches: the competition's is theirs.
+const RESULT_SELECT: &str = "SELECT m.match_id, m.time, c.season, COALESCE(m.division, NULLIF(c.division, '')) AS division, m.tier, m.round, m.week, c.stage,
+        m.r1, m.r2, m.default_win,
         m.clan1_id, t1.name AS n1, t1.avatar AS a1, m.clan2_id, t2.name AS n2, t2.avatar AS a2
    FROM etf2l_season_match m
    JOIN etf2l_competition c ON c.competition_id = m.competition_id
@@ -534,6 +539,7 @@ fn result_row(r: &sqlx::sqlite::SqliteRow) -> ResultRow {
         tier: r.get("tier"),
         round: r.get("round"),
         week: r.get("week"),
+        stage: r.get("stage"),
         clan1: TeamRef { id: r.get("clan1_id"), name: r.get::<Option<String>, _>("n1").unwrap_or_default(), avatar: r.get("a1") },
         clan2: TeamRef { id: r.get("clan2_id"), name: r.get::<Option<String>, _>("n2").unwrap_or_default(), avatar: r.get("a2") },
         r1: r.get("r1"),
@@ -697,6 +703,11 @@ mod tests {
         assert_eq!(t.iter().map(|x| x.team_id).collect::<Vec<_>>(), vec![2, 1], "prefix first");
         assert_eq!((t[1].officials, t[1].last_season), (2, Some(36)));
         assert_eq!(db.search_teams("%", 10).await.unwrap().len(), 1, "a % is a character, not a wildcard");
+        sqlx::query("INSERT INTO etf2l_competition (competition_id, season, season_name, division, stage, name, fetched_at) VALUES (2, 36, 'Autumn 2026', 'Low', 'Playoffs', 'HL 36 Low Playoffs', 0)").execute(db.pool()).await.unwrap();
+        sqlx::query("INSERT INTO etf2l_season_match (match_id, competition_id, time, clan1_id, clan2_id, r1, r2, round) VALUES (13, 2, 600, 3, 4, 6, 0, 'Grand Final')").execute(db.pool()).await.unwrap();
+        let playoff = db.league_match(13).await.unwrap().unwrap();
+        assert_eq!((playoff.division.as_deref(), playoff.stage.as_str()), (Some("Low"), "Playoffs"), "the competition's division");
+        sqlx::query("DELETE FROM etf2l_season_match WHERE match_id = 13").execute(db.pool()).await.unwrap();
         let s = db.season_results(36).await.unwrap();
         assert_eq!(s.iter().map(|x| x.match_id).collect::<Vec<_>>(), vec![10, 11, 12], "the whole season, the unplayed one too");
         assert!(db.season_results(35).await.unwrap().is_empty());

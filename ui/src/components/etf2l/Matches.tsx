@@ -13,6 +13,7 @@ import { DivisionBadge } from "../players/PlayerProfile";
 import { TeamAvatar, useFixtures, wl } from "../teams/TeamsPage";
 import { useYourTeams } from "../teams/YourTeams";
 import { Countdown, clockTime, fullDate } from "./Countdown";
+import { laneOf } from "./Brackets";
 
 /**
  * The ETF2L tab's Matches (Q74, Flashy; PLAN §27): what is coming, with a
@@ -401,6 +402,7 @@ function fromFixture(f: Fixture): ResultRow {
     tier: f.tier,
     round: f.round,
     week: f.week,
+    stage: "regular",
     clan1: f.clan1,
     clan2: f.clan2,
     r1: null,
@@ -477,6 +479,8 @@ function Meetings({ m, fx, head }: { m: LeagueMatch | null | undefined; fx?: Fix
 
 /** What a round is called in the list: "Week 3", or the playoff stage. */
 function roundOf(r: ResultRow): string {
+  // A playoff round by its name: its week number is the playoffs' own.
+  if (laneOf(r) !== "group" && r.round) return r.round;
   return r.week !== null ? t("Week {0}", { "0": r.week }) : (r.round ?? t("Unscheduled"));
 }
 
