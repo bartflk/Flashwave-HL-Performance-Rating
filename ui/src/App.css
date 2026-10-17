@@ -629,7 +629,7 @@
   letter-spacing: 0.06em;
   color: var(--muted);
   padding: 10px 12px;
-  background: var(--panel);
+  background: color-mix(in srgb, var(--accent) 7%, var(--panel));
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
@@ -648,11 +648,13 @@
 }
 
 .match-table tbody tr:nth-child(even) {
-  background: #201b18;
+  background: color-mix(in srgb, var(--text) 4%, var(--bg));
 }
 
+/* Gravel's browns were written here as colours, so on every other theme
+   every second row came out brown (Flashy's audit): the theme's own now. */
 .match-table tbody tr:hover {
-  background: #2b2420;
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
 }
 
 .num {

@@ -677,7 +677,7 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(90deg, rgba(14, 11, 9, 0.92) 0%, rgba(14, 11, 9, 0.72) 45%, rgba(14, 11, 9, 0.35) 100%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--bg) 88%, transparent) 0%, color-mix(in srgb, var(--bg) 62%, transparent) 45%, color-mix(in srgb, var(--bg) 25%, transparent) 100%);
 }
 .e2-strip-plain { background: linear-gradient(135deg, var(--panel-2), var(--panel)); }
 .e2-strip-text { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -704,7 +704,7 @@
 .e2-strip-stats em { font-style: normal; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(244, 236, 226, 0.65); }
 .e2-strip-divs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .e2-strip-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.e2-strip-actions .km-chip { background: rgba(14, 11, 9, 0.6); backdrop-filter: blur(4px); }
+.e2-strip-actions .km-chip { background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(6px); border-color: rgba(255, 255, 255, 0.12); }
 
 /* The officials with their round. */
 .e2-fx.with-round { grid-template-columns: 112px 100px 52px minmax(0, 1fr) minmax(70px, auto) 40px; }
@@ -757,7 +757,7 @@
 
 /* Division leaders. */
 .e2-leaders { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.e2-leaders li { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 0.88rem; }
+.e2-leaders li { display: grid; grid-template-columns: max-content minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 0.88rem; }
 .e2-leader-wl { font-variant-numeric: tabular-nums; color: var(--muted); }
 
 /* ---- Recruitment --------------------------------------------------------- */
@@ -1284,3 +1284,98 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
 .mp-logerr { font-size: 0.76rem; flex-basis: 100%; }
 .e2-logs { flex-direction: column; align-items: flex-start; }
 .mp-logs { flex-direction: column; align-items: flex-start; }
+
+/* ---- The visual pass (Flashy: "some of the texts presented could have a
+   transparent background like the playoffs info", "the tables ... are not
+   styled at all", "more color variance") ---- */
+
+/* Text on a banner sits on smoked glass, so a bright map shot behind it
+   never washes it out. */
+.e2-strip-text {
+  padding: 14px 18px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.e2-strip-stats span {
+  padding: 6px 12px 5px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+.e2-strip-stats { gap: 8px; }
+.e2-strip-stats span:first-child { border-color: rgba(var(--accent-rgb), 0.45); background: rgba(var(--accent-rgb), 0.14); }
+
+/* Lists of officials and results read as a table: alternate rows, a tint
+   on hover, your team's row lit. */
+.e2-fixtures > li:nth-child(even):not(.ours),
+.e2-results-list > li:nth-child(even):not(.ours) { background: color-mix(in srgb, var(--text) 3.5%, transparent); }
+.e2-fixtures > li:hover:not(.ours),
+.e2-results-list > li:hover:not(.ours) { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.e2-fx-h2h { color: var(--accent-soft); }
+
+/* Group stage tables: a coloured header and the top places marked. */
+.br-table tbody tr:nth-child(-n + 2) td:first-child { color: var(--tf2-tan); font-weight: 700; }
+/* Every leader's badge as wide as the widest ("Fresh Meat" was cut off at 52 px). */
+.e2-leaders { display: grid; grid-template-columns: max-content minmax(0, 1fr) auto; column-gap: 10px; row-gap: 8px; }
+.e2-leaders li { display: contents; }
+
+/* ---- The week as a calendar: a column a day, Monday first ---- */
+.e2-cal-nav { display: inline-flex; align-items: center; gap: 6px; }
+.e2-cal-nav .muted { margin-right: 6px; font-size: 0.84rem; }
+.e2-cal-nav .km-chip { min-width: 32px; justify-content: center; }
+.e2-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 1100px) {
+  .e2-cal-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+}
+.e2-cal-day {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 180px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg) 60%, var(--panel));
+}
+.e2-cal-day.past { background: color-mix(in srgb, var(--bg) 80%, var(--panel)); }
+.e2-cal-day.today { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.25); }
+.e2-cal-day header { display: flex; align-items: baseline; gap: 8px; padding: 0 2px 6px; border-bottom: 1px solid var(--border); }
+.e2-cal-wd { font: 700 0.74rem var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.e2-cal-date { font: 700 1.25rem var(--font-display); color: var(--text-hi); }
+.e2-cal-day.today .e2-cal-wd, .e2-cal-day.today .e2-cal-date { color: var(--accent-text); }
+.e2-cal-n { margin-left: auto; padding: 0 7px; border-radius: 999px; background: rgba(var(--accent-rgb), 0.18); color: var(--accent-text); font-size: 0.72rem; font-weight: 700; }
+.e2-cal-none { margin: auto 0; text-align: center; color: var(--faint); font-size: 0.78rem; }
+.e2-cal-day ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.e2-cal-match {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-dim);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+.e2-cal-match:hover { border-color: var(--accent-dim); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+.e2-cal-match.played { border-left-color: var(--line-2); }
+.e2-cal-match.ours { border-left-color: var(--tf2-tan); background: color-mix(in srgb, var(--tf2-tan) 9%, var(--panel)); }
+.e2-cal-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 1px; }
+.e2-cal-time { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--tf2-tan); }
+.e2-cal-top .div-badge { font-size: 0.66rem; padding: 0 6px; }
+.e2-cal-team { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--muted); }
+.e2-cal-team.won { color: var(--text); font-weight: 700; }
+.e2-cal-team .teams-avatar { width: 16px; height: 16px; border-radius: 3px; flex: none; }
+.e2-cal-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e2-cal-score { font-variant-numeric: tabular-nums; font-weight: 700; }
+.e2-cal-match:not(.played) .e2-cal-team { color: var(--text); }

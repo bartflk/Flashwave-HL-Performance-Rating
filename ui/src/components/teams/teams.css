@@ -185,7 +185,7 @@
   background-color: var(--panel-2); background-size: cover; background-position: center 30%; display: flex; align-items: flex-end;
 }
 .ts-hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, var(--panel) 20%, color-mix(in srgb, var(--panel) 60%, transparent) 55%, transparent); }
-.ts-hero-text { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 22px 24px; max-width: 760px; }
+.ts-hero-text { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 18px 22px; max-width: 760px; margin: 14px; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; background: rgba(0, 0, 0, 0.38); backdrop-filter: blur(8px); }
 .ts-pool { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; }
 .ts-pool code { background: rgba(20, 14, 10, 0.55); border: 1px solid var(--border); }
 .ts-pending { border-style: dashed; }

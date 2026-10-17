@@ -493,3 +493,36 @@
 }
 .pp-foot .pp-links a:hover { border-color: var(--accent-dim); color: var(--accent-text); text-decoration: none; }
 .pp-foot .pp-links a span { color: var(--muted); font-size: 0.72rem; }
+
+/* ---- Tables, styled (Flashy's audit): seasons, careers, stats. A tinted
+   header band, alternate rows, a tint on hover, inside a rounded frame. ---- */
+.pp-seasons,
+.pp-career-classes {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--bg) 55%, var(--panel));
+}
+.pp-seasons thead th,
+.pp-career-classes thead th {
+  padding: 9px 10px;
+  border-top: 0;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent) 9%, var(--panel-2));
+  color: var(--text);
+  font: 700 0.72rem var(--font-display);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.pp-seasons tbody td,
+.pp-career-classes tbody td { border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); border-bottom: 0; }
+.pp-seasons tbody tr:first-child td,
+.pp-career-classes tbody tr:first-child td { border-top: 0; }
+.pp-seasons tbody tr:nth-child(even) td,
+.pp-career-classes tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--text) 3.5%, transparent); }
+.pp-seasons tbody tr:hover td,
+.pp-career-classes tbody tr:hover td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.pp-seasons tfoot td,
+.pp-career-classes tfoot td { background: color-mix(in srgb, var(--accent) 6%, var(--panel)); font-weight: 600; border-top: 1px solid var(--border); }

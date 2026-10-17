@@ -781,3 +781,5 @@
 }
 .pf-side .pp-vs { font-size: 0.86rem; }
 .pf-side .pp-achievements li { padding: 8px 0; }
+/* Team history's own heading, dressed like the side column's others. */
+.pf-stays .pp-stays h3 { margin: 0 0 10px; font: 700 0.95rem var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-hi); }

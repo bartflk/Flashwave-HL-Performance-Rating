@@ -15,6 +15,7 @@ import { useYourTeams } from "../teams/YourTeams";
 import { Countdown, clockTime, fullDate } from "./Countdown";
 import { laneOf, tierOf } from "./Brackets";
 import { CommentList } from "./Recruitment";
+import { WeekCalendar } from "./Calendar";
 import { Etf2lMark } from "../Etf2lMark";
 
 /**
@@ -104,7 +105,7 @@ export function ResultLine({ r, mine, onTeam, onOpen }: { r: ResultRow; mine: Se
 
 // ---- The Matches page -----------------------------------------------------
 
-type Mode = "upcoming" | "results";
+type Mode = "upcoming" | "week" | "results";
 
 /** "Today", "Tomorrow" or the date, for a day's heading. */
 function dayLabel(time: number): string {
@@ -137,7 +138,7 @@ export function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void;
   const [onlyMine, setOnlyMine] = useState(false);
   const [limit, setLimit] = useState(60);
   const fixtures = useFixtures();
-  const results = useQuery({ queryKey: ["recent_results", limit], queryFn: () => api.getRecentResults(limit), enabled: mode === "results", placeholderData: keepPreviousData });
+  const results = useQuery({ queryKey: ["recent_results", limit], queryFn: () => api.getRecentResults(limit), enabled: mode !== "upcoming", placeholderData: keepPreviousData });
   const my = new Set(useYourTeams().map((e) => e.teamId));
   const keep = (x: { division: string | null; clan1: { id: number }; clan2: { id: number } }) =>
     (division === "" || x.division === division) && (!onlyMine || my.has(x.clan1.id) || my.has(x.clan2.id));
@@ -162,6 +163,7 @@ export function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void;
           onChange={setMode}
           options={[
             { v: "upcoming", label: tx("Upcoming ({0})", { "0": fixtures.length }) },
+            { v: "week", label: t("Week") },
             { v: "results", label: t("Results") },
           ]}
         />
@@ -204,6 +206,8 @@ export function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void;
             </section>
           ))
         ))}
+
+      {mode === "week" && <WeekCalendar fixtures={upcoming} results={played} mine={my} onMatch={onMatch} />}
 
       {mode === "results" && (
         <>
