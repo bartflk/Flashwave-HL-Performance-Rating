@@ -5,6 +5,7 @@ import { errorMessage, type PresetCheck } from "../api/types";
 import { capitalize } from "../lib/format";
 import { t, tx } from "../lib/i18n";
 import { toast } from "../lib/toast";
+import { Loading } from "./Spinner";
 
 /**
  * Callout presets (Q32, Flashy): one map's callouts as a file to pass round
@@ -108,7 +109,7 @@ export function CalloutImportDialog({ path, map, onClose, onDone }: { path: stri
       <div className="modal">
         <h3>{t("Import callouts")}</h3>
         <p className="hint">{file}</p>
-        {!check && !error && <p className="hint">{t("Reading the file…")}</p>}
+        {!check && !error && <Loading>{t("Reading the file…")}</Loading>}
         {check && (
           <>
             <p>

@@ -11,6 +11,7 @@ import { Seg } from "../analysis/MapChrome";
 import { ClassIcon } from "../ClassIcon";
 import { HtmlBody } from "./News";
 import { Etf2lMark } from "../Etf2lMark";
+import { Loading } from "../Spinner";
 
 /**
  * ETF2L's recruitment, Highlander only (Q74; Flashy: "recruitments would be
@@ -92,7 +93,7 @@ export function RecruitmentPage({ onOpen }: { onOpen: (p: RecruitPost, kind: Kin
           </label>
         )}
       </div>
-      {q.isPending && <p className="hint">{t("Loading recruitment…")}</p>}
+      {q.isPending && <Loading>{t("Loading recruitment…")}</Loading>}
       {q.isError && <p className="error">{errorMessage(q.error)}</p>}
       {q.data && shown.length === 0 && (
         <section className="panel e2-panel">
@@ -208,7 +209,7 @@ export function RecruitPostPage({ p, kind, onTeam }: { p: RecruitPost; kind: Kin
         <div className="e2-main">
           <section className="panel e2-panel">
             <ClassRow p={p} kind={kind} />
-            {q.isPending && <p className="hint">{t("Loading the post…")}</p>}
+            {q.isPending && <Loading>{t("Loading the post…")}</Loading>}
             {q.isError && <p className="error">{errorMessage(q.error)}</p>}
             {q.data === null && <p className="hint">{t("The post could not be read from ETF2L; it may have been removed.")}</p>}
             {d && (d.html.trim() ? <HtmlBody html={d.html} /> : <p className="hint">{t("No message.")}</p>)}

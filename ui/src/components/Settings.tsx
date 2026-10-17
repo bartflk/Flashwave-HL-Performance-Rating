@@ -20,6 +20,7 @@ import { checkForUpdate, installUpdate, restartNow, useUpdate } from "../lib/upd
 import { RELEASES } from "../lib/changelog";
 import { Markdown } from "./Markdown";
 import { clearProblems, markProblemsSeen, report, useProblems } from "../lib/problems";
+import { Spinner } from "./Spinner";
 
 /** The groups of Settings, in order, for the side menu and the page. */
 type Group = { id: string; title: string; sections: { id: string; title: string; icon: IconName }[] };
@@ -341,12 +342,12 @@ function UpdatesPanel({ version }: { version: string }) {
       <div className="row" style={{ marginTop: 10, gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <span>{tx("You have {0}", { "0": <strong>{tr("Version {version}", { version: version })}</strong> })}</span>
         <button onClick={() => void checkForUpdate(true)} disabled={u.state === "checking" || u.state === "downloading"}>
-          {u.state === "checking" ? tr("Checking…") : tr("Check for updates")}
+          {u.state === "checking" ? <><Spinner /> {tr("Checking…")}</> : tr("Check for updates")}
         </button>
       </div>
       <div className="update-status" aria-live="polite">
         {u.state === "checking" && (
-          <p className="hint"><span className="spin" aria-hidden /> {tr("Asking GitHub for the newest release…")}</p>
+          <p className="hint"><Spinner /> {tr("Asking GitHub for the newest release…")}</p>
         )}
         {u.state === "current" && <p className="hint">{tr("Up to date: this is the newest release.")}</p>}
         {u.state === "available" && (
@@ -358,7 +359,7 @@ function UpdatesPanel({ version }: { version: string }) {
         {u.state === "downloading" && (
           <>
             <p className="hint">
-              <span className="spin" aria-hidden /> {tr("Downloading {version}…", { version: u.version })}
+              <Spinner /> {tr("Downloading {version}…", { version: u.version })}
               {u.total ? ` ${Math.round((u.got / u.total) * 100)}%` : ""}
             </p>
             <span className="dl-bar" aria-hidden>
@@ -1041,7 +1042,7 @@ function DownloadedDemosPanel() {
 
       {items.length === 0 ? (
         <p className="hint" style={{ marginTop: 14 }}>
-          {q.isPending ? tr("Looking…") : tr("None downloaded yet.")}
+          {q.isPending ? <><Spinner /> {tr("Looking…")}</> : tr("None downloaded yet.")}
         </p>
       ) : (
         <>

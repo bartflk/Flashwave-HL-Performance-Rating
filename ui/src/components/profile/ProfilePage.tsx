@@ -33,6 +33,7 @@ import { Fold } from "../Fold";
 import "./profile.css";
 import { t, tx, k } from "../../lib/i18n";
 import { classLabel } from "../analysis/common";
+import { Loading } from "../Spinner";
 
 /** Below this many rated games a profile is shown, but flagged as thin. */
 const THIN_SAMPLE = 20;
@@ -64,7 +65,7 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
   const me = useOwnProfile(steamid);
   const ownAccount = steamid ? accountOf(steamid) : null;
 
-  if (q.isPending) return <div className="profile-page"><p className="hint">{t("Loading profile…")}</p></div>;
+  if (q.isPending) return <div className="profile-page"><Loading>{t("Loading profile…")}</Loading></div>;
   if (q.isError) return <div className="profile-page"><p className="error">{errorMessage(q.error)}</p></div>;
 
   const { classes, profile, fights } = q.data;

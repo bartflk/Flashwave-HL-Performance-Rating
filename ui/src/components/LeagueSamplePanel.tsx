@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { errorMessage } from "../api/types";
 import { locale, t } from "../lib/i18n";
+import { Spinner } from "./Spinner";
 
 /**
  * The league sample (Flashy): officials from every ETF2L division, fetched
@@ -175,7 +176,7 @@ function ActivityBar() {
     <div className={`league-activity league-${a.state}`} role="status" aria-live="polite">
       <div className="league-activity-top">
         <span className="league-state">
-          {a.state === "working" && <span className="spin" aria-hidden style={{ display: "inline-block" }} />}
+          {a.state === "working" && <Spinner />}
           {stateLabel(a.state)}
         </span>
         <span className="league-doing">{line}</span>

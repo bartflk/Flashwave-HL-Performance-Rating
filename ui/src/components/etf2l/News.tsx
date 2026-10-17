@@ -6,6 +6,7 @@ import { errorMessage } from "../../api/types";
 import { formatDate } from "../../lib/format";
 import { openTeam } from "../../lib/goto";
 import { t } from "../../lib/i18n";
+import { Loading } from "../Spinner";
 
 /**
  * ETF2L's Highlander news, read in the app (Q74; Flashy: "if it's available
@@ -31,7 +32,7 @@ export function NewsList({ onPost }: { onPost: (id: number) => void }) {
         <span className="ts-eyebrow">{t("ETF2L Highlander")}</span>
         <h1>{t("News")}</h1>
       </header>
-      {q.isPending && <p className="hint">{t("Loading the news…")}</p>}
+      {q.isPending && <Loading>{t("Loading the news…")}</Loading>}
       {q.isError && <p className="error">{errorMessage(q.error)}</p>}
       {q.data && items.length === 0 && <p className="hint">{t("No news could be read from ETF2L just now.")}</p>}
       {items.length > 0 && (
@@ -75,7 +76,7 @@ export function NewsCard({ n, lead, onOpen }: { n: NewsItem; lead?: boolean; onO
 export function NewsReader({ id }: { id: number }) {
   const q = useQuery({ queryKey: ["etf2l_news_post", id], queryFn: () => api.getNewsPost(id), staleTime: 30 * 60_000 });
   const body = useMemo(() => (q.data ? build(q.data.html) : null), [q.data]);
-  if (q.isPending) return <p className="hint">{t("Loading the post…")}</p>;
+  if (q.isPending) return <Loading>{t("Loading the post…")}</Loading>;
   if (q.isError) return <p className="error">{errorMessage(q.error)}</p>;
   if (!q.data) return <p className="hint">{t("That post could not be read from ETF2L.")}</p>;
   const p = q.data;

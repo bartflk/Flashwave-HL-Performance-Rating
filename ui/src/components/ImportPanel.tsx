@@ -5,6 +5,7 @@ import { errorMessage, type FailedLog, type Imported } from "../api/types";
 import { formatDate } from "../lib/format";
 import { t, tx } from "../lib/i18n";
 import { DemoImport } from "./DemoImport";
+import { Spinner } from "./Spinner";
 
 /**
  * Logs that would not import, and a way to add one by hand.
@@ -117,7 +118,7 @@ export function ImportPanel() {
           style={{ flex: 1, minWidth: 0 }}
         />
         <button disabled={busy || !text.trim()} onClick={() => void add(text)}>
-          {busy ? t("Fetching…") : t("Add it")}
+          {busy ? <><Spinner /> {t("Fetching…")}</> : t("Add it")}
         </button>
       </div>
 

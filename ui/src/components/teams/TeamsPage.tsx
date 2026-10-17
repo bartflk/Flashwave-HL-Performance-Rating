@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type Fixture, type LeagueRecord, type Podium, type SeasonTile, type Stay, type TeamEtf2l, type TeamHonours, type TeamInfo, type TeamTransfers, type TeamView } from "../../api/types";
+import { errorMessage, type Fixture, type LeagueRecord, type LeagueTableRow, type Podium, type SeasonTile, type Stay, type TeamEtf2l, type TeamHonours, type TeamInfo, type TeamTransfers, type TeamView } from "../../api/types";
 import { formatDate, formatMonth, formatStay, rating } from "../../lib/format";
 import { openLeagueMatch, openPlayer } from "../../lib/goto";
 import { BookmarkButton } from "../Bookmarks";
@@ -15,6 +15,8 @@ import "../players/players.css";
 import "./teams.css";
 import { YouOnThisTeam } from "./YourTeams";
 import { Etf2lMark } from "../Etf2lMark";
+import { Loading } from "../Spinner";
+import { SortTh, useSort } from "../../lib/sort";
 
 /**
  * The league's screens (Q29, and Flashy's UX passes), shown inside the ETF2L
@@ -89,7 +91,7 @@ export function SeasonsGrid({ onSeason }: { onSeason: (season: number) => void }
         <h1>{t("Seasons")}</h1>
         <p className="hint">{t("Pick a season for its podiums, its divisions and every team in them.")}</p>
       </header>
-      {q.isPending && <p className="hint">{t("Loading seasons…")}</p>}
+      {q.isPending && <Loading>{t("Loading seasons…")}</Loading>}
       {q.isError && <p className="error">{errorMessage(q.error)}</p>}
       {q.data && q.data.length === 0 && (
         <section className="panel">
@@ -235,7 +237,7 @@ export function SeasonScreen({ season, onTeam, tables: showTables = true }: { se
       )}
 
       <h2 className="ts-section">{t("Podiums")}</h2>
-      {podiums.isPending && <p className="hint">{t("Loading podiums…")}</p>}
+      {podiums.isPending && <Loading>{t("Loading podiums…")}</Loading>}
       {podiums.data && podiums.data.length === 0 && (
         <section className="panel ts-pending">
           <p className="hint">{t("No final has been played yet this season. The podiums appear here as each division finishes.")}</p>
@@ -256,37 +258,7 @@ export function SeasonScreen({ season, onTeam, tables: showTables = true }: { se
           {v.divisions.map((d) => (
             <section key={d.division} className="panel ts-division">
               <h3>{d.division}</h3>
-              <div className="table-wrap">
-                <table className="match-table teams-table">
-                  <thead>
-                    <tr>
-                      <th className="num">#</th>
-                      <th>{t("Team")}</th>
-                      <th className="num">{t("Played")}</th>
-                      <th className="num">{t("W-L")}</th>
-                      <th className="num">{t("Score")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {d.teams.map((row, i) => (
-                      <tr key={row.teamId} className="teams-row" onClick={() => onTeam(row.teamId)} title={t("Open {0}", { "0": row.name })}>
-                        <td className="num muted">{i + 1}</td>
-                        <td>
-                          <span className="teams-name">
-                            <TeamAvatar src={row.avatar} />
-                            <span>{row.name}</span>
-                          </span>
-                        </td>
-                        <td className="num">{row.record.played}</td>
-                        <td className="num nowrap">{wl(row.record)}</td>
-                        <td className="num nowrap">
-                          {row.scoreFor}:{row.scoreAgainst}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DivisionTable d={d} onTeam={onTeam} />
             </section>
           ))}
         </div>
@@ -343,7 +315,7 @@ export function TeamScreen({ teamId, onTeam }: { teamId: number; onTeam: (id: nu
   const [tab, setTab] = useState<TeamTab>("overview");
   return (
     <>
-      {q.isPending && <p className="hint">{t("Loading team…")}</p>}
+      {q.isPending && <Loading>{t("Loading team…")}</Loading>}
       {q.isError && <p className="error">{errorMessage(q.error)}</p>}
       {q.data === null && (
         <>
@@ -643,8 +615,6 @@ function MapBars({ maps }: { maps: TeamView["maps"] }) {
   );
 }
 
-type Sort = "officials" | "rating" | "name";
-
 /** Every player who played for the team: all seasons, or one, sorted. */
 function Lineup({ v, roles }: { v: TeamView; roles: Map<number, string> }) {
   const seasons = useMemo(() => {
@@ -653,17 +623,21 @@ function Lineup({ v, roles }: { v: TeamView; roles: Map<number, string> }) {
     return [...set].sort((a, b) => order(b) - order(a));
   }, [v]);
   const [season, setSeason] = useState<number | null>(null);
-  const [sort, setSort] = useState<Sort>("officials");
-  const rows = v.roster
+  const all = v.roster
     .map((r) => {
       if (season === null) return { r, officials: r.matches, cls: r.class, rating: r.rating };
       const s = (r.seasons ?? []).find((x) => x.season === season);
       return s ? { r, officials: s.officials, cls: s.class, rating: s.rating } : null;
     })
-    .filter((x): x is NonNullable<typeof x> => x !== null && x.officials > 0)
-    .sort((a, b) =>
-      sort === "name" ? a.r.name.localeCompare(b.r.name) : sort === "rating" ? (b.rating ?? -1) - (a.rating ?? -1) || b.officials - a.officials : b.officials - a.officials || (b.rating ?? -1) - (a.rating ?? -1),
-    );
+    .filter((x): x is NonNullable<typeof x> => x !== null && x.officials > 0);
+  // Most officials first until a header says otherwise (Q79).
+  const sort = useSort(
+    "team-lineup",
+    all,
+    { name: (x) => x.r.name, class: (x) => (x.cls ? classLabel(x.cls) : null), officials: (x) => x.officials, last: (x) => x.r.lastPlayed || null, rating: (x) => x.rating },
+    { key: "officials", dir: "desc" },
+  );
+  const rows = sort.sorted;
   const best = Math.max(1.4, ...rows.map((x) => x.rating ?? 0));
   return (
     <>
@@ -678,30 +652,17 @@ function Lineup({ v, roles }: { v: TeamView; roles: Map<number, string> }) {
             </button>
           ))}
         </div>
-        <div className="segmented" role="tablist" aria-label={t("Sort by")}>
-          {(
-            [
-              ["officials", t("Officials")],
-              ["rating", t("Rating")],
-              ["name", t("Name")],
-            ] as [Sort, string][]
-          ).map(([id, label]) => (
-            <button key={id} role="tab" aria-selected={sort === id} className={sort === id ? "seg active" : "seg"} onClick={() => setSort(id)}>
-              {label}
-            </button>
-          ))}
-        </div>
       </div>
       <p className="hint">{t("Class: what they played for this team in its officials. Rating: their average on it in those officials.")}</p>
       <div className="table-wrap">
         <table className="match-table ts-lineup-table">
           <thead>
             <tr>
-              <th>{t("Player")}</th>
-              <th>{t("Class")}</th>
-              <th className="num">{t("Officials")}</th>
-              <th className="num">{t("Last played")}</th>
-              <th>{t("Rating")}</th>
+              <SortTh k="name" s={sort}>{t("Player")}</SortTh>
+              <SortTh k="class" s={sort}>{t("Class")}</SortTh>
+              <SortTh k="officials" s={sort} className="num">{t("Officials")}</SortTh>
+              <SortTh k="last" s={sort} className="num">{t("Last played")}</SortTh>
+              <SortTh k="rating" s={sort}>{t("Rating")}</SortTh>
             </tr>
           </thead>
           <tbody>
@@ -753,7 +714,7 @@ function stayLength(s: Stay, now: number): number {
 
 function RosterHistory({ teamId, etf2lUrl, roles }: { teamId: number; etf2lUrl: string | undefined; roles: Map<number, string> }) {
   const q = useQuery({ queryKey: ["team_transfers", teamId], queryFn: () => api.getTeamTransfers(teamId), staleTime: 60 * 60_000 });
-  if (q.isPending) return <p className="hint">{t("Reading the team's transfers from ETF2L…")}</p>;
+  if (q.isPending) return <Loading>{t("Reading the team's transfers from ETF2L…")}</Loading>;
   if (q.isError) return <p className="error">{errorMessage(q.error)}</p>;
   const v: TeamTransfers = q.data;
   if (v.rows.length === 0) return <p className="hint">{t("ETF2L lists no transfers for this team.")}</p>;
@@ -869,20 +830,26 @@ function order(season: number): number {
 }
 
 function Seasons({ honours, etf2l, info }: { honours: TeamHonours | undefined; etf2l: TeamEtf2l | undefined; info: TeamInfo | undefined }) {
-  if (!honours) return <p className="hint">{t("Loading…")}</p>;
+  const sort = useSort("team-seasons", honours?.seasons ?? [], {
+    season: (x) => order(x.season),
+    division: (x) => (x.tier === null ? null : -x.tier),
+    wl: (x) => (x.won + x.lost > 0 ? x.won / (x.won + x.lost) : null),
+    place: (x) => (x.place ? -x.place : null),
+  });
+  if (!honours) return <Loading>{t("Loading…")}</Loading>;
   return (
     <div className="ts-seasons-tab">
       <table className="pp-seasons">
         <thead>
           <tr>
-            <th>{t("Season")}</th>
-            <th>{t("Division")}</th>
-            <th className="num">{t("W–L")}</th>
-            <th>{t("Finish")}</th>
+            <SortTh k="season" s={sort}>{t("Season")}</SortTh>
+            <SortTh k="division" s={sort}>{t("Division")}</SortTh>
+            <SortTh k="wl" s={sort} className="num">{t("W–L")}</SortTh>
+            <SortTh k="place" s={sort}>{t("Finish")}</SortTh>
           </tr>
         </thead>
         <tbody>
-          {honours.seasons.map((s) => (
+          {sort.sorted.map((s) => (
             <tr key={s.season}>
               <td>{s.season >= 100 ? s.seasonName : <>S{s.season} <span className="muted">{s.seasonName}</span></>}</td>
               <td>{s.tier !== null ? <DivisionBadge d={{ name: s.division, tier: s.tier }} /> : s.division}</td>
@@ -1014,17 +981,25 @@ function Results({ v, onTeam }: { v: TeamView; onTeam: (id: number) => void }) {
   );
 }
 
-function ResultsTable({ rows, onTeam }: { rows: TeamView["results"]; onTeam: (id: number) => void }) {
+function ResultsTable({ rows: all, onTeam }: { rows: TeamView["results"]; onTeam: (id: number) => void }) {
+  const sort = useSort("team-results", all, {
+    date: (r) => r.time,
+    season: (r) => order(r.season),
+    against: (r) => r.opponent,
+    map: (r) => r.maps[0] ?? null,
+    score: (r) => (r.scoreFor === null || r.scoreAgainst === null ? null : r.scoreFor - r.scoreAgainst),
+  });
+  const rows = sort.sorted;
   return (
     <div className="table-wrap">
       <table className="match-table">
         <thead>
           <tr>
-            <th>{t("Date")}</th>
-            <th>{t("Season")}</th>
-            <th>{t("Against")}</th>
-            <th>{t("Map")}</th>
-            <th className="num">{t("Score")}</th>
+            <SortTh k="date" s={sort}>{t("Date")}</SortTh>
+            <SortTh k="season" s={sort}>{t("Season")}</SortTh>
+            <SortTh k="against" s={sort}>{t("Against")}</SortTh>
+            <SortTh k="map" s={sort}>{t("Map")}</SortTh>
+            <SortTh k="score" s={sort} className="num" title={t("Sorts by the map difference")}>{t("Score")}</SortTh>
             <th />
           </tr>
         </thead>
@@ -1074,4 +1049,49 @@ export function wl(r: LeagueRecord): string {
 
 function pct(r: LeagueRecord): number | null {
   return r.played > 0 ? Math.round((100 * r.won) / r.played) : null;
+}
+
+/** One division's table of a season, sortable (Q79). */
+function DivisionTable({ d, onTeam }: { d: { division: string; teams: LeagueTableRow[] }; onTeam: (id: number) => void }) {
+  const rows = d.teams.map((row, i) => ({ row, place: i + 1 }));
+  const sort = useSort("season-division", rows, {
+    place: (x) => -x.place,
+    team: (x) => x.row.name,
+    played: (x) => x.row.record.played,
+    wl: (x) => (x.row.record.won + x.row.record.lost > 0 ? x.row.record.won / (x.row.record.won + x.row.record.lost) : null),
+    score: (x) => x.row.scoreFor - x.row.scoreAgainst,
+  });
+  return (
+    <div className="table-wrap">
+      <table className="match-table teams-table">
+        <thead>
+          <tr>
+            <SortTh k="place" s={sort} className="num">#</SortTh>
+            <SortTh k="team" s={sort}>{t("Team")}</SortTh>
+            <SortTh k="played" s={sort} className="num">{t("Played")}</SortTh>
+            <SortTh k="wl" s={sort} className="num">{t("W-L")}</SortTh>
+            <SortTh k="score" s={sort} className="num" title={t("Maps won and lost; sorts by the difference")}>{t("Score")}</SortTh>
+          </tr>
+        </thead>
+        <tbody>
+          {sort.sorted.map(({ row, place }) => (
+            <tr key={row.teamId} className="teams-row" onClick={() => onTeam(row.teamId)} title={t("Open {0}", { "0": row.name })}>
+              <td className="num muted">{place}</td>
+              <td>
+                <span className="teams-name">
+                  <TeamAvatar src={row.avatar} />
+                  <span>{row.name}</span>
+                </span>
+              </td>
+              <td className="num">{row.record.played}</td>
+              <td className="num nowrap">{wl(row.record)}</td>
+              <td className="num nowrap">
+                {row.scoreFor}:{row.scoreAgainst}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }

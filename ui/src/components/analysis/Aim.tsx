@@ -4,6 +4,7 @@ import { errorMessage, type Analysis, type AimRow, type AimTotals, type DeathRow
 import { AimCharts } from "./AimCharts";
 import { classLabel, playerMap, sliceLabel, sliceScope, type Slice } from "./common";
 import { t, t as tr, tx, k } from "../../lib/i18n";
+import { Loading } from "../Spinner";
 
 /**
  * Classes whose kills land where the crosshair was. For everyone else the
@@ -49,7 +50,7 @@ export function Aim(props: {
   const who = names.get(player)?.name ?? "that player";
   const cls = a.players.find((p) => p.accountId === player)?.mainClass ?? null;
 
-  if (q.isPending) return <p className="hint an-empty">{t("Reading the demo…")}</p>;
+  if (q.isPending) return <Loading className="an-empty">{t("Reading the demo…")}</Loading>;
   if (q.isError) return <p className="error">{errorMessage(q.error)}</p>;
   const d = q.data;
   if (!d || (d.kills.length === 0 && d.deaths.length === 0)) {

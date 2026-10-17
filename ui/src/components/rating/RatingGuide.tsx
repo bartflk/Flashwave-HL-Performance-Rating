@@ -6,6 +6,7 @@ import { ClassIcon } from "../ClassIcon";
 import { classLabel } from "../analysis/common";
 import { t, tx } from "../../lib/i18n";
 import "./rating.css";
+import { Loading } from "../Spinner";
 
 /**
  * How ratings work (Flashy): every class, what its rating is made of, and
@@ -50,7 +51,7 @@ export function RatingGuidePage({ onBack }: { onBack: () => void }) {
         )}
       </header>
 
-      {q.isPending && <p className="hint">{t("Loading…")}</p>}
+      {q.isPending && <Loading>{t("Loading…")}</Loading>}
       {q.isError && <p className="error">{errorMessage(q.error)}</p>}
       {q.data && (
         <>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type CatDivision, type Etf2lRoster, type Medal, type Mvp, type PlayerProfile as Profile } from "../../api/types";
+import { errorMessage, type Career, type CatDivision, type Etf2lRoster, type Medal, type Mvp, type PlayerProfile as Profile } from "../../api/types";
 import { formatDate, formatMonth, formatStay } from "../../lib/format";
 import { openLeagueMatch } from "../../lib/goto";
 import { ClassIcon } from "../ClassIcon";
@@ -14,6 +14,8 @@ import { BookmarkButton } from "../Bookmarks";
 import { LivesOnMapTab } from "./LivesOnMap";
 import { Etf2lMark } from "../Etf2lMark";
 import { LogsTfCareer } from "./LogsTfCareer";
+import { SortTh, useSort } from "../../lib/sort";
+import { Loading } from "../Spinner";
 
 /**
  * A player's profile, HLTV-style (Q35, Flashy; PLAN §26): who they are,
@@ -31,7 +33,7 @@ const PLACE = ["gold", "silver", "bronze"] as const;
 export function PlayerProfile({ accountId, yours }: { accountId: number; yours: React.ReactNode }) {
   const q = useQuery({ queryKey: ["player_profile", accountId], queryFn: () => api.getPlayerProfile(accountId) });
   const [tab, setTab] = useState<Tab>("overview");
-  if (q.isPending) return <div className="panel"><p className="hint">{t("Loading…")}</p></div>;
+  if (q.isPending) return <div className="panel"><Loading>{t("Loading…")}</Loading></div>;
   if (q.isError) return <div className="panel"><p className="error">{errorMessage(q.error)}</p></div>;
   const p = q.data;
   return (
@@ -414,7 +416,7 @@ export function RecentOfficials({ p, count = 10 }: { p: Profile; count?: number 
  */
 export function TrendsCareer({ accountId }: { accountId: number }) {
   const q = useQuery({ queryKey: ["trends_career", accountId], queryFn: () => api.getTrendsCareer(accountId), staleTime: 60 * 60_000 });
-  if (q.isPending) return <p className="hint">{t("Reading trends.tf…")}</p>;
+  if (q.isPending) return <Loading>{t("Reading trends.tf…")}</Loading>;
   if (q.isError) return <p className="hint">{errorMessage(q.error)}</p>;
   const v = q.data;
   const c = v.career;
@@ -431,35 +433,7 @@ export function TrendsCareer({ accountId }: { accountId: number }) {
         {c.winrate !== null && <span>· {tx("{0}% won", { "0": c.winrate.toFixed(1) })}</span>}{" "}
         <span className="muted">· {tx("{0} h in officials", { "0": hours(c.timeS) })}</span>
       </p>
-      <table className="pp-career-classes">
-        <thead>
-          <tr>
-            <th>{t("Class")}</th>
-            <th className="num">{t("W–L–T")}</th>
-            <th className="num">{t("Won")}</th>
-            <th className="num" title={t("Damage per minute")}>{t("DPM")}</th>
-            <th className="num" title={t("Accuracy")}>{t("Acc")}</th>
-            <th className="num">{t("Hours")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {c.classes
-            .filter((x) => x.timeS >= 600)
-            .slice(0, 6)
-            .map((x) => (
-              <tr key={x.class}>
-                <td>
-                  <ClassIcon cls={x.class} size={16} /> {classLabel(x.class)}
-                </td>
-                <td className="num">{x.wins + x.losses + x.ties > 0 ? `${x.wins}–${x.losses}–${x.ties}` : "–"}</td>
-                <td className="num">{x.winrate !== null ? `${Math.round(x.winrate)}%` : "–"}</td>
-                <td className="num">{x.dpm ?? "–"}</td>
-                <td className="num">{x.accuracy !== null ? `${x.accuracy}%` : "–"}</td>
-                <td className="num">{hours(x.timeS)}</td>
-              </tr>
-            ))}
-        </tbody>
-      </table>
+      <TrendsClasses classes={c.classes.filter((x) => x.timeS >= 600).slice(0, 6)} />
       <p className="hint pp-career-foot">
         {v.error && <>{v.error} · </>}
         {v.fetchedAt !== null && <>{tx("Read {0}", { "0": formatDate(v.fetchedAt, true) })} · </>}
@@ -506,21 +480,34 @@ export function TeamStays({ accountId }: { accountId: number }) {
 }
 
 /** Their teams, season by season. */
+/** A season's place in time, for sorting: 134 (AFA 2025, after Season 34)
+ *  falls between 34 and 35, as `leagues::season_order` has it. */
+export function seasonOrder(season: number): number {
+  return season >= 100 ? (season - 100) * 2 + 1 : season * 2;
+}
+
 export function SeasonsTable({ p }: { p: Profile }) {
+  const sort = useSort("player-seasons", p.seasons, {
+    season: (s) => seasonOrder(s.season),
+    team: (s) => s.team.name,
+    division: (s) => (s.tier === null ? null : -s.tier),
+    record: (s) => (s.won + s.lost > 0 ? s.won / (s.won + s.lost) : null),
+    place: (s) => (s.place ? -s.place : null),
+  });
   if (p.seasons.length === 0) return <p className="hint">{t("No ETF2L official in the seasons read.")}</p>;
   return (
     <table className="pp-seasons">
       <thead>
         <tr>
-          <th>{t("Season")}</th>
-          <th>{t("Team")}</th>
-          <th>{t("Division")}</th>
-          <th>{t("Record")}</th>
-          <th>{t("Placing")}</th>
+          <SortTh k="season" s={sort}>{t("Season")}</SortTh>
+          <SortTh k="team" s={sort}>{t("Team")}</SortTh>
+          <SortTh k="division" s={sort}>{t("Division")}</SortTh>
+          <SortTh k="record" s={sort}>{t("Record")}</SortTh>
+          <SortTh k="place" s={sort}>{t("Placing")}</SortTh>
         </tr>
       </thead>
       <tbody>
-        {p.seasons.map((s) => (
+        {sort.sorted.map((s) => (
           <tr key={`${s.season}-${s.team.id}`}>
             <td>
               {s.season >= 100 ? s.seasonName : <>S{s.season} <span className="muted">{s.seasonName}</span></>}
@@ -587,5 +574,46 @@ export function Achievements({ medals, mvps }: { medals: Medal[]; mvps: Mvp[] })
         </li>
       ))}
     </ul>
+  );
+}
+
+/** trends.tf's numbers by class, sortable (Q79). */
+function TrendsClasses({ classes }: { classes: Career["classes"] }) {
+  const hours = (s: number) => Math.round(s / 3600);
+  const sort = useSort("trends-classes", classes, {
+    class: (x) => classLabel(x.class),
+    wlt: (x) => x.wins + x.losses + x.ties,
+    won: (x) => x.winrate,
+    dpm: (x) => x.dpm,
+    acc: (x) => x.accuracy,
+    hours: (x) => x.timeS,
+  });
+  return (
+      <table className="pp-career-classes">
+        <thead>
+          <tr>
+            <SortTh k="class" s={sort}>{t("Class")}</SortTh>
+            <SortTh k="wlt" s={sort} className="num">{t("W–L–T")}</SortTh>
+            <SortTh k="won" s={sort} className="num">{t("Won")}</SortTh>
+            <SortTh k="dpm" s={sort} className="num" title={t("Damage per minute")}>{t("DPM")}</SortTh>
+            <SortTh k="acc" s={sort} className="num" title={t("Accuracy")}>{t("Acc")}</SortTh>
+            <SortTh k="hours" s={sort} className="num">{t("Hours")}</SortTh>
+          </tr>
+        </thead>
+        <tbody>
+          {sort.sorted.map((x) => (
+              <tr key={x.class}>
+                <td>
+                  <ClassIcon cls={x.class} size={16} /> {classLabel(x.class)}
+                </td>
+                <td className="num">{x.wins + x.losses + x.ties > 0 ? `${x.wins}–${x.losses}–${x.ties}` : "–"}</td>
+                <td className="num">{x.winrate !== null ? `${Math.round(x.winrate)}%` : "–"}</td>
+                <td className="num">{x.dpm ?? "–"}</td>
+                <td className="num">{x.accuracy !== null ? `${x.accuracy}%` : "–"}</td>
+                <td className="num">{hours(x.timeS)}</td>
+              </tr>
+          ))}
+        </tbody>
+      </table>
   );
 }

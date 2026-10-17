@@ -19,6 +19,7 @@ import { RecruitPostPage, RecruitPreview, RecruitmentPage, type Kind as RecruitK
 import "../teams/teams.css";
 import "./etf2l.css";
 import { Etf2lMark } from "../Etf2lMark";
+import { Loading } from "../Spinner";
 
 /**
  * The ETF2L tab (Q74, Flashy; PLAN §27): Teams and Players as one tab laid
@@ -671,7 +672,7 @@ function NextMatch({ f, side, onTeam, onOpen }: { f: Fixture; side: number; onTe
 function LatestNews({ go }: { go: (l: Loc) => void }) {
   const q = useNews();
   const items = (q.data ?? []).slice(0, 5);
-  if (q.isPending) return <p className="hint">{t("Loading the news…")}</p>;
+  if (q.isPending) return <Loading>{t("Loading the news…")}</Loading>;
   if (items.length === 0) return null;
   return (
     <section className="e2-block">

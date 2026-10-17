@@ -6,6 +6,7 @@ import { dismissNewLogs, useNewLogs } from "../lib/newlogs";
 import { formatDate } from "../lib/format";
 import { dismissUpdate, installUpdate, restartNow, useUpdate } from "../lib/update";
 import { t, tx } from "../lib/i18n";
+import { Spinner } from "./Spinner";
 
 /**
  * The corner: everything running in the background, one card each.
@@ -146,7 +147,7 @@ function DemoSeenCard() {
       </div>
       <p className="dl-label">{d.fileName}</p>
       <p className="dl-sub">
-        {gaveUp
+        {!gaveUp && <Spinner />} {gaveUp
           ? t("logs.tf has nothing for this match yet. Press Sync once it is uploaded.")
           : d.state === "waiting"
             ? t("Giving the server a few seconds to upload the log…")

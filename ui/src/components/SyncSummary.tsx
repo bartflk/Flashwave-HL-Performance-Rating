@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { eta, startSync, useSyncStatus } from "../lib/sync";
 import { t, tx } from "../lib/i18n";
+import { Spinner } from "./Spinner";
 
 /**
  * What is stored, and the button that fetches more — in the top bar, beside
@@ -38,7 +39,7 @@ export function SyncSummary() {
           {tx("{0} matches{1}{2} official{3}{4}", { "0": <strong>{s.highlander.toLocaleString()}</strong>, "1": <span className="sep">·</span>, "2": <strong>{s.officials}</strong>, "3": s.officials === 1 ? "" : "s", "4": (s.pending > 0 || s.outsideWindow > 0) && !running && <span className="ss-more">•</span> })}
         </span>
       ) : (
-        <span className="ss-counts muted">{t("Loading…")}</span>
+        <span className="ss-counts muted"><Spinner /> {t("Loading…")}</span>
       )}
       <button className="primary ss-sync" onClick={() => void startSync()} disabled={running}>
         {running ? t("Syncing…") : t("Sync")}

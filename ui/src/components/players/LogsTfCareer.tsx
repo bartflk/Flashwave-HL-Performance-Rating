@@ -4,7 +4,9 @@ import type { LogsTfCareer as Career, LogsTfClassCareer } from "../../api/types"
 import { rating } from "../../lib/format";
 import { locale, t, tx } from "../../lib/i18n";
 import { ClassIcon } from "../ClassIcon";
+import { SortTh, useSort } from "../../lib/sort";
 import { classLabel } from "../analysis/common";
+import { Loading } from "../Spinner";
 
 /**
  * Thirteen years of logs.tf in a card (Flashy: "build the bundled logs.tf
@@ -16,7 +18,7 @@ import { classLabel } from "../analysis/common";
  */
 export function LogsTfCareer({ accountId, compact }: { accountId: number; compact?: boolean }) {
   const q = useQuery({ queryKey: ["logstf_career", accountId], queryFn: () => api.logstfCareer(accountId), staleTime: Infinity });
-  if (q.isPending) return <p className="hint">{t("Reading the logs.tf summary…")}</p>;
+  if (q.isPending) return <Loading>{t("Reading the logs.tf summary…")}</Loading>;
   const c = q.data;
   if (!c) return <p className="hint">{t("Not among logs.tf's Highlander regulars: fewer than five Highlander logs, or none.")}</p>;
   const comp = c.classes.filter((x) => x.pool === "competitive");
@@ -45,22 +47,32 @@ export function LogsTfCareer({ accountId, compact }: { accountId: number; compac
 }
 
 function CareerTable({ title, rows, muted }: { title: string; rows: LogsTfClassCareer[]; muted?: boolean }) {
+  const s = useSort(`logstf-${muted ? "pickup" : "comp"}`, rows, {
+    class: (r) => classLabel(r.class),
+    games: (r) => r.games,
+    rating: (r) => r.rating,
+    form: (r) => r.form,
+    best: (r) => r.best,
+    wl: (r) => (r.won + r.lost > 0 ? r.won / (r.won + r.lost) : null),
+    years: (r) => r.lastYear,
+    rank: (r) => (r.rank === null ? null : -r.rank),
+  });
   return (
     <table className={muted ? "pp-seasons lt-table muted-pool" : "pp-seasons lt-table"}>
       <thead>
         <tr>
-          <th>{title}</th>
-          <th className="num">{t("Games")}</th>
-          <th className="num">{t("Rating")}</th>
-          <th className="num">{t("Form")}</th>
-          <th className="num">{t("Best")}</th>
-          <th className="num">{t("W–L")}</th>
-          <th>{t("Years")}</th>
-          <th className="num">{t("Rank")}</th>
+          <SortTh k="class" s={s}>{title}</SortTh>
+          <SortTh k="games" s={s} className="num">{t("Games")}</SortTh>
+          <SortTh k="rating" s={s} className="num">{t("Rating")}</SortTh>
+          <SortTh k="form" s={s} className="num">{t("Form")}</SortTh>
+          <SortTh k="best" s={s} className="num">{t("Best")}</SortTh>
+          <SortTh k="wl" s={s} className="num">{t("W–L")}</SortTh>
+          <SortTh k="years" s={s}>{t("Years")}</SortTh>
+          <SortTh k="rank" s={s} className="num">{t("Rank")}</SortTh>
         </tr>
       </thead>
       <tbody>
-        {rows.map((r) => (
+        {s.sorted.map((r) => (
           <tr key={r.class}>
             <td>
               <span className="lt-class">

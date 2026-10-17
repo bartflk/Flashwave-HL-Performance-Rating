@@ -10,6 +10,7 @@ import { DivisionBadge, PlayerProfile } from "./PlayerProfile";
 import { TopPlayers } from "./PlayerStats";
 import { MedalGlyph } from "./MedalGlyph";
 import { onOpenPlayer, takePendingPlayer } from "../../lib/goto";
+import { Loading, Spinner } from "../Spinner";
 
 /**
  * Look other people up (Q14).
@@ -119,7 +120,7 @@ function Results({
   if (hits.length === 0) {
     return (
       <p className="hint" style={{ marginTop: 14 }}>
-        {loading ? t("Looking…") : t("Nobody by that name in the ETF2L officials read or in your matches.")}
+        {loading ? <><Spinner /> {t("Looking…")}</> : t("Nobody by that name in the ETF2L officials read or in your matches.")}
       </p>
     );
   }
@@ -168,7 +169,7 @@ function PlayerCard({ accountId, onOpenMatch }: { accountId: number; onOpenMatch
   // A regular teammate's line from your side: how you did together.
   const mates = useQuery({ queryKey: ["teammates", true], queryFn: () => api.getTeammates(true), staleTime: 5 * 60_000 });
 
-  if (q.isPending) return <div className="panel"><p className="hint">{t("Loading…")}</p></div>;
+  if (q.isPending) return <div className="panel"><Loading>{t("Loading…")}</Loading></div>;
   if (q.isError) return <div className="panel"><p className="error">{errorMessage(q.error)}</p></div>;
 
   const { summary: s, profile } = q.data!;

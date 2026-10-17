@@ -14,6 +14,7 @@ import { TimelineChart } from "./TimelineChart";
 import "./analysis.css";
 import { t, k } from "../../lib/i18n";
 import { classLabel } from "./common";
+import { Loading } from "../Spinner";
 
 type Tab = "map" | "feed" | "fights" | "spread" | "aim" | "timeline";
 
@@ -39,7 +40,7 @@ export function AnalysisPanel({ d, onlyRounds }: { d: MatchDetail; onlyRounds?: 
       <header className="an-head">
         <h2>{t("Kill by kill")}</h2>
       </header>
-      {q.isPending && <p className="hint">{t("Reading the raw log…")}</p>}
+      {q.isPending && <Loading>{t("Reading the raw log…")}</Loading>}
       {q.isError && <p className="error">{errorMessage(q.error)}</p>}
       {q.data === null && (
         <p className="hint">{t("Raw log not stored yet — run a sync.")}</p>

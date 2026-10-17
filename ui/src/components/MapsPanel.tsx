@@ -6,6 +6,7 @@ import { capitalize, splitMap } from "../lib/format";
 import { t, tx } from "../lib/i18n";
 import { MapAligner } from "./MapAligner";
 import { CalloutPresetButtons } from "./CalloutPresets";
+import { Loading } from "./Spinner";
 
 /**
  * Settings, Maps (Q31, Flashy): every map the app knows, where its top-down
@@ -41,7 +42,7 @@ export function MapsPanel() {
     }
   };
 
-  if (q.isPending) return <div className="panel"><h2>{t("Maps")}</h2><p className="hint">{t("Loading…")}</p></div>;
+  if (q.isPending) return <div className="panel"><h2>{t("Maps")}</h2><Loading>{t("Loading…")}</Loading></div>;
   if (q.isError) return <div className="panel"><h2>{t("Maps")}</h2><p className="error">{errorMessage(q.error)}</p></div>;
 
   // Maps you played, and any map with something of yours; the rest on ask.

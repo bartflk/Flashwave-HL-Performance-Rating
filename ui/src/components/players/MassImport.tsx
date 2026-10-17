@@ -5,6 +5,7 @@ import { errorMessage, type MassBatch, type MassCandidate, type MassRunStep, typ
 import { capitalize, formatDate } from "../../lib/format";
 import { t, tx } from "../../lib/i18n";
 import { ClassIcon } from "../ClassIcon";
+import { Spinner } from "../Spinner";
 
 /**
  * Mass import (Q69, Emiel): find a player's demos on one map on demos.tf,
@@ -169,7 +170,7 @@ function Find({ accountId, map: initialMap, cls, onManage }: { accountId: number
           <div className="progress-fill" style={{ width: `${Math.round(((s.done + (pct ?? 0) / 100) / Math.max(1, s.total)) * 100)}%` }} />
         </div>
         <p className="hint">
-          {s.stage === "log" ? t("Finding its match…") : pct !== null ? tx("Downloading and reading… {0}%", { "0": pct }) : t("Reading…")}
+          {s.stage === "log" ? <><Spinner /> {t("Finding its match…")}</> : pct !== null ? tx("Downloading and reading… {0}%", { "0": pct }) : t("Reading…")}
           {" · "}
           {t("One at a time, about a minute each. You can close this window; it carries on.")}
         </p>
@@ -251,7 +252,8 @@ function Find({ accountId, map: initialMap, cls, onManage }: { accountId: number
       </div>
       {klass && <p className="hint">{t("With a class, demos.tf is asked about each demo in turn (one a second), so a search takes up to a couple of minutes.")}</p>}
       {searching && (
-        <p className="hint">
+        <p className="hint loading">
+          <Spinner />
           {r.search?.step === "listing"
             ? tx("Reading demos.tf's list: page {0}, {1} on this map so far…", { "0": r.search.page, "1": r.search.found })
             : r.search?.step === "classes"

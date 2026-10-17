@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { Rank } from "../../api/types";
@@ -9,6 +9,8 @@ import { t, tx } from "../../lib/i18n";
 import { seasonShort } from "./PlayerProfile";
 import { DivisionBadge } from "./PlayerProfile";
 import "../rating/rating.css";
+import { Loading, Spinner } from "../Spinner";
+import { SortTh, useSort } from "../../lib/sort";
 
 /**
  * Ratings for everyone (Q36, Flashy): a player's rating per class on the
@@ -28,7 +30,7 @@ const GROUP_LABEL: Record<string, string> = {
 export function PlayerStatsCard({ accountId }: { accountId: number }) {
   const q = useQuery({ queryKey: ["player_stats", accountId], queryFn: () => api.getPlayerStats(accountId) });
   const [picked, setPicked] = useState<string | null>(null);
-  if (q.isPending) return <p className="hint">{t("Loading…")}</p>;
+  if (q.isPending) return <Loading>{t("Loading…")}</Loading>;
   if (q.isError || !q.data || q.data.classes.length === 0) {
     return <p className="hint">{t("None of their games are in the logs held, so there is no rating yet.")}</p>;
   }
@@ -134,7 +136,7 @@ export function RankChip({ r, accountId }: { r: Rank; accountId?: number }) {
               : tx("{0} in {1}, Season {2}", { "0": classLabel(r.class), "1": r.division, "2": r.season })}
           </span>
           <span className="rank-pop-sub">{tx("Officials only; {0} or more to be ranked.", { "0": 4 })}</span>
-          {!q.data && <span className="hint">{t("Loading…")}</span>}
+          {!q.data && <span className="hint"><Spinner /> {t("Loading…")}</span>}
           {q.data && (
             <span className="rank-pop-rows">
               {q.data.rows.map((x) => (
@@ -163,6 +165,8 @@ export function TopPlayers({ onPick }: { onPick: (accountId: number) => void }) 
   const [season, setSeason] = useState<number | null>(null);
   const q = useQuery({ queryKey: ["rankings", season, tier, cls], queryFn: () => api.getRankings(season, tier, cls), placeholderData: keepPreviousData });
   const r = q.data;
+  const top = useMemo(() => (r?.rows ?? []).slice(0, 25), [r]);
+  const s = useSort("top-players", top, { rank: (x) => x.rank, name: (x) => x.name, team: (x) => x.team?.name ?? null, games: (x) => x.games, rating: (x) => x.avg });
   return (
     <div className="panel top-players">
       <h2>{t("Top players")}</h2>
@@ -199,15 +203,15 @@ export function TopPlayers({ onPick }: { onPick: (accountId: number) => void }) 
         <table className="pp-seasons tp-table">
           <thead>
             <tr>
-              <th>#</th>
-              <th>{t("Player")}</th>
-              <th>{t("Team")}</th>
-              <th>{t("Officials")}</th>
-              <th>{t("Rating")}</th>
+              <SortTh k="rank" s={s}>#</SortTh>
+              <SortTh k="name" s={s}>{t("Player")}</SortTh>
+              <SortTh k="team" s={s}>{t("Team")}</SortTh>
+              <SortTh k="games" s={s}>{t("Officials")}</SortTh>
+              <SortTh k="rating" s={s}>{t("Rating")}</SortTh>
             </tr>
           </thead>
           <tbody>
-            {r.rows.slice(0, 25).map((x) => (
+            {s.sorted.map((x) => (
               <tr key={x.accountId} className="tp-row" onClick={() => onPick(x.accountId)}>
                 <td>{x.rank}</td>
                 <td>

@@ -17,6 +17,7 @@ import { AnalysisPanel } from "../analysis/AnalysisPanel";
 import { Matchups } from "./Matchups";
 import { RoundTimeline } from "./RoundTimeline";
 import { t, tx } from "../../lib/i18n";
+import { Loading, Spinner } from "../Spinner";
 
 export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void }) {
   const q = useQuery({ queryKey: ["match", logId], queryFn: () => api.getMatch(logId) });
@@ -65,7 +66,7 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
         <span aria-hidden>‹</span> {t("All matches")}
       </button>
 
-      {q.isPending && <p className="hint">{t("Loading match…")}</p>}
+      {q.isPending && <Loading>{t("Loading match…")}</Loading>}
       {q.isError && <p className="error">{errorMessage(q.error)}</p>}
       {q.data === null && (
         <p className="hint">{t("This log is not stored yet. Run a sync, then open it again.")}</p>
@@ -169,7 +170,7 @@ function PartPicker(props: {
           ))}
         </select>
       </label>
-      {fetching && <span className="hint">{t("Fetching…")}</span>}
+      {fetching && <span className="hint"><Spinner /> {t("Fetching…")}</span>}
       {part !== null && !fetching && <span className="hint">{t("this log alone")}</span>}
       {error && <p className="error">{error}</p>}
     </div>

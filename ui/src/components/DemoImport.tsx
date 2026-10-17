@@ -4,6 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../api/client";
 import { errorMessage, type DemoImported } from "../api/types";
 import { t, tx } from "../lib/i18n";
+import { Spinner } from "./Spinner";
 
 /**
  * Q18 (beowulf): a match from a demo alone, for a server that had no
@@ -54,7 +55,7 @@ export function DemoImport() {
         <button disabled={busy} onClick={() => void pick()}>
           {busy ? (
             <>
-              <span className="spin" aria-hidden style={{ display: "inline-block", verticalAlign: "-2px" }} /> {t("Reading the demo…")}
+              <Spinner /> {t("Reading the demo…")}
             </>
           ) : (
             t("Pick a demo…")

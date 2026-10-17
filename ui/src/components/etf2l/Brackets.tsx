@@ -10,6 +10,7 @@ import { useMeasuredWidth } from "../../lib/measure";
 import { TeamAvatar, useFixtures } from "../teams/TeamsPage";
 import { useYourTeams } from "../teams/YourTeams";
 import { clockTime, Countdown, fullDate } from "./Countdown";
+import { Loading } from "../Spinner";
 
 /**
  * Each division of a season, as ETF2L runs it (Flashy: "bracket and group
@@ -100,7 +101,7 @@ export function SeasonDivisions({ season, onTeam, onMatch }: { season: number; o
   const yours = divisions.find((d) => rows.some((m) => m.division === d && (mine.has(m.clan1.id) || mine.has(m.clan2.id))));
   const [picked, setPicked] = useState<string | null>(null);
   const division = picked && divisions.includes(picked) ? picked : (yours ?? divisions[0]);
-  if (q.isPending) return <p className="hint">{t("Loading the divisions…")}</p>;
+  if (q.isPending) return <Loading>{t("Loading the divisions…")}</Loading>;
   if (divisions.length === 0) return null;
   const here = rows.filter((m) => m.division === division);
   const group = here.filter((m) => laneOf(m) === "group");

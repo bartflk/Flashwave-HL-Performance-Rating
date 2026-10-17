@@ -6,6 +6,7 @@ import { capitalize, formatDate } from "../../lib/format";
 import { k, t, tx } from "../../lib/i18n";
 import { ClassIcon } from "../ClassIcon";
 import { MassImportButton } from "./MassImport";
+import { Loading } from "../Spinner";
 
 /**
  * A player's lives on one map (Q57, Emiel): pick a map and a class, and
@@ -108,7 +109,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
       return next;
     });
 
-  if (mapsQ.isPending) return <p className="hint">{t("Loading…")}</p>;
+  if (mapsQ.isPending) return <Loading>{t("Loading…")}</Loading>;
   if (mapsQ.isError) return <p className="error">{errorMessage(mapsQ.error)}</p>;
   if (maps.length === 0) {
     return (
@@ -227,7 +228,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
           {lastN !== null && <> {tx("Only the last {0} of them with this class and side.", { "0": recent.matches })}</>}
         </p>
       )}
-      {livesQ.isPending && <p className="hint">{t("Reading the routes…")}</p>}
+      {livesQ.isPending && <Loading>{t("Reading the routes…")}</Loading>}
       {livesQ.isError && <p className="error">{errorMessage(livesQ.error)}</p>}
 
       {v && <Drawing lives={shown} overview={overviewQ.data ?? null} hover={hover} onHover={setHover} mode={mode} />}

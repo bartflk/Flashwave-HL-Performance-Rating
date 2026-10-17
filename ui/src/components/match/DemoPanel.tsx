@@ -7,6 +7,7 @@ import { copy } from "../../lib/toast";
 import { beginDownload, failDownload, useDownload } from "../../lib/downloads";
 import { beforeDemosTf } from "../../lib/stv";
 import { locale, t, tx } from "../../lib/i18n";
+import { Spinner } from "../Spinner";
 
 /**
  * Demo linking: the demos behind this match, and two ways to add one --
@@ -350,7 +351,7 @@ function DropZone({ d }: { d: MatchDetail }) {
     >
       {busy ? (
         <>
-          <span className="spin" aria-hidden style={{ display: "inline-block" }} />
+          <Spinner />
           <strong>{t("Reading the demo…")}</strong>
           <span className="hint">{t("Checking it is this match, then linking it.")}</span>
         </>

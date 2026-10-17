@@ -17,6 +17,7 @@ import { laneOf, tierOf } from "./Brackets";
 import { CommentList } from "./Recruitment";
 import { WeekCalendar } from "./Calendar";
 import { Etf2lMark } from "../Etf2lMark";
+import { Loading, Spinner } from "../Spinner";
 
 /**
  * The ETF2L tab's Matches (Q74, Flashy; PLAN §27): what is coming, with a
@@ -212,7 +213,7 @@ export function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void;
 
       {mode === "results" && (
         <>
-          {results.isPending && <p className="hint">{t("Loading results…")}</p>}
+          {results.isPending && <Loading>{t("Loading results…")}</Loading>}
           {results.isError && <p className="error">{errorMessage(results.error)}</p>}
           {results.data && played.length === 0 && (
             <section className="panel e2-panel">
@@ -234,7 +235,7 @@ export function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void;
           ))}
           {results.data && results.data.length >= limit && (
             <button className="km-chip e2-loadmore" onClick={() => setLimit((l) => l + 60)} disabled={results.isFetching}>
-              {results.isFetching ? t("Loading…") : t("Show older results")}
+              {results.isFetching ? <><Spinner /> {t("Loading…")}</> : t("Show older results")}
             </button>
           )}
         </>
@@ -257,14 +258,14 @@ export function LeagueMatchPage({ matchId, fixture, onTeam, onOpenLog }: { match
   const page = pq.data ?? null;
   const fromList = useFixtures().find((f) => f.matchId === matchId);
   const fx = fixture ?? fromList;
-  if (q.isPending) return <p className="hint">{t("Loading the match…")}</p>;
+  if (q.isPending) return <Loading>{t("Loading the match…")}</Loading>;
   if (q.isError) return <p className="error">{errorMessage(q.error)}</p>;
   const m = q.data;
   // Known to the database (played or listed in its season), to ETF2L's list
   // of scheduled matches, or only to its own page on etf2l.org: a player's
   // or team's older officials, from before the seasons read.
   const head = m ?? (fx ? fromFixture(fx) : page ? fromPage(matchId, page) : null);
-  if (!head) return pq.isPending ? <p className="hint">{t("Reading the match's page on ETF2L…")}</p> : <p className="hint">{t("This match is not in the officials read so far.")}</p>;
+  if (!head) return pq.isPending ? <Loading>{t("Reading the match's page on ETF2L…")}</Loading> : <p className="hint">{t("This match is not in the officials read so far.")}</p>;
   const played = head.r1 !== null || head.defaultWin;
   const time = fx?.time ?? head.time;
   const maps = m?.maps ?? [];
@@ -426,7 +427,7 @@ export function LeagueMatchPage({ matchId, fixture, onTeam, onOpenLog }: { match
               {page.comments.length === 0 ? <p className="hint">{t("No comments yet.")}</p> : <CommentList comments={page.comments} />}
             </section>
           )}
-          {pq.isPending && <p className="hint">{t("Reading the match's page on ETF2L…")}</p>}
+          {pq.isPending && <Loading>{t("Reading the match's page on ETF2L…")}</Loading>}
         </div>
         <aside className="e2-rail">
           {page && <ScheduleCard page={page} />}
@@ -533,7 +534,7 @@ function Joined({ p }: { p: LineupPlayer }) {
 function RecentLineup({ teamId }: { teamId: number }) {
   const q = useQuery({ queryKey: ["team", teamId], queryFn: () => api.getTeam(teamId) });
   const rows: TeamRosterRow[] = (q.data?.roster ?? []).slice().sort((x, y) => y.lastPlayed - x.lastPlayed);
-  if (q.isPending) return <p className="hint">{t("Loading…")}</p>;
+  if (q.isPending) return <Loading>{t("Loading…")}</Loading>;
   const last = rows[0]?.lastPlayed ?? 0;
   // Everyone in the latest official, else the nine seen most recently.
   const lineup = rows.filter((r) => r.lastPlayed === last).length >= 6 ? rows.filter((r) => r.lastPlayed === last) : rows.slice(0, 9);
@@ -601,7 +602,7 @@ export function SeasonFixtures({ season, onTeam, onMatch }: { season: number; on
   const current = rounds.find((k) => rows.some((r) => roundOf(r) === k && r.r1 === null && !r.defaultWin)) ?? rounds[rounds.length - 1];
   const [picked, setPicked] = useState<string | null>(null);
   const round = picked && rounds.includes(picked) ? picked : current;
-  if (q.isPending) return <p className="hint">{t("Loading the fixtures…")}</p>;
+  if (q.isPending) return <Loading>{t("Loading the fixtures…")}</Loading>;
   if (rows.length === 0) return null;
   const inRound = rows.filter((r) => roundOf(r) === round);
   const divisions: Array<[string, ResultRow[]]> = [];
@@ -750,7 +751,7 @@ function LogButton({ logId, label, stored, matchId, onOpenLog }: { logId: number
   return (
     <span className="mp-logbtn">
       <button className="km-chip" onClick={() => void open()} disabled={busy} title={stored ? t("Open the log in the app") : t("Fetch the log and open it in the app")}>
-        {busy ? t("Fetching…") : `${label} ›`}
+        {busy ? <><Spinner /> {t("Fetching…")}</> : `${label} ›`}
       </button>
       <a
         className="mp-logstf"

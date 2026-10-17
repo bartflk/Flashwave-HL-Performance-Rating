@@ -12,6 +12,7 @@ import { Country } from "../Country";
 import { DivisionBadge, medalTitles, seasonShort } from "./PlayerProfile";
 import "./players.css";
 import { Etf2lMark } from "../Etf2lMark";
+import { Loading } from "../Spinner";
 
 /**
  * A player card from the scoreboard (Q40, Flashy; PLAN §26): click a name
@@ -175,7 +176,7 @@ export function PlayerPopCard({ target, divisions, onClose }: { target: CardTarg
         </div>
       </div>
 
-      {profile.isPending && <p className="hint">{t("Loading…")}</p>}
+      {profile.isPending && <Loading>{t("Loading…")}</Loading>}
       {p && p.officials.length === 0 && <p className="hint">{t("No ETF2L officials in the seasons read.")}</p>}
 
       {/* 2. Medals */}

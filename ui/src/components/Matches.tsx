@@ -9,6 +9,7 @@ import { KindPicker } from "./ContextBadge";
 import { ClassIcon } from "./ClassIcon";
 import { PeriodPicker } from "./PeriodPicker";
 import { t, k } from "../lib/i18n";
+import { Spinner } from "./Spinner";
 
 const PAGE = 50;
 
@@ -142,7 +143,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
           </label>
         )}
         <span className="fi-count">
-          {matches.isPending ? t("Loading…") : stale ? t("Sorting…") : t("{0} match{1}", { "0": total.toLocaleString(), "1": total === 1 ? "" : "es" })}
+          {matches.isPending ? <><Spinner /> {t("Loading…")}</> : stale ? <><Spinner /> {t("Sorting…")}</> : t("{0} match{1}", { "0": total.toLocaleString(), "1": total === 1 ? "" : "es" })}
         </span>
         <div className="fi-actions">
         <button
@@ -246,7 +247,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
 
       {items.length < total && (
         <button className="load-more" onClick={() => setPages((p) => p + 1)} disabled={matches.isFetching}>
-          {matches.isFetching ? t("Loading…") : t("Show {0} more", { "0": Math.min(PAGE, total - items.length) })}
+          {matches.isFetching ? <><Spinner /> {t("Loading…")}</> : t("Show {0} more", { "0": Math.min(PAGE, total - items.length) })}
         </button>
       )}
     </section>
@@ -375,7 +376,7 @@ function ImportLog({ onOpen }: { onOpen: (logId: number) => void }) {
             }}
           >
             <input autoFocus value={text} placeholder="https://logs.tf/4042136" onChange={(e) => setText(e.target.value)} disabled={busy} onKeyDown={(e) => e.key === "Escape" && setOpen(false)} />
-            <button type="submit" className="primary" disabled={busy || !text.trim()}>{busy ? t("Fetching…") : t("Add it")}</button>
+            <button type="submit" className="primary" disabled={busy || !text.trim()}>{busy ? <><Spinner /> {t("Fetching…")}</> : t("Add it")}</button>
           </form>
           <span className="hint">{t("A log id or logs.tf link. Fetched now, not at the next sync.")}</span>
           {note && <span className="hint">{note}</span>}

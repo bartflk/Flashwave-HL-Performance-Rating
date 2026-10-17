@@ -7,6 +7,7 @@ import { openPlayer } from "../../lib/goto";
 import { ClassIcon } from "../ClassIcon";
 import { classLabel } from "../analysis/common";
 import { t as tr, tx, k } from "../../lib/i18n";
+import { Loading } from "../Spinner";
 
 /**
  * Who you play with (once its own tab): everyone with a few games on your
@@ -55,7 +56,7 @@ export function TeammatesPanel() {
     return [...list].sort((a, b) => key(b) - key(a) || b.games - a.games);
   }, [q.data, currentOnly, sort]);
 
-  if (q.isPending) return <p className="hint">{tr("Loading teammates…")}</p>;
+  if (q.isPending) return <Loading>{tr("Loading teammates…")}</Loading>;
   if (q.isError) return <p className="error">{errorMessage(q.error)}</p>;
   const d = q.data;
   const shown = open ? rows : rows.slice(0, FIRST);

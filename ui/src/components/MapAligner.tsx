@@ -5,6 +5,7 @@ import { errorMessage, type MapRow, type MapView, type Placement } from "../api/
 import { capitalize, splitMap } from "../lib/format";
 import { t } from "../lib/i18n";
 import { themeColour } from "./analysis/common";
+import { Loading } from "./Spinner";
 
 /**
  * Lining a top-down image up over the kills (Q31).
@@ -45,7 +46,7 @@ export function MapAligner({ row, onClose, onSaved }: { row: MapRow; onClose: ()
   };
 
   let body;
-  if (img.isPending || view.isPending) body = <p className="hint">{t("Loading…")}</p>;
+  if (img.isPending || view.isPending) body = <Loading>{t("Loading…")}</Loading>;
   else if (!img.data) body = <p className="hint">{t("This map has no image to line up. Import one first.")}</p>;
   else if (!view.data) body = <p className="hint">{t("No kills are stored on this map yet, so there is nothing to line the image up against.")}</p>;
   else if (p)
