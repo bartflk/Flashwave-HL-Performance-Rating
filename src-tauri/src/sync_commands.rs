@@ -426,6 +426,8 @@ pub struct ProfileResponse {
     pub life: Option<hl_db::LifeTotals>,
     pub aim_all: Option<hl_db::AimTotals>,
     pub life_all: Option<hl_db::LifeTotals>,
+    /// Time played, record, DPM, accuracy: the at-a-glance numbers.
+    pub headline: Option<hl_ingest::Headline>,
 }
 
 /// The owner's profile on one class, defaulting to their most-rated class.
@@ -451,12 +453,13 @@ pub async fn get_profile(
         (None, None) => None,
         (f, t) => Some((f.unwrap_or(i64::MIN), t.unwrap_or(i64::MAX))),
     };
-    let (profile, fights) = match chosen {
+    let (profile, fights, headline) = match chosen {
         Some(c) => (
             hl_ingest::load_profile(&state.db, me, c, kind.as_deref(), period).await?,
             hl_ingest::seasons::fights_card(&state.db, me, c, kind.as_deref(), from, to).await?,
+            hl_ingest::headline(&state.db, me, c, kind.as_deref(), period).await?,
         ),
-        None => (None, None),
+        None => (None, None, None),
     };
     // The same filters, over what the demos say (PLAN §14).
     let class_name = chosen.map(|c| c.as_str());
@@ -477,6 +480,7 @@ pub async fn get_profile(
         life: state.db.life_totals(&scope).await?,
         aim_all: state.db.aim_totals(&everything).await?,
         life_all: state.db.life_totals(&everything).await?,
+        headline,
     })
 }
 

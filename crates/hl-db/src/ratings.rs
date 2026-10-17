@@ -31,6 +31,18 @@ pub struct HistoryDbRow {
     pub parts_json: String,
 }
 
+/// One class's totals over a set of games, from `match_player_class`: the
+/// profile's headline numbers (Flashy: "damage per minute, accuracy, time
+/// played, wins and losses ... at a glance").
+#[derive(Debug, Default, Clone, Copy)]
+pub struct ClassTotals {
+    pub seconds: i64,
+    pub kills: i64,
+    pub deaths: i64,
+    pub assists: i64,
+    pub damage: i64,
+}
+
 /// Summed class-vs-class record over a set of games.
 #[derive(Debug, Default)]
 pub struct VsTotals {
@@ -362,6 +374,32 @@ impl Db {
         .fetch_one(self.pool())
         .await?;
         Ok(VsTotals { kills: row.get("kills"), deaths: row.get("deaths") })
+    }
+}
+
+impl Db {
+    /// `account`'s totals on `class` over `logs`.
+    pub async fn class_totals(&self, account: u32, class: &str, logs: &[i64]) -> Result<ClassTotals> {
+        let ids = serde_json::to_string(logs)?;
+        let r = sqlx::query(
+            "SELECT COALESCE(SUM(time_s), 0) AS s, COALESCE(SUM(kills), 0) AS k, COALESCE(SUM(deaths), 0) AS d,
+                    COALESCE(SUM(assists), 0) AS a, COALESCE(SUM(dmg), 0) AS dmg
+               FROM match_player_class
+              WHERE account_id = ?1 AND class IN (?2, CASE ?2 WHEN 'heavy' THEN 'heavyweapons' ELSE ?2 END)
+                AND log_id IN (SELECT value FROM json_each(?3))",
+        )
+        .bind(i64::from(account))
+        .bind(class)
+        .bind(ids)
+        .fetch_one(self.pool())
+        .await?;
+        Ok(ClassTotals { seconds: r.get("s"), kills: r.get("k"), deaths: r.get("d"), assists: r.get("a"), damage: r.get("dmg") })
+    }
+
+    /// The stored logs.tf JSON of `logs`, for what only it holds (accuracy).
+    pub async fn raw_jsons(&self, logs: &[i64]) -> Result<Vec<(i64, String)>> {
+        let ids = serde_json::to_string(logs)?;
+        Ok(sqlx::query_as("SELECT log_id, json FROM log_raw WHERE log_id IN (SELECT value FROM json_each(?1))").bind(ids).fetch_all(self.pool()).await?)
     }
 }
 

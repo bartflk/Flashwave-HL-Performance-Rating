@@ -415,3 +415,110 @@ pub async fn load_profile(
     }
     Ok(Some(p))
 }
+
+/// The profile's headline numbers on one class -- what trends.tf leads with:
+/// time played, wins and losses, damage per minute, accuracy, K/D -- over the
+/// same games as the rest of the profile (its class, kind and period).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Headline {
+    pub games: usize,
+    /// On this class, in these games.
+    pub seconds: i64,
+    pub won: usize,
+    pub lost: usize,
+    pub tied: usize,
+    pub kills: i64,
+    pub deaths: i64,
+    pub assists: i64,
+    pub damage: i64,
+    pub dpm: Option<f64>,
+    /// Hits over shots, from logs.tf's weapon stats; only logs with the
+    /// accuracy plugin have them.
+    pub accuracy: Option<f64>,
+    pub accuracy_games: usize,
+}
+
+pub async fn headline(db: &Db, me: SteamId, class: TfClass, kind: Option<&str>, period: Option<(i64, i64)>) -> Result<Option<Headline>> {
+    let account = me.account_id();
+    let rows: Vec<_> = db
+        .rating_history(account, class.as_str(), MODEL_VERSION)
+        .await?
+        .into_iter()
+        .filter(|r| kind.is_none_or(|k| r.kind.as_deref() == Some(k)))
+        .filter(|r| period.is_none_or(|(from, to)| r.played_at.is_some_and(|t| t >= from && t <= to)))
+        .collect();
+    if rows.is_empty() {
+        return Ok(None);
+    }
+    let (mut won, mut lost, mut tied) = (0, 0, 0);
+    for r in &rows {
+        let (us, them) = if r.team == "Red" { (r.red_score, r.blue_score) } else { (r.blue_score, r.red_score) };
+        match (us, them) {
+            (Some(a), Some(b)) if a > b => won += 1,
+            (Some(a), Some(b)) if a < b => lost += 1,
+            (Some(_), Some(_)) => tied += 1,
+            _ => {}
+        }
+    }
+    let ids: Vec<i64> = rows.iter().map(|r| r.log_id).collect();
+    let t = db.class_totals(account, class.as_str(), &ids).await?;
+    let (mut shots, mut hits, mut accuracy_games) = (0i64, 0i64, 0usize);
+    for (_, json) in db.raw_jsons(&ids).await? {
+        if let Some((s, h)) = weapon_accuracy(&json, account, class) {
+            shots += s;
+            hits += h;
+            accuracy_games += 1;
+        }
+    }
+    Ok(Some(Headline {
+        games: rows.len(),
+        seconds: t.seconds,
+        won,
+        lost,
+        tied,
+        kills: t.kills,
+        deaths: t.deaths,
+        assists: t.assists,
+        damage: t.damage,
+        dpm: (t.seconds > 0).then(|| t.damage as f64 * 60.0 / t.seconds as f64),
+        accuracy: (shots > 0).then(|| hits as f64 / shots as f64),
+        accuracy_games,
+    }))
+}
+
+/// `account`'s shots and hits on `class` in one logs.tf log, from the weapon
+/// stats under `class_stats`; `None` where the log has none for them.
+fn weapon_accuracy(json: &str, account: u32, class: TfClass) -> Option<(i64, i64)> {
+    let raw: serde_json::Value = serde_json::from_str(json).ok()?;
+    let players = raw.get("players")?.as_object()?;
+    let me = players.iter().find(|(k, _)| SteamId::parse(k).is_ok_and(|id| id.account_id() == account))?.1;
+    let (mut shots, mut hits) = (0, 0);
+    for cs in me.get("class_stats")?.as_array()? {
+        let Some(t) = cs.get("type").and_then(|v| v.as_str()) else { continue };
+        if TfClass::parse(t).ok() != Some(class) {
+            continue;
+        }
+        for w in cs.get("weapon").and_then(|w| w.as_object()).into_iter().flatten().map(|(_, w)| w) {
+            shots += w.get("shots").and_then(|v| v.as_i64()).unwrap_or(0);
+            hits += w.get("hits").and_then(|v| v.as_i64()).unwrap_or(0);
+        }
+    }
+    (shots > 0).then_some((shots, hits))
+}
+
+#[cfg(test)]
+mod headline_tests {
+    use super::*;
+
+    #[test]
+    fn accuracy_sums_the_class_weapons_only() {
+        let json = r#"{"players": {"[U:1:42]": {"class_stats": [
+            {"type": "sniper", "weapon": {"sniperrifle": {"shots": 100, "hits": 40}, "smg": {"shots": 50, "hits": 10}}},
+            {"type": "scout", "weapon": {"scattergun": {"shots": 30, "hits": 20}}}
+        ]}, "[U:1:7]": {"class_stats": [{"type": "sniper", "weapon": {"sniperrifle": {"shots": 9, "hits": 9}}}]}}}"#;
+        assert_eq!(weapon_accuracy(json, 42, TfClass::Sniper), Some((150, 50)));
+        assert_eq!(weapon_accuracy(json, 42, TfClass::Medic), None, "no shots on a class not played");
+        assert_eq!(weapon_accuracy(json, 99, TfClass::Sniper), None, "not in the log");
+    }
+}

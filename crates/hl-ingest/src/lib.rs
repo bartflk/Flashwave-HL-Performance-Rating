@@ -78,4 +78,4 @@ pub mod buildings;
 pub mod lives;
 pub mod mass;
 pub use demos::{extra_demo_dirs, fetch_stv, index_demos, set_extra_demo_dirs, DemoIndexSummary, StvFetched};
-pub use rating::{load_profile, rate_all, rated_classes, RateSummary};
+pub use rating::{headline, load_profile, rate_all, rated_classes, Headline, RateSummary};

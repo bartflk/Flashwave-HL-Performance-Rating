@@ -783,3 +783,23 @@
 .pf-side .pp-achievements li { padding: 8px 0; }
 /* Team history's own heading, dressed like the side column's others. */
 .pf-stays .pp-stays h3 { margin: 0 0 10px; font: 700 0.95rem var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-hi); }
+
+/* The headline numbers: time, record, DPM, accuracy, K/D, as trends.tf
+   leads with them, in a row of their own under the rating. */
+.pf-headline { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.pf-hl {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-top: 2px solid color-mix(in srgb, var(--accent) 55%, var(--border));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 4%, var(--panel));
+}
+.pf-hl-label { color: var(--muted); font-size: 0.74rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.pf-hl-value { font: 700 1.55rem var(--font-display); font-variant-numeric: tabular-nums; color: var(--text-hi); }
+.pf-hl-sub { color: var(--muted); font-size: 0.78rem; }
+.pf-hl.rec { border-top-color: color-mix(in srgb, #7fb36a 60%, var(--border)); }
+.pf-w { color: #8fc27a; }
+.pf-l { color: #d98a80; }

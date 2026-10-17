@@ -76,7 +76,10 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
   const titles = medalTitles(p.medals);
   const played = p.mainClass;
   const declared = p.declaredClasses.map((c) => c.toLowerCase()).filter((c) => c !== played);
-  const shownAliases = p.aliases.slice(0, 6);
+  // Every name they went by, as its own pill (Flashy: "the names need to
+  // have a different background so its easier to differentiate").
+  const [allAliases, setAllAliases] = useState(false);
+  const shownAliases = allAliases ? p.aliases : p.aliases.slice(0, 8);
   // When the profile opened: a ban that runs out while it is open can wait.
   const [openedAt] = useState(() => Date.now() / 1000);
   const banned = p.bans.find((b) => b.end === null || b.end > openedAt);
@@ -102,10 +105,19 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
             )}
           </div>
           {shownAliases.length > 0 && (
-            <p className="hint pp-aka">
-              {tx("Also as {0}", { "0": shownAliases.join(", ") })}
-              {p.aliases.length > shownAliases.length && ` ${t("and {0} more", { "0": p.aliases.length - shownAliases.length })}`}
-            </p>
+            <div className="pp-aka">
+              <span className="pp-aka-label">{t("Also known as")}</span>
+              {shownAliases.map((a, i) => (
+                <span key={`${a}-${i}`} className={`pp-alias pp-alias-${i % 5}`}>
+                  {a}
+                </span>
+              ))}
+              {p.aliases.length > shownAliases.length && (
+                <button className="pp-alias pp-alias-more" onClick={() => setAllAliases(true)}>
+                  {t("+{0} more", { "0": p.aliases.length - shownAliases.length })}
+                </button>
+              )}
+            </div>
           )}
           <div className="pp-meta">
             {p.country && (

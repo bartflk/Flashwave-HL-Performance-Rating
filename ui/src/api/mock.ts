@@ -679,7 +679,15 @@ export const mockApi: Api = {
     const life = { scopedShare: 0.23, minutes: 412, deaths: 218, nearestMate: 502, aloneShare: 0.08, scopedShareDeaths: 0.51, behindShare: 0.28 };
     const lifeAll = { scopedShare: 0.21, minutes: 640, deaths: 354, nearestMate: 449, aloneShare: 0.1, scopedShareDeaths: 0.49, behindShare: 0.31 };
     const byClass: Record<string, ProfileResponse> = {
-      sniper: { ...(profileSniper as unknown as ProfileResponse), fights, aim, life, aimAll, lifeAll },
+      sniper: {
+        ...(profileSniper as unknown as ProfileResponse),
+        fights,
+        aim,
+        life,
+        aimAll,
+        lifeAll,
+        headline: { games: 661, seconds: 852_411, won: 339, lost: 302, tied: 20, kills: 9_120, deaths: 6_310, assists: 1_780, damage: 4_901_600, dpm: 345.0, accuracy: 0.36, accuracyGames: 612 },
+      },
       engineer: { ...(profileEngineer as unknown as ProfileResponse), fights: null, aim: null, life: null, aimAll: null, lifeAll: null },
     };
     const hit = byClass[cls ?? "sniper"];

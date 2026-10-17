@@ -1264,6 +1264,25 @@ export interface ProfileResponse {
   life: LifeTotals | null;
   aimAll: AimTotals | null;
   lifeAll: LifeTotals | null;
+  /** Time played, record, DPM, accuracy: the at-a-glance numbers. */
+  headline?: Headline | null;
+}
+
+/** One class's headline numbers over the profile's games (its kind and period). */
+export interface Headline {
+  games: number;
+  seconds: number;
+  won: number;
+  lost: number;
+  tied: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  damage: number;
+  dpm: number | null;
+  /** Hits over shots, 0-1, from logs with logs.tf's accuracy stats. */
+  accuracy: number | null;
+  accuracyGames: number;
 }
 
 // ---- Seasons and fights -------------------------------------------------------

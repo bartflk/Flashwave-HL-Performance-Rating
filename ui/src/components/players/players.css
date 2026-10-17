@@ -526,3 +526,26 @@
 .pp-career-classes tbody tr:hover td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
 .pp-seasons tfoot td,
 .pp-career-classes tfoot td { background: color-mix(in srgb, var(--accent) 6%, var(--panel)); font-weight: 600; border-top: 1px solid var(--border); }
+
+/* Also known as: each name a pill of its own, in a few quiet tints in turn,
+   so where one name ends and the next starts is never in doubt. */
+.pp-aka { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 6px 0 0; }
+.pp-aka-label { margin-right: 4px; color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.pp-alias {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text);
+  white-space: nowrap;
+}
+.pp-alias-0 { background: color-mix(in srgb, var(--accent) 16%, var(--panel)); }
+.pp-alias-1 { background: color-mix(in srgb, #5b93cc 18%, var(--panel)); }
+.pp-alias-2 { background: color-mix(in srgb, #7fb861 16%, var(--panel)); }
+.pp-alias-3 { background: color-mix(in srgb, #a77ce0 18%, var(--panel)); }
+.pp-alias-4 { background: color-mix(in srgb, #d9a441 16%, var(--panel)); }
+button.pp-alias-more { background: none; border-style: dashed; color: var(--accent-text); font: inherit; font-size: 0.8rem; cursor: pointer; }
+button.pp-alias-more:hover { border-color: var(--accent-dim); background: rgba(var(--accent-rgb), 0.08); }

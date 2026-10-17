@@ -7,6 +7,7 @@ import {
   type ContextKind,
   type ContextSplit,
   type GameRef,
+  type Headline,
   type Official,
   type OppositionBand, type DivisionBand,
   type PlayerProfile,
@@ -128,7 +129,7 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
         </div>
       )}
 
-      {tab === "overview" && profile && <Overview p={profile} me={me} onOpenMatch={onOpenMatch} onKind={setKind} onCareer={() => setTab("career")} />}
+      {tab === "overview" && profile && <Overview p={profile} me={me} headline={q.data.headline ?? null} onOpenMatch={onOpenMatch} onKind={setKind} onCareer={() => setTab("career")} />}
 
       {tab === "rating" && (
         <>
@@ -472,11 +473,12 @@ function Tendencies({ cls }: { cls: string }) {
 function Overview(props: {
   p: Profile;
   me: PlayerProfile | null;
+  headline: Headline | null;
   onOpenMatch: (logId: number) => void;
   onKind: (k: ContextKind | null) => void;
   onCareer: () => void;
 }) {
-  const { p, me, onOpenMatch, onKind, onCareer } = props;
+  const { p, me, headline, onOpenMatch, onKind, onCareer } = props;
   const thin = p.games < THIN_SAMPLE;
   const scope = p.filter ? t(KIND_PLURAL[p.filter]).toLowerCase() : t("games");
   return (
@@ -484,7 +486,8 @@ function Overview(props: {
       {thin && (
         <p className="thin-note">{tx("Only {games} rated {1} {scope}. Treat these numbers as a rough sketch, not a verdict.", { "1": classLabel(p.class), games: p.games, scope: scope })}</p>
       )}
-      <Kpis p={p} />
+      <Kpis p={p} winRate={!headline} />
+      {headline && <HeadlineStrip h={headline} cls={p.class} />}
       <div className="pf-grid">
         <div className="pf-main">
           <Fold id="profile-trend">
@@ -516,7 +519,49 @@ function Overview(props: {
   );
 }
 
-function Kpis({ p }: { p: Profile }) {
+/**
+ * The plain numbers beside the rating, as trends.tf leads with them (Flashy:
+ * "damage per minute, accuracy, time played, wins and losses ... at a
+ * glance"): over the same games as the rest of the page.
+ */
+function HeadlineStrip({ h, cls }: { h: Headline; cls: string }) {
+  const hours = Math.floor(h.seconds / 3600);
+  const minutes = Math.round((h.seconds % 3600) / 60);
+  const decided = h.won + h.lost;
+  const kd = h.deaths > 0 ? h.kills / h.deaths : null;
+  const tiles: Array<[string, React.ReactNode, React.ReactNode, string?]> = [
+    [t("Time played"), tx("{0} h {1} m", { "0": hours, "1": minutes }), tx("{0} games as {1}", { "0": h.games, "1": classLabel(cls) })],
+    [
+      t("Record"),
+      <>
+        <span className="pf-w">{h.won}</span>–<span className="pf-l">{h.lost}</span>
+        {h.tied > 0 && <span className="muted">–{h.tied}</span>}
+      </>,
+      decided > 0 ? t("{0}% won", { "0": ((100 * h.won) / decided).toFixed(1) }) : "",
+      "rec",
+    ],
+    [t("Damage / min"), h.dpm !== null ? h.dpm.toFixed(0) : "–", tx("{0} damage", { "0": h.damage.toLocaleString() })],
+    [
+      t("Accuracy"),
+      h.accuracy !== null ? `${(h.accuracy * 100).toFixed(0)}%` : "–",
+      h.accuracy !== null ? tx("over {0} logs with accuracy stats", { "0": h.accuracyGames }) : t("no log here has accuracy stats"),
+    ],
+    [t("K / D"), kd !== null ? kd.toFixed(2) : "–", tx("{0} kills · {1} assists · {2} deaths", { "0": h.kills, "1": h.assists, "2": h.deaths })],
+  ];
+  return (
+    <section className="pf-headline" aria-label={t("Headline numbers")}>
+      {tiles.map(([label, value, sub, kind]) => (
+        <div key={label} className={kind ? `pf-hl ${kind}` : "pf-hl"}>
+          <span className="pf-hl-label">{label}</span>
+          <span className="pf-hl-value">{value}</span>
+          {sub && <span className="pf-hl-sub">{sub}</span>}
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function Kpis({ p, winRate = true }: { p: Profile; winRate?: boolean }) {
   const delta = p.prevFormAvg === null ? null : p.formAvg - p.prevFormAvg;
   const scope = p.filter ? t(KIND_PLURAL[p.filter]).toLowerCase() : t("games");
   return (
@@ -535,7 +580,8 @@ function Kpis({ p }: { p: Profile }) {
         <span className="kpi-value">{rating(p.careerAvg)}</span>
         <span className="kpi-sub">{tx("{games} rated {scope}", { games: p.games, scope: scope })}</span>
       </div>
-      {p.winRate !== null && (
+      {/* The headline row's record says it already, when it is there. */}
+      {winRate && p.winRate !== null && (
         <div className="kpi">
           <span className="kpi-label">{t("Win rate")}</span>
           <span className="kpi-value">{p.winRate.toFixed(0)}%</span>

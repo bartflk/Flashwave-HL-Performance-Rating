@@ -44,7 +44,7 @@ pub use rawlog::{ChatRow, KillRow, RawlogStats, StoredKill};
 pub use roundmap::{
     PartRow, ResolverLog, RoundMapRow, RoundMapStats, RoundRow, RoundWindow, Segment, SegmentRow,
 };
-pub use ratings::{HistoryDbRow, RatingRow, VsTotals};
+pub use ratings::{ClassTotals, HistoryDbRow, RatingRow, VsTotals};
 pub use timeline::{TimelineRow, TimelineTotals};
 pub use leagues::{Competition, CompetitionRow, H2hRow, LaterTeam, MatchLog, MatchMap, MatchPlayerRow, ResultRow, SeasonMap, SeasonMatch, SeasonMatchRow, TeamHit, TeamRef};
 pub use catalogue::{CatMatch, Etf2lPlayer, RatedGame, RosterRow};
