@@ -6,6 +6,7 @@
 
 export type IconName =
   | "update"
+  | "scale"
   | "alert"
   | "globe"
   | "user"
@@ -31,6 +32,7 @@ const PATHS: Record<IconName, string> = {
   alert: "M12 3 2 20h20L12 3zM12 10v4M12 17.5v.5",
   globe: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18",
   user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c1-4 4.5-6 8-6s7 2 8 6",
+  scale: "M4 9V4h5M20 15v5h-5M4 4l7 7M20 20l-7-7M15 4h5v5M9 20H4v-5",
   palette: "M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.9 1.4-2-.4-1.2.4-2 1.6-2H18a3 3 0 0 0 3-3c0-6-4-11-9-11zM7.5 11.5h.01M9.5 7.5h.01M14.5 7.5h.01M16.5 11.5h.01",
   clock: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2",
   fileX: "M14 3H6v18h12V7l-4-4zM14 3v4h4M9.5 12.5l5 5M14.5 12.5l-5 5",

@@ -12,6 +12,7 @@ import { MapsPanel } from "./MapsPanel";
 import { ImportPanel } from "./ImportPanel";
 import { startRebuild, useSyncStatus } from "../lib/sync";
 import { setTheme, THEMES, useTheme } from "../lib/theme";
+import { DEFAULT_SCALE, SCALES, setScale, stepScale, useScale } from "../lib/scale";
 import { allLanguages, languageFile, setLanguage, t, t as tr, useLanguage, userLanguageFiles, tx } from "../lib/i18n";
 import { loadUserLanguages } from "../lib/userLang";
 import { setNameSource, useNameSource } from "../lib/names";
@@ -52,6 +53,7 @@ export function Settings({
         { id: "language", title: t("Language"), icon: "globe" },
         { id: "names", title: tr("Player names"), icon: "user" },
         { id: "theme", title: t("Theme"), icon: "palette" },
+        { id: "scale", title: t("Interface size"), icon: "scale" },
         { id: "problems", title: t("Problems"), icon: "alert" },
       ],
     },
@@ -160,6 +162,10 @@ export function Settings({
             <SettingsSection id="theme" icon="palette" title={t("Theme")} keywords="theme colours dark"
               summary={t("The app's colours")}>
               <ThemePanel />
+            </SettingsSection>
+            <SettingsSection id="scale" icon="scale" title={t("Interface size")} keywords="scale zoom size 4k 2k 1440p dpi bigger smaller text"
+              summary={t("How big everything is drawn")}>
+              <ScalePanel />
             </SettingsSection>
             <SettingsSection id="problems" icon="alert" title={t("Problems")} keywords="errors bug report discord"
               summary={t("What went wrong since the app started")}
@@ -614,6 +620,37 @@ function ThemePanel() {
             <span className="theme-hint muted">{tr(t.hint)}</span>
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/** How big the whole interface is drawn: for 2K and 4K screens (Flashy). */
+function ScalePanel() {
+  const scale = useScale();
+  return (
+    <div className="panel">
+      <h2>{t("Interface size")}</h2>
+      <p className="hint">{t("Makes everything in the app bigger or smaller: text, maps and charts together. Useful on 2K and 4K screens. Ctrl + and Ctrl − change it from anywhere, Ctrl 0 resets it.")}</p>
+      <div className="scale-row">
+        <button className="km-chip scale-step" onClick={() => stepScale(-1)} disabled={scale <= SCALES[0]} aria-label={t("Smaller")}>
+          −
+        </button>
+        <div className="km-seg scale-seg" role="radiogroup" aria-label={t("Interface size")}>
+          {SCALES.map((s) => (
+            <button key={s} role="radio" aria-checked={Math.abs(scale - s) < 0.001} className={Math.abs(scale - s) < 0.001 ? "on" : undefined} onClick={() => setScale(s)}>
+              {Math.round(s * 100)}%
+            </button>
+          ))}
+        </div>
+        <button className="km-chip scale-step" onClick={() => stepScale(1)} disabled={scale >= SCALES[SCALES.length - 1]} aria-label={t("Bigger")}>
+          +
+        </button>
+        {Math.abs(scale - DEFAULT_SCALE) > 0.001 && (
+          <button className="km-chip" onClick={() => setScale(DEFAULT_SCALE)}>
+            {t("Reset")}
+          </button>
+        )}
       </div>
     </div>
   );
