@@ -197,13 +197,16 @@
   background: linear-gradient(var(--sunken), #211c18);
 }
 
-/* TF2's colours as a stripe under the bar: RED, the game's orange, BLU. */
+/* One warm line under the bar, TF2's HUD tan fading out at both ends (the
+   RED, orange and BLU stripe it replaces read as three unrelated colours,
+   Flashy). */
 .topbar::after {
   content: "";
   position: absolute;
   inset: auto 0 0 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--red-deep) 0 33.3%, var(--accent) 33.3% 66.6%, var(--blu-deep) 66.6% 100%);
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(207, 115, 54, 0.85) 20%, #e0a050 50%, rgba(207, 115, 54, 0.85) 80%, transparent);
+  box-shadow: 0 0 10px rgba(224, 118, 58, 0.35);
 }
 
 .topbar .who {
