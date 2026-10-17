@@ -54,6 +54,7 @@ import type {
   ResultRow,
   TeamHit,
   LeagueMatch,
+  Etf2lMatchPage,
   Recruitment,
   RecruitDetail,
   NewLogs,
@@ -1252,6 +1253,29 @@ export const mockApi: Api = {
     ),
   // One of DD14's officials, with DD14's roster as its lineup; a fixture's
   // id is not in the database, so the page reads it from the fixtures.
+  // DD14's grand final as etf2l.org showed it on 17 October 2026.
+  getMatchPage: (matchId: number) =>
+    delay<Etf2lMatchPage | null>({
+      link: `https://etf2l.org/matches/${matchId}/`,
+      roundFrom: 1792015200,
+      roundTo: 1792619940,
+      scheduleDeadline: 1792101540,
+      resultDeadline: 1792619940,
+      scheduled: 1792348500,
+      submitted: null,
+      submittedBy: null,
+      maps: [
+        { map: "pl_vigil_rc10", image: "https://etf2l.org/images/maps/pl_vigil_rc10.jpg", score: [1, 0], logs: [4109131] },
+        { map: null, image: null, score: null, logs: [] },
+        { map: null, image: null, score: null, logs: [] },
+      ],
+      demos: [{ label: "Map 1 (pl_vigil_rc10): First Person by piro (54 Downloads)", link: "https://etf2l.org/wp-content/uploads/demos/17782" }],
+      comments: [
+        { author: "ETF2L Staff", teams: "", time: 1792090437, staff: true, html: "<p>Welcome to the Highlander Season 36: High Grand Final!</p><p>This match will be played as a best-of-three.</p><p>DD14 having won the Upper Bracket Final is the higher seed and is Team A.</p><p>Team A bans a map<br />Team B bans a map<br />Team B picks a map<br />Team A picks a map<br />Team A bans a map<br />The remaining map is the decider</p>" },
+        { author: "Heed", teams: "MPREG", time: 1792169438, html: "<p>we can play sunday 20 or next week tuesday 20</p>" },
+        { author: "Default Date", teams: "", time: 1792170345, staff: true, html: "<p>A default date has been set for this match by ETF2L.<br />The default date is: Sunday, 18 October 2026, 20:35</p>" },
+      ],
+    }),
   getLeagueMatch: (matchId: number) => {
     const base = team37805 as unknown as TeamView;
     const r = base.results.find((x) => x.matchId === matchId);

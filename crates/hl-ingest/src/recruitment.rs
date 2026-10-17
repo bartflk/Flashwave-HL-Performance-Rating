@@ -166,17 +166,42 @@ pub struct RecruitComment {
     pub teams: String,
     pub time: Option<i64>,
     pub html: String,
+    /// Posted by ETF2L itself: "ETF2L Staff", "Default Date".
+    #[serde(default)]
+    pub staff: bool,
+}
+
+/// The comments under an etf2l.org page (a recruitment post, a match): the
+/// same WordPress list on both. ETF2L's own notices (ETF2L Staff, Default
+/// Date) are posted from an account linked to the site itself.
+pub(crate) fn parse_comments(page: &str) -> Vec<RecruitComment> {
+    let mut comments = Vec::new();
+    let Some(list) = between(page, "<ol class=\"commentlist\">", "</ol>") else { return comments };
+    for item in list.split("<li ").skip(1) {
+        let raw_cite = between(item, "<cite>", "</cite>").unwrap_or("");
+        let cite = text(raw_cite);
+        let (author, teams) = match cite.split_once(':') {
+            Some((a, t)) => (a.trim().to_string(), t.trim().to_string()),
+            None => (cite.clone(), String::new()),
+        };
+        let meta_end = item.find("class=\"postmeta\"").and_then(|i| item[i..].find("</p>").map(|j| i + j + "</p>".len()));
+        let body = meta_end.map_or("", |i| &item[i..]);
+        let body = body.rfind("</li>").map_or(body, |j| &body[..j]);
+        let staff = raw_cite.contains("href=\"http://www.etf2l.org\"") || raw_cite.contains("href=\"https://etf2l.org\"");
+        comments.push(RecruitComment { author, teams, time: datetimes(item).first().copied(), html: body.trim().to_string(), staff });
+    }
+    comments
 }
 
 /// The text between `a` and the next `b`, from `from` on.
-fn between<'a>(s: &'a str, a: &str, b: &str) -> Option<&'a str> {
+pub(crate) fn between<'a>(s: &'a str, a: &str, b: &str) -> Option<&'a str> {
     let i = s.find(a)? + a.len();
     let j = s[i..].find(b)? + i;
     Some(&s[i..j])
 }
 
 /// Every `datetime="…"` in a piece of HTML, as unix seconds.
-fn datetimes(s: &str) -> Vec<i64> {
+pub(crate) fn datetimes(s: &str) -> Vec<i64> {
     s.match_indices("datetime=\"")
         .filter_map(|(i, m)| {
             let rest = &s[i + m.len()..];
@@ -186,7 +211,7 @@ fn datetimes(s: &str) -> Vec<i64> {
         .collect()
 }
 
-fn text(s: &str) -> String {
+pub(crate) fn text(s: &str) -> String {
     crate::catalogue::html_text(s).split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
@@ -222,20 +247,7 @@ pub fn parse_detail(page: &str, link: &str) -> Option<RecruitDetail> {
         }
     }
 
-    let mut comments = Vec::new();
-    if let Some(list) = between(&page[start..], "<ol class=\"commentlist\">", "</ol>") {
-        for item in list.split("<li ").skip(1) {
-            let cite = between(item, "<cite>", "</cite>").map(text).unwrap_or_default();
-            let (author, teams) = match cite.split_once(':') {
-                Some((a, t)) => (a.trim().to_string(), t.trim().to_string()),
-                None => (cite.clone(), String::new()),
-            };
-            let meta_end = item.find("class=\"postmeta\"").and_then(|i| item[i..].find("</p>").map(|j| i + j + "</p>".len()));
-            let body = meta_end.map_or("", |i| &item[i..]);
-            let body = body.rfind("</li>").map_or(body, |j| &body[..j]);
-            comments.push(RecruitComment { author, teams, time: datetimes(item).first().copied(), html: body.trim().to_string() });
-        }
-    }
+    let comments = parse_comments(&page[start..]);
 
     Some(RecruitDetail {
         link: link.to_string(),

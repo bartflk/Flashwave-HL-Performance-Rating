@@ -9,11 +9,12 @@ import { DivisionBadge } from "../players/PlayerProfile";
 import { MedalGlyph } from "../players/MedalGlyph";
 import { PlayersPage } from "../players/PlayersPage";
 import { SeasonScreen, SeasonsGrid, TeamAvatar, TeamScreen, seasonTitle, useBanner, useFixtures, wl } from "../teams/TeamsPage";
-import { YourTeamsCompact, YourTeamsStrip, useYourTeams } from "../teams/YourTeams";
+import { YourTeamsCompact, useYourTeams } from "../teams/YourTeams";
 import { Countdown, clockTime, fullDate } from "./Countdown";
 import { NewsCard, NewsList, NewsReader, useNews } from "./News";
 import { FixtureRow, LeagueMatchPage, MatchesPage, SeasonFixtures } from "./Matches";
 import { SeasonDivisions, laneOf } from "./Brackets";
+import { TeamsLanding } from "./Teams";
 import { RecruitPostPage, RecruitPreview, RecruitmentPage, type Kind as RecruitKind } from "./Recruitment";
 import "../teams/teams.css";
 import "./etf2l.css";
@@ -723,45 +724,3 @@ function RecentResults({ onTeam, onMatch, go }: { onTeam: (id: number) => void; 
   );
 }
 
-// ---- Teams: search, then your own -----------------------------------------
-
-function TeamsLanding({ onTeam }: { onTeam: (id: number) => void }) {
-  const [q, setQ] = useState("");
-  const term = q.trim();
-  const hits = useQuery({ queryKey: ["search_teams", term], queryFn: () => api.searchTeams(term), enabled: term.length >= 2, placeholderData: keepPreviousData });
-  return (
-    <>
-      <header className="ts-pagehead">
-        <span className="ts-eyebrow">{t("ETF2L Highlander")}</span>
-        <h1>{t("Teams")}</h1>
-      </header>
-      <div className="e2-search e2-search-big">
-        <input type="search" value={q} placeholder={t("A team's name")} onChange={(e) => setQ(e.target.value)} aria-label={t("Search teams")} />
-      </div>
-      {term.length >= 2 && (
-        <section className="panel e2-panel">
-          {(hits.data ?? []).length === 0 && !hits.isFetching ? (
-            <p className="hint">{t("No team by that name.")}</p>
-          ) : (
-            <ol className="e2-teamhits">
-              {(hits.data ?? []).map((x) => (
-                <li key={x.teamId}>
-                  <button className="e2-hit" onClick={() => onTeam(x.teamId)}>
-                    <TeamAvatar src={x.avatar} />
-                    <span className="e2-hit-name">{x.name}</span>
-                    <span className="e2-hit-meta">
-                      {x.lastSeason !== null && t("last in Season {0}", { "0": x.lastSeason })}
-                      {x.lastSeason !== null && " · "}
-                      {tx("{0} officials", { "0": x.officials })}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
-      )}
-      <YourTeamsStrip onTeam={onTeam} />
-    </>
-  );
-}

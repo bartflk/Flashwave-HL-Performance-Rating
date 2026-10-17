@@ -1,7 +1,7 @@
 import { useMemo, useState, type KeyboardEvent } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { Fixture, LeagueMatch, ResultRow, TeamRosterRow } from "../../api/types";
+import type { Etf2lMatchPage, Fixture, LeagueMatch, ResultRow, TeamRosterRow } from "../../api/types";
 import { errorMessage } from "../../api/types";
 import { formatDate, rating } from "../../lib/format";
 import { openPlayer } from "../../lib/goto";
@@ -14,6 +14,7 @@ import { TeamAvatar, useFixtures, wl } from "../teams/TeamsPage";
 import { useYourTeams } from "../teams/YourTeams";
 import { Countdown, clockTime, fullDate } from "./Countdown";
 import { laneOf } from "./Brackets";
+import { CommentList } from "./Recruitment";
 
 /**
  * The ETF2L tab's Matches (Q74, Flashy; PLAN §27): what is coming, with a
@@ -245,6 +246,9 @@ const order = (c: string | null) => {
 
 export function LeagueMatchPage({ matchId, fixture, onTeam, onOpenLog }: { matchId: number; fixture?: Fixture; onTeam: (id: number) => void; onOpenLog: (logId: number) => void }) {
   const q = useQuery({ queryKey: ["league_match", matchId], queryFn: () => api.getLeagueMatch(matchId) });
+  // The match's own etf2l.org page: schedule, per-map results, demos, comments.
+  const pq = useQuery({ queryKey: ["match_page", matchId], queryFn: () => api.getMatchPage(matchId), staleTime: 2 * 60_000 });
+  const page = pq.data ?? null;
   const fromList = useFixtures().find((f) => f.matchId === matchId);
   const fx = fixture ?? fromList;
   if (q.isPending) return <p className="hint">{t("Loading the match…")}</p>;
@@ -301,16 +305,55 @@ export function LeagueMatchPage({ matchId, fixture, onTeam, onOpenLog }: { match
           </div>
           {side(head.clan2, "r", b > a)}
         </div>
-        {fx && !played && (
+        {!played && (page || fx) && (
           <div className="e2-nm-foot">
-            <span className="muted">{fx.maps.length > 0 ? fx.maps.join(" · ") : t("Maps still to be picked")}</span>
+            <span className="muted">
+              {page && page.maps.length > 0
+                ? page.maps.map((x) => x.map ?? t("TBD")).join(" · ")
+                : fx && fx.maps.length > 0
+                  ? fx.maps.join(" · ")
+                  : t("Maps still to be picked")}
+            </span>
           </div>
         )}
       </section>
 
       <div className="e2-match-grid">
         <div className="e2-main">
-          {maps.length > 0 && (
+          {page && page.maps.some((x) => x.map !== null) ? (
+            <section className="panel e2-panel">
+              <div className="e2-panel-head">
+                <h2>{t("Maps")}</h2>
+              </div>
+              <div className="mp-maps">
+                {page.maps.map((x, i) => (
+                  <div key={i} className={x.map ? "mp-map" : "mp-map tbd"}>
+                    {x.image ? <img src={x.image} alt="" loading="lazy" /> : <span className="mp-map-img" aria-hidden />}
+                    <span className="mp-map-name">{x.map ?? t("To be decided")}</span>
+                    {x.score && (
+                      <span className="e2-map-score">
+                        <span className={x.score[0] > x.score[1] ? "won" : undefined}>{x.score[0]}</span>
+                        <span className="e2-rl-dash">:</span>
+                        <span className={x.score[1] > x.score[0] ? "won" : undefined}>{x.score[1]}</span>
+                      </span>
+                    )}
+                    {x.logs.length > 0 && (
+                      <span className="mp-logs">
+                        {x.logs.map((id) => {
+                          const stored = m?.logs.some((l) => l.logId === id && l.stored) ?? false;
+                          return (
+                            <button key={id} className="km-chip" onClick={() => (stored ? onOpenLog(id) : void api.openExternal(`https://logs.tf/${id}`))} title={stored ? t("Open in the app") : t("Open on logs.tf")}>
+                              {t("Log")} {stored ? "›" : "↗"}
+                            </button>
+                          );
+                        })}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : maps.length > 0 && (
             <section className="panel e2-panel">
               <div className="e2-panel-head">
                 <h2>{t("Maps")}</h2>
@@ -361,8 +404,18 @@ export function LeagueMatchPage({ matchId, fixture, onTeam, onOpenLog }: { match
               )}
             </div>
           </section>
+          {page && (
+            <section className="panel e2-panel">
+              <div className="e2-panel-head">
+                <h2>{page.comments.length === 1 ? t("1 comment") : tx("{0} comments", { "0": page.comments.length })}</h2>
+              </div>
+              {page.comments.length === 0 ? <p className="hint">{t("No comments yet.")}</p> : <CommentList comments={page.comments} />}
+            </section>
+          )}
+          {pq.isPending && <p className="hint">{t("Reading the match's page on ETF2L…")}</p>}
         </div>
         <aside className="e2-rail">
+          {page && <ScheduleCard page={page} />}
           <Meetings m={m} fx={fx} head={head} />
           {m && m.logs.length > 0 && (
             <section className="panel e2-panel">
@@ -381,6 +434,22 @@ export function LeagueMatchPage({ matchId, fixture, onTeam, onOpenLog }: { match
                   </button>
                 ))}
               </div>
+            </section>
+          )}
+          {page && page.demos.length > 0 && (
+            <section className="panel e2-panel">
+              <div className="e2-panel-head">
+                <h2>{t("Demos")}</h2>
+              </div>
+              <ul className="mp-demos">
+                {page.demos.map((d, i) => (
+                  <li key={i}>
+                    <button className="e2-more" onClick={() => void api.openExternal(d.link)}>
+                      {d.label} ↗
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
           <button className="km-chip e2-etf2l-link" onClick={() => void api.openExternal(url)}>
@@ -563,5 +632,35 @@ function UpcomingLine({ r, mine, onTeam, onOpen }: { r: ResultRow; mine: Set<num
       </span>
       <span className="e2-rl-note muted">{r.time > 0 ? clockTime(r.time) : ""}</span>
     </li>
+  );
+}
+
+/** When the round runs, its deadlines, when the match is set for and who
+ *  sent in the result: the page's header on ETF2L. */
+function ScheduleCard({ page }: { page: Etf2lMatchPage }) {
+  const at = (v: number | null) => (v ? `${formatDate(v, true)} · ${clockTime(v)}` : null);
+  const rows: Array<[string, string | null]> = [
+    [t("Scheduled"), at(page.scheduled)],
+    [t("Round"), page.roundFrom && page.roundTo ? `${formatDate(page.roundFrom)} – ${formatDate(page.roundTo, true)}` : null],
+    [t("Schedule deadline"), at(page.scheduleDeadline)],
+    [t("Result deadline"), at(page.resultDeadline)],
+    [t("Result sent in"), page.submitted ? `${at(page.submitted)}${page.submittedBy ? ` · ${page.submittedBy}` : ""}` : null],
+  ];
+  const shown = rows.filter(([, v]) => v !== null);
+  if (shown.length === 0) return null;
+  return (
+    <section className="panel e2-panel">
+      <div className="e2-panel-head">
+        <h2>{t("Schedule")}</h2>
+      </div>
+      <dl className="mp-sched">
+        {shown.map(([k, v]) => (
+          <div key={k}>
+            <dt>{k}</dt>
+            <dd>{v}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }

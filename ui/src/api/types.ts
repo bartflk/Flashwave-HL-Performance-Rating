@@ -364,7 +364,31 @@ export interface RecruitDetail {
   /** The message as HTML, built into the page like a news post. */
   html: string;
   history: Array<{ action: string; team: string; teamId: number | null; time: number | null }>;
-  comments: Array<{ author: string; teams: string; time: number | null; html: string }>;
+  comments: EtfComment[];
+}
+
+/** A comment under an etf2l.org page; `staff` for ETF2L's own notices. */
+export interface EtfComment {
+  author: string;
+  teams: string;
+  time: number | null;
+  html: string;
+  staff?: boolean;
+}
+
+/** An official's etf2l.org page: schedule, maps, demos, comments. */
+export interface Etf2lMatchPage {
+  link: string;
+  roundFrom: number | null;
+  roundTo: number | null;
+  scheduleDeadline: number | null;
+  resultDeadline: number | null;
+  scheduled: number | null;
+  submitted: number | null;
+  submittedBy: string | null;
+  maps: Array<{ map: string | null; image: string | null; score: [number, number] | null; logs: number[] }>;
+  demos: Array<{ label: string; link: string }>;
+  comments: EtfComment[];
 }
 
 export interface Recruitment {

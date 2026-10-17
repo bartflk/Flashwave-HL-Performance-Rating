@@ -27,36 +27,6 @@ function span(e: TeamEra): string {
   return a === b ? b : `${a} – ${b}`;
 }
 
-/** A row of cards above the seasons: your teams, newest first. */
-export function YourTeamsStrip({ onTeam }: { onTeam: (teamId: number) => void }) {
-  const teams = useYourTeams().filter((e) => e.games >= 3);
-  if (teams.length === 0) return null;
-  return (
-    <section className="yt-strip" aria-label={t("Your teams")}>
-      <h3>{t("Your teams")}</h3>
-      <div className="yt-cards">
-        {teams.map((e) => {
-          const wr = winRate(e);
-          return (
-            <button key={e.teamId} className="yt-card" onClick={() => onTeam(e.teamId)} title={t("Open {0}", { "0": e.name })}>
-              <span className="yt-name">{e.name || t("Unnamed team")}</span>
-              <span className="hint">{span(e)}</span>
-              <span className="yt-nums">
-                <span>
-                  {e.wins}–{e.losses}
-                  {wr !== null && <span className="muted"> {wr.toFixed(0)}%</span>}
-                </span>
-                <span className="muted">{tx("{0} games", { "0": e.games })}</span>
-                {e.myAvg !== null && <span className="yt-rating">{rating(e.myAvg)}</span>}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 /** Your teams in one line each (Q74's Home, Flashy: smaller than the cards):
  *  badge, name, record and your rating, the newest few. */
 export function YourTeamsCompact({ onTeam, max = 3 }: { onTeam: (teamId: number) => void; max?: number }) {

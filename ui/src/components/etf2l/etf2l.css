@@ -380,7 +380,7 @@
 
 /* ---- Teams landing ------------------------------------------------------- */
 .e2-teamhits { list-style: none; margin: 0 -8px; padding: 0; }
-.e2-search-big { position: relative; max-width: 560px; }
+.e2-search-big { position: relative; max-width: 560px; flex: none; }
 .e2-search-big::before { left: 14px; }
 .e2-search-big input[type="search"] { font-size: 1.02rem; padding-top: 11px; padding-bottom: 11px; padding-left: 38px; }
 
@@ -933,56 +933,210 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
 .br-cell.none { background: none; cursor: default; color: var(--faint); }
 .br-cell:hover:not(.none) { outline: 1px solid var(--line-2); }
 
-/* The bracket: rounds as columns, lines drawn over them. */
-.br-scroll { overflow-x: auto; margin: 0 -4px; padding: 4px; }
-.br-box { position: relative; min-width: max-content; }
-.br-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
-.br-lines path { fill: none; stroke: var(--line-2); stroke-width: 1.6; }
-.br-lines path.loser { stroke-dasharray: 4 4; opacity: 0.7; }
-.br-lines path.mine { stroke: var(--tf2-tan); stroke-width: 2.2; }
-.br-grid {
-  display: grid;
-  grid-template-rows: auto auto auto;
-  column-gap: 56px;
-  row-gap: 18px;
-  align-items: stretch;
+
+
+/* ---- The bracket, Challonge-style (Flashy: "kinda mangled") ------------- */
+.br-scroll { overflow-x: auto; margin: 0 -4px; padding: 4px 4px 8px; }
+.br-box { position: relative; }
+.br-band {
+  position: absolute;
+  left: 0;
+  height: 30px;
+  border-radius: 6px;
+  background: rgba(var(--text-rgb), 0.045);
+  border: 1px solid var(--border);
 }
 .br-head {
-  font: 700 0.76rem var(--font-display);
+  position: absolute;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 0.74rem var(--font-display);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--tf2-tan);
-  padding-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.br-col { display: flex; flex-direction: column; justify-content: space-around; gap: 14px; }
-.br-final { justify-content: center; }
-.br-lower { padding-top: 10px; border-top: 1px dashed var(--border); }
+.br-lines { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.br-lines path { fill: none; stroke: rgba(var(--text-rgb), 0.35); stroke-width: 1.5; }
+.br-lines path.mine { stroke: var(--tf2-tan); stroke-width: 2.2; }
+.br-at { position: absolute; z-index: 1; }
 .br-card {
-  position: relative;
-  z-index: 1;
   display: flex;
   flex-direction: column;
-  width: 100%;
-  min-width: 220px;
+  overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--panel-2);
   cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   transition: border-color 0.15s;
 }
 .br-card:hover { border-color: var(--line-2); }
 .br-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.br-side { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 10px; }
+.br-card.todo { border-style: dashed; }
+.br-side { display: grid; grid-template-columns: minmax(0, 1fr) 30px; align-items: stretch; height: 27px; }
 .br-side + .br-side { border-top: 1px solid var(--border); }
 .br-team {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
-  padding: 0;
+  padding: 0 8px;
   border: 0;
+  border-radius: 0;
   background: none;
   color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 500;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+.br-team .teams-avatar { width: 16px; height: 16px; border-radius: 3px; flex: none; }
+.br-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.br-team:hover { color: var(--tf2-tan); background: rgba(var(--text-rgb), 0.04); }
+.br-side.won .br-team { color: var(--text); font-weight: 700; }
+.br-side.lost .br-team { opacity: 0.7; }
+.br-side.mine .br-team span { color: var(--tf2-tan); }
+.br-score {
+  display: grid;
+  place-items: center;
+  border-left: 1px solid var(--border);
+  background: rgba(var(--text-rgb), 0.05);
+  font: 700 0.9rem var(--font-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.br-side.won .br-score { background: var(--accent); color: #1a1410; border-left-color: var(--accent); }
+.br-when { display: flex; justify-content: space-between; gap: 8px; padding: 3px 2px 0; font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+.br-third { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--border); }
+.br-third-head { font: 700 0.74rem var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--tf2-tan); }
+.br-third-row { display: flex; flex-wrap: wrap; gap: 16px; }
+
+/* ---- The match page, from etf2l.org ---------------------------------------- */
+.mp-maps { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.mp-map {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 0 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+.mp-map img,
+.mp-map-img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: rgba(var(--muted-rgb), 0.15); display: block; }
+.mp-map > :not(img):not(.mp-map-img) { margin: 0 10px; }
+.mp-map-name { font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.84rem; }
+.mp-map.tbd .mp-map-name { color: var(--muted); font-family: inherit; font-style: italic; }
+.mp-logs { display: flex; gap: 6px; flex-wrap: wrap; }
+.mp-sched { display: flex; flex-direction: column; gap: 8px; margin: 0; }
+.mp-sched div { display: flex; justify-content: space-between; gap: 12px; font-size: 0.86rem; }
+.mp-sched dt { color: var(--muted); }
+.mp-sched dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.mp-demos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.mp-demos .e2-more { text-align: left; font-weight: 500; }
+.rc-comments li.staff { padding-left: 12px; border-left: 3px solid var(--tf2-tan); background: rgba(var(--accent-rgb), 0.05); border-radius: 0 6px 6px 0; }
+.rc-c-staff { padding: 1px 6px; border-radius: 4px; background: rgba(var(--accent-rgb), 0.18); color: var(--accent); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; }
+
+/* ---- Teams (Flashy: "looks very discombobulated") ------------------------- */
+/* The search beside the title. Not a flex item's 360px basis any more: in
+   the page's column that set its height, and the icon floated in the gap. */
+.tm-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; }
+.e2-search.tm-search { flex: 0 1 420px; height: auto; }
+.tm-search input[type="search"] { font-size: 1rem; padding-top: 11px; padding-bottom: 11px; }
+.tm-section { display: flex; flex-direction: column; gap: 12px; }
+.tm-section .ts-section { margin: 0; }
+.tm-mono {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.35), rgba(var(--accent-rgb), 0.12));
+  color: var(--text);
+  font: 700 0.86rem var(--font-display);
+  letter-spacing: 0.04em;
+}
+
+/* Search results. */
+.tm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.tm-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  cursor: pointer;
+}
+.tm-tile:hover { border-color: var(--line-2); background: var(--panel); }
+.tm-tile .teams-avatar { width: 36px; height: 36px; border-radius: 8px; flex: none; }
+.tm-tile-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tm-tile-text strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm-tile-text .muted { font-size: 0.8rem; }
+
+/* Your teams. */
+.tm-yours { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.tm-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--tf2-tan);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  color: var(--text);
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.tm-card:hover { border-color: var(--line-2); border-left-color: var(--tf2-tan); transform: translateY(-1px); }
+.tm-card-top { display: flex; align-items: center; gap: 12px; }
+.tm-card-top .teams-avatar { width: 40px; height: 40px; border-radius: 8px; flex: none; }
+.tm-card-top .tm-mono { width: 40px; height: 40px; }
+.tm-card-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.tm-card-name strong { font: 700 1.08rem var(--font-display); letter-spacing: 0.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm-card-name .muted { font-size: 0.8rem; }
+.tm-rating { font: 700 1.3rem var(--font-display); font-variant-numeric: tabular-nums; color: var(--tf2-tan); }
+.tm-bar { height: 6px; border-radius: 999px; background: rgba(214, 92, 84, 0.45); overflow: hidden; }
+.tm-bar-w { display: block; height: 100%; background: #7fb36a; }
+.tm-card-stats { display: flex; align-items: baseline; gap: 14px; font-size: 0.86rem; font-variant-numeric: tabular-nums; }
+.tm-card-stats em { font-style: normal; color: var(--muted); }
+
+/* The season's teams by division. */
+.tm-divs { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; align-items: start; }
+.tm-div { display: flex; flex-direction: column; gap: 8px; padding: 14px 14px 10px; }
+.tm-div-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 6px; border-bottom: 1px solid var(--border); }
+.tm-div-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.tm-row {
+  display: grid;
+  grid-template-columns: 22px 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 6px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--text);
   font-size: 0.88rem;
   font-weight: 500;
   text-align: left;
@@ -990,17 +1144,9 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
   letter-spacing: normal;
   cursor: pointer;
 }
-.br-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px; }
-.br-team:hover { color: var(--tf2-tan); background: none; }
-.br-side.won .br-team { color: var(--text); font-weight: 700; }
-.br-side.lost .br-team { opacity: 0.75; }
-.br-side.mine .br-team span { color: var(--tf2-tan); }
-.br-score { font: 700 0.98rem var(--font-display); font-variant-numeric: tabular-nums; color: var(--muted); min-width: 1.2em; text-align: right; }
-.br-side.won .br-score { color: var(--text); }
-.br-when { display: flex; justify-content: space-between; gap: 8px; padding: 5px 10px; border-top: 1px solid var(--border); font-size: 0.76rem; color: var(--muted); }
-.br-key { display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; }
-.br-key-line { display: inline-block; width: 22px; border-top: 2px solid var(--line-2); margin-left: 6px; }
-.br-key-line.loser { border-top-style: dashed; }
-.br-third { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--border); }
-.br-third-row { display: flex; flex-wrap: wrap; gap: 14px; }
-.br-third-row .br-card { width: 260px; }
+.tm-row:hover { background: rgba(var(--accent-rgb), 0.1); }
+.tm-row .teams-avatar,
+.tm-row .tm-mono { width: 26px; height: 26px; border-radius: 6px; font-size: 0.66rem; }
+.tm-place { color: var(--faint); font-variant-numeric: tabular-nums; text-align: right; font-size: 0.8rem; }
+.tm-row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm-row-wl { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.82rem; }

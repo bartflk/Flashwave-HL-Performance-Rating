@@ -72,6 +72,7 @@ pub mod fixtures;
 pub mod news;
 pub mod league_match;
 pub mod recruitment;
+pub mod match_page;
 pub mod etf2l_demos;
 pub mod buildings;
 pub mod lives;

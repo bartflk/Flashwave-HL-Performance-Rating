@@ -1,11 +1,11 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { ResultRow } from "../../api/types";
+import type { Fixture, ResultRow } from "../../api/types";
 import { formatDate } from "../../lib/format";
 import { t, tx } from "../../lib/i18n";
 import { DivisionBadge } from "../players/PlayerProfile";
-import { TeamAvatar } from "../teams/TeamsPage";
+import { TeamAvatar, useFixtures } from "../teams/TeamsPage";
 import { useYourTeams } from "../teams/YourTeams";
 import { clockTime, Countdown, fullDate } from "./Countdown";
 
@@ -81,7 +81,18 @@ export function SeasonDivisions({ season, onTeam, onMatch }: { season: number; o
   const q = useQuery({ queryKey: ["season_results", season], queryFn: () => api.getSeasonResults(season), staleTime: 5 * 60_000 });
   const tables = useQuery({ queryKey: ["leagues", season], queryFn: () => api.getLeagues(season), staleTime: 5 * 60_000 }).data;
   const mine = new Set(useYourTeams().map((e) => e.teamId));
-  const rows = useMemo(() => (q.data ?? []).filter((m) => m.stage !== "Cup" && m.division), [q.data]);
+  const fixtures = useFixtures();
+  const rows = useMemo(() => {
+    const known = new Set((q.data ?? []).map((m) => m.matchId));
+    // The same two teams already meeting in that round is the same match.
+    const pair = (m: ResultRow) => `${m.division}|${laneOf(m)}|${[m.clan1.id, m.clan2.id].sort((x, y) => x - y).join("-")}`;
+    const pairs = new Set((q.data ?? []).map(pair));
+    const extra = fixtures
+      .filter((f) => f.season === season && !known.has(f.matchId))
+      .map(fromFixture)
+      .filter((m) => !pairs.has(pair(m)));
+    return [...(q.data ?? []), ...extra].filter((m) => m.stage !== "Cup" && m.division);
+  }, [q.data, fixtures, season]);
   const divisions = useMemo(() => [...new Set(rows.map((m) => m.division!))].sort((a, b) => tierOf(a) - tierOf(b) || a.localeCompare(b)), [rows]);
   // Open on your team's division when you have one in the season.
   const yours = divisions.find((d) => rows.some((m) => m.division === d && (mine.has(m.clan1.id) || mine.has(m.clan2.id))));
@@ -225,7 +236,7 @@ function GroupStage({ rows, order, mine, onTeam, onMatch }: { rows: ResultRow[];
 // ---- The playoffs, drawn as a bracket ---------------------------------------
 
 /** A single-elimination column ordered so each pair sits beside the match
- *  it leads to: worked back from the final. */
+ *  it leads to: worked back from the last round. */
 function orderColumns(cols: ResultRow[][]): ResultRow[][] {
   const out = cols.map((c) => [...c]);
   for (let i = out.length - 2; i >= 0; i--) {
@@ -244,147 +255,151 @@ function orderColumns(cols: ResultRow[][]): ResultRow[][] {
   return out;
 }
 
+// The bracket's measures, in pixels: every card is placed by hand rather
+// than left to the page's flow, so the lines can be drawn exactly.
+const CARD_W = 214;
+const ROW_H = 27;
+const CARD_H = ROW_H * 2 + 1;
+const COL_GAP = 52;
+const V_GAP = 30;
+const HEAD_H = 30;
+const LANE_GAP = 26;
+
+type Placed = { m: ResultRow; col: number; x: number; y: number };
+
+const shares = (a: ResultRow, b: ResultRow) => [a.clan1.id, a.clan2.id].some((id) => id === b.clan1.id || id === b.clan2.id);
+
+/**
+ * Where every match goes. Each lane -- the upper bracket (or the whole of a
+ * single elimination), the lower bracket -- runs left to right and ends in
+ * the column before the final, as Challonge draws it; a match after the
+ * first round sits level with the matches that feed it.
+ */
+function layout(rounds: Round[]) {
+  const finals = rounds.filter((r) => r.lane === "final");
+  const top = rounds.filter((r) => r.lane === "upper" || r.lane === "main");
+  const bottom = rounds.filter((r) => r.lane === "lower");
+  const span = Math.max(top.length, bottom.length);
+  const placed: Placed[] = [];
+  const heads: Array<{ x: number; y: number; label: string }> = [];
+  const bands: number[] = [];
+
+  const lane = (list: Round[], y0: number, ordered: ResultRow[][]): number => {
+    if (list.length === 0) return y0;
+    bands.push(y0);
+    let bottomEdge = y0 + HEAD_H;
+    list.forEach((r, i) => {
+      const col = span - list.length + i;
+      const x = col * (CARD_W + COL_GAP);
+      heads.push({ x, y: y0, label: r.label });
+      const prev = placed.filter((p) => p.col === col - 1 && p.y >= y0);
+      const want = ordered[i].map((m, k) => {
+        const feeders = prev.filter((p) => shares(p.m, m));
+        const y = feeders.length > 0 ? feeders.reduce((s, p) => s + p.y, 0) / feeders.length : y0 + HEAD_H + 8 + k * (CARD_H + V_GAP);
+        return { m, y };
+      });
+      // Keep the column's order and spacing where the averages would overlap.
+      let floor = y0 + HEAD_H + 8;
+      for (const w of want) {
+        const y = Math.max(w.y, floor);
+        placed.push({ m: w.m, col, x, y });
+        floor = y + CARD_H + V_GAP;
+        bottomEdge = Math.max(bottomEdge, y + CARD_H);
+      }
+    });
+    return bottomEdge;
+  };
+
+  const topEnd = lane(top, 0, orderColumns(top.map((r) => r.matches)));
+  const bottomEnd = lane(bottom, bottom.length > 0 ? topEnd + LANE_GAP : topEnd, orderColumns(bottom.map((r) => r.matches)));
+  // The final, level with what feeds it, else between the two lanes.
+  finals.forEach((r, i) => {
+    const col = span + i;
+    const x = col * (CARD_W + COL_GAP);
+    heads.push({ x, y: 0, label: r.label });
+    let floor = HEAD_H + 8;
+    for (const m of r.matches) {
+      const feeders = placed.filter((p) => p.col < col && shares(p.m, m) && !placed.some((q) => q.col > p.col && q.col < col && shares(q.m, p.m)));
+      const mid = feeders.length > 0 ? feeders.reduce((s, p) => s + p.y, 0) / feeders.length : (HEAD_H + bottomEnd) / 2 - CARD_H / 2;
+      const y = Math.max(mid, floor);
+      placed.push({ m, col, x, y });
+      floor = y + CARD_H + V_GAP;
+    }
+  });
+  const cols = span + finals.length;
+  const width = cols * CARD_W + Math.max(0, cols - 1) * COL_GAP;
+  const height = Math.max(bottomEnd, ...placed.map((p) => p.y + CARD_H)) + 22;
+
+  // A line from each played match to the next match its winner played.
+  const lines: Array<{ d: string; mine: number }> = [];
+  for (const p of placed) {
+    const o = outcome(p.m);
+    if (!o) continue;
+    const next = placed
+      .filter((q) => q.col > p.col && (q.m.clan1.id === o.win || q.m.clan2.id === o.win))
+      .sort((a, b) => a.col - b.col)[0];
+    if (!next) continue;
+    const x1 = p.x + CARD_W;
+    const y1 = p.y + CARD_H / 2;
+    const x2 = next.x;
+    const y2 = next.y + (next.m.clan1.id === o.win ? ROW_H / 2 : ROW_H + 1 + ROW_H / 2);
+    const mid = x2 - COL_GAP / 2;
+    lines.push({ d: `M${x1},${y1} H${mid} V${y2} H${x2}`, mine: o.win });
+  }
+  return { placed, heads, bands, width, height, lines };
+}
+
 function Bracket({ rows, mine, onTeam, onMatch }: { rows: ResultRow[]; mine: Set<number>; onTeam: (id: number) => void; onMatch: (id: number) => void }) {
   const rounds = roundsOf(rows);
-  const third = rounds.filter((r) => r.lane === "third");
+  const third = rounds.filter((r) => r.lane === "third").flatMap((r) => r.matches);
   const main = rounds.filter((r) => r.lane !== "third");
-  const double = main.some((r) => r.lane === "upper" || r.lane === "lower");
-  const box = useRef<HTMLDivElement>(null);
-  const cards = useRef(new Map<number, HTMLElement>());
-  const [lines, setLines] = useState<Array<{ d: string; loser: boolean; mine: boolean }>>([]);
-
-  // Where each team went next: a line from a match to the next one its
-  // winner played (solid) and its loser played (dashed), measured from the
-  // drawn cards so any layout gets its lines.
-  useLayoutEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const measure = () => {
-      const base = el.getBoundingClientRect();
-      const out: Array<{ d: string; loser: boolean; mine: boolean }> = [];
-      const sorted = [...rows].sort((a, b) => a.time - b.time);
-      for (const m of sorted) {
-        const o = outcome(m);
-        const from = cards.current.get(m.matchId);
-        if (!o || !from) continue;
-        for (const [team, loser] of [
-          [o.win, false],
-          [o.lose, true],
-        ] as Array<[number, boolean]>) {
-          const next = sorted.find((n) => n.time > m.time && n.matchId !== m.matchId && (n.clan1.id === team || n.clan2.id === team));
-          const to = next && cards.current.get(next.matchId);
-          if (!to) continue;
-          const a = from.getBoundingClientRect();
-          const b = to.getBoundingClientRect();
-          if (b.left <= a.left + 4) continue;
-          const x1 = a.right - base.left;
-          const y1 = a.top + a.height / 2 - base.top;
-          const x2 = b.left - base.left;
-          // Into the half of the card where the team is listed.
-          const top = next!.clan1.id === team;
-          const y2 = b.top + b.height * (top ? 0.33 : 0.67) - base.top;
-          const mid = x1 + Math.max(10, (x2 - x1) / 2);
-          out.push({ d: `M${x1},${y1} H${mid} V${y2} H${x2}`, loser, mine: mine.has(team) });
-        }
-      }
-      setLines(out);
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [rows, mine]);
-
-  const card = (m: ResultRow) => (
-    <MatchCard
-      key={m.matchId}
-      m={m}
-      mine={mine}
-      onTeam={onTeam}
-      onOpen={() => onMatch(m.matchId)}
-      refEl={(e) => {
-        if (e) cards.current.set(m.matchId, e);
-        else cards.current.delete(m.matchId);
-      }}
-    />
-  );
-
-  let body: ReactNode;
-  if (double) {
-    // Upper bracket on top, lower below, the final to the right of both.
-    const cols = main.filter((r) => r.lane !== "final");
-    const finals = main.filter((r) => r.lane === "final");
-    body = (
-      <div className="br-grid" style={{ gridTemplateColumns: `repeat(${cols.length + finals.length}, minmax(220px, 1fr))` }}>
-        {cols.map((r, i) => (
-          <div key={r.label} className={`br-col ${r.lane === "lower" ? "br-lower" : "br-upper"}`} style={{ gridColumn: i + 1, gridRow: r.lane === "lower" ? 3 : 2 }}>
-            {r.matches.map(card)}
-          </div>
-        ))}
-        {cols.map((r, i) => (
-          <span key={`h${r.label}`} className="br-head" style={{ gridColumn: i + 1, gridRow: 1 }}>
-            {r.label}
-          </span>
-        ))}
-        {finals.map((r, i) => (
-          <div key={r.label} className="br-col br-final" style={{ gridColumn: cols.length + i + 1, gridRow: "2 / 4" }}>
-            {r.matches.map(card)}
-          </div>
-        ))}
-        {finals.map((r, i) => (
-          <span key={`h${r.label}`} className="br-head" style={{ gridColumn: cols.length + i + 1, gridRow: 1 }}>
-            {r.label}
-          </span>
-        ))}
-      </div>
-    );
-  } else {
-    const cols = orderColumns(main.map((r) => r.matches));
-    body = (
-      <div className="br-grid br-single" style={{ gridTemplateColumns: `repeat(${cols.length}, minmax(220px, 1fr))` }}>
-        {main.map((r, i) => (
-          <span key={`h${r.label}`} className="br-head" style={{ gridColumn: i + 1, gridRow: 1 }}>
-            {r.label}
-          </span>
-        ))}
-        {cols.map((c, i) => (
-          <div key={main[i].label} className="br-col" style={{ gridColumn: i + 1, gridRow: 2 }}>
-            {c.map(card)}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
+  const { placed, heads, bands, width, height, lines } = useMemo(() => layout(main), [rows]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <section className="panel e2-panel br-bracket">
       <div className="e2-panel-head">
         <h2>{t("Playoffs")}</h2>
-        <span className="br-key muted">
-          <span className="br-key-line" /> {t("winner goes on")} <span className="br-key-line loser" /> {t("loser drops down")}
-        </span>
       </div>
       <div className="br-scroll">
-        <div className="br-box" ref={box}>
-          <svg className="br-lines" aria-hidden>
+        <div className="br-box" style={{ width, height }}>
+          {bands.map((y) => (
+            <span key={y} className="br-band" style={{ top: y, width }} aria-hidden />
+          ))}
+          {heads.map((h, i) => (
+            <span key={i} className="br-head" style={{ left: h.x, top: h.y, width: CARD_W }}>
+              {h.label}
+            </span>
+          ))}
+          <svg className="br-lines" width={width} height={height} aria-hidden>
             {lines.map((l, i) => (
-              <path key={i} d={l.d} className={`${l.loser ? "loser" : ""}${l.mine ? " mine" : ""}`} />
+              <path key={i} d={l.d} className={mine.has(l.mine) ? "mine" : undefined} />
             ))}
           </svg>
-          {body}
+          {placed.map((p) => (
+            <div key={p.m.matchId} className="br-at" style={{ left: p.x, top: p.y, width: CARD_W }}>
+              <MatchCard m={p.m} mine={mine} onTeam={onTeam} onOpen={() => onMatch(p.m.matchId)} />
+            </div>
+          ))}
         </div>
       </div>
       {third.length > 0 && (
         <div className="br-third">
-          <span className="br-head">{third[0].label}</span>
-          <div className="br-third-row">{third.flatMap((r) => r.matches).map(card)}</div>
+          <span className="br-third-head">{t("3rd place")}</span>
+          <div className="br-third-row">
+            {third.map((m) => (
+              <div key={m.matchId} style={{ width: CARD_W }}>
+                <MatchCard m={m} mine={mine} onTeam={onTeam} onOpen={() => onMatch(m.matchId)} />
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </section>
   );
 }
 
-function MatchCard({ m, mine, onTeam, onOpen, refEl }: { m: ResultRow; mine: Set<number>; onTeam: (id: number) => void; onOpen: () => void; refEl: (e: HTMLElement | null) => void }) {
+/** One match, two rows: each team with its score in a box, the winner's
+ *  lit; a match to come says when under it. */
+function MatchCard({ m, mine, onTeam, onOpen }: { m: ResultRow; mine: Set<number>; onTeam: (id: number) => void; onOpen: () => void }) {
   const o = outcome(m);
   const side = (x: ResultRow["clan1"], score: number | null) => (
     <div className={`br-side${o?.win === x.id ? " won" : o?.lose === x.id ? " lost" : ""}${mine.has(x.id) ? " mine" : ""}`}>
@@ -394,18 +409,27 @@ function MatchCard({ m, mine, onTeam, onOpen, refEl }: { m: ResultRow; mine: Set
           e.stopPropagation();
           onTeam(x.id);
         }}
-        title={t("Open {0}", { "0": x.name })}
+        title={x.name}
       >
         <TeamAvatar src={x.avatar} />
         <span>{x.name}</span>
       </button>
-      <span className="br-score">{played(m) ? (score ?? "–") : ""}</span>
+      <span className="br-score">{played(m) ? (m.defaultWin && score === null ? "–" : (score ?? "–")) : ""}</span>
     </div>
   );
   return (
-    <article className="br-card" ref={refEl} role="link" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()} title={t("Open the match")}>
-      {side(m.clan1, m.r1)}
-      {side(m.clan2, m.r2)}
+    <>
+      <article
+        className={played(m) ? "br-card" : "br-card todo"}
+        role="link"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={(e) => e.key === "Enter" && onOpen()}
+        title={m.time > 0 ? `${t("Open the match")} · ${fullDate(m.time)}` : t("Open the match")}
+      >
+        {side(m.clan1, m.r1)}
+        {side(m.clan2, m.r2)}
+      </article>
       {!played(m) && (
         <div className="br-when">
           {m.time > 0 ? (
@@ -416,10 +440,30 @@ function MatchCard({ m, mine, onTeam, onOpen, refEl }: { m: ResultRow; mine: Set
               <Countdown time={m.time} />
             </>
           ) : (
-            <span className="muted">{t("Not scheduled yet")}</span>
+            <span>{t("Not scheduled yet")}</span>
           )}
         </div>
       )}
-    </article>
+    </>
   );
+}
+
+/** A scheduled official from ETF2L's list, as a season row: its stage from
+ *  its competition's name ("…: Low Playoffs"). */
+function fromFixture(f: Fixture): ResultRow {
+  return {
+    matchId: f.matchId,
+    time: f.time,
+    season: f.season ?? 0,
+    division: f.division,
+    tier: f.tier,
+    round: f.round,
+    week: f.week,
+    stage: /3rd place/i.test(f.competition) ? "3rd Place" : /playoffs/i.test(f.competition) ? "Playoffs" : /qualifier/i.test(f.competition) ? "Qualifiers" : /cup/i.test(f.competition) ? "Cup" : "regular",
+    clan1: f.clan1,
+    clan2: f.clan2,
+    r1: null,
+    r2: null,
+    defaultWin: false,
+  };
 }

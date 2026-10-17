@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { RecruitPost } from "../../api/types";
+import type { EtfComment, RecruitPost } from "../../api/types";
 import { errorMessage } from "../../api/types";
 import { formatDate } from "../../lib/format";
 import { openPlayer } from "../../lib/goto";
@@ -146,7 +146,7 @@ function ClassRow({ p, kind }: { p: RecruitPost; kind: Kind }) {
 }
 
 /** "15 minutes ago", "3 hours ago", "2 days ago", else the date. */
-function ago(time: number): string {
+export function ago(time: number): string {
   const s = Math.max(0, Date.now() / 1000 - time);
   const m = Math.max(1, Math.round(s / 60));
   const h = Math.round(s / 3600);
@@ -220,22 +220,7 @@ export function RecruitPostPage({ p, kind, onTeam }: { p: RecruitPost; kind: Kin
               {d.comments.length === 0 ? (
                 <p className="hint">{t("No comments yet.")}</p>
               ) : (
-                <ol className="rc-comments">
-                  {d.comments.map((c, i) => (
-                    <li key={i}>
-                      <div className="rc-c-head">
-                        <strong>{c.author}</strong>
-                        {c.teams && <span className="muted">{c.teams}</span>}
-                        {c.time && (
-                          <span className="muted rc-c-time" title={formatDate(c.time, true)}>
-                            {ago(c.time)}
-                          </span>
-                        )}
-                      </div>
-                      <HtmlBody html={c.html} className="np-body rc-c-body" />
-                    </li>
-                  ))}
-                </ol>
+                <CommentList comments={d.comments} />
               )}
             </section>
           )}
@@ -309,5 +294,29 @@ export function RecruitPreview({ onAll, onOpen }: { onAll: () => void; onOpen: (
         </>
       )}
     </section>
+  );
+}
+
+/** Comments under an etf2l.org page, as ETF2L lists them: ETF2L's own
+ *  notices (ETF2L Staff, Default Date) marked. */
+export function CommentList({ comments }: { comments: EtfComment[] }) {
+  return (
+    <ol className="rc-comments">
+      {comments.map((c, i) => (
+        <li key={i} className={c.staff ? "staff" : undefined}>
+          <div className="rc-c-head">
+            <strong>{c.author}</strong>
+            {c.staff && <span className="rc-c-staff">{t("ETF2L")}</span>}
+            {c.teams && <span className="muted">{c.teams}</span>}
+            {c.time && (
+              <span className="muted rc-c-time" title={formatDate(c.time, true)}>
+                {ago(c.time)}
+              </span>
+            )}
+          </div>
+          <HtmlBody html={c.html} className="np-body rc-c-body" />
+        </li>
+      ))}
+    </ol>
   );
 }
