@@ -1,10 +1,10 @@
 import { useMemo, useState, type KeyboardEvent } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { Etf2lMatchPage, Fixture, LeagueMatch, ResultRow, TeamRosterRow } from "../../api/types";
+import type { Etf2lMatchPage, Fixture, LeagueMatch, LineupPlayer, ResultRow, TeamRosterRow } from "../../api/types";
 import { errorMessage } from "../../api/types";
 import { formatDate, rating } from "../../lib/format";
-import { openPlayer } from "../../lib/goto";
+import { openPlayer, openTeam } from "../../lib/goto";
 import { t, tx } from "../../lib/i18n";
 import { CLASS_ORDER } from "../analysis/common";
 import { ClassIcon } from "../ClassIcon";
@@ -263,6 +263,9 @@ export function LeagueMatchPage({ matchId, fixture, onTeam, onOpenLog }: { match
   const time = fx?.time ?? head.time;
   const maps = m?.maps ?? [];
   const players = m?.players ?? [];
+  // Mercs ETF2L lists with no team whose side no log shows: their own row,
+  // as ETF2L's "Unrostered".
+  const unplaced = players.filter((p) => p.teamId !== head?.clan1.id && p.teamId !== head?.clan2.id);
   const url = m?.url ?? `https://etf2l.org/matches/${matchId}/`;
   const a = head.r1 ?? 0;
   const b = head.r2 ?? 0;
@@ -386,6 +389,14 @@ export function LeagueMatchPage({ matchId, fixture, onTeam, onOpenLog }: { match
                     <h3 className="e2-lu-team">{head.clan2.name}</h3>
                     <Lineup rows={players.filter((p) => p.teamId === head.clan2.id)} />
                   </div>
+                  {unplaced.length > 0 && (
+                    <div className="e2-lu-unrostered">
+                      <h3 className="e2-lu-team">
+                        {t("Unrostered")} <span className="muted">{t("mercs no log puts on a side")}</span>
+                      </h3>
+                      <Lineup rows={unplaced} />
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -470,7 +481,7 @@ function fromFixture(f: Fixture): ResultRow {
   };
 }
 
-function Lineup({ rows }: { rows: LeagueMatch["players"] }) {
+function Lineup({ rows }: { rows: LineupPlayer[] }) {
   const sorted = [...rows].sort((x, y) => order(x.class) - order(y.class) || x.name.localeCompare(y.name));
   if (sorted.length === 0) return <p className="hint">{t("Not read yet.")}</p>;
   return (
@@ -479,12 +490,36 @@ function Lineup({ rows }: { rows: LeagueMatch["players"] }) {
         <li key={p.accountId}>
           <button onClick={() => openPlayer(p.accountId)} title={t("Open profile")}>
             <ClassIcon cls={p.class} size={20} />
-            <span className="e2-lu-name">{p.name}</span>
+            <span className="e2-lu-name">
+              {p.name}
+              {p.merc && (
+                <span className="e2-lu-merc" title={t("Played for a team they were not on")}>
+                  {t("merc")}
+                </span>
+              )}
+            </span>
             <span className="e2-lu-rating">{rating(p.rating)}</span>
           </button>
+          {p.merc && <Joined p={p} />}
         </li>
       ))}
     </ol>
+  );
+}
+
+/** Whether a merc joined a team later: the one they mercked for, or another. */
+function Joined({ p }: { p: LineupPlayer }) {
+  if (!p.joined) return <span className="e2-lu-joined muted">{t("No team since, in the seasons read")}</span>;
+  const j = p.joined;
+  const same = j.teamId === p.teamId;
+  return (
+    <button className="e2-lu-joined" onClick={() => openTeam(j.teamId)} title={t("Open the team")}>
+      <span aria-hidden>↳</span> {same ? t("Joined {0} later", { "0": j.name }) : t("Later joined {0}", { "0": j.name })}
+      <span className="muted">
+        {" · "}
+        {tx("Season {0}", { "0": j.season })} · {formatDate(j.time)}
+      </span>
+    </button>
   );
 }
 

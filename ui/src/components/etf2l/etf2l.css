@@ -620,6 +620,33 @@
 .e2-lineup button:hover { background: rgba(var(--accent-rgb), 0.1); }
 .e2-lu-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .e2-lu-rating { font-variant-numeric: tabular-nums; font-weight: 600; }
+/* Mercs: a tag on the name, and under it whether they joined a team later. */
+.e2-lu-merc {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  border-radius: 999px;
+  color: var(--accent-text);
+  font: 700 0.66rem var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+.e2-lineup .e2-lu-joined {
+  display: block;
+  width: auto;
+  margin: -3px 0 3px 40px;
+  padding: 1px 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--tf2-tan);
+}
+.e2-lineup span.e2-lu-joined { font-size: 0.78rem; }
+.e2-lineup button.e2-lu-joined:hover { background: none; text-decoration: underline; }
+.e2-lu-unrostered { grid-column: 1 / -1; }
+.e2-lu-unrostered .e2-lu-team { color: var(--muted); }
+.e2-lu-unrostered .e2-lu-team .muted { margin-left: 8px; font: 400 0.78rem "Segoe UI", system-ui, sans-serif; text-transform: none; letter-spacing: normal; }
+.e2-lu-unrostered .e2-lineup { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; }
 .e2-logs { display: flex; flex-wrap: wrap; gap: 6px; }
 .e2-etf2l-link { align-self: flex-start; }
 

@@ -114,12 +114,25 @@ impl Db {
         .bind(account.map(i64::from))
         .fetch_all(self.pool())
         .await?;
-        // ETF2L lists a merc -- someone playing for a team they are not on
-        // yet -- with no team (Flashy's first DD14 official). Their team is
-        // the one whose players were on their side in the match's logs.
+        let guessed = self.merc_sides(None).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                let (m, a): (i64, i64) = (r.get("match_id"), r.get("account_id"));
+                let team: Option<i64> = r.get::<Option<i64>, _>("team_id").or_else(|| guessed.get(&(m, a)).copied());
+                (m, a as u32, team, r.get("name"))
+            })
+            .collect())
+    }
+
+    /// ETF2L lists a merc -- someone playing for a team they are not on
+    /// yet -- with no team (Flashy's first DD14 official). Their team is the
+    /// one whose players were on their side in the match's logs: for one
+    /// match, or every match without it. Keyed by `(match, account)`.
+    pub async fn merc_sides(&self, match_id: Option<i64>) -> Result<HashMap<(i64, i64), i64>> {
         let guessed: HashMap<(i64, i64), i64> = {
             let rows = sqlx::query(
-                "WITH merc AS (SELECT match_id, account_id FROM etf2l_season_player WHERE team_id IS NULL),
+                "WITH merc AS (SELECT match_id, account_id FROM etf2l_season_player WHERE team_id IS NULL AND (?1 IS NULL OR match_id = ?1)),
                  side AS (
                    SELECT l.log_id, l.etf2l_match_id AS match_id, p.account_id, p.team FROM league_log l
                      JOIN league_log_player p ON p.log_id = l.log_id WHERE l.etf2l_match_id IN (SELECT match_id FROM merc)
@@ -135,19 +148,13 @@ impl Db {
                  GROUP BY me.match_id, me.account_id, o.team_id
                  ORDER BY n ASC",
             )
+            .bind(match_id)
             .fetch_all(self.pool())
             .await?;
             // Ascending, so the team seen most is inserted last and kept.
             rows.into_iter().map(|r| ((r.get("match_id"), r.get("account_id")), r.get("team_id"))).collect()
         };
-        Ok(rows
-            .into_iter()
-            .map(|r| {
-                let (m, a): (i64, i64) = (r.get("match_id"), r.get("account_id"));
-                let team: Option<i64> = r.get::<Option<i64>, _>("team_id").or_else(|| guessed.get(&(m, a)).copied());
-                (m, a as u32, team, r.get("name"))
-            })
-            .collect())
+        Ok(guessed)
     }
 
     /// The mercs of every match: `(match, account)` for each player ETF2L

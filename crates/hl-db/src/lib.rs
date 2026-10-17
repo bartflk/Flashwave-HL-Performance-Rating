@@ -46,7 +46,7 @@ pub use roundmap::{
 };
 pub use ratings::{HistoryDbRow, RatingRow, VsTotals};
 pub use timeline::{TimelineRow, TimelineTotals};
-pub use leagues::{Competition, CompetitionRow, H2hRow, MatchLog, MatchMap, MatchPlayerRow, ResultRow, SeasonMap, SeasonMatch, SeasonMatchRow, TeamHit, TeamRef};
+pub use leagues::{Competition, CompetitionRow, H2hRow, LaterTeam, MatchLog, MatchMap, MatchPlayerRow, ResultRow, SeasonMap, SeasonMatch, SeasonMatchRow, TeamHit, TeamRef};
 pub use catalogue::{CatMatch, Etf2lPlayer, RatedGame, RosterRow};
 pub use transfers::Transfer;
 pub use mass::{MassBatch, MassDemo};

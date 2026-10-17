@@ -1304,7 +1304,12 @@ export const mockApi: Api = {
       r2: r.scoreAgainst,
       defaultWin: r.defaultWin,
       maps: r.defaultWin ? [] : r.maps.map((map) => ({ map, clan1: half(r.scoreFor), clan2: half(r.scoreAgainst), goldenCap: false })),
-      players: base.roster.map((p) => ({ accountId: p.accountId, name: p.name, teamId: 37805, class: p.class, rating: p.rating })),
+      players: [
+        ...base.roster.slice(0, 8).map((p) => ({ accountId: p.accountId, name: p.name, teamId: 37805, class: p.class, rating: p.rating })),
+        // Two mercs: one the logs put on DD14, who joined it later; one no log places.
+        { accountId: 900001, name: "Flashy", teamId: 37805, class: "sniper", rating: 1.12, merc: true, joined: { teamId: 37805, name: "DD14", matchId: 140001, time: 1_789_000_000, season: 37 } },
+        { accountId: 900002, name: "Nick", teamId: null, class: null, rating: null, merc: true, joined: { teamId: 31000, name: "TWICE", matchId: 140002, time: 1_789_500_000, season: 37 } },
+      ],
       meetings: [{ matchId: 1, time: 1_780_000_000, season: 35, division: "Mid", round: "Week 4", scoreA: 4, scoreB: 2, defaultWin: false }],
       logs: [
         { logId: 4109131, map: r.maps[0] ?? null, stored: true },

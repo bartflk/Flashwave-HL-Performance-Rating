@@ -8,7 +8,7 @@
 //! team's lineup from its own page instead.
 
 use anyhow::Result;
-use hl_db::{Db, MatchLog, MatchMap, ResultRow};
+use hl_db::{Db, LaterTeam, MatchLog, MatchMap, ResultRow};
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -23,6 +23,12 @@ pub struct MatchPlayer {
     /// Their average rating on that class in this match (1.00 is a
     /// typical game).
     pub rating: Option<f64>,
+    /// Played for a team they were not on (ETF2L lists them with no team);
+    /// `team_id` is then the side the logs put them on, if any log does.
+    pub merc: bool,
+    /// A merc's first official after this one as a rostered player: the
+    /// team they mercked for if they ever joined it, else the first other.
+    pub joined: Option<LaterTeam>,
 }
 
 /// An earlier official between the two teams, from `clan1`'s side.
@@ -76,6 +82,7 @@ pub async fn league_match(db: &Db, match_id: i64) -> Result<Option<LeagueMatch>>
     let maps = db.league_match_maps(match_id).await?;
     let logs = db.league_match_logs(match_id).await?;
     let names: HashMap<u32, String> = db.etf2l_names().await?;
+    let sides = db.merc_sides(Some(match_id)).await?;
     let mut players = Vec::new();
     for p in db.league_match_players(match_id).await? {
         let games: Vec<(String, f64)> = db
@@ -87,7 +94,10 @@ pub async fn league_match(db: &Db, match_id: i64) -> Result<Option<LeagueMatch>>
             .collect();
         let (class, rating) = class_and_rating(&games);
         let name = p.name.filter(|n| !n.trim().is_empty()).or_else(|| names.get(&p.account_id).cloned()).unwrap_or_else(|| p.account_id.to_string());
-        players.push(MatchPlayer { account_id: p.account_id, name, team_id: p.team_id, class, rating });
+        let merc = p.team_id.is_none();
+        let team_id = p.team_id.or_else(|| sides.get(&(match_id, i64::from(p.account_id))).copied());
+        let joined = if merc { db.later_team(p.account_id, head.time, team_id).await? } else { None };
+        players.push(MatchPlayer { account_id: p.account_id, name, team_id, class, rating, merc, joined });
     }
     let meetings = db
         .head_to_head(head.clan1.id, head.clan2.id)
@@ -127,14 +137,26 @@ mod tests {
             "INSERT INTO etf2l_team (team_id, name) VALUES (1, 'DD14'), (2, 'TWICE')",
             "INSERT INTO etf2l_season_match (match_id, competition_id, time, clan1_id, clan2_id, r1, r2) VALUES (10, 1, 100, 1, 2, 4, 2), (11, 1, 300, 2, 1, 6, 0)",
             "INSERT INTO etf2l_season_map (match_id, match_order, map, clan1, clan2) VALUES (11, 2, 'koth_product_final', 3, 0), (11, 1, 'pl_upward_f12', 3, 0)",
-            "INSERT INTO etf2l_season_player (match_id, account_id, team_id, name) VALUES (11, 7, 2, 'seven'), (11, 8, 1, '')",
+            "INSERT INTO etf2l_season_player (match_id, account_id, team_id, name) VALUES (11, 7, 2, 'seven'), (11, 8, 1, ''), (11, 9, NULL, 'merc')",
+            // The merc's side, from a league log of the match: with 8, on DD14.
+            "INSERT INTO league_log (log_id, etf2l_match_id, map, played_at) VALUES (500, 11, 'pl_upward_f12', 300)",
+            "INSERT INTO league_log_player (log_id, account_id, team) VALUES (500, 8, 'Red'), (500, 9, 'Red'), (500, 7, 'Blue')",
+            // Next season they play for TWICE first, then join DD14.
+            "INSERT INTO etf2l_team (team_id, name) VALUES (3, 'Other')",
+            "INSERT INTO etf2l_season_match (match_id, competition_id, time, clan1_id, clan2_id) VALUES (20, 1, 400, 2, 3), (21, 1, 500, 1, 3)",
+            "INSERT INTO etf2l_season_player (match_id, account_id, team_id, name) VALUES (20, 9, 2, 'merc'), (21, 9, 1, 'merc')",
         ] {
             sqlx::query(sql).execute(db.pool()).await.unwrap();
         }
         let m = league_match(&db, 11).await.unwrap().unwrap();
         assert_eq!((m.head.clan1.name.as_str(), m.head.r1, m.head.r2), ("TWICE", Some(6), Some(0)));
         assert_eq!(m.maps.iter().map(|x| x.map.as_str()).collect::<Vec<_>>(), vec!["pl_upward_f12", "koth_product_final"], "in the order played");
-        assert_eq!(m.players.len(), 2);
+        assert_eq!(m.players.len(), 3);
+        let merc = m.players.iter().find(|p| p.account_id == 9).unwrap();
+        assert!(merc.merc);
+        assert_eq!(merc.team_id, Some(1), "the side the log puts them on");
+        assert_eq!(merc.joined.as_ref().map(|j| (j.team_id, j.match_id)), Some((1, 21)), "the team they mercked for, though another came first");
+        assert!(m.players.iter().filter(|p| p.account_id != 9).all(|p| !p.merc && p.joined.is_none()));
         assert_eq!(m.players.iter().find(|p| p.account_id == 8).unwrap().name, "8", "no name at all: the account");
         assert_eq!(m.meetings.iter().map(|x| x.match_id).collect::<Vec<_>>(), vec![10], "the match itself is not an earlier meeting");
         assert_eq!((m.meetings[0].score_a, m.meetings[0].score_b), (Some(2), Some(4)), "from TWICE's side");

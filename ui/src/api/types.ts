@@ -406,11 +406,26 @@ export interface Recruitment {
 /** One official for the match page (Q74). */
 export interface LeagueMatch extends ResultRow {
   maps: Array<{ map: string; clan1: number; clan2: number; goldenCap: boolean }>;
-  players: Array<{ accountId: number; name: string; teamId: number | null; class: string | null; rating: number | null }>;
+  players: LineupPlayer[];
   /** Earlier officials between the two, from clan1's side. */
   meetings: Array<{ matchId: number; time: number | null; season: number; division: string | null; round: string | null; scoreA: number | null; scoreB: number | null; defaultWin: boolean }>;
   logs: Array<{ logId: number; map: string | null; stored: boolean }>;
   url: string;
+}
+
+/** One player of an official's lineup. */
+export interface LineupPlayer {
+  accountId: number;
+  name: string;
+  /** For a merc, the side the logs put them on; null when no log does. */
+  teamId: number | null;
+  class: string | null;
+  rating: number | null;
+  /** Played for a team they were not on (ETF2L: "Unrostered"). */
+  merc?: boolean;
+  /** A merc's first official after this one as a rostered player: the team
+   *  they mercked for if they ever joined it, else the first other. */
+  joined?: { teamId: number; name: string; matchId: number; time: number; season: number } | null;
 }
 
 /** A team found by name (Q74). */

@@ -508,6 +508,18 @@ pub struct MatchPlayerRow {
     pub name: Option<String>,
 }
 
+/// The team someone first played an official for after a given time: for a
+/// merc, whether they joined a team later on.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LaterTeam {
+    pub team_id: i64,
+    pub name: String,
+    pub match_id: i64,
+    pub time: i64,
+    pub season: i64,
+}
+
 /// A log of an official: the owner's (openable in the app) or the league
 /// sample's.
 #[derive(Debug, Clone, Serialize)]
@@ -608,6 +620,27 @@ impl Db {
             .into_iter()
             .map(|r| MatchPlayerRow { account_id: r.get::<i64, _>("account_id") as u32, team_id: r.get("team_id"), name: r.get("name") })
             .collect())
+    }
+
+    /// The first team `account` played an official for after `after`, as a
+    /// rostered player, not a merc; `prefer`'s first if they ever did.
+    pub async fn later_team(&self, account: u32, after: i64, prefer: Option<i64>) -> Result<Option<LaterTeam>> {
+        let row = sqlx::query(
+            "SELECT p.team_id, t.name, m.match_id, m.time, c.season
+               FROM etf2l_season_player p
+               JOIN etf2l_season_match m ON m.match_id = p.match_id
+               JOIN etf2l_competition c ON c.competition_id = m.competition_id
+               JOIN etf2l_team t ON t.team_id = p.team_id
+              WHERE p.account_id = ?1 AND p.team_id IS NOT NULL AND m.time > ?2
+              ORDER BY p.team_id IS ?3 DESC, m.time
+              LIMIT 1",
+        )
+        .bind(i64::from(account))
+        .bind(after)
+        .bind(prefer)
+        .fetch_optional(self.pool())
+        .await?;
+        Ok(row.map(|r| LaterTeam { team_id: r.get("team_id"), name: r.get("name"), match_id: r.get("match_id"), time: r.get("time"), season: r.get("season") }))
     }
 
     /// An official's logs: the owner's, linked by their context, and the
