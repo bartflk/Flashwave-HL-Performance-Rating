@@ -18,6 +18,21 @@ export function Spinner({ label }: { label?: string }) {
   );
 }
 
+/**
+ * Content kept on screen while it is fetched again (a new filter, class or
+ * season): a small spinner in the corner of what it belongs to, so the old
+ * numbers are never mistaken for the new ones (Q81). The parent needs
+ * `position: relative` (the class `has-refresh`).
+ */
+export function Refreshing({ on }: { on: boolean }) {
+  if (!on) return null;
+  return (
+    <span className="refreshing">
+      <Spinner label={t("Updating")} />
+    </span>
+  );
+}
+
 /** A waiting line: the spinner and what is being waited for. */
 export function Loading({ children, className }: { children: ReactNode; className?: string }) {
   return (

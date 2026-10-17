@@ -19,7 +19,7 @@ import { RecruitPostPage, RecruitPreview, RecruitmentPage, type Kind as RecruitK
 import "../teams/teams.css";
 import "./etf2l.css";
 import { Etf2lMark } from "../Etf2lMark";
-import { Loading } from "../Spinner";
+import { Loading, Refreshing } from "../Spinner";
 
 /**
  * The ETF2L tab (Q74, Flashy; PLAN §27): Teams and Players as one tab laid
@@ -273,7 +273,8 @@ function LeagueSearch({ onTeam }: { onTeam: (id: number) => void }) {
   const ps = term.length >= 2 ? (players.data ?? []).slice(0, 6) : [];
   const ts = term.length >= 2 ? (teams.data ?? []).slice(0, 6) : [];
   return (
-    <div className="e2-search" ref={box}>
+    <div className="e2-search has-refresh" ref={box}>
+      <Refreshing on={term.length >= 2 && (players.isFetching || teams.isFetching)} />
       <input
         type="search"
         value={q}

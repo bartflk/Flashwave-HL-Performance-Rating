@@ -15,8 +15,9 @@ import "../players/players.css";
 import "./teams.css";
 import { YouOnThisTeam } from "./YourTeams";
 import { Etf2lMark } from "../Etf2lMark";
-import { Loading } from "../Spinner";
 import { SortTh, useSort } from "../../lib/sort";
+import { FixtureStrength, RosterStrength } from "../match/OpponentStrength";
+import { Loading, Refreshing } from "../Spinner";
 
 /**
  * The league's screens (Q29, and Flashy's UX passes), shown inside the ETF2L
@@ -254,7 +255,8 @@ export function SeasonScreen({ season, onTeam, tables: showTables = true }: { se
       {showTables && <h2 className="ts-section">{t("Divisions")}</h2>}
       {showTables && tables.isError && <p className="error">{errorMessage(tables.error)}</p>}
       {showTables && v && v.divisions.length > 0 && (
-        <div className="teams-divisions">
+        <div className="teams-divisions has-refresh">
+          <Refreshing on={tables.isPlaceholderData} />
           {v.divisions.map((d) => (
             <section key={d.division} className="panel ts-division">
               <h3>{d.division}</h3>
@@ -503,8 +505,14 @@ function TeamOverview({
                 <FixtureCard key={f.matchId} f={f} side={v.teamId} onTeam={onTeam} />
               ))}
             </div>
+            {/* Who comes in stronger, from both latest lineups (Q78). */}
+            <FixtureStrength
+              us={{ name: v.name, roster: v.roster }}
+              them={next[0].clan1.id === v.teamId ? { id: next[0].clan2.id, name: next[0].clan2.name } : { id: next[0].clan1.id, name: next[0].clan1.name }}
+            />
           </>
         )}
+        <RosterStrength roster={v.roster} onPlayer={openPlayer} />
         {etf2l?.description && (
           <>
             <h3>{t("About")}</h3>

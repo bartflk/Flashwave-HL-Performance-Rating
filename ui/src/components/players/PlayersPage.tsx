@@ -10,7 +10,7 @@ import { DivisionBadge, PlayerProfile } from "./PlayerProfile";
 import { TopPlayers } from "./PlayerStats";
 import { MedalGlyph } from "./MedalGlyph";
 import { onOpenPlayer, takePendingPlayer } from "../../lib/goto";
-import { Loading, Spinner } from "../Spinner";
+import { Loading, Refreshing, Spinner } from "../Spinner";
 
 /**
  * Look other people up (Q14).
@@ -61,7 +61,8 @@ export function PlayersPage({ onOpenMatch }: { onOpenMatch: (logId: number) => v
 
   return (
     <div className="content players">
-      <div className="panel">
+      <div className="panel has-refresh">
+        <Refreshing on={term.length >= 2 && (hits.isFetching || older.isFetching)} />
         <h2>{t("Look someone up")}</h2>
         <p className="hint" style={{ marginTop: 6 }}>{t("Anyone who played an ETF2L official in the last six years, is in your matches, or played Highlander on logs.tf since 2012. Any name they used, or a Steam ID.")}</p>
         <input

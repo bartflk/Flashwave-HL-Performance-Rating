@@ -459,3 +459,22 @@ th.sortable:hover .sort-arrow { opacity: 0.7; }
 .stip-src { padding: 1px 7px; border-radius: 999px; font-size: 0.72rem; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-text); }
 .stip-more { margin-left: auto; font-size: 0.78rem; }
 th .stip-card { font-weight: 400; }
+
+/* Q81: content being fetched again, a spinner in its corner. */
+.has-refresh { position: relative; }
+.refreshing {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 5;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+.e2-search .refreshing { top: 50%; right: 8px; width: 20px; height: 20px; transform: translateY(-50%); border: 0; box-shadow: none; background: transparent; }

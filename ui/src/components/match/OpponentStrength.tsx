@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { LineupRating } from "../../api/types";
+import type { LineupRating, TeamRosterRow } from "../../api/types";
 import { rating } from "../../lib/format";
 import { t, tx } from "../../lib/i18n";
 import { classLabel } from "../analysis/common";
@@ -100,5 +100,78 @@ export function CareerChip({ r }: { r: LineupRating | undefined }) {
     <span className={r.onClass ? "os-chip" : "os-chip off"} title={tip}>
       {rating(r.rating)}
     </span>
+  );
+}
+
+/** A team's latest lineup from its roster: everyone in its last official
+ *  when that was six or more players, else the nine seen most recently. */
+export function latestLineup(roster: TeamRosterRow[]): Array<{ accountId: number; class: string | null }> {
+  const rows = [...roster].sort((x, y) => y.lastPlayed - x.lastPlayed);
+  const last = rows[0]?.lastPlayed ?? 0;
+  const inLast = rows.filter((r) => r.lastPlayed === last);
+  return (inLast.length >= 6 ? inLast : rows.slice(0, 9)).map((r) => ({ accountId: r.accountId, class: r.class }));
+}
+
+/**
+ * A team's strength from its latest lineup (Q78, Flashy: "do the team page
+ * strength"): the average logs.tf career of its players, and each of them.
+ */
+export function RosterStrength({ roster, onPlayer }: { roster: TeamRosterRow[]; onPlayer: (accountId: number) => void }) {
+  const lineup = latestLineup(roster);
+  const { by, pending } = useLineupRatings(lineup);
+  if (lineup.length === 0) return null;
+  if (pending) return <Loading>{t("Reading the logs.tf summary…")}</Loading>;
+  const named = new Map(roster.map((r) => [r.accountId, r.name]));
+  const rows = lineup.map((p) => ({ ...p, name: named.get(p.accountId) ?? String(p.accountId), r: by.get(p.accountId) }));
+  const known = rows.map((x) => x.r?.rating ?? null).filter((r): r is number => r !== null);
+  const avg = known.length > 0 ? known.reduce((a, b) => a + b, 0) / known.length : null;
+  rows.sort((a, b) => (b.r?.rating ?? -1) - (a.r?.rating ?? -1));
+  return (
+    <section className="os os-roster">
+      <header className="os-head">
+        <h3>
+          <StatTip k="strength">{t("Roster strength")}</StatTip>
+        </h3>
+        <span className="os-verdict">
+          {avg !== null ? rating(avg) : "–"} <span className="muted os-meta">{tx("over {0} of {1}", { "0": known.length, "1": rows.length })}</span>
+        </span>
+      </header>
+      <div className={`os-row os-a`}>
+        <span className="os-label">{t("Latest lineup")}</span>
+        <span className="os-track" aria-hidden>
+          <span className="os-mid" style={{ left: `${at(1)}%` }} />
+          {avg !== null && <span className="os-fill" style={{ width: `${at(avg)}%` }} />}
+        </span>
+        <span className="os-value">{avg !== null ? rating(avg) : "–"}</span>
+        <span />
+      </div>
+      <ul className="os-players">
+        {rows.map((x) => (
+          <li key={x.accountId}>
+            <button className="linkish" onClick={() => onPlayer(x.accountId)}>
+              {x.name}
+            </button>
+            <span className="muted os-class">{x.r?.class ? classLabel(x.r.class) : x.class ? classLabel(x.class) : ""}</span>
+            {x.r?.rating !== null && x.r?.rating !== undefined ? <CareerChip r={x.r} /> : <span className="muted os-unknown">{t("unknown")}</span>}
+          </li>
+        ))}
+      </ul>
+      <p className="hint os-note">{t("Their last official's players (or the nine seen most recently), each on their logs.tf competitive career.")}</p>
+    </section>
+  );
+}
+
+/** Two teams' latest lineups side by side, before they meet. */
+export function FixtureStrength({ us, them }: { us: { name: string; roster: TeamRosterRow[] }; them: { id: number; name: string } }) {
+  const other = useQuery({ queryKey: ["team", them.id], queryFn: () => api.getTeam(them.id), staleTime: 5 * 60_000 });
+  if (other.isPending) return <Loading>{t("Reading the other team's roster…")}</Loading>;
+  if (!other.data) return null;
+  return (
+    <OpponentStrength
+      sides={[
+        { label: us.name, tone: "a", players: latestLineup(us.roster) },
+        { label: them.name, tone: "b", players: latestLineup(other.data.roster) },
+      ]}
+    />
   );
 }

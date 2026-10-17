@@ -1676,3 +1676,11 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 .os-note { margin: 0; font-size: 0.76rem; }
 .os-chip { margin-left: auto; padding: 0 6px; border-radius: 5px; font-size: 0.74rem; font-variant-numeric: tabular-nums; color: var(--muted); background: color-mix(in srgb, var(--text) 7%, transparent); }
 .os-chip.off { font-style: italic; opacity: 0.75; }
+
+/* A team's roster strength: the bar, then each player with their career. */
+.os-players { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 16px; }
+.os-players li { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; min-width: 0; }
+.os-players .linkish { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.os-class { font-size: 0.76rem; white-space: nowrap; }
+.os-players .os-chip { margin-left: auto; }
+.os-unknown { margin-left: auto; font-size: 0.74rem; }

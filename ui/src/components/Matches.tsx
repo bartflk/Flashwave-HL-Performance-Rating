@@ -9,7 +9,7 @@ import { KindPicker } from "./ContextBadge";
 import { ClassIcon } from "./ClassIcon";
 import { PeriodPicker } from "./PeriodPicker";
 import { t, k } from "../lib/i18n";
-import { Spinner } from "./Spinner";
+import { Refreshing, Spinner } from "./Spinner";
 
 const PAGE = 50;
 
@@ -221,7 +221,8 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
       )}
 
       {items.length > 0 && (
-        <div className={stale ? "table-wrap stale" : "table-wrap"} aria-busy={stale}>
+        <div className={stale ? "table-wrap stale has-refresh" : "table-wrap has-refresh"} aria-busy={stale}>
+          <Refreshing on={stale} />
           <table className="match-table">
             <thead>
               <tr>

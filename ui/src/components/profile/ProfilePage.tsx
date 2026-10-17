@@ -33,10 +33,10 @@ import { Fold } from "../Fold";
 import "./profile.css";
 import { t, tx, k } from "../../lib/i18n";
 import { classLabel } from "../analysis/common";
-import { Loading } from "../Spinner";
 import { ComponentTip, StatTip } from "../StatTip";
 import type { GlossaryKey } from "../../lib/glossary";
 import { SortTh, useSort } from "../../lib/sort";
+import { Loading, Refreshing } from "../Spinner";
 
 /** Below this many rated games a profile is shown, but flagged as thin. */
 const THIN_SAMPLE = 20;
@@ -105,7 +105,8 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
       </nav>
 
       {classBound && (
-        <div className="pf-toolbar">
+        <div className="pf-toolbar has-refresh">
+          <Refreshing on={q.isPlaceholderData} />
           <nav className="class-tabs" aria-label={t("Class")}>
             {classes.map(([c, n]) => (
               <button

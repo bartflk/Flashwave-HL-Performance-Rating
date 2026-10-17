@@ -7,7 +7,7 @@ import { openPlayer } from "../../lib/goto";
 import { ClassIcon } from "../ClassIcon";
 import { classLabel } from "../analysis/common";
 import { t as tr, tx, k } from "../../lib/i18n";
-import { Loading } from "../Spinner";
+import { Loading, Refreshing } from "../Spinner";
 
 /**
  * Who you play with (once its own tab): everyone with a few games on your
@@ -62,7 +62,8 @@ export function TeammatesPanel() {
   const shown = open ? rows : rows.slice(0, FIRST);
 
   return (
-    <div className={q.isPlaceholderData ? "mates refetching" : "mates"}>
+    <div className={q.isPlaceholderData ? "mates refetching has-refresh" : "mates has-refresh"}>
+      <Refreshing on={q.isPlaceholderData} />
       <div className="mates-controls">
         <p className="hint">
           {tx("Everyone with {minGames} or more games on your side, from {0} {1}. \"Your rating with them\" compares your games together with your other games: who you played well alongside, not who made you play well.", {

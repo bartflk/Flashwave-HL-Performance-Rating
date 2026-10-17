@@ -9,10 +9,10 @@ import { t, tx } from "../../lib/i18n";
 import { seasonShort } from "./PlayerProfile";
 import { DivisionBadge } from "./PlayerProfile";
 import "../rating/rating.css";
-import { Loading, Spinner } from "../Spinner";
 import { SortTh, useSort } from "../../lib/sort";
 import { StatTip } from "../StatTip";
 import { tip } from "../../lib/glossary";
+import { Loading, Refreshing, Spinner } from "../Spinner";
 
 /**
  * Ratings for everyone (Q36, Flashy): a player's rating per class on the
@@ -176,7 +176,8 @@ export function TopPlayers({ onPick }: { onPick: (accountId: number) => void }) 
   const top = useMemo(() => (r?.rows ?? []).slice(0, 25), [r]);
   const s = useSort("top-players", top, { rank: (x) => x.rank, name: (x) => x.name, team: (x) => x.team?.name ?? null, games: (x) => x.games, rating: (x) => x.avg });
   return (
-    <div className="panel top-players">
+    <div className="panel top-players has-refresh">
+      <Refreshing on={q.isPlaceholderData} />
       <h2>{t("Top players")}</h2>
       <p className="hint" style={{ marginTop: 6 }}>{tx("By average rating in one season, on one class, in the division they played, over their officials. {0} or more officials to be ranked.", { "0": 4 })}</p>
       <div className="tp-controls">
