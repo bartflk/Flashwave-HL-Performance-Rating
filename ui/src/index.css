@@ -393,17 +393,16 @@ input:where(:not([type]))::placeholder {
 .country { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; }
 .country .flag { width: 20px; height: 15px; object-fit: cover; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35); flex: none; }
 
-/* ETF2L's mark: its 16 px favicon on a light tile, so the slate emblem reads
-   on dark themes; inline, on the text's middle. */
+/* ETF2L's logo: its emblem as a mask in the text colour around it, so it
+   reads on every theme and matches the badge or link it is in. */
 .etf2l-mark {
   display: inline-block;
   flex: none;
-  box-sizing: content-box;
-  padding: 1px;
-  border-radius: 3px;
-  background: #e9eef3;
   vertical-align: -2px;
-  image-rendering: auto;
+  background-color: currentColor;
+  -webkit-mask: url("/icons/etf2l.svg") center / contain no-repeat;
+  mask: url("/icons/etf2l.svg") center / contain no-repeat;
 }
-.tab .etf2l-mark { margin-right: 6px; vertical-align: -2px; }
-.badge .etf2l-mark { margin-right: 4px; vertical-align: -2px; padding: 0; border-radius: 2px; }
+.tab:has(.etf2l-mark) { display: inline-flex; align-items: center; white-space: nowrap; }
+.tab .etf2l-mark { margin-right: 7px; }
+.badge .etf2l-mark { margin-right: 4px; }

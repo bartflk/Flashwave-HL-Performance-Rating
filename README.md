@@ -158,7 +158,7 @@ has the whole of it, including what to do if one does break.
 | [drops.tf](https://drops.tf/about) by Icewind | Match stats and the raw server logs, asked first: logs.tf's own data, fast and with no rate limit, about an hour behind |
 | [logs.tf](https://logs.tf) | Match stats and the raw server log behind each match (every kill with positions, every hit, heal and uber) for what drops.tf has not got yet: a game just played, or a log it lost |
 | [trends.tf](https://trends.tf) | Which matches you played, which logs were combined from which |
-| [ETF2L](https://etf2l.org) | Officials, divisions, rosters and seasons; its favicon marks ETF2L things in the app (the league tab, officials, links to its pages) |
+| [ETF2L](https://etf2l.org) | Officials, divisions, rosters and seasons; its logo (from rules.etf2l.org) marks ETF2L things in the app (the league tab, officials, links to its pages) |
 | [demos.tf](https://demos.tf) by Icewind | STV demos, downloaded only when you ask (its files go back to 14 October 2019: older demos are still listed, but marked deleted); and the top-down images and map boundaries for 38 more maps under the kill map (added by Emiel) |
 | [more.tf](https://more.tf) | The original top-down map images under the kill map; a reference for validating raw-log parsing |
 | [Official TF2 Wiki](https://wiki.teamfortress.com/wiki/Tournament_Medal_-_ETF2L_Highlander) | The ETF2L Highlander medal icon on player profiles (Valve's in-game item art, Season 17 design); the kill map's sentry, dispenser and teleporter icons (cut from its picture of the Engineer's building HUD) and the death skull (the kill feed's) |

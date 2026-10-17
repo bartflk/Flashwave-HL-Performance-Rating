@@ -160,7 +160,7 @@ export default function App() {
           <nav className="tabs">
             {TABS.map(([id, label]) => (
               <button key={id} className={tab === id ? "tab active" : "tab"} onClick={() => go(id)}>
-                {id === "etf2l" && <Etf2lMark size={14} />}
+                {id === "etf2l" && <Etf2lMark size={15} />}
                 {t(label)}
               </button>
             ))}
