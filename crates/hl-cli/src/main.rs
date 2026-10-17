@@ -9,6 +9,8 @@ use hl_db::{Db, MatchFilter};
 use hl_ingest::{Progress, Sources, SyncOptions};
 use std::path::PathBuf;
 
+mod logsdump;
+
 const USAGE: &str = "\
 hl — Highlander rating system dev harness
 
@@ -29,6 +31,9 @@ COMMANDS:
     match <LOG_ID> [--json]
                            Matchups for one stored match
     rate                   Rebuild baselines and rate every stored performance
+    logsdump <DUMP.sql> <OUT.sqlite3> [--limit ROWS]
+                           Index every player in a logs.tf database dump and rate
+                           every Highlander game in it, into a file of its own
     demos                  Scan the TF2 folder for demos and link them to matches
     rawlogs [--max N] [--check]
                            Fetch logs.tf raw logs and derive every kill; --check
@@ -160,7 +165,8 @@ async fn run() -> Result<()> {
     // Help and the like never open the database, so they never wait for it.
     // `snapshot --check` reads only the snapshot built into this binary.
     let touches_db = !matches!(command.first().copied(), None | Some("help") | Some("--help") | Some("-h"))
-        && !(command.first() == Some(&"snapshot") && command.contains(&"--check"));
+        && !(command.first() == Some(&"snapshot") && command.contains(&"--check"))
+        && command.first() != Some(&"logsdump");
     if touches_db {
         hl_ingest::lock::require_free(&db_path, forced)?;
     }
@@ -168,6 +174,17 @@ async fn run() -> Result<()> {
         [] | ["help"] | ["--help"] | ["-h"] => {
             print!("{USAGE}");
             Ok(())
+        }
+
+        // A whole logs.tf database from a dump, indexed and rated into a file
+        // of its own; the app's database is never opened.
+        ["logsdump", dump, out, rest @ ..] => {
+            let limit = match rest {
+                ["--limit", n] => Some(n.parse().context("--limit needs a number of rows")?),
+                [] => None,
+                _ => bail!("usage: hl logsdump <logs.sql> <out.sqlite3> [--limit <rows>]"),
+            };
+            logsdump::run(std::path::Path::new(dump), std::path::Path::new(out), limit).await
         }
 
         ["status"] => {

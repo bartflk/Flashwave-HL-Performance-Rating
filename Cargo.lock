@@ -1868,6 +1868,7 @@ dependencies = [
  "hl-ingest",
  "hl-rating",
  "serde_json",
+ "sqlx",
  "tokio",
  "tracing",
  "tracing-subscriber",
