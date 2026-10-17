@@ -1672,15 +1672,10 @@ export const mockApi: Api = {
 
   failedLogs: () =>
     delay([
-      {
-        logId: 3998211,
-        attempts: 3,
-        lastAttemptAt: "2026-09-25 22:14:03",
-        error: "logs.tf answered 404",
-        title: "Highlander: bandwagon vs FUNCTION",
-        map: "pl_vigil_rc10",
-        playedAt: 1758300000,
-      },
+      { logId: 4121880, attempts: 2, lastAttemptAt: "2026-10-16 22:14:03", error: "https://logs.tf/api/v1/log/4121880: HTTP 502 Bad Gateway", title: "Highlander: DD14 vs TWICE", map: "koth_product_final", playedAt: 1791000000, gone: false, givenUp: false },
+      { logId: 4089847, attempts: 3, lastAttemptAt: "2026-10-01 20:01:00", error: "https://logs.tf/api/v1/log/4089847: HTTP 404 Not Found", title: null, map: "ashville, Upward", playedAt: 1784500000, gone: true, givenUp: true },
+      { logId: 3920788, attempts: 3, lastAttemptAt: "2026-10-01 20:01:00", error: "https://logs.tf/api/v1/log/3920788: HTTP 404 Not Found", title: null, map: "combined_3920761_3920785.log", playedAt: 1756200000, gone: true, givenUp: true },
+      { logId: 3742421, attempts: 6, lastAttemptAt: "2026-09-01 20:01:00", error: "operation timed out", title: null, map: "pl_vigil_rc10", playedAt: 1730000000, gone: false, givenUp: true },
     ]),
   retryFailed: async () => 1,
   importLog: async (text: string) => {

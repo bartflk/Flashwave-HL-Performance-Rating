@@ -2178,17 +2178,24 @@ teammates (≥{} games)", t.min_games);
                 println!("nothing failed to import");
                 return Ok(());
             }
-            println!("{} logs would not import:", rows.len());
-            for r in &rows {
-                println!(
-                    "  {:>9}  {:<22} {:>2} tries, last {}
-             {}",
-                    r.log_id,
-                    r.map.as_deref().unwrap_or("?"),
-                    r.attempts,
-                    r.last_attempt_at,
-                    r.error
-                );
+            // Still tried, then given up: deleted on logs.tf or out of tries (Q77).
+            for (title, given_up) in [("still being tried", false), ("given up", true)] {
+                let group: Vec<_> = rows.iter().filter(|r| r.given_up == given_up).collect();
+                if group.is_empty() {
+                    continue;
+                }
+                println!("{} {title}:", group.len());
+                for r in group {
+                    let why = if r.gone { "deleted on logs.tf".to_string() } else { r.error.clone() };
+                    println!(
+                        "  {:>9}  {:<22} {:>2} tries, last {}\n             {}",
+                        r.log_id,
+                        r.map.as_deref().unwrap_or("?"),
+                        r.attempts,
+                        r.last_attempt_at,
+                        why
+                    );
+                }
             }
             println!("
 Try one again: hl import <id or logs.tf link>");

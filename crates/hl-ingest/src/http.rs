@@ -342,6 +342,14 @@ impl std::fmt::Display for Refused {
 
 impl std::error::Error for Refused {}
 
+/// A log the source says does not exist: HTTP 404 or 410. drops.tf answers
+/// "not found" with nothing and the app then asks logs.tf, so this from
+/// logs.tf means neither has it -- deleted, not busy (Q77).
+pub fn not_found(e: &anyhow::Error) -> bool {
+    let text = format!("{e:#}");
+    text.contains("HTTP 404") || text.contains("HTTP 410")
+}
+
 pub fn refused(e: &anyhow::Error) -> bool {
     e.chain().any(|c| c.is::<Refused>())
 }
@@ -350,6 +358,15 @@ pub fn refused(e: &anyhow::Error) -> bool {
 mod tests {
     use super::*;
     use std::io::{Read, Write};
+
+    #[test]
+    fn a_deleted_log_is_told_from_a_busy_server() {
+        // Q77: what the 23 in Flashy's list said, against what an outage says.
+        assert!(not_found(&anyhow::anyhow!("https://logs.tf/api/v1/log/4089847: HTTP 404 Not Found")));
+        assert!(not_found(&anyhow::anyhow!("HTTP 410 Gone")));
+        assert!(!not_found(&anyhow::anyhow!("https://logs.tf/api/v1/log/1: HTTP 502 Bad Gateway")));
+        assert!(!not_found(&anyhow::anyhow!("operation timed out")));
+    }
 
     #[test]
     fn a_query_is_encoded_by_the_parser() {

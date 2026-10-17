@@ -24,6 +24,10 @@ pub struct TrendsIndexRow<'a> {
     pub raw_json: &'a str,
 }
 
+/// How many tries a log that keeps failing gets in all (Q77): the first few
+/// on consecutive syncs, the rest a week apart, then it is given up.
+pub const MAX_FETCH_TRIES: i64 = 6;
+
 /// A log that would not download, with whatever the index knows about it.
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -35,6 +39,10 @@ pub struct FailedLog {
     pub title: Option<String>,
     pub map: Option<String>,
     pub played_at: Option<i64>,
+    /// drops.tf and logs.tf both said it does not exist: never asked again.
+    pub gone: bool,
+    /// Gone, or out of tries: listed apart, and left out of "try them all".
+    pub given_up: bool,
 }
 
 /// A logs.tf search row, flattened for storage.
@@ -61,6 +69,9 @@ pub struct IndexStats {
     pub normalized: i64,
     pub pending: i64,
     pub failed: i64,
+    /// Deleted on logs.tf, or out of tries: no longer asked for (Q77).
+    #[serde(default)]
+    pub given_up: i64,
     /// Old logs the retention window is holding back, none of them officials.
     pub outside_window: i64,
 }
@@ -390,11 +401,14 @@ impl Db {
                AND i.superseded_by IS NULL
                AND ( {EFFECTIVE_FORMAT} = 'highlander'
                   OR ({EFFECTIVE_FORMAT} IS NULL AND COALESCE(i.player_count, 0) >= 16) )
-               AND (e.log_id IS NULL OR e.attempts < ?1)
+               -- Never a deleted log (Q77); a failing one on its first tries,
+               -- then once a week until it has had them all.
+               AND (e.log_id IS NULL OR (e.gone = 0 AND (e.attempts < ?1
+                    OR (e.attempts < ?2 AND e.last_attempt_at <= datetime('now', '-7 days')))))
                AND {window}
              ORDER BY i.played_at DESC"
         );
-        let rows = sqlx::query(&sql).bind(max_attempts).fetch_all(self.pool()).await?;
+        let rows = sqlx::query(&sql).bind(max_attempts).bind(MAX_FETCH_TRIES).fetch_all(self.pool()).await?;
         Ok(rows.into_iter().map(|r| r.get("log_id")).collect())
     }
 
@@ -472,10 +486,12 @@ impl Db {
     /// was already stored — this just asks for it.
     pub async fn failed_logs(&self) -> Result<Vec<FailedLog>> {
         let rows = sqlx::query(
-            "SELECT e.log_id, e.attempts, e.last_attempt_at, e.error,
+            "SELECT e.log_id, e.attempts, e.last_attempt_at, e.error, e.gone,
                     i.title, i.map, i.played_at
              FROM log_fetch_error e
              LEFT JOIN log_index i ON i.log_id = e.log_id
+             -- One rescued from more.tf is stored: nothing is missing.
+             WHERE e.log_id NOT IN (SELECT log_id FROM log_raw)
              ORDER BY COALESCE(i.played_at, 0) DESC, e.log_id DESC",
         )
         .fetch_all(self.pool())
@@ -490,6 +506,8 @@ impl Db {
                 title: r.get("title"),
                 map: r.get("map"),
                 played_at: r.get("played_at"),
+                gone: r.get::<i64, _>("gone") != 0,
+                given_up: r.get::<i64, _>("gone") != 0 || r.get::<i64, _>("attempts") >= MAX_FETCH_TRIES,
             })
             .collect())
     }
@@ -503,23 +521,59 @@ impl Db {
         Ok(())
     }
 
-    /// The same for every failure at once: what "try them all again" means.
+    /// The same for every failure still being tried: what "try them all
+    /// again" means. A deleted log, or one out of tries, stays given up (Q77):
+    /// trying it again is one log at a time, by hand.
     pub async fn clear_all_fetch_errors(&self) -> Result<u64> {
-        Ok(sqlx::query("DELETE FROM log_fetch_error").execute(self.pool()).await?.rows_affected())
+        Ok(sqlx::query("DELETE FROM log_fetch_error WHERE gone = 0 AND attempts < ?1")
+            .bind(MAX_FETCH_TRIES)
+            .execute(self.pool())
+            .await?
+            .rows_affected())
     }
 
-    pub async fn record_fetch_error(&self, log_id: i64, error: &str) -> Result<()> {
+    /// One more failed try. `gone` when both sources said the log does not
+    /// exist: it is then never asked for again (Q77).
+    pub async fn record_fetch_error(&self, log_id: i64, error: &str, gone: bool) -> Result<()> {
         sqlx::query(
-            "INSERT INTO log_fetch_error (log_id, error) VALUES (?1, ?2)
+            "INSERT INTO log_fetch_error (log_id, error, gone) VALUES (?1, ?2, ?3)
              ON CONFLICT(log_id) DO UPDATE SET
                 attempts = log_fetch_error.attempts + 1,
                 last_attempt_at = datetime('now'),
-                error = excluded.error",
+                error = excluded.error,
+                gone = excluded.gone",
         )
         .bind(log_id)
         .bind(error)
+        .bind(gone)
         .execute(self.pool())
         .await?;
+        Ok(())
+    }
+
+    /// Every deleted log, for the supersessions: a deleted combined log must
+    /// not hide its parts, which may still be there (Q77).
+    pub async fn gone_logs(&self) -> Result<Vec<i64>> {
+        Ok(sqlx::query_scalar("SELECT log_id FROM log_fetch_error WHERE gone = 1").fetch_all(self.pool()).await?)
+    }
+
+    /// Deleted logs whose more.tf copy has not been asked for yet, at most
+    /// `limit`, newest first.
+    pub async fn gone_rescue_todo(&self, limit: i64) -> Result<Vec<i64>> {
+        Ok(sqlx::query_scalar(
+            "SELECT e.log_id FROM log_fetch_error e LEFT JOIN log_index i ON i.log_id = e.log_id
+              WHERE e.gone = 1 AND e.rescue_tried = 0 AND e.log_id NOT IN (SELECT log_id FROM log_raw)
+              ORDER BY COALESCE(i.played_at, 0) DESC LIMIT ?1",
+        )
+        .bind(limit)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    pub async fn mark_rescue_tried(&self, ids: &[i64]) -> Result<()> {
+        for id in ids {
+            sqlx::query("UPDATE log_fetch_error SET rescue_tried = 1 WHERE log_id = ?1").bind(id).execute(self.pool()).await?;
+        }
         Ok(())
     }
 
@@ -1036,7 +1090,18 @@ impl Db {
             fetched: q("SELECT COUNT(*) FROM log_raw".into()).await?,
             normalized: q("SELECT COUNT(*) FROM match".into()).await?,
             pending: self.fetch_queue(3).await?.len() as i64,
-            failed: q("SELECT COUNT(*) FROM log_fetch_error WHERE attempts >= 3".into()).await?,
+            // Failing and still being tried; the given-up are counted apart
+            // and no longer called failures (Q77).
+            failed: q(format!(
+                "SELECT COUNT(*) FROM log_fetch_error WHERE gone = 0 AND attempts >= 3 AND attempts < {MAX_FETCH_TRIES}
+                   AND log_id NOT IN (SELECT log_id FROM log_raw)"
+            ))
+            .await?,
+            given_up: q(format!(
+                "SELECT COUNT(*) FROM log_fetch_error WHERE (gone = 1 OR attempts >= {MAX_FETCH_TRIES})
+                   AND log_id NOT IN (SELECT log_id FROM log_raw)"
+            ))
+            .await?,
             outside_window: if self.all_history().await? { 0 } else { self.outside_window().await? },
         })
     }
@@ -1126,6 +1191,61 @@ mod tests {
         queue.sort_unstable();
         assert_eq!(queue, vec![1, 2, 3, 4]);
         assert_eq!(db.index_stats().await.unwrap().outside_window, 0, "and nothing is on offer");
+    }
+
+    #[tokio::test]
+    async fn a_deleted_log_is_never_asked_again_and_a_failing_one_waits_a_week() {
+        // Q77 (Flashy): 23 logs logs.tf had deleted were listed and retried
+        // for good.
+        let db = Db::connect_in_memory().await.unwrap();
+        for id in 1..=6 {
+            index(&db, id, 0.5).await;
+        }
+        db.record_fetch_error(1, "https://logs.tf/api/v1/log/1: HTTP 404 Not Found", true).await.unwrap();
+        for _ in 0..2 {
+            db.record_fetch_error(2, "timed out", false).await.unwrap(); // 2 tries: tried again
+        }
+        for _ in 0..3 {
+            db.record_fetch_error(3, "timed out", false).await.unwrap(); // 3 tries, just now: waits
+        }
+        for _ in 0..3 {
+            db.record_fetch_error(4, "timed out", false).await.unwrap(); // 3 tries, a week ago: tried
+        }
+        sqlx::query("UPDATE log_fetch_error SET last_attempt_at = datetime('now', '-8 days') WHERE log_id = 4")
+            .execute(db.pool())
+            .await
+            .unwrap();
+        for _ in 0..MAX_FETCH_TRIES {
+            db.record_fetch_error(5, "timed out", false).await.unwrap(); // out of tries
+        }
+        sqlx::query("UPDATE log_fetch_error SET last_attempt_at = datetime('now', '-30 days') WHERE log_id = 5")
+            .execute(db.pool())
+            .await
+            .unwrap();
+
+        let mut queue = db.fetch_queue(3).await.unwrap();
+        queue.sort_unstable();
+        assert_eq!(queue, vec![2, 4, 6], "not the deleted one, not the one waiting its week, not the one out of tries");
+
+        let failed = db.failed_logs().await.unwrap();
+        let given_up: Vec<i64> = failed.iter().filter(|f| f.given_up).map(|f| f.log_id).collect();
+        assert_eq!(given_up.len(), 2);
+        assert!(given_up.contains(&1) && given_up.contains(&5));
+        assert!(failed.iter().find(|f| f.log_id == 1).unwrap().gone);
+        let stats = db.index_stats().await.unwrap();
+        assert_eq!((stats.failed, stats.given_up), (2, 2), "3 and 4 are failing, 1 and 5 given up");
+
+        // "Try them all again" leaves the given-up alone.
+        assert_eq!(db.clear_all_fetch_errors().await.unwrap(), 3);
+        let left: Vec<i64> = db.failed_logs().await.unwrap().iter().map(|f| f.log_id).collect();
+        assert_eq!(left.len(), 2);
+
+        // Rescued from more.tf: stored, so no longer listed or rescued.
+        assert_eq!(db.gone_rescue_todo(10).await.unwrap(), vec![1]);
+        db.store_raw_log(1, "{}").await.unwrap();
+        assert!(db.failed_logs().await.unwrap().iter().all(|f| f.log_id != 1));
+        assert!(db.gone_rescue_todo(10).await.unwrap().is_empty());
+        assert_eq!(db.gone_logs().await.unwrap(), Vec::<i64>::new(), "storing it cleared its failure");
     }
 
     #[tokio::test]

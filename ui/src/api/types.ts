@@ -1084,6 +1084,10 @@ export interface FailedLog {
   title: string | null;
   map: string | null;
   playedAt: number | null;
+  /** drops.tf and logs.tf both said it does not exist (Q77). */
+  gone: boolean;
+  /** Deleted, or out of tries: no longer asked for. */
+  givenUp: boolean;
 }
 
 /** What came back from importing a log by hand. */

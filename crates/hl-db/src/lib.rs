@@ -54,7 +54,7 @@ pub use league_sample::{Candidate, LeagueLogRow, TierProgress};
 pub use snapshot::TableCopy;
 pub use players::{PlayerClass, PlayerHit, PlayerSummary};
 pub use matches::{
-    FailedLog, IndexInfo, IndexStats, LogsTfIndexRow, MatchFilter, MatchPage, MatchSummary, PartSummary, MyLine,
+    MAX_FETCH_TRIES, FailedLog, IndexInfo, IndexStats, LogsTfIndexRow, MatchFilter, MatchPage, MatchSummary, PartSummary, MyLine,
     TrendsIndexRow,
 };
 
@@ -393,6 +393,7 @@ mod frozen_migrations {
         ("0037_etf2l_transfers.sql", 0x0aea2736b8e226a0),
         ("0038_kind_override.sql", 0xc57e09ed6dc2a9e5),
         ("0039_mass_import.sql", 0xa59f6ce07de16df6),
+        ("0040_fetch_given_up.sql", 0xc5df499f631c5a5c),
     ];
 
     fn fnv1a(bytes: &[u8]) -> u64 {

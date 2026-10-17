@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { errorMessage, type Imported } from "../api/types";
+import { errorMessage, type FailedLog, type Imported } from "../api/types";
 import { formatDate } from "../lib/format";
 import { t, tx } from "../lib/i18n";
 import { DemoImport } from "./DemoImport";
@@ -25,7 +25,11 @@ export function ImportPanel() {
   const [error, setError] = useState<string | null>(null);
   const [got, setGot] = useState<Imported | null>(null);
 
-  const rows = failed.data ?? [];
+  // Still being tried, and given up (Q77, Flashy): a log deleted from
+  // logs.tf, or out of tries, is no longer asked for and waits out of the way.
+  const rows = (failed.data ?? []).filter((r) => !r.givenUp);
+  const givenUp = (failed.data ?? []).filter((r) => r.givenUp);
+  const deleted = givenUp.filter((r) => r.gone).length;
 
   /** Everything that could have changed after a log arrives or is requeued. */
   async function refresh() {
@@ -70,45 +74,36 @@ export function ImportPanel() {
       <h2>{t("Logs that didn't import")}</h2>
 
       {rows.length === 0 ? (
-        <p className="hint" style={{ marginTop: 6 }}>{t("Nothing has failed.")}</p>
+        <p className="hint" style={{ marginTop: 6 }}>{givenUp.length === 0 ? t("Nothing has failed.") : t("Nothing is waiting to be tried again.")}</p>
       ) : (
         <>
           <p className="hint" style={{ marginTop: 6 }}>
-            {tx("{0} would not download. Usually logs.tf was busy — try again.", { "0": rows.length === 1 ? t("One log") : t("{rows} logs", { rows: rows.length }) })}</p>
-          <div className="table-wrap" style={{ marginTop: 12 }}>
-            <table className="match-table">
-              <thead>
-                <tr>
-                  <th>{t("Played")}</th>
-                  <th>{t("Map")}</th>
-                  <th className="num">{t("Log")}</th>
-                  <th className="num">{t("Tries")}</th>
-                  <th>{t("Why")}</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.logId}>
-                    <td className="muted nowrap">{r.playedAt ? formatDate(r.playedAt, true) : "—"}</td>
-                    <td className="nowrap">{r.map ?? r.title ?? "—"}</td>
-                    <td className="num">
-                      <a href={`https://logs.tf/${r.logId}`} target="_blank" rel="noreferrer">
-                        {r.logId}
-                      </a>
-                    </td>
-                    <td className="num">{r.attempts}</td>
-                    <td className="muted">{r.error}</td>
-                    <td className="num">
-                      <button className="linkish" disabled={busy} onClick={() => void add(String(r.logId))}>{t("Try now")}</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <button className="linkish" style={{ marginTop: 12 }} disabled={busy} onClick={() => void retry()}>{t("Let the next sync try all of them again")}</button>
+            {tx("{0} would not download. Usually logs.tf was busy: the next syncs try again, then once a week, {1} times in all.", {
+              "0": rows.length === 1 ? t("One log") : t("{rows} logs", { rows: rows.length }),
+              "1": MAX_TRIES,
+            })}
+          </p>
+          <FailedTable rows={rows} busy={busy} action={t("Try now")} onTry={(id) => void add(String(id))} />
+          <button className="linkish" style={{ marginTop: 12 }} disabled={busy} onClick={() => void retry()}>{t("Let the next sync try these again")}</button>
         </>
+      )}
+
+      {givenUp.length > 0 && (
+        <details className="failed-given-up">
+          <summary>
+            {tx("Given up: {0}", { "0": givenUp.length })}
+            <span className="muted">
+              {" · "}
+              {deleted > 0 && t("{0} deleted on logs.tf", { "0": deleted })}
+              {deleted > 0 && givenUp.length > deleted && ", "}
+              {givenUp.length > deleted && t("{0} kept failing", { "0": givenUp.length - deleted })}
+            </span>
+          </summary>
+          <p className="hint" style={{ marginTop: 8 }}>
+            {t("Neither logs.tf nor drops.tf has a deleted log any more, and more.tf was asked for its copy once. These are not tried again; try one by hand if you know it is back.")}
+          </p>
+          <FailedTable rows={givenUp} busy={busy} action={t("Try anyway")} onTry={(id) => void add(String(id))} />
+        </details>
       )}
 
       <h3 style={{ marginTop: 22 }}>{t("Add a log by hand")}</h3>
@@ -134,6 +129,50 @@ export function ImportPanel() {
       {error && <p className="error" style={{ marginTop: 10 }}>{error}</p>}
 
       <DemoImport />
+    </div>
+  );
+}
+
+/** Every try a failing log gets, as the database counts them (MAX_FETCH_TRIES). */
+const MAX_TRIES = 6;
+
+function FailedTable({ rows, busy, action, onTry }: { rows: FailedLog[]; busy: boolean; action: string; onTry: (logId: number) => void }) {
+  return (
+    <div className="table-wrap" style={{ marginTop: 12 }}>
+      <table className="match-table">
+        <thead>
+          <tr>
+            <th>{t("Played")}</th>
+            <th>{t("Map")}</th>
+            <th className="num">{t("Log")}</th>
+            <th className="num">{t("Tries")}</th>
+            <th>{t("Why")}</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.logId}>
+              <td className="muted nowrap">{r.playedAt ? formatDate(r.playedAt, true) : "—"}</td>
+              <td className="nowrap">{r.map ?? r.title ?? "—"}</td>
+              <td className="num">
+                <a href={`https://logs.tf/${r.logId}`} target="_blank" rel="noreferrer">
+                  {r.logId}
+                </a>
+              </td>
+              <td className="num" title={!r.givenUp && r.attempts >= 3 ? t("Tried again once a week") : undefined}>
+                {r.givenUp ? r.attempts : `${r.attempts} / ${MAX_TRIES}`}
+              </td>
+              <td className="muted">{r.gone ? <span className="failed-gone">{t("Deleted on logs.tf")}</span> : r.error}</td>
+              <td className="num">
+                <button className="linkish" disabled={busy} onClick={() => onTry(r.logId)}>
+                  {action}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

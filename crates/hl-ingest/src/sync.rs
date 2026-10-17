@@ -247,7 +247,9 @@ pub async fn sync(
                 failed += 1;
                 let error = format!("{e:#}");
                 tracing::warn!(log_id, %error, "fetch failed");
-                db.record_fetch_error(log_id, &error).await?;
+                // Deleted on logs.tf: never asked again, and more.tf's copy is
+                // tried below (Q77).
+                db.record_fetch_error(log_id, &error, crate::http::not_found(&e)).await?;
                 progress(Progress::FetchFailed { log_id, error });
             }
         }
@@ -257,6 +259,20 @@ pub async fn sync(
     // What logs.tf would not give us, from more.tf's copy of it.
     if let Some(from) = stopped_at {
         fetched += stand_ins(db, sources, w, &queue[from..], &mut progress).await?;
+    }
+    // A log deleted from logs.tf may still be on more.tf: asked once, then
+    // left given up whatever the answer (Q77). Not while more.tf would be
+    // asked for the logs above anyway.
+    if stopped_at.is_none() {
+        let rescue = db.gone_rescue_todo(STAND_INS_PER_SYNC as i64).await?;
+        if !rescue.is_empty() {
+            let got = stand_ins(db, sources, w, &rescue, &mut progress).await?;
+            db.mark_rescue_tried(&rescue).await?;
+            if got > 0 {
+                tracing::info!(got, asked = rescue.len(), "logs deleted from logs.tf found on more.tf");
+            }
+            fetched += got;
+        }
     }
     // New logs have rounds now: catch any that are parts of another.
     recompute_supersessions(db).await?;
@@ -425,7 +441,12 @@ async fn recompute_supersessions(db: &Db) -> Result<usize> {
             }
         }
     }
-    let map = supersessions(&entries);
+    let mut map = supersessions(&entries);
+    // A combined log deleted from logs.tf would hide its parts behind a log
+    // that will never arrive: the parts stand on their own instead, and are
+    // downloaded like any other log (Q77).
+    let gone: std::collections::HashSet<i64> = db.gone_logs().await?.into_iter().collect();
+    map.retain(|_, keep| !gone.contains(keep));
     db.apply_supersessions(&map).await?;
     Ok(map.len())
 }
