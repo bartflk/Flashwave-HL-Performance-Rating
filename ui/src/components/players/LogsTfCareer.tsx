@@ -63,12 +63,12 @@ function CareerTable({ title, rows, muted }: { title: string; rows: LogsTfClassC
         <tr>
           <SortTh k="class" s={s}>{title}</SortTh>
           <SortTh k="games" s={s} className="num">{t("Games")}</SortTh>
-          <SortTh k="rating" s={s} className="num">{t("Rating")}</SortTh>
-          <SortTh k="form" s={s} className="num">{t("Form")}</SortTh>
-          <SortTh k="best" s={s} className="num">{t("Best")}</SortTh>
+          <SortTh k="rating" s={s} className="num" tip="logstf">{t("Rating")}</SortTh>
+          <SortTh k="form" s={s} className="num" tip="form">{t("Form")}</SortTh>
+          <SortTh k="best" s={s} className="num" tip="best">{t("Best")}</SortTh>
           <SortTh k="wl" s={s} className="num">{t("W–L")}</SortTh>
           <SortTh k="years" s={s}>{t("Years")}</SortTh>
-          <SortTh k="rank" s={s} className="num">{t("Rank")}</SortTh>
+          <SortTh k="rank" s={s} className="num" tip="logstfRank">{t("Rank")}</SortTh>
         </tr>
       </thead>
       <tbody>

@@ -34,6 +34,8 @@ import "./profile.css";
 import { t, tx, k } from "../../lib/i18n";
 import { classLabel } from "../analysis/common";
 import { Loading } from "../Spinner";
+import { StatTip } from "../StatTip";
+import type { GlossaryKey } from "../../lib/glossary";
 
 /** Below this many rated games a profile is shown, but flagged as thin. */
 const THIN_SAMPLE = 20;
@@ -531,9 +533,10 @@ function HeadlineStrip({ h, cls }: { h: Headline; cls: string }) {
   const minutes = Math.round((h.seconds % 3600) / 60);
   const decided = h.won + h.lost;
   const kd = h.deaths > 0 ? h.kills / h.deaths : null;
-  const tiles: Array<[string, React.ReactNode, React.ReactNode, string?]> = [
-    [t("Time played"), tx("{0} h {1} m", { "0": hours, "1": minutes }), tx("{0} games as {1}", { "0": h.games, "1": classLabel(cls) })],
+  const tiles: Array<[GlossaryKey, string, React.ReactNode, React.ReactNode, string?]> = [
+    ["timePlayed", t("Time played"), tx("{0} h {1} m", { "0": hours, "1": minutes }), tx("{0} games as {1}", { "0": h.games, "1": classLabel(cls) })],
     [
+      "record",
       t("Record"),
       <>
         <span className="pf-w">{h.won}</span>–<span className="pf-l">{h.lost}</span>
@@ -542,19 +545,22 @@ function HeadlineStrip({ h, cls }: { h: Headline; cls: string }) {
       decided > 0 ? t("{0}% won", { "0": ((100 * h.won) / decided).toFixed(1) }) : "",
       "rec",
     ],
-    [t("Damage / min"), h.dpm !== null ? h.dpm.toFixed(0) : "–", tx("{0} damage", { "0": h.damage.toLocaleString() })],
+    ["dpm", t("Damage / min"), h.dpm !== null ? h.dpm.toFixed(0) : "–", tx("{0} damage", { "0": h.damage.toLocaleString() })],
     [
+      "accuracy",
       t("Accuracy"),
       h.accuracy !== null ? `${(h.accuracy * 100).toFixed(0)}%` : "–",
       h.accuracy !== null ? tx("over {0} logs with accuracy stats", { "0": h.accuracyGames }) : t("no log here has accuracy stats"),
     ],
-    [t("K / D"), kd !== null ? kd.toFixed(2) : "–", tx("{0} kills · {1} assists · {2} deaths", { "0": h.kills, "1": h.assists, "2": h.deaths })],
+    ["kd", t("K / D"), kd !== null ? kd.toFixed(2) : "–", tx("{0} kills · {1} assists · {2} deaths", { "0": h.kills, "1": h.assists, "2": h.deaths })],
   ];
   return (
     <section className="pf-headline" aria-label={t("Headline numbers")}>
-      {tiles.map(([label, value, sub, kind]) => (
+      {tiles.map(([tip, label, value, sub, kind]) => (
         <div key={label} className={kind ? `pf-hl ${kind}` : "pf-hl"}>
-          <span className="pf-hl-label">{label}</span>
+          <span className="pf-hl-label">
+            <StatTip k={tip}>{label}</StatTip>
+          </span>
           <span className="pf-hl-value">{value}</span>
           {sub && <span className="pf-hl-sub">{sub}</span>}
         </div>
@@ -569,7 +575,9 @@ function Kpis({ p, winRate = true }: { p: Profile; winRate?: boolean }) {
   return (
     <section className="kpis">
       <div className="kpi hero">
-        <span className="kpi-label">{tx("Form · last {0} {scope}", { "0": Math.min(p.formWindow, p.games), scope: scope })}</span>
+        <span className="kpi-label">
+          <StatTip k="form">{tx("Form · last {0} {scope}", { "0": Math.min(p.formWindow, p.games), scope: scope })}</StatTip>
+        </span>
         <span className="kpi-value">{rating(p.formAvg)}</span>
         {delta !== null && (
           <span className={delta >= 0 ? "kpi-delta up" : "kpi-delta down"}>
@@ -578,14 +586,18 @@ function Kpis({ p, winRate = true }: { p: Profile; winRate?: boolean }) {
         )}
       </div>
       <div className="kpi">
-        <span className="kpi-label">{t("Career")}</span>
+        <span className="kpi-label">
+          <StatTip k="career">{t("Career")}</StatTip>
+        </span>
         <span className="kpi-value">{rating(p.careerAvg)}</span>
         <span className="kpi-sub">{tx("{games} rated {scope}", { games: p.games, scope: scope })}</span>
       </div>
       {/* The headline row's record says it already, when it is there. */}
       {winRate && p.winRate !== null && (
         <div className="kpi">
-          <span className="kpi-label">{t("Win rate")}</span>
+          <span className="kpi-label">
+            <StatTip k="winRate">{t("Win rate")}</StatTip>
+          </span>
           <span className="kpi-value">{p.winRate.toFixed(0)}%</span>
           <span className="kpi-sub">{t("ties excluded")}</span>
         </div>

@@ -1655,3 +1655,24 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 .read-again button { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .read-again-spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--tf2-tan, var(--accent)); animation: read-again-spin 0.8s linear infinite; }
 @keyframes read-again-spin { to { transform: rotate(360deg); } }
+
+/* ---- Q78: opponent strength, a bar a side about the 1.00 line ---- */
+.os { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); }
+.os-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.os-head h3 { margin: 0; font: 700 0.86rem var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.os-verdict { font-weight: 600; }
+.os-verdict.upset { color: var(--tf2-tan, #e3b23c); }
+.os-row { display: grid; grid-template-columns: minmax(80px, 180px) minmax(0, 1fr) 3.2em auto; align-items: center; gap: 12px; font-size: 0.88rem; }
+.os-label { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.os-track { position: relative; height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--text) 8%, transparent); overflow: hidden; }
+.os-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; }
+.os-mid { position: absolute; top: -2px; bottom: -2px; width: 2px; background: color-mix(in srgb, var(--text) 45%, transparent); z-index: 1; }
+.os-red .os-fill { background: var(--red, #d4453f); }
+.os-blu .os-fill { background: var(--blu, #5b93cc); }
+.os-a .os-fill { background: color-mix(in srgb, var(--accent) 85%, white); }
+.os-b .os-fill { background: color-mix(in srgb, var(--muted) 80%, transparent); }
+.os-value { font: 700 1.05rem var(--font-display); font-variant-numeric: tabular-nums; text-align: right; }
+.os-meta { font-size: 0.76rem; white-space: nowrap; }
+.os-note { margin: 0; font-size: 0.76rem; }
+.os-chip { margin-left: auto; padding: 0 6px; border-radius: 5px; font-size: 0.74rem; font-variant-numeric: tabular-nums; color: var(--muted); background: color-mix(in srgb, var(--text) 7%, transparent); }
+.os-chip.off { font-style: italic; opacity: 0.75; }

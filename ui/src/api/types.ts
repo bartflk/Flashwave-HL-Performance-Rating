@@ -2347,3 +2347,13 @@ export interface LogsTfCareer {
   builtAt: number;
   model: string;
 }
+
+/** One player's logs.tf career rating for a lineup's strength (Q78). */
+export interface LineupRating {
+  accountId: number;
+  class: string | null;
+  rating: number | null;
+  games: number;
+  /** On the class they played here, not their usual one. */
+  onClass: boolean;
+}

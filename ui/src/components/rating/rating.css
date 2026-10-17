@@ -87,3 +87,9 @@
 .rg-kill-bar { height: 12px; background: var(--sunken); border-radius: 6px; overflow: hidden; }
 .rg-kill-bar i { display: block; height: 100%; background: var(--accent-2); border-radius: 0 6px 6px 0; }
 .rg-kill-v { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Q80: the rules behind MVPs, medals, ranks, strength and the logs.tf career. */
+.rg-decided { scroll-margin-top: 16px; }
+.rg-decided h2 { margin: 0 0 8px; }
+.rg-decided p, .rg-decided li { line-height: 1.55; }
+.rg-decided ol, .rg-decided ul { margin: 6px 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }

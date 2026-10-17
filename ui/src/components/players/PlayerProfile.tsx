@@ -16,6 +16,7 @@ import { Etf2lMark } from "../Etf2lMark";
 import { LogsTfCareer } from "./LogsTfCareer";
 import { SortTh, useSort } from "../../lib/sort";
 import { Loading } from "../Spinner";
+import { StatTip } from "../StatTip";
 
 /**
  * A player's profile, HLTV-style (Q35, Flashy; PLAN §26): who they are,
@@ -171,16 +172,20 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
           {(titles.length > 0 || mvpTitles(p.mvps ?? []).length > 0) && (
             <div className="pp-titles">
               {titles.map(([label, n, place]) => (
-                <span key={label} className={`pp-title pp-${PLACE[place - 1]}`}>
-                  <MedalGlyph size={18} place={place} />
-                  {n}× {label}
-                </span>
+                <StatTip key={label} k="medal">
+                  <span className={`pp-title pp-${PLACE[place - 1]}`}>
+                    <MedalGlyph size={18} place={place} />
+                    {n}× {label}
+                  </span>
+                </StatTip>
               ))}
               {mvpTitles(p.mvps ?? []).map(([label, n]) => (
-                <span key={label} className="pp-title pp-mvp">
-                  <span className="pp-mvp-star" aria-hidden>★</span>
-                  {n}× {label}
-                </span>
+                <StatTip key={label} k="mvp">
+                  <span className="pp-title pp-mvp">
+                    <span className="pp-mvp-star" aria-hidden>★</span>
+                    {n}× {label}
+                  </span>
+                </StatTip>
               ))}
             </div>
           )}

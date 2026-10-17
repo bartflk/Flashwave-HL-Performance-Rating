@@ -13,7 +13,7 @@ use crate::error::{CmdError, CmdResult};
 use crate::AppState;
 use hl_db::{IndexStats, MatchFilter, MatchPage};
 use hl_ingest::{Progress, SyncOptions, SyncSummary};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
@@ -1516,6 +1516,23 @@ pub async fn logstf_search(query: String) -> CmdResult<Vec<hl_ingest::logstf::Lo
 #[tauri::command]
 pub async fn logstf_career(account_id: u32) -> CmdResult<Option<hl_ingest::logstf::LogsTfCareer>> {
     tauri::async_runtime::spawn_blocking(move || hl_ingest::logstf::career(account_id))
+        .await
+        .map_err(|e| CmdError::new("internal", e.to_string()))
+}
+
+/// A player of a lineup, for its strength: who, and what they played.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LineupAsk {
+    pub account_id: u32,
+    pub class: Option<String>,
+}
+
+/// Each player's logs.tf career rating, for a lineup's strength (Q78).
+#[tauri::command]
+pub async fn logstf_lineup(players: Vec<LineupAsk>) -> CmdResult<Vec<hl_ingest::logstf::LineupRating>> {
+    let asks: Vec<(u32, Option<String>)> = players.into_iter().map(|p| (p.account_id, p.class)).collect();
+    tauri::async_runtime::spawn_blocking(move || hl_ingest::logstf::lineup(&asks))
         .await
         .map_err(|e| CmdError::new("internal", e.to_string()))
 }

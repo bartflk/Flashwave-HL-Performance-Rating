@@ -1,4 +1,6 @@
 import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { StatTip } from "../components/StatTip";
+import type { GlossaryKey } from "./glossary";
 
 /**
  * Every table sorts by its columns (Q79, Flashy: "all the tables in the app
@@ -91,7 +93,7 @@ export function useSort<R>(id: string, rows: R[], columns: Record<string, (r: R)
 }
 
 /** A header cell that sorts its table by `k`. */
-export function SortTh({ k, s, children, className, title }: { k: string; s: Sorter; children: ReactNode; className?: string; title?: string }) {
+export function SortTh({ k, s, children, className, title, tip }: { k: string; s: Sorter; children: ReactNode; className?: string; title?: string; tip?: GlossaryKey }) {
   const active = s.sort?.key === k;
   const dir = active ? s.sort!.dir : null;
   const onKey = (e: KeyboardEvent) => {
@@ -109,7 +111,13 @@ export function SortTh({ k, s, children, className, title }: { k: string; s: Sor
       onKeyDown={onKey}
       title={title}
     >
-      {children}
+      {tip ? (
+        <StatTip k={tip} inline>
+          {children}
+        </StatTip>
+      ) : (
+        children
+      )}
       <span className="sort-arrow" aria-hidden>
         {dir === "asc" ? "▲" : dir === "desc" ? "▼" : "↕"}
       </span>

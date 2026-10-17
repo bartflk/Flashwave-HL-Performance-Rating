@@ -130,8 +130,21 @@ export function onOpenLeagueMatch(open: (matchId: number) => void): () => void {
   return () => window.removeEventListener(LEAGUE_MATCH_EVENT, handler);
 }
 
-export function goTo(page: Destination) {
+/** Open a page; `section` scrolls to `#guide-<section>` on it once drawn
+ *  (a tip's "How it's decided", Q80). */
+export function goTo(page: Destination, section?: string) {
   window.dispatchEvent(new CustomEvent<Destination>(EVENT, { detail: page }));
+  if (section) {
+    let tries = 0;
+    const look = () => {
+      const el = document.getElementById(`guide-${section}`);
+      // Once the page above it has loaded, so the spot does not move after.
+      const loading = document.querySelector(".rg-page .loading");
+      if (el && (!loading || tries > 40)) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      else if (tries++ < 80) window.setTimeout(look, 50);
+    };
+    window.setTimeout(look, 50);
+  }
 }
 
 /** For the app shell: call `open` whenever something asks for a page. */

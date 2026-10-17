@@ -1379,3 +1379,7 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
 .e2-cal-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .e2-cal-score { font-variant-numeric: tabular-nums; font-weight: 700; }
 .e2-cal-match:not(.played) .e2-cal-team { color: var(--text); }
+
+/* A lineup row with the player's logs.tf career beside their rating (Q78). */
+.e2-lineup button { grid-template-columns: 22px minmax(0, 1fr) auto auto; }
+.e2-lineup .os-chip { margin-left: 0; }

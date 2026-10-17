@@ -242,6 +242,48 @@ pub fn names(account: u32) -> Option<(String, Vec<String>)> {
     Some((p.name.clone(), p.aliases.clone()))
 }
 
+/// A career counts towards a lineup's strength from this many competitive
+/// games: fewer is a few nights, not a level.
+pub const STRENGTH_MIN_GAMES: u32 = 20;
+
+/// One player of a lineup, as the summary knows them (Q78).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LineupRating {
+    pub account_id: u32,
+    /// The class the rating is on: the one asked for, else their most played.
+    pub class: Option<&'static str>,
+    pub rating: Option<f64>,
+    pub games: u32,
+    /// The rating is on the class they played here, not their usual one.
+    pub on_class: bool,
+}
+
+/// Each player's competitive career rating, for a lineup's strength (Q78,
+/// Flashy: "build the opponent strength on match pages"): on the class they
+/// played if they have 20+ competitive games on it, else on their most played
+/// class, else unknown -- never a stand-in 1.00.
+pub fn lineup(players: &[(u32, Option<String>)]) -> Vec<LineupRating> {
+    let ix = index();
+    players
+        .iter()
+        .map(|(account, class)| {
+            let wanted = class.as_deref().and_then(|c| TfClass::parse(c).ok()).map(|c| c.as_str());
+            let comp: Vec<&ClassCareer> = ix
+                .careers
+                .get(account)
+                .map(|v| v.iter().filter(|c| c.pool == "competitive" && c.games >= STRENGTH_MIN_GAMES).collect())
+                .unwrap_or_default();
+            let on = wanted.and_then(|w| comp.iter().find(|c| c.class == w));
+            let pick = on.or_else(|| comp.iter().max_by_key(|c| c.games));
+            match pick {
+                Some(c) => LineupRating { account_id: *account, class: Some(c.class), rating: Some(c.rating), games: c.games, on_class: on.is_some() },
+                None => LineupRating { account_id: *account, class: wanted, rating: None, games: 0, on_class: false },
+            }
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -271,6 +313,19 @@ mod tests {
         assert_eq!(mine[1].rank, None, "18 pickup games is not a regular");
         assert_eq!(ix.players[0].aliases, vec!["Flashy", "SBQR flashy"]);
         assert_eq!(ix.years[&1][0].year, 2024);
+    }
+
+    #[test]
+    fn a_lineup_reads_the_class_played_else_the_usual_one() {
+        let ix = index();
+        // Someone with a 20+ game competitive career: asked on that class,
+        // and on a class they never played.
+        let Some((account, career)) = ix.careers.iter().find_map(|(a, v)| v.iter().find(|c| c.pool == "competitive" && c.games >= STRENGTH_MIN_GAMES).map(|c| (*a, c.clone()))) else { return };
+        let other = TfClass::ALL.iter().map(|c| c.as_str()).find(|c| !ix.careers[&account].iter().any(|x| x.class == *c)).unwrap_or("spy");
+        let r = lineup(&[(account, Some(career.class.to_string())), (account, Some(other.to_string())), (u32::MAX, Some("sniper".into()))]);
+        assert!(r[0].on_class && r[0].rating.is_some());
+        assert!(!r[1].on_class && r[1].rating.is_some(), "their usual class instead");
+        assert_eq!((r[2].rating, r[2].games), (None, 0), "unknown is unknown, not 1.00");
     }
 
     #[test]

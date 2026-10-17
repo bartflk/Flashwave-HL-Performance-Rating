@@ -1744,6 +1744,15 @@ export const mockApi: Api = {
     const q = query.trim().toLowerCase();
     return delay(MOCK_LOGSTF.filter((p) => q.length >= 2 && [p.name, ...p.aliases].some((n) => n.toLowerCase().includes(q))));
   },
+  // A career for most players, so the strength bars have something to show.
+  logstfLineup: (players: Array<{ accountId: number; class: string | null }>) =>
+    delay(
+      players.map((p) =>
+        p.accountId % 7 === 0
+          ? { accountId: p.accountId, class: p.class, rating: null, games: 0, onClass: false }
+          : { accountId: p.accountId, class: p.class, rating: 0.86 + ((p.accountId * 37) % 40) / 100, games: 20 + ((p.accountId * 13) % 400), onClass: p.accountId % 5 !== 0 },
+      ),
+    ),
   logstfCareer: (accountId: number) => {
     const player = MOCK_LOGSTF.find((p) => p.accountId === accountId) ?? null;
     if (!player) return delay(null);

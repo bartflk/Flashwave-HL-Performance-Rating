@@ -207,7 +207,7 @@ export function TopPlayers({ onPick }: { onPick: (accountId: number) => void }) 
               <SortTh k="name" s={s}>{t("Player")}</SortTh>
               <SortTh k="team" s={s}>{t("Team")}</SortTh>
               <SortTh k="games" s={s}>{t("Officials")}</SortTh>
-              <SortTh k="rating" s={s}>{t("Rating")}</SortTh>
+              <SortTh k="rating" s={s} tip="rank">{t("Rating")}</SortTh>
             </tr>
           </thead>
           <tbody>

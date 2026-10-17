@@ -7,6 +7,7 @@ import { classLabel } from "../analysis/common";
 import { t, tx } from "../../lib/i18n";
 import "./rating.css";
 import { Loading } from "../Spinner";
+import { HowDecided } from "./HowDecided";
 
 /**
  * How ratings work (Flashy): every class, what its rating is made of, and
@@ -62,6 +63,7 @@ export function RatingGuidePage({ onBack }: { onBack: () => void }) {
           <Unused g={q.data} />
         </>
       )}
+      <HowDecided />
     </div>
   );
 }
@@ -77,7 +79,7 @@ function Pipeline({ g }: { g: RatingGuide }) {
   // Where 0.50 ... 1.50 sit on a normal curve with this spread.
   const marks = [-2, -1, 0, 1, 2].map((sd) => ({ at: 1 + sd * g.ratingSpread, share: ["2%", "16%", "50%", "84%", "98%"][sd + 2] }));
   return (
-    <section className="panel rg-pipeline">
+    <section className="panel rg-pipeline" id="guide-rating">
       <h2>{t("From a game to a number")}</h2>
       <ol className="rg-steps">
         {steps.map(([title, text], i) => (

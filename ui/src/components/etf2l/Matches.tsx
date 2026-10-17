@@ -16,6 +16,7 @@ import { Countdown, clockTime, fullDate } from "./Countdown";
 import { laneOf, tierOf } from "./Brackets";
 import { CommentList } from "./Recruitment";
 import { WeekCalendar } from "./Calendar";
+import { CareerChip, OpponentStrength, useLineupRatings } from "../match/OpponentStrength";
 import { Etf2lMark } from "../Etf2lMark";
 import { Loading, Spinner } from "../Spinner";
 
@@ -385,6 +386,15 @@ export function LeagueMatchPage({ matchId, fixture, onTeam, onOpenLog }: { match
               <h2>{played && players.length > 0 ? t("Lineups") : t("Recent lineups")}</h2>
               {!(played && players.length > 0) && <span className="muted">{t("who played each team's latest officials")}</span>}
             </div>
+            {played && players.length > 0 && (
+              <OpponentStrength
+                sides={[
+                  { label: head.clan1.name, tone: "a", players: players.filter((x) => x.teamId === head.clan1.id).map((x) => ({ accountId: x.accountId, class: x.class })) },
+                  { label: head.clan2.name, tone: "b", players: players.filter((x) => x.teamId === head.clan2.id).map((x) => ({ accountId: x.accountId, class: x.class })) },
+                ]}
+                score={[head.r1, head.r2]}
+              />
+            )}
             <div className="e2-lineups">
               {played && players.length > 0 ? (
                 <>
@@ -490,6 +500,8 @@ function fromFixture(f: Fixture): ResultRow {
 
 function Lineup({ rows }: { rows: LineupPlayer[] }) {
   const sorted = [...rows].sort((x, y) => order(x.class) - order(y.class) || x.name.localeCompare(y.name));
+  // Each player's logs.tf career beside their rating here (Q78).
+  const { by } = useLineupRatings(rows.map((r) => ({ accountId: r.accountId, class: r.class })));
   if (sorted.length === 0) return <p className="hint">{t("Not read yet.")}</p>;
   return (
     <ol className="e2-lineup">
@@ -505,6 +517,7 @@ function Lineup({ rows }: { rows: LineupPlayer[] }) {
                 </span>
               )}
             </span>
+            <CareerChip r={by.get(p.accountId)} />
             <span className="e2-lu-rating">{rating(p.rating)}</span>
           </button>
           {p.merc && <Joined p={p} />}

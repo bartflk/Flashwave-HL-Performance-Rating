@@ -18,6 +18,7 @@ import { Matchups } from "./Matchups";
 import { RoundTimeline } from "./RoundTimeline";
 import { t, tx } from "../../lib/i18n";
 import { Loading, Spinner } from "../Spinner";
+import { OpponentStrength, type Side } from "./OpponentStrength";
 
 export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void }) {
   const q = useQuery({ queryKey: ["match", logId], queryFn: () => api.getMatch(logId) });
@@ -74,6 +75,7 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
       {q.data && shown && (
         <>
           <MatchHero d={shown} />
+          <StrengthOf d={shown} />
           {q.data.standIn && (
             <div className="stv-banner stand-in-banner">
               <span className="stv-banner-icon" aria-hidden>!</span>
@@ -175,4 +177,16 @@ function PartPicker(props: {
       {error && <p className="error">{error}</p>}
     </div>
   );
+}
+
+/** Opponent strength, your side first as the hero has it (Q78). */
+function StrengthOf({ d }: { d: MatchDetail }) {
+  const side = (team: "Red" | "Blue"): Side => ({
+    label: team === "Red" ? t("RED") : t("BLU"),
+    tone: team === "Red" ? "red" : "blu",
+    players: d.players.filter((p) => p.team === team).map((p) => ({ accountId: p.accountId, class: p.mainClass })),
+  });
+  const blueFirst = d.myTeam === "Blue";
+  const sides: [Side, Side] = blueFirst ? [side("Blue"), side("Red")] : [side("Red"), side("Blue")];
+  return <OpponentStrength sides={sides} score={blueFirst ? [d.blueScore, d.redScore] : [d.redScore, d.blueScore]} />;
 }
