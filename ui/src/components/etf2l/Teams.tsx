@@ -46,7 +46,9 @@ export function TeamsLanding({ onTeam }: { onTeam: (id: number) => void }) {
   const tables = useQuery({ queryKey: ["leagues", latest?.season ?? null], queryFn: () => api.getLeagues(latest!.season), enabled: latest !== null, staleTime: 5 * 60_000 }).data;
   // Avatars for your teams, where the season's tables have them.
   const avatars = new Map((tables?.divisions ?? []).flatMap((d) => d.teams.map((x) => [x.teamId, x.avatar] as const)));
-  const yours = useYourTeams().filter((e) => e.games >= 3);
+  const allYours = useYourTeams();
+  const yours = allYours.filter((e) => e.games >= 3);
+  const mine = new Set(allYours.map((e) => e.teamId));
   const divisions = (tables?.divisions ?? []).filter((d) => d.teams.length > 0).sort((a, b) => tierOf(a.division) - tierOf(b.division));
 
   return (
@@ -131,29 +133,55 @@ export function TeamsLanding({ onTeam }: { onTeam: (id: number) => void }) {
       {latest && divisions.length > 0 && (
         <section className="tm-section">
           <h2 className="ts-section">{tx("Teams in {0}", { "0": seasonTitle(latest) })}</h2>
+          {/* Two divisions a row, in tier order (Prem beside High, Mid beside
+              Low), each pair the same height; one left over takes the
+              row and splits its list in two, so no column runs on alone
+              (Flashy: "the teams columns are un-even"). */}
           <div className="tm-divs">
-            {divisions.map((d) => (
-              <section key={d.division} className="panel tm-div">
-                <div className="tm-div-head">
-                  <DivisionBadge d={{ name: d.division, tier: Math.floor(tierOf(d.division)) }} />
-                  <span className="muted">{tx("{0} teams", { "0": d.teams.length })}</span>
-                </div>
-                <ol className="tm-div-list">
-                  {d.teams.map((x, i) => (
-                    <li key={x.teamId}>
-                      <button className="tm-row" onClick={() => onTeam(x.teamId)}>
-                        <span className="tm-place">{i + 1}</span>
-                        {x.avatar && !x.avatar.endsWith("/") ? <TeamAvatar src={x.avatar} /> : <Monogram name={x.name} />}
-                        <span className="tm-row-name">{x.name}</span>
-                        <span className="tm-row-wl">
-                          {x.record.won}–{x.record.lost}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            ))}
+            {divisions.map((d, i) => {
+              const wide = divisions.length % 2 === 1 && i === divisions.length - 1;
+              const half = Math.ceil(d.teams.length / 2);
+              return (
+                <section key={d.division} className={wide ? "panel tm-div wide" : "panel tm-div"}>
+                  <div className="tm-div-head">
+                    <DivisionBadge d={{ name: d.division, tier: Math.floor(tierOf(d.division)) }} />
+                    <span className="muted">{tx("{0} teams", { "0": d.teams.length })}</span>
+                  </div>
+                  <div className="tm-div-cols">
+                    {(wide ? [d.teams.slice(0, half), d.teams.slice(half)] : [d.teams]).map((col, c) => (
+                      <ol key={c} className="tm-div-list" start={c * half + 1}>
+                        <li className="tm-row tm-row-head" aria-hidden>
+                          <span>#</span>
+                          <span />
+                          <span>{t("Team")}</span>
+                          <span title={t("Officials won and lost")}>{t("W–L")}</span>
+                          <span title={t("Maps won and lost")}>{t("Maps")}</span>
+                        </li>
+                        {col.map((x, j) => {
+                          const place = (wide ? c * half : 0) + j + 1;
+                          const diff = x.scoreFor - x.scoreAgainst;
+                          return (
+                            <li key={x.teamId}>
+                              <button className={mine.has(x.teamId) ? "tm-row mine" : "tm-row"} onClick={() => onTeam(x.teamId)}>
+                                <span className={place === 1 ? "tm-place first" : "tm-place"}>{place}</span>
+                                {x.avatar && !x.avatar.endsWith("/") ? <TeamAvatar src={x.avatar} /> : <Monogram name={x.name} />}
+                                <span className="tm-row-name">{x.name}</span>
+                                <span className="tm-row-wl">
+                                  {x.record.won}–{x.record.lost}
+                                </span>
+                                <span className={diff > 0 ? "tm-row-maps up" : diff < 0 ? "tm-row-maps down" : "tm-row-maps"}>
+                                  {x.scoreFor}–{x.scoreAgainst}
+                                </span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
           </div>
         </section>
       )}

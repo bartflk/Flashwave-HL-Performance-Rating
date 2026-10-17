@@ -1156,17 +1156,26 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
 .tm-card-stats em { font-style: normal; color: var(--muted); }
 
 /* The season's teams by division. */
-.tm-divs { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; align-items: start; }
+.tm-divs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
+.tm-div.wide { grid-column: 1 / -1; }
+.tm-div-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 28px; }
+.tm-div.wide .tm-div-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 900px) {
+  .tm-divs { grid-template-columns: minmax(0, 1fr); }
+  .tm-div.wide .tm-div-cols { grid-template-columns: minmax(0, 1fr); }
+  .tm-div.wide .tm-div-cols ol + ol .tm-row-head { display: none; }
+}
 .tm-div { display: flex; flex-direction: column; gap: 8px; padding: 14px 14px 10px; }
 .tm-div-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 6px; border-bottom: 1px solid var(--border); }
 .tm-div-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
 .tm-row {
   display: grid;
-  grid-template-columns: 22px 26px minmax(0, 1fr) auto;
+  grid-template-columns: 22px 26px minmax(0, 1fr) 3.2em 3.6em;
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 6px 6px;
+  padding: 6px 8px;
+  border-left: 2px solid transparent;
   border: 0;
   border-radius: 7px;
   background: none;
@@ -1183,7 +1192,28 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
 .tm-row .tm-mono { width: 26px; height: 26px; border-radius: 6px; font-size: 0.66rem; }
 .tm-place { color: var(--faint); font-variant-numeric: tabular-nums; text-align: right; font-size: 0.8rem; }
 .tm-row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tm-row-wl { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.82rem; }
+.tm-row-wl { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; font-size: 0.84rem; text-align: right; }
+.tm-row-maps { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.8rem; text-align: right; }
+.tm-row-maps.up { color: #8fc27a; }
+.tm-row-maps.down { color: #d98a80; }
+.tm-place.first { color: var(--tf2-tan); font-weight: 700; }
+/* Your teams: a tan edge and name, findable at a glance. */
+.tm-row.mine { border-left-color: var(--tf2-tan); background: rgba(var(--accent-rgb), 0.06); }
+.tm-row.mine .tm-row-name { color: var(--tf2-tan); font-weight: 700; }
+.tm-div-list li:nth-child(odd of :not(.tm-row-head)) .tm-row:not(.mine) { background: var(--row-alt); }
+.tm-div-list li .tm-row:not(.mine):hover { background: rgba(var(--accent-rgb), 0.1); }
+/* The columns' names over each list. */
+.tm-row.tm-row-head {
+  cursor: default;
+  padding-top: 2px;
+  padding-bottom: 4px;
+  color: var(--faint);
+  font: 700 0.66rem var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.tm-row-head span:first-child, .tm-row-head span:nth-child(4), .tm-row-head span:nth-child(5) { text-align: right; }
+.tm-row.tm-row-head:hover { background: none; }
 
 /* ---- The bracket, bigger and with more pop (Flashy) ------------------------ */
 .br-bracket {
