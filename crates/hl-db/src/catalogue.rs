@@ -157,6 +157,25 @@ impl Db {
         Ok(guessed)
     }
 
+    /// Who played on which colour in the logs of `matches`: `(match, log,
+    /// account, "Red" | "Blue")`, from the league sample's logs and the
+    /// owner's. The MVPs read a player's side from it when ETF2L's roster
+    /// does not place them (a merc, a ringer it never listed).
+    pub async fn log_colours(&self, matches: &[i64]) -> Result<Vec<(i64, i64, u32, String)>> {
+        let ids = serde_json::to_string(matches)?;
+        let rows: Vec<(i64, i64, i64, String)> = sqlx::query_as(
+            "SELECT l.etf2l_match_id, p.log_id, p.account_id, p.team FROM league_log l JOIN league_log_player p ON p.log_id = l.log_id
+              WHERE l.etf2l_match_id IN (SELECT value FROM json_each(?1)) AND p.team IS NOT NULL
+             UNION
+             SELECT c.etf2l_match_id, p.log_id, p.account_id, p.team FROM match_context c JOIN match_player p ON p.log_id = c.log_id
+              WHERE c.etf2l_match_id IN (SELECT value FROM json_each(?1))",
+        )
+        .bind(ids)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows.into_iter().map(|(m, l, a, t)| (m, l, a as u32, t)).collect())
+    }
+
     /// The mercs of every match: `(match, account)` for each player ETF2L
     /// lists with no team -- someone playing for a team they are not on.
     pub async fn catalogue_mercs(&self) -> Result<Vec<(i64, u32)>> {

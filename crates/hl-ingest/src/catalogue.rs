@@ -114,6 +114,19 @@ pub struct Mvp {
 /// against four bad ones does not.
 pub const MVP_FINAL_WEIGHT: f64 = 0.7;
 
+/// The playoff run counts in full only over this many maps; fewer count for
+/// less, the final for the rest (Flashy's MVP audit: two playoff maps at 1.57
+/// out-weighed a final 0.20 better).
+pub const MVP_PLAYOFF_FULL_MAPS: usize = 4;
+
+/// An MVP's score: the final, and the playoff run before it in proportion to
+/// how much of it there is.
+pub fn mvp_score(final_rating: f64, playoffs: Option<f64>, playoff_maps: usize) -> f64 {
+    let Some(p) = playoffs else { return final_rating };
+    let share = (1.0 - MVP_FINAL_WEIGHT) * (playoff_maps.min(MVP_PLAYOFF_FULL_MAPS) as f64 / MVP_PLAYOFF_FULL_MAPS as f64);
+    (1.0 - share) * final_rating + share * p
+}
+
 /// One official a player played.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -227,6 +240,9 @@ pub struct Catalogue {
     transfers: HashMap<(i64, u32), Vec<(i64, bool)>>,
     /// `(season, team)` -> the time of the team's last decided match.
     season_end: HashMap<(i64, i64), i64>,
+    /// Final -> log -> (account, colour): the side each player was on, read
+    /// where the roster does not say (Flashy: mercs can be MVP too).
+    final_colours: HashMap<i64, HashMap<i64, Vec<(u32, String)>>>,
 }
 
 /// The rounds a medal is read from.
@@ -271,7 +287,12 @@ impl Catalogue {
             transfers.entry((team, account)).or_default().push((time, joined));
         }
         let season_end = Self::season_ends(&matches);
-        Ok(Catalogue { matches, rosters, teams: db.etf2l_teams().await?, tiers, tier_by_name, newest_season, mercs, transfers, season_end })
+        let finals: Vec<i64> = matches.values().filter(|m| Self::is_final(m)).map(|m| m.match_id).collect();
+        let mut final_colours: HashMap<i64, HashMap<i64, Vec<(u32, String)>>> = HashMap::new();
+        for (m, log, account, colour) in db.log_colours(&finals).await? {
+            final_colours.entry(m).or_default().entry(log).or_default().push((account, colour));
+        }
+        Ok(Catalogue { matches, rosters, teams: db.etf2l_teams().await?, tiers, tier_by_name, newest_season, mercs, transfers, season_end, final_colours })
     }
 
     /// Each team's last decided match of each season.
@@ -435,6 +456,51 @@ impl Catalogue {
     /// competition, or -- in the seasons without a separate playoff
     /// competition (Autumn 2023) -- a regular match whose round is the Grand
     /// Final. A preseason cup's final is not the league's.
+    /// Everyone in a final's logs on the finalist whose roster players shared
+    /// their colour, by the most logs. A log whose colours the rosters do not
+    /// settle -- both finalists' players on one side, or none -- says nothing.
+    fn sides_from_logs(logs: Option<&HashMap<i64, Vec<(u32, String)>>>, roster: &HashMap<u32, i64>, a: i64, b: i64) -> HashMap<u32, i64> {
+        let mut votes: HashMap<(u32, i64), u32> = HashMap::new();
+        for players in logs.into_iter().flat_map(|l| l.values()) {
+            let mut by_colour: HashMap<&str, (u32, u32)> = HashMap::new();
+            for (account, colour) in players {
+                match roster.get(account) {
+                    Some(t) if *t == a => by_colour.entry(colour.as_str()).or_default().0 += 1,
+                    Some(t) if *t == b => by_colour.entry(colour.as_str()).or_default().1 += 1,
+                    _ => {}
+                }
+            }
+            let team_of_colour = |c: &str| {
+                let (x, y) = by_colour.get(c).copied().unwrap_or_default();
+                if x > y {
+                    Some(a)
+                } else if y > x {
+                    Some(b)
+                } else {
+                    None
+                }
+            };
+            let (red, blue) = (team_of_colour("Red"), team_of_colour("Blue"));
+            if red.is_none() || red == blue {
+                continue;
+            }
+            for (account, colour) in players {
+                let team = if colour == "Red" { red } else { blue };
+                if let Some(t) = team {
+                    *votes.entry((*account, t)).or_default() += 1;
+                }
+            }
+        }
+        let mut out: HashMap<u32, (i64, u32)> = HashMap::new();
+        for ((account, team), n) in votes {
+            let e = out.entry(account).or_insert((team, 0));
+            if n > e.1 {
+                *e = (team, n);
+            }
+        }
+        out.into_iter().map(|(a, (t, _))| (a, t)).collect()
+    }
+
     fn is_final(m: &CatMatch) -> bool {
         m.stage != "Cup" && (m.stage == "Grand Final" || Self::round_kind(m.round.as_deref()) == Some(RoundKind::Final))
     }
@@ -586,8 +652,19 @@ impl Catalogue {
             };
             let division = self.medal_division(f);
             let key = (f.season, division.clone());
-            let team_of: HashMap<u32, i64> =
-                self.rosters.get(&f.match_id).map(|r| r.iter().filter_map(|(a, t, _)| Some((*a, (*t)?))).collect()).unwrap_or_default();
+            let mut team_of: HashMap<u32, i64> = self
+                .rosters
+                .get(&f.match_id)
+                .map(|r| r.iter().filter_map(|(a, t, _)| Some((*a, (*t)?))).filter(|(_, t)| *t == f.clan1 || *t == f.clan2).collect())
+                .unwrap_or_default();
+            // Whoever the roster does not place -- a merc, a ringer ETF2L
+            // never listed (S24 Mid: a Sniper who played all five maps of the
+            // final at 1.06 lost the MVP to a 0.83) -- is on the side they
+            // played: each log's colour is the finalist whose roster players
+            // were on it.
+            for (account, team) in Self::sides_from_logs(self.final_colours.get(&f.match_id), &team_of, f.clan1, f.clan2) {
+                team_of.entry(account).or_insert(team);
+            }
             let before: Vec<&hl_db::RatedGame> =
                 playoffs.get(&key).into_iter().flatten().filter_map(|id| by_match.get(id)).flatten().copied().collect();
             let tier = crate::leagues::canonical_tier(&division).or_else(|| self.tiers.get(&key).copied()).or_else(|| self.tier_by_name.get(&division).copied());
@@ -619,7 +696,7 @@ impl Catalogue {
                     let final_rating = mean(&scores)?;
                     let rest: Vec<f64> = before.iter().filter(|g| g.account_id == a && g.class == class).map(|g| g.score).collect();
                     let playoffs_rating = mean(&rest);
-                    let score = playoffs_rating.map_or(final_rating, |p| MVP_FINAL_WEIGHT * final_rating + (1.0 - MVP_FINAL_WEIGHT) * p);
+                    let score = mvp_score(final_rating, playoffs_rating, rest.len());
                     Some(Mvp {
                         season: f.season,
                         season_name: self.season_name(f.season),
@@ -1928,12 +2005,42 @@ mod tests {
         let v = c.mvps(&games);
         let sniper = v.iter().find(|x| x.class == "sniper" && !x.event).unwrap();
         assert_eq!((sniper.account_id, sniper.won), (12, false), "the class MVP can come from the losing finalist");
-        let won_sniper = 0.7 * 1.2 + 0.3 * 0.9;
+        let won_sniper = mvp_score(1.2, Some(0.9), 1);
         assert!(won_sniper < 1.3);
         let event = v.iter().find(|x| x.event).unwrap();
         assert_eq!((event.account_id, event.class.as_str(), event.won), (211, "medic", true));
         assert!(!v.iter().any(|x| x.account_id == 311), "more than half the final to be a candidate");
         assert_eq!(event.final_maps, 2);
+    }
+
+    #[test]
+    fn a_short_playoff_run_counts_for_less_than_a_long_one() {
+        // Two playoff maps at 1.57 no longer carry a 0.85 final past a 1.05.
+        assert!(mvp_score(0.85, Some(1.57), 2) < mvp_score(1.05, Some(1.03), 2));
+        assert_eq!(mvp_score(1.0, None, 0), 1.0);
+        // From four maps on, the full 30%.
+        assert!((mvp_score(1.0, Some(2.0), 4) - 1.3).abs() < 1e-9);
+        assert!((mvp_score(1.0, Some(2.0), 9) - 1.3).abs() < 1e-9);
+        assert!((mvp_score(1.0, Some(2.0), 1) - 1.075).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_player_the_roster_does_not_place_is_on_the_side_the_logs_put_them() {
+        // Team 10 in Red, team 11 in Blue on both logs; 900 is on no roster
+        // and played Blue in both.
+        let roster: HashMap<u32, i64> = [(1, 10), (2, 10), (3, 11), (4, 11)].into_iter().collect();
+        let log = |swap: bool| {
+            let (r, b) = if swap { ("Blue", "Red") } else { ("Red", "Blue") };
+            vec![(1, r.to_string()), (2, r.to_string()), (3, b.to_string()), (4, b.to_string()), (900, b.to_string())]
+        };
+        // Sides swap between the halves: the colour follows the roster.
+        let logs: HashMap<i64, Vec<(u32, String)>> = [(1, log(false)), (2, log(true))].into_iter().collect();
+        let sides = Catalogue::sides_from_logs(Some(&logs), &roster, 10, 11);
+        assert_eq!(sides.get(&900), Some(&11), "with team 11's players both halves, whichever colour that was");
+        assert_eq!(sides.get(&1), Some(&10));
+        // A log where the rosters do not settle the colours says nothing.
+        let muddled: HashMap<i64, Vec<(u32, String)>> = [(1, vec![(1, "Red".to_string()), (3, "Red".to_string()), (900, "Blue".to_string())])].into_iter().collect();
+        assert!(Catalogue::sides_from_logs(Some(&muddled), &roster, 10, 11).is_empty());
     }
 
     #[test]
@@ -2110,7 +2217,7 @@ mod tests {
             }
         }
         let tiers = matches.iter().filter_map(|x| Some(((x.season, x.division.clone()?), x.tier?))).collect();
-        Catalogue { newest_season: matches.iter().map(|x| x.season).max().unwrap_or(0), matches: matches.into_iter().map(|x| (x.match_id, x)).collect(), rosters, teams: HashMap::new(), tiers, tier_by_name: HashMap::new(), mercs: Default::default(), transfers: HashMap::new(), season_end: HashMap::new() }
+        Catalogue { newest_season: matches.iter().map(|x| x.season).max().unwrap_or(0), matches: matches.into_iter().map(|x| (x.match_id, x)).collect(), rosters, teams: HashMap::new(), tiers, tier_by_name: HashMap::new(), mercs: Default::default(), transfers: HashMap::new(), season_end: HashMap::new(), final_colours: HashMap::new() }
     }
 
     #[test]
