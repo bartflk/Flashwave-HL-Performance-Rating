@@ -473,6 +473,7 @@ pub async fn run(dump: &Path, out: &Path, limit: Option<usize>) -> Result<()> {
     let seen = prints.len();
     let dups = duplicates(prints);
     let combined = dups.iter().filter(|(_, of)| of.is_none()).count();
+    let twice = dups.len() - combined;
     println!("pass 1: {seen} logs, {} uploaded twice, {combined} combined ({:.1} min in)", dups.len() - combined, mins());
     let skip: Arc<HashSet<i64>> = Arc::new(dups.iter().map(|(id, _)| *id).collect());
 
@@ -529,26 +530,7 @@ pub async fn run(dump: &Path, out: &Path, limit: Option<usize>) -> Result<()> {
         mins()
     );
 
-    // ---- the pools: each rated against itself, with its own 1.00 ----
-    let mut scored: Vec<Option<f64>> = vec![None; perfs.len()];
-    let mut scales: HashMap<Pool, (Scale, usize)> = HashMap::new();
-    for pool in [Pool::Competitive, Pool::Pickup] {
-        let idx: Vec<usize> = (0..perfs.len()).filter(|i| perfs[*i].3.pool() == pool).collect();
-        let baseline = Baseline::build(idx.iter().map(|i| &perfs[*i].4), None);
-        // The score alone: each rating's part-by-part breakdown, kept for
-        // millions of performances, would not fit in memory.
-        for i in &idx {
-            scored[*i] = rate(&perfs[*i].4, &baseline, &w).map(|r| r.score);
-        }
-        drop(baseline);
-        let raw: Vec<f64> = idx.iter().filter_map(|i| scored[*i]).collect();
-        if let Some(s) = Scale::of(&raw) {
-            println!("{} pool: {} performances; scale mean {:.2}, sd {:.2} ({:.1} min in)", pool.as_str(), raw.len(), s.mean, s.sd, mins());
-            scales.insert(pool, (s, raw.len()));
-        }
-    }
-
-    // ---- write ----
+    // ---- write: the logs and players first, freed as they go ----
     let opts = SqliteConnectOptions::new()
         .filename(out)
         .create_if_missing(true)
@@ -556,25 +538,12 @@ pub async fn run(dump: &Path, out: &Path, limit: Option<usize>) -> Result<()> {
         .synchronous(SqliteSynchronous::Off);
     let pool = SqlitePoolOptions::new().max_connections(1).connect_with(opts).await?;
     let mut c = pool.acquire().await?;
+    // A 256 MB page cache: the default 2 MB turns every index update into a
+    // seek once the tables pass a few hundred MB.
+    sqlx::query("PRAGMA cache_size = -262144").execute(&mut *c).await?;
     for sql in SCHEMA {
         sqlx::query(sql).execute(&mut *c).await?;
     }
-    let mut meta: Vec<(String, String)> = vec![
-        ("model".into(), MODEL_VERSION.into()),
-        ("source".into(), dump.display().to_string()),
-        ("note".into(), "logs.tf JSON only: the server-log components are absent and the others carry their weight".into()),
-        ("duplicates".into(), (dups.len() - combined).to_string()),
-        ("combined_left_out".into(), combined.to_string()),
-    ];
-    for (p, (s, n)) in &scales {
-        meta.push((format!("{}_scale_mean", p.as_str()), s.mean.to_string()));
-        meta.push((format!("{}_scale_sd", p.as_str()), s.sd.to_string()));
-        meta.push((format!("{}_performances", p.as_str()), n.to_string()));
-    }
-    insert_rows(&mut c, "INSERT INTO meta (key, value) ", meta, |mut b, (k, v)| {
-        b.push_bind(k).push_bind(v);
-    })
-    .await?;
 
     let n = insert_rows(
         &mut c,
@@ -595,6 +564,7 @@ pub async fn run(dump: &Path, out: &Path, limit: Option<usize>) -> Result<()> {
     )
     .await?;
     println!("  wrote {n} logs ({:.1} min in)", mins());
+    drop(logs);
     insert_rows(&mut c, "INSERT INTO duplicate (log_id, duplicate_of) ", dups, |mut b, (id, of)| {
         b.push_bind(id).push_bind(of);
     })
@@ -611,6 +581,7 @@ pub async fn run(dump: &Path, out: &Path, limit: Option<usize>) -> Result<()> {
         }
         player_rows.push((account, name, main, hl_main, p.logs, p.first, p.last, p.hl_record, p.hl_kinds, p.class_secs, p.hl_class_secs));
     }
+    drop(players);
     let n = insert_rows(
         &mut c,
         "INSERT INTO player (account_id, steamid64, name, main_class, hl_main_class, logs, hl_logs, sixes_logs, prolander_logs, other_logs, first_at, last_at,
@@ -646,6 +617,44 @@ pub async fn run(dump: &Path, out: &Path, limit: Option<usize>) -> Result<()> {
     })
     .await?;
     println!("  wrote {n} players ({:.1} min in)", mins());
+
+    // Rated only now, with the logs and players written and freed: the first
+    // full run held them all through the rating and was swapped out to disk.
+    // ---- the pools: each rated against itself, with its own 1.00 ----
+    let mut scored: Vec<Option<f64>> = vec![None; perfs.len()];
+    let mut scales: HashMap<Pool, (Scale, usize)> = HashMap::new();
+    for pool in [Pool::Competitive, Pool::Pickup] {
+        let idx: Vec<usize> = (0..perfs.len()).filter(|i| perfs[*i].3.pool() == pool).collect();
+        let baseline = Baseline::build(idx.iter().map(|i| &perfs[*i].4), None);
+        // The score alone: each rating's part-by-part breakdown, kept for
+        // millions of performances, would not fit in memory.
+        for i in &idx {
+            scored[*i] = rate(&perfs[*i].4, &baseline, &w).map(|r| r.score);
+        }
+        drop(baseline);
+        let raw: Vec<f64> = idx.iter().filter_map(|i| scored[*i]).collect();
+        if let Some(s) = Scale::of(&raw) {
+            println!("{} pool: {} performances; scale mean {:.2}, sd {:.2} ({:.1} min in)", pool.as_str(), raw.len(), s.mean, s.sd, mins());
+            scales.insert(pool, (s, raw.len()));
+        }
+    }
+
+    let mut meta: Vec<(String, String)> = vec![
+        ("model".into(), MODEL_VERSION.into()),
+        ("source".into(), dump.display().to_string()),
+        ("note".into(), "logs.tf JSON only: the server-log components are absent and the others carry their weight".into()),
+        ("duplicates".into(), twice.to_string()),
+        ("combined_left_out".into(), combined.to_string()),
+    ];
+    for (p, (s, n)) in &scales {
+        meta.push((format!("{}_scale_mean", p.as_str()), s.mean.to_string()));
+        meta.push((format!("{}_scale_sd", p.as_str()), s.sd.to_string()));
+        meta.push((format!("{}_performances", p.as_str()), n.to_string()));
+    }
+    insert_rows(&mut c, "INSERT INTO meta (key, value) ", meta, |mut b, (k, v)| {
+        b.push_bind(k).push_bind(v);
+    })
+    .await?;
 
     // Ratings, and each player's careers by pool, class and year.
     let mut careers: HashMap<(u32, Pool, TfClass), Vec<(i64, f64, i8)>> = HashMap::new();
