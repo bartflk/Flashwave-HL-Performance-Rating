@@ -130,7 +130,8 @@ from the Official TF2 Wiki.
 **SHA-256**
 
 ```
-HASHES
+DEE6BA4D1861215776BA2EB472CAB7E800D5668F26E2CAF13BBBD9A000DC2D89  Flashwave.tf_0.11.0_x64-setup.exe
+9EDE462E5FE4AB36F7EADA80D84F8CF1754BFA24B43D5E08B8ADA3D8025B19EB  Flashwave.tf_0.11.0_x64_en-US.msi
 ```
 
 The Linux files are built on GitHub; their hashes are on the release page
