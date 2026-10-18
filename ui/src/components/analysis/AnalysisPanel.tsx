@@ -15,16 +15,19 @@ import "./analysis.css";
 import { t, k } from "../../lib/i18n";
 import { classLabel } from "./common";
 import { Loading } from "../Spinner";
+import { CtlGroup, Icon, Seg, type IconName } from "./MapChrome";
 
 type Tab = "map" | "feed" | "fights" | "spread" | "aim" | "timeline";
 
-const TABS: Array<[Tab, string]> = [
-  ["map", k("Kill map")],
-  ["feed", k("Play-by-play")],
-  ["fights", k("Fights")],
-  ["spread", k("Damage and kills by class")],
-  ["aim", k("Aim")],
-  ["timeline", k("Timeline")],
+/** The views, each with its icon (Flashy: "do the same for the round picker
+ *  and tabs"). */
+const TABS: Array<[Tab, string, IconName]> = [
+  ["map", k("Kill map"), "map"],
+  ["feed", k("Play-by-play"), "list"],
+  ["fights", k("Fights"), "swords"],
+  ["spread", k("Damage and kills by class"), "spread"],
+  ["aim", k("Aim"), "crosshair"],
+  ["timeline", k("Timeline"), "chart"],
 ];
 
 /**
@@ -50,6 +53,7 @@ export function AnalysisPanel({ d, onlyRounds }: { d: MatchDetail; onlyRounds?: 
           a={q.data}
           stv={{ demosTfId: d.demosTfId, hasStv: d.demos.some((x) => x.kind === "stv") }}
           onlyRounds={onlyRounds ?? null}
+          winners={new Map(d.rounds.map((r) => [r.roundNum, r.winner] as [number, "Red" | "Blue" | null]))}
         />
       )}
     </section>
@@ -71,7 +75,7 @@ function realMap(m: string | null): string | null {
   return m && /^[a-z]{2,6}_[a-z0-9_]+$/i.test(m.trim()) ? m.trim() : null;
 }
 
-function Body({ a, stv, onlyRounds }: { a: Analysis; stv: StvInfo; onlyRounds: number[] | null }) {
+function Body({ a, stv, onlyRounds, winners }: { a: Analysis; stv: StvInfo; onlyRounds: number[] | null; winners: Map<number, "Red" | "Blue" | null> }) {
   const me = a.players.find((p) => p.isMe) ?? null;
   const [tab, setTab] = useState<Tab>("map");
   const [player, setPlayer] = useState<number>(me?.accountId ?? a.players[0]?.accountId ?? 0);
@@ -139,9 +143,10 @@ function Body({ a, stv, onlyRounds }: { a: Analysis; stv: StvInfo; onlyRounds: n
 
   return (
     <>
-      <div className="an-filters">
-        <label className="an-field">
-          <span className="an-label">{t("Player")}</span>
+      <div className="ctl-bar an-filters">
+        <CtlGroup label={t("Player")}>
+        <label className="ctl-select">
+          <Icon name="person" size={14} />
           <select value={player} onChange={(e) => setPlayer(Number(e.target.value))}>
             {teams.map((team) =>
               team.length === 0 ? null : (
@@ -158,53 +163,52 @@ function Body({ a, stv, onlyRounds }: { a: Analysis; stv: StvInfo; onlyRounds: n
             )}
           </select>
         </label>
+        </CtlGroup>
         {multiMap && !only && (
-          <div className="segmented" role="tablist" aria-label={t("Map")}>
-            <button
-              role="tab"
-              aria-selected={seg === null}
-              className={seg === null ? "seg active" : "seg"}
-              onClick={() => {
-                setSeg(null);
+          <CtlGroup label={t("Map")}>
+            <Seg
+              label={t("Map")}
+              value={seg === null ? "all" : String(seg)}
+              onChange={(v) => {
+                setSeg(v === "all" ? null : Number(v));
                 setRound(null);
               }}
-            >{t("All maps")}</button>
-            {a.segments.map((s, i) => (
-              <button
-                key={i}
-                role="tab"
-                aria-selected={seg === i}
-                className={seg === i ? "seg active" : "seg"}
-                onClick={() => {
-                  setSeg(i);
-                  setRound(null);
-                }}
-                title={s.map ?? t("map not known")}
-              >
-                {capitalize(splitMap(s.map).name ?? "unknown map")}
-              </button>
-            ))}
-          </div>
+              options={[
+                { v: "all", label: <><Icon name="map" size={14} /> {t("All maps")}</> },
+                ...a.segments.map((s, i) => ({ v: String(i), label: capitalize(splitMap(s.map).name ?? "unknown map"), title: s.map ?? t("map not known") })),
+              ]}
+            />
+          </CtlGroup>
         )}
-        <div className="segmented" role="tablist" aria-label={t("Round")}>
-          <button role="tab" aria-selected={round === null} className={round === null ? "seg active" : "seg"} onClick={() => setRound(null)}>{t("All rounds")}</button>
-          {roundChoices.map((r) => (
-            <button
-              key={r.roundNum}
-              role="tab"
-              aria-selected={round === r.roundNum}
-              className={round === r.roundNum ? "seg active" : "seg"}
-              onClick={() => setRound(r.roundNum)}
-            >
-              R{r.roundNum}
-            </button>
-          ))}
-        </div>
+        <CtlGroup label={t("Round")}>
+          <Seg
+            label={t("Round")}
+            value={round === null ? "all" : String(round)}
+            onChange={(v) => setRound(v === "all" ? null : Number(v))}
+            options={[
+              { v: "all", label: <><Icon name="any" size={14} /> {t("All")}</>, title: t("Every round") },
+              ...roundChoices.map((r) => {
+                const won = winners.get(r.roundNum) ?? null;
+                return {
+                  v: String(r.roundNum),
+                  label: (
+                    <>
+                      R{r.roundNum}
+                      {won && <i className={`an-won ${won === "Red" ? "red" : "blu"}`} aria-hidden />}
+                    </>
+                  ),
+                  title: won ? t("Round {0}: {1} won it", { "0": r.roundNum, "1": won === "Red" ? "RED" : "BLU" }) : t("Round {0}", { "0": r.roundNum }),
+                };
+              }),
+            ]}
+          />
+        </CtlGroup>
       </div>
 
       <nav className="an-tabs" role="tablist" aria-label={t("View")}>
-        {TABS.map(([id, label]) => (
+        {TABS.map(([id, label, icon]) => (
           <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "an-tab active" : "an-tab"} onClick={() => setTab(id)}>
+            <Icon name={icon} size={15} />
             {t(label)}
           </button>
         ))}

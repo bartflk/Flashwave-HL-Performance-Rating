@@ -1482,3 +1482,13 @@
 .km-dorito.down { bottom: 0; }
 .km-dorito.down::before { transform: rotate(180deg); }
 .km-dorito:hover { color: var(--accent); border-color: var(--accent); background: var(--panel-2); }
+
+/* The filters as labelled groups, a round's winner as a dot in their colour;
+   each view tab with its icon. */
+.an-filters.ctl-bar { gap: 12px 22px; }
+.an-won { display: inline-block; width: 7px; height: 7px; margin-left: 5px; border-radius: 50%; vertical-align: 1px; }
+.an-won.red { background: var(--red, #d4453f); }
+.an-won.blu { background: var(--blu, #5b93cc); }
+.an-tab { display: inline-flex; align-items: center; gap: 7px; }
+.an-tab svg { opacity: 0.7; }
+.an-tab.active svg { opacity: 1; color: var(--accent-text); }

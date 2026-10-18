@@ -66,10 +66,15 @@ const PATHS = {
   map: "M2.5 4 6 2.5l4 1.5 3.5-1.5V12L10 13.5 6 12l-3.5 1.5zM6 2.5V12M10 4v9.5",
   table: "M2.5 3.5h11v9h-11zM2.5 6.5h11M2.5 9.5h11M6.5 3.5v9",
   one: "M3.5 3.5h9v9h-9zM3.5 6h9M6 2.5v2M10 2.5v2",
+  list: "M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.5M2.5 8h.5M2.5 12h.5",
+  spread: "M8 2.5v11M8 4.5H4M8 7.5H2.5M8 10.5H5M8 4.5h3M8 7.5h5.5M8 10.5h2.5",
+  chart: "M2.5 13.5h11M3.5 11l3-4 3 2 4-5",
   close: "M4.5 4.5l7 7M11.5 4.5l-7 7",
 };
 
-export function Icon({ name, size = 16 }: { name: keyof typeof PATHS; size?: number }) {
+export type IconName = keyof typeof PATHS;
+
+export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
   return (
     <svg viewBox="0 0 16 16" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d={PATHS[name]} />
