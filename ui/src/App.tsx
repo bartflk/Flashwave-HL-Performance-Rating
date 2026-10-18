@@ -28,6 +28,7 @@ import { BookmarksMenu } from "./components/Bookmarks";
 import "./App.css";
 import "./components/match/match.css";
 import { Etf2lMark } from "./components/Etf2lMark";
+import { Logo } from "./components/Logo";
 
 type Tab = "matches" | "profile" | "etf2l" | "settings" | "rating";
 
@@ -152,7 +153,7 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <h1 className="wordmark">
-            <img src="/logo.svg" alt="" />
+            <Logo />
             <span>{tx("Flashwave{0}", { "0": <span className="hl">{tr(".tf")}</span> })}
             </span>
             <span className="beta-tag" title={tr("Early build: expect rough edges, and please report them")}>{tr("alpha")}</span>

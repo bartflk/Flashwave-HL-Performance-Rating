@@ -3,6 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../api/client";
 import { errorMessage, type AppStatus, type TfPathInfo } from "../api/types";
 import { t, tx, k } from "../lib/i18n";
+import { Logo } from "./Logo";
 
 /**
  * First-run setup: who you are (required), where TF2 lives (optional, only
@@ -19,7 +20,7 @@ export function Setup(props: { status: AppStatus; onDone: () => void; onFinish: 
     <div className="centered">
       <div className="card setup-card">
         <div className="card-head setup-head">
-          <img src="/logo.svg" alt="" className="setup-logo" />
+          <Logo className="setup-logo" />
           <div>
             <h1>{t("Welcome to Flashwave.tf")}</h1>
             <p className="sub">{t("Ratings for your TF2 Highlander games, built from your logs.tf history. Everything is stored on this PC.")}</p>

@@ -25,6 +25,9 @@ export type Theme = {
   base: Base;
   /** Hand-tuned in index.css under `[data-theme]`. */
   css?: boolean;
+  /** A second colour, for the logo's lower wave (Miku's pink hair ties);
+   *  the accent when left out. */
+  second?: string;
   /** Made in the app; editable and removable. */
   custom?: boolean;
 };
@@ -40,6 +43,7 @@ export const BUILT_IN: Theme[] = [
   { id: "red", name: "RED", hint: k("Reliable Excavation Demolition"), base: { bg: "#1a1212", panel: "#2a1a1a", text: "#f4e3e1", accent: "#d4453f" } },
   { id: "blu", name: "BLU", hint: k("Builders League United"), base: { bg: "#10151c", panel: "#192230", text: "#e1eaf4", accent: "#5b93cc" } },
   { id: "mannco", name: "Mann Co.", hint: k("gold and walnut, the store"), base: { bg: "#15130f", panel: "#221f18", text: "#f1ead8", accent: "#e3b23c" } },
+  { id: "miku", name: "Hatsune Miku", hint: k("teal twin-tails and a dash of pink, just for fun"), base: { bg: "#0d1a1c", panel: "#14272a", text: "#e3faf7", accent: "#39c5bb" }, second: "#e12885" },
 ];
 
 export const DEFAULT_THEME = "gravel";
@@ -161,6 +165,7 @@ export function themeById(id: string): Theme {
 function paint(theme: Theme | null, preview?: Base) {
   const root = document.documentElement;
   for (const role of ROLES) root.style.removeProperty(role);
+  root.style.removeProperty("--second");
   root.removeAttribute("data-theme");
   if (preview) {
     for (const [role, value] of Object.entries(derive(preview))) root.style.setProperty(role, value);
@@ -172,6 +177,7 @@ function paint(theme: Theme | null, preview?: Base) {
     return;
   }
   for (const [role, value] of Object.entries(derive(theme.base))) root.style.setProperty(role, value);
+  if (theme.second) root.style.setProperty("--second", theme.second);
 }
 
 /** Called once from main.tsx before React renders, so the window never shows
