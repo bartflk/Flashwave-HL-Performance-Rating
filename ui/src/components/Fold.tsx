@@ -11,6 +11,11 @@ function stored(id: string): boolean {
   }
 }
 
+/** Open a section from elsewhere (the match page's tabs, Q82). */
+export function openFold(id: string) {
+  window.dispatchEvent(new CustomEvent("hl:fold-open", { detail: id }));
+}
+
 /**
  * Makes a panel collapsible. Wraps a component that renders one
  * `<section className="panel">`: clicking the panel's heading (its first
@@ -31,6 +36,20 @@ export function Fold({ id, children }: { id: string; children: ReactNode }) {
       return !c;
     });
 
+  useEffect(() => {
+    const on = (e: Event) => {
+      if ((e as CustomEvent<string>).detail !== id) return;
+      setClosed(false);
+      try {
+        localStorage.setItem(KEY(id), "0");
+      } catch {
+        // Blocked storage: open for this session.
+      }
+    };
+    window.addEventListener("hl:fold-open", on);
+    return () => window.removeEventListener("hl:fold-open", on);
+  }, [id]);
+
   // The heading acts as the toggle button, for the keyboard and screen readers too.
   useEffect(() => {
     const h = box.current?.querySelector("h2");
@@ -43,6 +62,7 @@ export function Fold({ id, children }: { id: string; children: ReactNode }) {
   return (
     <div
       ref={box}
+      id={`sec-${id}`}
       className={closed ? "fold closed" : "fold"}
       onClick={(e) => {
         // Only the heading toggles: buttons and links in a header keep working.

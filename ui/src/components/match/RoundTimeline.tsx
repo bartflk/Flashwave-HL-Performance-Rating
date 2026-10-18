@@ -110,6 +110,15 @@ function Round(props: {
 
   const ticks = Array.from({ length: Math.floor(len / 60) }, (_, i) => (i + 1) * 60);
   const stat = (t: Team, red: number | null, blue: number | null) => (t === "Red" ? red : blue);
+  // Where the pointer is on the time axis, as seconds into the round.
+  const [cursor, setCursor] = useState<number | null>(null);
+  const track = (ev: React.MouseEvent<HTMLDivElement>) => {
+    const ticksEl = ev.currentTarget.querySelector<HTMLElement>(".lane-ticks");
+    if (!ticksEl) return;
+    const box = ticksEl.getBoundingClientRect();
+    const f = (ev.clientX - box.left) / box.width;
+    setCursor(f < 0 || f > 1 ? null : f * len);
+  };
   const markers = (list: EventRow[]) =>
     list.map((e, i) => <Marker key={i} e={e} len={len} left={left} us={us} demoName={demoName} />);
 
@@ -138,7 +147,7 @@ function Round(props: {
         </span>
       </div>
 
-      <div className="round-lanes">
+      <div className="round-lanes" onMouseMove={track} onMouseLeave={() => setCursor(null)}>
         <span className={`lane-label team-${left.toLowerCase()}`}>{names[0]}</span>
         <div className={`lane lane-team lane-${left.toLowerCase()}`}>{markers(lane(left))}</div>
         {showMine && (
@@ -151,8 +160,16 @@ function Round(props: {
         <div className={`lane lane-team lane-${right.toLowerCase()}`}>{markers(lane(right))}</div>
         <div className="lane-ticks" aria-hidden>
           {ticks.map((t) => (
-            <span key={t} className="tick" style={{ left: `${(t / len) * 100}%` }} />
+            <span key={t} className="tick" style={{ left: `${(t / len) * 100}%` }}>
+              {/* Every minute labelled on short rounds, every other on long ones. */}
+              {(len <= 600 || (t / 60) % 2 === 0) && <span className="tick-label">{t / 60}:00</span>}
+            </span>
           ))}
+          {cursor !== null && (
+            <span className="lane-cursor" style={{ left: `${(cursor / len) * 100}%` }}>
+              <span>{clock(cursor)}</span>
+            </span>
+          )}
         </div>
         {a && <RoundStrip a={a} roundNum={r.roundNum} len={len} mine={myTeam ?? left} />}
       </div>
@@ -318,7 +335,7 @@ function Marker(props: {
           title={tr("{at} — {who} uber{2}{3}{hint}", { "2": e.medigun && e.medigun !== "medigun" ? ` (${e.medigun})` : "", "3": e.player ? `, ${e.player}` : "", at: at, who: who, hint: tr(hint) })}
           {...act}
         >
-          U
+          <MarkGlyph kind="uber" />
         </span>
       );
     case "drop":
@@ -340,7 +357,7 @@ function Marker(props: {
           title={tr("{at} — {who} Medic {2} killed{3}{4}{hint}", { "2": e.player ?? "", "3": e.killer ? tr(" by {0}", { "0": e.killer }) : "", "4": e.killerIsMe ? tr(" (you)") : "", at: at, who: who, hint: tr(hint) })}
           {...act}
         >
-          ✚
+          <MarkGlyph kind="pick" />
         </span>
       );
     default:
@@ -375,13 +392,13 @@ function Legend({ jumps, mine }: { jumps: boolean; mine: boolean }) {
       <span>
         {tx("{0} cap", { "0": <span className="mk-demo mk-cap team-bg-none" /> })}</span>
       <span>
-        {tx("{0} uber", { "0": <span className="mk-demo mk-uber">U</span> })}</span>
+        {tx("{0} uber", { "0": <span className="mk-demo mk-uber"><MarkGlyph kind="uber" /></span> })}</span>
       <span>
         {tx("{0} drop", { "0": <span className="mk-demo mk-drop">D</span> })}</span>
       <span>
-        {tx("{0} Medic down", { "0": <span className="mk-demo mk-pick">✚</span> })}</span>
+        {tx("{0} Medic down", { "0": <span className="mk-demo mk-pick"><MarkGlyph kind="pick" /></span> })}</span>
       <span>
-        {tx("{0} killed by you", { "0": <span className="mk-demo mk-pick by-me">✚</span> })}</span>
+        {tx("{0} killed by you", { "0": <span className="mk-demo mk-pick by-me"><MarkGlyph kind="pick" /></span> })}</span>
       {jumps && (
         <span>
           {tx("{0} your killstreak", { "0": <span className="mk-demo mk-streak">4</span> })}</span>
@@ -395,5 +412,23 @@ function Legend({ jumps, mine }: { jumps: boolean; mine: boolean }) {
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * A marker's letter or cross drawn, not typed: a font's "U" and "✚" sit a
+ * pixel or two off centre, and which way depended on the font and where the
+ * marker landed (Flashy: "sometimes they're centered sometimes leaning left
+ * or right"). On a 16-unit grid, centred by construction.
+ */
+function MarkGlyph({ kind }: { kind: "uber" | "pick" }) {
+  return (
+    <svg className="mk-glyph" viewBox="0 0 16 16" aria-hidden>
+      {kind === "uber" ? (
+        <path d="M5 4v4.5a3 3 0 0 0 6 0V4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      ) : (
+        <path d="M8 3.5v9M3.5 8h9" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+      )}
+    </svg>
   );
 }

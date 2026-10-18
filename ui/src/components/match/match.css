@@ -414,6 +414,7 @@
 
 .mk,
 .mk-demo {
+  box-sizing: border-box;
   display: inline-grid;
   place-items: center;
   width: 17px;
@@ -427,9 +428,15 @@
 .mk {
   position: absolute;
   top: 50%;
+  /* Border inside the 17px, so every marker is the same box and its centre
+     is the event's moment. */
+  box-sizing: border-box;
+  padding: 0;
   transform: translate(-50%, -50%);
   cursor: help;
 }
+.mk-glyph { display: block; width: 11px; height: 11px; }
+.mk-pick .mk-glyph { width: 12px; height: 12px; }
 
 .mk:hover {
   z-index: 2;
@@ -888,9 +895,11 @@
 }
 
 .round-lanes {
+  --lane-label-w: 44px;
   position: relative;
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-columns: var(--lane-label-w) minmax(0, 1fr);
+  padding-top: 14px;
   align-items: center;
   row-gap: 3px;
 }
@@ -925,8 +934,39 @@
 /* Minute lines over every lane; they never catch the pointer. */
 .lane-ticks {
   position: absolute;
-  inset: 0 0 0 44px;
+  /* The lanes' column, whatever width the labels have. */
+  inset: 0 0 0 var(--lane-label-w, 44px);
   pointer-events: none;
+}
+.tick-label {
+  position: absolute;
+  top: -14px;
+  transform: translateX(-50%);
+  font-size: 0.62rem;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+/* The pointer's moment across every lane, and its clock. */
+.lane-cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(var(--text-rgb), 0.45);
+}
+.lane-cursor span {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.64rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .lane-ticks .tick {
@@ -1320,7 +1360,7 @@
 .round-lanes {
   grid-column: 2;
   grid-row: 1 / span 2;
-  grid-template-columns: 74px minmax(0, 1fr);
+  --lane-label-w: 74px;
 }
 
 .round-stats {
@@ -1684,3 +1724,8 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 .os-class { font-size: 0.76rem; white-space: nowrap; }
 .os-players .os-chip { margin-left: auto; }
 .os-unknown { margin-left: auto; font-size: 0.74rem; }
+
+/* Q82: the match page's section tabs, the Profile's sticky row; a section
+   scrolled to stops below them. */
+.mx-tabs { margin: 4px 0 2px; }
+.match-page .fold { scroll-margin-top: 64px; }

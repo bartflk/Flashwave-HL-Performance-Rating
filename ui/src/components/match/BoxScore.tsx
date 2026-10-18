@@ -1,5 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
-import type { LogFlags, MatchDetail, PlayerRow } from "../../api/types";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../../api/client";
+import type { LogFlags, MatchDetail, PlayerPing, PlayerRow } from "../../api/types";
 import { clock, rating, teamLabel } from "../../lib/format";
 import { ClassIcon } from "../ClassIcon";
 import { t as tr, tx, k } from "../../lib/i18n";
@@ -11,10 +13,10 @@ import { tip } from "../../lib/glossary";
 
 const CLASS_ORDER = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
 
-type Key = "team" | "name" | "k" | "a" | "d" | "da" | "dapm" | "kad" | "kd" | "dt" | "dtpm" | "hp" | "bs" | "hs" | "as" | "cap" | "spawn" | "rating";
+type Key = "team" | "name" | "k" | "a" | "d" | "da" | "dapm" | "kad" | "kd" | "dt" | "dtpm" | "hp" | "bs" | "hs" | "as" | "cap" | "spawn" | "ping" | "rating";
 
 /** The log's flags, and whether anyone's caps cost their team a respawn. */
-type Flags = LogFlags & { spawn: boolean };
+type Flags = LogFlags & { spawn: boolean; ping: Map<number, PlayerPing> | null };
 
 type Col = {
   key: Key;
@@ -29,6 +31,7 @@ const per = (n: number, p: PlayerRow) => (p.timeS > 0 ? n / (p.timeS / 60) : 0);
 
 /** How the scoreboard's columns are counted. */
 const BOX_HOW = k("logs.tf's own count for the whole match, or the part picked; blank where the log did not track it (the oldest logs have no damage taken, headshots or airshots).");
+const PING_HOW = k("Read from a demo of this match (the STV, or your own recording): what the server measured, about once a second. Blank without one.");
 const SPAWN_HOW = k("Worked out from the server log: each cap's reset of the respawn wave, against the teammates who were dead and waiting.");
 
 const COLS: Col[] = [
@@ -54,6 +57,12 @@ const COLS: Col[] = [
     fmt: (v) => `${v}s`,
   },
   {
+    key: "ping",
+    label: k("Ping"),
+    title: k("Their average ping over the match, in milliseconds; hover a cell for the lowest, the highest and any spikes."),
+    value: (p, f) => f.ping?.get(p.accountId)?.avg ?? null,
+  },
+  {
     key: "rating",
     label: k("Rating"),
     title: k("Rating on the main class against the players you face: 1.00 is an average game. Not rated under 5 minutes."),
@@ -72,13 +81,25 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
   // Click a name: their card (Q40).
   const card = usePlayerCard();
   // The respawn column only where someone's caps cost one: KOTH and 5CP.
-  const flags: Flags = useMemo(() => ({ ...d.flags, spawn: d.players.some((p) => (p.spawnDelayS ?? 0) > 0) }), [d.flags, d.players]);
+  // Ping from the match's demo, when there is one (Q83: it had a panel of
+  // its own; Flashy wanted it beside the rest of the numbers).
+  const demo = useQuery({ queryKey: ["demostats", d.logId], queryFn: () => api.getDemoStats(d.logId) });
+  const pings = demo.data?.pings;
+  const flags: Flags = useMemo(
+    () => ({
+      ...d.flags,
+      spawn: d.players.some((p) => (p.spawnDelayS ?? 0) > 0),
+      ping: pings && pings.length > 0 ? new Map(pings.map((x) => [x.accountId, x])) : null,
+    }),
+    [d.flags, d.players, pings],
+  );
+  const cols = COLS.filter((c) => c.key !== "ping" || flags.ping);
   const [sort, setSort] = useState<{ key: Key; desc: boolean }>({ key: "team", desc: false });
   const rows = useMemo(() => {
     const byTeamClass = (a: PlayerRow, b: PlayerRow) =>
       (a.team === d.leftTeam ? 0 : 1) - (b.team === d.leftTeam ? 0 : 1) ||
       CLASS_ORDER.indexOf(a.mainClass ?? "") - CLASS_ORDER.indexOf(b.mainClass ?? "");
-    const col = COLS.find((c) => c.key === sort.key);
+    const col = cols.find((c) => c.key === sort.key);
     const out = [...d.players];
     if (sort.key === "team") out.sort(byTeamClass);
     else if (sort.key === "name") out.sort((a, b) => a.name.localeCompare(b.name));
@@ -94,7 +115,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
     }
     if (sort.desc) out.reverse();
     return out;
-  }, [d, sort, flags]);
+  }, [d, sort, flags, cols]);
 
   const click = (key: Key) =>
     setSort((s) => (s.key === key ? { key, desc: !s.desc } : { key, desc: false }));
@@ -120,13 +141,13 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
               <th className="sortable" onClick={() => click("name")}>{tx("Name{0}", { "0": arrow("name") })}
               </th>
               <th>C</th>
-              {COLS.map((c) => (
+              {cols.map((c) => (
                 <th key={c.key} className="num sortable" onClick={() => click(c.key)}>
                   {/* What the column is and where it comes from (Q80). */}
                   {c.key === "rating" ? (
                     <StatTip k="rating" inline>{tr(c.label)}</StatTip>
                   ) : (
-                    <StatTip entry={tip(tr(c.label), tr(c.title), c.key === "spawn" ? tr(SPAWN_HOW) : tr(BOX_HOW), c.key === "spawn" ? "server log" : "logs.tf")} inline>
+                    <StatTip entry={tip(tr(c.label), tr(c.title), c.key === "spawn" ? tr(SPAWN_HOW) : c.key === "ping" ? tr(PING_HOW) : tr(BOX_HOW), c.key === "spawn" ? "server log" : c.key === "ping" ? "STV demo" : "logs.tf")} inline>
                       {tr(c.label)}
                     </StatTip>
                   )}
@@ -155,10 +176,22 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
                     </span>
                   ))}
                 </td>
-                {COLS.map((c) => {
+                {cols.map((c) => {
                   const v = c.value(p, flags);
+                  const pg = c.key === "ping" ? flags.ping?.get(p.accountId) : undefined;
                   return (
-                    <td key={c.key} className={c.key === "rating" ? "num sb-rating" : "num"}>
+                    <td
+                      key={c.key}
+                      className={c.key === "rating" ? "num sb-rating" : "num"}
+                      title={
+                        pg
+                          ? [
+                              tr("{0}–{1} ms", { "0": pg.min, "1": pg.max }),
+                              ...pg.spikes.map(([a, b, peak]) => tr("spike {0}-{1}, up to {2} ms", { "0": clock(a), "1": clock(b), "2": peak })),
+                            ].join("\n")
+                          : undefined
+                      }
+                    >
                       {v === null ? <span className="muted">–</span> : c.fmt ? c.fmt(v) : String(Math.round(v))}
                     </td>
                   );

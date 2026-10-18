@@ -1,4 +1,5 @@
-import { PingPanel, ReflectPanel } from "./DemoStats";
+import { ReflectPanel } from "./DemoStats";
+import { MatchTabs } from "./MatchTabs";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -76,6 +77,7 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
         <>
           <MatchHero d={shown} />
           <StrengthOf d={shown} />
+          <MatchTabs />
           {q.data.standIn && (
             <div className="stv-banner stand-in-banner">
               <span className="stv-banner-icon" aria-hidden>!</span>
@@ -116,11 +118,8 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
           <Fold id="spychecks">
             {hasStv ? <Spychecks d={q.data} /> : <StvLocked d={q.data} kind="spychecks" />}
           </Fold>
-          {/* Ping and reflects: any demo with a timeline, STV or the
-              owner's own; nothing at all without one. */}
-          <Fold id="ping">
-            <PingPanel d={q.data} />
-          </Fold>
+          {/* Reflects: any demo with a timeline, STV or the owner's own;
+              nothing at all without one. Ping is a scoreboard column (Q83). */}
           <Fold id="reflects">
             <ReflectPanel d={q.data} />
           </Fold>
