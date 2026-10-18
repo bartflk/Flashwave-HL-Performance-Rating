@@ -11,7 +11,7 @@ import { SettingsIcon, type IconName } from "./settings/icons";
 import { MapsPanel } from "./MapsPanel";
 import { ImportPanel } from "./ImportPanel";
 import { startRebuild, useSyncStatus } from "../lib/sync";
-import { contrast, deleteCustomTheme, luminance, previewTheme, readThemeCode, saveCustomTheme, setTheme, themeById, themeCode, useTheme, useThemes, type Base, type Theme } from "../lib/theme";
+import { contrast, deleteCustomTheme, luminance, previewTheme, readThemeCode, saveCustomTheme, setTheme, themeById, themeCode, useTheme, useThemes, type Base, type Theme, BACKDROP_MAPS, BACKDROP_NAMES, backdropUrl, setBackdropMode, useBackdropMode, type BackdropMap, type BackdropMode } from "../lib/theme";
 import { DEFAULT_SCALE, SCALES, setScale, stepScale, useScale } from "../lib/scale";
 import { allLanguages, languageFile, setLanguage, t, t as tr, useLanguage, userLanguageFiles, tx } from "../lib/i18n";
 import { loadUserLanguages } from "../lib/userLang";
@@ -606,18 +606,20 @@ function ThemePanel() {
   const theme = useTheme();
   const themes = useThemes();
   // The theme being made or edited; null while the editor is shut.
-  const [editing, setEditing] = useState<{ id?: string; name: string; base: Base } | null>(null);
+  const [editing, setEditing] = useState<{ id?: string; name: string; base: Base; backdrop?: BackdropMap } | null>(null);
+  const mode = useBackdropMode();
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
   // Show the palette as it is edited; put the chosen theme back on closing.
   useEffect(() => {
-    previewTheme(editing ? editing.base : null);
+    previewTheme(editing ? editing.base : null, editing?.backdrop);
   }, [editing]);
   useEffect(() => () => previewTheme(null), []);
 
-  const startFrom = (th: Theme, id?: string) => setEditing({ id, name: id ? th.name : t("{0}, my version", { "0": th.name }), base: { ...th.base } });
+  const startFrom = (th: Theme, id?: string) =>
+    setEditing({ id, name: id ? th.name : t("{0}, my version", { "0": th.name }), base: { ...th.base }, backdrop: th.backdrop });
   const copy = async (th: Theme) => {
     await navigator.clipboard?.writeText(themeCode(th));
     setCopied(th.id);
@@ -631,7 +633,7 @@ function ThemePanel() {
     }
     setCodeError(null);
     setCode("");
-    saveCustomTheme(got.name, got.base);
+    saveCustomTheme(got.name, got.base, undefined, got.backdrop);
   };
 
   const b = editing?.base;
@@ -658,10 +660,31 @@ function ThemePanel() {
   return (
     <div className="panel">
       <h2>{t("Theme")}</h2>
+      {/* The map behind the page (Flashy: "have it on the sides like when you
+          have the body in the middle and the map on the left and right,
+          kinda like a steam profile"). */}
+      <div className="th-backdrop-row">
+        <span className="th-backdrop-label">{t("Map backdrop")}</span>
+        <div className="km-seg" role="radiogroup" aria-label={t("Map backdrop")}>
+          {(
+            [
+              ["off", t("Off")],
+              ["headers", t("In headers")],
+              ["sides", t("Behind the page")],
+            ] as Array<[BackdropMode, string]>
+          ).map(([m, label]) => (
+            <button key={m} role="radio" aria-checked={mode === m} className={mode === m ? "on" : undefined} onClick={() => setBackdropMode(m)}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <span className="hint">{t("A screenshot of the theme's map: faded behind a profile's, a team's and a match's header, or around the page on both sides.")}</span>
+      </div>
       <div className="theme-grid">
         {themes.map((th) => (
-          <div key={th.id} className={theme === th.id && !editing ? "theme-card active" : "theme-card"}>
-            <button className="theme-pick" onClick={() => setTheme(th.id)} aria-pressed={theme === th.id}>
+          <div key={th.id} className={`theme-card${theme === th.id && !editing ? " active" : ""}${th.backdrop ? " has-map" : ""}`}>
+            {th.backdrop && <span className="theme-map" style={{ backgroundImage: `url("${backdropUrl(th.backdrop)}")` }} aria-hidden />}
+            <button className="theme-pick" onClick={() => setTheme(th.id)} aria-pressed={theme === th.id} title={th.backdrop ? BACKDROP_NAMES[th.backdrop] : undefined}>
               <span className="theme-swatch" aria-hidden>
                 <i style={{ background: th.base.bg }} />
                 <i style={{ background: th.base.panel }} />
@@ -710,13 +733,24 @@ function ThemePanel() {
             {field("panel", t("Panels"))}
             {field("text", t("Text"))}
             {field("accent", t("Accent"))}
+            <label className="th-field">
+              <span>{t("Map")}</span>
+              <select value={editing.backdrop ?? ""} onChange={(e) => setEditing({ ...editing, backdrop: (e.target.value || undefined) as BackdropMap | undefined })}>
+                <option value="">{t("None")}</option>
+                {BACKDROP_MAPS.map((m) => (
+                  <option key={m} value={m}>
+                    {BACKDROP_NAMES[m]}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           {lowContrast && <p className="warn-text">{t("The text is hard to read on this background: make one lighter or the other darker.")}</p>}
           {light && <p className="warn-text">{t("The app is built for dark backgrounds; a light one will look washed out in places.")}</p>}
           <div className="th-actions">
             <button
               onClick={() => {
-                saveCustomTheme(editing.name, b, editing.id);
+                saveCustomTheme(editing.name, b, editing.id, editing.backdrop);
                 setEditing(null);
               }}
             >

@@ -4,6 +4,7 @@ import { api, inTauri } from "../api/client";
 import { errorMessage, type AppStatus, type TfPathInfo } from "../api/types";
 import { t, tx, k } from "../lib/i18n";
 import { Logo } from "./Logo";
+import { Backdrop } from "./Backdrop";
 
 /**
  * First-run setup: who you are (required), where TF2 lives (optional, only
@@ -19,7 +20,8 @@ export function Setup(props: { status: AppStatus; onDone: () => void; onFinish: 
   return (
     <div className="centered">
       <div className="card setup-card">
-        <div className="card-head setup-head">
+        <div className="card-head setup-head has-backdrop">
+          <Backdrop />
           <Logo className="setup-logo" />
           <div>
             <h1>{t("Welcome to Flashwave.tf")}</h1>

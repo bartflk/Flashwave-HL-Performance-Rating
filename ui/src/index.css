@@ -490,3 +490,34 @@ th .stip-card { font-weight: 400; }
 .ctl-select { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
 .ctl-select select { max-width: 280px; }
 .ctl-end { margin-left: auto; }
+
+/* ---- The theme's map (Flashy: "can you put images like this into the app
+   per theme"). `--backdrop` and `data-backdrop` come from lib/theme.ts. ---- */
+.backdrop { display: none; }
+html[data-backdrop="headers"] .has-backdrop { position: relative; isolation: isolate; overflow: hidden; }
+html[data-backdrop="headers"] .backdrop {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, var(--panel) 12%, color-mix(in srgb, var(--panel) 88%, transparent) 42%, color-mix(in srgb, var(--panel) 62%, transparent)),
+    linear-gradient(0deg, var(--panel), transparent 50%),
+    var(--backdrop) center 40% / cover no-repeat;
+}
+/* Behind the whole page, seen on both sides of the content column and
+   faded under it, like a Steam profile's background. */
+html[data-backdrop="sides"] body {
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--bg) 20%, transparent) 0,
+      color-mix(in srgb, var(--bg) 78%, transparent) max(16%, calc(50% - var(--page-w) / 2)),
+      color-mix(in srgb, var(--bg) 78%, transparent) min(84%, calc(50% + var(--page-w) / 2)),
+      color-mix(in srgb, var(--bg) 20%, transparent) 100%),
+    linear-gradient(180deg, transparent 30%, color-mix(in srgb, var(--bg) 85%, transparent) 100%),
+    var(--backdrop) center top / cover no-repeat,
+    var(--bg);
+  background-attachment: fixed;
+}

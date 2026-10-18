@@ -18,6 +18,7 @@ import { Etf2lMark } from "../Etf2lMark";
 import { SortTh, useSort } from "../../lib/sort";
 import { FixtureStrength, RosterStrength } from "../match/OpponentStrength";
 import { Loading, Refreshing } from "../Spinner";
+import { Backdrop } from "../Backdrop";
 
 /**
  * The league's screens (Q29, and Flashy's UX passes), shown inside the ETF2L
@@ -369,7 +370,8 @@ function TeamHeader({ v, honours, info }: { v: TeamView; honours: TeamHonours | 
   const titles = medalTitles(honours?.medals ?? []);
   const p = pct(v.record);
   return (
-    <div className="panel pp-head ts-teamhead">
+    <div className="panel pp-head ts-teamhead has-backdrop">
+      <Backdrop />
       <div className="pp-top">
         <div className="pp-avatar ts-teamavatar">{v.avatar ? <img src={v.avatar} alt="" /> : <span>{v.name.slice(0, 1).toUpperCase()}</span>}</div>
         <div className="pp-who">

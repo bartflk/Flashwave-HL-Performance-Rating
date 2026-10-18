@@ -162,7 +162,7 @@ has the whole of it, including what to do if one does break.
 | [ETF2L](https://etf2l.org) | Officials, divisions, rosters and seasons; its logo (from rules.etf2l.org) marks ETF2L things in the app (the league tab, officials, links to its pages) |
 | [demos.tf](https://demos.tf) by Icewind | STV demos, downloaded only when you ask (its files go back to 14 October 2019: older demos are still listed, but marked deleted); and the top-down images and map boundaries for 38 more maps under the kill map (added by Emiel) |
 | [more.tf](https://more.tf) | The original top-down map images under the kill map; a reference for validating raw-log parsing |
-| [Official TF2 Wiki](https://wiki.teamfortress.com/wiki/Tournament_Medal_-_ETF2L_Highlander) | The ETF2L Highlander medal icon on player profiles (Valve's in-game item art, Season 17 design); the kill map's sentry, dispenser and teleporter icons (cut from its picture of the Engineer's building HUD) and the death skull (the kill feed's) |
+| [Official TF2 Wiki](https://wiki.teamfortress.com/wiki/Tournament_Medal_-_ETF2L_Highlander) | The ETF2L Highlander medal icon on player profiles (Valve's in-game item art, Season 17 design); the kill map's sentry, dispenser and teleporter icons (cut from its picture of the Engineer's building HUD) and the death skull (the kill feed's); the map screenshots behind the headers and pages of the map themes (Gravel Pit, Dustbowl, Coldfront, Swiftwater, Badlands, Upward and Process, from each map's page) |
 | [flagcdn](https://flagcdn.com) | Country flags on player profiles, player cards and team pages (public domain, bundled with the app) |
 | Your own `.dem` files | Aim, deaths and movement: read on your PC, never uploaded |
 
@@ -269,4 +269,4 @@ cd ui && npx tsc -b
 
 ---
 
-*Not affiliated with Valve. Team Fortress 2 is a trademark of Valve Corporation. Class, building and death icons are Valve's, from the [Official TF2 Wiki](https://wiki.teamfortress.com). The app logo is original.*
+*Not affiliated with Valve. Team Fortress 2 is a trademark of Valve Corporation. Class, building and death icons and the map screenshots are Valve's, from the [Official TF2 Wiki](https://wiki.teamfortress.com). The app logo is original.*

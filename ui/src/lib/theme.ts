@@ -18,6 +18,27 @@ import { k } from "./i18n";
 
 export type Base = { bg: string; panel: string; text: string; accent: string };
 
+/** The maps there is a backdrop for: a screenshot of each from the Official
+ *  TF2 Wiki (Valve's), shrunk to WebP in `public/backdrops`. */
+export const BACKDROP_MAPS = ["gravel", "dustbowl", "coldfront", "swiftwater", "badlands", "upward", "process"] as const;
+export type BackdropMap = (typeof BACKDROP_MAPS)[number];
+export const BACKDROP_NAMES: Record<BackdropMap, string> = {
+  gravel: "Gravel Pit",
+  dustbowl: "Dustbowl",
+  coldfront: "Coldfront",
+  swiftwater: "Swiftwater",
+  badlands: "Badlands",
+  upward: "Upward",
+  process: "Process",
+};
+export const backdropUrl = (m: BackdropMap) => `/backdrops/${m}.webp`;
+const isBackdrop = (m: unknown): m is BackdropMap => typeof m === "string" && (BACKDROP_MAPS as readonly string[]).includes(m);
+
+/** Where the backdrop shows: nowhere, faded behind the big headers (a
+ *  profile's, a team's, a match's, the welcome card), or behind the whole
+ *  page, seen on both sides of the content like a Steam profile's. */
+export type BackdropMode = "off" | "headers" | "sides";
+
 export type Theme = {
   id: string;
   name: string;
@@ -28,18 +49,21 @@ export type Theme = {
   /** A second colour, for the logo's lower wave (Miku's pink hair ties);
    *  the accent when left out. */
   second?: string;
+  /** The map screenshot behind the page's headers or around the page
+   *  (Flashy: "can you put images like this into the app per theme"). */
+  backdrop?: BackdropMap;
   /** Made in the app; editable and removable. */
   custom?: boolean;
 };
 
 export const BUILT_IN: Theme[] = [
-  { id: "gravel", name: "Gravel", hint: k("TF2's browns and the game's orange"), css: true, base: { bg: "#1b1714", panel: "#25201c", text: "#f2e6d9", accent: "#e0763a" } },
-  { id: "dustbowl", name: "Dustbowl", hint: k("hotter and sandier, the desert maps"), css: true, base: { bg: "#1d1712", panel: "#2a211a", text: "#f6e9d7", accent: "#f0a032" } },
-  { id: "coldfront", name: "Coldfront", hint: k("slate and ice, the winter maps"), css: true, base: { bg: "#14181d", panel: "#1c222a", text: "#e4ecf4", accent: "#58a6d8" } },
-  { id: "swiftwater", name: "Swiftwater", hint: k("mossy green, the one that is neither"), css: true, base: { bg: "#151914", panel: "#1e241c", text: "#e9f0e4", accent: "#7fb861" } },
-  { id: "badlands", name: "Badlands", hint: k("red rock and dust"), base: { bg: "#1b1412", panel: "#2a1e1a", text: "#f3e3da", accent: "#d9583b" } },
-  { id: "upward", name: "Upward", hint: k("dusk over the cliffs, violet"), base: { bg: "#16131b", panel: "#221d2a", text: "#ece6f3", accent: "#a77ce0" } },
-  { id: "process", name: "Process", hint: k("teal and steel, the factory maps"), base: { bg: "#111919", panel: "#1a2525", text: "#e1f0ee", accent: "#3fb8a6" } },
+  { id: "gravel", name: "Gravel", hint: k("TF2's browns and the game's orange"), css: true, base: { bg: "#1b1714", panel: "#25201c", text: "#f2e6d9", accent: "#e0763a" }, backdrop: "gravel" },
+  { id: "dustbowl", name: "Dustbowl", hint: k("hotter and sandier, the desert maps"), css: true, base: { bg: "#1d1712", panel: "#2a211a", text: "#f6e9d7", accent: "#f0a032" }, backdrop: "dustbowl" },
+  { id: "coldfront", name: "Coldfront", hint: k("slate and ice, the winter maps"), css: true, base: { bg: "#14181d", panel: "#1c222a", text: "#e4ecf4", accent: "#58a6d8" }, backdrop: "coldfront" },
+  { id: "swiftwater", name: "Swiftwater", hint: k("mossy green, the one that is neither"), css: true, base: { bg: "#151914", panel: "#1e241c", text: "#e9f0e4", accent: "#7fb861" }, backdrop: "swiftwater" },
+  { id: "badlands", name: "Badlands", hint: k("red rock and dust"), base: { bg: "#1b1412", panel: "#2a1e1a", text: "#f3e3da", accent: "#d9583b" }, backdrop: "badlands" },
+  { id: "upward", name: "Upward", hint: k("dusk over the cliffs, violet"), base: { bg: "#16131b", panel: "#221d2a", text: "#ece6f3", accent: "#a77ce0" }, backdrop: "upward" },
+  { id: "process", name: "Process", hint: k("teal and steel, the factory maps"), base: { bg: "#111919", panel: "#1a2525", text: "#e1f0ee", accent: "#3fb8a6" }, backdrop: "process" },
   { id: "red", name: "RED", hint: k("Reliable Excavation Demolition"), base: { bg: "#1a1212", panel: "#2a1a1a", text: "#f4e3e1", accent: "#d4453f" } },
   { id: "blu", name: "BLU", hint: k("Builders League United"), base: { bg: "#10151c", panel: "#192230", text: "#e1eaf4", accent: "#5b93cc" } },
   { id: "mannco", name: "Mann Co.", hint: k("gold and walnut, the store"), base: { bg: "#15130f", panel: "#221f18", text: "#f1ead8", accent: "#e3b23c" } },
@@ -49,6 +73,7 @@ export const BUILT_IN: Theme[] = [
 export const DEFAULT_THEME = "gravel";
 
 const KEY = "hl.theme";
+const BACKDROP_KEY = "hl.backdrop";
 const CUSTOM_KEY = "hl.themes.custom";
 
 // ---- colour arithmetic ------------------------------------------------------
@@ -131,7 +156,9 @@ const ROLES = Object.keys(derive(BUILT_IN[0].base));
 function readCustom(): Theme[] {
   try {
     const list = JSON.parse(localStorage.getItem(CUSTOM_KEY) ?? "[]") as Theme[];
-    return Array.isArray(list) ? list.filter((t) => t && t.id && t.base).map((t) => ({ ...t, custom: true, css: false })) : [];
+    return Array.isArray(list)
+      ? list.filter((t) => t && t.id && t.base).map((t) => ({ ...t, backdrop: isBackdrop(t.backdrop) ? t.backdrop : undefined, custom: true, css: false }))
+      : [];
   } catch {
     return [];
   }
@@ -139,7 +166,7 @@ function readCustom(): Theme[] {
 
 function writeCustom(list: Theme[]) {
   try {
-    localStorage.setItem(CUSTOM_KEY, JSON.stringify(list.map(({ id, name, base }) => ({ id, name, base }))));
+    localStorage.setItem(CUSTOM_KEY, JSON.stringify(list.map(({ id, name, base, backdrop }) => ({ id, name, base, backdrop }))));
   } catch {
     // Blocked storage: the theme lasts until the app closes.
   }
@@ -148,6 +175,7 @@ function writeCustom(list: Theme[]) {
 let custom: Theme[] = [];
 let all: Theme[] = BUILT_IN;
 let current = DEFAULT_THEME;
+let mode: BackdropMode = "headers";
 let version = 0;
 const listeners = new Set<() => void>();
 
@@ -161,9 +189,23 @@ export function themeById(id: string): Theme {
   return all.find((t) => t.id === id) ?? BUILT_IN[0];
 }
 
-/** Put a theme, or a palette being edited, on the document. */
-function paint(theme: Theme | null, preview?: Base) {
+/** The theme's map on the document, as `--backdrop` and `data-backdrop`
+ *  (the mode), or neither. */
+function paintBackdrop(map: BackdropMap | undefined) {
   const root = document.documentElement;
+  if (map && mode !== "off") {
+    root.style.setProperty("--backdrop", `url("${backdropUrl(map)}")`);
+    root.setAttribute("data-backdrop", mode);
+  } else {
+    root.style.removeProperty("--backdrop");
+    root.removeAttribute("data-backdrop");
+  }
+}
+
+/** Put a theme, or a palette being edited, on the document. */
+function paint(theme: Theme | null, preview?: Base, previewMap?: BackdropMap) {
+  const root = document.documentElement;
+  paintBackdrop(preview ? previewMap : theme?.backdrop);
   for (const role of ROLES) root.style.removeProperty(role);
   root.style.removeProperty("--second");
   root.removeAttribute("data-theme");
@@ -191,6 +233,12 @@ export function initTheme() {
     current = DEFAULT_THEME;
   }
   if (!all.some((t) => t.id === current)) current = DEFAULT_THEME;
+  try {
+    const m = localStorage.getItem(BACKDROP_KEY);
+    if (m === "off" || m === "headers" || m === "sides") mode = m;
+  } catch {
+    // Blocked storage: the default.
+  }
   paint(themeById(current));
 }
 
@@ -205,15 +253,37 @@ export function setTheme(id: string) {
   changed();
 }
 
+/** Where the backdrop shows, for this machine. */
+export function setBackdropMode(m: BackdropMode) {
+  mode = m;
+  paint(themeById(current));
+  try {
+    localStorage.setItem(BACKDROP_KEY, m);
+  } catch {
+    // Blocked storage: the choice still applies for this session.
+  }
+  changed();
+}
+
+export function useBackdropMode(): BackdropMode {
+  return useSyncExternalStore(
+    (l) => {
+      listeners.add(l);
+      return () => listeners.delete(l);
+    },
+    () => mode,
+  );
+}
+
 /** Show a palette while it is being edited; null puts the chosen theme back. */
-export function previewTheme(base: Base | null) {
-  if (base) paint(null, base);
+export function previewTheme(base: Base | null, backdrop?: BackdropMap) {
+  if (base) paint(null, base, backdrop);
   else paint(themeById(current));
 }
 
 /** Save one of your own (new or edited) and switch to it. */
-export function saveCustomTheme(name: string, base: Base, id?: string): string {
-  const theme: Theme = { id: id ?? `custom-${Date.now().toString(36)}`, name: name.trim() || "My theme", base, custom: true };
+export function saveCustomTheme(name: string, base: Base, id?: string, backdrop?: BackdropMap): string {
+  const theme: Theme = { id: id ?? `custom-${Date.now().toString(36)}`, name: name.trim() || "My theme", base, backdrop, custom: true };
   custom = id ? custom.map((t) => (t.id === id ? theme : t)) : [...custom, theme];
   writeCustom(custom);
   changed();
@@ -229,18 +299,22 @@ export function deleteCustomTheme(id: string) {
 }
 
 /** A theme as a line of text to share, and back. */
-export function themeCode(t: Pick<Theme, "name" | "base">): string {
-  const bytes = new TextEncoder().encode(JSON.stringify({ name: t.name, ...t.base }));
+export function themeCode(t: Pick<Theme, "name" | "base" | "backdrop">): string {
+  const bytes = new TextEncoder().encode(JSON.stringify({ name: t.name, ...t.base, backdrop: t.backdrop }));
   return `hltheme:${btoa(String.fromCharCode(...bytes))}`;
 }
 
-export function readThemeCode(code: string): { name: string; base: Base } | null {
+export function readThemeCode(code: string): { name: string; base: Base; backdrop?: BackdropMap } | null {
   try {
     const raw = code.trim().replace(/^hltheme:/, "");
     const v = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(raw), (c) => c.charCodeAt(0))));
     const ok = (c: unknown) => typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c);
     if (!ok(v.bg) || !ok(v.panel) || !ok(v.text) || !ok(v.accent)) return null;
-    return { name: String(v.name ?? "Shared theme").slice(0, 40), base: { bg: v.bg, panel: v.panel, text: v.text, accent: v.accent } };
+    return {
+      name: String(v.name ?? "Shared theme").slice(0, 40),
+      base: { bg: v.bg, panel: v.panel, text: v.text, accent: v.accent },
+      backdrop: isBackdrop(v.backdrop) ? v.backdrop : undefined,
+    };
   } catch {
     return null;
   }

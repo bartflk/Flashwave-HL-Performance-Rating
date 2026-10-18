@@ -17,6 +17,7 @@ import { LogsTfCareer } from "./LogsTfCareer";
 import { SortTh, useSort } from "../../lib/sort";
 import { Loading } from "../Spinner";
 import { StatTip } from "../StatTip";
+import { Backdrop } from "../Backdrop";
 
 /**
  * A player's profile, HLTV-style (Q35, Flashy; PLAN §26): who they are,
@@ -88,7 +89,8 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
   const [openedAt] = useState(() => Date.now() / 1000);
   const banned = p.bans.find((b) => b.end === null || b.end > openedAt);
   return (
-    <div className={own ? "panel pp-head pp-own" : "panel pp-head"}>
+    <div className={own ? "panel pp-head pp-own has-backdrop" : "panel pp-head has-backdrop"}>
+      <Backdrop />
       {own && played && (
         <span className="pp-watermark" aria-hidden>
           <ClassIcon cls={played} size={240} />

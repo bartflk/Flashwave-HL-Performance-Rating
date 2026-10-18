@@ -9,6 +9,7 @@ import { BookmarkButton } from "../Bookmarks";
 import { Country } from "../Country";
 import { MedalGlyph } from "../players/MedalGlyph";
 import { DivisionBadge, seasonLong, seasonShort } from "../players/PlayerProfile";
+import { Backdrop } from "../Backdrop";
 
 /**
  * The top of a match page, in the Teams tab's language: the two teams face
@@ -45,7 +46,8 @@ export function MatchHero({ d }: { d: MatchDetail }) {
   const rightTeam: SideTeam | null = mine ? sides?.opp ?? null : null;
 
   return (
-    <header className={`panel mx-hero mx-${left.toLowerCase()}-left`}>
+    <header className={`panel mx-hero mx-${left.toLowerCase()}-left has-backdrop`}>
+      <Backdrop />
       {art?.image && <div className="mx-art" style={{ backgroundImage: `url("${art.image}")` }} aria-hidden />}
 
       <div className="mx-top">
