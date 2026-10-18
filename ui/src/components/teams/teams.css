@@ -3,7 +3,7 @@
    app's theme: the warm tan of its HUD, RED and BLU. */
 
 .content.teams-page {
-  --tf2-tan: #cf7336;
+  --tf2-tan: var(--accent);
   --tf2-cream: #ebe3cb;
   --tf2-red: #b8383b;
   --tf2-blu: #5885a2;

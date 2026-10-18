@@ -6,7 +6,7 @@
   /* TF2's colours, as on the match page: the HUD's tan, RED and BLU. Every
      tan accent in the tab (your team's bracket line, headings, hovers) was
      drawn with these undefined until now. */
-  --tf2-tan: #cf7336;
+  --tf2-tan: var(--accent);
   --tf2-cream: #ebe3cb;
   --tf2-red: #b8383b;
   --tf2-blu: #5885a2;

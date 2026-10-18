@@ -197,16 +197,17 @@
   background: linear-gradient(var(--sunken), #211c18);
 }
 
-/* One warm line under the bar, TF2's HUD tan fading out at both ends (the
+/* One line under the bar in the theme's accent, fading out at both ends (the
    RED, orange and BLU stripe it replaces read as three unrelated colours,
-   Flashy). */
+   Flashy; it follows the theme, "the orange line in the header doesnt
+   change either"). */
 .topbar::after {
   content: "";
   position: absolute;
   inset: auto 0 0 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(207, 115, 54, 0.85) 20%, #e0a050 50%, rgba(207, 115, 54, 0.85) 80%, transparent);
-  box-shadow: 0 0 10px rgba(224, 118, 58, 0.35);
+  background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb), 0.85) 20%, var(--accent-text) 50%, rgba(var(--accent-rgb), 0.85) 80%, transparent);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.35);
 }
 
 .topbar .who {
