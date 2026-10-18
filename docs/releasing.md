@@ -144,6 +144,14 @@ A `.deb` never installs updates itself, signed or not: the package manager
 owns its files. The app shows the update and its button opens the release
 page instead.
 
+## Keeping `target` small
+
+`npm run dev` and `npm run build` (so `npm run release` too) first run
+`scripts/sweep.mjs`: when `target` is over 30 GB (`HL_TARGET_CAP_GB`), it
+deletes the incremental caches, then if still over, everything but
+`release/bundle`. Cargo never cleans up on its own -- hl-queue's `target`
+had reached 68 GB. `npm run sweep -- --report` says how big it is.
+
 ## How the client finds it
 
 The app asks for:

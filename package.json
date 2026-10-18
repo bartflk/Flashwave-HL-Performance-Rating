@@ -4,8 +4,9 @@
   "version": "0.11.0",
   "description": "Team Fortress 2 Highlander performance rating system",
   "scripts": {
-    "dev": "tauri dev",
-    "build": "tauri build",
+    "dev": "node scripts/sweep.mjs && tauri dev",
+    "build": "node scripts/sweep.mjs && tauri build",
+    "sweep": "node scripts/sweep.mjs",
     "release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release.ps1",
     "checksums": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/checksums.ps1",
     "ui": "npm --prefix ui run dev",
