@@ -59,6 +59,13 @@ const PATHS = {
   history: "M8 3a5 5 0 1 1-4.6 3M3 2.8v3.2h3.2M8 5.6V8l1.7 1.1",
   both: "M8 2.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zM8 2.5v11",
   check: "M3.5 8.5 6.5 11.5 12.5 4.5",
+  dots: "M4 4.5a1 1 0 1 0 2 0 1 1 0 0 0-2 0M10 4.5a1 1 0 1 0 2 0 1 1 0 0 0-2 0M7 8a1 1 0 1 0 2 0 1 1 0 0 0-2 0M4 11.5a1 1 0 1 0 2 0 1 1 0 0 0-2 0M10 11.5a1 1 0 1 0 2 0 1 1 0 0 0-2 0",
+  heat: "M8 13.5c2.5 0 4-1.7 4-4 0-2.8-2.5-4-3-7-1.5 1-3 3-3 5-1-.5-1.5-1.5-1.5-2.5C3.6 6.3 4 8 4 9.5c0 2.3 1.5 4 4 4z",
+  crosshair: "M8 2.5v3M8 10.5v3M2.5 8h3M10.5 8h3M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z",
+  person: "M8 2.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM3 13.5c0-2.8 2.2-4.5 5-4.5s5 1.7 5 4.5",
+  map: "M2.5 4 6 2.5l4 1.5 3.5-1.5V12L10 13.5 6 12l-3.5 1.5zM6 2.5V12M10 4v9.5",
+  table: "M2.5 3.5h11v9h-11zM2.5 6.5h11M2.5 9.5h11M6.5 3.5v9",
+  one: "M3.5 3.5h9v9h-9zM3.5 6h9M6 2.5v2M10 2.5v2",
   close: "M4.5 4.5l7 7M11.5 4.5l-7 7",
 };
 
@@ -67,6 +74,17 @@ export function Icon({ name, size = 16 }: { name: keyof typeof PATHS; size?: num
     <svg viewBox="0 0 16 16" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d={PATHS[name]} />
     </svg>
+  );
+}
+
+/** A labelled group of a map's controls (Flashy: "this map ui still needs
+ *  some clearer interface"): the kill map's and Lives on a map's alike. */
+export function CtlGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="ctl-group">
+      <span className="ctl-group-label">{label}</span>
+      <div className="ctl-group-body">{children}</div>
+    </div>
   );
 }
 

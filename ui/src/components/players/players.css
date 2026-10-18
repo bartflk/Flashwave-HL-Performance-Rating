@@ -585,13 +585,7 @@ button.pp-alias-more:hover { border-color: var(--accent-dim); background: rgba(v
 .pp-titles { align-items: center; gap: 10px; }
 
 /* ---- Lives on a map's controls: labelled groups, an icon on every option ---- */
-.lm-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 22px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--bg) 45%, var(--panel)); }
-.lm-bar + .lm-bar { margin-top: 8px; }
-.lm-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.lm-group-label { font: 700 0.68rem var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-.lm-group-body { display: flex; align-items: center; gap: 8px; min-height: 34px; }
 .lm-select { min-width: 210px; }
-.lm-bar .km-seg button { display: inline-flex; align-items: center; gap: 6px; }
 .lm-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
 .lm-dot.red { background: var(--red, #d4453f); }
 .lm-dot.blu { background: var(--blu, #5b93cc); }
@@ -609,5 +603,5 @@ button.pp-alias-more:hover { border-color: var(--accent-dim); background: rgba(v
 .lm-toggle.on { color: var(--text-hi); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--panel)); }
 .lm-check { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; border: 1px solid currentColor; opacity: 0.5; }
 .lm-toggle.on .lm-check { opacity: 1; border-color: var(--accent); background: var(--accent); color: var(--bg); }
-.lm-bar .class-filter { margin: 0; }
-.lm-bar .lm-head-actions { margin-left: auto; align-self: flex-end; }
+.ctl-bar .class-filter { margin: 0; }
+.ctl-bar .lm-head-actions { margin-left: auto; align-self: flex-end; }

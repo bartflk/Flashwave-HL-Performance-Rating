@@ -11,7 +11,7 @@ import type { StvInfo } from "./AnalysisPanel";
 import { t as tr, tx } from "../../lib/i18n";
 import { MapPicker } from "./MapPicker";
 import { drawIcon, useMapIcons, type IconName, type MapIcons } from "./mapIcons";
-import { LegendChip, MapMenu, Seg, Switch, ZoomControls } from "./MapChrome";
+import { CtlGroup, Icon, LegendChip, MapMenu, Seg, Switch, ZoomControls } from "./MapChrome";
 import { CalloutEditor, useCallouts, zoneAt, ZoneShapes, type HandleDrag } from "./Callouts";
 import type { CalloutFile, CalloutZone } from "../../api/types";
 import { SortTh, useSort } from "../../lib/sort";
@@ -302,20 +302,25 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
 
   return (
     <div className={full ? "killmap full" : "killmap"} ref={box}>
-      <div className="km-bar">
-        <Seg
-          label={tr("Layer")}
-          value={layer}
-          onChange={setLayer}
-          options={[
-            { v: "dots", label: tr("Kills and deaths") },
-            { v: "paths", label: tr("Movement"), title: tr("Where you walked, one line per life, from your own demo") },
-            { v: "heat", label: tr("Heatmap") },
-          ]}
-        />
+      {/* Labelled groups, an icon on every option (Flashy: "do the same for
+          the kill map controls"). */}
+      <div className="ctl-bar">
+        <CtlGroup label={tr("Layer")}>
+          <Seg
+            label={tr("Layer")}
+            value={layer}
+            onChange={setLayer}
+            options={[
+              { v: "dots", label: <><Icon name="dots" size={14} /> {tr("Kills and deaths")}</>, title: tr("Every kill and death, where it happened") },
+              { v: "paths", label: <><Icon name="routes" size={14} /> {tr("Movement")}</>, title: tr("Where you walked, one line per life, from your own demo") },
+              { v: "heat", label: <><Icon name="heat" size={14} /> {tr("Heatmap")}</>, title: tr("Where the kills or deaths gather") },
+            ]}
+          />
+        </CtlGroup>
         {layer === "paths" ? (
-          <label className="km-field">
-            <span>{tr("Movement of")}</span>
+          <CtlGroup label={tr("Movement of")}>
+          <label className="ctl-select">
+            <Icon name="person" size={14} />
             <select
               value={pathWho === null ? String(player) : String(pathWho)}
               onChange={(e) => {
@@ -348,9 +353,11 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
               ))}
             </select>
           </label>
+          </CtlGroup>
         ) : (
-          <label className="km-field">
-            <span>{tr("Against")}</span>
+          <CtlGroup label={tr("Against")}>
+          <label className="ctl-select">
+            <Icon name="person" size={14} />
             <select value={enemy ?? ""} onChange={(e) => setEnemy(e.target.value === "" ? null : Number(e.target.value))}>
               <option value="">{tr("Everyone")}</option>
               {enemies.map((p) => (
@@ -361,42 +368,49 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
               ))}
             </select>
           </label>
+          </CtlGroup>
         )}
         {/* What the heatmap counts, and over which matches: only for the
             heatmap, where they mean something. */}
         {layer === "heat" && (
-          <Seg
-            label={tr("Heatmap of")}
-            value={heatOf}
-            onChange={setHeatOf}
-            options={[
-              { v: "kills", label: tr("Kills"), title: tr("Where {name} got kills", { name: name }) },
-              { v: "deaths", label: tr("Deaths"), title: tr("Where {name} died", { name: name }) },
-            ]}
-          />
-        )}
-        {layer === "heat" && careerOk && (
-          <Seg
-            label={tr("Over")}
-            value={scope}
-            onChange={setScope}
-            options={[
-              { v: "match", label: tr("This match") },
-              { v: "career", label: tx("All {myGames} of your {1} matches", { "1": shortMap ?? "", myGames: view!.myGames }) },
-            ]}
-          />
-        )}
-        {layer === "dots" && (
-          <div className="km-bar-end">
+          <CtlGroup label={tr("Heatmap of")}>
             <Seg
-              label={tr("Show as")}
-              value={asTable ? "table" : "map"}
-              onChange={(v) => setAsTable(v === "table")}
+              label={tr("Heatmap of")}
+              value={heatOf}
+              onChange={setHeatOf}
               options={[
-                { v: "map", label: tr("Map") },
-                { v: "table", label: tr("Table") },
+                { v: "kills", label: <><Icon name="crosshair" size={14} /> {tr("Kills")}</>, title: tr("Where {name} got kills", { name: name }) },
+                { v: "deaths", label: <><Icon name="skull" size={14} /> {tr("Deaths")}</>, title: tr("Where {name} died", { name: name }) },
               ]}
             />
+          </CtlGroup>
+        )}
+        {layer === "heat" && careerOk && (
+          <CtlGroup label={tr("Over")}>
+            <Seg
+              label={tr("Over")}
+              value={scope}
+              onChange={setScope}
+              options={[
+                { v: "match", label: <><Icon name="one" size={14} /> {tr("This match")}</> },
+                { v: "career", label: <><Icon name="history" size={14} /> {tx("All {myGames} of your {1} matches", { "1": shortMap ?? "", myGames: view!.myGames })}</> },
+              ]}
+            />
+          </CtlGroup>
+        )}
+        {layer === "dots" && (
+          <div className="ctl-end">
+            <CtlGroup label={tr("Show as")}>
+              <Seg
+                label={tr("Show as")}
+                value={asTable ? "table" : "map"}
+                onChange={(v) => setAsTable(v === "table")}
+                options={[
+                  { v: "map", label: <><Icon name="map" size={14} /> {tr("Map")}</> },
+                  { v: "table", label: <><Icon name="table" size={14} /> {tr("Table")}</> },
+                ]}
+              />
+            </CtlGroup>
           </div>
         )}
       </div>

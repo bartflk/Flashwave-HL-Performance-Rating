@@ -7,7 +7,7 @@ import { k, t, tx } from "../../lib/i18n";
 import { ClassIcon } from "../ClassIcon";
 import { MassImportButton } from "./MassImport";
 import { Loading } from "../Spinner";
-import { Icon, Seg } from "../analysis/MapChrome";
+import { CtlGroup, Icon, Seg } from "../analysis/MapChrome";
 
 /**
  * A player's lives on one map (Q57, Emiel): pick a map and a class, and
@@ -31,16 +31,6 @@ const SITUATIONS: Array<[Situation, string, string]> = [
 
 /** Each situation's icon. */
 const SITUATION_ICON: Record<Situation, "cap" | "afterCap" | "swords"> = { capped: "cap", afterCap: "afterCap", midFight: "swords" };
-
-/** A labelled group of the controls. */
-function Group({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="lm-group">
-      <span className="lm-group-label">{label}</span>
-      <div className="lm-group-body">{children}</div>
-    </div>
-  );
-}
 
 /** "Auto" shows where they usually go from this many lives up (Q65):
  *  past it, separate lines are a solid smear. */
@@ -141,8 +131,8 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
     <div className="lm">
       {/* Every control in a labelled group, each option with its icon
           (Flashy: "add some icons to differentiate what buttons do what"). */}
-      <div className="lm-bar">
-        <Group label={t("Map")}>
+      <div className="ctl-bar">
+        <CtlGroup label={t("Map")}>
           <select
             className="lm-select"
             value={map ?? ""}
@@ -158,8 +148,8 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
               </option>
             ))}
           </select>
-        </Group>
-        <Group label={t("Side")}>
+        </CtlGroup>
+        <CtlGroup label={t("Side")}>
           <Seg
             label={t("Side")}
             value={side}
@@ -170,8 +160,8 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
               { v: "Blue", label: <><i className="lm-dot blu" /> BLU <span className="lm-n">{sides.Blue}</span></> },
             ]}
           />
-        </Group>
-        <Group label={t("Matches")}>
+        </CtlGroup>
+        <CtlGroup label={t("Matches")}>
           <label className="lm-lastn" title={t("Only their most recent matches with this class and side; empty for all")}>
             <Icon name="history" size={14} />
             <span>{t("Last")}</span>
@@ -195,8 +185,8 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
               <span className="muted">{t("matches")}</span>
             )}
           </label>
-        </Group>
-        <Group label={t("View")}>
+        </CtlGroup>
+        <CtlGroup label={t("View")}>
           <Seg
             label={t("View")}
             value={view}
@@ -207,15 +197,15 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
               { v: "density", label: <><Icon name="grid" size={14} /> {t("Most used")}</>, title: t("How many lives passed each spot: the busier, the stronger") },
             ]}
           />
-        </Group>
+        </CtlGroup>
         {/* Q69: far more than this machine recorded, from demos.tf. */}
         <span className="lm-head-actions">
           <MassImportButton accountId={accountId} name={name} map={map} cls={cls} />
         </span>
       </div>
 
-      <div className="lm-bar">
-        <Group label={t("How the life ended")}>
+      <div className="ctl-bar">
+        <CtlGroup label={t("How the life ended")}>
           <Seg
             label={t("How the life ended")}
             value={ending}
@@ -226,8 +216,8 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
               { v: "survived", label: <><Icon name="flag" size={14} /> {t("Lived to the round's end")}</> },
             ]}
           />
-        </Group>
-        <Group label={t("Situation")}>
+        </CtlGroup>
+        <CtlGroup label={t("Situation")}>
           <div className="lm-toggles" role="group" aria-label={t("Situation")}>
             {SITUATIONS.map(([s, label, hint]) => (
               <button key={s} className={situations.has(s) ? "lm-toggle on" : "lm-toggle"} aria-pressed={situations.has(s)} onClick={() => toggle(s)} title={t(hint)}>
@@ -239,9 +229,9 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
               </button>
             ))}
           </div>
-        </Group>
+        </CtlGroup>
         {classes.length > 0 && (
-          <Group label={t("Class")}>
+          <CtlGroup label={t("Class")}>
             <div className="class-filter" role="tablist" aria-label={t("Class")}>
               <button role="tab" aria-selected={cls === null} className={cls === null ? "cf active" : "cf"} onClick={() => setCls(null)}>
                 {t("All")}
@@ -253,7 +243,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
                 </button>
               ))}
             </div>
-          </Group>
+          </CtlGroup>
         )}
       </div>
 

@@ -478,3 +478,15 @@ th .stip-card { font-weight: 400; }
   pointer-events: none;
 }
 .e2-search .refreshing { top: 50%; right: 8px; width: 20px; height: 20px; transform: translateY(-50%); border: 0; box-shadow: none; background: transparent; }
+
+/* A map's controls (the kill map, Lives on a map): labelled groups in a bar,
+   an icon on every option. */
+.ctl-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 22px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--bg) 45%, var(--panel)); }
+.ctl-bar + .ctl-bar { margin-top: 8px; }
+.ctl-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ctl-group-label { font: 700 0.68rem var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.ctl-group-body { display: flex; align-items: center; gap: 8px; min-height: 34px; }
+.ctl-bar .km-seg button { display: inline-flex; align-items: center; gap: 6px; }
+.ctl-select { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
+.ctl-select select { max-width: 280px; }
+.ctl-end { margin-left: auto; }
