@@ -91,11 +91,6 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
   return (
     <div className={own ? "panel pp-head pp-own has-backdrop" : "panel pp-head has-backdrop"}>
       <Backdrop />
-      {own && played && (
-        <span className="pp-watermark" aria-hidden>
-          <ClassIcon cls={played} size={240} />
-        </span>
-      )}
       <div className="pp-top">
         <div className="pp-avatar">{p.avatar ? <img src={p.avatar} alt="" /> : <span>{p.name.slice(0, 1).toUpperCase()}</span>}</div>
         <div className="pp-who">
