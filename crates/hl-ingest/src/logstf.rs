@@ -318,10 +318,16 @@ mod tests {
     #[test]
     fn a_lineup_reads_the_class_played_else_the_usual_one() {
         let ix = index();
-        // Someone with a 20+ game competitive career: asked on that class,
-        // and on a class they never played.
-        let Some((account, career)) = ix.careers.iter().find_map(|(a, v)| v.iter().find(|c| c.pool == "competitive" && c.games >= STRENGTH_MIN_GAMES).map(|c| (*a, c.clone()))) else { return };
-        let other = TfClass::ALL.iter().map(|c| c.as_str()).find(|c| !ix.careers[&account].iter().any(|x| x.class == *c)).unwrap_or("spy");
+        // Someone with a 20+ game competitive career and a class they never
+        // played: asked on the one, then the other. (Not just anyone: the map
+        // is unordered, and someone who played all nine has no "other".)
+        let never = |v: &[ClassCareer]| TfClass::ALL.iter().map(|c| c.as_str()).find(|c| !v.iter().any(|x| x.class == *c));
+        let Some((account, career, other)) = ix.careers.iter().find_map(|(a, v)| {
+            let c = v.iter().find(|c| c.pool == "competitive" && c.games >= STRENGTH_MIN_GAMES)?;
+            Some((*a, c.clone(), never(v)?))
+        }) else {
+            return;
+        };
         let r = lineup(&[(account, Some(career.class.to_string())), (account, Some(other.to_string())), (u32::MAX, Some("sniper".into()))]);
         assert!(r[0].on_class && r[0].rating.is_some());
         assert!(!r[1].on_class && r[1].rating.is_some(), "their usual class instead");

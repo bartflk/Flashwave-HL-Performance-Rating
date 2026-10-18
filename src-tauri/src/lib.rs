@@ -20,7 +20,7 @@ use tauri::Manager;
 /// `CARGO_PKG_VERSION`, which comes from the workspace `Cargo.toml`, so
 /// bumping that is enough — the window title used to be a literal in
 /// `tauri.conf.json` and shipped 0.4.0 still calling itself 0.3.
-pub const DISPLAY_VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " alpha");
+pub const DISPLAY_VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " beta");
 
 pub struct AppState {
     pub db: Db,

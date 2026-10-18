@@ -156,7 +156,7 @@ export default function App() {
             <Logo />
             <span>{tx("Flashwave{0}", { "0": <span className="hl">{tr(".tf")}</span> })}
             </span>
-            <span className="beta-tag" title={tr("Early build: expect rough edges, and please report them")}>{tr("alpha")}</span>
+            <span className="beta-tag" title={tr("Early build: expect rough edges, and please report them")}>{tr("beta")}</span>
           </h1>
           <nav className="tabs">
             {TABS.map(([id, label]) => (
