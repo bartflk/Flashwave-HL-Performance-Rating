@@ -45,6 +45,21 @@ const PATHS = {
   caret: "M5 6.5 8 9.5l3-3",
   up: "M4 10 8 6l4 4",
   down: "M4 6l4 4 4-4",
+  // Lives on a map's controls (Flashy: "add some icons to differentiate
+  // what buttons do what").
+  auto: "M8 2.5l1.3 3.2 3.2 1.3-3.2 1.3L8 11.5 6.7 8.3 3.5 7l3.2-1.3zM12.5 11v2.5M11.25 12.25h2.5",
+  routes: "M2.5 13C5.5 13 4.5 3 8 3s2.5 10 5.5 10M2.5 8.5c1.5 0 2-2 3.2-2",
+  grid: "M3 3h4v4H3zM9 3h4v4H9zM3 9h4v4H3zM9 9h4v4H9z",
+  skull: "M8 2.5a4.5 4.5 0 0 0-4.5 4.5c0 1.6.8 2.6 1.8 3.2V12h5.4v-1.8c1-.6 1.8-1.6 1.8-3.2A4.5 4.5 0 0 0 8 2.5zM6.2 7.4h.1M9.7 7.4h.1M7.1 12v1.5M8.9 12v1.5",
+  flag: "M4 13.5V2.5M4 3h7.5l-1.8 2.5L11.5 8H4",
+  any: "M8 2.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z",
+  cap: "M8 2.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zM8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z",
+  afterCap: "M12.5 8A4.5 4.5 0 1 1 11 4.6M12.6 2.4v2.8H9.8",
+  swords: "M3 3l7.5 7.5M9.5 13l3.5-3.5M11.25 11.25 13.5 13.5M13 3 5.5 10.5M6.5 13 3 9.5M4.75 11.25 2.5 13.5",
+  history: "M8 3a5 5 0 1 1-4.6 3M3 2.8v3.2h3.2M8 5.6V8l1.7 1.1",
+  both: "M8 2.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zM8 2.5v11",
+  check: "M3.5 8.5 6.5 11.5 12.5 4.5",
+  close: "M4.5 4.5l7 7M11.5 4.5l-7 7",
 };
 
 export function Icon({ name, size = 16 }: { name: keyof typeof PATHS; size?: number }) {

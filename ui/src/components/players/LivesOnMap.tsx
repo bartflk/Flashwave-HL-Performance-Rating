@@ -7,6 +7,7 @@ import { k, t, tx } from "../../lib/i18n";
 import { ClassIcon } from "../ClassIcon";
 import { MassImportButton } from "./MassImport";
 import { Loading } from "../Spinner";
+import { Icon, Seg } from "../analysis/MapChrome";
 
 /**
  * A player's lives on one map (Q57, Emiel): pick a map and a class, and
@@ -27,6 +28,19 @@ const SITUATIONS: Array<[Situation, string, string]> = [
   ["afterCap", k("After the other team capped"), k("The life began within 20 s of the other team taking a point in the same round")],
   ["midFight", k("Spawned mid-fight"), k("Others were killing each other both in the 5 s before the life began and the 10 s after")],
 ];
+
+/** Each situation's icon. */
+const SITUATION_ICON: Record<Situation, "cap" | "afterCap" | "swords"> = { capped: "cap", afterCap: "afterCap", midFight: "swords" };
+
+/** A labelled group of the controls. */
+function Group({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="lm-group">
+      <span className="lm-group-label">{label}</span>
+      <div className="lm-group-body">{children}</div>
+    </div>
+  );
+}
 
 /** "Auto" shows where they usually go from this many lives up (Q65):
  *  past it, separate lines are a solid smear. */
@@ -125,10 +139,12 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
   const v = livesQ.data;
   return (
     <div className="lm">
-      <div className="lm-controls">
-        <label className="an-field">
-          <span className="an-label">{t("Map")}</span>
+      {/* Every control in a labelled group, each option with its icon
+          (Flashy: "add some icons to differentiate what buttons do what"). */}
+      <div className="lm-bar">
+        <Group label={t("Map")}>
           <select
+            className="lm-select"
             value={map ?? ""}
             onChange={(e) => {
               setPicked(e.target.value);
@@ -142,78 +158,104 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
               </option>
             ))}
           </select>
-        </label>
-        <div className="segmented" role="tablist" aria-label={t("Side")}>
-          {(["both", "Red", "Blue"] as Side[]).map((s) => (
-            <button key={s} role="tab" aria-selected={side === s} className={side === s ? "seg active" : "seg"} onClick={() => setSide(s)}>
-              {s === "both" ? t("Both sides") : s === "Red" ? tx("RED ({0})", { "0": sides.Red }) : tx("BLU ({0})", { "0": sides.Blue })}
-            </button>
-          ))}
-        </div>
-        <label className="an-field lm-recent" title={t("Only their most recent matches with this class and side; empty for all")}>
-          <span className="an-label">{t("Last")}</span>
-          <input
-            type="number"
-            min={1}
-            step={1}
-            inputMode="numeric"
-            placeholder={t("all")}
-            value={lastN ?? ""}
-            onChange={(e) => {
-              const n = Math.floor(Number(e.target.value));
-              setLastN(e.target.value === "" || !Number.isFinite(n) || n < 1 ? null : n);
-            }}
+        </Group>
+        <Group label={t("Side")}>
+          <Seg
+            label={t("Side")}
+            value={side}
+            onChange={setSide}
+            options={[
+              { v: "both", label: <><Icon name="both" size={14} /> {t("Both")}</> },
+              { v: "Red", label: <><i className="lm-dot red" /> RED <span className="lm-n">{sides.Red}</span></> },
+              { v: "Blue", label: <><i className="lm-dot blu" /> BLU <span className="lm-n">{sides.Blue}</span></> },
+            ]}
           />
-          <span className="an-label">{t("matches")}</span>
-        </label>
-        <div className="segmented lm-view" role="tablist" aria-label={t("Show")}>
-          {(["auto", "routes", "density"] as View[]).map((m) => (
-            <button
-              key={m}
-              role="tab"
-              aria-selected={view === m}
-              className={view === m ? "seg active" : "seg"}
-              onClick={() => setView(m)}
-              title={m === "auto" ? t("Most used from {0} lives, every route below that", { "0": DENSITY_FROM }) : undefined}
-            >
-              {m === "auto" ? t("Auto") : m === "routes" ? t("Every route") : t("Most used")}
-            </button>
-          ))}
-        </div>
+        </Group>
+        <Group label={t("Matches")}>
+          <label className="lm-lastn" title={t("Only their most recent matches with this class and side; empty for all")}>
+            <Icon name="history" size={14} />
+            <span>{t("Last")}</span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              inputMode="numeric"
+              placeholder={t("all")}
+              value={lastN ?? ""}
+              onChange={(e) => {
+                const n = Math.floor(Number(e.target.value));
+                setLastN(e.target.value === "" || !Number.isFinite(n) || n < 1 ? null : n);
+              }}
+            />
+            {lastN !== null ? (
+              <button className="lm-clear" onClick={() => setLastN(null)} title={t("Every match")} aria-label={t("Every match")}>
+                <Icon name="close" size={12} />
+              </button>
+            ) : (
+              <span className="muted">{t("matches")}</span>
+            )}
+          </label>
+        </Group>
+        <Group label={t("View")}>
+          <Seg
+            label={t("View")}
+            value={view}
+            onChange={setView}
+            options={[
+              { v: "auto", label: <><Icon name="auto" size={14} /> {t("Auto")}</>, title: t("Most used from {0} lives, every route below that", { "0": DENSITY_FROM }) },
+              { v: "routes", label: <><Icon name="routes" size={14} /> {t("Every route")}</>, title: t("One line per life") },
+              { v: "density", label: <><Icon name="grid" size={14} /> {t("Most used")}</>, title: t("How many lives passed each spot: the busier, the stronger") },
+            ]}
+          />
+        </Group>
         {/* Q69: far more than this machine recorded, from demos.tf. */}
         <span className="lm-head-actions">
           <MassImportButton accountId={accountId} name={name} map={map} cls={cls} />
         </span>
       </div>
 
-      <div className="lm-situations" role="group" aria-label={t("Situation")}>
-        <div className="segmented" role="tablist" aria-label={t("How the life ended")}>
-          {(["any", "died", "survived"] as Ending[]).map((e) => (
-            <button key={e} role="tab" aria-selected={ending === e} className={ending === e ? "seg active" : "seg"} onClick={() => setEnding(e)}>
-              {e === "any" ? t("Any end") : e === "died" ? t("Ended in a death") : t("Lived to the round's end")}
-            </button>
-          ))}
-        </div>
-        {SITUATIONS.map(([s, label, hint]) => (
-          <button key={s} className={situations.has(s) ? "km-chip on" : "km-chip"} aria-pressed={situations.has(s)} onClick={() => toggle(s)} title={t(hint)}>
-            {t(label)}
-          </button>
-        ))}
+      <div className="lm-bar">
+        <Group label={t("How the life ended")}>
+          <Seg
+            label={t("How the life ended")}
+            value={ending}
+            onChange={setEnding}
+            options={[
+              { v: "any", label: <><Icon name="any" size={14} /> {t("Any end")}</> },
+              { v: "died", label: <><Icon name="skull" size={14} /> {t("Ended in a death")}</> },
+              { v: "survived", label: <><Icon name="flag" size={14} /> {t("Lived to the round's end")}</> },
+            ]}
+          />
+        </Group>
+        <Group label={t("Situation")}>
+          <div className="lm-toggles" role="group" aria-label={t("Situation")}>
+            {SITUATIONS.map(([s, label, hint]) => (
+              <button key={s} className={situations.has(s) ? "lm-toggle on" : "lm-toggle"} aria-pressed={situations.has(s)} onClick={() => toggle(s)} title={t(hint)}>
+                <Icon name={SITUATION_ICON[s]} size={14} />
+                {t(label)}
+                <span className="lm-check" aria-hidden>
+                  {situations.has(s) && <Icon name="check" size={12} />}
+                </span>
+              </button>
+            ))}
+          </div>
+        </Group>
+        {classes.length > 0 && (
+          <Group label={t("Class")}>
+            <div className="class-filter" role="tablist" aria-label={t("Class")}>
+              <button role="tab" aria-selected={cls === null} className={cls === null ? "cf active" : "cf"} onClick={() => setCls(null)}>
+                {t("All")}
+              </button>
+              {classes.map(([c, n]) => (
+                <button key={c} role="tab" aria-selected={cls === c} className={cls === c ? "cf active" : "cf"} onClick={() => setCls(cls === c ? null : c)} title={`${capitalize(c)}: ${n}`}>
+                  <ClassIcon cls={c} size={20} />
+                  <span className="cf-n">{n}</span>
+                </button>
+              ))}
+            </div>
+          </Group>
+        )}
       </div>
-
-      {classes.length > 0 && (
-        <div className="class-filter" role="tablist" aria-label={t("Class")}>
-          <button role="tab" aria-selected={cls === null} className={cls === null ? "cf active" : "cf"} onClick={() => setCls(null)}>
-            {t("All classes")}
-          </button>
-          {classes.map(([c, n]) => (
-            <button key={c} role="tab" aria-selected={cls === c} className={cls === c ? "cf active" : "cf"} onClick={() => setCls(cls === c ? null : c)} title={`${capitalize(c)}: ${n}`}>
-              <ClassIcon cls={c} size={20} />
-              <span className="cf-n">{n}</span>
-            </button>
-          ))}
-        </div>
-      )}
 
       {v && (
         <p className="hint lm-count">
