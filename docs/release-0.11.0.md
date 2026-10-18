@@ -101,6 +101,13 @@ can be your own, with the map behind them. Ratings are unchanged (model v11);
 
 ## Matches
 
+- **Tabs on a match's page** that stay on screen as you scroll: jump
+  straight to the Scoreboard, Rounds, Kill by kill or any other section.
+- **Ping is a scoreboard column**, sortable, with the lowest, highest and
+  any spikes on hover, instead of a panel of its own.
+- **The round timeline**: minute labels, a line under the pointer with the
+  time across every lane, the uber and Medic markers centred, and the
+  minute lines where they belong.
 - **Sorting by a class** (Kills on Soldier and so on) takes 0.4 s instead of
   21.
 - Importing **a part of a combined log** says so and opens the combined one.
