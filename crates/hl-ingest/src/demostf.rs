@@ -182,6 +182,27 @@ pub async fn index(db: &Db, sources: &Sources, me: SteamId) -> Result<Found> {
     Ok(Found { listed: all.len(), matched: pairs.len() })
 }
 
+/// Ask demos.tf again for one match (Flashy: "a refresh button so i can see
+/// if demos.tf updated ... for games after i loaded the log"): the pages of
+/// your demos around its time, matched as a sync would, for the log and any
+/// parts folded into it that have no demo yet. Leaves the sync's walk alone.
+pub async fn index_one(db: &Db, sources: &Sources, me: SteamId, log_id: i64) -> Result<Found> {
+    let ids: std::collections::HashSet<i64> = db.log_and_parts(log_id).await?.into_iter().collect();
+    let logs: Vec<Unlinked> = db.logs_without_demo_id().await?.into_iter().filter(|(id, _, _)| ids.contains(id)).collect();
+    let Some(latest) = logs.iter().map(|(_, at, _)| *at).max() else {
+        return Ok(Found::default());
+    };
+    let floor = logs.iter().map(|(_, at, _)| *at).min().unwrap_or(latest) - EARLY_S;
+    let mut all = Vec::new();
+    let mut pages = 0;
+    // A demo goes up to LATE_S after its log; the page starting just past
+    // that, and on down to EARLY_S before the first part.
+    walk(sources, &me.to_steamid64(), Some(latest + LATE_S + 1), floor, &mut pages, &mut all).await?;
+    let pairs = match_demos(&logs, &all);
+    db.set_demos_tf_ids(&pairs).await?;
+    Ok(Found { listed: all.len(), matched: pairs.len() })
+}
+
 /// Walk the list down from `before` until a page reaches `floor` or the
 /// pages run out: the oldest time seen, `i64::MIN` at the list's end.
 async fn walk(

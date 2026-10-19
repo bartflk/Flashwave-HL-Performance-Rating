@@ -480,7 +480,15 @@ impl Catalogue {
                     None
                 }
             };
-            let (red, blue) = (team_of_colour("Red"), team_of_colour("Blue"));
+            let (mut red, mut blue) = (team_of_colour("Red"), team_of_colour("Blue"));
+            // Two teams, two colours: one side known is both known, for a
+            // final whose lineup ETF2L lists none of one side's players in.
+            let other = |t: i64| if t == a { b } else { a };
+            match (red, blue) {
+                (Some(r), None) => blue = Some(other(r)),
+                (None, Some(x)) => red = Some(other(x)),
+                _ => {}
+            }
             if red.is_none() || red == blue {
                 continue;
             }
@@ -1345,6 +1353,32 @@ fn rank_table(
         .collect();
     rows.sort_by(|a, b| b.2.total_cmp(&a.2));
     rows
+}
+
+/// Every season table at once, as [`rank_table`] builds one: `(season, tier,
+/// class)` -> `(account, officials, average)`, best first, officials only,
+/// [`MIN_RANK_GAMES`] or more. For MVP audits.
+pub fn season_tables(cat: &Catalogue, games: &[hl_db::RatedGame]) -> HashMap<(i64, i64, String), Vec<(u32, usize, f64)>> {
+    let windows = cat.season_windows();
+    let divisions = cat.played_divisions();
+    let mut by: HashMap<(i64, i64, String, u32), (Vec<f64>, std::collections::HashSet<i64>)> = HashMap::new();
+    for g in games.iter().filter(|g| g.official) {
+        let Some(season) = game_season(cat, &windows, g) else { continue };
+        let Some((tier, _, _)) = divisions.get(&(g.account_id, season)) else { continue };
+        let e = by.entry((season, *tier, g.class.clone(), g.account_id)).or_default();
+        e.0.push(g.score);
+        e.1.insert(g.etf2l_match_id.unwrap_or(-g.log_id));
+    }
+    let mut out: HashMap<(i64, i64, String), Vec<(u32, usize, f64)>> = HashMap::new();
+    for ((season, tier, class, a), (v, officials)) in by {
+        if officials.len() >= MIN_RANK_GAMES {
+            out.entry((season, tier, class)).or_default().push((a, officials.len(), v.iter().sum::<f64>() / v.len() as f64));
+        }
+    }
+    for rows in out.values_mut() {
+        rows.sort_by(|a, b| b.2.total_cmp(&a.2));
+    }
+    out
 }
 
 /// One player's ratings per class, stat bars and ranks.

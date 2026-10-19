@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../../api/client";
-import { errorMessage, type DemoLinked, type DemoView, type MatchDetail, type ReRead } from "../../api/types";
+import { errorMessage, type DemosTfFound, type DemoLinked, type DemoView, type MatchDetail, type ReRead } from "../../api/types";
 import { copy } from "../../lib/toast";
 import { beginDownload, failDownload, useDownload } from "../../lib/downloads";
 import { beforeDemosTf } from "../../lib/stv";
@@ -111,11 +111,53 @@ export function DemoPanel({ d }: { d: MatchDetail }) {
             </p>
           )}
           {error && <p className="error">{error}</p>}
+          {!hasStv && !tooOld && <LookAgain d={d} />}
           <ByLink d={d} />
         </div>
         <DropZone d={d} />
       </div>
     </section>
+  );
+}
+
+/**
+ * Ask demos.tf again for this match (Flashy: "a refresh button so i can
+ * refresh to see if demos.tf updated"): an STV is often uploaded after the
+ * log was read, and the sync only looks again on its own schedule.
+ */
+function LookAgain({ d }: { d: MatchDetail }) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [got, setGot] = useState<DemosTfFound | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  async function look() {
+    setBusy(true);
+    setError(null);
+    setGot(null);
+    try {
+      const r = await api.refreshDemostf(d.logId);
+      setGot(r);
+      if (r.matched > 0) void qc.invalidateQueries({ queryKey: ["match", d.logId] });
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="demo-look-again">
+      <button className="km-chip" onClick={() => void look()} disabled={busy} title={t("Ask demos.tf again, for a demo uploaded since the log was read")}>
+        {busy ? <Spinner /> : <span aria-hidden>⟳</span>} {d.demosTfId === null ? t("Check demos.tf again") : t("Check demos.tf for more parts")}
+      </button>
+      {got && (
+        <span className="hint">
+          {got.matched > 0
+            ? t("Found on demos.tf: the download is ready above.")
+            : t("Nothing new on demos.tf yet ({0} of your demos around this match checked). Uploads can take a few hours.", { "0": got.listed })}
+        </span>
+      )}
+      {error && <span className="error">{error}</span>}
+    </div>
   );
 }
 

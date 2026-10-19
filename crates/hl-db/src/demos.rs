@@ -142,6 +142,15 @@ impl Db {
             .collect())
     }
 
+    /// A log and the parts folded into it (a combined log's), for a lookup
+    /// of just that match.
+    pub async fn log_and_parts(&self, log_id: i64) -> Result<Vec<i64>> {
+        Ok(sqlx::query_scalar("SELECT log_id FROM log_index WHERE log_id = ?1 OR superseded_by = ?1")
+            .bind(log_id)
+            .fetch_all(self.pool())
+            .await?)
+    }
+
     /// The demos.tf ids of a log's STV: its own, then its parts' in the
     /// order they were played, each once.
     pub async fn stv_ids(&self, log_id: i64) -> Result<Vec<i64>> {

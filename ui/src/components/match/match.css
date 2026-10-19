@@ -1729,3 +1729,7 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
    scrolled to stops below them. */
 .mx-tabs { margin: 4px 0 2px; }
 .match-page .fold { scroll-margin-top: 64px; }
+
+/* Ask demos.tf again for this match. */
+.demo-look-again { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
+.demo-look-again .km-chip { display: inline-flex; align-items: center; gap: 6px; }

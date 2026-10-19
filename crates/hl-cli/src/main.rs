@@ -1585,6 +1585,74 @@ async fn run() -> Result<()> {
             Ok(())
         }
 
+        ["demostf-one", log] => {
+            // Ask demos.tf again for one match, as the match page's button does.
+            let db = Db::connect(&db_path).await?;
+            let sources = Sources::new()?;
+            let me = db.get_me().await?.context("no owner set")?;
+            let log: i64 = log.parse()?;
+            let found = hl_ingest::demostf::index_one(&db, &sources, me, log).await?;
+            println!("{} demos looked at, {} logs linked", found.listed, found.matched);
+            Ok(())
+        }
+
+        ["rankings", season, tier, class] => {
+            // A season's table for one division and class, as the app's
+            // ranking popover shows it.
+            let db = Db::connect(&db_path).await?;
+            let r = hl_ingest::catalogue::rankings(&db, Some(season.parse()?), Some(tier.parse()?), class).await?;
+            println!("{} {} {}", r.season_name, r.division, r.class);
+            for row in r.rows {
+                println!(
+                    "#{:<3} {:<20} {:<28} {:.2}  {}",
+                    row.rank,
+                    row.name.chars().take(20).collect::<String>(),
+                    row.team.map(|t| t.name).unwrap_or_default().chars().take(28).collect::<String>(),
+                    row.avg,
+                    row.games
+                );
+            }
+            Ok(())
+        }
+
+        ["mvp-audit"] => {
+            // Each class MVP beside the season table of its division and
+            // class: where the MVP stood, and who led it. Tab-separated.
+            let db = Db::connect(&db_path).await?;
+            let cat = hl_ingest::catalogue::Catalogue::load(&db).await?;
+            let names = db.log_names().await?;
+            let rated = db.rated_games(hl_rating::MODEL_VERSION, None).await?;
+            let tables = hl_ingest::catalogue::season_tables(&cat, &rated);
+            let name = |a: u32| names.get(&a).and_then(|n| n.first().cloned()).unwrap_or_else(|| a.to_string());
+            println!("season	division	class	mvp	won	score	final	final_maps	season_avg	season_n	rank	of	leader	leader_avg	leader_n");
+            for m in cat.mvps(&rated).into_iter().filter(|m| !m.event) {
+                let Some(tier) = m.tier else { continue };
+                let rows = tables.get(&(m.season, tier, m.class.clone())).cloned().unwrap_or_default();
+                let at = rows.iter().position(|r| r.0 == m.account_id);
+                let me = at.map(|i| rows[i]);
+                let lead = rows.first().copied();
+                println!(
+                    "{}	{}	{}	{}	{}	{:.2}	{:.2}	{}	{}	{}	{}	{}	{}	{}	{}",
+                    m.season,
+                    m.division,
+                    m.class,
+                    name(m.account_id),
+                    m.won,
+                    m.score,
+                    m.final_rating,
+                    m.final_maps,
+                    me.map(|r| format!("{:.2}", r.2)).unwrap_or_default(),
+                    me.map(|r| r.1.to_string()).unwrap_or_default(),
+                    at.map(|i| (i + 1).to_string()).unwrap_or_default(),
+                    rows.len(),
+                    lead.map(|r| name(r.0)).unwrap_or_default(),
+                    lead.map(|r| format!("{:.2}", r.2)).unwrap_or_default(),
+                    lead.map(|r| r.1.to_string()).unwrap_or_default()
+                );
+            }
+            Ok(())
+        }
+
         ["mvp", rest @ ..] => {
             // Each event's MVPs: per class from the Grand Final, and the event's.
             let db = Db::connect(&db_path).await?;

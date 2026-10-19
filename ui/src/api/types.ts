@@ -2357,3 +2357,9 @@ export interface LineupRating {
   /** On the class they played here, not their usual one. */
   onClass: boolean;
 }
+
+/** A demos.tf lookup for one match: the demos looked at, the logs linked. */
+export interface DemosTfFound {
+  listed: number;
+  matched: number;
+}

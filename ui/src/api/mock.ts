@@ -67,6 +67,7 @@ import type {
   SpyReport,
   MatchDemoStats,
   DemoLinked,
+  DemosTfFound,
   CalloutFile,
   PositionsView,
   MapTendencies,
@@ -1522,6 +1523,7 @@ export const mockApi: Api = {
     if (on) mockBookmarks.unshift({ ...b, added: Math.floor(Date.now() / 1000) });
     return delay([...mockBookmarks], 50);
   },
+  refreshDemostf: (_logId: number) => delay<DemosTfFound>({ listed: 50, matched: 0 }, 1200),
   linkDemostf: (_logId: number, link: string) =>
     delay<DemoLinked>(
       { demoId: 98, fileName: `match-from-${link.split("/").pop()}.dem`, stv: true, killsMatched: 88, logKills: 262, playersShared: 18, path: link },

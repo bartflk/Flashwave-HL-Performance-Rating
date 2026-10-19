@@ -67,6 +67,7 @@ import type {
   Stay,
   DemoImported,
   DemoLinked,
+  DemosTfFound,
   CartView,
   Backup,
   Backups,
@@ -324,6 +325,7 @@ const realApi = {
   /** A demo dropped on a match page, linked to that match once it checks out. */
   linkDemo: (logId: number, path: string) => invoke<DemoLinked>("link_demo", { logId, path }),
   linkDemostf: (logId: number, link: string) => invoke<DemoLinked>("link_demostf", { logId, link }),
+  refreshDemostf: (logId: number) => invoke<DemosTfFound>("refresh_demostf", { logId }),
   setMatchKind: (logId: number, kind: ContextKind | null) => invoke<boolean>("set_match_kind", { logId, kind }),
   livesMaps: (accountId: number) => invoke<MapWithLives[]>("lives_maps", { accountId }),
   livesOnMap: (accountId: number, map: string) => invoke<LivesOnMap>("lives_on_map", { accountId, map }),

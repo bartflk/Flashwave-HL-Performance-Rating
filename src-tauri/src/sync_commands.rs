@@ -1332,6 +1332,14 @@ pub async fn link_demostf(state: State<'_, AppState>, log_id: i64, link: String)
     }
 }
 
+/// Look for a match's demo on demos.tf again, for one uploaded after the
+/// log was read (Flashy). Nothing found is not an error: `matched` is 0.
+#[tauri::command]
+pub async fn refresh_demostf(state: State<'_, AppState>, log_id: i64) -> CmdResult<hl_ingest::demostf::Found> {
+    let me = state.db.get_me().await?.ok_or_else(|| CmdError::new("missing_config", "Set your Steam account in Settings first."))?;
+    Ok(hl_ingest::demostf::index_one(&state.db, &state.sources, me, log_id).await?)
+}
+
 /// Q63 (Flashy): set a match's kind by hand -- `official`, `scrim` or
 /// `pug` -- or give it back to the app with `None`. Kept through syncs.
 #[tauri::command]
