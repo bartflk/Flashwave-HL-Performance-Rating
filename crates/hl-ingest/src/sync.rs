@@ -650,6 +650,15 @@ pub async fn find_parts(db: &Db, sources: &Sources, w: &hl_rating::Weights, log_
         store_log_json(db, w, id, &body).await?;
         found.added += 1;
     }
+    // Each part is one recording: their demos, found by the match's own
+    // players (best effort; the parts stand either way).
+    if found.added > 0 {
+        if let Some(me) = db.get_me().await? {
+            if let Err(e) = crate::demostf::index_one(db, sources, me, log_id).await {
+                tracing::info!(log_id, error = %format!("{e:#}"), "demos.tf not asked for the parts");
+            }
+        }
+    }
     Ok(found)
 }
 
