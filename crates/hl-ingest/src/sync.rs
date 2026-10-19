@@ -510,7 +510,17 @@ pub async fn import_log(
         .log_json(log_id)
         .await
         .with_context(|| format!("neither drops.tf nor logs.tf could give us log {log_id}"))?;
-    store_log_json(db, w, log_id, &json).await
+    let mut imported = store_log_json(db, w, log_id, &json).await?;
+    // A combined log brings its parts, so the match reads its maps and
+    // halves one by one; best effort, the import stands either way.
+    if serde_json::from_str::<serde_json::Value>(&json).is_ok_and(|v| looks_combined(&v)) {
+        match find_parts(db, sources, w, log_id).await {
+            Ok(f) => tracing::info!(log_id, candidates = f.candidates, added = f.added, "combined log: parts looked for"),
+            Err(e) => tracing::info!(log_id, error = %format!("{e:#}"), "combined log: parts not looked for"),
+        }
+        imported.part_of = db.superseded_by(log_id).await?;
+    }
+    Ok(imported)
 }
 
 /// Store a log from its logs.tf JSON -- fetched, or built from a demo (Q18)
@@ -555,6 +565,92 @@ pub async fn store_log_json(db: &Db, w: &hl_rating::Weights, log_id: i64, json: 
         yours,
         part_of,
     })
+}
+
+/// What a search for a combined log's parts found.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FoundParts {
+    /// logs.tf's logs with the same players in the match's window.
+    pub candidates: usize,
+    /// Of those, the ones whose every round is one of the match's: stored,
+    /// and folded into it.
+    pub added: usize,
+}
+
+/// Round starts of a log, to the second, from its logs.tf JSON.
+fn round_starts(v: &serde_json::Value) -> Vec<i64> {
+    v["rounds"].as_array().into_iter().flatten().filter_map(|r| r["start_time"].as_i64()).collect()
+}
+
+/// A log that is several logs in one: more than one map in its rounds'
+/// title or its own, "combined" in its title, or longer than one map runs
+/// (Flashy: the S36 High final as one 116-minute upload, its seven parts
+/// unknown).
+pub fn looks_combined(v: &serde_json::Value) -> bool {
+    let title = v["info"]["title"].as_str().unwrap_or("").to_ascii_lowercase();
+    let map = v["info"]["map"].as_str().unwrap_or("");
+    let long = v["info"]["total_length"].as_i64().unwrap_or(0) >= 45 * 60;
+    title.contains("combined") || map.contains('/') || map.contains('+') || long || round_starts(v).len() > 4
+}
+
+/// The parts of a combined log, found on logs.tf (Flashy: "i want this
+/// system expanded ... so it can detect combined games"). trends.tf lists a
+/// combined log's parts only once it has indexed them, and the parts' rounds
+/// are only known for logs already downloaded -- so a fresh final, or one
+/// opened from ETF2L, showed as one log of its own.
+///
+/// Asks logs.tf for the logs three of its players share, uploaded between
+/// its first round and its own upload, and keeps those whose every round
+/// starts at one of its round starts: logs.tf copies rounds verbatim when
+/// combining, so that is not chance. Nothing else is stored, so the logs of
+/// a restarted map or someone else's game never reach the match list.
+pub async fn find_parts(db: &Db, sources: &Sources, w: &hl_rating::Weights, log_id: i64) -> Result<FoundParts> {
+    let Some(json) = db.raw_log(log_id).await? else { return Ok(FoundParts::default()) };
+    let v: serde_json::Value = serde_json::from_str(&json)?;
+    let starts: std::collections::HashSet<i64> = round_starts(&v).into_iter().collect();
+    let (Some(&first), Some(uploaded)) = (starts.iter().min(), v["info"]["date"].as_i64()) else {
+        return Ok(FoundParts::default());
+    };
+    let players: Vec<String> = v["players"]
+        .as_object()
+        .into_iter()
+        .flat_map(|m| m.keys())
+        .filter_map(|k| SteamId::parse(k).ok())
+        .take(3)
+        .map(|id| id.to_steamid64())
+        .collect();
+    if players.len() < 3 {
+        return Ok(FoundParts::default());
+    }
+    let near: Vec<i64> = sources
+        .logstf_with_players(&players, 50)
+        .await?
+        .into_iter()
+        .filter(|(id, _, _, date, n)| *id != log_id && (16..=22).contains(n) && *date >= first - 300 && *date <= uploaded + 60)
+        .map(|(id, ..)| id)
+        .collect();
+    let mut found = FoundParts { candidates: near.len(), added: 0 };
+    for id in near {
+        let body = match db.raw_log(id).await? {
+            Some(b) => b,
+            None => match sources.log_json(id).await {
+                Ok((b, _)) => b,
+                Err(e) => {
+                    tracing::info!(log_id = id, error = %format!("{e:#}"), "a possible part could not be fetched");
+                    continue;
+                }
+            },
+        };
+        let Ok(pv) = serde_json::from_str::<serde_json::Value>(&body) else { continue };
+        let theirs = round_starts(&pv);
+        if theirs.is_empty() || !theirs.iter().all(|s| starts.contains(s)) {
+            continue;
+        }
+        store_log_json(db, w, id, &body).await?;
+        found.added += 1;
+    }
+    Ok(found)
 }
 
 #[cfg(test)]

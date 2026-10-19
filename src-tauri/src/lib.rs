@@ -316,6 +316,7 @@ pub fn run() {
             sync_commands::link_demo,
             sync_commands::link_demostf,
             sync_commands::refresh_demostf,
+            sync_commands::find_parts,
             sync_commands::set_match_kind,
             mass::mass_search,
             mass::mass_start,

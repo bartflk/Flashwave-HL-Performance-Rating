@@ -1733,3 +1733,7 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 /* Ask demos.tf again for this match. */
 .demo-look-again { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
 .demo-look-again .km-chip { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Find a combined log's parts, beside the log picker. */
+.find-parts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.find-parts .km-chip { display: inline-flex; align-items: center; gap: 6px; }

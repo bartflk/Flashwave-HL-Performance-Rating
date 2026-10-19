@@ -2363,3 +2363,10 @@ export interface DemosTfFound {
   listed: number;
   matched: number;
 }
+
+/** A search for a combined log's parts: logs.tf's logs with its players
+ *  then, and how many were parts of it and folded in. */
+export interface FoundParts {
+  candidates: number;
+  added: number;
+}

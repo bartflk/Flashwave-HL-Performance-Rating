@@ -142,6 +142,23 @@ impl Db {
             .collect())
     }
 
+    /// Kept logs since `since` that look like several logs in one -- a
+    /// combined title, maps joined in the map field, or longer than one map
+    /// runs -- with no part known yet: what the sync looks for parts of.
+    pub async fn combined_without_parts(&self, since: i64) -> Result<Vec<i64>> {
+        Ok(sqlx::query_scalar(
+            "SELECT m.log_id FROM match m JOIN log_index i ON i.log_id = m.log_id
+              WHERE i.superseded_by IS NULL AND m.played_at >= ?1
+                AND EXISTS (SELECT 1 FROM log_raw r WHERE r.log_id = m.log_id)
+                AND NOT EXISTS (SELECT 1 FROM log_index p WHERE p.superseded_by = m.log_id)
+                AND (lower(COALESCE(m.title, '')) LIKE '%combined%' OR m.map LIKE '%/%' OR m.map LIKE '%+%' OR m.duration_s >= 2700)
+              ORDER BY m.played_at DESC",
+        )
+        .bind(since)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
     /// A log and the parts folded into it (a combined log's), for a lookup
     /// of just that match.
     pub async fn log_and_parts(&self, log_id: i64) -> Result<Vec<i64>> {

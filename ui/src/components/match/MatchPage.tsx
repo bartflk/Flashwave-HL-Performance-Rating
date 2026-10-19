@@ -93,15 +93,20 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
             <BoxScore
               d={shown}
               reading={
-                q.data.parts.length > 0 ? (
-                  <PartPicker
-                    d={q.data}
-                    parts={partsQ.data ?? null}
-                    part={part}
-                    onPick={(id) => void pick(id)}
-                    fetching={fetching}
-                    error={partError}
-                  />
+                q.data.parts.length > 0 || looksCombined(q.data) ? (
+                  <>
+                    {q.data.parts.length > 0 && (
+                      <PartPicker
+                        d={q.data}
+                        parts={partsQ.data ?? null}
+                        part={part}
+                        onPick={(id) => void pick(id)}
+                        fetching={fetching}
+                        error={partError}
+                      />
+                    )}
+                    {looksCombined(q.data) && <FindParts d={q.data} />}
+                  </>
                 ) : undefined
               }
             />
@@ -148,6 +153,55 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
  * logs it was built from. Picking one scopes every panel below, and a log
  * whose data is not stored yet is fetched from logs.tf on the spot.
  */
+/** Several logs in one: maps in the title or the map field, "combined", or
+ *  longer than one map runs. */
+function looksCombined(d: MatchDetail): boolean {
+  const m = d.map ?? "";
+  return /combined/i.test(d.title ?? "") || m.includes("/") || m.includes("+") || d.durationS >= 45 * 60;
+}
+
+/**
+ * Find the logs a combined log was built from (Flashy: "this log doesn't
+ * list the other logs ... i want this system expanded ... so it can detect
+ * combined games"): logs.tf's logs with the same players whose every round
+ * is one of this log's, fetched and folded in.
+ */
+function FindParts({ d }: { d: MatchDetail }) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  async function find() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await api.findParts(d.logId);
+      setMsg(
+        r.added > 0
+          ? t("Found {0} of its logs on logs.tf.", { "0": r.added })
+          : r.candidates > 0
+            ? t("logs.tf has {0} logs with these players then, but none is part of this one.", { "0": r.candidates })
+            : t("logs.tf has no other logs of this match."),
+      );
+      if (r.added > 0) {
+        void qc.invalidateQueries({ queryKey: ["match", d.logId] });
+        void qc.invalidateQueries({ queryKey: ["parts", d.logId] });
+      }
+    } catch (e) {
+      setMsg(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <span className="find-parts">
+      <button className="km-chip" onClick={() => void find()} disabled={busy} title={t("Look on logs.tf for the maps and halves this log was combined from")}>
+        {busy ? <Spinner /> : <span aria-hidden>⟳</span>} {t("Find its other logs")}
+      </button>
+      {msg && <span className="hint">{msg}</span>}
+    </span>
+  );
+}
+
 function PartPicker(props: {
   d: MatchDetail;
   parts: PartScore[] | null;

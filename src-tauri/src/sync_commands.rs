@@ -131,6 +131,30 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                 Err(e) => tracing::warn!(error = %format!("{e:#}"), "demos.tf lookup failed"),
             }
 
+            // Combined logs whose parts nobody listed (Flashy: the S36 High
+            // final, one 116-minute upload): the parts found on logs.tf, a
+            // few logs a sync, each searched once.
+            stage("Finding combined logs' parts");
+            {
+                let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64);
+                let since = now - 60 * 86_400;
+                let done: std::collections::HashSet<i64> =
+                    db.get_setting("parts_searched").await.ok().flatten().map(|s| s.split(',').filter_map(|x| x.parse().ok()).collect()).unwrap_or_default();
+                let mut searched = done.clone();
+                let (weights, _) = hl_rating::Weights::load(&weights_path);
+                for log_id in db.combined_without_parts(since).await.unwrap_or_default().into_iter().filter(|l| !done.contains(l)).take(3) {
+                    match hl_ingest::sync::find_parts(&db, &sources, &weights, log_id).await {
+                        Ok(f) => {
+                            tracing::info!(log_id, candidates = f.candidates, added = f.added, "combined log: parts looked for");
+                            searched.insert(log_id);
+                        }
+                        Err(e) => tracing::warn!(log_id, error = %format!("{e:#}"), "combined log: parts not looked for"),
+                    }
+                }
+                let list: Vec<String> = searched.iter().map(|x| x.to_string()).collect();
+                let _ = db.set_setting("parts_searched", &list.join(",")).await;
+            }
+
             // Q29: every team's season, from ETF2L. Best effort, and a few
             // dozen match pages a sync, so a year fills in over a few syncs.
             stage("Reading ETF2L seasons");
@@ -1330,6 +1354,14 @@ pub async fn link_demostf(state: State<'_, AppState>, log_id: i64, link: String)
             Err(e.into())
         }
     }
+}
+
+/// Find the logs a combined log was built from (its maps and halves) on
+/// logs.tf and fold them in, for a log stored before they were known.
+#[tauri::command]
+pub async fn find_parts(state: State<'_, AppState>, log_id: i64) -> CmdResult<hl_ingest::sync::FoundParts> {
+    let (weights, _) = hl_rating::Weights::load(&state.db_path.with_file_name("weights.toml"));
+    Ok(hl_ingest::sync::find_parts(&state.db, &state.sources, &weights, log_id).await?)
 }
 
 /// Look for a match's demo on demos.tf again, for one uploaded after the
