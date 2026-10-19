@@ -82,7 +82,7 @@ pub async fn fetch(
                 // A refusal ends the pass at once (see `http::Refused`).
                 if unreachable_run >= GIVE_UP_AFTER || crate::http::refused(&e) {
                     s.gave_up = true;
-                    progress(Progress::GaveUp { source: "logs.tf", done: i, total });
+                    progress(Progress::GaveUp { source: "logs.tf", done: i, total, what: "raw server logs" });
                     break;
                 }
             }

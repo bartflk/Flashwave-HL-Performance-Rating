@@ -2572,9 +2572,9 @@ fn print_progress(p: Progress) {
         },
         Progress::SourceFailed { source, error } => println!("
   ! {source}: {error}"),
-        Progress::GaveUp { source, done, total } => {
+        Progress::GaveUp { source, done, total, what } => {
             println!("
-  ! {source} stopped answering at {done} of {total}; the rest waits for the next sync")
+  ! {source} stopped answering at {done} of {total} {what}; the rest waits for the next sync")
         }
     }
     let _ = std::io::stdout().flush();

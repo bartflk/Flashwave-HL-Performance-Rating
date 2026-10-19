@@ -47,6 +47,36 @@ struct Done {
     fetched: usize,
     failed: usize,
     stats: IndexStats,
+    /// What every step of the sync did, for the card (Flashy: "make the
+    /// sync toast be more descriptive"); `None` for a rebuild.
+    report: Option<SyncReport>,
+}
+
+/// One sync, step by step: what each brought in. Every count is this sync's
+/// own; zero means the step had nothing to do.
+#[derive(serde::Serialize, Default, Clone)]
+#[serde(rename_all = "camelCase")]
+struct SyncReport {
+    /// Logs of the parts combined logs were built from, for their maps.
+    parts_fetched: usize,
+    /// Raw server logs: every kill with its time, classes and positions.
+    raw_fetched: usize,
+    raw_kills: usize,
+    /// Logs given their demos.tf demo.
+    demos_tf_linked: usize,
+    /// Logs found on logs.tf to belong to a combined log.
+    combined_parts: usize,
+    /// ETF2L: officials' results and match pages read.
+    etf2l_results: usize,
+    etf2l_details: usize,
+    /// Demos on this machine linked to matches, and read for aim and routes.
+    demos_linked: usize,
+    demos_read: usize,
+    demos_cleaned: usize,
+    /// How long the whole sync took.
+    seconds: u64,
+    /// Steps that failed outright, and why, for the card's warnings.
+    problems: Vec<String>,
 }
 
 #[tauri::command]
@@ -75,7 +105,9 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
         let _guard = guard;
         let emitter = app.clone();
         let opts = SyncOptions { full, max_fetch: None };
+        let began = std::time::Instant::now();
         let work = async {
+            let mut report = SyncReport::default();
             // A copy first: a sync rewrites derived tables, and the file is
             // the only thing here that cannot be fetched again.
             if let Err(e) = hl_ingest::backup::run(&db, &db_path, false).await {
@@ -95,9 +127,16 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             })
             .await
             {
-                Ok(p) if p.gave_up => tracing::warn!(failed = p.failed, "logs.tf not answering; parts wait for the next sync"),
-                Ok(_) => {}
-                Err(e) => tracing::warn!(error = %format!("{e:#}"), "part fetch failed"),
+                Ok(p) => {
+                    report.parts_fetched = p.fetched;
+                    if p.gave_up {
+                        tracing::warn!(failed = p.failed, "logs.tf not answering; parts wait for the next sync");
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(error = %format!("{e:#}"), "part fetch failed");
+                    report.problems.push(format!("combined logs' parts: {e:#}"));
+                }
             }
             // Raw logs: every kill with time, classes and positions. Newest
             // first; the first sync fetches the whole history (~15 min).
@@ -108,6 +147,8 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             if raw.failed > 0 {
                 tracing::warn!(failed = raw.failed, "some raw logs could not be fetched; next sync retries");
             }
+            report.raw_fetched = raw.fetched;
+            report.raw_kills = raw.kills;
             // ETF2L itself was fetched inside the sync, before the queue:
             // what it says decides which logs are worth downloading. Sorting
             // the downloaded ones into officials, scrims and pugs needs their
@@ -126,9 +167,16 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             // costs those links, not the sync.
             stage("Matching demos.tf");
             match hl_ingest::demostf::index(&db, &sources, me).await {
-                Ok(f) if f.matched > 0 => tracing::info!(listed = f.listed, matched = f.matched, "demos.tf demos matched to logs"),
-                Ok(_) => {}
-                Err(e) => tracing::warn!(error = %format!("{e:#}"), "demos.tf lookup failed"),
+                Ok(f) => {
+                    report.demos_tf_linked = f.matched;
+                    if f.matched > 0 {
+                        tracing::info!(listed = f.listed, matched = f.matched, "demos.tf demos matched to logs");
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(error = %format!("{e:#}"), "demos.tf lookup failed");
+                    report.problems.push(format!("demos.tf: {e:#}"));
+                }
             }
 
             // Combined logs whose parts nobody listed (Flashy: the S36 High
@@ -146,6 +194,7 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                     match hl_ingest::sync::find_parts(&db, &sources, &weights, log_id).await {
                         Ok(f) => {
                             tracing::info!(log_id, candidates = f.candidates, added = f.added, "combined log: parts looked for");
+                            report.combined_parts += f.added;
                             searched.insert(log_id);
                         }
                         Err(e) => tracing::warn!(log_id, error = %format!("{e:#}"), "combined log: parts not looked for"),
@@ -159,8 +208,15 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             // dozen match pages a sync, so a year fills in over a few syncs.
             stage("Reading ETF2L seasons");
             match hl_ingest::leagues::fetch(&db, &sources, |_, _| {}).await {
-                Ok(s) => tracing::info!(competitions = s.competitions, results = s.results, details = s.details, "ETF2L seasons read"),
-                Err(e) => tracing::warn!(error = %format!("{e:#}"), "ETF2L seasons could not be read"),
+                Ok(s) => {
+                    tracing::info!(competitions = s.competitions, results = s.results, details = s.details, "ETF2L seasons read");
+                    report.etf2l_results = s.results;
+                    report.etf2l_details = s.details;
+                }
+                Err(e) => {
+                    tracing::warn!(error = %format!("{e:#}"), "ETF2L seasons could not be read");
+                    report.problems.push(format!("ETF2L seasons: {e:#}"));
+                }
             }
 
             // New logs can link to demos already on disk. This also places
@@ -168,6 +224,7 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             if let Some(tf) = db.get_config().await?.tf_path {
                 stage("Scanning your demos folder");
                 let s = hl_ingest::index_demos(&db, std::path::Path::new(&tf)).await?;
+                report.demos_linked = s.links;
                 let _ = emitter.emit(EV_DEMOS_INDEXED, &s);
             }
             // Every round's map, then the rating: kills are valued on their map.
@@ -184,9 +241,16 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             })
             .await
             {
-                Ok(s) if s.read > 0 => tracing::info!(read = s.read, kills = s.kills, "aim read from demos"),
-                Ok(_) => {}
-                Err(e) => tracing::warn!(error = %format!("{e:#}"), "reading aim from demos failed"),
+                Ok(s) => {
+                    report.demos_read = s.read;
+                    if s.read > 0 {
+                        tracing::info!(read = s.read, kills = s.kills, "aim read from demos");
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(error = %format!("{e:#}"), "reading aim from demos failed");
+                    report.problems.push(format!("reading demos: {e:#}"));
+                }
             }
             // Asked for in Settings: a demo that has been read is 80 MB
             // doing nothing. It is swept here, right after the pass, and
@@ -194,8 +258,12 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             // finished with it" is certainly true.
             if db.auto_delete_demos().await.unwrap_or(false) {
                 match sweep_read_demos(&db).await {
-                    Ok(n) if n > 0 => tracing::info!(deleted = n, "downloaded demos cleaned up"),
-                    Ok(_) => {}
+                    Ok(n) => {
+                        report.demos_cleaned = n;
+                        if n > 0 {
+                            tracing::info!(deleted = n, "downloaded demos cleaned up");
+                        }
+                    }
                     Err(e) => tracing::warn!(error = %format!("{e:#}"), "demo cleanup failed"),
                 }
             }
@@ -204,7 +272,8 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                 let _ = emitter.emit(EV_PROGRESS, p);
             })
             .await?;
-            anyhow::Ok(summary)
+            report.seconds = began.elapsed().as_secs();
+            anyhow::Ok((summary, report))
         };
         let result = tokio::select! {
             r = work => r,
@@ -218,8 +287,8 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
         *cancel_slot.lock().unwrap() = None;
 
         match result {
-            Ok(SyncSummary { fetched, failed, stats }) => {
-                let _ = app.emit(EV_DONE, Done { kind: "sync", fetched, failed, stats });
+            Ok((SyncSummary { fetched, failed, stats }, report)) => {
+                let _ = app.emit(EV_DONE, Done { kind: "sync", fetched, failed, stats, report: Some(report) });
             }
             Err(e) => {
                 let _ = app.emit(EV_ERROR, CmdError::from(e));
@@ -275,7 +344,7 @@ pub async fn reprocess_start(app: AppHandle, state: State<'_, AppState>) -> CmdR
 
         match result {
             Ok(stats) => {
-                let _ = app.emit(EV_DONE, Done { kind: "reprocess", fetched: 0, failed: 0, stats });
+                let _ = app.emit(EV_DONE, Done { kind: "reprocess", fetched: 0, failed: 0, stats, report: None });
             }
             Err(e) => {
                 let _ = app.emit(EV_ERROR, CmdError::from(e));

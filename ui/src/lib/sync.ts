@@ -91,7 +91,7 @@ export function watchSync(qc: QueryClient) {
         p.kind === "sourceFailed"
           ? t("{source} could not be reached; the sync carried on without it.", { source: p.source })
           : p.kind === "gaveUp"
-            ? t("{source} stopped answering after {1} of {2}; the rest waits for the next sync.", { "1": p.done.toLocaleString(), "2": p.total.toLocaleString(), source: p.source })
+            ? t("{source} stopped answering after {1} of {2} {what}; the rest waits for the next sync.", { "1": p.done.toLocaleString(), "2": p.total.toLocaleString(), source: p.source, what: gaveUpWhat(p.what) })
             : null;
       // Every failure is written down with its reason. The counter alone
       // ("2 failed") was all anyone ever saw, and it cannot be acted on.
@@ -102,7 +102,7 @@ export function watchSync(qc: QueryClient) {
       } else if (p.kind === "gaveUp") {
         noteError({
           what: p.source,
-          message: `stopped answering after ${p.done} of ${p.total}; the rest waits for the next sync`,
+          message: `stopped answering after ${p.done} of ${p.total} ${p.what}; the rest waits for the next sync`,
         });
       }
       set({
@@ -245,8 +245,23 @@ export function fractionOf(p: Progress | null): number | null {
 const STEPS = 9;
 
 /** The short stages that share step 6, each with what it is for. */
+/** What a source stopped giving, in words (the sync names the step: the
+ *  logs themselves, their raw server logs, or a combined log's parts). */
+function gaveUpWhat(what: string): string {
+  switch (what) {
+    case "raw server logs":
+      return t("raw server logs");
+    case "combined logs' parts":
+      return t("per-map logs of combined logs");
+    default:
+      return t("new logs");
+  }
+}
+
 function stageAbout(what: string): string {
   switch (what) {
+    case "Finding combined logs' parts":
+      return t("Looking on logs.tf for the maps and halves a combined log was built from.");
     case "Refreshing your profile":
       return t("Your name and picture, from ETF2L or Steam.");
     case "Matching demos.tf":
@@ -276,9 +291,14 @@ export function phaseOf(p: Progress | null): { step: number; of: number; title: 
       return at(1, t("Finding your logs"), t("Asking trends.tf and logs.tf which logs you are in, to spot the ones not stored yet."));
     case "etf2l":
       return at(2, t("Checking ETF2L"), t("Reading your ETF2L officials, so each match can be marked official, scrim or pug."));
+    case "gaveUp":
+      // The step that stopped, not always the download (the audit: raw logs
+      // and parts sent the card back to step 3).
+      if (p.what === "raw server logs") return at(5, t("Server logs"), t("The raw server logs: every kill with its time, classes and positions."));
+      if (p.what === "combined logs' parts") return at(4, t("Per-map logs"), t("The per-map logs a combined log was built from, for each map's score."));
+      return at(3, t("Downloading new matches"), t("Each new log from drops.tf, or logs.tf for the last hour's, rated as it lands."));
     case "fetching":
     case "fetchFailed":
-    case "gaveUp":
       return at(3, t("Downloading new matches"), t("Each new log from drops.tf, or logs.tf for the last hour's, rated as it lands."));
     case "standIns":
       return at(3, t("Downloading new matches"), t("logs.tf is refusing requests, so new logs come from more.tf's copy of them."));
@@ -356,7 +376,7 @@ export function labelOf(p: Progress | null): string {
     case "sourceFailed":
       return t("{source} could not be reached; carrying on without it.", { source: p.source });
     case "gaveUp":
-      return t("{source} stopped answering; the rest waits for the next sync.", { source: p.source });
+      return t("{source} stopped answering after {1} of {2} {what}; the rest waits for the next sync.", { "1": n(p.done), "2": n(p.total), source: p.source, what: gaveUpWhat(p.what) });
     case "standIns":
       return p.total === 0 ? t("Nothing new on more.tf.") : t("logs.tf is refusing us: new matches from more.tf, {done} of {total}", { done: n(p.done), total: n(p.total) });
   }

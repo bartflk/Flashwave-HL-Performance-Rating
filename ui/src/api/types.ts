@@ -172,7 +172,7 @@ export type Progress =
   /** A source could not be reached; the sync carries on without it. */
   | { kind: "sourceFailed"; source: string; error: string }
   /** Downloading stopped early because the server stopped answering. */
-  | { kind: "gaveUp"; source: string; done: number; total: number }
+  | { kind: "gaveUp"; source: string; done: number; total: number; what: "logs" | "raw server logs" | "combined logs' parts" }
   /** logs.tf refused us: new logs come from more.tf's copy instead. */
   | { kind: "standIns"; done: number; total: number };
 
@@ -664,6 +664,27 @@ export interface SyncDone {
   fetched: number;
   failed: number;
   stats: IndexStats;
+  /** What every step did; null for a rebuild (Flashy: a more descriptive
+   *  sync card). */
+  report?: SyncReport | null;
+}
+
+/** One sync, step by step: this sync's own counts, zero for a step with
+ *  nothing to do. */
+export interface SyncReport {
+  partsFetched: number;
+  rawFetched: number;
+  rawKills: number;
+  demosTfLinked: number;
+  combinedParts: number;
+  etf2lResults: number;
+  etf2lDetails: number;
+  demosLinked: number;
+  demosRead: number;
+  demosCleaned: number;
+  seconds: number;
+  /** Steps that failed outright, with the reason. */
+  problems: string[];
 }
 
 export interface MatchQuery {

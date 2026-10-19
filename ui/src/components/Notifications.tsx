@@ -7,6 +7,7 @@ import { formatDate } from "../lib/format";
 import { dismissUpdate, installUpdate, restartNow, useUpdate } from "../lib/update";
 import { t, tx } from "../lib/i18n";
 import { Spinner } from "./Spinner";
+import type { SyncReport } from "../api/types";
 
 /**
  * The corner: everything running in the background, one card each.
@@ -159,6 +160,43 @@ function DemoSeenCard() {
   );
 }
 
+/**
+ * What each step of the sync did (Flashy: "make the sync toast be more
+ * descriptive"): one line per step that brought something in, the steps
+ * that failed with their reason, and how long it took. A step with nothing
+ * to do is left out rather than listed as zero.
+ */
+function SyncReportList({ r }: { r: SyncReport }) {
+  const n = (x: number) => x.toLocaleString();
+  const lines: string[] = [];
+  if (r.demosTfLinked > 0) lines.push(t("{0} matches linked to their demos.tf demo", { "0": n(r.demosTfLinked) }));
+  if (r.combinedParts > 0) lines.push(t("{0} logs found to be parts of combined logs", { "0": n(r.combinedParts) }));
+  if (r.partsFetched > 0) lines.push(t("{0} per-map logs of combined logs downloaded", { "0": n(r.partsFetched) }));
+  if (r.rawFetched > 0) lines.push(t("{0} raw server logs read ({1} kills)", { "0": n(r.rawFetched), "1": n(r.rawKills) }));
+  if (r.etf2lResults > 0 || r.etf2lDetails > 0) lines.push(t("{0} ETF2L results and {1} match pages read", { "0": n(r.etf2lResults), "1": n(r.etf2lDetails) }));
+  if (r.demosLinked > 0) lines.push(t("{0} demos from your folder linked to matches", { "0": n(r.demosLinked) }));
+  if (r.demosRead > 0) lines.push(t("{0} demos read for aim, routes and deaths", { "0": n(r.demosRead) }));
+  if (r.demosCleaned > 0) lines.push(t("{0} read demos deleted, as set in Settings", { "0": n(r.demosCleaned) }));
+  const took = r.seconds < 60 ? t("{0} s", { "0": r.seconds }) : t("{0} min {1} s", { "0": Math.floor(r.seconds / 60), "1": r.seconds % 60 });
+  return (
+    <>
+      {lines.length > 0 && (
+        <ul className="dl-report">
+          {lines.map((l) => (
+            <li key={l}>{l}</li>
+          ))}
+        </ul>
+      )}
+      {r.problems.map((p) => (
+        <p key={p} className="dl-sub dl-error">
+          {p}
+        </p>
+      ))}
+      <p className="dl-sub dl-took">{t("Took {0}.", { "0": took })}</p>
+    </>
+  );
+}
+
 function SyncCard() {
   const sync = useSyncStatus();
   if (sync.state === "idle") return null;
@@ -233,6 +271,8 @@ function SyncCard() {
           )}
         </p>
       )}
+
+      {done && sync.result.report && <SyncReportList r={sync.result.report} />}
 
       {/* What a source could not give us. The sync still finished, so this
           is a note rather than a failure — but it is why a count may look

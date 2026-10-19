@@ -103,7 +103,7 @@ pub enum Progress {
     /// Downloading stopped early because the server stopped answering. What
     /// is left waits for the next sync, unmarked.
     #[serde(rename_all = "camelCase")]
-    GaveUp { source: &'static str, done: usize, total: usize },
+    GaveUp { source: &'static str, done: usize, total: usize, what: &'static str },
     /// logs.tf refused us, so new logs come from more.tf's copy instead
     /// (see `moretf.rs`).
     #[serde(rename_all = "camelCase")]
@@ -237,7 +237,7 @@ pub async fn sync(
                 // only keeps logs.tf's ban on this address going.
                 if unreachable_run >= GIVE_UP_AFTER || crate::http::refused(&e) {
                     tracing::warn!(done = i, total, "logs.tf stopped answering; the rest waits for the next sync");
-                    progress(Progress::GaveUp { source: "logs.tf", done: i, total });
+                    progress(Progress::GaveUp { source: "logs.tf", done: i, total, what: "logs" });
                     stopped_at = Some(i + 1 - unreachable_run);
                     break;
                 }
@@ -332,7 +332,7 @@ async fn stand_ins(db: &Db, sources: &Sources, w: &hl_rating::Weights, ids: &[i6
                 unreachable_run += 1;
                 tracing::warn!(log_id, error = %format!("{e:#}"), "more.tf unreachable");
                 if unreachable_run >= GIVE_UP_AFTER || crate::http::refused(&e) {
-                    progress(Progress::GaveUp { source: "more.tf", done: i, total });
+                    progress(Progress::GaveUp { source: "more.tf", done: i, total, what: "logs" });
                     break;
                 }
             }

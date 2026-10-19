@@ -600,7 +600,16 @@ function simulateSync(kind: "sync" | "reprocess") {
     busy = false;
     const fetched = kind === "sync" ? pending : 0;
     if (kind === "sync") pending = 0;
-    handlers?.onDone({ kind, fetched, failed: 0, stats: fakeStats(pending) });
+    handlers?.onDone({
+      kind,
+      fetched,
+      failed: 0,
+      stats: fakeStats(pending),
+      report:
+        kind === "sync"
+          ? { partsFetched: 7, rawFetched: 12, rawKills: 4_812, demosTfLinked: 3, combinedParts: 8, etf2lResults: 41, etf2lDetails: 6, demosLinked: 1, demosRead: 2, demosCleaned: 0, seconds: 134, problems: [] }
+          : null,
+    });
   });
   // Slow enough to read each step on the card.
   syncTimers = steps.map((step, i) => window.setTimeout(step, 450 * (i + 1)));

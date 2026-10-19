@@ -1827,3 +1827,8 @@ button.mini {
   mask-image: linear-gradient(90deg, transparent 40%, rgba(0, 0, 0, 0.45));
 }
 .th-field select { min-width: 140px; }
+
+/* The finished sync's report: one line per step that brought something in. */
+.dl-report { margin: 6px 0 0; padding-left: 16px; font-size: 0.8rem; line-height: 1.45; color: var(--text); }
+.dl-report li::marker { color: var(--accent); }
+.dl-took { color: var(--muted); }
