@@ -187,6 +187,8 @@ pub struct FetchSummary {
     pub results: usize,
     pub details: usize,
     pub failed: usize,
+    /// League tables read, for ETF2L's own placings.
+    pub tables: usize,
 }
 
 fn team_of(v: &Value) -> Option<(i64, String, Option<String>, Option<String>)> {
@@ -348,6 +350,30 @@ pub async fn fetch_seasons(
             if page >= last {
                 break;
             }
+        }
+    }
+
+    // 2b. The league tables, for ETF2L's own placings: once a season is
+    // over, its table marks 1st, 2nd and 3rd (`ach`), which the medals are
+    // checked against (Flashy: "use the etf2l api to verify the season
+    // winners"). A running season's every sync; a finished one's once.
+    let have_tables: std::collections::HashSet<i64> = db.etf2l_raw("tables").await?.into_iter().map(|(id, _, _)| id).collect();
+    for (id, name, archived, _) in &found {
+        if *archived && have_tables.contains(id) {
+            continue;
+        }
+        // Only the league itself has a table worth keeping: a cup's or a
+        // playoff bracket's is a list of its rounds.
+        if parse_name(name).is_none_or(|(_, _, _, stage)| stage != "regular") {
+            continue;
+        }
+        match sources.etf2l_get(&format!("/competition/{id}/tables")).await {
+            Ok(Some(body)) if body.trim_start().starts_with('{') => {
+                db.store_etf2l_raw("tables", *id, &body).await?;
+                out.tables += 1;
+            }
+            Ok(_) => {}
+            Err(e) => tracing::info!(competition = id, error = %format!("{e:#}"), "ETF2L table not read"),
         }
     }
 

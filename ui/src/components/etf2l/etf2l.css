@@ -1383,3 +1383,8 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
 /* A lineup row with the player's logs.tf career beside their rating (Q78). */
 .e2-lineup button { grid-template-columns: 22px minmax(0, 1fr) auto auto; }
 .e2-lineup .os-chip { margin-left: 0; }
+
+/* The header's tools: a refresh beside the search. */
+.e2-head-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.e2-refresh { display: inline-flex; align-items: center; gap: 8px; }
+.e2-refresh .km-chip { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }

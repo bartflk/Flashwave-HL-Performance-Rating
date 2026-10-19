@@ -1425,6 +1425,16 @@ pub async fn link_demostf(state: State<'_, AppState>, log_id: i64, link: String)
     }
 }
 
+/// Read ETF2L's seasons again now -- results, tables and their placings --
+/// so a final played today shows its medals without a whole sync (Flashy:
+/// "teams and players with medals to be updated with this, like a
+/// refresh").
+#[tauri::command]
+pub async fn refresh_etf2l(state: State<'_, AppState>) -> CmdResult<hl_ingest::leagues::FetchSummary> {
+    let _guard = BusyGuard::acquire(&state.busy).ok_or_else(|| CmdError::new("busy", "A sync is running; it reads ETF2L too."))?;
+    Ok(hl_ingest::leagues::fetch(&state.db, &state.sources, |_, _| {}).await?)
+}
+
 /// Find the logs a combined log was built from (its maps and halves) on
 /// logs.tf and fold them in, for a log stored before they were known.
 #[tauri::command]

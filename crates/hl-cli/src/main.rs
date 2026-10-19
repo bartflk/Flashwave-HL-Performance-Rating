@@ -1235,6 +1235,17 @@ async fn run() -> Result<()> {
             Ok(())
         }
 
+        ["leagues", "fetch", back] => {
+            // The same over `back` seasons, without match pages: for audits
+            // of older seasons' results and tables.
+            let db = Db::connect(&db_path).await?;
+            let sources = Sources::new()?;
+            let s = hl_ingest::leagues::fetch_seasons(&db, &sources, back.parse()?, 0, |done, total| eprint!("\r  competitions {done}/{total}  ")).await?;
+            eprintln!();
+            println!("{} competitions, {} results, {} tables", s.competitions, s.results, s.tables);
+            Ok(())
+        }
+
         ["leagues", "fetch"] => {
             // Q29: a year of ETF2L Highlander seasons, every team.
             let db = Db::connect(&db_path).await?;
@@ -1612,6 +1623,21 @@ async fn run() -> Result<()> {
                     row.games
                 );
             }
+            Ok(())
+        }
+
+        ["medals-audit"] => {
+            // The medals read from the results against ETF2L's own final
+            // placings, for every division ETF2L has placed.
+            let db = Db::connect(&db_path).await?;
+            let cat = hl_ingest::catalogue::Catalogue::load(&db).await?;
+            let checks = cat.medal_checks();
+            let name = |t: i64| cat.team_name(t);
+            for (season, division, ours, theirs) in &checks {
+                let show = |v: &Vec<(u8, i64)>| v.iter().map(|(p, t)| format!("{p}. {}", name(*t))).collect::<Vec<_>>().join(", ");
+                println!("S{season} {division}\n  app:   {}\n  ETF2L: {}", show(ours), show(theirs));
+            }
+            println!("{} of {} divisions ETF2L has placed differ", checks.len(), cat.official_divisions());
             Ok(())
         }
 

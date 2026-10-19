@@ -243,6 +243,26 @@ pub struct Catalogue {
     /// Final -> log -> (account, colour): the side each player was on, read
     /// where the roster does not say (Flashy: mercs can be MVP too).
     final_colours: HashMap<i64, HashMap<i64, Vec<(u32, String)>>>,
+    /// `(season, division)` -> ETF2L's own final placings, `(place, team)`,
+    /// from the league table's `ach` once the season is over.
+    official_places: HashMap<(i64, String), Vec<(u8, i64)>>,
+}
+
+/// ETF2L's placings in a league table: `(division, place, team)` for every
+/// row it marked 1st, 2nd or 3rd (`ach`). Empty while the season runs.
+pub fn table_places(json: &str) -> Vec<(String, u8, i64)> {
+    let Ok(v) = serde_json::from_str::<Value>(json) else { return Vec::new() };
+    let Some(tables) = v.get("tables").and_then(Value::as_object) else { return Vec::new() };
+    let mut out = Vec::new();
+    for (division, rows) in tables {
+        for r in rows.as_array().into_iter().flatten() {
+            let place = r.get("ach").and_then(|a| a.as_i64().or_else(|| a.as_str().and_then(|s| s.parse().ok())));
+            if let (Some(place @ 1..=3), Some(team)) = (place, r.get("id").and_then(Value::as_i64)) {
+                out.push((division.clone(), place as u8, team));
+            }
+        }
+    }
+    out
 }
 
 /// The rounds a medal is read from.
@@ -292,7 +312,16 @@ impl Catalogue {
         for (m, log, account, colour) in db.log_colours(&finals).await? {
             final_colours.entry(m).or_default().entry(log).or_default().push((account, colour));
         }
-        Ok(Catalogue { matches, rosters, teams: db.etf2l_teams().await?, tiers, tier_by_name, newest_season, mercs, transfers, season_end, final_colours })
+        // ETF2L's own placings, per season and division.
+        let seasons: HashMap<i64, i64> = db.competitions().await?.into_iter().map(|c| (c.competition_id, c.season)).collect();
+        let mut official_places: HashMap<(i64, String), Vec<(u8, i64)>> = HashMap::new();
+        for (competition, _, json) in db.etf2l_raw("tables").await? {
+            let Some(&season) = seasons.get(&competition) else { continue };
+            for (division, place, team) in table_places(&json) {
+                official_places.entry((season, Self::ungrouped(&division))).or_default().push((place, team));
+            }
+        }
+        Ok(Catalogue { matches, rosters, teams: db.etf2l_teams().await?, tiers, tier_by_name, newest_season, mercs, transfers, season_end, final_colours, official_places })
     }
 
     /// Each team's last decided match of each season.
@@ -332,6 +361,11 @@ impl Catalogue {
             }
         }
         out.into_iter().collect()
+    }
+
+    /// A team's name, for the CLI's audits.
+    pub fn team_name(&self, id: i64) -> String {
+        self.team(id).name
     }
 
     fn team(&self, id: i64) -> Team {
@@ -518,8 +552,57 @@ impl Catalogue {
     }
 
     /// Every medal of every season and division: `(season, division) ->
-    /// [(place, team, how)]`.
+    /// [(place, team, how)]`. Where ETF2L has published a division's final
+    /// placings, those are the medals, with the result that decided each
+    /// kept beside it; until then, the app's own reading of the playoffs.
     pub fn medals(&self) -> BTreeMap<(i64, String), Vec<(u8, i64, String)>> {
+        let mut out = self.medals_from_results();
+        for (key, places) in &self.official_places {
+            let ours = out.remove(key).unwrap_or_default();
+            let mut confirmed: Vec<(u8, i64, String)> = places
+                .iter()
+                .map(|(place, team)| {
+                    let how = ours
+                        .iter()
+                        .find(|(p, t, _)| p == place && t == team)
+                        .map(|(_, _, how)| format!("{how}, confirmed by ETF2L"))
+                        .unwrap_or_else(|| "ETF2L's final standings".to_string());
+                    (*place, *team, how)
+                })
+                .collect();
+            confirmed.sort_by_key(|(p, t, _)| (*p, *t));
+            out.insert(key.clone(), confirmed);
+        }
+        out
+    }
+
+    /// Where the medals read from the results and ETF2L's own placings
+    /// disagree: `(season, division, ours, ETF2L's)`, each `(place, team)`.
+    /// For `hl medals-audit`.
+    pub fn medal_checks(&self) -> Vec<(i64, String, Vec<(u8, i64)>, Vec<(u8, i64)>)> {
+        let ours = self.medals_from_results();
+        let mut out = Vec::new();
+        for (key, places) in &self.official_places {
+            let mut theirs = places.clone();
+            theirs.sort_unstable();
+            let mut mine: Vec<(u8, i64)> = ours.get(key).map(|v| v.iter().map(|(p, t, _)| (*p, *t)).collect()).unwrap_or_default();
+            mine.sort_unstable();
+            if mine != theirs {
+                out.push((key.0, key.1.clone(), mine, theirs));
+            }
+        }
+        out.sort_by(|a, b| season_order(b.0).cmp(&season_order(a.0)).then(a.1.cmp(&b.1)));
+        out
+    }
+
+    /// The number of divisions ETF2L has placed, for the audit.
+    pub fn official_divisions(&self) -> usize {
+        self.official_places.len()
+    }
+
+    /// The medals as the results read them: finals, 3rd-place matches,
+    /// semi-finals, and the table where a division had no playoffs.
+    fn medals_from_results(&self) -> BTreeMap<(i64, String), Vec<(u8, i64, String)>> {
         let mut out: BTreeMap<(i64, String), Vec<(u8, i64, String)>> = BTreeMap::new();
         // A forfeit decides a final as surely as a match does (AFA 2025's
         // Division 1 Grand Final was won by default): it says so.
@@ -2260,7 +2343,7 @@ mod tests {
             }
         }
         let tiers = matches.iter().filter_map(|x| Some(((x.season, x.division.clone()?), x.tier?))).collect();
-        Catalogue { newest_season: matches.iter().map(|x| x.season).max().unwrap_or(0), matches: matches.into_iter().map(|x| (x.match_id, x)).collect(), rosters, teams: HashMap::new(), tiers, tier_by_name: HashMap::new(), mercs: Default::default(), transfers: HashMap::new(), season_end: HashMap::new(), final_colours: HashMap::new() }
+        Catalogue { newest_season: matches.iter().map(|x| x.season).max().unwrap_or(0), matches: matches.into_iter().map(|x| (x.match_id, x)).collect(), rosters, teams: HashMap::new(), tiers, tier_by_name: HashMap::new(), mercs: Default::default(), transfers: HashMap::new(), season_end: HashMap::new(), final_colours: HashMap::new(), official_places: HashMap::new() }
     }
 
     #[test]

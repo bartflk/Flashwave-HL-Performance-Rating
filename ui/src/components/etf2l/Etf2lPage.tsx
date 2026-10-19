@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { CatTeam, Fixture, LeagueTableRow, RecruitPost, ResultRow, SeasonTile } from "../../api/types";
+import { errorMessage, type CatTeam, type Fixture, type LeagueTableRow, type RecruitPost, type ResultRow, type SeasonTile } from "../../api/types";
 import { formatDate } from "../../lib/format";
 import { hasPendingPlayer, onOpenLeagueMatch, onOpenSeason, onOpenTeam, onPlayerAsked, openPlayer, takePendingLeagueMatch, takePendingSeason, takePendingTeam } from "../../lib/goto";
 import { t, tx } from "../../lib/i18n";
@@ -19,7 +19,7 @@ import { RecruitPostPage, RecruitPreview, RecruitmentPage, type Kind as RecruitK
 import "../teams/teams.css";
 import "./etf2l.css";
 import { Etf2lMark } from "../Etf2lMark";
-import { Loading, Refreshing } from "../Spinner";
+import { Loading, Refreshing, Spinner } from "../Spinner";
 
 /**
  * The ETF2L tab (Q74, Flashy; PLAN §27): Teams and Players as one tab laid
@@ -64,6 +64,39 @@ function base(l: Loc): Loc {
 }
 
 const same = (a: Loc, b: Loc) => JSON.stringify(a) === JSON.stringify(b);
+
+/**
+ * Read ETF2L again now (Flashy: "dd14 just won their season today ... want
+ * the teams and players with medals to be updated with this, like a
+ * refresh"): seasons, results and tables, then every page that shows a
+ * medal, a table or a result is asked again.
+ */
+function RefreshEtf2l() {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  async function go() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await api.refreshEtf2l();
+      setMsg(t("{0} results read", { "0": r.results.toLocaleString() }));
+      void qc.invalidateQueries();
+    } catch (e) {
+      setMsg(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <span className="e2-refresh">
+      <button className="km-chip" onClick={() => void go()} disabled={busy} title={t("Read ETF2L's seasons, results and final standings again, for medals and tables")}>
+        {busy ? <Spinner /> : <span aria-hidden>⟳</span>} {busy ? t("Reading ETF2L…") : t("Refresh ETF2L")}
+      </button>
+      {msg && <span className="hint">{msg}</span>}
+    </span>
+  );
+}
 
 export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatch: (logId: number) => void }) {
   const [stack, setStack] = useState<Loc[]>(() => {
@@ -161,7 +194,10 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
             ))}
           </nav>
         </div>
-        <LeagueSearch onTeam={openTeam} />
+        <div className="e2-head-tools">
+          <RefreshEtf2l />
+          <LeagueSearch onTeam={openTeam} />
+        </div>
       </header>
       <Crumbs loc={loc} go={go} />
 

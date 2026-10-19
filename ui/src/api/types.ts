@@ -2387,6 +2387,15 @@ export interface DemosTfFound {
 
 /** A search for a combined log's parts: logs.tf's logs with its players
  *  then, and how many were parts of it and folded in. */
+/** An ETF2L refresh: competitions, results, match pages and tables read. */
+export interface Etf2lRefreshed {
+  competitions: number;
+  results: number;
+  details: number;
+  failed: number;
+  tables: number;
+}
+
 export interface FoundParts {
   candidates: number;
   added: number;

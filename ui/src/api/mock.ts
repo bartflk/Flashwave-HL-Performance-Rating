@@ -69,6 +69,7 @@ import type {
   DemoLinked,
   DemosTfFound,
   FoundParts,
+  Etf2lRefreshed,
   CalloutFile,
   PositionsView,
   MapTendencies,
@@ -1533,6 +1534,7 @@ export const mockApi: Api = {
     if (on) mockBookmarks.unshift({ ...b, added: Math.floor(Date.now() / 1000) });
     return delay([...mockBookmarks], 50);
   },
+  refreshEtf2l: () => delay<Etf2lRefreshed>({ competitions: 11, results: 168, details: 0, failed: 0, tables: 5 }, 1500),
   findParts: (_logId: number) => delay<FoundParts>({ candidates: 8, added: 0 }, 1200),
   refreshDemostf: (_logId: number) => delay<DemosTfFound>({ listed: 50, matched: 0 }, 1200),
   linkDemostf: (_logId: number, link: string) =>
