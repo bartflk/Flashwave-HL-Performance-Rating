@@ -1,5 +1,6 @@
 import type { MatchDetail } from "../../api/types";
-import { noStvReason, useStv } from "../../lib/stv";
+import { beforeDemosTf, noStvReason, useStv } from "../../lib/stv";
+import { LookAgain } from "./DemoPanel";
 import { t, tx } from "../../lib/i18n";
 
 /**
@@ -104,6 +105,16 @@ function Fetch({ d, compact }: { d: MatchDetail; compact?: boolean }) {
     );
   }
   if (!stv.canFetch) {
+    // No demo found: say so, and ask demos.tf again right there, unless the
+    // match is older than anything demos.tf still keeps.
+    if (compact && !beforeDemosTf(d.playedAt)) {
+      return (
+        <span className="stv-banner-none">
+          <span className="hint">{noStvReason(d)}</span>
+          <LookAgain d={d} />
+        </span>
+      );
+    }
     return <span className="hint">{noStvReason(d)}</span>;
   }
   return (

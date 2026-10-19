@@ -94,7 +94,10 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
               d={shown}
               reading={
                 q.data.parts.length > 0 || looksCombined(q.data) ? (
-                  <>
+                  // One cluster on the header's right: which log is read,
+                  // and finding more of them (Flashy: "the buttons are just
+                  // missplaced").
+                  <div className="box-tools">
                     {q.data.parts.length > 0 && (
                       <PartPicker
                         d={q.data}
@@ -106,7 +109,7 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
                       />
                     )}
                     {looksCombined(q.data) && <FindParts d={q.data} />}
-                  </>
+                  </div>
                 ) : undefined
               }
             />
@@ -192,13 +195,21 @@ function FindParts({ d }: { d: MatchDetail }) {
       setBusy(false);
     }
   }
+  // With its parts already known it is a small "look again"; without, the
+  // one thing to do here.
+  const known = d.parts.length > 0;
   return (
-    <span className="find-parts">
-      <button className="km-chip" onClick={() => void find()} disabled={busy} title={t("Look on logs.tf for the maps and halves this log was combined from")}>
-        {busy ? <Spinner /> : <span aria-hidden>⟳</span>} {t("Find its other logs")}
+    <>
+      <button
+        className={known ? "km-chip find-parts find-parts-quiet" : "km-chip find-parts"}
+        onClick={() => void find()}
+        disabled={busy}
+        title={t("Look on logs.tf for the maps and halves this log was combined from")}
+      >
+        {busy ? <Spinner /> : <span aria-hidden>⟳</span>} {known ? t("Look again") : t("Find its other logs")}
       </button>
-      {msg && <span className="hint">{msg}</span>}
-    </span>
+      {msg && <span className="hint box-tools-msg">{msg}</span>}
+    </>
   );
 }
 

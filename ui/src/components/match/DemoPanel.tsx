@@ -111,7 +111,9 @@ export function DemoPanel({ d }: { d: MatchDetail }) {
             </p>
           )}
           {error && <p className="error">{error}</p>}
-          {!hasStv && !tooOld && <LookAgain d={d} />}
+          {/* With no demo at all, the banner at the top asks; here only for a
+              combined log's other parts. */}
+          {!hasStv && !tooOld && d.demosTfId !== null && <LookAgain d={d} />}
           <ByLink d={d} />
         </div>
         <DropZone d={d} />
@@ -125,7 +127,7 @@ export function DemoPanel({ d }: { d: MatchDetail }) {
  * refresh to see if demos.tf updated"): an STV is often uploaded after the
  * log was read, and the sync only looks again on its own schedule.
  */
-function LookAgain({ d }: { d: MatchDetail }) {
+export function LookAgain({ d }: { d: MatchDetail }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [got, setGot] = useState<DemosTfFound | null>(null);
@@ -153,7 +155,7 @@ function LookAgain({ d }: { d: MatchDetail }) {
         <span className="hint">
           {got.matched > 0
             ? t("Found on demos.tf: the download is ready above.")
-            : t("Nothing new on demos.tf yet ({0} of your demos around this match checked). Uploads can take a few hours.", { "0": got.listed })}
+            : t("Nothing new on demos.tf yet ({0} demos around this match checked). Uploads can take a few hours.", { "0": got.listed })}
         </span>
       )}
       {error && <span className="error">{error}</span>}

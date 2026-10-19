@@ -1734,6 +1734,22 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 .demo-look-again { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
 .demo-look-again .km-chip { display: inline-flex; align-items: center; gap: 6px; }
 
-/* Find a combined log's parts, beside the log picker. */
-.find-parts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
-.find-parts .km-chip { display: inline-flex; align-items: center; gap: 6px; }
+/* The scoreboard header's actions, as one cluster on its right: which log
+   is read, finding a combined log's other logs, and what that found on a
+   line beneath (the audit: they were spread across the header). */
+.box-tools { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px 10px; margin-left: auto; max-width: 100%; }
+.box-tools .part-picker { padding: 0; }
+.box-tools .part-picker .an-field { flex-direction: row; align-items: center; gap: 8px; }
+.find-parts { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.find-parts-quiet { font-size: 0.8rem; padding: 4px 10px; opacity: 0.85; }
+.find-parts-quiet:hover { opacity: 1; }
+.box-tools-msg { flex-basis: 100%; text-align: right; margin: 0; }
+
+/* The STV banner's own action when demos.tf had nothing: ask again, where
+   the "no STV demo" is said. */
+.stv-banner-none { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 10px; }
+.stv-banner-none .demo-look-again { margin-top: 0; justify-content: flex-end; }
+.stv-banner:has(.stv-banner-none) { flex-wrap: wrap; }
+.stv-banner-none { flex: 1 1 340px; }
+.stv-banner-none .demo-look-again .hint,
+.stv-banner-none .demo-look-again .error { flex-basis: 100%; text-align: right; }
