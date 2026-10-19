@@ -318,6 +318,8 @@ pub fn run() {
             sync_commands::refresh_demostf,
             sync_commands::find_parts,
             sync_commands::refresh_etf2l,
+            sync_commands::etf2l_daily_check,
+            sync_commands::get_league_sides,
             sync_commands::set_match_kind,
             mass::mass_search,
             mass::mass_start,

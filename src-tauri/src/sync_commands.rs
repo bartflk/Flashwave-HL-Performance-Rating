@@ -1425,6 +1425,22 @@ pub async fn link_demostf(state: State<'_, AppState>, log_id: i64, link: String)
     }
 }
 
+/// The ETF2L official a log was, for a log the owner was not in: each
+/// colour's team and ETF2L's result.
+#[tauri::command]
+pub async fn get_league_sides(state: State<'_, AppState>, log_id: i64) -> CmdResult<Option<hl_ingest::leagues::LeagueSides>> {
+    Ok(hl_ingest::leagues::league_sides(&state.db, &state.sources, log_id).await?)
+}
+
+/// The once-a-day ETF2L check: at startup and when the ETF2L tab opens,
+/// a no-op if it ran in the last day or a sync is running.
+#[tauri::command]
+pub async fn etf2l_daily_check(state: State<'_, AppState>, force: Option<bool>) -> CmdResult<hl_ingest::leagues::DailyCheck> {
+    let Some(_guard) = BusyGuard::acquire(&state.busy) else { return Ok(Default::default()) };
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64);
+    Ok(hl_ingest::leagues::daily_check(&state.db, &state.sources, now, force.unwrap_or(false)).await?)
+}
+
 /// Read ETF2L's seasons again now -- results, tables and their placings --
 /// so a final played today shows its medals without a whole sync (Flashy:
 /// "teams and players with medals to be updated with this, like a

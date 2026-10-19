@@ -3,6 +3,7 @@ import { dismissDownload, useDownloads, type Download } from "../lib/downloads";
 import { cancelSync, dismissSync, fractionOf, labelOf, matchOf, phaseOf, useSyncStatus } from "../lib/sync";
 import { dismissDemoSeen, useDemoSeen } from "../lib/demowatch";
 import { dismissNewLogs, useNewLogs } from "../lib/newlogs";
+import { dismissEtf2lCheck, useEtf2lCheck } from "../lib/etf2lcheck";
 import { formatDate } from "../lib/format";
 import { dismissUpdate, installUpdate, restartNow, useUpdate } from "../lib/update";
 import { t, tx } from "../lib/i18n";
@@ -23,18 +24,51 @@ export function Notifications({ onOpenMatch }: { onOpenMatch: (logId: number) =>
   const demo = useDemoSeen();
   const fresh = useNewLogs();
   const update = useUpdate();
+  const etf2l = useEtf2lCheck();
   const quiet = update.state === "idle" || update.state === "checking" || update.state === "current";
-  if (downloads.length === 0 && sync.state === "idle" && !demo && !fresh && quiet) return null;
+  if (downloads.length === 0 && sync.state === "idle" && !demo && !fresh && !etf2l && quiet) return null;
 
   return (
     <div className="downloads" role="status" aria-live="polite">
       <UpdateCard />
       <NewLogsCard />
+      <Etf2lCheckCard />
       <DemoSeenCard />
       <SyncCard />
       {downloads.map((d) => (
         <DownloadCard key={d.logId} d={d} onOpenMatch={onOpenMatch} />
       ))}
+    </div>
+  );
+}
+
+/**
+ * What the daily ETF2L check changed (Flashy): a medal won since the last
+ * look -- "DD14 won S36 High" -- or moved to ETF2L's own final standings.
+ */
+function Etf2lCheckCard() {
+  const c = useEtf2lCheck();
+  if (!c) return null;
+  const place = (p: number) => (p === 1 ? t("won") : p === 2 ? t("runner-up in") : t("3rd in"));
+  const shown = c.changed.slice(0, 6);
+  return (
+    <div className="dl dl-done">
+      <div className="dl-head">
+        <span className="dl-title">{t("ETF2L checked")}</span>
+        <button className="dl-close" onClick={() => dismissEtf2lCheck()} title={t("Dismiss")}>
+          ×
+        </button>
+      </div>
+      <p className="dl-label">{c.changed.length === 1 ? t("1 medal is new") : t("{0} medals are new", { "0": c.changed.length })}</p>
+      <ul className="dl-report">
+        {shown.map((m) => (
+          <li key={`${m.season}-${m.division}-${m.place}-${m.teamId}`} title={m.how}>
+            {t("{team} {placed} {division}, {season}", { team: m.team, placed: place(m.place), division: m.division, season: m.seasonName || `S${m.season}` })}
+          </li>
+        ))}
+      </ul>
+      {c.changed.length > shown.length && <p className="dl-sub">{t("and {0} more", { "0": c.changed.length - shown.length })}</p>}
+      <p className="dl-sub dl-took">{t("Medals checked against ETF2L's final standings in {0} divisions.", { "0": c.confirmed })}</p>
     </div>
   );
 }

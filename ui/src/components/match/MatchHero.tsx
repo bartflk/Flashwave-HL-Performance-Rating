@@ -29,6 +29,10 @@ export function MatchHero({ d }: { d: MatchDetail }) {
   const art = useQuery({ queryKey: ["overview_image", single], queryFn: () => api.overviewImage(single!), enabled: !!single, staleTime: Infinity }).data;
 
   const mine = d.myTeam;
+  // A match you did not play: the ETF2L official it was, found by its time
+  // and its players (Flashy: the S36 High final read as RED against BLU).
+  const leagueQ = useQuery({ queryKey: ["league_sides", d.logId], queryFn: () => api.getLeagueSides(d.logId), enabled: !mine, staleTime: 10 * 60_000 });
+  const league = mine ? null : (leagueQ.data ?? null);
   const left: "Red" | "Blue" = mine ?? "Red";
   const right: "Red" | "Blue" = left === "Red" ? "Blue" : "Red";
   const rounds = (side: "Red" | "Blue") => (side === "Red" ? d.redScore : d.blueScore);
@@ -36,14 +40,19 @@ export function MatchHero({ d }: { d: MatchDetail }) {
   const official = c?.kind === "official" ? c.official : null;
   // Q55 (Clark): an official's headline is ETF2L's result, your side first;
   // the logs' rounds, which in stopwatch are not the same, go beneath.
-  const etf2l = official?.score && mine ? official.score : null;
+  const etf2l: [number, number] | null =
+    official?.score && mine
+      ? official.score
+      : league && league.redScore !== null && league.blueScore !== null
+        ? [league.redScore, league.blueScore]
+        : null;
   const score = (side: "Red" | "Blue") => (etf2l ? (side === left ? etf2l[0] : etf2l[1]) : rounds(side));
   const result = etf2l ? (etf2l[0] > etf2l[1] ? "W" : etf2l[0] < etf2l[1] ? "L" : "T") : d.result;
   const roundsDiffer =!!etf2l && (etf2l[0] !== rounds(left) || etf2l[1] !== rounds(right));
 
   // Your side carries your team; the other side the opponent, once known.
-  const leftTeam: SideTeam | null = mine ? sides?.team ?? null : null;
-  const rightTeam: SideTeam | null = mine ? sides?.opp ?? null : null;
+  const leftTeam: SideTeam | null = mine ? sides?.team ?? null : (league?.red ?? null);
+  const rightTeam: SideTeam | null = mine ? sides?.opp ?? null : (league?.blue ?? null);
 
   return (
     <header className={`panel mx-hero mx-${left.toLowerCase()}-left has-backdrop`}>
@@ -60,7 +69,9 @@ export function MatchHero({ d }: { d: MatchDetail }) {
             ) : (
               <KindPicker logId={d.logId} c={c} />
             ))}
-          <span className="ts-eyebrow">{eyebrow(c, sides)}</span>
+          <span className="ts-eyebrow">
+            {league ? [league.division, league.round, league.seasonName].filter(Boolean).join(" · ") : eyebrow(c, sides)}
+          </span>
         </div>
         <div className="mx-badges">
           <BookmarkButton
@@ -105,7 +116,7 @@ export function MatchHero({ d }: { d: MatchDetail }) {
       </div>
 
       {leftTeam?.id != null && rightTeam?.id != null && (
-        <Meetings team={leftTeam.id} opp={rightTeam.id} oppName={rightTeam.name} current={c?.etf2lMatchId ?? null} />
+        <Meetings team={leftTeam.id} opp={rightTeam.id} oppName={rightTeam.name} current={c?.etf2lMatchId ?? league?.matchId ?? null} />
       )}
 
       <footer className="mx-foot">

@@ -18,6 +18,7 @@ import { TeamsLanding } from "./Teams";
 import { RecruitPostPage, RecruitPreview, RecruitmentPage, type Kind as RecruitKind } from "./Recruitment";
 import "../teams/teams.css";
 import "./etf2l.css";
+import { checkEtf2lDaily } from "../../lib/etf2lcheck";
 import { Etf2lMark } from "../Etf2lMark";
 import { Loading, Refreshing, Spinner } from "../Spinner";
 
@@ -134,6 +135,12 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
   // kept): capture phase on window runs before the app's history, and
   // stopPropagation keeps it from also going back a tab.
   const depth = useRef(stack.length);
+  const qcDaily = useQueryClient();
+  // The daily check, whenever the tab is opened (Flashy: "whenever this
+  // info is checked"): skipped by the backend if it ran in the last day.
+  useEffect(() => {
+    if (active) void checkEtf2lDaily(qcDaily);
+  }, [active, qcDaily]);
   const activeRef = useRef(active);
   useEffect(() => {
     depth.current = stack.length;

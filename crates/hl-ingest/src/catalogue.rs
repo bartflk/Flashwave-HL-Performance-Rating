@@ -363,6 +363,11 @@ impl Catalogue {
         out.into_iter().collect()
     }
 
+    /// A season's own name ("Autumn 2026"), for the daily ETF2L check.
+    pub fn season_title(&self, season: i64) -> String {
+        self.season_name(season)
+    }
+
     /// A team's name, for the CLI's audits.
     pub fn team_name(&self, id: i64) -> String {
         self.team(id).name

@@ -806,3 +806,140 @@ mod tests {
         assert_eq!(canonical_tier("Top Tiers"), None);
     }
 }
+
+/// An ETF2L official a log was played as, for a log the owner was not in
+/// (Flashy: the S36 High Grand Final, one 116-minute upload, read as RED
+/// against BLU): each colour's team, and ETF2L's result.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LeagueSides {
+    pub match_id: i64,
+    pub red: hl_db::SideTeam,
+    pub blue: hl_db::SideTeam,
+    /// ETF2L's result, RED's side first.
+    pub red_score: Option<i64>,
+    pub blue_score: Option<i64>,
+    pub division: Option<String>,
+    pub round: Option<String>,
+    pub season_name: Option<String>,
+}
+
+/// How long after an official's scheduled time a log of it may be stamped:
+/// a three-map final uploaded as one log is stamped at its end.
+const LEAGUE_LOG_WINDOW_S: i64 = 6 * 3600;
+
+/// Which season official a log was, by its time and its players: the
+/// officials ETF2L scheduled in the hours before it, each one's lineup
+/// (read from ETF2L once, if not yet), and the one whose two teams' players
+/// were on the log's two colours. `None` when none fits: a pug, or a match
+/// whose lineup ETF2L does not list.
+pub async fn league_sides(db: &Db, sources: &Sources, log_id: i64) -> Result<Option<LeagueSides>> {
+    let Some((at, colours)) = db.log_time_and_colours(log_id).await? else { return Ok(None) };
+    let mut best: Option<(usize, i64, i64, i64)> = None; // (players placed, match, red team, blue team)
+    for (match_id, c1, c2, fetched) in db.season_matches_before(at, LEAGUE_LOG_WINDOW_S).await? {
+        if !fetched {
+            let _ = fetch_match_detail(db, sources, match_id).await;
+        }
+        let roster = db.season_match_roster(match_id).await?;
+        // RED's players on each team, BLU's on each.
+        let (mut r1, mut r2, mut b1, mut b2) = (0usize, 0usize, 0usize, 0usize);
+        for (account, colour) in &colours {
+            match (roster.get(account), colour.as_str()) {
+                (Some(t), "Red") if *t == c1 => r1 += 1,
+                (Some(t), "Red") if *t == c2 => r2 += 1,
+                (Some(t), "Blue") if *t == c1 => b1 += 1,
+                (Some(t), "Blue") if *t == c2 => b2 += 1,
+                _ => {}
+            }
+        }
+        let (placed, red, blue) = if r1 + b2 >= r2 + b1 { (r1 + b2, c1, c2) } else { (r2 + b1, c2, c1) };
+        // Most of both lineups, each on its own colour.
+        if placed >= 8 && best.is_none_or(|b| placed > b.0) {
+            best = Some((placed, match_id, red, blue));
+        }
+    }
+    let Some((_, match_id, red, blue)) = best else { return Ok(None) };
+    let Some((r1, r2, clan1, division, round, season_name)) = db.season_match_summary(match_id).await? else { return Ok(None) };
+    let side = |id: i64, t: Option<(String, Option<String>, Option<String>)>| {
+        let (name, country, avatar) = t.unwrap_or_else(|| (format!("team {id}"), None, None));
+        hl_db::SideTeam { id: Some(id), name, country, avatar }
+    };
+    let (red_score, blue_score) = if red == clan1 { (r1, r2) } else { (r2, r1) };
+    Ok(Some(LeagueSides {
+        match_id,
+        red: side(red, db.team_brief(red).await?),
+        blue: side(blue, db.team_brief(blue).await?),
+        red_score,
+        blue_score,
+        division,
+        round,
+        season_name,
+    }))
+}
+
+/// A medal the daily check found new or changed.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MedalChange {
+    pub season: i64,
+    pub season_name: String,
+    pub division: String,
+    pub place: u8,
+    pub team_id: i64,
+    pub team: String,
+    /// How it was decided: "Grand Final 6-3", ", confirmed by ETF2L".
+    pub how: String,
+}
+
+/// What the once-a-day ETF2L check did.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DailyCheck {
+    /// False when it had already run in the last day (or a sync is
+    /// reading ETF2L), and nothing was asked.
+    pub ran: bool,
+    pub results: usize,
+    /// Divisions whose medals ETF2L's own final standings confirm.
+    pub confirmed: usize,
+    /// Medals that are new, or went to another team, since before the check.
+    pub changed: Vec<MedalChange>,
+}
+
+const DAILY_KEY: &str = "etf2l_daily_check";
+const DAY_S: i64 = 24 * 3600;
+
+/// Once a day (Flashy: "a check 1 time per day when you start up or
+/// whenever this info is checked, and if its correct in the app"): read
+/// ETF2L's seasons, results and tables again, and say which medals that
+/// changed. `force` runs it whatever the last time was.
+pub async fn daily_check(db: &Db, sources: &Sources, now: i64, force: bool) -> Result<DailyCheck> {
+    let last: i64 = db.get_setting(DAILY_KEY).await?.and_then(|s| s.parse().ok()).unwrap_or(0);
+    if !force && now - last < DAY_S {
+        return Ok(DailyCheck::default());
+    }
+    let before = crate::catalogue::Catalogue::load(db).await?.medals();
+    let read = fetch(db, sources, |_, _| {}).await?;
+    db.set_setting(DAILY_KEY, &now.to_string()).await?;
+    let cat = crate::catalogue::Catalogue::load(db).await?;
+    let after = cat.medals();
+    let mut changed = Vec::new();
+    for ((season, division), medals) in &after {
+        let was = before.get(&(*season, division.clone()));
+        for (place, team, how) in medals {
+            if was.is_some_and(|w| w.iter().any(|(p, t, _)| p == place && t == team)) {
+                continue;
+            }
+            changed.push(MedalChange {
+                season: *season,
+                season_name: cat.season_title(*season),
+                division: division.clone(),
+                place: *place,
+                team_id: *team,
+                team: cat.team_name(*team),
+                how: how.clone(),
+            });
+        }
+    }
+    changed.sort_by_key(|c| (std::cmp::Reverse(c.season), c.division.clone(), c.place));
+    Ok(DailyCheck { ran: true, results: read.results, confirmed: cat.official_divisions(), changed })
+}

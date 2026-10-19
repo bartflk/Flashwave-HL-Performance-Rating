@@ -2400,3 +2400,35 @@ export interface FoundParts {
   candidates: number;
   added: number;
 }
+
+/** The ETF2L official a log you did not play was: each colour's team and
+ *  ETF2L's result, RED first. */
+export interface LeagueSides {
+  matchId: number;
+  red: SideTeam;
+  blue: SideTeam;
+  redScore: number | null;
+  blueScore: number | null;
+  division: string | null;
+  round: string | null;
+  seasonName: string | null;
+}
+
+/** A medal the daily ETF2L check found new, or gone to another team. */
+export interface MedalChange {
+  season: number;
+  seasonName: string;
+  division: string;
+  place: number;
+  teamId: number;
+  team: string;
+  how: string;
+}
+
+/** What the once-a-day ETF2L check did; `ran` false when it was skipped. */
+export interface DailyCheck {
+  ran: boolean;
+  results: number;
+  confirmed: number;
+  changed: MedalChange[];
+}

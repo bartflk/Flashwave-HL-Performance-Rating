@@ -6,6 +6,7 @@ import { errorMessage, type Progress, type SyncDone } from "../api/types";
 import { t } from "./i18n";
 import { formatDate } from "./format";
 import { loadEtf2lNames } from "./etf2lNames";
+import { checkEtf2lDaily } from "./etf2lcheck";
 
 /**
  * A sync, tracked app-wide rather than by the strip that started it.
@@ -128,6 +129,8 @@ export function watchSync(qc: QueryClient) {
       invalidateAll(qc);
       // A sync can bring new official rosters, and with them new names.
       void loadEtf2lNames();
+      // The daily ETF2L check, if the sync kept it from running at startup.
+      void checkEtf2lDaily(qc);
     },
     onError: (e) => {
       if (e.kind === "cancelled") {

@@ -1626,6 +1626,39 @@ async fn run() -> Result<()> {
             Ok(())
         }
 
+        ["league-sides", log] => {
+            // Which season official a log was, as the match page reads it.
+            let db = Db::connect(&db_path).await?;
+            let sources = Sources::new()?;
+            match hl_ingest::leagues::league_sides(&db, &sources, log.parse()?).await? {
+                Some(s) => println!(
+                    "match {}: RED {} {} - {} {} BLU ({} {})",
+                    s.match_id,
+                    s.red.name,
+                    s.red_score.map_or("?".into(), |x| x.to_string()),
+                    s.blue_score.map_or("?".into(), |x| x.to_string()),
+                    s.blue.name,
+                    s.division.unwrap_or_default(),
+                    s.round.unwrap_or_default()
+                ),
+                None => println!("no ETF2L official found for this log"),
+            }
+            Ok(())
+        }
+
+        ["etf2l-check"] => {
+            // The once-a-day ETF2L check, now.
+            let db = Db::connect(&db_path).await?;
+            let sources = Sources::new()?;
+            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs() as i64;
+            let c = hl_ingest::leagues::daily_check(&db, &sources, now, true).await?;
+            println!("{} results read, {} divisions confirmed by ETF2L, {} medals new", c.results, c.confirmed, c.changed.len());
+            for m in c.changed {
+                println!("  S{} {} {}. {} ({})", m.season, m.division, m.place, m.team, m.how);
+            }
+            Ok(())
+        }
+
         ["medals-audit"] => {
             // The medals read from the results against ETF2L's own final
             // placings, for every division ETF2L has placed.

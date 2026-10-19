@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { checkEtf2lDaily } from "./lib/etf2lcheck";
 import { lookForNewLogs } from "./lib/newlogs";
 import { api } from "./api/client";
 import { t, useLanguage, t as tr, tx } from "./lib/i18n";
@@ -87,8 +88,14 @@ export default function App() {
   // Once the database is open and set up: anything new since last time?
   const ready = status.data?.ready === true && !status.data.restore;
   useEffect(() => {
-    if (ready) void lookForNewLogs();
-  }, [ready]);
+    if (!ready) return;
+    void lookForNewLogs();
+    // ETF2L's results and final standings, once a day (Flashy). After the
+    // look for new logs: a sync it starts reads ETF2L itself, and asks again
+    // when it ends.
+    const id = window.setTimeout(() => void checkEtf2lDaily(qc), 8_000);
+    return () => window.clearTimeout(id);
+  }, [ready, qc]);
 
   if (status.isPending) {
     return (

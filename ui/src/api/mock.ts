@@ -70,6 +70,8 @@ import type {
   DemosTfFound,
   FoundParts,
   Etf2lRefreshed,
+  LeagueSides,
+  DailyCheck,
   CalloutFile,
   PositionsView,
   MapTendencies,
@@ -1534,6 +1536,20 @@ export const mockApi: Api = {
     if (on) mockBookmarks.unshift({ ...b, added: Math.floor(Date.now() / 1000) });
     return delay([...mockBookmarks], 50);
   },
+  getLeagueSides: (_logId: number) => delay<LeagueSides | null>(null, 200),
+  etf2lDailyCheck: (_force = false) =>
+    delay<DailyCheck>(
+      {
+        ran: true,
+        results: 169,
+        confirmed: 17,
+        changed: [
+          { season: 36, seasonName: "Autumn 2026", division: "High", place: 1, teamId: 37805, team: "DD14", how: "Grand Final 6-3" },
+          { season: 36, seasonName: "Autumn 2026", division: "High", place: 2, teamId: 37863, team: "mpreg", how: "Grand Final 3-6" },
+        ],
+      },
+      1500,
+    ),
   refreshEtf2l: () => delay<Etf2lRefreshed>({ competitions: 11, results: 168, details: 0, failed: 0, tables: 5 }, 1500),
   findParts: (_logId: number) => delay<FoundParts>({ candidates: 8, added: 0 }, 1200),
   refreshDemostf: (_logId: number) => delay<DemosTfFound>({ listed: 50, matched: 0 }, 1200),

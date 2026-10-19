@@ -70,6 +70,8 @@ import type {
   DemosTfFound,
   FoundParts,
   Etf2lRefreshed,
+  LeagueSides,
+  DailyCheck,
   CartView,
   Backup,
   Backups,
@@ -327,6 +329,8 @@ const realApi = {
   /** A demo dropped on a match page, linked to that match once it checks out. */
   linkDemo: (logId: number, path: string) => invoke<DemoLinked>("link_demo", { logId, path }),
   linkDemostf: (logId: number, link: string) => invoke<DemoLinked>("link_demostf", { logId, link }),
+  getLeagueSides: (logId: number) => invoke<LeagueSides | null>("get_league_sides", { logId }),
+  etf2lDailyCheck: (force = false) => invoke<DailyCheck>("etf2l_daily_check", { force }),
   refreshEtf2l: () => invoke<Etf2lRefreshed>("refresh_etf2l"),
   findParts: (logId: number) => invoke<FoundParts>("find_parts", { logId }),
   refreshDemostf: (logId: number) => invoke<DemosTfFound>("refresh_demostf", { logId }),

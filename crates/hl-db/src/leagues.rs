@@ -104,6 +104,52 @@ impl Db {
         Ok(())
     }
 
+    /// A stored log's time and each player's colour, for finding the
+    /// official it was: `None` for a log not stored.
+    pub async fn log_time_and_colours(&self, log_id: i64) -> Result<Option<(i64, Vec<(i64, String)>)>> {
+        let Some(at): Option<i64> = sqlx::query_scalar("SELECT played_at FROM match WHERE log_id = ?1").bind(log_id).fetch_optional(self.pool()).await?.flatten() else {
+            return Ok(None);
+        };
+        let colours: Vec<(i64, String)> = sqlx::query_as("SELECT account_id, team FROM match_player WHERE log_id = ?1").bind(log_id).fetch_all(self.pool()).await?;
+        Ok(Some((at, colours)))
+    }
+
+    /// Season officials scheduled in the `window` seconds up to `at`, not
+    /// forfeited: `(match, clan1, clan2, page read)`.
+    pub async fn season_matches_before(&self, at: i64, window: i64) -> Result<Vec<(i64, i64, i64, bool)>> {
+        Ok(sqlx::query_as(
+            "SELECT match_id, clan1_id, clan2_id, detail_fetched FROM etf2l_season_match
+              WHERE time IS NOT NULL AND time <= ?1 AND time >= ?1 - ?2 AND default_win = 0",
+        )
+        .bind(at)
+        .bind(window)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    /// One season official's lineup: account -> team, where ETF2L names one.
+    pub async fn season_match_roster(&self, match_id: i64) -> Result<std::collections::HashMap<i64, i64>> {
+        let rows: Vec<(i64, Option<i64>)> = sqlx::query_as("SELECT account_id, team_id FROM etf2l_season_player WHERE match_id = ?1").bind(match_id).fetch_all(self.pool()).await?;
+        Ok(rows.into_iter().filter_map(|(a, t)| Some((a, t?))).collect())
+    }
+
+    /// One season official's result and where it stood: `(r1, r2, clan1,
+    /// division, round, season name)`.
+    pub async fn season_match_summary(&self, match_id: i64) -> Result<Option<(Option<i64>, Option<i64>, i64, Option<String>, Option<String>, Option<String>)>> {
+        Ok(sqlx::query_as(
+            "SELECT m.r1, m.r2, m.clan1_id, m.division, m.round, c.season_name FROM etf2l_season_match m
+              LEFT JOIN etf2l_competition c ON c.competition_id = m.competition_id WHERE m.match_id = ?1",
+        )
+        .bind(match_id)
+        .fetch_optional(self.pool())
+        .await?)
+    }
+
+    /// A team's name, country and picture.
+    pub async fn team_brief(&self, team_id: i64) -> Result<Option<(String, Option<String>, Option<String>)>> {
+        Ok(sqlx::query_as("SELECT name, country, avatar FROM etf2l_team WHERE team_id = ?1").bind(team_id).fetch_optional(self.pool()).await?)
+    }
+
     pub async fn competitions(&self) -> Result<Vec<Competition>> {
         let rows = sqlx::query(
             "SELECT competition_id, season, season_name, division, stage, archived, pool, fetched_at
