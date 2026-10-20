@@ -112,7 +112,15 @@ impl Db {
     pub async fn league_candidates(&self) -> Result<Vec<Candidate>> {
         let rows = sqlx::query(&format!(
             "SELECT * FROM (
-               SELECT l.log_id, l.etf2l_match_id, l.map, l.played_at, COALESCE(l.duration_s, 0) AS duration_s,
+               -- A log found by the app's own logs.tf search has no length
+               -- until its JSON is in: read it from there, and -1 for a
+               -- log not downloaded yet, which stays a candidate (Flashy:
+               -- 109 officials' logs left out of the sample, and their
+               -- players out of the season tables, for a missing length).
+               SELECT l.log_id, l.etf2l_match_id, l.map, l.played_at,
+                      COALESCE(l.duration_s,
+                               (SELECT json_extract(j.json, '$.length') FROM league_log_json j WHERE j.log_id = l.log_id),
+                               -1) AS duration_s,
                       {TIER_SQL} AS tier, {DIVISION_SQL} AS division,
                       (LOWER(REPLACE(COALESCE(m.round, ''), '-', ' ')) LIKE '%grand final%') AS is_final
                FROM league_log l

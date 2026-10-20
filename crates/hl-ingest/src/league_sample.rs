@@ -157,7 +157,7 @@ pub async fn select(db: &Db) -> Result<(usize, usize)> {
     // medals and the MVPs are read from (Flashy: "check all the grand
     // finals and download any that are missing").
     let mut finals: Vec<i64> = Vec::new();
-    for c in candidates.iter().filter(|c| played_map(&c.map) && c.duration_s >= MIN_DURATION_S && c.played_at >= t - MAX_YEARS * YEAR_S) {
+    for c in candidates.iter().filter(|c| played_map(&c.map) && (c.duration_s < 0 || c.duration_s >= MIN_DURATION_S) && c.played_at >= t - MAX_YEARS * YEAR_S) {
         // Today's ladder by the division's name first: "Division 2" is
         // High, "Freshest" Fresh Meat, though no regular division of that
         // season shares the name to borrow a tier from.

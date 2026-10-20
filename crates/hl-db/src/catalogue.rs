@@ -320,7 +320,17 @@ impl Db {
         let rows = sqlx::query(&format!(
             "SELECT r.account_id, r.log_id, COALESCE(m.played_at, 0) AS played_at, r.class, r.score,
                     r.parts AS parts, NULL AS groups,
-                    EXISTS (SELECT 1 FROM match_context c WHERE c.log_id = r.log_id AND c.kind = 'official') AS official,
+                    -- An official however it is known, not only as one of
+                    -- the owner's: a league log stored here (opened from an
+                    -- ETF2L page, or a combined log's parts found on logs.tf)
+                    -- is still the official it was, or every player in it
+                    -- loses one from the season tables (Flashy: S36 High's
+                    -- Sniper table thinning out as matches were opened).
+                    (EXISTS (SELECT 1 FROM match_context c WHERE c.log_id = r.log_id AND c.kind = 'official')
+                     OR EXISTS (SELECT 1 FROM league_log l WHERE l.log_id = r.log_id)
+                     OR EXISTS (SELECT 1 FROM log_index p JOIN league_log l ON l.log_id = p.log_id WHERE p.superseded_by = r.log_id)
+                     OR EXISTS (SELECT 1 FROM log_index i WHERE i.log_id = r.log_id AND i.etf2l_match_id IS NOT NULL)
+                     OR EXISTS (SELECT 1 FROM etf2l_raw x WHERE x.kind = 'league_sides' AND x.id = r.log_id)) AS official,
                     -- The owner's logs of an official, linked to its match
                     -- however it is known: their own context, the league's
                     -- list, trends.tf's index, or -- for a combined log,
@@ -329,7 +339,9 @@ impl Db {
                     COALESCE((SELECT c.etf2l_match_id FROM match_context c WHERE c.log_id = r.log_id),
                              (SELECT l.etf2l_match_id FROM league_log l WHERE l.log_id = r.log_id),
                              (SELECT i.etf2l_match_id FROM log_index i WHERE i.log_id = r.log_id),
-                             (SELECT i.etf2l_match_id FROM log_index i WHERE i.superseded_by = r.log_id AND i.etf2l_match_id IS NOT NULL LIMIT 1)) AS etf2l_match_id,
+                             (SELECT i.etf2l_match_id FROM log_index i WHERE i.superseded_by = r.log_id AND i.etf2l_match_id IS NOT NULL LIMIT 1),
+                             (SELECT l.etf2l_match_id FROM log_index p JOIN league_log l ON l.log_id = p.log_id WHERE p.superseded_by = r.log_id LIMIT 1),
+                             (SELECT json_extract(x.json, '$.matchId') FROM etf2l_raw x WHERE x.kind = 'league_sides' AND x.id = r.log_id)) AS etf2l_match_id,
                     EXISTS (SELECT 1 FROM league_log l WHERE l.log_id = r.log_id) AS listed
              FROM rating r JOIN match m ON m.log_id = r.log_id
              WHERE r.model_version = ?1 AND (?2 IS NULL OR r.account_id = ?2)
