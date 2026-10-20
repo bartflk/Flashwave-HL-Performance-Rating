@@ -104,6 +104,55 @@ impl Db {
         Ok(())
     }
 
+    /// A log's rounds: `(round, start, winner, colours swapped)`, in order.
+    pub async fn all_rounds_of(&self, log_id: i64) -> Result<Vec<(i64, i64, Option<String>, bool)>> {
+        Ok(sqlx::query_as(
+            "SELECT round_num, start_time, winner, colours_swapped FROM match_round
+              WHERE log_id = ?1 AND start_time IS NOT NULL ORDER BY start_time",
+        )
+        .bind(log_id)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    /// Each round's resolved map.
+    pub async fn round_maps_of(&self, log_id: i64) -> Result<Vec<(i64, String)>> {
+        Ok(sqlx::query_as("SELECT round_num, map FROM round_map WHERE log_id = ?1 AND map IS NOT NULL").bind(log_id).fetch_all(self.pool()).await?)
+    }
+
+    /// A log's maps in order: `(map, first round, last round, red wins, blue wins)`.
+    pub async fn segments_of(&self, log_id: i64) -> Result<Vec<(Option<String>, i64, i64, i64, i64)>> {
+        Ok(sqlx::query_as("SELECT map, first_round, last_round, red_wins, blue_wins FROM log_segment WHERE log_id = ?1 ORDER BY seq")
+            .bind(log_id)
+            .fetch_all(self.pool())
+            .await?)
+    }
+
+    /// A part's map, title and demos.tf demo.
+    pub async fn part_info(&self, log_id: i64) -> Result<Option<(Option<String>, Option<String>, Option<i64>)>> {
+        Ok(sqlx::query_as("SELECT map, title, demos_tf_id FROM log_index WHERE log_id = ?1").bind(log_id).fetch_optional(self.pool()).await?)
+    }
+
+    /// The season official a log was found to be, and the team on its Red,
+    /// as the match page last worked it out (kept by `league_sides`).
+    pub async fn league_match_of_log(&self, log_id: i64) -> Result<Option<(i64, i64)>> {
+        let json: Option<String> = sqlx::query_scalar("SELECT json FROM etf2l_raw WHERE kind = 'league_sides' AND id = ?1").bind(log_id).fetch_optional(self.pool()).await?;
+        Ok(json.and_then(|j| {
+            let v: serde_json::Value = serde_json::from_str(&j).ok()?;
+            Some((v.get("matchId")?.as_i64()?, v.pointer("/red/id")?.as_i64()?))
+        }))
+    }
+
+    /// A season official's two teams.
+    pub async fn season_match_clans(&self, match_id: i64) -> Result<Option<(i64, i64)>> {
+        Ok(sqlx::query_as("SELECT clan1_id, clan2_id FROM etf2l_season_match WHERE match_id = ?1").bind(match_id).fetch_optional(self.pool()).await?)
+    }
+
+    /// A season official's maps with each team's points: `(map, clan1, clan2)`.
+    pub async fn season_map_points(&self, match_id: i64) -> Result<Vec<(String, i64, i64)>> {
+        Ok(sqlx::query_as("SELECT map, clan1, clan2 FROM etf2l_season_map WHERE match_id = ?1 ORDER BY match_order").bind(match_id).fetch_all(self.pool()).await?)
+    }
+
     /// A stored log's time and each player's colour, for finding the
     /// official it was: `None` for a log not stored.
     pub async fn log_time_and_colours(&self, log_id: i64) -> Result<Option<(i64, Vec<(i64, String)>)>> {

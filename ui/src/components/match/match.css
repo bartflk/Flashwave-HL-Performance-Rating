@@ -1753,3 +1753,14 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 .stv-banner-none { flex: 1 1 340px; }
 .stv-banner-none .demo-look-again .hint,
 .stv-banner-none .demo-look-again .error { flex-basis: 100%; text-align: right; }
+
+/* A map chip's ETF2L result where it differs from the rounds (a stopwatch
+   map is scored in games), and a chip whose two disagree (Q84). */
+.mx-map-etf2l { margin-left: 6px; font-size: 0.72rem; color: var(--muted); }
+.mx-map-disagrees { border-color: var(--bad, #d4453f); }
+
+/* A combined log's parts and their demos, in the Demos section. */
+.part-demos { margin-top: 12px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--bg) 40%, var(--panel)); }
+.part-demos ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.part-demos li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; font-size: 0.88rem; }
+.part-demos-map { font-weight: 600; min-width: 170px; }

@@ -865,7 +865,7 @@ pub async fn league_sides(db: &Db, sources: &Sources, log_id: i64) -> Result<Opt
         hl_db::SideTeam { id: Some(id), name, country, avatar }
     };
     let (red_score, blue_score) = if red == clan1 { (r1, r2) } else { (r2, r1) };
-    Ok(Some(LeagueSides {
+    let sides = LeagueSides {
         match_id,
         red: side(red, db.team_brief(red).await?),
         blue: side(blue, db.team_brief(blue).await?),
@@ -874,7 +874,11 @@ pub async fn league_sides(db: &Db, sources: &Sources, log_id: i64) -> Result<Opt
         division,
         round,
         season_name,
-    }))
+    };
+    // Kept for the combined-log ledger, which reads ETF2L's map results
+    // without asking anyone (Q84).
+    db.store_etf2l_raw("league_sides", log_id, &serde_json::to_string(&sides)?).await?;
+    Ok(Some(sides))
 }
 
 /// A medal the daily check found new or changed.

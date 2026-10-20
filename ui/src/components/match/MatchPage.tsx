@@ -3,7 +3,7 @@ import { MatchTabs } from "./MatchTabs";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type MatchDetail, type PartScore } from "../../api/types";
+import { errorMessage, type Ledger, type MatchDetail, type PartScore } from "../../api/types";
 import { capitalize, splitMap } from "../../lib/format";
 import { MatchHero } from "./MatchHero";
 import { BoxScore } from "./BoxScore";
@@ -33,6 +33,14 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
     enabled: (q.data?.parts.length ?? 0) > 0,
     staleTime: 5 * 60_000,
   });
+  // Q84: each part's map, game and sides, each map beside ETF2L's result.
+  const ledgerQ = useQuery({
+    queryKey: ["ledger", logId],
+    queryFn: () => api.getCombinedLedger(logId),
+    enabled: (q.data?.parts.length ?? 0) > 0,
+    staleTime: 5 * 60_000,
+  });
+  const ledger = ledgerQ.data ?? null;
   const [fetching, setFetching] = useState(false);
   const [partError, setPartError] = useState<string | null>(null);
 
@@ -75,7 +83,7 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
       )}
       {q.data && shown && (
         <>
-          <MatchHero d={shown} />
+          <MatchHero d={shown} ledger={part === null ? ledger : null} />
           <StrengthOf d={shown} />
           <MatchTabs />
           {q.data.standIn && (
@@ -100,6 +108,7 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
                   <div className="box-tools">
                     {q.data.parts.length > 0 && (
                       <PartPicker
+                        ledger={ledger}
                         d={q.data}
                         parts={partsQ.data ?? null}
                         part={part}
@@ -188,6 +197,7 @@ function FindParts({ d }: { d: MatchDetail }) {
       if (r.added > 0) {
         void qc.invalidateQueries({ queryKey: ["match", d.logId] });
         void qc.invalidateQueries({ queryKey: ["parts", d.logId] });
+        void qc.invalidateQueries({ queryKey: ["ledger", d.logId] });
       }
     } catch (e) {
       setMsg(errorMessage(e));
@@ -214,6 +224,7 @@ function FindParts({ d }: { d: MatchDetail }) {
 }
 
 function PartPicker(props: {
+  ledger: Ledger | null;
   d: MatchDetail;
   parts: PartScore[] | null;
   part: number | null;
@@ -221,23 +232,43 @@ function PartPicker(props: {
   fetching: boolean;
   error: string | null;
 }) {
-  const { d, parts, part, onPick, fetching, error } = props;
+  const { d, parts, part, onPick, fetching, error, ledger } = props;
   const rows = parts ?? d.parts.map((p) => ({ ...p, detail: null, parentRounds: [] }));
+  // Ordered and named by the ledger where there is one: each map, then its
+  // games ("Upward · game 2 · log 4138738"); a combine of other parts, which
+  // adds nothing, last.
+  const at = (id: number) => {
+    const i = ledger?.parts.findIndex((x) => x.logId === id) ?? -1;
+    return i < 0 ? 999 : i;
+  };
+  const ordered = [...rows].sort((a, b) => at(a.logId) - at(b.logId));
+  const lp = (id: number) => ledger?.parts.find((x) => x.logId === id) ?? null;
+  const flipped = part !== null && lp(part)?.teamsFlipped === true;
   return (
     <div className="part-picker">
       <label className="an-field">
         <span className="an-label">{t("Reading")}</span>
         <select value={part ?? ""} onChange={(e) => onPick(e.target.value === "" ? null : Number(e.target.value))}>
           <option value="">{tx("The whole match · {parts} logs combined", { parts: d.parts.length })}</option>
-          {rows.map((p) => (
-            <option key={p.logId} value={p.logId}>
-              {tx("{0} · log {logId}{2}", { "0": capitalize(splitMap(p.map).name ?? "unknown"), "2": "detail" in p && p.detail ? "" : t(" (fetches)"), logId: p.logId })}
-            </option>
-          ))}
+          {ordered.map((p) => {
+            const l = lp(p.logId);
+            const map = capitalize(splitMap(p.map).name ?? "unknown");
+            return (
+              <option key={p.logId} value={p.logId}>
+                {l
+                  ? tx("{0} · {1} · log {logId}{2}", { "0": map, "1": l.label === "whole map" ? t("whole map") : t("game {0}", { "0": l.label.replace("game ", "") }), "2": "detail" in p && p.detail ? "" : t(" (fetches)"), logId: p.logId })
+                  : tx("{0} · log {logId}{2}", { "0": map, "2": "detail" in p && p.detail ? "" : t(" (fetches)"), logId: p.logId })}
+              </option>
+            );
+          })}
         </select>
       </label>
       {fetching && <span className="hint"><Spinner /> {t("Fetching…")}</span>}
-      {part !== null && !fetching && <span className="hint">{t("this log alone")}</span>}
+      {part !== null && !fetching && (
+        <span className="hint" title={flipped ? t("Each log names its own RED: whoever was RED when it began. The whole match keeps each team on one colour.") : undefined}>
+          {flipped ? t("this log alone; its RED is the whole match's BLU") : t("this log alone")}
+        </span>
+      )}
       {error && <p className="error">{error}</p>}
     </div>
   );

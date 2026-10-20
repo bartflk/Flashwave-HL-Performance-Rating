@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { MatchContext, MatchDetail, MatchSides, SideTeam, TeamSeason } from "../../api/types";
+import type { Ledger, MatchContext, MatchDetail, MatchSides, SideTeam, TeamSeason } from "../../api/types";
 import { capitalize, formatDate, minutes, splitMap, teamLabel } from "../../lib/format";
 import { openTeam } from "../../lib/goto";
 import { t, tx } from "../../lib/i18n";
@@ -17,7 +17,7 @@ import { Backdrop } from "../Backdrop";
  * stood that season when the match is an official; RED and BLU otherwise.
  * The map's own overview sits faintly behind it.
  */
-export function MatchHero({ d }: { d: MatchDetail }) {
+export function MatchHero({ d, ledger }: { d: MatchDetail; ledger?: Ledger | null }) {
   const sidesQ = useQuery({ queryKey: ["match_sides", d.logId], queryFn: () => api.getMatchSides(d.logId), staleTime: 5 * 60_000 });
   const sides = sidesQ.data ?? null;
 
@@ -103,7 +103,7 @@ export function MatchHero({ d }: { d: MatchDetail }) {
             <span className="mx-colon">:</span>
             <span className={`mx-n team-${right.toLowerCase()}`}>{score(right)}</span>
           </div>
-          <MapLine d={d} maps={maps} single={single} left={left} />
+          <MapLine d={d} maps={maps} single={single} left={left} ledger={ledger ?? null} />
           {roundsDiffer && (
             <span className="hint" title={t("Rounds won in the logs. In stopwatch this is not the same as ETF2L's result.")}>
               {tx("Rounds in the logs {0}", { "0": <strong>{rounds(left)}–{rounds(right)}</strong> })}
@@ -247,16 +247,28 @@ function Meetings({ team, opp, oppName, current }: { team: number; opp: number; 
 }
 
 /** The map, or each map of a combined log with the rounds won on it. */
-function MapLine({ d, maps, single, left }: { d: MatchDetail; maps: string[]; single: string | null; left: "Red" | "Blue" }) {
+function MapLine({ d, maps, single, left, ledger }: { d: MatchDetail; maps: string[]; single: string | null; left: "Red" | "Blue"; ledger: Ledger | null }) {
   if (maps.length > 1) {
     return (
       <span className="mx-maps">
         {(d.segments ?? []).map((s, i) => {
           const [a, b] = left === "Blue" ? [s.blueWins, s.redWins] : [s.redWins, s.blueWins];
           const cls = d.myTeam ? (a > b ? "result-W" : a < b ? "result-L" : "") : "";
+          // ETF2L's result for the map beside the rounds (Q84): a stopwatch
+          // map is scored in games, which rounds won do not show.
+          const lm = ledger?.maps.find((m) => m.firstRound === s.firstRound) ?? null;
+          const etf2l = lm && lm.etf2lRed !== null && lm.etf2lBlue !== null ? (left === "Blue" ? [lm.etf2lBlue, lm.etf2lRed] : [lm.etf2lRed, lm.etf2lBlue]) : null;
+          const tip = [
+            t("Rounds {firstRound}–{lastRound}", { firstRound: s.firstRound, lastRound: s.lastRound }),
+            etf2l ? t("ETF2L: {0}–{1}", { "0": etf2l[0], "1": etf2l[1] }) : null,
+            lm?.agrees === false ? t("The rounds and ETF2L's result disagree") : null,
+          ]
+            .filter(Boolean)
+            .join(" · ");
           return (
-            <span key={i} className="mx-map-chip" title={t("Rounds {firstRound}–{lastRound}", { firstRound: s.firstRound, lastRound: s.lastRound })}>
+            <span key={i} className={lm?.agrees === false ? "mx-map-chip mx-map-disagrees" : "mx-map-chip"} title={tip}>
               {capitalize(splitMap(s.map).name ?? "unknown")} <strong className={cls}>{a}–{b}</strong>
+              {etf2l && (etf2l[0] !== a || etf2l[1] !== b) && <span className="mx-map-etf2l">{t("ETF2L {0}–{1}", { "0": etf2l[0], "1": etf2l[1] })}</span>}
             </span>
           );
         })}

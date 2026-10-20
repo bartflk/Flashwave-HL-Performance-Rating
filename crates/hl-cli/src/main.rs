@@ -1659,6 +1659,54 @@ async fn run() -> Result<()> {
             Ok(())
         }
 
+        ["combined-audit", log] => {
+            // A combined log's ledger: every round's part, map and sides,
+            // each part's demo, each map beside ETF2L's result (Q84).
+            let db = Db::connect(&db_path).await?;
+            let Some(l) = hl_ingest::combined::ledger(&db, log.parse()?).await? else {
+                println!("no parts known for this log");
+                return Ok(());
+            };
+            for p in &l.parts {
+                println!(
+                    "log {:<9} {:<22} {:<10} rounds {:?}  teams {}  demo {}",
+                    p.log_id,
+                    p.map.clone().unwrap_or_default(),
+                    p.label,
+                    p.rounds,
+                    match p.teams_flipped {
+                        Some(true) => "flipped",
+                        Some(false) => "same",
+                        None => "?",
+                    },
+                    p.demos_tf_id.map_or("-".into(), |d| d.to_string())
+                );
+            }
+            for m in &l.maps {
+                println!(
+                    "{:<22} rounds {}-{}  red {} blue {}  ETF2L {}  {}",
+                    m.map,
+                    m.first_round,
+                    m.last_round,
+                    m.red_rounds,
+                    m.blue_rounds,
+                    match (m.etf2l_red, m.etf2l_blue) {
+                        (Some(r), Some(b)) => format!("{r}-{b}"),
+                        _ => "-".into(),
+                    },
+                    match m.agrees {
+                        Some(true) => "agrees",
+                        Some(false) => "DISAGREES",
+                        None => "",
+                    }
+                );
+            }
+            for p in &l.problems {
+                println!("  ! {p}");
+            }
+            Ok(())
+        }
+
         ["medals-audit"] => {
             // The medals read from the results against ETF2L's own final
             // placings, for every division ETF2L has placed.

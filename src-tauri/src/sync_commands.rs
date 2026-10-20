@@ -1441,6 +1441,18 @@ pub async fn etf2l_daily_check(state: State<'_, AppState>, force: Option<bool>) 
     Ok(hl_ingest::leagues::daily_check(&state.db, &state.sources, now, force.unwrap_or(false)).await?)
 }
 
+/// A combined log's ledger: each round's part, map and sides, each part's
+/// demo, each map beside ETF2L's result (Q84).
+#[tauri::command]
+pub async fn get_combined_ledger(state: State<'_, AppState>, log_id: i64) -> CmdResult<Option<hl_ingest::combined::Ledger>> {
+    // ETF2L's per-map results need the official the log was; found once and
+    // kept, so only the first look asks ETF2L.
+    if state.db.league_match_of_log(log_id).await?.is_none() {
+        let _ = hl_ingest::leagues::league_sides(&state.db, &state.sources, log_id).await;
+    }
+    Ok(hl_ingest::combined::ledger(&state.db, log_id).await?)
+}
+
 /// Read ETF2L's seasons again now -- results, tables and their placings --
 /// so a final played today shows its medals without a whole sync (Flashy:
 /// "teams and players with medals to be updated with this, like a

@@ -2432,3 +2432,36 @@ export interface DailyCheck {
   confirmed: number;
   changed: MedalChange[];
 }
+
+/** A combined log, round by round (Q84): each part's map, game and sides,
+ *  its demo, and each map beside ETF2L's result. */
+export interface LedgerPart {
+  logId: number;
+  map: string | null;
+  /** "game 1" on a stopwatch map, "whole map" on KOTH. */
+  label: string;
+  rounds: number[];
+  /** This log's own RED is the whole match's BLU; null when it cannot be told. */
+  teamsFlipped: boolean | null;
+  demosTfId: number | null;
+}
+
+export interface LedgerMap {
+  map: string;
+  firstRound: number;
+  lastRound: number;
+  redRounds: number;
+  blueRounds: number;
+  etf2lRed: number | null;
+  etf2lBlue: number | null;
+  /** null when it cannot be told: no ETF2L result, or a stopwatch map level on rounds. */
+  agrees: boolean | null;
+}
+
+export interface Ledger {
+  logId: number;
+  rounds: Array<{ roundNum: number; map: string | null; part: number | null; coloursSwapped: boolean; winner: string | null }>;
+  parts: LedgerPart[];
+  maps: LedgerMap[];
+  problems: string[];
+}

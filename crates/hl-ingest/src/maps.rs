@@ -235,7 +235,11 @@ pub async fn resolve_all(db: &Db) -> Result<ResolveSummary> {
             ..Default::default()
         };
         if !single {
-            input.parts = parts_of(db, parse_ids(l.duplicate_of.as_deref())).await?;
+            // The parts trends.tf listed, and those found on logs.tf and
+            // folded into it since (Q84: the S36 High final's eight).
+            let mut ids = parse_ids(l.duplicate_of.as_deref());
+            ids.extend(db.log_and_parts(l.log_id).await?.into_iter().filter(|id| *id != l.log_id));
+            input.parts = parts_of(db, ids).await?;
             input.meta_maps = meta_maps(db, l.log_id, &rs.iter().map(|r| r.start).collect::<Vec<_>>()).await?;
         }
 
@@ -287,10 +291,13 @@ async fn parts_of(db: &Db, ids: Vec<i64>) -> Result<Vec<PartIn>> {
         for p in db.part_rows(&[id]).await? {
             match p.map.as_deref().filter(|m| is_map_name(m)) {
                 Some(map) => {
-                    let round_starts = match db.part_raw(p.log_id).await? {
-                        Some(json) => round_starts(&json),
-                        None => Vec::new(),
+                    // Its JSON where the part fetch kept it, else where an
+                    // import stored it as a log of its own.
+                    let json = match db.part_raw(p.log_id).await? {
+                        Some(json) => Some(json),
+                        None => db.raw_log(p.log_id).await?,
                     };
+                    let round_starts = json.as_deref().map(round_starts).unwrap_or_default();
                     out.push(PartIn { map: map.to_string(), round_starts, uploaded: p.uploaded, duration: p.duration });
                 }
                 None => stack.extend(parse_ids(p.duplicate_of.as_deref())),

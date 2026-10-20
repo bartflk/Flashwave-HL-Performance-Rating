@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../../api/client";
 import { errorMessage, type DemosTfFound, type DemoLinked, type DemoView, type MatchDetail, type ReRead } from "../../api/types";
@@ -8,6 +8,7 @@ import { beginDownload, failDownload, useDownload } from "../../lib/downloads";
 import { beforeDemosTf } from "../../lib/stv";
 import { locale, t, tx } from "../../lib/i18n";
 import { Spinner } from "../Spinner";
+import { capitalize, splitMap } from "../../lib/format";
 
 /**
  * Demo linking: the demos behind this match, and two ways to add one --
@@ -74,6 +75,8 @@ export function DemoPanel({ d }: { d: MatchDetail }) {
         <DemoRow key={demo.demoId} demo={demo} />
       ))}
 
+      <PartDemos d={d} />
+
       <div className="demo-sources">
         <div className="demo-source" id="demo-linking-download">
           <strong>{fromEtf2l ? t("SourceTV demo on ETF2L") : t("SourceTV demo on demos.tf")}</strong>
@@ -119,6 +122,39 @@ export function DemoPanel({ d }: { d: MatchDetail }) {
         <DropZone d={d} />
       </div>
     </section>
+  );
+}
+
+/**
+ * A combined log's demos, one per part, under its map and game (Q84): the
+ * download fetches them all; here is which is which, and where each is on
+ * demos.tf.
+ */
+function PartDemos({ d }: { d: MatchDetail }) {
+  const ledger = useQuery({ queryKey: ["ledger", d.logId], queryFn: () => api.getCombinedLedger(d.logId), enabled: d.parts.length > 0, staleTime: 5 * 60_000 }).data;
+  if (!ledger || ledger.parts.length === 0) return null;
+  return (
+    <div className="part-demos">
+      <strong>{t("Its logs and their demos")}</strong>
+      <ul>
+        {ledger.parts.map((p) => (
+          <li key={p.logId}>
+            <span className="part-demos-map">
+              {capitalize(splitMap(p.map).name ?? "unknown")} · {p.label === "whole map" ? t("whole map") : t("game {0}", { "0": p.label.replace("game ", "") })}
+            </span>
+            <span className="muted">{t("rounds {0}", { "0": p.rounds.join(", ") })}</span>
+            {p.teamsFlipped && <span className="muted" title={t("Each log names its own RED: whoever was RED when it began. The whole match keeps each team on one colour.")}>{t("colours the other way")}</span>}
+            {p.demosTfId !== null ? (
+              <a href={`https://demos.tf/${p.demosTfId}`} target="_blank" rel="noreferrer">
+                demos.tf {p.demosTfId} ↗
+              </a>
+            ) : (
+              <span className="muted">{t("no demo yet")}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

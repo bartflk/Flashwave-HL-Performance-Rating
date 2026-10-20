@@ -72,6 +72,7 @@ import type {
   Etf2lRefreshed,
   LeagueSides,
   DailyCheck,
+  Ledger,
   CalloutFile,
   PositionsView,
   MapTendencies,
@@ -1536,6 +1537,7 @@ export const mockApi: Api = {
     if (on) mockBookmarks.unshift({ ...b, added: Math.floor(Date.now() / 1000) });
     return delay([...mockBookmarks], 50);
   },
+  getCombinedLedger: (_logId: number) => delay<Ledger | null>(null, 150),
   getLeagueSides: (_logId: number) => delay<LeagueSides | null>(null, 200),
   etf2lDailyCheck: (_force = false) =>
     delay<DailyCheck>(

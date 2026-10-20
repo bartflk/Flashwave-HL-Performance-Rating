@@ -48,6 +48,7 @@ pub mod mapview;
 pub mod overview;
 pub mod mapres;
 pub mod maps;
+pub mod combined;
 pub mod etf2l;
 pub mod teammates;
 pub mod demos;
