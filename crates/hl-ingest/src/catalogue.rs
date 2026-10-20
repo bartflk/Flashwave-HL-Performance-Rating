@@ -337,6 +337,14 @@ impl Catalogue {
         out
     }
 
+    /// Whether a player joined a team after `after` and by the team's last
+    /// match of the season, by ETF2L's transfers, and was still on it then:
+    /// a sub who played as a merc before joining.
+    fn joined_after(&self, account: u32, season: i64, team: i64, after: i64) -> bool {
+        let (Some(events), Some(end)) = (self.transfers.get(&(team, account)), self.season_end.get(&(season, team))) else { return false };
+        events.iter().any(|(at, joined)| *joined && *at >= after && at <= end) && self.on_roster_at_end(account, season, team)
+    }
+
     /// Whether a player was still on a team's roster at its last match of
     /// the season, by ETF2L's transfers. Without transfers for them and
     /// that team, or with none from before then, they are taken to be.
@@ -847,7 +855,11 @@ impl Catalogue {
             if !Self::played(m) {
                 continue;
             }
-            if !self.mercs.contains(&(*match_id, account)) {
+            // A merc who joined the team later that season and was on its
+            // roster at the end is one of its players (Flashy: one official
+            // as a merc in week 1, on DD14's roster from the next day, and
+            // DD14 won S36 High): only a merc who never joined is not.
+            if !self.mercs.contains(&(*match_id, account)) || self.joined_after(account, m.season, team, m.time.unwrap_or(0)) {
                 rostered.insert((m.season, team));
             }
             let (division, tier) = self.division_of(m);
@@ -2207,6 +2219,29 @@ mod tests {
         let (_, won, officials) = c.player(500, &medals);
         assert!(won.is_empty(), "no medal for a merc appearance");
         assert_eq!(officials.len(), 1, "but the official is theirs");
+    }
+
+    #[test]
+    fn a_merc_who_joins_later_that_season_takes_the_medal() {
+        // Flashy's S36 High: one official as a merc in week 1 (time 1), on
+        // the roster from time 2, and the team wins the final (time 3).
+        // Account 501 mercs once too and never joins.
+        let mut c = cat(vec![
+            m(1, 33, "regular", Some("Open"), "Open", Some("Week 1"), 11, 12, 6, 0),
+            m(3, 33, "Playoffs", None, "Open", Some("Grand Final"), 11, 13, 6, 0),
+        ]);
+        c.rosters.get_mut(&1).unwrap().push((500, Some(11), "joined later".into()));
+        c.rosters.get_mut(&1).unwrap().push((501, Some(11), "never joined".into()));
+        c.mercs.insert((1, 500));
+        c.mercs.insert((1, 501));
+        c.season_end = Catalogue::season_ends(&c.matches);
+        c.transfers.insert((11, 500), vec![(2, true)]);
+        let medals = c.medals();
+        let (seasons, won, _) = c.player(500, &medals);
+        assert_eq!(won.len(), 1, "on the roster at the end, and played for it");
+        assert!(!seasons[0].merc, "a player of the team, not a merc");
+        let (_, won, _) = c.player(501, &medals);
+        assert!(won.is_empty(), "a merc who never joined");
     }
 
     #[test]
