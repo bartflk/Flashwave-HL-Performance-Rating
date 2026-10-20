@@ -170,12 +170,21 @@ pub async fn for_log_with(db: &Db, log_id: i64, me: SteamId, progress: &mut (dyn
     // answers for the owner and the STV for the other seventeen: two passes
     // over two files, but neither player's numbers are the second-best ones
     // available. Reading both for everybody would count every kill twice.
-    let jobs: Vec<(&hl_db::LinkedDemo, Scope, bool)> = match (pov, stv) {
-        (Some(p), Some(s)) => vec![(p, Scope::Owner, false), (s, Scope::Others, true)],
-        (Some(p), None) => vec![(p, Scope::Owner, true)],
-        (None, Some(s)) => vec![(s, Scope::All, true)],
-        (None, None) => vec![(fallback, Scope::Owner, true)],
-    };
+    //
+    // A combined log has one STV per part (Q84: the S36 High final, six),
+    // each covering its own rounds: every one of them is read, not only the
+    // first, which had left five of the six maps' halves without movement.
+    let stvs: Vec<&hl_db::LinkedDemo> = demos.iter().filter(usable).filter(|d| d.kind == "stv").collect();
+    let mut jobs: Vec<(&hl_db::LinkedDemo, Scope, bool)> = Vec::new();
+    match (pov, stv) {
+        (Some(p), Some(_)) => {
+            jobs.push((p, Scope::Owner, false));
+            jobs.extend(stvs.iter().map(|s| (*s, Scope::Others, true)));
+        }
+        (Some(p), None) => jobs.push((p, Scope::Owner, true)),
+        (None, Some(_)) => jobs.extend(stvs.iter().map(|s| (*s, Scope::All, true))),
+        (None, None) => jobs.push((fallback, Scope::Owner, true)),
+    }
 
     let my_id = me.to_steamid3();
     let of = jobs.len();
@@ -443,7 +452,16 @@ pub async fn derive_all(
     mut progress: impl FnMut(usize, usize, Option<i64>, Option<crate::sync::ReadingMatch>),
 ) -> Result<AimSummary> {
     let ids = db.aim_queue().await?;
-    let done = if all { Default::default() } else { db.aim_logs(VERSION).await? };
+    let mut done = if all { Default::default() } else { db.aim_logs(VERSION).await? };
+    // Once: the matches with several STV demos, read when only the first
+    // was (Q84: the S36 High final's five other halves had no movement).
+    const MULTI_STV_KEY: &str = "aim_multi_stv_reread";
+    let reread = db.get_setting(MULTI_STV_KEY).await?.is_none();
+    if reread {
+        for id in db.multi_stv_logs().await? {
+            done.remove(&id);
+        }
+    }
     let todo: Vec<i64> = ids.iter().copied().filter(|id| !done.contains(id)).collect();
     let mut out = AimSummary { total: ids.len(), ..AimSummary::default() };
     for (i, log_id) in todo.iter().copied().enumerate() {
@@ -476,6 +494,9 @@ pub async fn derive_all(
         out.kills += rows.len();
     }
     progress(todo.len(), todo.len(), None, None);
+    if reread {
+        db.set_setting(MULTI_STV_KEY, "1").await?;
+    }
     Ok(out)
 }
 

@@ -122,6 +122,11 @@ impl Db {
              FROM log_index i
              WHERE i.demos_tf_id IS NULL
                AND i.played_at IS NOT NULL
+               -- A combined log is not a recording: its demos are its
+               -- parts' (Q84: the S36 final and its two per-map combines
+               -- had each taken a copy of a part's demo).
+               AND NOT EXISTS (SELECT 1 FROM log_index p WHERE p.superseded_by = i.log_id)
+               AND lower(COALESCE(i.title, '')) NOT LIKE '%combined%'
                AND ( COALESCE(i.format_override, i.format) = 'highlander'
                   OR (COALESCE(i.format_override, i.format) IS NULL AND COALESCE(i.player_count, 0) >= 16) )
              ORDER BY i.played_at DESC",
@@ -157,6 +162,21 @@ impl Db {
         .bind(since)
         .fetch_all(self.pool())
         .await?)
+    }
+
+    /// Take back the demos.tf ids combined logs were given as if they were
+    /// recordings: a log with parts, and a "Combined ..." part. Their STV is
+    /// their parts' demos. Returns how many were cleared.
+    pub async fn clear_combined_demo_ids(&self) -> Result<u64> {
+        Ok(sqlx::query(
+            "UPDATE log_index SET demos_tf_id = NULL, demos_tf_map = NULL
+              WHERE demos_tf_id IS NOT NULL
+                AND (EXISTS (SELECT 1 FROM log_index p WHERE p.superseded_by = log_index.log_id)
+                     OR (superseded_by IS NOT NULL AND lower(COALESCE(title, '')) LIKE '%combined%'))",
+        )
+        .execute(self.pool())
+        .await?
+        .rows_affected())
     }
 
     /// A log and the parts folded into it (a combined log's), for a lookup

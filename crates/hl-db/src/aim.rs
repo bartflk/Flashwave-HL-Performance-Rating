@@ -457,6 +457,17 @@ impl Db {
     }
 
     /// Logs with a demo linked and a clock to place it: the aim pass's queue.
+    /// Logs linked to more than one STV demo: a combined log, one per part.
+    /// Read before every STV was (Q84), they need reading again once.
+    pub async fn multi_stv_logs(&self) -> Result<Vec<i64>> {
+        Ok(sqlx::query_scalar(
+            "SELECT l.log_id FROM demo_link l JOIN demo d ON d.demo_id = l.demo_id
+              WHERE d.kind = 'stv' GROUP BY l.log_id HAVING COUNT(DISTINCT l.demo_id) > 1",
+        )
+        .fetch_all(self.pool())
+        .await?)
+    }
+
     pub async fn aim_queue(&self) -> Result<Vec<i64>> {
         Ok(sqlx::query_scalar(
             "SELECT DISTINCT l.log_id

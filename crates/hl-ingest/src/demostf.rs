@@ -150,6 +150,7 @@ pub fn match_demos(logs: &[Unlinked], demos: &[DemosTfMeta]) -> Vec<(i64, i64, O
 /// uploaded up to a few hours after its log, so the new pages reach a day
 /// past the old top.
 pub async fn index(db: &Db, sources: &Sources, me: SteamId) -> Result<Found> {
+    db.clear_combined_demo_ids().await?;
     let logs = db.logs_without_demo_id().await?;
     if logs.is_empty() {
         return Ok(Found::default());

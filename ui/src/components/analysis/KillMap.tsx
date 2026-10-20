@@ -241,11 +241,18 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
       return next;
     });
   const shownRoutes = useMemo(() => routes.filter((r) => !hidden.has(r.died ? "died" : "lived")), [routes, hidden]);
+  // The demos that recorded the rounds on screen: a combined log has one per
+  // part, each on its own map, and their buildings belong on their own map
+  // (Flashy: Upward's and Swiftwater's sentries drawn beside Product).
+  const sliceDemos = useMemo(() => {
+    if (slice.rounds === null) return null;
+    return new Set((pathQ.data ?? []).filter((r) => r.roundNum !== null && slice.rounds!.has(r.roundNum)).map((r) => r.demoId));
+  }, [pathQ.data, slice.rounds]);
   const placed = useMemo(() => {
-    const all = buildingQ.data ?? [];
+    const all = (buildingQ.data ?? []).filter((b) => sliceDemos === null || sliceDemos.has(b.demoId));
     const ends = teleEnds(all, routes);
     return all.map((b, i) => ({ b, kind: b.kind === "teleporter" ? (b.end ?? ends.get(i) ?? "teleporter") : b.kind }));
-  }, [buildingQ.data, routes]);
+  }, [buildingQ.data, routes, sliceDemos]);
   const nDied = routes.filter((r) => r.died).length;
   const nLived = routes.length - nDied;
   const kindCount = (kind: string) => placed.filter((p) => p.kind === kind).length;
