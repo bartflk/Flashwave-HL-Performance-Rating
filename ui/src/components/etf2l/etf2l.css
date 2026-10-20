@@ -1385,6 +1385,19 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
 .e2-lineup .os-chip { margin-left: 0; }
 
 /* The header's tools: a refresh beside the search. */
-.e2-head-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.e2-refresh { display: inline-flex; align-items: center; gap: 8px; }
-.e2-refresh .km-chip { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.e2-head-tools { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex: 0 1 420px; min-width: 260px; margin-left: auto; }
+.e2-head-tools .e2-search { flex: 1 1 auto; min-width: 0; }
+.e2-refresh { position: relative; display: inline-flex; flex: none; }
+.e2-refresh-btn {
+  display: grid; place-items: center; width: 38px; height: 38px; padding: 0;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--sunken, var(--panel));
+  color: var(--muted); font-size: 1.05rem; cursor: pointer;
+}
+.e2-refresh-btn:hover:not(:disabled) { color: var(--text); border-color: var(--accent-dim); }
+.e2-refresh-btn:disabled { cursor: progress; }
+.e2-refresh-msg {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 5; white-space: nowrap;
+  padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel);
+  font-size: 0.78rem; color: var(--muted); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+@media (max-width: 900px) { .e2-head-tools { flex-basis: 100%; margin-left: 0; } }

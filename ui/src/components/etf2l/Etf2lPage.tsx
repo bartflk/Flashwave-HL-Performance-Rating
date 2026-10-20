@@ -83,6 +83,7 @@ function RefreshEtf2l() {
       const r = await api.refreshEtf2l();
       setMsg(t("{0} results read", { "0": r.results.toLocaleString() }));
       void qc.invalidateQueries();
+      window.setTimeout(() => setMsg(null), 5000);
     } catch (e) {
       setMsg(errorMessage(e));
     } finally {
@@ -90,11 +91,19 @@ function RefreshEtf2l() {
     }
   }
   return (
+    // A square beside the search, the same height (Flashy: "placed
+    // horribly"); what it found under it for a few seconds.
     <span className="e2-refresh">
-      <button className="km-chip" onClick={() => void go()} disabled={busy} title={t("Read ETF2L's seasons, results and final standings again, for medals and tables")}>
-        {busy ? <Spinner /> : <span aria-hidden>⟳</span>} {busy ? t("Reading ETF2L…") : t("Refresh ETF2L")}
+      <button
+        className="e2-refresh-btn"
+        onClick={() => void go()}
+        disabled={busy}
+        aria-label={t("Refresh ETF2L")}
+        title={`${t("Refresh ETF2L")}: ${t("Read ETF2L's seasons, results and final standings again, for medals and tables")}`}
+      >
+        {busy ? <Spinner label={t("Reading ETF2L…")} /> : <span aria-hidden>⟳</span>}
       </button>
-      {msg && <span className="hint">{msg}</span>}
+      {msg && <span className="e2-refresh-msg">{msg}</span>}
     </span>
   );
 }
