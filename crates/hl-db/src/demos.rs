@@ -454,6 +454,19 @@ impl Db {
         Ok(())
     }
 
+    /// A log's upload time and the end of its last round, on its own clock:
+    /// enough to work out its clock's offset where it has no server log.
+    pub async fn log_upload_and_end(&self, log_id: i64) -> Result<Option<(i64, i64)>> {
+        let row: Option<(Option<i64>, Option<i64>)> = sqlx::query_as(
+            "SELECT (SELECT played_at FROM log_index WHERE log_id = ?1),
+                    (SELECT MAX(start_time + length_s) FROM match_round WHERE log_id = ?1)",
+        )
+        .bind(log_id)
+        .fetch_optional(self.pool())
+        .await?;
+        Ok(row.and_then(|(a, b)| Some((a?, b?))))
+    }
+
     pub async fn log_clock_offset(&self, log_id: i64) -> Result<Option<i64>> {
         Ok(sqlx::query_scalar("SELECT offset_s FROM log_clock WHERE log_id = ?1")
             .bind(log_id)

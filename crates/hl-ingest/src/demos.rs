@@ -160,6 +160,15 @@ async fn place_logs(db: &Db) -> Result<Vec<LogClock>> {
     Ok(clocks)
 }
 
+/// A log's clock offset: its server log's, else its upload against the end
+/// of its last round, to the whole hour (the rule `LogClock` uses).
+async fn clock_of(db: &Db, log_id: i64) -> Result<Option<i64>> {
+    if let Some(o) = db.log_clock_offset(log_id).await? {
+        return Ok(Some(o));
+    }
+    Ok(db.log_upload_and_end(log_id).await?.map(|(uploaded, end)| (uploaded - end).div_euclid(3600) * 3600))
+}
+
 /// Add linked demos, jump ticks and sidecar markers to a built match page.
 pub async fn enrich(db: &Db, log: &NormalizedLog, detail: &mut MatchDetail) -> Result<()> {
     let demos = db.demos_for_log(log.log_id).await?;
@@ -168,23 +177,43 @@ pub async fn enrich(db: &Db, log: &NormalizedLog, detail: &mut MatchDetail) -> R
     }
     detail.demos = demos.iter().map(view).collect();
 
-    let Some(offset) = db.log_clock_offset(log.log_id).await? else {
+    // Each round's clock offset. A log with a server log has one; a combined
+    // log has none (no server log of its own), but its rounds are its parts'
+    // rounds to the second, and each part's clock is its upload against its
+    // last round's end (Q84: the S36 High final, six parts, six demos).
+    let own = db.log_clock_offset(log.log_id).await?;
+    let mut offsets: Vec<Option<i64>> = vec![own; log.rounds.len()];
+    if own.is_none() {
+        let parts: Vec<i64> = db.log_and_parts(log.log_id).await?.into_iter().filter(|id| *id != log.log_id).collect();
+        let mut by_start: std::collections::HashMap<i64, i64> = std::collections::HashMap::new();
+        for p in parts {
+            let Some(offset) = clock_of(db, p).await? else { continue };
+            for (_, start, _, _) in db.all_rounds_of(p).await? {
+                by_start.insert(start, offset);
+            }
+        }
+        for (o, r) in offsets.iter_mut().zip(&log.rounds) {
+            *o = r.start_time.and_then(|s| by_start.get(&s).copied());
+        }
+    }
+    let offset = offsets.iter().flatten().next().copied();
+    let Some(offset) = offset else {
         return Ok(());
     };
 
     // The first linked demo that contains a moment gets the jump.
-    let jump_at = |raw_time: i64, lead_s: f64| -> Option<Jump> {
+    let jump_at = |raw_time: i64, offset: i64, lead_s: f64| -> Option<Jump> {
         demos.iter().find_map(|d| {
             let tick = tick_for(raw_time, offset, d.start_utc?, d.tick_rate?, d.ticks, lead_s)?;
             Some(Jump { demo_id: d.demo_id, tick })
         })
     };
 
-    for (round, raw) in detail.rounds.iter_mut().zip(&log.rounds) {
-        let Some(raw_start) = raw.start_time else { continue };
-        round.jump = jump_at(raw_start, 0.0);
+    for ((round, raw), o) in detail.rounds.iter_mut().zip(&log.rounds).zip(&offsets) {
+        let (Some(raw_start), Some(o)) = (raw.start_time, *o) else { continue };
+        round.jump = jump_at(raw_start, o, 0.0);
         for ev in &mut round.events {
-            ev.jump = jump_at(raw_start + ev.at_s, JUMP_LEAD_S);
+            ev.jump = jump_at(raw_start + ev.at_s, o, JUMP_LEAD_S);
         }
     }
 
