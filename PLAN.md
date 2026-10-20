@@ -1500,6 +1500,7 @@ from testers (function, boSe, Taiga) is marked with who asked.
 | Q81 | **Loading spinners wherever the app waits** (Flashy) | small | One `Spinner` (a ring in the accent, sized to the text, still under reduced motion) and a `Loading` line that pairs it with what is happening ("Reading the match's page on ETF2L…"). Every "Loading…"/"Reading…"/"Fetching…" hint (about 50) becomes one; buttons that wait (Fetch log, Sync, Add theme, Rate) show it inside while busy; a refetch keeps the old content dimmed with a small spinner in the panel's corner instead of blanking it. **Done (18 Oct)**: Spinner and Loading in ~35 places; Refreshing, a corner spinner while kept content is fetched again, on the Profile, Teammates, Top players, a season's divisions, the Players and ETF2L searches and the Matches list. |
 | ~~Q82~~ | ~~**Link tabs on a match's page** (Flashy)~~ | **Done (18 Oct).** small | The match page is one long column of folds (Scoreboard, Matchups, Demos, Spychecks, Ping, Reflects, Cart, Positions, Rounds, Kill by kill). A sticky bar of link tabs under the match header, as on the Profile, jumps to each section, opening its fold, and marks the one in view; sections the match has no data for are left out. `goTo` learns a match section so a link (a bookmark, a tooltip's "see …") can open the match there. |
 | ~~Q83~~ | ~~**Ping merged into the scoreboard** (Flashy)~~ | **Done (18 Oct).** small | The Ping fold goes; each scoreboard row gets a Ping column (average, with min–max and the source in its tooltip, as the Ping table has now), sortable like the rest, blank where the log has no ping. The Ping table's glossary entry moves to the column. |
+| Q84 | **A combined log and its demos: every round on its map, every side on its team** (Flashy) | medium | A combined log (one upload of a whole official) is matched to its part logs (Q-parts, 19 Oct) and the parts to their demos.tf demos (20 Oct), but nothing ties each of its rounds to its map, its half, its part, the colours that part was played in, and its demo's ticks. So the S36 High final shows "UPWARD / SWIF / PRODUC" instead of per-map scores, and a part's demo, recorded in the colours as played, can put a team on the wrong side. Plan in section 29. |
 | Q80 | **Every number says what it is and where it comes from** (Flashy: people keep asking how the ratings and MVPs are decided) | medium | A glossary in one file (`lib/glossary.ts`): for each statistic its name, what it means, how it is worked out and its source (logs.tf, the server log, an STV demo, ETF2L, trends.tf, the logs.tf summary). A `StatTip` shows it on hover or focus of any label, table header or number that names a statistic -- a small card, not a browser title. Long answers get a "How it's decided" page in the app: the rating (components, percentiles, the 1.00 scale, pools, form), the MVPs (the final 70 %, the playoff run scaled by its maps, more than half the final's logs, mercs and ringers on the side the logs put them, ties to the winners), medals, ranks, opponent strength and the logs.tf career. The MVP badges and medals open their part of it. **Done (18 Oct)**: glossary entries plus `tip()` for a column's own explanation; on the scoreboard's 16 columns, the rating parts (Matchups and What the rating is made of, from the model's own descriptions), Fights, Aim, the profile's Fights/Seasons/Aim/trend tables, the player card's groups, ping, reflects and the cart; medals and MVPs one tip a group. |
 | Q79 | **Every table sorts by its columns** (Flashy) | medium | One `useSort` hook and a `SortTh` header (click to sort, again to reverse, an arrow and `aria-sort`), numbers, text and dates each compared their own way, the sort remembered per table. Applied to all 38 tables, the scoreboard and the Matches list keeping theirs; list-tables (standings, Top players, the logs.tf careers, seasons, results) first, as that is where the questions are. **Done (18 Oct)**: 36 of 38 tables sort (33 by SortTh, the scoreboard, Matches list and Teammates by their own). Left on purpose: the demos.tf picker, whose order its "newest N" buttons rely on, and the rating guide's class-by-component grid, whose class headers open that class. |
 | Q78 | **Opponent strength on match pages** (Flashy: "sounds cool") | medium | From the built-in logs.tf summary: each player's competitive career rating on the class they played (their most played if they have none on it) and how many games it is over. On the app's match page and the ETF2L match page: every lineup row shows it; each side's strength is the average of its players with 20+ games, side by side as two bars; the gap as "BLU favoured by 0.06"; an upset marked when the weaker side won by more than a map. Players the summary does not know count as unknown, never as 1.00, and the bar says how many it is over. Team pages: the roster's strength from its last lineup. Explained by Q80. **Done (18 Oct)**: match pages, each ETF2L lineup row's career, and team pages: the roster's strength from its latest lineup (its last official's players, or the nine seen most recently) with each player's number, and under its next match both latest lineups side by side. |
@@ -2901,3 +2902,84 @@ uses both.
   score; favoured by / upset. Team pages: their latest lineup's strength.
 - Honest limits, said in the tip: logs.tf JSON only (no server-log parts),
   the summary as of its date, players with under 5 Highlander logs unknown.
+
+## 29. A combined log, its parts and their demos: maps and sides (Q84, Flashy, 20 Oct 2026)
+
+Flashy: "make a plan when there is a combined, and demos with it, to
+correctly match the maps and the sides."
+
+**The case.** The S36 High Grand Final, DD14 against mpreg, is one upload
+(log 4138841, 13 rounds, 116 minutes). Its parts and demos are now found:
+
+| Part | Map | Its rounds in 4138841 | Winners as played | Winners in 4138841 | demos.tf |
+| --- | --- | --- | --- | --- | --- |
+| 4138714 | Upward | 1-2 | Red, Red | Blue, Blue | 1522711 |
+| 4138738 | Upward | 3-4 | Red, Red | Red, Red | 1522735 |
+| 4138765 | Upward | 5-6 | Red, Blue | Blue, Red | 1522749 |
+| 4138794 | Swiftwater | 7-8 | Red, Blue | Red, Blue | 1522776 |
+| 4138812 | Swiftwater | 9-10 | Red, Red | Blue, Blue | 1522792 |
+| 4138830 | Product | 11-13 | Blue x3 | Blue x3 | 1522802 |
+
+(4138777 "Combined Upward" and 4138823 "Combined Swiftwater" are
+combines of the same rounds and add nothing.) The table shows both
+problems:
+
+1. **Maps.** The combined log's map field is free text and `round_map` /
+   `log_segment` are empty for it, so the page cannot say which round was
+   on which map, or score each map.
+2. **Sides.** logs.tf's combine keeps each team on one colour for the whole
+   log; each part, and its demo, uses the colours as played. In 4138714 the
+   team that won both rounds was RED as played and Blue in the combined log.
+   Anything read from a part or its demo (kills, lives, positions, the
+   demo's own team field) has to be flipped where its colours differ, per
+   part, not once per log.
+
+### The plan
+
+1. **A round ledger for every combined log** (`hl-ingest`, new
+   `combined.rs`): for each of its rounds -- the part it came from (by round
+   start time, the rule Q-parts already uses), that part's map, the half
+   within the map, whether the part's colours are swapped against the
+   combined log's, the demo of that part and the tick range of the round in
+   it. Built after the parts are known (import, Find its other logs, sync),
+   stored in `round_map` (source `part`) and a new `combined_round` table
+   (new migration; shipped migrations untouched).
+2. **Swaps by players, not by guesswork.** A part is swapped when most of
+   the combined log's Red players are Blue in it. Players, not names or
+   titles ("DD14 vs RED" / "RED vs DD14" alternate by half), decide; a part
+   too short to tell (fewer than 6 shared players) takes its map's other
+   half's answer, flipped. Written to `match_round.colours_swapped` for the
+   combined log's rounds.
+3. **Maps and per-map scores.** `log_segment` from the ledger: Upward
+   rounds 1-6, Swiftwater 7-10, Product 11-13, each with its team's wins in
+   the combined log's colours. The hero reads "Upward 3-3 - Swiftwater 1-3 -
+   Product 0-3" (whatever the rounds say), not the uploader's map text.
+4. **Teams on sides.** With the ETF2L match found (Q-league sides, 20 Oct)
+   the combined log's Red is mpreg and Blue is DD14 for every round; a part
+   page or demo shows the right team on its own colours by the swap flag.
+   Check against ETF2L's per-map results (its match page lists each map's
+   score): the ledger's map winners must agree with ETF2L's, or the page
+   says the maps could not be confirmed.
+5. **Demos on the combined page.** The round timeline, Kill by kill, lives
+   and positions of the combined log read each round from its part's demo,
+   at that part's ticks, with its colours flipped where the part is
+   swapped. Download fetches every part's demo (already true); the Demos
+   section lists them under their map and half ("Upward, 1st half -
+   1522711").
+6. **The Reading picker by map.** "The whole match", then each map, then
+   each half: "Upward (rounds 1-6)", "Upward, 1st half - log 4138714".
+7. **Audit.** `hl combined-audit <log>` prints the ledger (round, part, map,
+   half, swap, demo, ticks, ETF2L's map result) and flags a part whose
+   swap could not be decided, a round with no part, a part with no demo,
+   and a map whose winner disagrees with ETF2L. Run over every combined
+   log held; the S36 High final becomes a test fixture (its six parts' round
+   starts and players, trimmed).
+
+**Order.** 1-3 first (they fix what the page says), then 4, then 5-6 (they
+need 1's ticks), the audit alongside 1 so each step is checked on the real
+final. Each ships alone.
+
+**Open question.** A map replayed after a crash (Upward here has three parts
+for two halves: 4138714 may be a restart) -- the ledger keeps every part the
+combined log holds, and calls the extra one "Upward, replay" rather than a
+third half, unless its rounds say otherwise.
