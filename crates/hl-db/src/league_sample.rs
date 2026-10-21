@@ -351,6 +351,19 @@ impl Db {
         .await?)
     }
 
+    /// How current the league data is: the newest official held (rated, from
+    /// the built-in snapshot or downloaded), how many officials are held, and
+    /// how many picked logs are still to download.
+    pub async fn league_freshness(&self) -> Result<(Option<i64>, i64, i64)> {
+        Ok(sqlx::query_as(
+            "SELECT (SELECT MAX(l.played_at) FROM league_log l WHERE l.json_source IS NOT NULL),
+                    (SELECT COUNT(DISTINCT l.etf2l_match_id) FROM league_log l WHERE l.json_source IS NOT NULL),
+                    (SELECT COUNT(*) FROM league_log l WHERE l.picked = 1 AND l.json_source IS NULL)",
+        )
+        .fetch_one(self.pool())
+        .await?)
+    }
+
     /// Sample logs that can join the rating pool: picked, with their JSON,
     /// and not one of the owner's own logs (their officials are in the
     /// sample too, and a game must not be in the pool twice).

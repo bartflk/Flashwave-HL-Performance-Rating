@@ -68,6 +68,9 @@ struct SyncReport {
     combined_parts: usize,
     /// ETF2L: officials' results and match pages read.
     etf2l_results: usize,
+    /// The league sample's new officials: logs downloaded and rated.
+    league_logs: usize,
+    league_rated: usize,
     etf2l_details: usize,
     /// Demos on this machine linked to matches, and read for aim and routes.
     demos_linked: usize,
@@ -77,6 +80,39 @@ struct SyncReport {
     seconds: u64,
     /// Steps that failed outright, and why, for the card's warnings.
     problems: Vec<String>,
+}
+
+/// A sync's share of the league catch-up: steps (a log, a server log, a
+/// match page each) and seconds.
+const LEAGUE_STEPS_PER_SYNC: usize = 400;
+const LEAGUE_SECS_PER_SYNC: u64 = 120;
+
+/// How current the league data is, for Settings > League data.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LeagueFreshness {
+    pub newest: Option<i64>,
+    pub officials: i64,
+    pub to_download: i64,
+}
+
+#[tauri::command]
+pub async fn league_freshness(state: State<'_, AppState>) -> CmdResult<LeagueFreshness> {
+    let (newest, officials, to_download) = state.db.league_freshness().await?;
+    Ok(LeagueFreshness { newest, officials, to_download })
+}
+
+/// Settings > League data: catch up with ETF2L's officials now, as far as
+/// it goes, telling the window each step (Flashy: "someone could also
+/// manually update the snapshot for themselves").
+#[tauri::command]
+pub async fn update_league(app: AppHandle, state: State<'_, AppState>) -> CmdResult<hl_ingest::league_sample::CatchUp> {
+    let _guard = BusyGuard::acquire(&state.busy).ok_or_else(|| CmdError::new("busy", "A sync is running; it updates the league too."))?;
+    let (weights, _) = hl_rating::Weights::load(&state.db_path.with_file_name("weights.toml"));
+    Ok(hl_ingest::league_sample::catch_up(&state.db, &state.sources, &weights, 20_000, 3_600, |what, c| {
+        let _ = app.emit("league://progress", serde_json::json!({ "what": what, "logs": c.logs, "raw": c.raw, "rosters": c.rosters }));
+    })
+    .await?)
 }
 
 #[tauri::command]
@@ -216,6 +252,27 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                 Err(e) => {
                     tracing::warn!(error = %format!("{e:#}"), "ETF2L seasons could not be read");
                     report.problems.push(format!("ETF2L seasons: {e:#}"));
+                }
+            }
+
+            // The league's newest officials (Flashy): everyone's logs of the
+            // officials played since the last sync, so the season tables,
+            // medals and MVPs keep up between releases. Capped, so a sync
+            // never becomes a whole download: what is left waits for the
+            // next one, or Settings > League data.
+            stage("Updating the league's officials");
+            {
+                let (weights, _) = hl_rating::Weights::load(&weights_path);
+                match hl_ingest::league_sample::catch_up(&db, &sources, &weights, LEAGUE_STEPS_PER_SYNC, LEAGUE_SECS_PER_SYNC, |_, _| {}).await {
+                    Ok(c) => {
+                        tracing::info!(logs = c.logs, raw = c.raw, rated = c.rated, done = c.done, "league caught up");
+                        report.league_logs = c.logs;
+                        report.league_rated = c.rated;
+                    }
+                    Err(e) => {
+                        tracing::warn!(error = %format!("{e:#}"), "league catch-up failed");
+                        report.problems.push(format!("league officials: {e:#}"));
+                    }
                 }
             }
 

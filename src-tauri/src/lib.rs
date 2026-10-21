@@ -319,6 +319,8 @@ pub fn run() {
             sync_commands::find_parts,
             sync_commands::refresh_etf2l,
             sync_commands::etf2l_daily_check,
+            sync_commands::update_league,
+            sync_commands::league_freshness,
             sync_commands::get_league_sides,
             sync_commands::get_combined_ledger,
             sync_commands::set_match_kind,

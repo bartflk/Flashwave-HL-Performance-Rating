@@ -1317,6 +1317,20 @@ async fn run() -> Result<()> {
                 }
             };
             match rest {
+                ["catch-up", rest @ ..] => {
+                    // What a sync does for the league: the newest officials,
+                    // up to N steps (all of them without a number).
+                    let steps: usize = rest.first().and_then(|s| s.parse().ok()).unwrap_or(20_000);
+                    // As the app does at startup: a fresh database takes the built-in snapshot first.
+                    let _ = hl_ingest::snapshot::apply_built_in(&db).await;
+                    let (weights, _) = hl_rating::Weights::load(&db_path.with_file_name("weights.toml"));
+                    let started = std::time::Instant::now();
+                    let c = hl_ingest::league_sample::catch_up(&db, &sources, &weights, steps, 3_600, |what, _| eprintln!("  {what}")).await?;
+                    println!(
+                        "{} logs, {} server logs, {} match pages, {} searched, {} rated{} in {:.0}s",
+                        c.logs, c.raw, c.rosters, c.searched, c.rated, if c.done { ", caught up" } else { "" }, started.elapsed().as_secs_f64()
+                    );
+                }
                 ["select"] => {
                     // Choose the sample again from what is listed, no requests.
                     let (m, l) = hl_ingest::league_sample::select(&db).await?;

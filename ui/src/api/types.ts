@@ -2465,3 +2465,21 @@ export interface Ledger {
   maps: LedgerMap[];
   problems: string[];
 }
+
+/** How current the league data is: the newest official held, how many are
+ *  held, how many logs are still to download. */
+export interface LeagueFreshness {
+  newest: number | null;
+  officials: number;
+  toDownload: number;
+}
+
+/** What a league catch-up brought in. */
+export interface LeagueCatchUp {
+  logs: number;
+  raw: number;
+  rosters: number;
+  searched: number;
+  rated: number;
+  done: boolean;
+}

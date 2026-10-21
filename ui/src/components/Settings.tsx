@@ -3,7 +3,7 @@ import { LeagueSamplePanel } from "./LeagueSamplePanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../api/client";
-import { errorMessage, type AppStatus, type Cleaned, type DemoIndexSummary } from "../api/types";
+import { errorMessage, type AppStatus, type Cleaned, type DemoIndexSummary, type LeagueCatchUp } from "../api/types";
 import { formatDate } from "../lib/format";
 import { HistoryPanel } from "./HistoryPanel";
 import { SettingsContext, SettingsSection } from "./settings/SettingsSection";
@@ -84,6 +84,7 @@ export function Settings({
       sections: [
         { id: "setup", title: t("Setup"), icon: "gear" },
         { id: "data", title: t("Data"), icon: "database" },
+        { id: "league-data", title: t("League data"), icon: "network" },
         { id: "backups", title: t("Backups"), icon: "archive" },
       ],
     },
@@ -237,6 +238,12 @@ export function Settings({
                 <button className="linkish" style={{ marginTop: 14 }} onClick={onReconfigure}>{tr("Change these")}</button>
               </div>
             </SettingsSection>
+            <SettingsSection id="league-data" icon="network" title={t("League data")} keywords="league snapshot officials update season tables medals"
+              summary={t("Every team's officials, for the season tables, medals and MVPs")}
+              info={t("The app ships with every ETF2L official's ratings up to its release, and each sync adds the officials played since. Update now to catch up in one go.")}>
+              <LeagueDataPanel />
+            </SettingsSection>
+
             <SettingsSection id="data" icon="database" title={t("Data")} keywords="rebuild database reprocess"
               summary={t("Rebuild every match from what is stored")}
               info={t("Works everything out again from the logs already stored, without downloading anything. Worth running after an update that changes how matches are read.")}>
@@ -382,6 +389,71 @@ function UpdatesPanel({ version }: { version: string }) {
 }
 
 /** What changed in each release, newest first; the same notes as on GitHub. */
+/**
+ * The league's officials (Flashy: "update this league sample data every
+ * time you sync ... but also someone could manually update the snapshot for
+ * themselves"): how current it is, and a button that catches up now, with
+ * each step shown as it goes.
+ */
+function LeagueDataPanel() {
+  const qc = useQueryClient();
+  const fresh = useQuery({ queryKey: ["league_freshness"], queryFn: api.leagueFreshness });
+  const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState<{ what: string; logs: number } | null>(null);
+  const [result, setResult] = useState<LeagueCatchUp | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  async function update() {
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    const off = await api.onLeagueProgress((p) => setStep({ what: p.what, logs: p.logs }));
+    try {
+      const r = await api.updateLeague();
+      setResult(r);
+      void qc.invalidateQueries();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      off();
+      setStep(null);
+      setBusy(false);
+    }
+  }
+  const f = fresh.data;
+  return (
+    <div className="panel">
+      <h2>{t("League data")}</h2>
+      <p className="hint" style={{ marginTop: 6 }}>
+        {t("Every team's ETF2L officials, rated: what the season tables, medals, MVPs and player ranks are built from. The app ships with them up to its release; every sync adds the officials played since, a few hundred logs at a time from drops.tf.")}
+      </p>
+      {f && (
+        <dl className="kv" style={{ marginTop: 10 }}>
+          <dt>{t("Newest official")}</dt>
+          <dd>{f.newest ? formatDate(f.newest) : "–"}</dd>
+          <dt>{t("Officials held")}</dt>
+          <dd>{f.officials.toLocaleString()}</dd>
+          <dt>{t("Logs still to download")}</dt>
+          <dd>{f.toDownload.toLocaleString()}</dd>
+        </dl>
+      )}
+      <div className="row" style={{ marginTop: 12 }}>
+        <button onClick={() => void update()} disabled={busy}>
+          {busy ? <><Spinner /> {t("Updating…")}</> : t("Update league data")}
+        </button>
+        {step && <span className="hint">{t("{0} logs so far · {1}", { "0": step.logs, "1": step.what })}</span>}
+      </div>
+      {result && (
+        <p className="hint" style={{ marginTop: 8 }}>
+          {result.done
+            ? t("Up to date: {0} logs downloaded and {1} rated.", { "0": result.logs, "1": result.rated })
+            : t("{0} logs downloaded and {1} rated; the rest continues on the next sync or update.", { "0": result.logs, "1": result.rated })}
+        </p>
+      )}
+      {error && <p className="error">{error}</p>}
+    </div>
+  );
+}
+
 function ChangelogPanel() {
   return (
     <div className="panel">

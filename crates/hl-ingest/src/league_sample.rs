@@ -551,3 +551,82 @@ mod tests {
         assert!(!played_map("Vigil"), "a combined log's title is not a map");
     }
 }
+
+/// What one catch-up brought in.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CatchUp {
+    /// Officials' logs downloaded (their JSON) and their server logs.
+    pub logs: usize,
+    pub raw: usize,
+    /// Match pages read for who played, and officials looked for on logs.tf.
+    pub rosters: usize,
+    pub searched: usize,
+    /// Logs rated and added to the season tables.
+    pub rated: usize,
+    /// Everything picked is here: nothing was left for the next one.
+    pub done: bool,
+}
+
+/// Bring the league sample up to date with ETF2L's latest officials
+/// (Flashy: "update this league sample data every time you sync ... but
+/// also someone could manually update the snapshot for themselves"): the
+/// same steps as the developer's background download, until it is caught
+/// up or `max_steps` / `max_s` run out. On an install that imported the
+/// built-in snapshot only what is newer than it is fetched (the snapshot's
+/// officials are marked held, and the trends.tf listing stops a week before
+/// the newest log held), drops.tf first, so a sync's share is a few hundred
+/// quick requests. What arrives is rated at once and joins the tables.
+pub async fn catch_up(
+    db: &Db,
+    sources: &Sources,
+    w: &hl_rating::Weights,
+    max_steps: usize,
+    max_s: u64,
+    mut progress: impl FnMut(&str, &CatchUp) + Send,
+) -> Result<CatchUp> {
+    let started = std::time::Instant::now();
+    let mut out = CatchUp::default();
+    let mut failing = 0;
+    for _ in 0..max_steps {
+        if started.elapsed().as_secs() >= max_s {
+            break;
+        }
+        let mut what = String::new();
+        let step = step(db, sources, |w: &str| what = w.to_string()).await?;
+        progress(&what, &out);
+        match step {
+            Step::Json { .. } => out.logs += 1,
+            Step::Raw { found, .. } => out.raw += usize::from(found),
+            Step::Roster { .. } => out.rosters += 1,
+            Step::Searched { .. } => out.searched += 1,
+            Step::Discovered(_) => {}
+            Step::Done => {
+                out.done = true;
+                break;
+            }
+            // Nothing can be done until logs.tf's rest ends: the next sync.
+            Step::Waiting => break,
+            Step::Failed { what } => {
+                tracing::info!(what, "league catch-up step failed");
+                failing += 1;
+                if failing >= 3 {
+                    break;
+                }
+                continue;
+            }
+        }
+        failing = 0;
+    }
+    // Rated as they arrived, and their players indexed for the profiles.
+    let mut tried = std::collections::HashSet::new();
+    loop {
+        let n = crate::league_rating::rate_new(db, w, &mut tried, 200).await?;
+        if n == 0 {
+            break;
+        }
+        out.rated += n;
+    }
+    crate::catalogue::index_league_players(db, 100_000).await?;
+    Ok(out)
+}
