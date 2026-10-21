@@ -148,13 +148,13 @@ export function RankChip({ r, accountId }: { r: Rank; accountId?: number }) {
               ? tx("{0} in {1}, {2}", { "0": classLabel(r.class), "1": r.division, "2": r.seasonName })
               : tx("{0} in {1}, Season {2}", { "0": classLabel(r.class), "1": r.division, "2": r.season })}
           </span>
-          <span className="rank-pop-sub">{tx("Officials only; {0} or more to be ranked.", { "0": 4 })}</span>
+          <span className="rank-pop-sub">{tx("Officials only; {0} or more to be ranked, the rest greyed out.", { "0": 3 })}</span>
           {!q.data && <span className="hint"><Spinner /> {t("Loading…")}</span>}
           {q.data && (
             <span className="rank-pop-rows">
               {q.data.rows.map((x) => (
-                <span key={x.accountId} className={x.accountId === accountId ? "rank-pop-row me" : "rank-pop-row"}>
-                  <span className="rank-pop-n">#{x.rank}</span>
+                <span key={x.accountId} className={`rank-pop-row${x.accountId === accountId ? " me" : ""}${x.rank === null ? " under" : ""}`}>
+                  <span className="rank-pop-n">{x.rank === null ? "–" : `#${x.rank}`}</span>
                   <span className="rank-pop-name">{x.name}</span>
                   <span className="muted rank-pop-team">{x.team?.name}</span>
                   <span className="rank-pop-avg">{rating(x.avg)}</span>
@@ -179,13 +179,15 @@ export function TopPlayers({ onPick }: { onPick: (accountId: number) => void }) 
   const [season, setSeason] = useState<number | null>(null);
   const q = useQuery({ queryKey: ["rankings", season, tier, cls], queryFn: () => api.getRankings(season, tier, cls), placeholderData: keepPreviousData });
   const r = q.data;
-  const top = useMemo(() => (r?.rows ?? []).slice(0, 25), [r]);
-  const s = useSort("top-players", top, { rank: (x) => x.rank, name: (x) => x.name, team: (x) => x.team?.name ?? null, games: (x) => x.games, rating: (x) => x.avg });
+  // Everyone who played an official there (Flashy and function): the ranked,
+  // then those under the threshold, greyed out.
+  const top = useMemo(() => r?.rows ?? [], [r]);
+  const s = useSort("top-players", top, { rank: (x) => x.rank ?? 9999, name: (x) => x.name, team: (x) => x.team?.name ?? null, games: (x) => x.games, rating: (x) => x.avg });
   return (
     <div className="panel top-players has-refresh">
       <Refreshing on={q.isPlaceholderData} />
       <h2>{t("Top players")}</h2>
-      <p className="hint" style={{ marginTop: 6 }}>{tx("By average rating in one season, on one class, in the division they played, over their officials. {0} or more officials to be ranked.", { "0": 4 })}</p>
+      <p className="hint" style={{ marginTop: 6 }}>{tx("By average rating in one season, on one class, in the division they played, over their officials. {0} or more officials to be ranked; everyone else is listed, greyed out.", { "0": 3 })}</p>
       <div className="tp-controls">
         <div className="ps-classes">
           {CLASSES.map((c) => (
@@ -227,8 +229,13 @@ export function TopPlayers({ onPick }: { onPick: (accountId: number) => void }) 
           </thead>
           <tbody>
             {s.sorted.map((x) => (
-              <tr key={x.accountId} className="tp-row" onClick={() => onPick(x.accountId)}>
-                <td>{x.rank}</td>
+              <tr
+                key={x.accountId}
+                className={x.rank === null ? "tp-row tp-under" : "tp-row"}
+                onClick={() => onPick(x.accountId)}
+                title={x.rank === null ? t("Fewer than {0} officials: listed, not ranked", { "0": 3 }) : undefined}
+              >
+                <td>{x.rank ?? "–"}</td>
                 <td>
                   <strong>{x.name}</strong>
                 </td>

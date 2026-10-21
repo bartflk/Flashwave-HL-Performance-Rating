@@ -614,7 +614,7 @@ export interface Rankings {
   division: string;
   tier: number;
   class: string;
-  rows: { rank: number; accountId: number; name: string; team: CatTeam | null; games: number; avg: number }[];
+  rows: { /** null under 3 officials: listed, greyed out, not ranked. */ rank: number | null; accountId: number; name: string; team: CatTeam | null; games: number; avg: number }[];
   seasons: [number, string][];
   divisions: [number, string][];
 }

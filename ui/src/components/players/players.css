@@ -604,3 +604,7 @@ button.pp-alias-more:hover { border-color: var(--accent-dim); background: rgba(v
 .lm-toggle.on .lm-check { opacity: 1; border-color: var(--accent); background: var(--accent); color: var(--bg); }
 .ctl-bar .class-filter { margin: 0; }
 .ctl-bar .lm-head-actions { margin-left: auto; align-self: flex-end; }
+
+/* Under the ranking threshold: listed, greyed out, not ranked. */
+.tp-row.tp-under td, .rank-pop-row.under { opacity: 0.45; }
+.tp-row.tp-under:hover td { opacity: 0.75; }

@@ -1189,7 +1189,10 @@ pub async fn season_medals(db: &Db, season: i64) -> Result<Vec<(String, Vec<(u8,
 /// Officials in a season, class and division before a player is ranked.
 /// Counted as officials, not logs: the owner's matches hold one combined log
 /// per official and the league sample one log per map.
-pub const MIN_RANK_GAMES: usize = 4;
+/// Officials needed to be ranked (Flashy and function: "3-4 sounds good";
+/// one official at 1.50 must not top a division). Everyone with fewer is
+/// still listed, greyed out and unranked.
+pub const MIN_RANK_GAMES: usize = 3;
 /// "Recent form": the games in this long before a player's newest.
 const RECENT_S: i64 = 90 * 24 * 3600;
 /// Recent games needed before the bars show recent form, not the career.
@@ -1236,7 +1239,8 @@ pub struct PlayerStats {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RankRow {
-    pub rank: usize,
+    /// `None` under [`MIN_RANK_GAMES`] officials: listed, not ranked.
+    pub rank: Option<usize>,
     pub account_id: u32,
     pub name: String,
     pub team: Option<Team>,
@@ -1432,6 +1436,20 @@ fn rank_table(
     tier: i64,
     class: &str,
 ) -> Vec<(u32, usize, f64, i64)> {
+    rank_table_from(cat, games, windows, divisions, season, tier, class, MIN_RANK_GAMES)
+}
+
+/// [`rank_table`] down to `min` officials, best first.
+fn rank_table_from(
+    cat: &Catalogue,
+    games: &[hl_db::RatedGame],
+    windows: &[(i64, String, i64, i64)],
+    divisions: &HashMap<(u32, i64), (i64, String, i64)>,
+    season: i64,
+    tier: i64,
+    class: &str,
+    min: usize,
+) -> Vec<(u32, usize, f64, i64)> {
     // account -> (scores, officials)
     let mut by: HashMap<u32, (Vec<f64>, std::collections::HashSet<i64>)> = HashMap::new();
     // Officials only: the sample holds nothing else, so a player's pugs and
@@ -1448,7 +1466,7 @@ fn rank_table(
     }
     let mut rows: Vec<(u32, usize, f64, i64)> = by
         .into_iter()
-        .filter(|(_, (_, officials))| officials.len() >= MIN_RANK_GAMES)
+        .filter(|(_, (_, officials))| officials.len() >= min)
         .map(|(a, (v, officials))| (a, officials.len(), v.iter().sum::<f64>() / v.len() as f64, divisions[&(a, season)].2))
         .collect();
     rows.sort_by(|a, b| b.2.total_cmp(&a.2));
@@ -1569,10 +1587,16 @@ pub async fn rankings(db: &Db, season: Option<i64>, tier: Option<i64>, class: &s
         }
     }
     let tier = tier.or_else(|| tiers.keys().next().copied()).unwrap_or(0);
-    let rows = rank_table(&cat, &everyone, &windows, &divisions, season, tier, class)
+    // Everyone who played an official there: the ranked first, then those
+    // with too few to be ranked, each best first, for the table to grey out.
+    let all = rank_table_from(&cat, &everyone, &windows, &divisions, season, tier, class, 1);
+    let (ranked, under): (Vec<_>, Vec<_>) = all.into_iter().partition(|r| r.1 >= MIN_RANK_GAMES);
+    let row = |rank: Option<usize>, (a, n, avg, team): (u32, usize, f64, i64)| RankRow { rank, account_id: a, name: cat.name_of(a), team: Some(cat.team(team)), games: n, avg };
+    let rows = ranked
         .into_iter()
         .enumerate()
-        .map(|(i, (a, n, avg, team))| RankRow { rank: i + 1, account_id: a, name: cat.name_of(a), team: Some(cat.team(team)), games: n, avg })
+        .map(|(i, r)| row(Some(i + 1), r))
+        .chain(under.into_iter().map(|r| row(None, r)))
         .collect();
     Ok(Rankings {
         season,

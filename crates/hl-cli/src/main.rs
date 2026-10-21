@@ -1616,7 +1616,7 @@ async fn run() -> Result<()> {
             for row in r.rows {
                 println!(
                     "#{:<3} {:<20} {:<28} {:.2}  {}",
-                    row.rank,
+                    row.rank.map_or("-".to_string(), |r| r.to_string()),
                     row.name.chars().take(20).collect::<String>(),
                     row.team.map(|t| t.name).unwrap_or_default().chars().take(28).collect::<String>(),
                     row.avg,
@@ -1916,7 +1916,7 @@ async fn run() -> Result<()> {
             let r = hl_ingest::catalogue::rankings(&db, season, tier, class).await?;
             println!("{} in {} (tier {}), S{} {}: {} ranked", r.class, r.division, r.tier, r.season, r.season_name, r.rows.len());
             for x in r.rows.iter().take(20) {
-                println!("  #{:<3} {:<22} {:<24} {:.2} over {}", x.rank, x.name.chars().take(22).collect::<String>(), x.team.as_ref().map_or(String::new(), |t| t.name.chars().take(24).collect()), x.avg, x.games);
+                println!("  #{:<3} {:<22} {:<24} {:.2} over {}", x.rank.map_or("-".to_string(), |r| r.to_string()), x.name.chars().take(22).collect::<String>(), x.team.as_ref().map_or(String::new(), |t| t.name.chars().take(24).collect()), x.avg, x.games);
             }
             Ok(())
         }
