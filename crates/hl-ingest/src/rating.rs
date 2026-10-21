@@ -37,8 +37,22 @@ pub async fn rate_all(
     w: &Weights,
     mut progress: impl FnMut(Progress),
 ) -> Result<RateSummary> {
+    let summary = rate_all_inner(db, me, w, &mut progress).await?;
+    // Every log's numbers for the season tables and profiles: only the logs
+    // that have none yet, so after the first pass this is the new ones.
+    progress(Progress::Stage { what: "Reading every player's numbers" });
+    crate::logstat::fill_missing(db, None, |_, _| {}).await?;
+    Ok(summary)
+}
+
+async fn rate_all_inner(
+    db: &Db,
+    me: Option<SteamId>,
+    w: &Weights,
+    progress: &mut impl FnMut(Progress),
+) -> Result<RateSummary> {
     // Pass 1: every rateable performance in every kept Highlander log.
-    let (total, perfs) = collect_performances(db, w, &mut progress).await?;
+    let (total, perfs) = collect_performances(db, w, &mut *progress).await?;
     // ...and in the league sample: officials from every ETF2L division,
     // so the pool is the league and not only the owner's matches.
     progress(Progress::Stage { what: "Rating the league sample" });

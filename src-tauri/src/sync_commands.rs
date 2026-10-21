@@ -1882,6 +1882,34 @@ pub async fn get_rankings(state: State<'_, AppState>, season: Option<i64>, tier:
     Ok(hl_ingest::catalogue::rankings(&state.db, season, tier, &class).await?)
 }
 
+/// The season rankings page: one season, division and class, every player
+/// with every number, ranked by the season rating; `stage` is "all",
+/// "regular" or "playoffs".
+#[tauri::command]
+pub async fn get_season_table(
+    state: State<'_, AppState>,
+    season: Option<i64>,
+    tier: Option<i64>,
+    class: String,
+    stage: Option<String>,
+) -> CmdResult<hl_ingest::season_stats::SeasonTable> {
+    Ok(hl_ingest::season_stats::season_table(&state.db, season, tier, &class, stage.as_deref().unwrap_or("all")).await?)
+}
+
+/// A player's deeper profile: verdicts, attribute cards, rating by the
+/// opposite number's division, attack and defence, weapons.
+#[tauri::command]
+pub async fn get_player_deep(state: State<'_, AppState>, account_id: u32) -> CmdResult<hl_ingest::season_stats::PlayerDeep> {
+    Ok(hl_ingest::season_stats::player_deep(&state.db, account_id).await?)
+}
+
+/// Every player's impact in one match, on the rating's scale: the
+/// scoreboard's column. Empty without a server log.
+#[tauri::command]
+pub async fn get_match_impact(state: State<'_, AppState>, log_id: i64) -> CmdResult<std::collections::HashMap<u32, f64>> {
+    Ok(hl_ingest::season_stats::match_impact(&state.db, log_id).await?)
+}
+
 /// Every player's ETF2L division at the time of a match (Q38).
 #[tauri::command]
 pub async fn get_match_divisions(state: State<'_, AppState>, log_id: i64) -> CmdResult<hl_ingest::catalogue::MatchDivisions> {

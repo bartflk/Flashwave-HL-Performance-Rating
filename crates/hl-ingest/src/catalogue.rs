@@ -97,16 +97,78 @@ pub struct Mvp {
     pub team: Team,
     /// Their team won the final.
     pub won: bool,
-    /// The event MVP, not only the class's.
+    /// The Season MVP, the division's one headline award.
     pub event: bool,
-    /// What it was picked on: [`MVP_FINAL_WEIGHT`] of the Grand Final, the
-    /// rest the other playoff games.
+    /// `"season"` (the Season MVP: the champions' best), `"evp"` (one of the
+    /// division's best seasons, any team) or `"class"` (the top of the
+    /// class's season table). See [`Catalogue::mvps`].
+    pub kind: String,
+    /// What it was decided on: for the Season MVP the blend of season,
+    /// final and playoffs; for the others the season rating.
     pub score: f64,
-    pub final_rating: f64,
+    /// The season on that class: every official, playoffs counting
+    /// [`PLAYOFF_WEIGHT`] and the final [`FINAL_WEIGHT`], pulled towards 1.00
+    /// by [`SHRINK_MAPS`]. Its officials and maps.
+    pub season_rating: f64,
+    pub officials: usize,
+    pub season_maps: usize,
+    /// The Grand Final and the playoff run before it (the Season MVP's).
+    pub final_rating: Option<f64>,
     pub final_maps: usize,
-    /// Their other playoff games: average and logs.
     pub playoffs_rating: Option<f64>,
     pub playoffs_maps: usize,
+}
+
+/// Pseudo-maps at 1.00 that every season figure is pulled towards: about
+/// two officials, so four good officials cannot beat eight nearly as good
+/// (the MVP research: a 1.30 over 4 maps reads 1.15, a 1.15 over 20 maps 1.13).
+pub const SHRINK_MAPS: f64 = 4.0;
+/// How much a playoff map and a Grand Final map count in a season, as the
+/// harder games.
+pub const PLAYOFF_WEIGHT: f64 = 1.5;
+pub const FINAL_WEIGHT: f64 = 2.0;
+/// Officials on the class (or, for the Season MVP, in the season) to be
+/// eligible for an award.
+pub const AWARD_MIN_OFFICIALS: usize = 4;
+/// The Season MVP's blend: season, Grand Final, the rest of the playoffs.
+/// With no other playoff games, their share goes to the season.
+pub const SEASON_MVP_WEIGHTS: (f64, f64, f64) = (0.50, 0.35, 0.15);
+/// EVPs per division: five, three in a division of fewer than eight teams.
+pub const EVPS: usize = 5;
+pub const EVPS_SMALL: usize = 3;
+pub const EVPS_SMALL_BELOW_TEAMS: usize = 8;
+
+/// A weighted average pulled towards 1.00 by [`SHRINK_MAPS`].
+pub fn shrunk(sum_weighted: f64, sum_weights: f64) -> f64 {
+    (sum_weighted + SHRINK_MAPS) / (sum_weights + SHRINK_MAPS)
+}
+
+/// One player's season on one class, in one division.
+#[derive(Debug, Clone, Default)]
+pub struct SeasonLine {
+    pub season: i64,
+    pub tier: i64,
+    pub division: String,
+    pub class: String,
+    pub account_id: u32,
+    /// Their team that season (the one they played most for).
+    pub team: i64,
+    pub officials: std::collections::HashSet<i64>,
+    pub maps: usize,
+    pub sum: f64,
+    pub sum_weighted: f64,
+    pub weights: f64,
+}
+
+impl SeasonLine {
+    /// The plain average over their maps.
+    pub fn average(&self) -> f64 {
+        if self.maps == 0 { 1.0 } else { self.sum / self.maps as f64 }
+    }
+    /// The season rating: weighted by stage and pulled towards 1.00.
+    pub fn rating(&self) -> f64 {
+        shrunk(self.sum_weighted, self.weights)
+    }
 }
 
 /// How much of an MVP's score is the Grand Final; the rest is the playoff
@@ -381,7 +443,7 @@ impl Catalogue {
         self.team(id).name
     }
 
-    fn team(&self, id: i64) -> Team {
+    pub fn team(&self, id: i64) -> Team {
         let (name, avatar) = self.teams.get(&id).cloned().unwrap_or_else(|| (format!("Team {id}"), None));
         Team { id, name, avatar }
     }
@@ -719,11 +781,256 @@ impl Catalogue {
             .unwrap_or_default()
     }
 
-    /// Every event's MVPs, from the rated games: per Grand Final (played,
-    /// not forfeited), the best player of each class on the two finalists,
-    /// and the event's -- the best class MVP of the winning team. A final
-    /// whose logs are not held has none, rather than a guess.
+    /// How much an official counts in a season: a Grand Final
+    /// [`FINAL_WEIGHT`], another playoff game [`PLAYOFF_WEIGHT`], else 1.
+    pub fn stage_weight(&self, match_id: Option<i64>) -> f64 {
+        match match_id.and_then(|id| self.matches.get(&id)) {
+            Some(m) if Self::is_final(m) => FINAL_WEIGHT,
+            Some(m) if matches!(m.stage.as_str(), "Playoffs" | "3rd Place") || Self::round_kind(m.round.as_deref()).is_some() => PLAYOFF_WEIGHT,
+            _ => 1.0,
+        }
+    }
+
+    /// Every player's season on every class, in the division they played
+    /// that season: officials only, a cup left out. Keyed `(season, tier,
+    /// class, account)`.
+    pub fn season_lines(&self, games: &[hl_db::RatedGame]) -> HashMap<(i64, i64, String, u32), SeasonLine> {
+        let windows = self.season_windows();
+        let divisions = self.played_divisions();
+        let mut out: HashMap<(i64, i64, String, u32), SeasonLine> = HashMap::new();
+        for g in games.iter().filter(|g| g.official) {
+            let Some(season) = game_season(self, &windows, g) else { continue };
+            let Some((tier, division, team)) = divisions.get(&(g.account_id, season)) else { continue };
+            let w = self.stage_weight(g.etf2l_match_id);
+            let e = out.entry((season, *tier, g.class.clone(), g.account_id)).or_insert_with(|| SeasonLine {
+                season,
+                tier: *tier,
+                division: division.clone(),
+                class: g.class.clone(),
+                account_id: g.account_id,
+                team: *team,
+                ..Default::default()
+            });
+            e.officials.insert(g.etf2l_match_id.unwrap_or(-g.log_id));
+            e.maps += 1;
+            e.sum += g.score;
+            e.sum_weighted += w * g.score;
+            e.weights += w;
+        }
+        out
+    }
+
+    /// Every division's awards, from the rated games (the MVP research,
+    /// October 2026; HLTV's MVP and EVPs):
+    ///
+    /// - **Season MVP**, one per division: the champions' best. Players of
+    ///   the team that won the Grand Final, with [`AWARD_MIN_OFFICIALS`] in
+    ///   the season, who played more than half of the final's logs; scored
+    ///   [`SEASON_MVP_WEIGHTS`] on their season, the final and the playoff
+    ///   run, each pulled towards 1.00.
+    /// - **EVPs**, [`EVPS`] per division ([`EVPS_SMALL`] below
+    ///   [`EVPS_SMALL_BELOW_TEAMS`] teams): the best season ratings of any
+    ///   team and class, the Season MVP aside.
+    /// - **Best of the class**: the top of each class's season table, from
+    ///   [`AWARD_MIN_OFFICIALS`] on the class -- the same number the table
+    ///   ranks by, so the badge and the table cannot disagree.
     pub fn mvps(&self, games: &[hl_db::RatedGame]) -> Vec<Mvp> {
+        let lines = self.season_lines(games);
+        let eligible = |l: &&SeasonLine| l.officials.len() >= AWARD_MIN_OFFICIALS;
+        let mut out = Vec::new();
+        let mut season_mvp: HashMap<(i64, i64), u32> = HashMap::new();
+
+        // The champions: who won each division's final.
+        let mut champions: HashMap<(i64, i64), (i64, &CatMatch)> = HashMap::new();
+        let mut by_match: HashMap<i64, Vec<&hl_db::RatedGame>> = HashMap::new();
+        for g in games {
+            if let Some(id) = g.etf2l_match_id {
+                by_match.entry(id).or_default().push(g);
+            }
+        }
+        for v in by_match.values_mut() {
+            if v.iter().any(|g| g.listed) {
+                v.retain(|g| g.listed);
+            }
+        }
+        for f in self.matches.values().filter(|m| Self::played(m) && Self::is_final(m)) {
+            let winner = match (f.r1, f.r2) {
+                (Some(a), Some(b)) if a > b => f.clan1,
+                (Some(a), Some(b)) if b > a => f.clan2,
+                _ => continue,
+            };
+            let division = self.medal_division(f);
+            let key = (f.season, division.clone());
+            let Some(tier) = crate::leagues::canonical_tier(&division).or_else(|| self.tiers.get(&key).copied()).or_else(|| self.tier_by_name.get(&division).copied()) else {
+                continue;
+            };
+            champions.insert((f.season, tier), (winner, f));
+        }
+
+        // Season MVPs.
+        for (&(season, tier), &(winner, f)) in &champions {
+            let Some(in_final) = by_match.get(&f.match_id) else { continue };
+            let mut team_of: HashMap<u32, i64> = self
+                .rosters
+                .get(&f.match_id)
+                .map(|r| r.iter().filter_map(|(a, t, _)| Some((*a, (*t)?))).filter(|(_, t)| *t == f.clan1 || *t == f.clan2).collect())
+                .unwrap_or_default();
+            for (account, team) in Self::sides_from_logs(self.final_colours.get(&f.match_id), &team_of, f.clan1, f.clan2) {
+                team_of.entry(account).or_insert(team);
+            }
+            let mut logs: Vec<i64> = in_final.iter().map(|g| g.log_id).collect();
+            logs.sort_unstable();
+            logs.dedup();
+            let mut fin: HashMap<(u32, &str), Vec<f64>> = HashMap::new();
+            let mut played: HashMap<u32, std::collections::HashSet<i64>> = HashMap::new();
+            for g in in_final.iter() {
+                fin.entry((g.account_id, g.class.as_str())).or_default().push(g.score);
+                played.entry(g.account_id).or_default().insert(g.log_id);
+            }
+            let division = self.medal_division(f);
+            let mut best: Option<Mvp> = None;
+            for ((a, class), scores) in fin {
+                if team_of.get(&a) != Some(&winner) {
+                    continue;
+                }
+                if played.get(&a).map_or(0, |p| p.len()) * 2 <= logs.len() && logs.len() > 1 {
+                    continue;
+                }
+                let Some(line) = lines.get(&(season, tier, class.to_string(), a)) else { continue };
+                // Officials in the season, on any class.
+                let officials: std::collections::HashSet<i64> = lines
+                    .iter()
+                    .filter(|((s, t, _, acc), _)| *s == season && *t == tier && *acc == a)
+                    .flat_map(|(_, l)| l.officials.iter().copied())
+                    .collect();
+                if officials.len() < AWARD_MIN_OFFICIALS {
+                    continue;
+                }
+                let playoff: Vec<f64> = games
+                    .iter()
+                    .filter(|g| g.account_id == a && g.class == class && g.official && g.etf2l_match_id != Some(f.match_id))
+                    .filter(|g| (self.stage_weight(g.etf2l_match_id) - PLAYOFF_WEIGHT).abs() < 1e-9)
+                    .filter(|g| g.etf2l_match_id.and_then(|id| self.matches.get(&id)).is_some_and(|m| m.season == season && self.medal_division(m) == division))
+                    .map(|g| g.score)
+                    .collect();
+                let s_rating = line.rating();
+                let f_rating = shrunk(scores.iter().sum(), scores.len() as f64);
+                let p_rating = (!playoff.is_empty()).then(|| shrunk(playoff.iter().sum(), playoff.len() as f64));
+                let (ws, wf, wp) = SEASON_MVP_WEIGHTS;
+                let score = match p_rating {
+                    Some(p) => ws * s_rating + wf * f_rating + wp * p,
+                    None => (ws + wp) * s_rating + wf * f_rating,
+                };
+                let m = Mvp {
+                    season,
+                    season_name: self.season_name(season),
+                    division: division.clone(),
+                    tier: Some(tier),
+                    class: class.to_string(),
+                    account_id: a,
+                    team: self.team(winner),
+                    won: true,
+                    event: true,
+                    kind: "season".into(),
+                    score,
+                    season_rating: s_rating,
+                    officials: officials.len(),
+                    season_maps: line.maps,
+                    final_rating: Some(scores.iter().sum::<f64>() / scores.len() as f64),
+                    final_maps: scores.len(),
+                    playoffs_rating: (!playoff.is_empty()).then(|| playoff.iter().sum::<f64>() / playoff.len() as f64),
+                    playoffs_maps: playoff.len(),
+                };
+                // Ties: more officials, then more final maps.
+                let better = best
+                    .as_ref()
+                    .is_none_or(|b| m.score.total_cmp(&b.score).then(m.officials.cmp(&b.officials)).then(m.final_maps.cmp(&b.final_maps)).is_gt());
+                if better {
+                    best = Some(m);
+                }
+            }
+            if let Some(m) = best {
+                season_mvp.insert((season, tier), m.account_id);
+                out.push(m);
+            }
+        }
+
+        let award = |l: &SeasonLine, kind: &str| {
+            let won = champions.get(&(l.season, l.tier)).is_some_and(|(w, _)| *w == l.team);
+            Mvp {
+                season: l.season,
+                season_name: self.season_name(l.season),
+                division: l.division.clone(),
+                tier: Some(l.tier),
+                class: l.class.clone(),
+                account_id: l.account_id,
+                team: self.team(l.team),
+                won,
+                event: false,
+                kind: kind.into(),
+                score: l.rating(),
+                season_rating: l.rating(),
+                officials: l.officials.len(),
+                season_maps: l.maps,
+                final_rating: None,
+                final_maps: 0,
+                playoffs_rating: None,
+                playoffs_maps: 0,
+            }
+        };
+        let better = |a: &&SeasonLine, b: &&SeasonLine| a.rating().total_cmp(&b.rating()).then(a.officials.len().cmp(&b.officials.len()));
+
+        // Best of each class.
+        let mut tables: HashMap<(i64, i64, &str), Vec<&SeasonLine>> = HashMap::new();
+        for l in lines.values().filter(eligible) {
+            tables.entry((l.season, l.tier, l.class.as_str())).or_default().push(l);
+        }
+        for rows in tables.values() {
+            if let Some(top) = rows.iter().max_by(|a, b| better(a, b)) {
+                out.push(award(top, "class"));
+            }
+        }
+
+        // EVPs: each player's best class; the division's best seasons.
+        let mut teams: HashMap<(i64, i64), std::collections::HashSet<i64>> = HashMap::new();
+        for l in lines.values() {
+            teams.entry((l.season, l.tier)).or_default().insert(l.team);
+        }
+        let mut divisions: HashMap<(i64, i64), HashMap<u32, &SeasonLine>> = HashMap::new();
+        for l in lines.values().filter(eligible) {
+            let e = divisions.entry((l.season, l.tier)).or_default();
+            let keep = e.get(&l.account_id).is_some_and(|b| better(b, &l).is_ge());
+            if !keep {
+                e.insert(l.account_id, l);
+            }
+        }
+        for (key, by) in divisions {
+            let n = if teams.get(&key).map_or(0, |t| t.len()) < EVPS_SMALL_BELOW_TEAMS { EVPS_SMALL } else { EVPS };
+            let mut rows: Vec<&SeasonLine> = by.into_values().filter(|l| season_mvp.get(&key) != Some(&l.account_id)).collect();
+            rows.sort_by(|a, b| better(b, a));
+            out.extend(rows.into_iter().take(n).map(|l| award(l, "evp")));
+        }
+
+        let order = |k: &str| match k {
+            "season" => 0,
+            "evp" => 1,
+            _ => 2,
+        };
+        out.sort_by(|a, b| {
+            season_order(b.season)
+                .cmp(&season_order(a.season))
+                .then(a.tier.cmp(&b.tier))
+                .then(order(&a.kind).cmp(&order(&b.kind)))
+                .then(b.score.total_cmp(&a.score))
+        });
+        out
+    }
+
+    /// The rule before October 2026, kept for `hl mvp-audit` to print old
+    /// and new side by side for a release: per Grand Final, the best player
+    /// of each class on the two finalists (70% the final, 30% the playoff
+    /// run before it), and the event's -- the best of the winning team's.
+    pub fn mvps_final_only(&self, games: &[hl_db::RatedGame]) -> Vec<Mvp> {
         let mut by_match: HashMap<i64, Vec<&hl_db::RatedGame>> = HashMap::new();
         for g in games {
             if let Some(id) = g.etf2l_match_id {
@@ -811,8 +1118,12 @@ impl Catalogue {
                         team: self.team(team),
                         won: team == winner,
                         event: false,
+                        kind: "class".into(),
                         score,
-                        final_rating,
+                        season_rating: 0.0,
+                        officials: 0,
+                        season_maps: 0,
+                        final_rating: Some(final_rating),
                         final_maps: scores.len(),
                         playoffs_rating,
                         playoffs_maps: rest.len(),
@@ -832,6 +1143,7 @@ impl Catalogue {
             if let Some(top) = candidates.iter().filter(|m| m.won).max_by(better) {
                 let mut e = top.clone();
                 e.event = true;
+                e.kind = "season".into();
                 class_mvps.push(e);
             }
             out.extend(class_mvps);
@@ -1267,7 +1579,7 @@ impl Catalogue {
     /// Each season's dates, from its officials: `(season, name, from, to)`,
     /// a few days either side for the matches played around them. Newest
     /// first.
-    fn season_windows(&self) -> Vec<(i64, String, i64, i64)> {
+    pub fn season_windows(&self) -> Vec<(i64, String, i64, i64)> {
         // keyed by the season's place in time: AFA 2025 between 34 and 35
         let mut w: BTreeMap<i64, (i64, String, i64, i64)> = BTreeMap::new();
         // The league's dates: a tournament kept with a season can be months off.
@@ -1379,7 +1691,7 @@ impl Catalogue {
             .map(|(_, (tier, name, _))| Division { name: name.clone(), tier: *tier })
     }
 
-    fn name_of(&self, account: u32) -> String {
+    pub fn name_of(&self, account: u32) -> String {
         let mut newest: Option<(i64, &str)> = None;
         for (match_id, roster) in &self.rosters {
             let t = self.matches.get(match_id).and_then(|m| m.time).unwrap_or(0);
@@ -1396,7 +1708,7 @@ impl Catalogue {
 /// A rated game's season: its ETF2L match's, where known, else by date.
 /// Seasons overlap by date (AFA 2025 began before Season 34's playoffs were
 /// over), and an official belongs to its competition's season.
-fn game_season(cat: &Catalogue, windows: &[(i64, String, i64, i64)], g: &hl_db::RatedGame) -> Option<i64> {
+pub fn game_season(cat: &Catalogue, windows: &[(i64, String, i64, i64)], g: &hl_db::RatedGame) -> Option<i64> {
     match g.etf2l_match_id.and_then(|id| cat.matches.get(&id)) {
         // A cup is an official but not the season's league: not ranked.
         Some(m) if m.stage == "Cup" => None,
@@ -1439,59 +1751,40 @@ fn rank_table(
     rank_table_from(cat, games, windows, divisions, season, tier, class, MIN_RANK_GAMES)
 }
 
-/// [`rank_table`] down to `min` officials, best first.
+/// [`rank_table`] down to `min` officials, best first: `(account,
+/// officials, season rating, team)`. Ranked by the season rating the awards
+/// use -- weighted by stage and pulled towards 1.00 by [`SHRINK_MAPS`] -- so
+/// a table and the award beside it cannot disagree (the MVP research).
 fn rank_table_from(
     cat: &Catalogue,
     games: &[hl_db::RatedGame],
-    windows: &[(i64, String, i64, i64)],
-    divisions: &HashMap<(u32, i64), (i64, String, i64)>,
+    _windows: &[(i64, String, i64, i64)],
+    _divisions: &HashMap<(u32, i64), (i64, String, i64)>,
     season: i64,
     tier: i64,
     class: &str,
     min: usize,
 ) -> Vec<(u32, usize, f64, i64)> {
-    // account -> (scores, officials)
-    let mut by: HashMap<u32, (Vec<f64>, std::collections::HashSet<i64>)> = HashMap::new();
     // Officials only: the sample holds nothing else, so a player's pugs and
     // scrims would put them on a different footing from everyone else's.
-    for g in games.iter().filter(|g| g.class == class && g.official) {
-        if game_season(cat, windows, g) != Some(season) {
-            continue;
-        }
-        if divisions.get(&(g.account_id, season)).is_some_and(|(t, _, _)| *t == tier) {
-            let e = by.entry(g.account_id).or_default();
-            e.0.push(g.score);
-            e.1.insert(g.etf2l_match_id.unwrap_or(-g.log_id));
-        }
-    }
-    let mut rows: Vec<(u32, usize, f64, i64)> = by
-        .into_iter()
-        .filter(|(_, (_, officials))| officials.len() >= min)
-        .map(|(a, (v, officials))| (a, officials.len(), v.iter().sum::<f64>() / v.len() as f64, divisions[&(a, season)].2))
+    let games: Vec<hl_db::RatedGame> = games.iter().filter(|g| g.class == class && g.official).cloned().collect();
+    let mut rows: Vec<(u32, usize, f64, i64)> = cat
+        .season_lines(&games)
+        .into_values()
+        .filter(|l| l.season == season && l.tier == tier && l.officials.len() >= min)
+        .map(|l| (l.account_id, l.officials.len(), l.rating(), l.team))
         .collect();
-    rows.sort_by(|a, b| b.2.total_cmp(&a.2));
+    rows.sort_by(|a, b| b.2.total_cmp(&a.2).then(b.1.cmp(&a.1)));
     rows
 }
 
 /// Every season table at once, as [`rank_table`] builds one: `(season, tier,
-/// class)` -> `(account, officials, average)`, best first, officials only,
-/// [`MIN_RANK_GAMES`] or more. For MVP audits.
+/// class)` -> `(account, officials, season rating)`, best first, officials
+/// only, [`MIN_RANK_GAMES`] or more. For MVP audits.
 pub fn season_tables(cat: &Catalogue, games: &[hl_db::RatedGame]) -> HashMap<(i64, i64, String), Vec<(u32, usize, f64)>> {
-    let windows = cat.season_windows();
-    let divisions = cat.played_divisions();
-    let mut by: HashMap<(i64, i64, String, u32), (Vec<f64>, std::collections::HashSet<i64>)> = HashMap::new();
-    for g in games.iter().filter(|g| g.official) {
-        let Some(season) = game_season(cat, &windows, g) else { continue };
-        let Some((tier, _, _)) = divisions.get(&(g.account_id, season)) else { continue };
-        let e = by.entry((season, *tier, g.class.clone(), g.account_id)).or_default();
-        e.0.push(g.score);
-        e.1.insert(g.etf2l_match_id.unwrap_or(-g.log_id));
-    }
     let mut out: HashMap<(i64, i64, String), Vec<(u32, usize, f64)>> = HashMap::new();
-    for ((season, tier, class, a), (v, officials)) in by {
-        if officials.len() >= MIN_RANK_GAMES {
-            out.entry((season, tier, class)).or_default().push((a, officials.len(), v.iter().sum::<f64>() / v.len() as f64));
-        }
+    for l in cat.season_lines(games).into_values().filter(|l| l.officials.len() >= MIN_RANK_GAMES) {
+        out.entry((l.season, l.tier, l.class.clone())).or_default().push((l.account_id, l.officials.len(), l.rating()));
     }
     for rows in out.values_mut() {
         rows.sort_by(|a, b| b.2.total_cmp(&a.2));
@@ -1726,8 +2019,11 @@ pub struct Podium {
     pub division: String,
     pub tier: Option<i64>,
     pub medals: Vec<PodiumPlace>,
+    /// The Season MVP.
     pub mvp: Option<Mvp>,
     pub mvp_name: Option<String>,
+    /// The EVPs and the best of each class, with their names.
+    pub awards: Vec<(Mvp, String)>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1830,8 +2126,14 @@ pub async fn season_podiums(db: &Db, season: i64) -> Result<Vec<Podium>> {
         .map(|((_, division), list)| {
             let mut medals: Vec<PodiumPlace> = list.into_iter().map(|(place, team, how)| PodiumPlace { place, team: cat.team(team), how }).collect();
             medals.sort_by_key(|p| p.place);
-            let mvp = mvps.iter().find(|m| m.event && m.season == season && m.division == division).cloned();
-            Podium { tier: cat.tier_of_name(season, &division), mvp_name: mvp.as_ref().map(|m| cat.name_of(m.account_id)), division, medals, mvp }
+            let tier = cat.tier_of_name(season, &division);
+            let mvp = mvps.iter().find(|m| m.event && m.season == season && (m.division == division || (tier.is_some() && m.tier == tier))).cloned();
+            let awards = mvps
+                .iter()
+                .filter(|m| !m.event && m.season == season && tier.is_some() && m.tier == tier)
+                .map(|m| (m.clone(), cat.name_of(m.account_id)))
+                .collect();
+            Podium { tier, mvp_name: mvp.as_ref().map(|m| cat.name_of(m.account_id)), division, medals, mvp, awards }
         })
         .collect();
     out.sort_by_key(|p| (p.tier.unwrap_or(99), p.division.clone()));
@@ -2169,7 +2471,7 @@ mod tests {
             // A sub with one great half of two: not a candidate.
             g(311, 31, "scout", 2.0, 3),
         ];
-        let v = c.mvps(&games);
+        let v = c.mvps_final_only(&games);
         let sniper = v.iter().find(|x| x.class == "sniper" && !x.event).unwrap();
         assert_eq!((sniper.account_id, sniper.won), (12, false), "the class MVP can come from the losing finalist");
         let won_sniper = mvp_score(1.2, Some(0.9), 1);
@@ -2178,6 +2480,65 @@ mod tests {
         assert_eq!((event.account_id, event.class.as_str(), event.won), (211, "medic", true));
         assert!(!v.iter().any(|x| x.account_id == 311), "more than half the final to be a candidate");
         assert_eq!(event.final_maps, 2);
+    }
+
+    #[test]
+    fn the_season_mvp_goes_to_the_champions_and_the_class_awards_follow_the_season() {
+        // S34 Mid: four regular weeks between 11 and 12, a semi-final, and a
+        // Grand Final 11 won.
+        let mut ms: Vec<CatMatch> = (101..=104).map(|id| m(id, 34, "regular", Some("Mid"), "", None, 11, 12, 6, 3)).collect();
+        ms.push(m(1, 34, "Playoffs", None, "Mid", Some("Semi-finals"), 10, 11, 3, 6));
+        ms.push(m(3, 34, "Playoffs", None, "Mid", Some("Grand Final"), 12, 11, 3, 6));
+        let mut c = cat(ms);
+        for (id, roster) in c.rosters.iter_mut() {
+            roster.push((211, Some(11), "medic".into()));
+            if *id != 1 {
+                roster.push((212, Some(12), "medic".into()));
+            }
+        }
+        c.rosters.get_mut(&3).unwrap().push((311, Some(11), "sub".into()));
+        let g = |account: u32, log_id: i64, class: &str, score: f64, match_id: i64| hl_db::RatedGame {
+            account_id: account,
+            log_id,
+            played_at: 0,
+            class: class.into(),
+            score,
+            parts: None,
+            groups: None,
+            official: true,
+            etf2l_match_id: Some(match_id),
+            listed: true,
+        };
+        let mut games = Vec::new();
+        for week in 101..=104 {
+            games.push(g(12, week * 10, "sniper", 1.4, week));
+            games.push(g(11, week * 10, "sniper", 1.0, week));
+            games.push(g(211, week * 10, "medic", 1.2, week));
+            games.push(g(212, week * 10, "medic", 1.1, week));
+        }
+        for log in [31, 32] {
+            games.push(g(12, log, "sniper", 1.5, 3));
+            games.push(g(11, log, "sniper", 1.2, 3));
+            games.push(g(211, log, "medic", 1.3, 3));
+        }
+        // A sub with one great half of the final and no season: no award.
+        games.push(g(311, 31, "scout", 2.0, 3));
+        let v = c.mvps(&games);
+        let season = v.iter().find(|x| x.kind == "season").unwrap();
+        assert_eq!((season.account_id, season.won, season.final_maps), (211, true, 2), "the champions' best");
+        let sniper = v.iter().find(|x| x.kind == "class" && x.class == "sniper").unwrap();
+        assert_eq!((sniper.account_id, sniper.won), (12, false), "the class award goes to the season's best, finalist or not");
+        assert!(sniper.season_rating < 1.45 && sniper.season_rating > 1.2, "pulled towards 1.00, the final counting double");
+        let evps: Vec<u32> = v.iter().filter(|x| x.kind == "evp").map(|x| x.account_id).collect();
+        assert_eq!(evps.len(), 3, "three in a division of fewer than eight teams");
+        assert_eq!(evps[0], 12);
+        assert!(!evps.contains(&211), "the Season MVP is not also an EVP");
+        assert!(!v.iter().any(|x| x.account_id == 311));
+        // The season table ranks by the same number.
+        let lines = c.season_lines(&games);
+        let s12 = &lines[&(34, sniper.tier.unwrap(), "sniper".to_string(), 12)];
+        assert!((s12.rating() - sniper.season_rating).abs() < 1e-9);
+        assert_eq!(s12.officials.len(), 5);
     }
 
     #[test]
