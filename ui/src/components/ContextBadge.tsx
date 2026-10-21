@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { errorMessage, type ContextKind, type MatchContext } from "../api/types";
@@ -65,11 +66,13 @@ export function KindPicker({ logId, c, children }: { logId: number; c: MatchCont
   const [open, setOpen] = useState<{ top: number; left: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const box = useRef<HTMLSpanElement>(null);
+  const menu = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const away = (e: MouseEvent) => {
-      if (box.current && !box.current.contains(e.target as Node)) setOpen(null);
+      const t = e.target as Node;
+      if (box.current && !box.current.contains(t) && !menu.current?.contains(t)) setOpen(null);
     };
     const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(null);
     // A fixed menu would float away from its badge on a scroll: close it.
@@ -119,8 +122,11 @@ export function KindPicker({ logId, c, children }: { logId: number; c: MatchCont
       >
         {children ?? <ContextBadge c={c} />}
       </button>
-      {open && (
-        <span className="kind-pick-menu" role="menu" style={{ top: open.top, left: open.left }}>
+      {/* On the page itself: inside the match header (a layer of its own,
+          for its map backdrop) the sticky section tabs drew over it. */}
+      {open &&
+        createPortal(
+        <span className="kind-pick-menu" role="menu" ref={menu} style={{ top: open.top, left: open.left }} onClick={(e) => e.stopPropagation()}>
           <span className="kind-pick-head">{t("What kind of match is this?")}</span>
           {(["official", "scrim", "pug"] as ContextKind[]).map((k) => (
             <button key={k} role="menuitemradio" aria-checked={c.kind === k} className={c.kind === k ? "on" : ""} onClick={() => void pick(k)}>
@@ -132,8 +138,9 @@ export function KindPicker({ logId, c, children }: { logId: number; c: MatchCont
             {t("Automatic")}
           </button>
           {error && <span className="error">{error}</span>}
-        </span>
-      )}
+        </span>,
+          document.body,
+        )}
     </span>
   );
 }

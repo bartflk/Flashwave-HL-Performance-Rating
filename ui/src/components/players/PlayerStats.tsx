@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { Rank } from "../../api/types";
@@ -136,7 +137,11 @@ export function RankChip({ r, accountId }: { r: Rank; accountId?: number }) {
     >
       <strong>#{r.rank}</strong>
       <span className="muted">{t("of {0}", { "0": r.of })}</span> <ClassIcon cls={r.class} size={16} /> {t("in")} <DivisionBadge d={{ name: r.division, tier: r.tier }} /> <span className="muted">{seasonShort(r.season, r.seasonName)}</span>
-      {open && (
+      {/* On the page itself, not inside the header: the profile header is a
+          layer of its own (its map backdrop), and inside it the sticky tabs
+          and toolbar below drew over the list (Flashy: "the overlap"). */}
+      {open &&
+        createPortal(
         <span className="rank-pop" role="tooltip" id={`rank-${r.season}-${r.class}`} style={pos ?? undefined}>
           <span className="rank-pop-head">
             {r.season >= 100
@@ -158,8 +163,9 @@ export function RankChip({ r, accountId }: { r: Rank; accountId?: number }) {
               ))}
             </span>
           )}
-        </span>
-      )}
+        </span>,
+          document.body,
+        )}
     </span>
   );
 }
