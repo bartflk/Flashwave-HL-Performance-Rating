@@ -679,6 +679,9 @@ export interface SyncReport {
   combinedParts: number;
   etf2lResults: number;
   etf2lDetails: number;
+  /** The league's newest officials: logs downloaded and rated. */
+  leagueLogs?: number;
+  leagueRated?: number;
   demosLinked: number;
   demosRead: number;
   demosCleaned: number;

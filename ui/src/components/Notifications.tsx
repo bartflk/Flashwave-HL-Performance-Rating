@@ -208,6 +208,7 @@ function SyncReportList({ r }: { r: SyncReport }) {
   if (r.partsFetched > 0) lines.push(t("{0} per-map logs of combined logs downloaded", { "0": n(r.partsFetched) }));
   if (r.rawFetched > 0) lines.push(t("{0} raw server logs read ({1} kills)", { "0": n(r.rawFetched), "1": n(r.rawKills) }));
   if (r.etf2lResults > 0 || r.etf2lDetails > 0) lines.push(t("{0} ETF2L results and {1} match pages read", { "0": n(r.etf2lResults), "1": n(r.etf2lDetails) }));
+  if ((r.leagueLogs ?? 0) > 0) lines.push(t("{0} logs of the league's newest officials added to the season tables", { "0": n(r.leagueLogs ?? 0) }));
   if (r.demosLinked > 0) lines.push(t("{0} demos from your folder linked to matches", { "0": n(r.demosLinked) }));
   if (r.demosRead > 0) lines.push(t("{0} demos read for aim, routes and deaths", { "0": n(r.demosRead) }));
   if (r.demosCleaned > 0) lines.push(t("{0} read demos deleted, as set in Settings", { "0": n(r.demosCleaned) }));
