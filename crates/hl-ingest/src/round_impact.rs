@@ -56,6 +56,8 @@ impl WinTable {
     /// at 7v6 with the advantage is the other side at 6v7 without it) and
     /// pulled towards a logistic curve on the difference, so a rare cell
     /// cannot swing on a handful of rounds.
+    // Indexed loops: each cell reads its mirror at swapped indices.
+    #[allow(clippy::needless_range_loop)]
     pub fn from_tally(t: &Tally) -> WinTable {
         let prior_n = 20.0;
         let mut p = vec![vec![vec![0.5; MAX + 1]; MAX + 1]; 3];

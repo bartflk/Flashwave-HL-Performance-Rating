@@ -1,3 +1,4 @@
+import { DeepPanels } from "../players/DeepPanels";
 import { useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -188,6 +189,8 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
         </>
       )}
 
+      {tab === "depth" && ownAccount !== null && <DeepPanels accountId={ownAccount} />}
+
       {tab === "career" && me && <Career me={me} />}
 
       {tab === "teammates" && (
@@ -200,10 +203,11 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
 }
 
 /** The profile's sections, as tabs: one page was ~8,000 px of panels. */
-type PfTab = "overview" | "rating" | "fights" | "maps" | "career" | "teammates";
+type PfTab = "overview" | "rating" | "depth" | "fights" | "maps" | "career" | "teammates";
 const PF_TABS: Array<[PfTab, string]> = [
   ["overview", k("Overview")],
   ["rating", k("Rating")],
+  ["depth", k("In depth")],
   ["fights", k("Fights & aim")],
   ["maps", k("Maps")],
   ["career", k("Career")],

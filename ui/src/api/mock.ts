@@ -12,6 +12,8 @@ import match4111116 from "./fixtures/match_4111116.json";
 import ratingGuide from "./fixtures/rating_guide.json";
 import seasonsOverview from "./fixtures/seasons_overview.json";
 import seasonPodiums33 from "./fixtures/season_podiums_33.json";
+import seasonTable34 from "./fixtures/season_table_34_open_demoman.json";
+import playerDeepFlashy from "./fixtures/player_deep_flashy.json";
 import teamHonours35600 from "./fixtures/team_honours_35600.json";
 import teamTransfers35600 from "./fixtures/team_transfers_35600.json";
 import teamInfo35600 from "./fixtures/team_info_35600.json";
@@ -35,6 +37,8 @@ import fightsSniper from "./fixtures/fights_sniper.json";
 import leagues from "./fixtures/leagues.json";
 import team37805 from "./fixtures/team_37805.json";
 import type {
+  SeasonTable,
+  PlayerDeep,
   LogsTfCareer,
   LogsTfPlayer,
   Bookmark,
@@ -345,9 +349,9 @@ function mockProfile(accountId: number): PlayerProfile {
     current: { season: 36, seasonName: "Autumn 2026", division: "High", tier: 1, team: dd, played: 5, won: 4, lost: 1, place: null },
     highest: hit.highest,
     medals: [{ season: 33, seasonName: "Spring 2025", division: "Low", tier: 3, place: 1, team: sbq, how: "Grand Final 6-3" }],
-    // From `hl mvp 30` on a copy, 1 October 2026.
+    // From `hl mvp --json` on a copy, 21 October 2026.
     mvps: [
-      { season: 30, seasonName: "Autumn 2023", division: "Open", tier: 4, class: "sniper", accountId, team: sbq, won: true, event: false, score: 1.13, finalRating: 1.21, finalMaps: 2, playoffsRating: 0.93, playoffsMaps: 2 },
+      { season: 30, seasonName: "Autumn 2023", division: "Open", tier: 4, class: "sniper", accountId, team: sbq, won: true, event: false, kind: "class", score: 1.12, seasonRating: 1.12, officials: 6, seasonMaps: 17, finalRating: null, finalMaps: 0, playoffsRating: null, playoffsMaps: 0 },
     ],
     seasons: [
       { season: 36, seasonName: "Autumn 2026", division: "High", tier: 1, team: dd, played: 5, won: 4, lost: 1, place: null },
@@ -1845,6 +1849,20 @@ export const mockApi: Api = {
         { season: 33, seasonName: "Spring 2025", division: "Low", tier: 3, class: "sniper", rank: 3, of: 7, avg: 1.1, games: 102 },
       ],
     } as PlayerStats),
+  // From `hl season-table 34 4 demoman --json` on a copy, 21 October 2026:
+  // every season, division and class answers with it, relabelled.
+  getSeasonTable: (season: number | null, tier: number | null, cls: string, stage: string) => {
+    const t = seasonTable34 as unknown as SeasonTable;
+    const division = t.divisions.find((d) => d[0] === tier) ?? t.divisions.find((d) => d[0] === t.tier)!;
+    return delay({ ...t, season: season ?? t.season, seasonName: season ? `Season ${season}` : t.seasonName, tier: division[0], division: division[1], class: cls, stage: stage as SeasonTable["stage"] });
+  },
+  // From `hl deep` for the preview's player, 21 October 2026.
+  getPlayerDeep: (accountId: number) => delay({ ...(playerDeepFlashy as unknown as PlayerDeep), accountId }),
+  getMatchImpact: (logId: number) => {
+    const m = FIXTURES.find((f) => f.logId === logId) ?? FIXTURES[0];
+    // A spread around 1.00 that follows the rating, as the real column does.
+    return delay(Object.fromEntries(m.players.map((p) => [String(p.accountId), 1 + ((p.rating?.score ?? 1) - 1) * 0.8])));
+  },
   getRankings: (season: number | null, tier: number | null, cls: string) =>
     delay({
       season: season ?? 36,

@@ -4,24 +4,30 @@ import { t } from "../../lib/i18n";
  * The rest of "how is it decided" (Q80, Flashy: people keep asking how the
  * MVPs and everything else are decided): the MVPs, medals, ranks, opponent
  * strength and the logs.tf career, each with the rules the code uses, the
- * numbers in them as the code has them (`catalogue.rs`: MVP_FINAL_WEIGHT
- * 0.7, MVP_PLAYOFF_FULL_MAPS 4; `logstf.rs`: STRENGTH_MIN_GAMES 20,
+ * numbers in them as the code has them (`catalogue.rs`: SHRINK_MAPS 4,
+ * PLAYOFF_WEIGHT 1.5, FINAL_WEIGHT 2, SEASON_MVP_WEIGHTS 0.5/0.35/0.15,
+ * AWARD_MIN_OFFICIALS 4, EVPS 5 / 3 below 8 teams; `logstf.rs`: STRENGTH_MIN_GAMES 20,
  * RANK_MIN_GAMES 100). Every tip's "How it's decided" lands on one of these.
  */
 export function HowDecided() {
   return (
     <>
       <section className="panel rg-decided" id="guide-mvp">
-        <h2>{t("How MVPs are chosen")}</h2>
-        <p>{t("Every division's Grand Final has an MVP for each class and one for the event. The Grand Final is decided from the logs of the final itself, and the playoff run before it counts for a part.")}</p>
+        <h2>{t("How the season awards are chosen")}</h2>
+        <p>{t("Every division's season ends with three kinds of award, each judged on the whole season rather than one final: the Season MVP, the EVPs and the best player of each class. HLTV gives its MVP to an event's champions and its EVPs to standouts from any team; these follow that.")}</p>
+        <h3>{t("The season rating")}</h3>
         <ol>
-          <li>{t("The candidates are the players of each class on either finalist. A player is on the side ETF2L's roster puts them on; a merc, or someone ETF2L never listed, is on the side the final's logs put them on (with whichever finalist's players they shared a colour).")}</li>
-          <li>{t("They must have played more than half of the final's logs: one good half of two is not the final's MVP.")}</li>
-          <li>{t("Their score is 70% their average rating in the final and 30% their average over the playoff matches before it. With fewer than four playoff maps that 30% shrinks in proportion (two maps count 15%), so a short run cannot outweigh the final.")}</li>
-          <li>{t("The best score on each class is the class MVP, whichever finalist they played for. A tie goes to the team that won.")}</li>
-          <li>{t("The event MVP is the best of the winning team's players, as HLTV's goes to the champions, even when the losing side's player on their class rated higher.")}</li>
+          <li>{t("Every official a player played on the class that season counts, playoffs included. A playoff map counts 1.5 times and a Grand Final map twice, as the harder games.")}</li>
+          <li>{t("The average is pulled towards 1.00 by four maps' worth of average games, so a short season cannot run away with it: 1.30 over 4 maps reads about 1.15, while 1.15 over 20 maps reads 1.13.")}</li>
+          <li>{t("The season tables rank by this number, so a table and the award beside it always agree. Four officials on the class are needed for an award.")}</li>
         </ol>
-        <p className="hint">{t("A final whose logs are not held has no MVP rather than a guess.")}</p>
+        <h3>{t("The awards")}</h3>
+        <ul>
+          <li>{t("Season MVP, one per division: the best player of the team that won it. 50% their season rating, 35% their Grand Final and 15% the rest of their playoffs, each pulled towards 1.00 the same way; with no other playoff games their 15% goes to the season. They need four officials and to have played more than half of the final's logs. A tie goes to more officials, then more final maps.")}</li>
+          <li>{t("EVPs: the five best season ratings in the division on any team and any class, each player once, the Season MVP aside; three in a division of fewer than eight teams.")}</li>
+          <li>{t("Best of the class: the top of each class's season table, on any team.")}</li>
+        </ul>
+        <p className="hint">{t("A player the roster does not place, a merc or someone ETF2L never listed, is on the side the final's logs put them on. A division whose final logs are not held has no Season MVP rather than a guess.")}</p>
       </section>
 
       <section className="panel rg-decided" id="guide-medals">
@@ -36,7 +42,7 @@ export function HowDecided() {
 
       <section className="panel rg-decided" id="guide-ranks">
         <h2>{t("How ranks are worked out")}</h2>
-        <p>{t("A rank is a player's place among everyone on the same class in the same season's division, by their average rating over that season's officials. Four or more officials are needed to be ranked, so one great night does not top a table.")}</p>
+        <p>{t("A rank is a player's place among everyone on the same class in the same season's division, by their season rating: the average over that season's officials, playoff maps counting 1.5 times and the Grand Final twice, pulled towards 1.00 by four maps. Three or more officials are needed to be ranked, so one great night does not top a table.")}</p>
       </section>
 
       <section className="panel rg-decided" id="guide-strength">

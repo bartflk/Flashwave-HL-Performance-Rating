@@ -608,3 +608,47 @@ button.pp-alias-more:hover { border-color: var(--accent-dim); background: rgba(v
 /* Under the ranking threshold: listed, greyed out, not ranked. */
 .tp-row.tp-under td, .rank-pop-row.under { opacity: 0.45; }
 .tp-row.tp-under:hover td { opacity: 0.75; }
+
+/* The deeper profile (the MVP research, October 2026): HLTV-style verdicts,
+   attribute cards, rating by division, moments, weapons. */
+.dp { display: flex; flex-direction: column; gap: 12px; }
+.dp-classes { align-self: flex-start; flex-wrap: wrap; }
+.dp-classes .seg { display: inline-flex; align-items: center; gap: 5px; }
+.dp-row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.dp-row-head h3 { margin: 0; }
+.dp-avg { color: var(--muted); font-size: 0.86rem; }
+.dp-headline { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 14px 18px; margin-top: 12px; }
+.dp-verdict { display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; }
+.dp-value { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.dp-label { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.dp-bar { position: relative; display: block; width: 100%; height: 4px; border-radius: 2px; background: var(--sunken); overflow: visible; }
+.dp-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--accent); }
+.dp-mark { position: absolute; top: -3px; width: 2px; height: 10px; background: var(--text); opacity: 0.7; }
+.dp-word { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.dp-good .dp-fill { background: #3fbf6a; }
+.dp-good .dp-word { color: #3fbf6a; }
+.dp-okay .dp-fill { background: #e0b440; }
+.dp-okay .dp-word { color: #e0b440; }
+.dp-poor .dp-fill { background: #e05252; }
+.dp-poor .dp-word { color: #e05252; }
+.dp-attrs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 8px; }
+.dp-attr { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 8px; background: var(--sunken); border: 1px solid var(--border); }
+.dp-attr.open { grid-column: span 2; }
+.dp-attr-head { display: flex; align-items: baseline; gap: 8px; width: 100%; padding: 0; border: 0; background: transparent; color: var(--text); cursor: pointer; text-align: left; }
+.dp-attr-name { font-weight: 600; }
+.dp-attr-score { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+.dp-attr-caret { color: var(--muted); }
+.dp-attr-stats { width: 100%; font-size: 0.86rem; border-collapse: collapse; }
+.dp-attr-stats td { padding: 3px 4px; border-top: 1px solid var(--border); }
+.dp-attr-stats td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.dp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+.dp-grid > .panel, .dp > .panel { margin: 0; }
+.dp-tiles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.dp-tile { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 96px; padding: 10px 12px; border-radius: 8px; background: var(--sunken); border: 1px solid var(--border); }
+.dp-tile strong { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.dp-tile span { font-size: 0.8rem; }
+.dp-moments { display: flex; flex-wrap: wrap; gap: 6px 24px; margin: 6px 0 10px; }
+.dp-moments dt { font-size: 0.74rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.dp-moments dd { margin: 0; font-size: 1.1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.dp-sides td.num, .dp-weapons td.num { text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) { .dp-attr.open { grid-column: auto; } }

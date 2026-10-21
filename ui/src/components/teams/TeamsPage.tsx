@@ -10,7 +10,9 @@ import { ClassIcon } from "../ClassIcon";
 import { Country } from "../Country";
 import { classLabel } from "../analysis/common";
 import { MedalGlyph } from "../players/MedalGlyph";
-import { DivisionBadge, medalTitles, seasonLong, seasonShort } from "../players/PlayerProfile";
+import { awardName, DivisionBadge, medalTitles, mvpHow, seasonLong, seasonShort } from "../players/PlayerProfile";
+import { StatTip } from "../StatTip";
+import { SeasonRankings } from "./SeasonRankings";
 import "../players/players.css";
 import "./teams.css";
 import { YouOnThisTeam } from "./YourTeams";
@@ -253,6 +255,9 @@ export function SeasonScreen({ season, onTeam, tables: showTables = true }: { se
         </section>
       )}
 
+      <h2 className="ts-section">{t("Season rankings")}</h2>
+      <SeasonRankings season={season} onTeam={onTeam} />
+
       {showTables && <h2 className="ts-section">{t("Divisions")}</h2>}
       {showTables && tables.isError && <p className="error">{errorMessage(tables.error)}</p>}
       {showTables && v && v.divisions.length > 0 && (
@@ -291,15 +296,51 @@ function PodiumCard({ p, onTeam }: { p: Podium; onTeam: (id: number) => void }) 
         ))}
       </ol>
       {p.mvp && (
-        <button className="ts-mvp" onClick={() => openPlayer(p.mvp!.accountId)} title={t("Grand Final {0} over {1} logs", { "0": p.mvp.finalRating.toFixed(2), "1": p.mvp.finalMaps })}>
+        <button className="ts-mvp" onClick={() => openPlayer(p.mvp!.accountId)} title={mvpHow(p.mvp)}>
           <span className="pp-mvp-star" aria-hidden>
             ★
           </span>
-          <span className="ts-mvp-label">{t("MVP")}</span>
+          <span className="ts-mvp-label">{t("Season MVP")}</span>
           <ClassIcon cls={p.mvp.class} size={16} />
           <strong>{p.mvpName ?? "?"}</strong>
           <span className="ts-mvp-rating">{rating(p.mvp.score)}</span>
         </button>
+      )}
+      {(p.awards ?? []).some(([m]) => m.kind === "evp") && (
+        <div className="ts-awards">
+          <span className="ts-awards-label">
+            <StatTip k="evp" inline>
+              {t("EVPs")}
+            </StatTip>
+          </span>
+          {(p.awards ?? [])
+            .filter(([m]) => m.kind === "evp")
+            .map(([m, name]) => (
+              <button key={m.accountId} className="ts-award" onClick={() => openPlayer(m.accountId)} title={mvpHow(m)}>
+                <ClassIcon cls={m.class} size={14} />
+                {name}
+                <span className="muted">{rating(m.score)}</span>
+              </button>
+            ))}
+        </div>
+      )}
+      {(p.awards ?? []).some(([m]) => m.kind === "class") && (
+        <div className="ts-awards">
+          <span className="ts-awards-label">
+            <StatTip k="classAward" inline>
+              {t("Best of each class")}
+            </StatTip>
+          </span>
+          {(p.awards ?? [])
+            .filter(([m]) => m.kind === "class")
+            .map(([m, name]) => (
+              <button key={`${m.class}-${m.accountId}`} className="ts-award" onClick={() => openPlayer(m.accountId)} title={`${awardName(m, false)} · ${mvpHow(m)}`}>
+                <ClassIcon cls={m.class} size={14} />
+                {name}
+                <span className="muted">{rating(m.score)}</span>
+              </button>
+            ))}
+        </div>
       )}
     </div>
   );

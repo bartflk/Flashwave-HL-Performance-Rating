@@ -635,7 +635,7 @@ pub async fn player_deep(db: &Db, account: u32) -> Result<PlayerDeep> {
             totals: t,
         });
     }
-    classes.sort_by(|a, b| b.maps.cmp(&a.maps));
+    classes.sort_by_key(|c| std::cmp::Reverse(c.maps));
     Ok(PlayerDeep { account_id: account, classes })
 }
 

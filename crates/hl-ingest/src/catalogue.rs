@@ -838,10 +838,12 @@ impl Catalogue {
         let lines = self.season_lines(games);
         let eligible = |l: &&SeasonLine| l.officials.len() >= AWARD_MIN_OFFICIALS;
         let mut out = Vec::new();
-        let mut season_mvp: HashMap<(i64, i64), u32> = HashMap::new();
+        // (season, tier) -> the Season MVPs of its divisions (two divisions
+        // can share a tier: Fresh Meat and Freshest, Open A and Open B).
+        let mut season_mvp: HashMap<(i64, i64), Vec<u32>> = HashMap::new();
 
-        // The champions: who won each division's final.
-        let mut champions: HashMap<(i64, i64), (i64, &CatMatch)> = HashMap::new();
+        // The champions: who won each division's final, by division.
+        let mut champions: HashMap<(i64, String), (i64, i64, &CatMatch)> = HashMap::new();
         let mut by_match: HashMap<i64, Vec<&hl_db::RatedGame>> = HashMap::new();
         for g in games {
             if let Some(id) = g.etf2l_match_id {
@@ -864,11 +866,11 @@ impl Catalogue {
             let Some(tier) = crate::leagues::canonical_tier(&division).or_else(|| self.tiers.get(&key).copied()).or_else(|| self.tier_by_name.get(&division).copied()) else {
                 continue;
             };
-            champions.insert((f.season, tier), (winner, f));
+            champions.insert((f.season, division), (tier, winner, f));
         }
 
         // Season MVPs.
-        for (&(season, tier), &(winner, f)) in &champions {
+        for (&(season, _), &(tier, winner, f)) in &champions {
             let Some(in_final) = by_match.get(&f.match_id) else { continue };
             let mut team_of: HashMap<u32, i64> = self
                 .rosters
@@ -950,13 +952,13 @@ impl Catalogue {
                 }
             }
             if let Some(m) = best {
-                season_mvp.insert((season, tier), m.account_id);
+                season_mvp.entry((season, tier)).or_default().push(m.account_id);
                 out.push(m);
             }
         }
 
         let award = |l: &SeasonLine, kind: &str| {
-            let won = champions.get(&(l.season, l.tier)).is_some_and(|(w, _)| *w == l.team);
+            let won = champions.values().any(|(t, w, f)| f.season == l.season && *t == l.tier && *w == l.team);
             Mvp {
                 season: l.season,
                 season_name: self.season_name(l.season),
@@ -1006,7 +1008,7 @@ impl Catalogue {
         }
         for (key, by) in divisions {
             let n = if teams.get(&key).map_or(0, |t| t.len()) < EVPS_SMALL_BELOW_TEAMS { EVPS_SMALL } else { EVPS };
-            let mut rows: Vec<&SeasonLine> = by.into_values().filter(|l| season_mvp.get(&key) != Some(&l.account_id)).collect();
+            let mut rows: Vec<&SeasonLine> = by.into_values().filter(|l| !season_mvp.get(&key).is_some_and(|v| v.contains(&l.account_id))).collect();
             rows.sort_by(|a, b| better(b, a));
             out.extend(rows.into_iter().take(n).map(|l| award(l, "evp")));
         }
@@ -2127,7 +2129,7 @@ pub async fn season_podiums(db: &Db, season: i64) -> Result<Vec<Podium>> {
             let mut medals: Vec<PodiumPlace> = list.into_iter().map(|(place, team, how)| PodiumPlace { place, team: cat.team(team), how }).collect();
             medals.sort_by_key(|p| p.place);
             let tier = cat.tier_of_name(season, &division);
-            let mvp = mvps.iter().find(|m| m.event && m.season == season && (m.division == division || (tier.is_some() && m.tier == tier))).cloned();
+            let mvp = mvps.iter().find(|m| m.event && m.season == season && m.division == division).cloned();
             let awards = mvps
                 .iter()
                 .filter(|m| !m.event && m.season == season && tier.is_some() && m.tier == tier)

@@ -13,10 +13,10 @@ import { tip } from "../../lib/glossary";
 
 const CLASS_ORDER = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
 
-type Key = "team" | "name" | "k" | "a" | "d" | "da" | "dapm" | "kad" | "kd" | "dt" | "dtpm" | "hp" | "bs" | "hs" | "as" | "cap" | "spawn" | "ping" | "rating";
+type Key = "team" | "name" | "k" | "a" | "d" | "da" | "dapm" | "kad" | "kd" | "dt" | "dtpm" | "hp" | "bs" | "hs" | "as" | "cap" | "spawn" | "ping" | "rating" | "impact";
 
 /** The log's flags, and whether anyone's caps cost their team a respawn. */
-type Flags = LogFlags & { spawn: boolean; ping: Map<number, PlayerPing> | null };
+type Flags = LogFlags & { spawn: boolean; ping: Map<number, PlayerPing> | null; impact: Map<number, number> | null };
 
 type Col = {
   key: Key;
@@ -69,6 +69,13 @@ const COLS: Col[] = [
     value: (p) => p.rating?.score ?? null,
     fmt: (v) => rating(v),
   },
+  {
+    key: "impact",
+    label: k("Impact"),
+    title: k("Round-win chance their kills added and their deaths gave away, against the class: 1.00 is an average game. Shown beside the rating, never part of it."),
+    value: (p, f) => f.impact?.get(p.accountId) ?? null,
+    fmt: (v) => rating(v),
+  },
 ];
 
 /**
@@ -85,15 +92,18 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
   // its own; Flashy wanted it beside the rest of the numbers).
   const demo = useQuery({ queryKey: ["demostats", d.logId], queryFn: () => api.getDemoStats(d.logId) });
   const pings = demo.data?.pings;
+  // Impact from the server log, where there is one (the MVP research).
+  const impact = useQuery({ queryKey: ["match_impact", d.logId], queryFn: () => api.getMatchImpact(d.logId) });
   const flags: Flags = useMemo(
     () => ({
       ...d.flags,
       spawn: d.players.some((p) => (p.spawnDelayS ?? 0) > 0),
       ping: pings && pings.length > 0 ? new Map(pings.map((x) => [x.accountId, x])) : null,
+      impact: impact.data && Object.keys(impact.data).length > 0 ? new Map(Object.entries(impact.data).map(([a, v]) => [Number(a), v])) : null,
     }),
-    [d.flags, d.players, pings],
+    [d.flags, d.players, pings, impact.data],
   );
-  const cols = COLS.filter((c) => c.key !== "ping" || flags.ping);
+  const cols = COLS.filter((c) => (c.key !== "ping" || flags.ping) && (c.key !== "impact" || flags.impact));
   const [sort, setSort] = useState<{ key: Key; desc: boolean }>({ key: "team", desc: false });
   const rows = useMemo(() => {
     const byTeamClass = (a: PlayerRow, b: PlayerRow) =>
@@ -144,8 +154,8 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
               {cols.map((c) => (
                 <th key={c.key} className="num sortable" onClick={() => click(c.key)}>
                   {/* What the column is and where it comes from (Q80). */}
-                  {c.key === "rating" ? (
-                    <StatTip k="rating" inline>{tr(c.label)}</StatTip>
+                  {c.key === "rating" || c.key === "impact" ? (
+                    <StatTip k={c.key} inline>{tr(c.label)}</StatTip>
                   ) : (
                     <StatTip entry={tip(tr(c.label), tr(c.title), c.key === "spawn" ? tr(SPAWN_HOW) : c.key === "ping" ? tr(PING_HOW) : tr(BOX_HOW), c.key === "spawn" ? "server log" : c.key === "ping" ? "STV demo" : "logs.tf")} inline>
                       {tr(c.label)}
@@ -182,7 +192,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
                   return (
                     <td
                       key={c.key}
-                      className={c.key === "rating" ? "num sb-rating" : "num"}
+                      className={c.key === "rating" ? "num sb-rating" : c.key === "impact" ? "num sb-impact" : "num"}
                       title={
                         pg
                           ? [

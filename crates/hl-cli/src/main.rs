@@ -1645,7 +1645,12 @@ async fn run() -> Result<()> {
             // number, ranked by the season rating.
             let db = Db::connect(&db_path).await?;
             let stage = rest.first().copied().unwrap_or("all");
+            let stage = if stage == "--json" { "all" } else { stage };
             let t = hl_ingest::season_stats::season_table(&db, Some(season.parse()?), Some(tier.parse()?), class, stage).await?;
+            if rest.contains(&"--json") {
+                println!("{}", serde_json::to_string_pretty(&t)?);
+                return Ok(());
+            }
             println!("{} {} {} ({}), impact scale {:.2} +- {:.2}", t.season_name, t.division, t.class, t.stage, t.impact_scale.mean, t.impact_scale.sd);
             for r in &t.rows {
                 let m = r.totals.time_s as f64 / 1800.0;
@@ -1664,6 +1669,13 @@ async fn run() -> Result<()> {
                     r.awards.join(",")
                 );
             }
+            Ok(())
+        }
+        ["podiums", season] => {
+            // A season's podiums and awards, as the app's season page reads them.
+            let db = Db::connect(&db_path).await?;
+            let p = hl_ingest::catalogue::season_podiums(&db, season.parse()?).await?;
+            println!("{}", serde_json::to_string_pretty(&p)?);
             Ok(())
         }
         ["deep", account] => {

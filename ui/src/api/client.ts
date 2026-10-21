@@ -110,6 +110,8 @@ import type {
   CareerView,
   Rankings,
   MatchDivisions,
+  SeasonTable,
+  PlayerDeep,
 } from "./types";
 import { withChosenNames } from "../lib/names";
 
@@ -157,6 +159,10 @@ const realApi = {
   getTrendsCareer: (accountId: number) => invoke<CareerView>("get_trends_career", { accountId }),
   getMatchDivisions: (logId: number) => invoke<MatchDivisions>("get_match_divisions", { logId }),
   getRankings: (season: number | null, tier: number | null, cls: string) => invoke<Rankings>("get_rankings", { season, tier, class: cls }),
+  getSeasonTable: (season: number | null, tier: number | null, cls: string, stage: string) =>
+    invoke<SeasonTable>("get_season_table", { season, tier, class: cls, stage }),
+  getPlayerDeep: (accountId: number) => invoke<PlayerDeep>("get_player_deep", { accountId }),
+  getMatchImpact: (logId: number) => invoke<Record<string, number>>("get_match_impact", { logId }),
   syncStart: (full: boolean) => invoke<void>("sync_start", { full }),
   reprocessStart: () => invoke<void>("reprocess_start"),
   getMatch: (logId: number) => invoke<MatchDetail | null>("get_match", { logId }),

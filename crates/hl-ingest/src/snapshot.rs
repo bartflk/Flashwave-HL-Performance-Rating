@@ -73,6 +73,11 @@ fn league_tables(keep_ours: bool) -> Vec<TableCopy<'static>> {
         t("league_log"),
         t("league_log_player"),
         TableCopy { table: "league_rating", filter: Some(format!("model_version = '{MODEL_VERSION}'")), keep_ours },
+        // Every player's numbers in the officials (season tables, profiles,
+        // impact): 6.6 MB of the file, measured 21 October 2026. The league's
+        // logs only, never the owner's own matches. Per-weapon rows stay out
+        // (8 MB more for one panel): an install has them for the logs it holds.
+        TableCopy { table: "log_stat", filter: Some("log_id IN (SELECT log_id FROM src.league_log)".into()), keep_ours },
     ]
 }
 
