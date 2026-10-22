@@ -896,6 +896,29 @@ impl Catalogue {
         out
     }
 
+    /// Whether a game was played for the player's own team: awards count
+    /// only these (Flashy, S33 Low: three of a Sniper's eight officials were
+    /// as a merc for other teams). A merc who joined that team later in the
+    /// season is one of its players, as for medals. A match whose lineups
+    /// were never read keeps every game: nothing says otherwise.
+    pub fn own_team_game(&self, g: &hl_db::RatedGame) -> bool {
+        let Some(id) = g.etf2l_match_id else { return true };
+        let Some(roster) = self.rosters.get(&id).filter(|r| !r.is_empty()) else { return true };
+        let Some(m) = self.matches.get(&id) else { return true };
+        match roster.iter().find(|(a, _, _)| *a == g.account_id) {
+            Some((_, Some(team), _)) if *team == m.clan1 || *team == m.clan2 => {
+                !self.mercs.contains(&(id, g.account_id)) || self.joined_after(g.account_id, m.season, *team, m.time.unwrap_or(0))
+            }
+            _ => false,
+        }
+    }
+
+    /// Season lines from own-team games only: what the awards are read from.
+    pub fn award_lines(&self, games: &[hl_db::RatedGame]) -> HashMap<(i64, i64, String, u32), SeasonLine> {
+        let own: Vec<hl_db::RatedGame> = games.iter().filter(|g| self.own_team_game(g)).cloned().collect();
+        self.season_lines(&own)
+    }
+
     /// The thresholds and playoff places [`Catalogue::mvps`] reads.
     pub fn award_rules(&self, lines: &HashMap<(i64, i64, String, u32), SeasonLine>) -> AwardRules {
         let mut rules = AwardRules::default();
@@ -950,6 +973,9 @@ impl Catalogue {
     /// the division played that season, and never fewer than
     /// [`AWARD_MIN_OFFICIALS`].
     pub fn mvps(&self, games: &[hl_db::RatedGame]) -> Vec<Mvp> {
+        // Own-team games only: a merc appearance is not a season for that team.
+        let own: Vec<hl_db::RatedGame> = games.iter().filter(|g| self.own_team_game(g)).cloned().collect();
+        let games = &own[..];
         let lines = self.season_lines(games);
         let rules = self.award_rules(&lines);
         let eligible = |l: &&SeasonLine| rules.enough(l);
@@ -2721,6 +2747,23 @@ mod tests {
         // A short season asks for no more than four.
         let short: HashMap<(i64, i64, String, u32), SeasonLine> = [line(5, 11, 5)].into_iter().map(|l| ((31, 3, "sniper".to_string(), 5), l)).collect();
         assert_eq!(c.award_rules(&short).need(31, 3), 4);
+    }
+
+    #[test]
+    fn merc_games_do_not_count_for_awards() {
+        let mut c = cat(vec![m(1, 33, "regular", Some("Low"), "", None, 10, 11, 6, 0)]);
+        // 10 and 11 are on their teams' rosters (cat()); 500 played as a
+        // merc; 600 played and is on no lineup at all.
+        c.rosters.get_mut(&1).unwrap().push((500, Some(10), "merc".into()));
+        c.mercs.insert((1, 500));
+        let g = |account: u32| hl_db::RatedGame { account_id: account, log_id: 1, etf2l_match_id: Some(1), official: true, minutes: 30.0, ..Default::default() };
+        assert!(c.own_team_game(&g(10)));
+        assert!(!c.own_team_game(&g(500)), "a merc for that team");
+        assert!(!c.own_team_game(&g(600)), "not on the lineup ETF2L has");
+        // A match whose lineups were never read keeps everyone.
+        let mut unread = g(600);
+        unread.etf2l_match_id = Some(99);
+        assert!(c.own_team_game(&unread));
     }
 
     #[test]

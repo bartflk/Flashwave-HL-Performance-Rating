@@ -190,7 +190,7 @@ export function SeasonRankings({ season, onTeam }: { season: number; onTeam: (id
               "3": classLabel(cls),
             })}{" "}
             {v.playoffsRequired
-              ? t("The best of the class comes from the three medal teams, with {0} officials on the class; EVPs need the {0} officials, any team.", { "0": v.awardOfficials })
+              ? t("The best of the class comes from the three medal teams, with {0} officials on the class for their own team; EVPs need the {0} officials, any team. Merc games are shown but do not count for awards.", { "0": v.awardOfficials })
               : t("Awards need {0} officials on the class.", { "0": v.awardOfficials })}
           </p>
           <div className="sr-scroll has-refresh">
@@ -241,7 +241,7 @@ export function SeasonRankings({ season, onTeam }: { season: number; onTeam: (id
                         {r.name}
                       </button>
                       {!r.eligible && r.rank !== null && (
-                        <span className="sr-noaward" title={t("Not eligible for the best of the class: fewer than {0} officials, or not on a medal team", { "0": v.awardOfficials })}>
+                        <span className="sr-noaward" title={t("Not eligible for the best of the class: fewer than {0} officials for their own team, or not on a medal team", { "0": v.awardOfficials })}>
                           ·
                         </span>
                       )}

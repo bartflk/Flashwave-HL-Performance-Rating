@@ -1,6 +1,6 @@
 {
   "season": 34,
-  "seasonName": "Season 2025",
+  "seasonName": "Summer 2025",
   "tier": 4,
   "division": "Open",
   "class": "demoman",
@@ -20,7 +20,7 @@
     ],
     [
       34,
-      "Season 2025"
+      "Summer 2025"
     ],
     [
       33,
@@ -97,12 +97,15 @@
       },
       "officials": 5,
       "maps": 8,
-      "eligible": false,
+      "eligible": true,
       "rating": 1.1770342148103756,
-      "average": 1.2505728171302855,
+      "average": 1.2505728171302857,
       "impact": 1.1659681670347117,
       "impactPer30": 0.7740833951074871,
-      "awards": [],
+      "awards": [
+        "evp",
+        "class"
+      ],
       "totals": {
         "maps": 17,
         "timeS": 13490,
@@ -228,10 +231,7 @@
       "average": 1.1470611653669833,
       "impact": 1.1152746700357286,
       "impactPer30": 0.6033207796241651,
-      "awards": [
-        "evp",
-        "class"
-      ],
+      "awards": [],
       "totals": {
         "maps": 14,
         "timeS": 12878,
@@ -291,7 +291,7 @@
       "maps": 4,
       "eligible": false,
       "rating": 1.1174178153277807,
-      "average": 1.176126722991671,
+      "average": 1.1761267229916712,
       "impact": 1.090659595514863,
       "impactPer30": 0.5393346894225044,
       "awards": [],
@@ -353,8 +353,8 @@
       "officials": 3,
       "maps": 3,
       "eligible": false,
-      "rating": 1.1076459373848113,
-      "average": 1.1794098956413521,
+      "rating": 1.107645937384811,
+      "average": 1.179409895641352,
       "impact": 1.0722774585208779,
       "impactPer30": 0.5199135825662218,
       "awards": [],
@@ -605,8 +605,8 @@
       "officials": 5,
       "maps": 5,
       "eligible": false,
-      "rating": 0.971299010157803,
-      "average": 0.9598186142209242,
+      "rating": 0.9712990101578031,
+      "average": 0.9598186142209244,
       "impact": 0.9794794707831966,
       "impactPer30": 0.07146033853302346,
       "awards": [],
@@ -795,7 +795,7 @@
       "maps": 3,
       "eligible": false,
       "rating": 0.9148583256763114,
-      "average": 0.858097209460519,
+      "average": 0.8580972094605192,
       "impact": 0.9126222955883833,
       "impactPer30": -0.25491715567828793,
       "awards": [],
@@ -857,8 +857,8 @@
       "officials": 6,
       "maps": 7,
       "eligible": false,
-      "rating": 0.888318229450283,
-      "average": 0.8544768927195703,
+      "rating": 0.8883182294502832,
+      "average": 0.8544768927195706,
       "impact": 0.9153408447202798,
       "impactPer30": -0.16027987479285577,
       "awards": [],
@@ -921,7 +921,7 @@
       "maps": 5,
       "eligible": false,
       "rating": 0.8321457632094091,
-      "average": 0.7650040684931728,
+      "average": 0.7650040684931729,
       "impact": 0.875654687707008,
       "impactPer30": -0.3518692509855452,
       "awards": [],
@@ -1795,6 +1795,6 @@
     "mean": 0.15781596468826137,
     "sd": 0.7514741634973905
   },
-  "awardOfficials": 6,
+  "awardOfficials": 5,
   "playoffsRequired": true
 }

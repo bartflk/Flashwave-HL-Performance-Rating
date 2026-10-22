@@ -275,7 +275,9 @@ pub async fn season_table(db: &Db, season: Option<i64>, tier: Option<i64>, class
         db.log_stats_for_logs(&logs).await?.into_iter().map(|s| ((s.log_id, s.account_id, s.class.clone()), s)).collect();
     let scale = ImpactScale::of(&db.log_stats_of_class(class).await?);
     let awards: Vec<Mvp> = cat.mvps(&rated).into_iter().filter(|m| m.season == season && m.tier == Some(tier)).collect();
-    let rules = cat.award_rules(&lines);
+    // Eligibility as the awards read it: own-team games only.
+    let award_lines = cat.award_lines(&rated);
+    let rules = cat.award_rules(&award_lines);
 
     // Per player: the stage's season line, and the summed numbers.
     let mut per: HashMap<u32, (crate::catalogue::SeasonLine, Totals)> = HashMap::new();
@@ -300,7 +302,7 @@ pub async fn season_table(db: &Db, season: Option<i64>, tier: Option<i64>, class
                 team: Some(cat.team(line.team)),
                 officials: line.officials.len(),
                 maps: line.maps(),
-                eligible: rules.class_award(members[&a]),
+                eligible: award_lines.get(&(season, tier, class.to_string(), a)).is_some_and(|l| rules.class_award(l)),
                 rating: line.rating(),
                 average: line.average(),
                 impact: impact_per30.map(|p| scale.rating(p, totals.raw_maps)),

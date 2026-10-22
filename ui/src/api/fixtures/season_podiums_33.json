@@ -63,6 +63,33 @@
           "seasonName": "Spring 2025",
           "division": "Premiership",
           "tier": 0,
+          "class": "heavy",
+          "accountId": 127534302,
+          "team": {
+            "id": 35780,
+            "name": "4House",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/65726fab2458f.jpg"
+          },
+          "won": true,
+          "event": false,
+          "kind": "evp",
+          "score": 1.217367182541116,
+          "seasonRating": 1.217367182541116,
+          "officials": 5,
+          "seasonMaps": 5,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "Odin."
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "Premiership",
+          "tier": 0,
           "class": "demoman",
           "accountId": 285229424,
           "team": {
@@ -110,6 +137,33 @@
           "playoffsMaps": 0
         },
         "0mger"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "Premiership",
+          "tier": 0,
+          "class": "engineer",
+          "accountId": 163231154,
+          "team": {
+            "id": 35780,
+            "name": "4House",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/65726fab2458f.jpg"
+          },
+          "won": true,
+          "event": false,
+          "kind": "evp",
+          "score": 1.1469669079217295,
+          "seasonRating": 1.1469669079217295,
+          "officials": 8,
+          "seasonMaps": 10,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "keicam"
       ],
       [
         {
@@ -144,8 +198,8 @@
           "seasonName": "Spring 2025",
           "division": "Premiership",
           "tier": 0,
-          "class": "medic",
-          "accountId": 138153086,
+          "class": "heavy",
+          "accountId": 127534302,
           "team": {
             "id": 35780,
             "name": "4House",
@@ -153,44 +207,17 @@
           },
           "won": true,
           "event": false,
-          "kind": "evp",
-          "score": 1.1398891994523226,
-          "seasonRating": 1.1398891994523226,
-          "officials": 6,
-          "seasonMaps": 8,
+          "kind": "class",
+          "score": 1.217367182541116,
+          "seasonRating": 1.217367182541116,
+          "officials": 5,
+          "seasonMaps": 5,
           "finalRating": null,
           "finalMaps": 0,
           "playoffsRating": null,
           "playoffsMaps": 0
         },
-        "Wata"
-      ],
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "Premiership",
-          "tier": 0,
-          "class": "engineer",
-          "accountId": 163231154,
-          "team": {
-            "id": 35780,
-            "name": "4House",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/65726fab2458f.jpg"
-          },
-          "won": true,
-          "event": false,
-          "kind": "evp",
-          "score": 1.137343659334234,
-          "seasonRating": 1.137343659334234,
-          "officials": 9,
-          "seasonMaps": 11,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "keicam"
+        "Odin."
       ],
       [
         {
@@ -245,6 +272,33 @@
           "playoffsMaps": 0
         },
         "0mger"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "Premiership",
+          "tier": 0,
+          "class": "engineer",
+          "accountId": 163231154,
+          "team": {
+            "id": 35780,
+            "name": "4House",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/65726fab2458f.jpg"
+          },
+          "won": true,
+          "event": false,
+          "kind": "class",
+          "score": 1.1469669079217295,
+          "seasonRating": 1.1469669079217295,
+          "officials": 8,
+          "seasonMaps": 10,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "keicam"
       ],
       [
         {
@@ -306,33 +360,6 @@
           "seasonName": "Spring 2025",
           "division": "Premiership",
           "tier": 0,
-          "class": "engineer",
-          "accountId": 163231154,
-          "team": {
-            "id": 35780,
-            "name": "4House",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/65726fab2458f.jpg"
-          },
-          "won": true,
-          "event": false,
-          "kind": "class",
-          "score": 1.137343659334234,
-          "seasonRating": 1.137343659334234,
-          "officials": 9,
-          "seasonMaps": 11,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "keicam"
-      ],
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "Premiership",
-          "tier": 0,
           "class": "pyro",
           "accountId": 346771441,
           "team": {
@@ -380,33 +407,6 @@
           "playoffsMaps": 0
         },
         "stun"
-      ],
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "Premiership",
-          "tier": 0,
-          "class": "heavy",
-          "accountId": 275066432,
-          "team": {
-            "id": 19335,
-            "name": "TWICE",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/67e3f46609848.jpg"
-          },
-          "won": false,
-          "event": false,
-          "kind": "class",
-          "score": 1.0792413690467786,
-          "seasonRating": 1.0792413690467786,
-          "officials": 8,
-          "seasonMaps": 10,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "Elysioner"
       ],
       [
         {
@@ -462,20 +462,20 @@
       {
         "place": 3,
         "team": {
-          "id": 32426,
-          "name": "THACI/VUCIC",
-          "avatar": "https://etf2l.org/wp-content/uploads/avatars/5f14294154f75.jpg"
-        },
-        "how": "joint 3rd: semi-final 0-6"
-      },
-      {
-        "place": 3,
-        "team": {
           "id": 35738,
           "name": "ChudsX6",
           "avatar": "https://etf2l.org/wp-content/uploads/avatars/6a7c266876a8c.png"
         },
         "how": "joint 3rd: semi-final 3-6"
+      },
+      {
+        "place": 3,
+        "team": {
+          "id": 32426,
+          "name": "THACI/VUCIC",
+          "avatar": "https://etf2l.org/wp-content/uploads/avatars/5f14294154f75.jpg"
+        },
+        "how": "joint 3rd: semi-final 0-6"
       }
     ],
     "mvp": null,
@@ -497,10 +497,10 @@
           "won": false,
           "event": false,
           "kind": "evp",
-          "score": 1.1678658930539894,
-          "seasonRating": 1.1678658930539894,
-          "officials": 9,
-          "seasonMaps": 12,
+          "score": 1.1636322482850938,
+          "seasonRating": 1.1636322482850938,
+          "officials": 8,
+          "seasonMaps": 10,
           "finalRating": null,
           "finalMaps": 0,
           "playoffsRating": null,
@@ -524,8 +524,8 @@
           "won": false,
           "event": false,
           "kind": "evp",
-          "score": 1.1430442380594525,
-          "seasonRating": 1.1430442380594525,
+          "score": 1.1430442380594523,
+          "seasonRating": 1.1430442380594523,
           "officials": 8,
           "seasonMaps": 10,
           "finalRating": null,
@@ -534,6 +534,33 @@
           "playoffsMaps": 0
         },
         "lolevont"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "High",
+          "tier": 1,
+          "class": "medic",
+          "accountId": 160494787,
+          "team": {
+            "id": 32258,
+            "name": "Kazakh e-Sports powered by Chapman",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/6524504f5aa4e.png"
+          },
+          "won": false,
+          "event": false,
+          "kind": "evp",
+          "score": 1.1008423723246383,
+          "seasonRating": 1.1008423723246383,
+          "officials": 6,
+          "seasonMaps": 6,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "darkitime"
       ],
       [
         {
@@ -595,26 +622,26 @@
           "seasonName": "Spring 2025",
           "division": "High",
           "tier": 1,
-          "class": "heavy",
-          "accountId": 57586812,
+          "class": "medic",
+          "accountId": 160494787,
           "team": {
-            "id": 30263,
-            "name": "BAD DRAGONS",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/5ee64926b5d9c.jpg"
+            "id": 32258,
+            "name": "Kazakh e-Sports powered by Chapman",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/6524504f5aa4e.png"
           },
           "won": false,
           "event": false,
-          "kind": "evp",
-          "score": 1.0819281497139053,
-          "seasonRating": 1.0819281497139053,
-          "officials": 8,
-          "seasonMaps": 10,
+          "kind": "class",
+          "score": 1.1008423723246383,
+          "seasonRating": 1.1008423723246383,
+          "officials": 6,
+          "seasonMaps": 6,
           "finalRating": null,
           "finalMaps": 0,
           "playoffsRating": null,
           "playoffsMaps": 0
         },
-        "WalkeR1337"
+        "darkitime"
       ],
       [
         {
@@ -703,33 +730,6 @@
           "seasonName": "Spring 2025",
           "division": "High",
           "tier": 1,
-          "class": "pyro",
-          "accountId": 374702019,
-          "team": {
-            "id": 32258,
-            "name": "Kazakh e-Sports powered by Chapman",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/6524504f5aa4e.png"
-          },
-          "won": false,
-          "event": false,
-          "kind": "class",
-          "score": 1.0417854962139672,
-          "seasonRating": 1.0417854962139672,
-          "officials": 10,
-          "seasonMaps": 14,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "Clav"
-      ],
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "High",
-          "tier": 1,
           "class": "engineer",
           "accountId": 38195886,
           "team": {
@@ -740,10 +740,10 @@
           "won": false,
           "event": false,
           "kind": "class",
-          "score": 1.013790741144682,
-          "seasonRating": 1.013790741144682,
-          "officials": 9,
-          "seasonMaps": 14,
+          "score": 1.0443868228023072,
+          "seasonRating": 1.0443868228023072,
+          "officials": 8,
+          "seasonMaps": 12,
           "finalRating": null,
           "finalMaps": 0,
           "playoffsRating": null,
@@ -757,62 +757,8 @@
           "seasonName": "Spring 2025",
           "division": "High",
           "tier": 1,
-          "class": "scout",
-          "accountId": 1079321740,
-          "team": {
-            "id": 35738,
-            "name": "ChudsX6",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/6a7c266876a8c.png"
-          },
-          "won": false,
-          "event": false,
-          "kind": "class",
-          "score": 1.0041197259197492,
-          "seasonRating": 1.0041197259197492,
-          "officials": 8,
-          "seasonMaps": 12,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "wyser"
-      ],
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "High",
-          "tier": 1,
-          "class": "medic",
-          "accountId": 63819512,
-          "team": {
-            "id": 35738,
-            "name": "ChudsX6",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/6a7c266876a8c.png"
-          },
-          "won": false,
-          "event": false,
-          "kind": "class",
-          "score": 0.9882294284596174,
-          "seasonRating": 0.9882294284596174,
-          "officials": 7,
-          "seasonMaps": 9,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "Stitzy"
-      ],
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "High",
-          "tier": 1,
-          "class": "spy",
-          "accountId": 1256043732,
+          "class": "pyro",
+          "accountId": 374702019,
           "team": {
             "id": 32258,
             "name": "Kazakh e-Sports powered by Chapman",
@@ -821,8 +767,8 @@
           "won": false,
           "event": false,
           "kind": "class",
-          "score": 0.9727907791924542,
-          "seasonRating": 0.9727907791924542,
+          "score": 1.030836730638248,
+          "seasonRating": 1.030836730638248,
           "officials": 9,
           "seasonMaps": 13,
           "finalRating": null,
@@ -830,7 +776,34 @@
           "playoffsRating": null,
           "playoffsMaps": 0
         },
-        "noid"
+        "Clav"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "High",
+          "tier": 1,
+          "class": "scout",
+          "accountId": 289282302,
+          "team": {
+            "id": 32258,
+            "name": "Kazakh e-Sports powered by Chapman",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/6524504f5aa4e.png"
+          },
+          "won": false,
+          "event": false,
+          "kind": "class",
+          "score": 1.0153972248434062,
+          "seasonRating": 1.0153972248434062,
+          "officials": 6,
+          "seasonMaps": 6,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "44"
       ],
       [
         {
@@ -858,6 +831,33 @@
           "playoffsMaps": 0
         },
         "znach"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "High",
+          "tier": 1,
+          "class": "spy",
+          "accountId": 1256043732,
+          "team": {
+            "id": 32258,
+            "name": "Kazakh e-Sports powered by Chapman",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/6524504f5aa4e.png"
+          },
+          "won": false,
+          "event": false,
+          "kind": "class",
+          "score": 0.9540176287061825,
+          "seasonRating": 0.9540176287061825,
+          "officials": 8,
+          "seasonMaps": 11,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "noid"
       ]
     ]
   },
@@ -886,18 +886,18 @@
       {
         "place": 3,
         "team": {
-          "id": 36320,
-          "name": "Red Panda Dynasty",
-          "avatar": "https://etf2l.org/wp-content/uploads/avatars/69fce702347bf.jpg"
+          "id": 30263,
+          "name": "BAD DRAGONS",
+          "avatar": "https://etf2l.org/wp-content/uploads/avatars/5ee64926b5d9c.jpg"
         },
         "how": "joint 3rd: semi-final 0-6"
       },
       {
         "place": 3,
         "team": {
-          "id": 30263,
-          "name": "BAD DRAGONS",
-          "avatar": "https://etf2l.org/wp-content/uploads/avatars/5ee64926b5d9c.jpg"
+          "id": 36320,
+          "name": "Red Panda Dynasty",
+          "avatar": "https://etf2l.org/wp-content/uploads/avatars/69fce702347bf.jpg"
         },
         "how": "joint 3rd: semi-final 0-6"
       }
@@ -917,10 +917,10 @@
       "won": true,
       "event": true,
       "kind": "season",
-      "score": 1.1135774831735878,
-      "seasonRating": 1.141950938425412,
-      "officials": 9,
-      "seasonMaps": 11,
+      "score": 1.1235394776688377,
+      "seasonRating": 1.1618749274159115,
+      "officials": 8,
+      "seasonMaps": 10,
       "finalRating": 1.2713962264150942,
       "finalMaps": 2,
       "playoffsRating": 1.1701641025641025,
@@ -928,6 +928,87 @@
     },
     "mvpName": "def",
     "awards": [
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "Mid",
+          "tier": 2,
+          "class": "sniper",
+          "accountId": 195485721,
+          "team": {
+            "id": 36667,
+            "name": "2 Blacked Up",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/66f3209700270.jpg"
+          },
+          "won": true,
+          "event": false,
+          "kind": "evp",
+          "score": 1.1706118704938484,
+          "seasonRating": 1.1706118704938484,
+          "officials": 8,
+          "seasonMaps": 10,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "nitro"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "Mid",
+          "tier": 2,
+          "class": "scout",
+          "accountId": 158517868,
+          "team": {
+            "id": 36667,
+            "name": "2 Blacked Up",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/66f3209700270.jpg"
+          },
+          "won": true,
+          "event": false,
+          "kind": "evp",
+          "score": 1.1595803691364484,
+          "seasonRating": 1.1595803691364484,
+          "officials": 8,
+          "seasonMaps": 10,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "Orange-Juice"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "Mid",
+          "tier": 2,
+          "class": "pyro",
+          "accountId": 87005070,
+          "team": {
+            "id": 36667,
+            "name": "2 Blacked Up",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/66f3209700270.jpg"
+          },
+          "won": true,
+          "event": false,
+          "kind": "evp",
+          "score": 1.1466613145981208,
+          "seasonRating": 1.1466613145981208,
+          "officials": 6,
+          "seasonMaps": 8,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "dicksauce"
+      ],
       [
         {
           "season": 33,
@@ -971,16 +1052,70 @@
           "won": false,
           "event": false,
           "kind": "evp",
-          "score": 1.1452255794249557,
-          "seasonRating": 1.1452255794249557,
-          "officials": 7,
-          "seasonMaps": 9,
+          "score": 1.14358741711132,
+          "seasonRating": 1.14358741711132,
+          "officials": 6,
+          "seasonMaps": 8,
           "finalRating": null,
           "finalMaps": 0,
           "playoffsRating": null,
           "playoffsMaps": 0
         },
         "197"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "Mid",
+          "tier": 2,
+          "class": "sniper",
+          "accountId": 195485721,
+          "team": {
+            "id": 36667,
+            "name": "2 Blacked Up",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/66f3209700270.jpg"
+          },
+          "won": true,
+          "event": false,
+          "kind": "class",
+          "score": 1.1706118704938484,
+          "seasonRating": 1.1706118704938484,
+          "officials": 8,
+          "seasonMaps": 10,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "nitro"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "Mid",
+          "tier": 2,
+          "class": "demoman",
+          "accountId": 897131084,
+          "team": {
+            "id": 36667,
+            "name": "2 Blacked Up",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/66f3209700270.jpg"
+          },
+          "won": true,
+          "event": false,
+          "kind": "class",
+          "score": 1.1618749274159115,
+          "seasonRating": 1.1618749274159115,
+          "officials": 8,
+          "seasonMaps": 10,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "def"
       ],
       [
         {
@@ -997,44 +1132,17 @@
           },
           "won": true,
           "event": false,
-          "kind": "evp",
-          "score": 1.1431142257207108,
-          "seasonRating": 1.1431142257207108,
-          "officials": 9,
-          "seasonMaps": 11,
+          "kind": "class",
+          "score": 1.1595803691364484,
+          "seasonRating": 1.1595803691364484,
+          "officials": 8,
+          "seasonMaps": 10,
           "finalRating": null,
           "finalMaps": 0,
           "playoffsRating": null,
           "playoffsMaps": 0
         },
         "Orange-Juice"
-      ],
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "Mid",
-          "tier": 2,
-          "class": "medic",
-          "accountId": 170731615,
-          "team": {
-            "id": 36503,
-            "name": "HIGH VOLTAGE",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/67509469ca278.jpg"
-          },
-          "won": false,
-          "event": false,
-          "kind": "evp",
-          "score": 1.1361395039265005,
-          "seasonRating": 1.1361395039265005,
-          "officials": 6,
-          "seasonMaps": 8,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "Skiii"
       ],
       [
         {
@@ -1051,11 +1159,11 @@
           },
           "won": true,
           "event": false,
-          "kind": "evp",
-          "score": 1.135565347655877,
-          "seasonRating": 1.135565347655877,
-          "officials": 7,
-          "seasonMaps": 9,
+          "kind": "class",
+          "score": 1.1466613145981208,
+          "seasonRating": 1.1466613145981208,
+          "officials": 6,
+          "seasonMaps": 8,
           "finalRating": null,
           "finalMaps": 0,
           "playoffsRating": null,
@@ -1096,87 +1204,6 @@
           "seasonName": "Spring 2025",
           "division": "Mid",
           "tier": 2,
-          "class": "scout",
-          "accountId": 158517868,
-          "team": {
-            "id": 36667,
-            "name": "2 Blacked Up",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/66f3209700270.jpg"
-          },
-          "won": true,
-          "event": false,
-          "kind": "class",
-          "score": 1.1431142257207108,
-          "seasonRating": 1.1431142257207108,
-          "officials": 9,
-          "seasonMaps": 11,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "Orange-Juice"
-      ],
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "Mid",
-          "tier": 2,
-          "class": "demoman",
-          "accountId": 897131084,
-          "team": {
-            "id": 36667,
-            "name": "2 Blacked Up",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/66f3209700270.jpg"
-          },
-          "won": true,
-          "event": false,
-          "kind": "class",
-          "score": 1.141950938425412,
-          "seasonRating": 1.141950938425412,
-          "officials": 9,
-          "seasonMaps": 11,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "def"
-      ],
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "Mid",
-          "tier": 2,
-          "class": "pyro",
-          "accountId": 87005070,
-          "team": {
-            "id": 36667,
-            "name": "2 Blacked Up",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/66f3209700270.jpg"
-          },
-          "won": true,
-          "event": false,
-          "kind": "class",
-          "score": 1.135565347655877,
-          "seasonRating": 1.135565347655877,
-          "officials": 7,
-          "seasonMaps": 9,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "dicksauce"
-      ],
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "Mid",
-          "tier": 2,
           "class": "engineer",
           "accountId": 1128456352,
           "team": {
@@ -1204,33 +1231,6 @@
           "seasonName": "Spring 2025",
           "division": "Mid",
           "tier": 2,
-          "class": "sniper",
-          "accountId": 195485721,
-          "team": {
-            "id": 36667,
-            "name": "2 Blacked Up",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/66f3209700270.jpg"
-          },
-          "won": true,
-          "event": false,
-          "kind": "class",
-          "score": 1.0794079242531136,
-          "seasonRating": 1.0794079242531136,
-          "officials": 10,
-          "seasonMaps": 14,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "nitro"
-      ],
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "Mid",
-          "tier": 2,
           "class": "medic",
           "accountId": 250021149,
           "team": {
@@ -1241,8 +1241,8 @@
           "won": true,
           "event": false,
           "kind": "class",
-          "score": 1.0681540753667702,
-          "seasonRating": 1.0681540753667702,
+          "score": 1.06815407536677,
+          "seasonRating": 1.06815407536677,
           "officials": 7,
           "seasonMaps": 9,
           "finalRating": null,
@@ -1268,10 +1268,10 @@
           "won": false,
           "event": false,
           "kind": "class",
-          "score": 1.0178474332904728,
-          "seasonRating": 1.0178474332904728,
-          "officials": 8,
-          "seasonMaps": 10,
+          "score": 1.0339507606903164,
+          "seasonRating": 1.0339507606903164,
+          "officials": 7,
+          "seasonMaps": 9,
           "finalRating": null,
           "finalMaps": 0,
           "playoffsRating": null,
@@ -1295,8 +1295,8 @@
           "won": true,
           "event": false,
           "kind": "class",
-          "score": 0.9712287811172781,
-          "seasonRating": 0.9712287811172781,
+          "score": 0.9712287811172783,
+          "seasonRating": 0.9712287811172783,
           "officials": 8,
           "seasonMaps": 10,
           "finalRating": null,
@@ -1333,18 +1333,18 @@
       {
         "place": 3,
         "team": {
-          "id": 26973,
-          "name": "Anglo: Death, Undeath and Re-death",
-          "avatar": "https://etf2l.org/wp-content/uploads/avatars/64516cc529f3d.jpg"
+          "id": 33634,
+          "name": "Help me I'm feeding",
+          "avatar": "https://etf2l.org/wp-content/uploads/avatars/672be2dbc7bc7.png"
         },
         "how": "joint 3rd: semi-final 0-6"
       },
       {
         "place": 3,
         "team": {
-          "id": 33634,
-          "name": "Help me I'm feeding",
-          "avatar": "https://etf2l.org/wp-content/uploads/avatars/672be2dbc7bc7.png"
+          "id": 26973,
+          "name": "Anglo: Death, Undeath and Re-death",
+          "avatar": "https://etf2l.org/wp-content/uploads/avatars/64516cc529f3d.jpg"
         },
         "how": "joint 3rd: semi-final 0-6"
       }
@@ -1408,33 +1408,6 @@
           "seasonName": "Spring 2025",
           "division": "Low",
           "tier": 3,
-          "class": "heavy",
-          "accountId": 73548200,
-          "team": {
-            "id": 36631,
-            "name": "Champions of Light",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/675c72e438e4d.jpg"
-          },
-          "won": false,
-          "event": false,
-          "kind": "evp",
-          "score": 1.1699501632073328,
-          "seasonRating": 1.1699501632073328,
-          "officials": 8,
-          "seasonMaps": 14,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "2Suicides"
-      ],
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "Low",
-          "tier": 3,
           "class": "medic",
           "accountId": 407653957,
           "team": {
@@ -1455,6 +1428,33 @@
           "playoffsMaps": 0
         },
         "MyAngelThePooN"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "Low",
+          "tier": 3,
+          "class": "heavy",
+          "accountId": 73548200,
+          "team": {
+            "id": 36631,
+            "name": "Champions of Light",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/675c72e438e4d.jpg"
+          },
+          "won": false,
+          "event": false,
+          "kind": "evp",
+          "score": 1.1640934479696021,
+          "seasonRating": 1.1640934479696021,
+          "officials": 7,
+          "seasonMaps": 12,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "2Suicides"
       ],
       [
         {
@@ -1516,33 +1516,6 @@
           "seasonName": "Spring 2025",
           "division": "Low",
           "tier": 3,
-          "class": "heavy",
-          "accountId": 73548200,
-          "team": {
-            "id": 36631,
-            "name": "Champions of Light",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/675c72e438e4d.jpg"
-          },
-          "won": false,
-          "event": false,
-          "kind": "class",
-          "score": 1.1699501632073328,
-          "seasonRating": 1.1699501632073328,
-          "officials": 8,
-          "seasonMaps": 14,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "2Suicides"
-      ],
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "Low",
-          "tier": 3,
           "class": "medic",
           "accountId": 407653957,
           "team": {
@@ -1563,6 +1536,33 @@
           "playoffsMaps": 0
         },
         "MyAngelThePooN"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "Low",
+          "tier": 3,
+          "class": "heavy",
+          "accountId": 73548200,
+          "team": {
+            "id": 36631,
+            "name": "Champions of Light",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/675c72e438e4d.jpg"
+          },
+          "won": false,
+          "event": false,
+          "kind": "class",
+          "score": 1.1640934479696021,
+          "seasonRating": 1.1640934479696021,
+          "officials": 7,
+          "seasonMaps": 12,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "2Suicides"
       ],
       [
         {
@@ -1634,8 +1634,8 @@
           "won": false,
           "event": false,
           "kind": "class",
-          "score": 1.137347690050736,
-          "seasonRating": 1.137347690050736,
+          "score": 1.1373476900507362,
+          "seasonRating": 1.1373476900507362,
           "officials": 6,
           "seasonMaps": 11,
           "finalRating": null,
@@ -1688,10 +1688,10 @@
           "won": false,
           "event": false,
           "kind": "class",
-          "score": 1.0902161597680298,
-          "seasonRating": 1.0902161597680298,
-          "officials": 8,
-          "seasonMaps": 13,
+          "score": 1.103441552282827,
+          "seasonRating": 1.103441552282827,
+          "officials": 7,
+          "seasonMaps": 12,
           "finalRating": null,
           "finalMaps": 0,
           "playoffsRating": null,
@@ -1801,8 +1801,8 @@
       "seasonName": "Spring 2025",
       "division": "Open",
       "tier": 4,
-      "class": "pyro",
-      "accountId": 147984817,
+      "class": "medic",
+      "accountId": 365148294,
       "team": {
         "id": 33526,
         "name": "Clanking Hazard",
@@ -1811,71 +1811,17 @@
       "won": true,
       "event": true,
       "kind": "season",
-      "score": 1.0695522823622203,
-      "seasonRating": 1.0557825101054914,
-      "officials": 7,
+      "score": 1.0828633839582342,
+      "seasonRating": 1.1114931181775034,
+      "officials": 6,
       "seasonMaps": 3,
-      "finalRating": 1.2853741496598639,
+      "finalRating": 1.089081632653061,
       "finalMaps": 2,
       "playoffsRating": null,
       "playoffsMaps": 0
     },
-    "mvpName": "Tob",
+    "mvpName": "KO",
     "awards": [
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "Open",
-          "tier": 4,
-          "class": "heavy",
-          "accountId": 885769148,
-          "team": {
-            "id": 35008,
-            "name": "Rapture",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/6a437b4b1ce5b.jpg"
-          },
-          "won": false,
-          "event": false,
-          "kind": "evp",
-          "score": 1.1474721141466004,
-          "seasonRating": 1.1474721141466004,
-          "officials": 6,
-          "seasonMaps": 11,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "Dristoyar"
-      ],
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "Open",
-          "tier": 4,
-          "class": "sniper",
-          "accountId": 90258163,
-          "team": {
-            "id": 35008,
-            "name": "Rapture",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/6a437b4b1ce5b.jpg"
-          },
-          "won": false,
-          "event": false,
-          "kind": "evp",
-          "score": 1.1461540021043684,
-          "seasonRating": 1.1461540021043684,
-          "officials": 6,
-          "seasonMaps": 9,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "fuome"
-      ],
       [
         {
           "season": 33,
@@ -1909,6 +1855,33 @@
           "seasonName": "Spring 2025",
           "division": "Open",
           "tier": 4,
+          "class": "sniper",
+          "accountId": 90258163,
+          "team": {
+            "id": 35008,
+            "name": "Rapture",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/6a437b4b1ce5b.jpg"
+          },
+          "won": false,
+          "event": false,
+          "kind": "evp",
+          "score": 1.1219323103384289,
+          "seasonRating": 1.1219323103384289,
+          "officials": 5,
+          "seasonMaps": 8,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "fuome"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "Open",
+          "tier": 4,
           "class": "soldier",
           "accountId": 897674925,
           "team": {
@@ -1919,8 +1892,8 @@
           "won": false,
           "event": false,
           "kind": "evp",
-          "score": 1.1190098700664781,
-          "seasonRating": 1.1190098700664781,
+          "score": 1.119009870066478,
+          "seasonRating": 1.119009870066478,
           "officials": 7,
           "seasonMaps": 9,
           "finalRating": null,
@@ -1963,6 +1936,33 @@
           "seasonName": "Spring 2025",
           "division": "Open",
           "tier": 4,
+          "class": "heavy",
+          "accountId": 885769148,
+          "team": {
+            "id": 35008,
+            "name": "Rapture",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/6a437b4b1ce5b.jpg"
+          },
+          "won": false,
+          "event": false,
+          "kind": "evp",
+          "score": 1.0947333351715134,
+          "seasonRating": 1.0947333351715134,
+          "officials": 5,
+          "seasonMaps": 8,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "Dristoyar"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "Open",
+          "tier": 4,
           "class": "demoman",
           "accountId": 103618507,
           "team": {
@@ -1990,6 +1990,33 @@
           "seasonName": "Spring 2025",
           "division": "Open",
           "tier": 4,
+          "class": "sniper",
+          "accountId": 929159261,
+          "team": {
+            "id": 36597,
+            "name": "Gorizont",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/66f9bb74e1705.jpg"
+          },
+          "won": false,
+          "event": false,
+          "kind": "class",
+          "score": 1.0878933351421494,
+          "seasonRating": 1.0878933351421494,
+          "officials": 5,
+          "seasonMaps": 7,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "masl"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "Open",
+          "tier": 4,
           "class": "heavy",
           "accountId": 971951097,
           "team": {
@@ -2000,8 +2027,8 @@
           "won": false,
           "event": false,
           "kind": "class",
-          "score": 1.0810796158935967,
-          "seasonRating": 1.0810796158935967,
+          "score": 1.081079615893597,
+          "seasonRating": 1.081079615893597,
           "officials": 7,
           "seasonMaps": 9,
           "finalRating": null,
@@ -2027,8 +2054,8 @@
           "won": false,
           "event": false,
           "kind": "class",
-          "score": 1.0794442381315748,
-          "seasonRating": 1.0794442381315748,
+          "score": 1.0794442381315745,
+          "seasonRating": 1.0794442381315745,
           "officials": 7,
           "seasonMaps": 9,
           "finalRating": null,
@@ -2037,6 +2064,33 @@
           "playoffsMaps": 0
         },
         "russian owl"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "Open",
+          "tier": 4,
+          "class": "scout",
+          "accountId": 81932754,
+          "team": {
+            "id": 36597,
+            "name": "Gorizont",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/66f9bb74e1705.jpg"
+          },
+          "won": false,
+          "event": false,
+          "kind": "class",
+          "score": 1.069820660848754,
+          "seasonRating": 1.069820660848754,
+          "officials": 5,
+          "seasonMaps": 6,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "sNep0ne"
       ],
       [
         {
@@ -2054,8 +2108,8 @@
           "won": false,
           "event": false,
           "kind": "class",
-          "score": 1.065565103188647,
-          "seasonRating": 1.065565103188647,
+          "score": 1.0655651031886468,
+          "seasonRating": 1.0655651031886468,
           "officials": 7,
           "seasonMaps": 9,
           "finalRating": null,
@@ -2258,10 +2312,10 @@
           "won": true,
           "event": false,
           "kind": "evp",
-          "score": 1.1519732781911916,
-          "seasonRating": 1.1519732781911916,
-          "officials": 6,
-          "seasonMaps": 9,
+          "score": 1.1579136260658227,
+          "seasonRating": 1.1579136260658227,
+          "officials": 5,
+          "seasonMaps": 7,
           "finalRating": null,
           "finalMaps": 0,
           "playoffsRating": null,
@@ -2312,8 +2366,8 @@
           "won": false,
           "event": false,
           "kind": "evp",
-          "score": 1.1389784125043882,
-          "seasonRating": 1.1389784125043882,
+          "score": 1.138978412504388,
+          "seasonRating": 1.138978412504388,
           "officials": 7,
           "seasonMaps": 9,
           "finalRating": null,
@@ -2393,10 +2447,10 @@
           "won": true,
           "event": false,
           "kind": "class",
-          "score": 1.1519732781911916,
-          "seasonRating": 1.1519732781911916,
-          "officials": 6,
-          "seasonMaps": 9,
+          "score": 1.1579136260658227,
+          "seasonRating": 1.1579136260658227,
+          "officials": 5,
+          "seasonMaps": 7,
           "finalRating": null,
           "finalMaps": 0,
           "playoffsRating": null,
@@ -2420,8 +2474,8 @@
           "won": false,
           "event": false,
           "kind": "class",
-          "score": 1.1389784125043882,
-          "seasonRating": 1.1389784125043882,
+          "score": 1.138978412504388,
+          "seasonRating": 1.138978412504388,
           "officials": 7,
           "seasonMaps": 9,
           "finalRating": null,
@@ -2474,8 +2528,8 @@
           "won": true,
           "event": false,
           "kind": "class",
-          "score": 1.1105338872337447,
-          "seasonRating": 1.1105338872337447,
+          "score": 1.1105338872337445,
+          "seasonRating": 1.1105338872337445,
           "officials": 7,
           "seasonMaps": 9,
           "finalRating": null,
@@ -2484,6 +2538,33 @@
           "playoffsMaps": 0
         },
         "donk666"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "Fresh Meat",
+          "tier": 5,
+          "class": "scout",
+          "accountId": 1057941942,
+          "team": {
+            "id": 36879,
+            "name": "Oblock",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/6974ecdbe46dd.png"
+          },
+          "won": true,
+          "event": false,
+          "kind": "class",
+          "score": 1.0559928047143627,
+          "seasonRating": 1.0559928047143627,
+          "officials": 5,
+          "seasonMaps": 5,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "Ra1n"
       ],
       [
         {
@@ -2511,33 +2592,6 @@
           "playoffsMaps": 0
         },
         "Big Eye Guy"
-      ],
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "Fresh Meat",
-          "tier": 5,
-          "class": "scout",
-          "accountId": 322753362,
-          "team": {
-            "id": 36937,
-            "name": "Arizona Iced Out Boy$",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/67c5c00757883.png"
-          },
-          "won": false,
-          "event": false,
-          "kind": "class",
-          "score": 0.9689417696596345,
-          "seasonRating": 0.9689417696596345,
-          "officials": 7,
-          "seasonMaps": 9,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "unlucky"
       ],
       [
         {
@@ -2605,8 +2659,8 @@
       "seasonName": "Spring 2025",
       "division": "Freshest",
       "tier": 5,
-      "class": "demoman",
-      "accountId": 298808807,
+      "class": "pyro",
+      "accountId": 168083213,
       "team": {
         "id": 36774,
         "name": "Civilized Gentlemenn",
@@ -2615,16 +2669,16 @@
       "won": true,
       "event": true,
       "kind": "season",
-      "score": 1.0021947068832109,
-      "seasonRating": 0.9427985330699074,
-      "officials": 6,
+      "score": 1.094244957723195,
+      "seasonRating": 1.0900348287236976,
+      "officials": 5,
       "seasonMaps": 8,
-      "finalRating": 1.122073552425665,
+      "finalRating": 1.2193270735524255,
       "finalMaps": 3,
-      "playoffsRating": 1.2496881496881498,
+      "playoffsRating": 1.3265696465696468,
       "playoffsMaps": 2
     },
-    "mvpName": "Zol",
+    "mvpName": "ganza",
     "awards": [
       [
         {
@@ -2696,10 +2750,10 @@
           "won": true,
           "event": false,
           "kind": "evp",
-          "score": 1.1519732781911916,
-          "seasonRating": 1.1519732781911916,
-          "officials": 6,
-          "seasonMaps": 9,
+          "score": 1.1579136260658227,
+          "seasonRating": 1.1579136260658227,
+          "officials": 5,
+          "seasonMaps": 7,
           "finalRating": null,
           "finalMaps": 0,
           "playoffsRating": null,
@@ -2750,8 +2804,8 @@
           "won": false,
           "event": false,
           "kind": "evp",
-          "score": 1.1389784125043882,
-          "seasonRating": 1.1389784125043882,
+          "score": 1.138978412504388,
+          "seasonRating": 1.138978412504388,
           "officials": 7,
           "seasonMaps": 9,
           "finalRating": null,
@@ -2831,10 +2885,10 @@
           "won": true,
           "event": false,
           "kind": "class",
-          "score": 1.1519732781911916,
-          "seasonRating": 1.1519732781911916,
-          "officials": 6,
-          "seasonMaps": 9,
+          "score": 1.1579136260658227,
+          "seasonRating": 1.1579136260658227,
+          "officials": 5,
+          "seasonMaps": 7,
           "finalRating": null,
           "finalMaps": 0,
           "playoffsRating": null,
@@ -2858,8 +2912,8 @@
           "won": false,
           "event": false,
           "kind": "class",
-          "score": 1.1389784125043882,
-          "seasonRating": 1.1389784125043882,
+          "score": 1.138978412504388,
+          "seasonRating": 1.138978412504388,
           "officials": 7,
           "seasonMaps": 9,
           "finalRating": null,
@@ -2912,8 +2966,8 @@
           "won": true,
           "event": false,
           "kind": "class",
-          "score": 1.1105338872337447,
-          "seasonRating": 1.1105338872337447,
+          "score": 1.1105338872337445,
+          "seasonRating": 1.1105338872337445,
           "officials": 7,
           "seasonMaps": 9,
           "finalRating": null,
@@ -2922,6 +2976,33 @@
           "playoffsMaps": 0
         },
         "donk666"
+      ],
+      [
+        {
+          "season": 33,
+          "seasonName": "Spring 2025",
+          "division": "Fresh Meat",
+          "tier": 5,
+          "class": "scout",
+          "accountId": 1057941942,
+          "team": {
+            "id": 36879,
+            "name": "Oblock",
+            "avatar": "https://etf2l.org/wp-content/uploads/avatars/6974ecdbe46dd.png"
+          },
+          "won": true,
+          "event": false,
+          "kind": "class",
+          "score": 1.0559928047143627,
+          "seasonRating": 1.0559928047143627,
+          "officials": 5,
+          "seasonMaps": 5,
+          "finalRating": null,
+          "finalMaps": 0,
+          "playoffsRating": null,
+          "playoffsMaps": 0
+        },
+        "Ra1n"
       ],
       [
         {
@@ -2949,33 +3030,6 @@
           "playoffsMaps": 0
         },
         "Big Eye Guy"
-      ],
-      [
-        {
-          "season": 33,
-          "seasonName": "Spring 2025",
-          "division": "Fresh Meat",
-          "tier": 5,
-          "class": "scout",
-          "accountId": 322753362,
-          "team": {
-            "id": 36937,
-            "name": "Arizona Iced Out Boy$",
-            "avatar": "https://etf2l.org/wp-content/uploads/avatars/67c5c00757883.png"
-          },
-          "won": false,
-          "event": false,
-          "kind": "class",
-          "score": 0.9689417696596345,
-          "seasonRating": 0.9689417696596345,
-          "officials": 7,
-          "seasonMaps": 9,
-          "finalRating": null,
-          "finalMaps": 0,
-          "playoffsRating": null,
-          "playoffsMaps": 0
-        },
-        "unlucky"
       ],
       [
         {

@@ -17,7 +17,7 @@ export function HowDecided() {
         <p>{t("Every division's season ends with three kinds of award, each judged on the whole season rather than one final: the Season MVP, the EVPs and the best player of each class. HLTV gives its MVP to an event's champions and its EVPs to standouts from any team; these follow that.")}</p>
         <h3>{t("The season rating")}</h3>
         <ol>
-          <li>{t("Every official a player played on the class that season counts, playoffs included. A playoff map counts 1.5 times and a Grand Final map twice, as the harder games.")}</li>
+          <li>{t("Every official a player played on the class that season for their own team counts, playoffs included; games as a merc for another team are shown in the tables but left out of the awards. A playoff official counts 1.5 times and a Grand Final twice, as the harder games.")}</li>
           <li>{t("The average is pulled towards 1.00 by four maps' worth of average games, so a short season cannot run away with it: 1.30 over 4 maps reads about 1.15, while 1.15 over 20 maps reads 1.13.")}</li>
           <li>{t("The season tables rank by this number. An award needs enough of the season: 60% of the most officials anyone in the division played that season, and never fewer than four, so a Premiership season of seven games asks for fewer than a Low season of ten.")}</li>
         </ol>
