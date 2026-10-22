@@ -233,8 +233,8 @@ pub struct SeasonTable {
     pub divisions: Vec<(i64, String)>,
     pub rows: Vec<SeasonRow>,
     pub impact_scale: ImpactScale,
-    /// What the class award asks here: officials on the class, and whether
-    /// the team must have reached the playoffs.
+    /// What the class award asks here: officials on the class, and a team
+    /// among the medals (`playoffs_required` names that: a medal team).
     pub award_officials: usize,
     pub playoffs_required: bool,
 }

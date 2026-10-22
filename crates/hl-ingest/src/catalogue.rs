@@ -147,6 +147,11 @@ pub struct AwardRules {
     pub playoff_teams: std::collections::HashSet<(i64, i64)>,
     /// `(season, tier)`: divisions that had playoffs at all.
     pub has_playoffs: std::collections::HashSet<(i64, i64)>,
+    /// `(season, tier, team)`: the division's medal teams -- gold, silver,
+    /// bronze. The best of a class comes from these (Flashy: "only grabbing
+    /// the snipers from the top 3 teams"); a division with no medals yet has
+    /// no best of a class yet.
+    pub podium: std::collections::HashSet<(i64, i64, i64)>,
 }
 
 impl AwardRules {
@@ -157,10 +162,10 @@ impl AwardRules {
     pub fn enough(&self, l: &SeasonLine) -> bool {
         l.officials.len() >= self.need(l.season, l.tier)
     }
-    /// Best of the class: enough officials, and their team in the playoffs
-    /// where the division had them.
+    /// Best of the class: enough officials, on one of the division's three
+    /// medal teams.
     pub fn class_award(&self, l: &SeasonLine) -> bool {
-        self.enough(l) && (!self.has_playoffs.contains(&(l.season, l.tier)) || self.playoff_teams.contains(&(l.season, l.team)))
+        self.enough(l) && self.podium.contains(&(l.season, l.tier, l.team))
     }
 }
 /// The Season MVP's blend: season, Grand Final, the rest of the playoffs.
@@ -894,6 +899,13 @@ impl Catalogue {
     /// The thresholds and playoff places [`Catalogue::mvps`] reads.
     pub fn award_rules(&self, lines: &HashMap<(i64, i64, String, u32), SeasonLine>) -> AwardRules {
         let mut rules = AwardRules::default();
+        for ((season, division), places) in self.medals() {
+            if let Some(tier) = self.tier_of_name(season, &division) {
+                for (_, team, _) in places {
+                    rules.podium.insert((season, tier, team));
+                }
+            }
+        }
         for m in self.matches.values().filter(|m| Self::played(m) && m.stage != "Cup") {
             if self.stage_weight(Some(m.match_id)) > 1.0 {
                 rules.playoff_teams.insert((m.season, m.clan1));
@@ -931,9 +943,8 @@ impl Catalogue {
     ///   [`EVPS_SMALL_BELOW_TEAMS`] teams): the best season ratings of any
     ///   team and class, the Season MVP aside.
     /// - **Best of the class**: the top of each class's season table among
-    ///   players with enough officials on the class whose team reached the
-    ///   playoffs (where the division had them) -- by the same number the
-    ///   table ranks by.
+    ///   players with enough officials on the class whose team took one of
+    ///   the division's three medals -- by the same number the table ranks by.
     ///
     /// Enough officials is [`AWARD_SHARE_OF_SEASON`] of the most anyone in
     /// the division played that season, and never fewer than
@@ -2703,8 +2714,9 @@ mod tests {
         let rules = c.award_rules(&lines);
         assert_eq!(rules.need(31, 3), 6, "60% of the longest season, 10");
         assert!(!rules.class_award(&lines[&(31, 3, "sniper".to_string(), 1)]), "4 officials is not enough");
-        assert!(rules.class_award(&lines[&(31, 3, "sniper".to_string(), 2)]));
-        assert!(!rules.class_award(&lines[&(31, 3, "sniper".to_string(), 4)]), "7 officials, but no playoff place");
+        assert!(rules.class_award(&lines[&(31, 3, "sniper".to_string(), 2)]), "the champions' Sniper");
+        assert!(rules.class_award(&lines[&(31, 3, "sniper".to_string(), 3)]), "the runners-up's");
+        assert!(!rules.class_award(&lines[&(31, 3, "sniper".to_string(), 4)]), "7 officials, but no medal");
         assert!(rules.enough(&lines[&(31, 3, "sniper".to_string(), 4)]), "still eligible as an EVP");
         // A short season asks for no more than four.
         let short: HashMap<(i64, i64, String, u32), SeasonLine> = [line(5, 11, 5)].into_iter().map(|l| ((31, 3, "sniper".to_string(), 5), l)).collect();

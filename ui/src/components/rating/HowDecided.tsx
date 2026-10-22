@@ -25,7 +25,7 @@ export function HowDecided() {
         <ul>
           <li>{t("Season MVP, one per division: the best player of the team that won it. 50% their season rating, 35% their Grand Final and 15% the rest of their playoffs, each pulled towards 1.00 the same way; with no other playoff games their 15% goes to the season. They need enough officials in the season and to have played more than half of the final's logs. A tie goes to more officials, then more final maps.")}</li>
           <li>{t("EVPs: the five best season ratings in the division on any team and any class, each player once, the Season MVP aside; three in a division of fewer than eight teams.")}</li>
-          <li>{t("Best of the class: the top of each class's season table among players with enough officials on the class whose team reached the playoffs, where the division had them. A great four weeks for a team that went out early is an EVP at most.")}</li>
+          <li>{t("Best of the class: the top of each class's season table among the division's three medal teams, with enough officials on the class. A great season on a team that went out early is an EVP at most.")}</li>
         </ul>
         <p className="hint">{t("A player the roster does not place, a merc or someone ETF2L never listed, is on the side the final's logs put them on. A division whose final logs are not held has no Season MVP rather than a guess.")}</p>
       </section>
