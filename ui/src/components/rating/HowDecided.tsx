@@ -6,7 +6,7 @@ import { t } from "../../lib/i18n";
  * strength and the logs.tf career, each with the rules the code uses, the
  * numbers in them as the code has them (`catalogue.rs`: SHRINK_MAPS 4,
  * PLAYOFF_WEIGHT 1.5, FINAL_WEIGHT 2, SEASON_MVP_WEIGHTS 0.5/0.35/0.15,
- * AWARD_MIN_OFFICIALS 4, EVPS 5 / 3 below 8 teams; `logstf.rs`: STRENGTH_MIN_GAMES 20,
+ * AWARD_MIN_OFFICIALS 4, AWARD_SHARE_OF_SEASON 0.6, EVPS 5 / 3 below 8 teams; `logstf.rs`: STRENGTH_MIN_GAMES 20,
  * RANK_MIN_GAMES 100). Every tip's "How it's decided" lands on one of these.
  */
 export function HowDecided() {
@@ -19,13 +19,13 @@ export function HowDecided() {
         <ol>
           <li>{t("Every official a player played on the class that season counts, playoffs included. A playoff map counts 1.5 times and a Grand Final map twice, as the harder games.")}</li>
           <li>{t("The average is pulled towards 1.00 by four maps' worth of average games, so a short season cannot run away with it: 1.30 over 4 maps reads about 1.15, while 1.15 over 20 maps reads 1.13.")}</li>
-          <li>{t("The season tables rank by this number, so a table and the award beside it always agree. Four officials on the class are needed for an award.")}</li>
+          <li>{t("The season tables rank by this number. An award needs enough of the season: 60% of the most officials anyone in the division played that season, and never fewer than four, so a Premiership season of seven games asks for fewer than a Low season of ten.")}</li>
         </ol>
         <h3>{t("The awards")}</h3>
         <ul>
-          <li>{t("Season MVP, one per division: the best player of the team that won it. 50% their season rating, 35% their Grand Final and 15% the rest of their playoffs, each pulled towards 1.00 the same way; with no other playoff games their 15% goes to the season. They need four officials and to have played more than half of the final's logs. A tie goes to more officials, then more final maps.")}</li>
+          <li>{t("Season MVP, one per division: the best player of the team that won it. 50% their season rating, 35% their Grand Final and 15% the rest of their playoffs, each pulled towards 1.00 the same way; with no other playoff games their 15% goes to the season. They need enough officials in the season and to have played more than half of the final's logs. A tie goes to more officials, then more final maps.")}</li>
           <li>{t("EVPs: the five best season ratings in the division on any team and any class, each player once, the Season MVP aside; three in a division of fewer than eight teams.")}</li>
-          <li>{t("Best of the class: the top of each class's season table, on any team.")}</li>
+          <li>{t("Best of the class: the top of each class's season table among players with enough officials on the class whose team reached the playoffs, where the division had them. A great four weeks for a team that went out early is an EVP at most.")}</li>
         </ul>
         <p className="hint">{t("A player the roster does not place, a merc or someone ETF2L never listed, is on the side the final's logs put them on. A division whose final logs are not held has no Season MVP rather than a guess.")}</p>
       </section>

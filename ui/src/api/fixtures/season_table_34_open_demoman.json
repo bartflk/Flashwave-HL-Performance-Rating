@@ -1,6 +1,6 @@
 {
   "season": 34,
-  "seasonName": "Season 34",
+  "seasonName": "Summer 2025",
   "tier": 4,
   "division": "Open",
   "class": "demoman",
@@ -20,7 +20,7 @@
     ],
     [
       34,
-      "Season 34"
+      "Summer 2025"
     ],
     [
       33,
@@ -96,14 +96,13 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/68564f03bd59d.jpg"
       },
       "officials": 5,
+      "maps": 19,
+      "eligible": false,
       "rating": 1.177413793103448,
       "average": 1.2168421052631577,
       "impact": 1.1494209535693343,
       "impactPer30": 0.7015165289256199,
-      "awards": [
-        "evp",
-        "class"
-      ],
+      "awards": [],
       "totals": {
         "maps": 19,
         "timeS": 16940,
@@ -160,12 +159,15 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/69af152795da8.png"
       },
       "officials": 6,
+      "maps": 14,
+      "eligible": true,
       "rating": 1.1709999999999998,
       "average": 1.1964285714285714,
       "impact": 1.1152746700357286,
       "impactPer30": 0.6033207796241651,
       "awards": [
-        "evp"
+        "evp",
+        "class"
       ],
       "totals": {
         "maps": 14,
@@ -223,6 +225,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/68862f154f4ca.png"
       },
       "officials": 4,
+      "maps": 10,
+      "eligible": false,
       "rating": 1.1192857142857144,
       "average": 1.1670000000000003,
       "impact": 1.090659595514863,
@@ -284,6 +288,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/6974ecdbe46dd.png"
       },
       "officials": 5,
+      "maps": 17,
+      "eligible": false,
       "rating": 1.118867924528302,
       "average": 1.1641176470588235,
       "impact": 1.1659681670347117,
@@ -345,6 +351,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/687eb56b7c35d.jpg"
       },
       "officials": 3,
+      "maps": 6,
+      "eligible": false,
       "rating": 1.1169999999999998,
       "average": 1.1949999999999998,
       "impact": 1.0722774585208779,
@@ -406,6 +414,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/6a837efbdf187.png"
       },
       "officials": 6,
+      "maps": 16,
+      "eligible": true,
       "rating": 1.0371739130434783,
       "average": 1.0581250000000002,
       "impact": 1.0376352440268521,
@@ -467,6 +477,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/6880cc45d639f.jpg"
       },
       "officials": 7,
+      "maps": 31,
+      "eligible": true,
       "rating": 1.0308080808080808,
       "average": 1.0316129032258063,
       "impact": 0.9993708307144726,
@@ -528,6 +540,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/660534393be7f.png"
       },
       "officials": 4,
+      "maps": 8,
+      "eligible": false,
       "rating": 0.9866666666666667,
       "average": 0.98,
       "impact": 0.95633312737934,
@@ -589,6 +603,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/6868046c347af.png"
       },
       "officials": 3,
+      "maps": 13,
+      "eligible": false,
       "rating": 0.9844186046511627,
       "average": 0.9930769230769231,
       "impact": 1.0613395260486023,
@@ -650,6 +666,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/6a96eeefa3f52.jpg"
       },
       "officials": 5,
+      "maps": 10,
+      "eligible": false,
       "rating": 0.9714285714285715,
       "average": 0.9600000000000002,
       "impact": 0.9794794707831966,
@@ -711,6 +729,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/687b9b5eec4ff.png"
       },
       "officials": 6,
+      "maps": 16,
+      "eligible": true,
       "rating": 0.93,
       "average": 0.9175000000000002,
       "impact": 0.9153408447202798,
@@ -772,6 +792,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/6627ad65c4943.png"
       },
       "officials": 5,
+      "maps": 11,
+      "eligible": false,
       "rating": 0.9026666666666667,
       "average": 0.8672727272727273,
       "impact": 0.9514225756259473,
@@ -833,6 +855,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/68c49335f15c9.png"
       },
       "officials": 3,
+      "maps": 7,
+      "eligible": false,
       "rating": 0.8763636363636365,
       "average": 0.8057142857142858,
       "impact": 0.9126222955883833,
@@ -894,6 +918,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/6a3eac17e6322.png"
       },
       "officials": 5,
+      "maps": 11,
+      "eligible": false,
       "rating": 0.8393333333333332,
       "average": 0.7809090909090908,
       "impact": 0.875654687707008,
@@ -955,6 +981,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/68564f03bd59d.jpg"
       },
       "officials": 1,
+      "maps": 2,
+      "eligible": false,
       "rating": 1.145,
       "average": 1.435,
       "impact": 1.2631683576829493,
@@ -1016,6 +1044,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/68564f03bd59d.jpg"
       },
       "officials": 1,
+      "maps": 2,
+      "eligible": false,
       "rating": 1.09,
       "average": 1.27,
       "impact": 1.0554203127220019,
@@ -1077,6 +1107,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/6974ecdbe46dd.png"
       },
       "officials": 2,
+      "maps": 6,
+      "eligible": false,
       "rating": 1.071304347826087,
       "average": 1.1216666666666666,
       "impact": 1.053204026688731,
@@ -1138,6 +1170,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/6a96eeefa3f52.jpg"
       },
       "officials": 1,
+      "maps": 1,
+      "eligible": false,
       "rating": 1.018,
       "average": 1.09,
       "impact": 0.9957317171880711,
@@ -1199,6 +1233,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/68564f03bd59d.jpg"
       },
       "officials": 1,
+      "maps": 2,
+      "eligible": false,
       "rating": 1.0116666666666667,
       "average": 1.035,
       "impact": 1.0500292403753857,
@@ -1260,6 +1296,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/687eb56b7c35d.jpg"
       },
       "officials": 1,
+      "maps": 2,
+      "eligible": false,
       "rating": 1.01,
       "average": 1.03,
       "impact": 0.9815435600865073,
@@ -1321,6 +1359,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/67c70c49185d1.png"
       },
       "officials": 2,
+      "maps": 4,
+      "eligible": false,
       "rating": 0.9650000000000001,
       "average": 0.93,
       "impact": 1.0351412416347523,
@@ -1382,6 +1422,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/69af152795da8.png"
       },
       "officials": 2,
+      "maps": 12,
+      "eligible": false,
       "rating": 0.9616000000000001,
       "average": 0.9541666666666666,
       "impact": 0.9725593056073831,
@@ -1443,6 +1485,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/68c49335f15c9.png"
       },
       "officials": 1,
+      "maps": 2,
+      "eligible": false,
       "rating": 0.9566666666666667,
       "average": 0.87,
       "impact": 0.9258116941278389,
@@ -1504,6 +1548,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/67c70c49185d1.png"
       },
       "officials": 1,
+      "maps": 2,
+      "eligible": false,
       "rating": 0.8916666666666666,
       "average": 0.675,
       "impact": 0.9534223328209087,
@@ -1565,6 +1611,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/6868046c347af.png"
       },
       "officials": 2,
+      "maps": 5,
+      "eligible": false,
       "rating": 0.8877777777777778,
       "average": 0.798,
       "impact": 0.921821761610302,
@@ -1626,6 +1674,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/67448c7e05ebe.jpg"
       },
       "officials": 2,
+      "maps": 4,
+      "eligible": false,
       "rating": 0.86625,
       "average": 0.7325,
       "impact": 0.8853944453224412,
@@ -1687,6 +1737,8 @@
         "avatar": "https://etf2l.org/wp-content/uploads/avatars/67c70c49185d1.png"
       },
       "officials": 1,
+      "maps": 6,
+      "eligible": false,
       "rating": 0.6907692307692308,
       "average": 0.5533333333333333,
       "impact": 0.734377199204671,
@@ -1742,5 +1794,7 @@
   "impactScale": {
     "mean": 0.15781596468826137,
     "sd": 0.7514741634973905
-  }
+  },
+  "awardOfficials": 6,
+  "playoffsRequired": true
 }

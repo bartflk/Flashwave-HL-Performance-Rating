@@ -203,6 +203,11 @@ pub struct SeasonRow {
     pub name: String,
     pub team: Option<Team>,
     pub officials: usize,
+    /// Rated maps (logs) in the stage shown.
+    pub maps: usize,
+    /// Enough officials, and a playoff place where there were playoffs: may
+    /// take the class award ([`crate::catalogue::AwardRules`]).
+    pub eligible: bool,
     /// The season rating (what the awards and the rank use) and the plain
     /// average beside it.
     pub rating: f64,
@@ -228,6 +233,10 @@ pub struct SeasonTable {
     pub divisions: Vec<(i64, String)>,
     pub rows: Vec<SeasonRow>,
     pub impact_scale: ImpactScale,
+    /// What the class award asks here: officials on the class, and whether
+    /// the team must have reached the playoffs.
+    pub award_officials: usize,
+    pub playoffs_required: bool,
 }
 
 /// One season, division and class: every player with every number, ranked
@@ -266,6 +275,7 @@ pub async fn season_table(db: &Db, season: Option<i64>, tier: Option<i64>, class
         db.log_stats_for_logs(&logs).await?.into_iter().map(|s| ((s.log_id, s.account_id, s.class.clone()), s)).collect();
     let scale = ImpactScale::of(&db.log_stats_of_class(class).await?);
     let awards: Vec<Mvp> = cat.mvps(&rated).into_iter().filter(|m| m.season == season && m.tier == Some(tier)).collect();
+    let rules = cat.award_rules(&lines);
 
     // Per player: the stage's season line, and the summed numbers.
     let mut per: HashMap<u32, (crate::catalogue::SeasonLine, Totals)> = HashMap::new();
@@ -294,6 +304,8 @@ pub async fn season_table(db: &Db, season: Option<i64>, tier: Option<i64>, class
                 name: cat.name_of(a),
                 team: Some(cat.team(line.team)),
                 officials: line.officials.len(),
+                maps: line.maps,
+                eligible: rules.class_award(members[&a]),
                 rating: line.rating(),
                 average: line.average(),
                 impact: impact_per30.map(|p| scale.rating(p, totals.raw_maps)),
@@ -326,6 +338,8 @@ pub async fn season_table(db: &Db, season: Option<i64>, tier: Option<i64>, class
         divisions: divisions.into_iter().collect(),
         rows,
         impact_scale: scale,
+        award_officials: rules.need(season, tier),
+        playoffs_required: rules.has_playoffs.contains(&(season, tier)),
     })
 }
 

@@ -299,6 +299,7 @@
 .sr-award-evp { color: #b48cff; }
 .sr-award-class { color: var(--accent-text); }
 .sr-unranked td { opacity: 0.55; }
+.sr-noaward { margin-left: 5px; color: var(--muted); cursor: help; }
 
 /* A podium's EVPs and best of each class. */
 .ts-awards { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 8px; font-size: 0.85rem; }

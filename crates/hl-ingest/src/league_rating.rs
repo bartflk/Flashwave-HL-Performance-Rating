@@ -91,10 +91,8 @@ pub async fn rate_new(db: &Db, w: &Weights, tried: &mut std::collections::HashSe
         }
         db.put_league_ratings(hl_rating::MODEL_VERSION, &rows).await?;
     }
-    // Their numbers for the season tables, and a few older logs that have
-    // none yet: a database from before log_stat fills in the background.
+    // Their numbers for the season tables; older logs are filled at startup.
     crate::logstat::fill(db, &ids).await?;
-    crate::logstat::fill_missing(db, Some(limit), |_, _| {}).await?;
     Ok(ids.len())
 }
 

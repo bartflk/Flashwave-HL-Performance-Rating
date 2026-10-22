@@ -2559,6 +2559,10 @@ export interface SeasonRow {
   name: string;
   team: CatTeam | null;
   officials: number;
+  /** Rated maps (logs) in the stage shown. */
+  maps: number;
+  /** Enough officials and a playoff place: may take the class award. */
+  eligible: boolean;
   /** The season rating (ranks and awards) and the plain average. */
   rating: number;
   average: number;
@@ -2580,6 +2584,9 @@ export interface SeasonTable {
   divisions: [number, string][];
   rows: SeasonRow[];
   impactScale: { mean: number; sd: number };
+  /** What the class award asks: officials on the class, and a playoff place. */
+  awardOfficials: number;
+  playoffsRequired: boolean;
 }
 
 /** A number on a profile with the class average, a percentile and a verdict. */

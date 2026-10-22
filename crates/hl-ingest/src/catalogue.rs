@@ -128,8 +128,39 @@ pub const SHRINK_MAPS: f64 = 4.0;
 pub const PLAYOFF_WEIGHT: f64 = 1.5;
 pub const FINAL_WEIGHT: f64 = 2.0;
 /// Officials on the class (or, for the Season MVP, in the season) to be
-/// eligible for an award.
+/// eligible for an award: never fewer than this...
 pub const AWARD_MIN_OFFICIALS: usize = 4;
+/// ...and at least this share of the most officials anyone in the division
+/// played that season, so a long season asks for more than a short one
+/// (Flashy: S31 Low's best Sniper had 4 officials of a season where the
+/// champions' Sniper played 7; Premiership plays fewer games than Low).
+pub const AWARD_SHARE_OF_SEASON: f64 = 0.6;
+
+/// Who may take a division's awards, worked out once per call.
+#[derive(Debug, Default)]
+pub struct AwardRules {
+    /// `(season, tier)` -> officials needed.
+    pub need: HashMap<(i64, i64), usize>,
+    /// `(season, team)`: teams that played a playoff match that season.
+    pub playoff_teams: std::collections::HashSet<(i64, i64)>,
+    /// `(season, tier)`: divisions that had playoffs at all.
+    pub has_playoffs: std::collections::HashSet<(i64, i64)>,
+}
+
+impl AwardRules {
+    pub fn need(&self, season: i64, tier: i64) -> usize {
+        self.need.get(&(season, tier)).copied().unwrap_or(AWARD_MIN_OFFICIALS)
+    }
+    /// Enough officials on the class: EVPs, and the first half of the class award.
+    pub fn enough(&self, l: &SeasonLine) -> bool {
+        l.officials.len() >= self.need(l.season, l.tier)
+    }
+    /// Best of the class: enough officials, and their team in the playoffs
+    /// where the division had them.
+    pub fn class_award(&self, l: &SeasonLine) -> bool {
+        self.enough(l) && (!self.has_playoffs.contains(&(l.season, l.tier)) || self.playoff_teams.contains(&(l.season, l.team)))
+    }
+}
 /// The Season MVP's blend: season, Grand Final, the rest of the playoffs.
 /// With no other playoff games, their share goes to the season.
 pub const SEASON_MVP_WEIGHTS: (f64, f64, f64) = (0.50, 0.35, 0.15);
@@ -820,23 +851,57 @@ impl Catalogue {
         out
     }
 
+    /// The thresholds and playoff places [`Catalogue::mvps`] reads.
+    pub fn award_rules(&self, lines: &HashMap<(i64, i64, String, u32), SeasonLine>) -> AwardRules {
+        let mut rules = AwardRules::default();
+        for m in self.matches.values().filter(|m| Self::played(m) && m.stage != "Cup") {
+            if self.stage_weight(Some(m.match_id)) > 1.0 {
+                rules.playoff_teams.insert((m.season, m.clan1));
+                rules.playoff_teams.insert((m.season, m.clan2));
+            }
+        }
+        // Each player's officials in the season, on any class.
+        let mut per_player: HashMap<(i64, i64, u32), std::collections::HashSet<i64>> = HashMap::new();
+        for l in lines.values() {
+            per_player.entry((l.season, l.tier, l.account_id)).or_default().extend(l.officials.iter().copied());
+            if rules.playoff_teams.contains(&(l.season, l.team)) {
+                rules.has_playoffs.insert((l.season, l.tier));
+            }
+        }
+        let mut most: HashMap<(i64, i64), usize> = HashMap::new();
+        for ((season, tier, _), o) in per_player {
+            let e = most.entry((season, tier)).or_default();
+            *e = (*e).max(o.len());
+        }
+        for (key, n) in most {
+            rules.need.insert(key, AWARD_MIN_OFFICIALS.max((n as f64 * AWARD_SHARE_OF_SEASON).ceil() as usize));
+        }
+        rules
+    }
+
     /// Every division's awards, from the rated games (the MVP research,
     /// October 2026; HLTV's MVP and EVPs):
     ///
     /// - **Season MVP**, one per division: the champions' best. Players of
-    ///   the team that won the Grand Final, with [`AWARD_MIN_OFFICIALS`] in
-    ///   the season, who played more than half of the final's logs; scored
+    ///   the team that won the Grand Final, with enough officials in the
+    ///   season ([`AwardRules`]), who played more than half of the final's logs; scored
     ///   [`SEASON_MVP_WEIGHTS`] on their season, the final and the playoff
     ///   run, each pulled towards 1.00.
     /// - **EVPs**, [`EVPS`] per division ([`EVPS_SMALL`] below
     ///   [`EVPS_SMALL_BELOW_TEAMS`] teams): the best season ratings of any
     ///   team and class, the Season MVP aside.
-    /// - **Best of the class**: the top of each class's season table, from
-    ///   [`AWARD_MIN_OFFICIALS`] on the class -- the same number the table
-    ///   ranks by, so the badge and the table cannot disagree.
+    /// - **Best of the class**: the top of each class's season table among
+    ///   players with enough officials on the class whose team reached the
+    ///   playoffs (where the division had them) -- by the same number the
+    ///   table ranks by.
+    ///
+    /// Enough officials is [`AWARD_SHARE_OF_SEASON`] of the most anyone in
+    /// the division played that season, and never fewer than
+    /// [`AWARD_MIN_OFFICIALS`].
     pub fn mvps(&self, games: &[hl_db::RatedGame]) -> Vec<Mvp> {
         let lines = self.season_lines(games);
-        let eligible = |l: &&SeasonLine| l.officials.len() >= AWARD_MIN_OFFICIALS;
+        let rules = self.award_rules(&lines);
+        let eligible = |l: &&SeasonLine| rules.enough(l);
         let mut out = Vec::new();
         // (season, tier) -> the Season MVPs of its divisions (two divisions
         // can share a tier: Fresh Meat and Freshest, Open A and Open B).
@@ -905,7 +970,7 @@ impl Catalogue {
                     .filter(|((s, t, _, acc), _)| *s == season && *t == tier && *acc == a)
                     .flat_map(|(_, l)| l.officials.iter().copied())
                     .collect();
-                if officials.len() < AWARD_MIN_OFFICIALS {
+                if officials.len() < rules.need(season, tier) {
                     continue;
                 }
                 let playoff: Vec<f64> = games
@@ -984,7 +1049,7 @@ impl Catalogue {
 
         // Best of each class.
         let mut tables: HashMap<(i64, i64, &str), Vec<&SeasonLine>> = HashMap::new();
-        for l in lines.values().filter(eligible) {
+        for l in lines.values().filter(|l| rules.class_award(l)) {
             tables.entry((l.season, l.tier, l.class.as_str())).or_default().push(l);
         }
         for rows in tables.values() {
@@ -2541,6 +2606,33 @@ mod tests {
         let s12 = &lines[&(34, sniper.tier.unwrap(), "sniper".to_string(), 12)];
         assert!((s12.rating() - sniper.season_rating).abs() < 1e-9);
         assert_eq!(s12.officials.len(), 5);
+    }
+
+    #[test]
+    fn the_class_award_asks_for_most_of_the_season_and_a_playoff_place() {
+        // S31 Low as Flashy saw it: the table's top Sniper played 4 of a
+        // season whose longest was 10; the champions' Sniper played 7.
+        let line = |account: u32, team: i64, officials: i64| SeasonLine {
+            season: 31,
+            tier: 3,
+            class: "sniper".into(),
+            account_id: account,
+            team,
+            officials: (0..officials).collect(),
+            ..Default::default()
+        };
+        let lines: HashMap<(i64, i64, String, u32), SeasonLine> =
+            [line(1, 10, 4), line(2, 11, 7), line(3, 12, 10), line(4, 13, 7)].into_iter().map(|l| ((31, 3, "sniper".to_string(), l.account_id), l)).collect();
+        let c = cat(vec![m(1, 31, "Playoffs", None, "Low", Some("Grand Final"), 11, 12, 6, 3)]);
+        let rules = c.award_rules(&lines);
+        assert_eq!(rules.need(31, 3), 6, "60% of the longest season, 10");
+        assert!(!rules.class_award(&lines[&(31, 3, "sniper".to_string(), 1)]), "4 officials is not enough");
+        assert!(rules.class_award(&lines[&(31, 3, "sniper".to_string(), 2)]));
+        assert!(!rules.class_award(&lines[&(31, 3, "sniper".to_string(), 4)]), "7 officials, but no playoff place");
+        assert!(rules.enough(&lines[&(31, 3, "sniper".to_string(), 4)]), "still eligible as an EVP");
+        // A short season asks for no more than four.
+        let short: HashMap<(i64, i64, String, u32), SeasonLine> = [line(5, 11, 5)].into_iter().map(|l| ((31, 3, "sniper".to_string(), 5), l)).collect();
+        assert_eq!(c.award_rules(&short).need(31, 3), 4);
     }
 
     #[test]

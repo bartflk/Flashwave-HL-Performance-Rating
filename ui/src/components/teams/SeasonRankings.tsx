@@ -118,7 +118,7 @@ export function SeasonRankings({ season, onTeam }: { season: number; onTeam: (id
     name: (r) => r.name,
     team: (r) => r.team?.name ?? "",
     off: (r) => r.officials,
-    maps: (r) => r.totals.maps,
+    maps: (r) => r.maps,
     time: (r) => r.totals.timeS,
     rating: (r) => r.rating,
     average: (r) => r.average,
@@ -188,7 +188,10 @@ export function SeasonRankings({ season, onTeam }: { season: number; onTeam: (id
               "1": v.division,
               "2": tx("{0} players", { "0": rows.length }),
               "3": classLabel(cls),
-            })}
+            })}{" "}
+            {v.playoffsRequired
+              ? t("The best of the class needs {0} officials on the class and a playoff place; EVPs need the {0} officials.", { "0": v.awardOfficials })
+              : t("Awards need {0} officials on the class.", { "0": v.awardOfficials })}
           </p>
           <div className="sr-scroll has-refresh">
             <Refreshing on={q.isPlaceholderData} />
@@ -237,6 +240,11 @@ export function SeasonRankings({ season, onTeam }: { season: number; onTeam: (id
                       <button className="linkish" onClick={() => openPlayer(r.accountId)}>
                         {r.name}
                       </button>
+                      {!r.eligible && r.rank !== null && (
+                        <span className="sr-noaward" title={v.playoffsRequired ? t("Not eligible for the class award: fewer than {0} officials, or no playoff place", { "0": v.awardOfficials }) : t("Not eligible for the class award: fewer than {0} officials", { "0": v.awardOfficials })}>
+                          ·
+                        </span>
+                      )}
                       {r.awards.map((a) => (
                         <span key={a} className={`sr-award sr-award-${a}`} title={t(AWARD[a][1])}>
                           {AWARD[a][0]}
@@ -251,7 +259,7 @@ export function SeasonRankings({ season, onTeam }: { season: number; onTeam: (id
                       )}
                     </td>
                     <td className="num">{r.officials}</td>
-                    <td className="num">{r.totals.maps}</td>
+                    <td className="num">{r.maps}</td>
                     <td className="num strong">{rating(r.rating)}</td>
                     <td className="num muted">{rating(r.average)}</td>
                     <td className="num">{r.impact === null ? "–" : rating(r.impact)}</td>
