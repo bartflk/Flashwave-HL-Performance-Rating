@@ -1,0 +1,234 @@
+{
+  "season": 31,
+  "officials": 54,
+  "logs": 123,
+  "clean": 51,
+  "byCode": {
+    "no_logs": 1,
+    "own_combined": 6,
+    "score": 2,
+    "split_map": 7
+  },
+  "issues": [
+    {
+      "severity": "error",
+      "code": "no_logs",
+      "matchId": 87784,
+      "division": "Low",
+      "tier": 3,
+      "round": "Week 1",
+      "teams": "5 UAH vs VERIserioUSteam",
+      "detail": "Played, but no log of it is held: nobody's numbers from it count.",
+      "logs": []
+    },
+    {
+      "severity": "warn",
+      "code": "score",
+      "matchId": 87892,
+      "division": "Low",
+      "tier": 3,
+      "round": "Week 2 ",
+      "teams": "Internal Issues vs Hoodlander",
+      "detail": "koth_product_final: ETF2L has 0-3 (3 rounds), the logs 4 rounds.",
+      "logs": [
+        3567899
+      ]
+    },
+    {
+      "severity": "warn",
+      "code": "score",
+      "matchId": 87909,
+      "division": "Low",
+      "tier": 3,
+      "round": "Week 4",
+      "teams": "Hellenic Supremacy vs Tissit",
+      "detail": "koth_warmtic_f10: ETF2L has 3-2 (5 rounds), the logs 4 rounds.",
+      "logs": [
+        3577864
+      ]
+    },
+    {
+      "severity": "info",
+      "code": "own_combined",
+      "matchId": 87778,
+      "division": "Low",
+      "tier": 3,
+      "round": "Week 1",
+      "teams": "SBQRRA vs Habib's Special Forces",
+      "detail": "Your upload 3564124 (pl_upward_f10) stands beside the league's 2 logs of this match; the tables count those.",
+      "logs": [
+        3564124
+      ]
+    },
+    {
+      "severity": "info",
+      "code": "split_map",
+      "matchId": 87786,
+      "division": "Low",
+      "tier": 3,
+      "round": "Week 1",
+      "teams": "The Openhattan Project vs телевізор pst",
+      "detail": "upward is in 3 logs; it counts once, by minutes.",
+      "logs": [
+        3564079,
+        3564093,
+        3564121
+      ]
+    },
+    {
+      "severity": "info",
+      "code": "split_map",
+      "matchId": 87781,
+      "division": "Low",
+      "tier": 3,
+      "round": "Week 1",
+      "teams": "Architects Of Doom vs Small Skill Issue",
+      "detail": "upward is in 3 logs; it counts once, by minutes.",
+      "logs": [
+        3564151,
+        3564168,
+        3564179
+      ]
+    },
+    {
+      "severity": "info",
+      "code": "own_combined",
+      "matchId": 87894,
+      "division": "Low",
+      "tier": 3,
+      "round": "Week 2 ",
+      "teams": "SBQRRA vs телевізор pst",
+      "detail": "Your upload 3568420 (proot-product) stands beside the league's 2 logs of this match; the tables count those.",
+      "logs": [
+        3568420
+      ]
+    },
+    {
+      "severity": "info",
+      "code": "split_map",
+      "matchId": 87898,
+      "division": "Low",
+      "tier": 3,
+      "round": "Week 3",
+      "teams": "Tissit vs сука_баZука",
+      "detail": "vigil is in 3 logs; it counts once, by minutes.",
+      "logs": [
+        3572977,
+        3573008,
+        3573025
+      ]
+    },
+    {
+      "severity": "info",
+      "code": "split_map",
+      "matchId": 87906,
+      "division": "Low",
+      "tier": 3,
+      "round": "Week 3",
+      "teams": "The Openhattan Project vs Architects Of Doom",
+      "detail": "vigil is in 3 logs; it counts once, by minutes.",
+      "logs": [
+        3573588,
+        3573601,
+        3573630
+      ]
+    },
+    {
+      "severity": "info",
+      "code": "own_combined",
+      "matchId": 87914,
+      "division": "Low",
+      "tier": 3,
+      "round": "Week 4",
+      "teams": "SBQRRA vs Architects Of Doom",
+      "detail": "Your upload 3577899 (proplant-warmtic) stands beside the league's 2 logs of this match; the tables count those.",
+      "logs": [
+        3577899
+      ]
+    },
+    {
+      "severity": "info",
+      "code": "split_map",
+      "matchId": 87921,
+      "division": "Low",
+      "tier": 3,
+      "round": "Week 5",
+      "teams": "OSTRAVA eSports @spadlmipesdokanalu.cz vs сука_баZука",
+      "detail": "steel is in 3 logs; it counts once, by minutes.",
+      "logs": [
+        3582353,
+        3582379,
+        3582422
+      ]
+    },
+    {
+      "severity": "info",
+      "code": "split_map",
+      "matchId": 87922,
+      "division": "Low",
+      "tier": 3,
+      "round": "Week 5",
+      "teams": "Habib's Special Forces vs Lost In Dreams",
+      "detail": "steel is in 3 logs; it counts once, by minutes.",
+      "logs": [
+        3582355,
+        3582377,
+        3582412
+      ]
+    },
+    {
+      "severity": "info",
+      "code": "own_combined",
+      "matchId": 87924,
+      "division": "Low",
+      "tier": 3,
+      "round": "Week 5",
+      "teams": "SBQRRA vs Small Skill Issue",
+      "detail": "Your upload 3582410 (steel) stands beside the league's 2 logs of this match; the tables count those.",
+      "logs": [
+        3582410
+      ]
+    },
+    {
+      "severity": "info",
+      "code": "split_map",
+      "matchId": 87983,
+      "division": "Low",
+      "tier": 3,
+      "round": "Quarter Final",
+      "teams": "Habib's Special Forces vs Lost In Dreams",
+      "detail": "upward is in 3 logs; it counts once, by minutes.",
+      "logs": [
+        3587053,
+        3587069,
+        3587085
+      ]
+    },
+    {
+      "severity": "info",
+      "code": "own_combined",
+      "matchId": 87984,
+      "division": "Low",
+      "tier": 3,
+      "round": "Quarter Final",
+      "teams": "OSTRAVA eSports @spadlmipesdokanalu.cz vs SBQRRA",
+      "detail": "Your upload 3587086 (proplant-warmtic) stands beside the league's 2 logs of this match; the tables count those.",
+      "logs": [
+        3587086
+      ]
+    },
+    {
+      "severity": "info",
+      "code": "own_combined",
+      "matchId": 87988,
+      "division": "Low",
+      "tier": 3,
+      "round": "Semi-Final",
+      "teams": "сука_баZука vs SBQRRA",
+      "detail": "Your upload 3590576 (vigil-proplant) stands beside the league's 4 logs of this match; the tables count those.",
+      "logs": [
+        3590576
+      ]
+    }
+  ]
+}

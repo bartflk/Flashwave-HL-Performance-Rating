@@ -5,6 +5,7 @@
 //! would make a fresh clone fail to compile before it has ever been run.
 
 mod aim;
+mod audit;
 
 /// The logs the owner's own rating covers: their rated Highlander logs, and
 /// the per-map logs a rated combined log replaced. A league log among these
@@ -51,6 +52,7 @@ pub use leagues::{Competition, CompetitionRow, H2hRow, LaterTeam, MatchLog, Matc
 pub use catalogue::{CatMatch, Etf2lPlayer, RatedGame, RosterRow};
 pub use transfers::Transfer;
 pub use mass::{MassBatch, MassDemo};
+pub use audit::{AuditLog, AuditMatch};
 pub use logstat::{LogStat, LogWeapon, LOG_STAT_COLUMNS};
 pub use league_sample::{Candidate, LeagueLogRow, TierProgress};
 pub use snapshot::TableCopy;

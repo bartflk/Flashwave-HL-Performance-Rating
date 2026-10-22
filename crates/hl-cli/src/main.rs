@@ -33,6 +33,8 @@ COMMANDS:
                            Matchups for one stored match
     rate                   Rebuild baselines and rate every stored performance
     logstat [--all]        Every player's numbers in every log (season tables, profiles)
+    data-audit <SEASON> [TIER] [--json]
+                           Check a season's officials against ETF2L and the logs held
     impact measure <OUT.json>
                            Measure the round-win table impact is valued with
     logsdump <DUMP.sql> <OUT.sqlite3> [--limit ROWS]
@@ -1671,6 +1673,25 @@ async fn run() -> Result<()> {
             }
             Ok(())
         }
+        ["data-audit", season, rest @ ..] => {
+            // Every played official of a season against ETF2L's record and
+            // the logs held: missing maps, double counts, odd logs.
+            let db = Db::connect(&db_path).await?;
+            let tier = rest.iter().find_map(|s| s.parse().ok());
+            let r = hl_ingest::data_audit::audit(&db, season.parse()?, tier).await?;
+            if rest.contains(&"--json") {
+                println!("{}", serde_json::to_string_pretty(&r)?);
+                return Ok(());
+            }
+            println!("Season {}: {} officials, {} logs, {} clean", r.season, r.officials, r.logs, r.clean);
+            for (code, n) in &r.by_code {
+                println!("  {code:<15} {n}");
+            }
+            for i in &r.issues {
+                println!("{:<5} {:<14} {:<12} {:<14} {:<40} {}", i.severity, i.code, i.division, i.round.chars().take(14).collect::<String>(), i.teams.chars().take(40).collect::<String>(), i.detail);
+            }
+            Ok(())
+        }
         ["podiums", season] => {
             // A season's podiums and awards, as the app's season page reads them.
             let db = Db::connect(&db_path).await?;
@@ -1824,7 +1845,7 @@ async fn run() -> Result<()> {
             let db = Db::connect(&db_path).await?;
             let cat = hl_ingest::catalogue::Catalogue::load(&db).await?;
             let names = db.log_names().await?;
-            let rated = db.rated_games(hl_rating::MODEL_VERSION, None).await?;
+            let rated = hl_ingest::catalogue::rated_officials(&db, None).await?;
             let name = |a: u32| names.get(&a).and_then(|n| n.first().cloned()).unwrap_or_else(|| a.to_string());
             let old = cat.mvps_final_only(&rated);
             let new = cat.mvps(&rated);
@@ -1868,7 +1889,7 @@ async fn run() -> Result<()> {
             let db = Db::connect(&db_path).await?;
             let cat = hl_ingest::catalogue::Catalogue::load(&db).await?;
             let names = db.log_names().await?;
-            let rated = db.rated_games(hl_rating::MODEL_VERSION, None).await?;
+            let rated = hl_ingest::catalogue::rated_officials(&db, None).await?;
             let only: Option<i64> = rest.iter().find_map(|s| s.parse().ok());
             let json = rest.contains(&"--json");
             for m in cat.mvps(&rated) {

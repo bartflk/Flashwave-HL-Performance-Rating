@@ -2633,3 +2633,25 @@ export interface PlayerDeep {
   accountId: number;
   classes: ClassDeep[];
 }
+
+/** One thing the season data check found (data_audit.rs). */
+export interface DataIssue {
+  severity: "error" | "warn" | "info";
+  code: string;
+  matchId: number;
+  division: string;
+  tier: number | null;
+  round: string;
+  teams: string;
+  detail: string;
+  logs: number[];
+}
+
+export interface DataReport {
+  season: number;
+  officials: number;
+  logs: number;
+  clean: number;
+  byCode: Record<string, number>;
+  issues: DataIssue[];
+}

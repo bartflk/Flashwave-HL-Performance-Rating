@@ -243,7 +243,7 @@ pub struct SeasonTable {
 /// by the season rating. `stage` is "all", "regular" or "playoffs".
 pub async fn season_table(db: &Db, season: Option<i64>, tier: Option<i64>, class: &str, stage: &str) -> Result<SeasonTable> {
     let cat = Catalogue::load(db).await?;
-    let rated = db.rated_games(hl_rating::MODEL_VERSION, None).await?;
+    let rated = crate::catalogue::rated_officials(db, None).await?;
     let lines = cat.season_lines(&rated);
     // Seasons with rated officials, newest first; their divisions.
     let mut seasons: Vec<(i64, String)> = lines.values().map(|l| l.season).collect::<HashSet<_>>().into_iter().map(|s| (s, cat.season_title(s))).collect();
@@ -282,14 +282,9 @@ pub async fn season_table(db: &Db, season: Option<i64>, tier: Option<i64>, class
     for g in &games {
         let e = per.entry(g.account_id).or_insert_with(|| {
             let l = members[&g.account_id];
-            (crate::catalogue::SeasonLine { officials: HashSet::new(), maps: 0, sum: 0.0, sum_weighted: 0.0, weights: 0.0, ..l.clone() }, Totals::default())
+            (crate::catalogue::SeasonLine { officials: HashSet::new(), games: HashMap::new(), ..l.clone() }, Totals::default())
         });
-        let w = cat.stage_weight(g.etf2l_match_id);
-        e.0.officials.insert(g.etf2l_match_id.unwrap_or(-g.log_id));
-        e.0.maps += 1;
-        e.0.sum += g.score;
-        e.0.sum_weighted += w * g.score;
-        e.0.weights += w;
+        e.0.add(g, cat.stage_weight(g.etf2l_match_id));
         if let Some(s) = stats.get(&(g.log_id, i64::from(g.account_id), class.to_string())) {
             e.1.add(s);
         }
@@ -304,7 +299,7 @@ pub async fn season_table(db: &Db, season: Option<i64>, tier: Option<i64>, class
                 name: cat.name_of(a),
                 team: Some(cat.team(line.team)),
                 officials: line.officials.len(),
-                maps: line.maps,
+                maps: line.maps(),
                 eligible: rules.class_award(members[&a]),
                 rating: line.rating(),
                 average: line.average(),

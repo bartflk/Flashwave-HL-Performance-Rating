@@ -13,6 +13,7 @@ import { MedalGlyph } from "../players/MedalGlyph";
 import { awardName, DivisionBadge, medalTitles, mvpHow, seasonLong, seasonShort } from "../players/PlayerProfile";
 import { StatTip } from "../StatTip";
 import { SeasonRankings } from "./SeasonRankings";
+import { DataCheck } from "./DataCheck";
 import "../players/players.css";
 import "./teams.css";
 import { YouOnThisTeam } from "./YourTeams";
@@ -257,6 +258,7 @@ export function SeasonScreen({ season, onTeam, tables: showTables = true }: { se
 
       <h2 className="ts-section">{t("Season rankings")}</h2>
       <SeasonRankings season={season} onTeam={onTeam} />
+      <DataCheck season={season} />
 
       {showTables && <h2 className="ts-section">{t("Divisions")}</h2>}
       {showTables && tables.isError && <p className="error">{errorMessage(tables.error)}</p>}

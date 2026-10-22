@@ -1903,6 +1903,13 @@ pub async fn get_player_deep(state: State<'_, AppState>, account_id: u32) -> Cmd
     Ok(hl_ingest::season_stats::player_deep(&state.db, account_id).await?)
 }
 
+/// A season's data check: every played official against ETF2L's record and
+/// the logs held (missing maps, double uploads, logs not read).
+#[tauri::command]
+pub async fn get_data_audit(state: State<'_, AppState>, season: i64, tier: Option<i64>) -> CmdResult<hl_ingest::data_audit::Report> {
+    Ok(hl_ingest::data_audit::audit(&state.db, season, tier).await?)
+}
+
 /// Every player's impact in one match, on the rating's scale: the
 /// scoreboard's column. Empty without a server log.
 #[tauri::command]

@@ -68,6 +68,7 @@ pub mod league_rating;
 pub mod round_impact;
 pub mod logstat;
 pub mod season_stats;
+pub mod data_audit;
 pub mod catalogue;
 pub mod trends_career;
 pub mod logstf;

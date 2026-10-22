@@ -298,6 +298,7 @@ pub fn run() {
             sync_commands::get_season_table,
             sync_commands::get_player_deep,
             sync_commands::get_match_impact,
+            sync_commands::get_data_audit,
             sync_commands::get_match_divisions,
             sync_commands::index_stats,
             sync_commands::list_matches,
