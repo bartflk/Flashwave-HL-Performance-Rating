@@ -79,6 +79,9 @@ pub async fn match_detail_from(
     if let Some(rows) = db.fight_counts(Some(log_id)).await?.get(&log_id) {
         crate::kills::attach_fights(&mut impact, rows);
     }
+    if let Some(r) = db.round_impacts(Some(log_id)).await?.get(&log_id) {
+        crate::kills::attach_round(&mut impact, r);
+    }
     // Before the first full pass there is no pool, so the breakdown falls
     // back to a scale where an average game is still 1.00.
     let scale = crate::rating::load_scale(db).await?.unwrap_or_default();

@@ -297,6 +297,14 @@ pub fn impacts_for(
 
 /// Add each player's fight counts (from `Db::fight_counts`) to their impact,
 /// creating an entry for players with no kills.
+/// Each player's round impact (v12), from `round_impact::impacts` or the
+/// stored `log_stat`.
+pub fn attach_round(impacts: &mut HashMap<u32, Impact>, rounds: &HashMap<u32, f64>) {
+    for (&account, &r) in rounds {
+        impacts.entry(account).or_default().round = Some(r);
+    }
+}
+
 pub fn attach_fights(impacts: &mut HashMap<u32, Impact>, rows: &[(u32, [u32; 14])]) {
     for &(
         account,

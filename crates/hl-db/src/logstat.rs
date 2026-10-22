@@ -175,6 +175,22 @@ impl Db {
         .await?)
     }
 
+    /// Each player's round impact per log, from the main-class rows:
+    /// `log -> account -> impact`. One log, or every log.
+    pub async fn round_impacts(&self, log: Option<i64>) -> Result<std::collections::HashMap<i64, std::collections::HashMap<u32, f64>>> {
+        let rows: Vec<(i64, i64, f64)> = sqlx::query_as(
+            "SELECT log_id, account_id, impact FROM log_stat WHERE main = 1 AND impact IS NOT NULL AND (?1 IS NULL OR log_id = ?1)",
+        )
+        .bind(log)
+        .fetch_all(self.pool())
+        .await?;
+        let mut out: std::collections::HashMap<i64, std::collections::HashMap<u32, f64>> = std::collections::HashMap::new();
+        for (l, a, i) in rows {
+            out.entry(l).or_default().insert(a as u32, i);
+        }
+        Ok(out)
+    }
+
     /// The rows of the given logs.
     pub async fn log_stats_for_logs(&self, logs: &[i64]) -> Result<Vec<LogStat>> {
         let ids = serde_json::to_string(logs)?;

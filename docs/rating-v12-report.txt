@@ -1,0 +1,91 @@
+Rated performances: v11 110665, v12 110819
+
+1. Predicting the next map: the side whose player had the better form (last 15 maps on the class) won
+   class       v11     v12    maps
+   scout       58.9%   58.5%    2568
+   soldier     56.9%   57.7%    2744
+   pyro        58.1%   57.0%    3348
+   demoman     60.7%   60.2%    3305
+   heavy       60.7%   60.1%    3082
+   engineer    58.6%   58.6%    3355
+   medic       59.7%   59.3%    3068
+   sniper      58.1%   58.6%    3343
+   spy         57.0%   57.5%    3618
+   all         58.7%   58.6%   28431
+
+2. Describing the map played: the side whose player rated higher won it
+   v11: 78.7% of 53949 class match-ups
+   v12: 77.7% of 54117 class match-ups
+
+3. What drives each version (correlation with the rating, Snipers / all classes)
+   sniper  v11: kills/30 +0.66   deaths/30 -0.78   damage/min +0.58
+   sniper  v12: kills/30 +0.80   deaths/30 -0.65   damage/min +0.70
+   all     v11: kills/30 +0.43   deaths/30 -0.57   damage/min +0.26
+   all     v12: kills/30 +0.54   deaths/30 -0.50   damage/min +0.32
+
+4. Season ratings that moved most (by official, 6+ officials on the class, playoffs 1.5x, final 2x, pulled to 1.00 by two)
+   1566 player seasons; median change -0.008; within ±0.03: 63%
+   Up most:
+     +0.109  Janteri          S24 Low          scout     1.06 -> 1.17 (6 officials)
+     +0.109  foungi           S28 Division 4   demoman   0.99 -> 1.10 (6 officials)
+     +0.103  Agen             S24 Mid          medic     1.01 -> 1.12 (7 officials)
+     +0.101  Jonas            S35 Open         heavy     0.95 -> 1.06 (8 officials)
+     +0.100  wicc             S35 Open         sniper    1.11 -> 1.21 (6 officials)
+     +0.100  celestial        S26 Open         medic     0.94 -> 1.04 (7 officials)
+     +0.100  Hisoka           S35 Low          scout     1.03 -> 1.13 (8 officials)
+     +0.098  Arentrir         S25 Low          soldier   1.00 -> 1.09 (8 officials)
+     +0.098  dempsey          S35 Mid          pyro      0.90 -> 1.00 (6 officials)
+     +0.093  Yinsoo           S134 Open         heavy     1.07 -> 1.17 (6 officials)
+     +0.092  Templ            S28 Open         scout     1.08 -> 1.17 (6 officials)
+     +0.091  Ragz             S25 Low          medic     0.85 -> 0.94 (7 officials)
+   Down most:
+     -0.081  Lemonhaze        S33 Low          pyro      0.94 -> 0.86 (6 officials)
+     -0.082  mike             S31 Low          pyro      1.03 -> 0.95 (6 officials)
+     -0.082  Harry            S134 Premiership  medic     1.09 -> 1.01 (6 officials)
+     -0.086  Tombahh          S35 Low          spy       1.00 -> 0.91 (8 officials)
+     -0.089  Jackos           S31 Low          sniper    1.11 -> 1.02 (6 officials)
+     -0.089  obi              S36 High         spy       0.97 -> 0.88 (8 officials)
+     -0.094  Harry            S34 High         medic     1.14 -> 1.04 (7 officials)
+     -0.098  rebom            S35 Low          scout     0.88 -> 0.78 (6 officials)
+     -0.100  kanon            S27 Division 1   scout     1.10 -> 1.00 (7 officials)
+     -0.101  Vlad             S134 Premiership  pyro      1.12 -> 1.01 (6 officials)
+     -0.102  Ajos.            S31 Low          scout     0.99 -> 0.88 (6 officials)
+     -0.115  flaresh          S25 Low          scout     1.15 -> 1.03 (8 officials)
+
+5. Awards, v11 against v12 (hl mvp --json)
+   season: 31 of 75 change
+     S134 Division 3   WilliamWanderlust -> Korra
+     S134 Open         keb -> Rantsik
+     S134 Premiership  .xio -> Osero
+     S36 High         Sossok -> SchmitShot
+     S36 Low          dreaming -> kamikaze
+     S36 Premiership  EoN -> DelT
+     S35 High         Wata -> Hugee
+     S34 High         Agen -> Ascendary
+     S34 Low          Frebagg -> Just1s
+     S33 Fresh Meat   GAZAZAZAZAZAZAZAZAZA -> fy
+     S33 Low          mob -> Bose
+     S33 Open         triple -> Tob
+     S33 Premiership  Hugee -> buko
+     S32 Division 1   lit -> JENNY
+     S32 Low          Burbie -> tobi ^︿^
+     S32 Open         197 -> Velvet~
+     S31 High         kejhalb -> Arcades
+     S31 Mid          Shaddow -> Teroantero
+     S30 Division 5   artem pootis26 -> tenshi
+     S29 Division 1   saltyy -> Vclox_
+     S29 Mid          asura -> toco
+     S28 Division 4   Snovi -> zulfie
+     S27 Mid          sonya -> piro
+     S26 Division 1   Elysioner -> keicam
+     S26 Division 2   skrimus -> june
+     S26 Premiership  TBourdon -> AlesKee
+     S25 Premiership  TBourdon -> Clark
+     S24 Division 1   Superiumentarius -> qBowN∼
+     S24 Division 2   Don't Not Disturb -> Akio
+     S24 Low          Rapy -> Janteri
+     S24 Premiership  redlix -> Rick May
+   class: 97 of 610 change
+   EVPs: 212 of 306 the same players
+
+   S31 Low best Sniper: 0C -> Flashy

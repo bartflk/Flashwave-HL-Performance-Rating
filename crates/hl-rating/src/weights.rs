@@ -503,12 +503,33 @@ dpm = 0.0
         assert!(!has(TfClass::Spy, Component::Backstabs), "the method of a kill is not rated, only its victim");
         assert!(!has(TfClass::Heavy, Component::Backstabs));
         assert!(!has(TfClass::Sniper, Component::Heal));
-        // Q8: DPM was measured redundant for every class and kept only in
-        // the fallback. If it comes back, it comes back measured.
+        // Q8 measured DPM redundant and kept it in the fallback only; v12
+        // brings it back, small, with the weight deaths gave up, measured by
+        // the before/after report (docs/rating-v12-report.txt): the next
+        // map's winner picked as well as v11 did.
         for c in TfClass::ALL {
-            assert!(!has(c, Component::Dpm), "{} rates DPM", c.as_str());
+            let total: f64 = w.model_for(c).iter().map(|(_, x)| x).sum();
+            let dpm: f64 = w.model_for(c).iter().filter(|(x, _)| *x == Component::Dpm).map(|(_, x)| x).sum();
+            assert!(dpm / total <= 0.10, "{} gives damage {}", c.as_str(), dpm / total);
         }
         assert!(w.generic_model().iter().any(|(x, _)| *x == Component::Dpm));
+    }
+
+    #[test]
+    fn round_impact_is_half_of_every_model_and_deaths_count_little() {
+        // v12 (Flashy): a player who takes more fights and wins them comes out
+        // ahead even when they die more.
+        let w = Weights::default_weights();
+        for c in TfClass::ALL {
+            let model = w.model_for(c);
+            let total: f64 = model.iter().map(|(_, x)| x).sum();
+            let share = |k: Component| model.iter().filter(|(x, _)| *x == k).map(|(_, x)| x).sum::<f64>() / total;
+            assert!((share(Component::RoundImpact) - 0.5).abs() < 0.01, "{} round impact {}", c.as_str(), share(Component::RoundImpact));
+            if c != TfClass::Medic {
+                let dying = share(Component::Deaths) + share(Component::UntradedDeaths) + share(Component::FlankDeaths) + share(Component::StationaryDeaths);
+                assert!(dying <= 0.20, "{} gives dying {dying}", c.as_str());
+            }
+        }
     }
 
     #[test]

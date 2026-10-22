@@ -35,7 +35,9 @@ use std::collections::HashMap;
 /// backstabs out.
 /// v11: the cap's respawn cost out of every class; Medic ubers, Heavy kills
 /// in context and Spy deaths out (the class-by-class review).
-pub const MODEL_VERSION: &str = "v11";
+/// v12: round impact is half of every model; deaths count half as much
+/// outside the Medic's, their weight going to kills and damage (Flashy).
+pub const MODEL_VERSION: &str = "v12";
 
 /// How far one standard deviation moves the rating.
 ///
@@ -151,10 +153,13 @@ pub enum Component {
     /// the player's caps cost their own dead. Lower is taken as better;
     /// `hl situation --spawn-delay` found long delays go with losing.
     CapsSpawnDelay,
+    /// Round impact (v12): the round-win chance the player's kills added and
+    /// their deaths gave away, in rounds per 10 minutes (round_impact.rs).
+    RoundImpact,
 }
 
 impl Component {
-    pub const ALL: [Component; 25] = [
+    pub const ALL: [Component; 26] = [
         Component::ImpactKills,
         Component::ImpactAssists,
         Component::MedicPicks,
@@ -180,6 +185,7 @@ impl Component {
         Component::CapsMatesDead,
         Component::FightSwingShared,
         Component::CapsSpawnDelay,
+        Component::RoundImpact,
     ];
 
     pub fn key(self) -> &'static str {
@@ -209,6 +215,7 @@ impl Component {
             Component::CapsMatesDead => "caps_mates_dead",
             Component::FightSwingShared => "fight_swing_shared",
             Component::CapsSpawnDelay => "caps_spawn_delay",
+            Component::RoundImpact => "round_impact",
         }
     }
 
@@ -243,6 +250,7 @@ impl Component {
             Component::CapsMatesDead => "Caps with your team dead",
             Component::FightSwingShared => "Fight swing, shared",
             Component::CapsSpawnDelay => "Spawns delayed by your caps",
+            Component::RoundImpact => "Round impact",
         }
     }
 
@@ -258,6 +266,7 @@ impl Component {
             Component::CapsMatesDead => "teammates dead per 10 min",
             Component::FightSwingShared => "win % per 10 min",
             Component::CapsSpawnDelay => "seconds per 10 min",
+            Component::RoundImpact => "rounds won per 10 min",
             _ => "per 10 min",
         }
     }
@@ -400,6 +409,9 @@ pub fn extract(
                 .flatten()
                 .map(|f| f64::from(f.caps_spawn_delay) * per10),
             Component::FightSwingShared => impact.and_then(|i| i.swing_shared).map(|s| s * 100.0 * per10),
+            // Needs the server log: without one the other half of the model
+            // carries the rating, as for every server-log part.
+            Component::RoundImpact => impact.and_then(|i| i.round).map(|r| r * per10),
         };
         if let Some(v) = v {
             values.push((*component, v));

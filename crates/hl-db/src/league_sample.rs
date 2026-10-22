@@ -383,14 +383,31 @@ impl Db {
     /// in and nothing of theirs is rated under `version`. One whose server
     /// log is still to come is rated from its JSON and rated again when the
     /// server log lands. Oldest first.
+    /// Every league log with its JSON held, whatever brought it: picked for
+    /// the sample, caught up with the league, or covered by one of the
+    /// owner's own uploads. Each gets a league rating, so every official is
+    /// counted map by map for everyone (season tables, awards).
+    pub async fn league_logs_with_json(&self) -> Result<Vec<i64>> {
+        Ok(sqlx::query_scalar(
+            "SELECT l.log_id FROM league_log l
+             WHERE l.json_source IS NOT NULL AND l.json_source != 'snapshot'
+               AND EXISTS (SELECT 1 FROM league_log_json j WHERE j.log_id = l.log_id)
+             ORDER BY l.log_id",
+        )
+        .fetch_all(self.pool())
+        .await?)
+    }
+
     pub async fn league_unrated(&self, version: &str, limit: i64) -> Result<Vec<i64>> {
         Ok(sqlx::query_scalar(&format!(
+            // Every league log with its JSON, as the full pass rates them
+            // (`league_logs_with_json`): the season tables count them all.
             "SELECT l.log_id FROM league_log l
-             WHERE l.picked = 1 AND l.json_source IS NOT NULL AND l.json_source != 'snapshot'
-               AND l.log_id NOT IN ({})
+             WHERE l.json_source IS NOT NULL AND l.json_source != 'snapshot'
+               AND EXISTS (SELECT 1 FROM league_log_json j WHERE j.log_id = l.log_id)
                AND NOT EXISTS (SELECT 1 FROM league_rating r WHERE r.model_version = ?1 AND r.log_id = l.log_id)
-             ORDER BY l.log_id LIMIT ?2",
-            crate::OWNER_COVERED
+             ORDER BY l.log_id LIMIT ?2{}",
+            ""
         ))
         .bind(version)
         .bind(limit)

@@ -42,6 +42,9 @@ pub struct Impact {
     /// last shot. `None` without a raw log or a `[swing]` table.
     pub swing_shared: Option<f64>,
     pub assists: f64,
+    /// Round impact (v12): round-win chance added by kills, less that given
+    /// away by deaths, in rounds. `None` without a server log.
+    pub round: Option<f64>,
     /// The player's kills in context (PLAN §11 B), where the fights pass has
     /// read the log. `None` without a raw log.
     pub fights: Option<FightCounts>,

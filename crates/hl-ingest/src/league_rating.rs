@@ -26,7 +26,19 @@ use std::collections::HashMap;
 
 /// Every rateable performance in the league sample, with the log it is in.
 pub async fn performances(db: &Db, w: &Weights) -> Result<Vec<(i64, Performance)>> {
-    let ids = db.league_rateable().await?;
+    performances_of(db, w, db.league_rateable().await?).await
+}
+
+/// Every league log's performances (rated and stored), and the logs among
+/// them that belong in the rating pool: the sample's, without the ones the
+/// owner's own uploads already put there.
+pub async fn performances_all(db: &Db, w: &Weights) -> Result<(Vec<(i64, Performance)>, std::collections::HashSet<i64>)> {
+    let pool: std::collections::HashSet<i64> = db.league_rateable().await?.into_iter().collect();
+    let perfs = performances_of(db, w, db.league_logs_with_json().await?).await?;
+    Ok((perfs, pool))
+}
+
+async fn performances_of(db: &Db, w: &Weights, ids: Vec<i64>) -> Result<Vec<(i64, Performance)>> {
     let mut out = Vec::new();
     for log_id in ids {
         let (Some(json), zip) = db.league_log_files(log_id).await? else { continue };
@@ -120,6 +132,17 @@ pub fn rate_one(log_id: i64, json: &str, zip: Option<&[u8]>, w: &Weights) -> Res
             credits.entry(seq).or_default().push((account, share));
         }
         let fight_rows: Vec<(u32, [u32; 14])> = f.players.iter().map(|s| (s.account_id, counts(s))).collect();
+        // Round impact (v12), on the server's own clock like the fights.
+        let rounds: HashMap<u32, f64> = crate::round_impact::impacts(
+            &raw,
+            &gs,
+            &|i| f.tags.get(i).is_some_and(Option::is_some),
+            log.flags.attack_defend,
+            crate::round_impact::WinTable::shipped(),
+        )
+        .into_iter()
+        .map(|(a, p)| (a, p.impact))
+        .collect();
 
         // Kills are valued in logs.tf's round-time frame, where the round
         // windows are: shift them as storing them would.
@@ -136,6 +159,7 @@ pub fn rate_one(log_id: i64, json: &str, zip: Option<&[u8]>, w: &Weights) -> Res
         impact = crate::kills::impacts_for(&kills, Some(&situations), &windows, log.map.as_deref(), w);
         crate::kills::attach_shared_swing(&mut impact, &kills, Some(&situations), Some(&credits), w);
         crate::kills::attach_fights(&mut impact, &fight_rows);
+        crate::kills::attach_round(&mut impact, &rounds);
     }
 
     Ok(log
