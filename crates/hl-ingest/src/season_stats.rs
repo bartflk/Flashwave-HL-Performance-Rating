@@ -678,3 +678,152 @@ mod tests {
         assert!(s.rating(0.8, 2) < s.rating(0.8, 20));
     }
 }
+
+// ---- One player's season, worked out ---------------------------------------
+
+/// One official in a season breakdown.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OfficialRow {
+    pub match_id: i64,
+    pub time: Option<i64>,
+    /// "Week 3", "Quarter Finals".
+    pub round: String,
+    pub opponent: Option<Team>,
+    /// From the player's side: "won", "lost", "draw".
+    pub result: Option<String>,
+    pub stage_weight: f64,
+    pub maps: Vec<String>,
+    pub minutes: f64,
+    /// The official's rating, its logs by minutes, before and after the
+    /// opponents' strength.
+    pub rating: f64,
+    pub opponent_strength: Option<f64>,
+    pub adjustment: f64,
+    pub adjusted: f64,
+    /// Played for their own team: counts for awards.
+    pub own_team: bool,
+}
+
+/// One part of the rating, averaged over the season's logs by minutes.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PartAverage {
+    pub component: String,
+    pub label: String,
+    pub unit: String,
+    pub raw: f64,
+    pub percentile: f64,
+    pub weight: f64,
+    pub logs: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SeasonBreakdown {
+    pub officials: Vec<OfficialRow>,
+    /// The season rating: (sum of weight x adjusted + SHRINK x 1.00) /
+    /// (sum of weights + SHRINK).
+    pub sum_weighted: f64,
+    pub sum_weights: f64,
+    pub shrink: f64,
+    pub rating: f64,
+    pub opponent_slope: f64,
+    pub parts: Vec<PartAverage>,
+}
+
+/// Why a player's season rating is what it is: every official with its
+/// rating, opponents and weight, the sum that makes the season, and the
+/// rating's parts over the season's logs.
+pub async fn season_breakdown(db: &Db, w: &hl_rating::Weights, season: i64, tier: i64, class: &str, account: u32) -> Result<SeasonBreakdown> {
+    let cat = Catalogue::load(db).await?;
+    let rated = crate::catalogue::rated_officials(db, None).await?;
+    let lines = cat.season_lines(&rated);
+    let key = (season, tier, class.to_string(), account);
+    let Some(line) = lines.get(&key) else { anyhow::bail!("no season on {class} for that player there") };
+    let own: HashSet<i64> = rated
+        .iter()
+        .filter(|g| g.account_id == account && g.class == class && g.etf2l_match_id.is_some_and(|m| line.officials.contains(&m)))
+        .filter(|g| cat.own_team_game(g))
+        .filter_map(|g| g.etf2l_match_id)
+        .collect();
+    let mut officials: Vec<OfficialRow> = line
+        .games
+        .iter()
+        .map(|(&id, o)| {
+            let info = cat.official_info(id, line.team);
+            let adjusted = o.rating();
+            let adjustment = o.opponent.map_or(0.0, |s| crate::catalogue::OPPONENT_SLOPE * (s - 1.0));
+            let mut maps: Vec<String> = o.maps.iter().cloned().collect();
+            maps.sort();
+            OfficialRow {
+                match_id: id,
+                time: info.as_ref().and_then(|i| i.0),
+                round: info.as_ref().map(|i| i.1.clone()).unwrap_or_default(),
+                opponent: info.as_ref().and_then(|i| i.2.clone()),
+                result: info.as_ref().and_then(|i| i.3.clone()),
+                stage_weight: o.stage,
+                maps,
+                minutes: o.minutes,
+                rating: adjusted - adjustment,
+                opponent_strength: o.opponent,
+                adjustment,
+                adjusted,
+                own_team: own.contains(&id),
+            }
+        })
+        .collect();
+    officials.sort_by_key(|o| o.time.unwrap_or(0));
+    let sum_weighted: f64 = officials.iter().map(|o| o.stage_weight * o.adjusted).sum();
+    let sum_weights: f64 = officials.iter().map(|o| o.stage_weight).sum();
+
+    // The parts, from each log rated again as the rating pass rates it.
+    let baseline = crate::rating::load_baseline(db).await?;
+    /// A part's sums over the logs, each by minutes.
+    #[derive(Default)]
+    struct Sums {
+        label: String,
+        unit: String,
+        raw: f64,
+        pct: f64,
+        weight: f64,
+        minutes: f64,
+        logs: usize,
+    }
+    let mut acc: BTreeMap<String, Sums> = BTreeMap::new();
+    for id in line.games.values().flat_map(|o| o.log_ids.iter().copied()) {
+        let (json, zip) = match db.league_log_files(id).await? {
+            (Some(j), z) => (j, z),
+            _ => match db.raw_log(id).await? {
+                Some(j) => (j, db.rawlog(id).await?),
+                None => continue,
+            },
+        };
+        let w2 = w.clone();
+        let Ok(Ok(perfs)) = tokio::task::spawn_blocking(move || crate::league_rating::rate_one(id, &json, zip.as_deref(), &w2)).await else { continue };
+        let Some(perf) = perfs.iter().find(|p| p.account_id == account && p.class.as_str() == class) else { continue };
+        let Some(r) = hl_rating::model::rate(perf, &baseline, w) else { continue };
+        for p in r.parts {
+            let e = acc.entry(p.component.key().to_string()).or_insert_with(|| Sums { label: p.label.clone(), unit: p.unit.clone(), ..Default::default() });
+            e.raw += p.raw * r.minutes;
+            e.pct += p.percentile * r.minutes;
+            e.weight += p.weight * r.minutes;
+            e.minutes += r.minutes;
+            e.logs += 1;
+        }
+    }
+    let mut parts: Vec<PartAverage> = acc
+        .into_iter()
+        .map(|(k, a)| PartAverage { component: k, label: a.label, unit: a.unit, raw: a.raw / a.minutes, percentile: a.pct / a.minutes, weight: a.weight / a.minutes, logs: a.logs })
+        .collect();
+    parts.sort_by(|a, b| b.weight.total_cmp(&a.weight));
+    Ok(SeasonBreakdown {
+        officials,
+        sum_weighted,
+        sum_weights,
+        shrink: crate::catalogue::SHRINK_OFFICIALS,
+        rating: line.rating(),
+        opponent_slope: crate::catalogue::OPPONENT_SLOPE,
+        parts,
+    })
+}

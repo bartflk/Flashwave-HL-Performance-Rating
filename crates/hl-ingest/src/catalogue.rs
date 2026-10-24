@@ -202,6 +202,10 @@ pub struct OfficialGame {
     /// The maps played in it, by base name.
     pub maps: std::collections::HashSet<String>,
     pub logs: usize,
+    /// The opponents' strength it was adjusted for, where known.
+    pub opponent: Option<f64>,
+    /// The logs in it, for a breakdown.
+    pub log_ids: Vec<i64>,
 }
 
 impl OfficialGame {
@@ -237,6 +241,7 @@ impl SeasonLine {
         e.score_minutes += g.score * m;
         e.minutes += m;
         e.logs += 1;
+        e.log_ids.push(g.log_id);
         for name in g.map.as_deref().unwrap_or("").split(|c: char| !(c.is_ascii_alphanumeric() || c == '_')).filter(|n| n.contains('_')) {
             e.maps.insert(hl_core::maps::map_base(name));
         }
@@ -930,6 +935,9 @@ impl Catalogue {
                     ..Default::default()
                 });
             line.add(&adjusted, w);
+            if let Some(o) = g.etf2l_match_id.and_then(|id| line.games.get_mut(&id)) {
+                o.opponent = opp;
+            }
             if let Some(s) = opp {
                 line.opponents.0 += s;
                 line.opponents.1 += 1;
@@ -953,6 +961,24 @@ impl Catalogue {
             }
             _ => false,
         }
+    }
+
+    /// An official's when, round, opponent and result, from `team`'s side.
+    pub fn official_info(&self, id: i64, team: i64) -> Option<(Option<i64>, String, Option<Team>, Option<String>)> {
+        let m = self.matches.get(&id)?;
+        let round = match (m.stage.as_str(), m.round.as_deref()) {
+            (_, Some(r)) if !r.is_empty() => r.to_string(),
+            ("regular", _) => "Regular season".into(),
+            (s, _) => s.to_string(),
+        };
+        let (opp, mine, theirs) = if m.clan1 == team { (m.clan2, m.r1, m.r2) } else if m.clan2 == team { (m.clan1, m.r2, m.r1) } else { (m.clan2, None, None) };
+        let result = match (mine, theirs) {
+            (Some(a), Some(b)) if a > b => Some("won".to_string()),
+            (Some(a), Some(b)) if a < b => Some("lost".to_string()),
+            (Some(_), Some(_)) => Some("draw".to_string()),
+            _ => None,
+        };
+        Some((m.time, round, Some(self.team(opp)), result))
     }
 
     /// Season lines from own-team games only: what the awards are read from.

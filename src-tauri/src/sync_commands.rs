@@ -1903,6 +1903,20 @@ pub async fn get_player_deep(state: State<'_, AppState>, account_id: u32) -> Cmd
     Ok(hl_ingest::season_stats::player_deep(&state.db, account_id).await?)
 }
 
+/// Why a player's season rating is what it is: every official, the sum,
+/// the rating's parts over the season.
+#[tauri::command]
+pub async fn get_season_breakdown(
+    state: State<'_, AppState>,
+    season: i64,
+    tier: i64,
+    class: String,
+    account_id: u32,
+) -> CmdResult<hl_ingest::season_stats::SeasonBreakdown> {
+    let (weights, _) = hl_rating::Weights::load(&state.db_path.with_file_name("weights.toml"));
+    Ok(hl_ingest::season_stats::season_breakdown(&state.db, &weights, season, tier, &class, account_id).await?)
+}
+
 /// Two players in one match, log by log, with each rating's full breakdown.
 #[tauri::command]
 pub async fn get_head_to_head(state: State<'_, AppState>, log_id: i64, a: u32, b: u32) -> CmdResult<hl_ingest::head_to_head::HeadToHead> {

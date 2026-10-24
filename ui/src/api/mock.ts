@@ -16,6 +16,7 @@ import seasonTable34 from "./fixtures/season_table_34_open_demoman.json";
 import playerDeepFlashy from "./fixtures/player_deep_flashy.json";
 import dataAudit31 from "./fixtures/data_audit_31_low.json";
 import headToHeadS33 from "./fixtures/head_to_head_s33_final.json";
+import seasonBreakdown33 from "./fixtures/season_breakdown_flashy_33.json";
 import teamHonours35600 from "./fixtures/team_honours_35600.json";
 import teamTransfers35600 from "./fixtures/team_transfers_35600.json";
 import teamInfo35600 from "./fixtures/team_info_35600.json";
@@ -43,6 +44,7 @@ import type {
   PlayerDeep,
   DataReport,
   HeadToHead,
+  SeasonBreakdown,
   LogsTfCareer,
   LogsTfPlayer,
   Bookmark,
@@ -1869,6 +1871,9 @@ export const mockApi: Api = {
     const h = headToHeadS33 as unknown as HeadToHead;
     return delay({ ...h, accounts: [a, b] as [number, number], logs: h.logs.map((l) => ({ ...l, sides: l.sides.map((s, i) => s && { ...s, accountId: i === 0 ? a : b }) as HeadToHead["logs"][number]["sides"] })) });
   },
+  // From `hl season-breakdown 33 3 sniper` for Flashy, 24 October 2026:
+  // every row opens it.
+  getSeasonBreakdown: (_season: number, _tier: number, _cls: string, _accountId: number) => delay(seasonBreakdown33 as unknown as SeasonBreakdown),
   getDataAudit: (season: number) => delay({ ...(dataAudit31 as unknown as DataReport), season }),
   getMatchImpact: (logId: number) => {
     const m = FIXTURES.find((f) => f.logId === logId) ?? FIXTURES[0];

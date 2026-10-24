@@ -2683,6 +2683,31 @@ export interface H2hSide {
   onOther: number;
 }
 
+/** Why a player's season rating is what it is (season_stats.rs). */
+export interface SeasonBreakdown {
+  officials: {
+    matchId: number;
+    time: number | null;
+    round: string;
+    opponent: CatTeam | null;
+    result: "won" | "lost" | "draw" | null;
+    stageWeight: number;
+    maps: string[];
+    minutes: number;
+    rating: number;
+    opponentStrength: number | null;
+    adjustment: number;
+    adjusted: number;
+    ownTeam: boolean;
+  }[];
+  sumWeighted: number;
+  sumWeights: number;
+  shrink: number;
+  rating: number;
+  opponentSlope: number;
+  parts: { component: string; label: string; unit: string; raw: number; percentile: number; weight: number; logs: number }[];
+}
+
 export interface HeadToHead {
   accounts: [number, number];
   logs: { logId: number; map: string | null; minutes: number; winner: string | null; sides: [H2hSide | null, H2hSide | null] }[];

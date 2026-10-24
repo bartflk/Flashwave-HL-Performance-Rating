@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type SeasonRow, type StatTotals } from "../../api/types";
@@ -10,6 +10,7 @@ import { tip, type Entry, type GlossaryKey } from "../../lib/glossary";
 import { ClassIcon } from "../ClassIcon";
 import { CLASS_ORDER, classLabel } from "../analysis/common";
 import { Loading, Refreshing } from "../Spinner";
+import { SeasonBreakdown } from "./SeasonBreakdown";
 import { StatTip } from "../StatTip";
 
 /**
@@ -104,6 +105,17 @@ export function SeasonRankings({ season, onTeam }: { season: number; onTeam: (id
   const [stage, setStage] = useState<Stage>("all");
   const [view, setView] = useState<View>("per30");
   const [minOff, setMinOff] = useState(3);
+  const [open, setOpen] = useState<number | null>(null);
+  // The breakdown under a row is as wide as the table's window, not the
+  // table, so it stays in view however far the columns scroll.
+  const scroller = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => el.style.setProperty("--sr-view", `${el.clientWidth}px`));
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
   const q = useQuery({
     queryKey: ["season_table", season, tier, cls, stage],
     queryFn: () => api.getSeasonTable(season, tier, cls, stage),
@@ -194,7 +206,7 @@ export function SeasonRankings({ season, onTeam }: { season: number; onTeam: (id
               ? t("The best of the class comes from the three medal teams, with {0} officials on the class for their own team; EVPs need the {0} officials, any team. Merc games are shown but do not count for awards.", { "0": v.awardOfficials })
               : t("Awards need {0} officials on the class.", { "0": v.awardOfficials })}
           </p>
-          <div className="sr-scroll has-refresh">
+          <div className="sr-scroll has-refresh" ref={scroller}>
             <Refreshing on={q.isPlaceholderData} />
             <table className="match-table sr-table">
               <thead>
@@ -237,8 +249,16 @@ export function SeasonRankings({ season, onTeam }: { season: number; onTeam: (id
                 </tr>
               </thead>
               <tbody>
-                {s.sorted.map((r) => (
-                  <tr key={r.accountId} className={r.rank === null ? "sr-unranked" : undefined}>
+                {s.sorted.map((r) => [
+                  <tr
+                    key={r.accountId}
+                    className={`sr-row${r.rank === null ? " sr-unranked" : ""}${open === r.accountId ? " open" : ""}`}
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest("button")) return;
+                      setOpen(open === r.accountId ? null : r.accountId);
+                    }}
+                    title={t("Click for how the season rating was worked out")}
+                  >
                     <td className="num">{r.rank ?? "–"}</td>
                     <td className="sr-name">
                       <button className="linkish" onClick={() => openPlayer(r.accountId)}>
@@ -274,8 +294,15 @@ export function SeasonRankings({ season, onTeam }: { season: number; onTeam: (id
                       </td>
                     ))}
                     <td className="num muted">{hm(r.totals.timeS)}</td>
-                  </tr>
-                ))}
+                  </tr>,
+                  open === r.accountId && (
+                    <tr key={`${r.accountId}-sb`} className="sr-sb-row">
+                      <td colSpan={10 + cols.length}>
+                        <SeasonBreakdown season={season} tier={v.tier} cls={cls} accountId={r.accountId} />
+                      </td>
+                    </tr>
+                  ),
+                ])}
               </tbody>
             </table>
           </div>
