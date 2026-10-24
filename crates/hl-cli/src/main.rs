@@ -1692,6 +1692,15 @@ async fn run() -> Result<()> {
             }
             Ok(())
         }
+        ["season-breakdown", season, tier, class, account] => {
+            // Why a player's season rating is what it is.
+            let db = Db::connect(&db_path).await?;
+            let (w, _) = hl_rating::Weights::load(&db_path.with_file_name("weights.toml"));
+            let a = hl_core::SteamId::parse(account)?.account_id();
+            let b = hl_ingest::season_stats::season_breakdown(&db, &w, season.parse()?, tier.parse()?, class, a).await?;
+            println!("{}", serde_json::to_string_pretty(&b)?);
+            Ok(())
+        }
         ["head-to-head", log, a, b] => {
             // Two players in one match, log by log, with every rating's parts.
             let db = Db::connect(&db_path).await?;

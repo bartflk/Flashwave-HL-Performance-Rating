@@ -300,6 +300,7 @@ pub fn run() {
             sync_commands::get_match_impact,
             sync_commands::get_data_audit,
             sync_commands::get_head_to_head,
+            sync_commands::get_season_breakdown,
             sync_commands::get_match_divisions,
             sync_commands::index_stats,
             sync_commands::list_matches,

@@ -1,0 +1,268 @@
+{
+  "officials": [
+    {
+      "matchId": 90258,
+      "time": 1742930100,
+      "round": "Week 1",
+      "opponent": {
+        "id": 36694,
+        "name": "Olutlaatikko",
+        "avatar": "https://etf2l.org/wp-content/uploads/avatars/671695a55672c.png"
+      },
+      "result": "won",
+      "stageWeight": 1.0,
+      "maps": [
+        "product"
+      ],
+      "minutes": 22.7,
+      "rating": 1.1566960352422906,
+      "opponentStrength": null,
+      "adjustment": 0.0,
+      "adjusted": 1.1566960352422906,
+      "ownTeam": true
+    },
+    {
+      "matchId": 90295,
+      "time": 1743703200,
+      "round": "Week 2",
+      "opponent": {
+        "id": 34934,
+        "name": "Петушиная Дивизия",
+        "avatar": "https://etf2l.org/wp-content/uploads/avatars/67e1cba44cd46.png"
+      },
+      "result": "lost",
+      "stageWeight": 1.0,
+      "maps": [
+        "vigil"
+      ],
+      "minutes": 48.699999999999996,
+      "rating": 1.0232854209445588,
+      "opponentStrength": 1.041332531556529,
+      "adjustment": 0.030999398667396705,
+      "adjusted": 1.0542848196119554,
+      "ownTeam": true
+    },
+    {
+      "matchId": 90323,
+      "time": 1744484400,
+      "round": "Week 3",
+      "opponent": {
+        "id": 36487,
+        "name": "DALDAL_UBEZHAL",
+        "avatar": "https://etf2l.org/wp-content/uploads/avatars/66746b492cfe2.jpg"
+      },
+      "result": "won",
+      "stageWeight": 1.0,
+      "maps": [
+        "proot"
+      ],
+      "minutes": 21.0,
+      "rating": 1.276952380952381,
+      "opponentStrength": 0.9384210166066428,
+      "adjustment": -0.04618423754501791,
+      "adjusted": 1.2307681434073632,
+      "ownTeam": true
+    },
+    {
+      "matchId": 90380,
+      "time": 1745604000,
+      "round": "Week 4",
+      "opponent": {
+        "id": 36597,
+        "name": "Gorizont",
+        "avatar": "https://etf2l.org/wp-content/uploads/avatars/66f9bb74e1705.jpg"
+      },
+      "result": "won",
+      "stageWeight": 1.0,
+      "maps": [
+        "steel"
+      ],
+      "minutes": 28.200000000000003,
+      "rating": 1.1700709219858156,
+      "opponentStrength": 1.0827887985989029,
+      "adjustment": 0.06209159894917715,
+      "adjusted": 1.2321625209349927,
+      "ownTeam": true
+    },
+    {
+      "matchId": 90403,
+      "time": 1746209700,
+      "round": "Week 5",
+      "opponent": {
+        "id": 34934,
+        "name": "Петушиная Дивизия",
+        "avatar": "https://etf2l.org/wp-content/uploads/avatars/67e1cba44cd46.png"
+      },
+      "result": "won",
+      "stageWeight": 1.0,
+      "maps": [
+        "ashville"
+      ],
+      "minutes": 31.999999999999996,
+      "rating": 1.1542500000000002,
+      "opponentStrength": 1.0517084686805631,
+      "adjustment": 0.038781351510422335,
+      "adjusted": 1.1930313515104225,
+      "ownTeam": true
+    },
+    {
+      "matchId": 90429,
+      "time": 1746727200,
+      "round": "Week 6",
+      "opponent": {
+        "id": 36631,
+        "name": "Champions of Light",
+        "avatar": "https://etf2l.org/wp-content/uploads/avatars/675c72e438e4d.jpg"
+      },
+      "result": "lost",
+      "stageWeight": 1.0,
+      "maps": [
+        "upward"
+      ],
+      "minutes": 43.2,
+      "rating": 0.7160185185185184,
+      "opponentStrength": 1.1343068701691168,
+      "adjustment": 0.1007301526268376,
+      "adjusted": 0.816748671145356,
+      "ownTeam": true
+    },
+    {
+      "matchId": 90454,
+      "time": 1747418400,
+      "round": "Quarter Finals",
+      "opponent": {
+        "id": 32396,
+        "name": "Habib's Special Forces",
+        "avatar": "https://etf2l.org/wp-content/uploads/avatars/65a535a53e98d.jpg"
+      },
+      "result": "won",
+      "stageWeight": 1.5,
+      "maps": [
+        "ashville",
+        "product",
+        "vigil"
+      ],
+      "minutes": 90.1,
+      "rating": 1.099911209766926,
+      "opponentStrength": 1.193278679597114,
+      "adjustment": 0.14495900969783548,
+      "adjusted": 1.2448702194647614,
+      "ownTeam": true
+    },
+    {
+      "matchId": 90470,
+      "time": 1747936800,
+      "round": "Semi-Finals",
+      "opponent": {
+        "id": 26973,
+        "name": "Anglo: Death, Undeath and Re-death",
+        "avatar": "https://etf2l.org/wp-content/uploads/avatars/64516cc529f3d.jpg"
+      },
+      "result": "won",
+      "stageWeight": 1.5,
+      "maps": [
+        "ashville",
+        "product"
+      ],
+      "minutes": 67.39999999999999,
+      "rating": 1.016439169139466,
+      "opponentStrength": 0.9600476063930357,
+      "adjustment": -0.029964295205223257,
+      "adjusted": 0.9864748739342427,
+      "ownTeam": true
+    },
+    {
+      "matchId": 90482,
+      "time": 1748368800,
+      "round": "Grand Final",
+      "opponent": {
+        "id": 36631,
+        "name": "Champions of Light",
+        "avatar": "https://etf2l.org/wp-content/uploads/avatars/675c72e438e4d.jpg"
+      },
+      "result": "won",
+      "stageWeight": 2.0,
+      "maps": [
+        "ashville",
+        "proot",
+        "vigil"
+      ],
+      "minutes": 108.10000000000001,
+      "rating": 1.0362164662349678,
+      "opponentStrength": 1.1609316802161391,
+      "adjustment": 0.12069876016210435,
+      "adjusted": 1.1569152263970721,
+      "ownTeam": true
+    }
+  ],
+  "sumWeighted": 12.344539634745031,
+  "sumWeights": 11.0,
+  "shrink": 3.0,
+  "rating": 1.096038545338931,
+  "opponentSlope": 0.75,
+  "parts": [
+    {
+      "component": "round_impact",
+      "label": "Round impact",
+      "unit": "rounds won per 10 min",
+      "raw": 0.13372345036844388,
+      "percentile": 53.46835717381882,
+      "weight": 0.5128738621586477,
+      "logs": 33
+    },
+    {
+      "component": "impact_kills",
+      "label": "Impact kills",
+      "unit": "per 10 min",
+      "raw": 17.17140658864326,
+      "percentile": 56.41944083224967,
+      "weight": 0.2542912873862159,
+      "logs": 33
+    },
+    {
+      "component": "deaths",
+      "label": "Deaths",
+      "unit": "per 10 min",
+      "raw": 6.916940015186028,
+      "percentile": 60.68283978739559,
+      "weight": 0.08,
+      "logs": 21
+    },
+    {
+      "component": "dpm",
+      "label": "Damage / min",
+      "unit": "per min",
+      "raw": 373.95238838318176,
+      "percentile": 60.60771564802776,
+      "weight": 0.06429128738621587,
+      "logs": 33
+    },
+    {
+      "component": "untraded",
+      "label": "Kills not traded",
+      "unit": "% of kills",
+      "raw": 69.21755960121371,
+      "percentile": 53.975726051148676,
+      "weight": 0.06429128738621587,
+      "logs": 33
+    },
+    {
+      "component": "untraded_deaths",
+      "label": "Untraded deaths",
+      "unit": "per 10 min",
+      "raw": 4.384228435197227,
+      "percentile": 48.50955786736022,
+      "weight": 0.05000000000000002,
+      "logs": 33
+    },
+    {
+      "component": "deaths_attack_defend",
+      "label": "Deaths (attack/defend maps)",
+      "unit": "per 10 min",
+      "raw": 7.3342222222222215,
+      "percentile": 36.40560606060606,
+      "weight": 0.030000000000000002,
+      "logs": 12
+    }
+  ]
+}

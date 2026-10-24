@@ -349,3 +349,27 @@ button.aw-mvp-row:hover { background: rgba(180, 140, 255, 0.14); }
 .aw-team { color: var(--muted); font-size: 0.76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aw-empty { margin: 0; color: var(--muted); font-size: 0.82rem; line-height: 1.4; }
 .aw-shared { border-top: 1px solid var(--border); padding-top: 9px; }
+
+/* A season rating's working, under its row in the season rankings. */
+.sr-row { cursor: pointer; }
+.sr-row.open > td { background: var(--sunken); }
+.sr-table .sr-sb-row > td { padding: 0; background: var(--sunken); white-space: normal; text-transform: none; }
+.sb { position: sticky; left: 0; box-sizing: border-box; width: var(--sr-view, 100%); padding: 10px 12px 14px; display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; text-align: left; }
+@media (max-width: 1100px) { .sb { grid-template-columns: 1fr; } }
+.sb-parts { display: flex; flex-direction: column; gap: 6px; }
+.sb-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.sr-table .sb-table th, .sr-table .sb-table td { padding: 3px 6px; height: auto; border-bottom: 1px solid var(--border); text-align: left; background: transparent; white-space: normal; }
+.sr-table .sb-table th.num, .sr-table .sb-table td.num { text-align: right; white-space: nowrap; }
+.sr-table .sb-table tfoot td { border-bottom: 0; padding-top: 8px; }
+.sb-merc > td { opacity: 0.55; }
+.sb-tag { margin-left: 6px; font-size: 10.5px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--border); color: var(--muted); }
+.sb-res { margin-left: 4px; font-size: 11px; }
+.sb-won { color: var(--ok); }
+.sb-lost { color: var(--bad); }
+.sb-draw { color: var(--muted); }
+.sb-up { color: var(--ok); }
+.sb-down { color: var(--bad); }
+.sb-bar { display: inline-block; width: 70px; height: 5px; border-radius: 3px; background: var(--border); vertical-align: middle; position: relative; overflow: hidden; }
+.sb-bar > span { position: absolute; left: 0; top: 0; bottom: 0; background: #e0b440; }
+.sb-bar > span.good { background: #3fbf6a; }
+.sb-bar > span.poor { background: #e05252; }
