@@ -521,3 +521,51 @@ html[data-backdrop="sides"] body {
     var(--bg);
   background-attachment: fixed;
 }
+
+/* ---- One control height, app-wide (Flashy: "every link, button and text
+   has to have its place and be styled correctly"). Measured before: plain
+   buttons at 31, 37 and 41 px, dropdowns at 39, chips at 41. Now every
+   button that wears the base look -- no class of its own, the main
+   (primary) button, the chip -- every dropdown and every text box is one
+   height, its label centred. Buttons styled as links, rows, tabs or icons
+   carry classes of their own and keep their sizes. The hover and dropdown
+   colours follow the theme (they were Gravel's browns on every theme). ---- */
+:root { --ctl-h: 36px; --ctl-radius: 8px; }
+button:not([class]),
+button.primary,
+button.km-chip,
+button.secondary {
+  box-sizing: border-box;
+  min-height: var(--ctl-h);
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1.15;
+  border-radius: var(--ctl-radius);
+}
+button:hover:not(:disabled) {
+  background: linear-gradient(color-mix(in srgb, var(--raised) 80%, var(--text) 8%), var(--raised));
+  border-color: var(--line-2);
+}
+button.primary:hover:not(:disabled) {
+  background: linear-gradient(var(--accent-hi-hover), var(--accent-lo-hover));
+  border-color: var(--accent-edge-hover);
+}
+select {
+  box-sizing: border-box;
+  height: var(--ctl-h);
+  padding: 0 30px 0 12px;
+  border-radius: var(--ctl-radius);
+  background-color: var(--sunken);
+}
+select:hover { border-color: var(--line-2); background-color: var(--raised); }
+input[type="text"],
+input[type="search"],
+input:where(:not([type])) {
+  box-sizing: border-box;
+  height: var(--ctl-h);
+  padding: 0 12px;
+  border-radius: var(--ctl-radius);
+}

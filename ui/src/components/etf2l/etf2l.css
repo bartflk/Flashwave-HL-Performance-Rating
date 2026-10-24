@@ -1389,7 +1389,7 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
 .e2-head-tools .e2-search { flex: 1 1 auto; min-width: 0; }
 .e2-refresh { position: relative; display: inline-flex; flex: none; }
 .e2-refresh-btn {
-  display: grid; place-items: center; width: 38px; height: 38px; padding: 0;
+  display: grid; place-items: center; width: var(--ctl-h); height: var(--ctl-h); padding: 0;
   border: 1px solid var(--border); border-radius: 8px; background: var(--sunken, var(--panel));
   color: var(--muted); font-size: 1.05rem; cursor: pointer;
 }
