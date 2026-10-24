@@ -2459,6 +2459,10 @@ export interface LedgerMap {
   etf2lBlue: number | null;
   /** null when it cannot be told: no ETF2L result, or a stopwatch map level on rounds. */
   agrees: boolean | null;
+  /** The log that is exactly this map (a combine of its games, or its only log). */
+  wholeLog: number | null;
+  /** Every log of this map, the whole-map one included. */
+  logs: number[];
 }
 
 export interface Ledger {

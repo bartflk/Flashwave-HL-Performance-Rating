@@ -1698,7 +1698,7 @@ async fn run() -> Result<()> {
             }
             for m in &l.maps {
                 println!(
-                    "{:<22} rounds {}-{}  red {} blue {}  ETF2L {}  {}",
+                    "{:<22} rounds {}-{}  red {} blue {}  ETF2L {}  {}  whole map: {}  logs {:?}",
                     m.map,
                     m.first_round,
                     m.last_round,
@@ -1712,7 +1712,9 @@ async fn run() -> Result<()> {
                         Some(true) => "agrees",
                         Some(false) => "DISAGREES",
                         None => "",
-                    }
+                    },
+                    m.whole_log.map_or("-".into(), |l| l.to_string()),
+                    m.logs
                 );
             }
             for p in &l.problems {

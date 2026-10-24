@@ -25,7 +25,8 @@ pub struct LedgerPart {
     pub log_id: i64,
     pub map: Option<String>,
     /// "game 1", "game 2" for a stopwatch map's logs, each one game of
-    /// both teams attacking once; "whole map" for a KOTH map's one log.
+    /// both teams attacking once; "whole map" for a KOTH map's one log,
+    /// "part 1", "part 2" for a KOTH map split over several.
     pub label: String,
     /// The combined log's round numbers this part holds.
     pub rounds: Vec<i64>,
@@ -54,6 +55,13 @@ pub struct LedgerMap {
     /// told (no ETF2L result, or a stopwatch map level on rounds, which
     /// time decides).
     pub agrees: Option<bool>,
+    /// The log that is exactly this map: a combine of its games uploaded
+    /// beside the parts ("ashville", "Combined Upward"), or its only log.
+    /// What the page reads for "the whole map" (Flashy: "a per-map setting
+    /// instead of per log").
+    pub whole_log: Option<i64>,
+    /// Every log of this map, the whole-map combine included, oldest first.
+    pub logs: Vec<i64>,
 }
 
 /// One round of a combined log.
@@ -106,10 +114,34 @@ pub async fn ledger(db: &Db, log_id: i64) -> Result<Option<Ledger>> {
     let mut parts: Vec<P> = Vec::new();
     for id in &part_ids {
         let info = db.part_info(*id).await?;
-        let starts: HashSet<i64> = db.all_rounds_of(*id).await?.into_iter().map(|r| r.1).collect();
-        let colours = db.log_time_and_colours(*id).await?.map(|(_, c)| c.into_iter().collect()).unwrap_or_default();
+        let mut starts: HashSet<i64> = db.all_rounds_of(*id).await?.into_iter().map(|r| r.1).collect();
+        let mut colours: HashMap<i64, String> = db.log_time_and_colours(*id).await?.map(|(_, c)| c.into_iter().collect()).unwrap_or_default();
+        // A part kept only as its JSON (the sync's part fetch keeps them so)
+        // has no rows in the match tables: its rounds and players from there.
+        if starts.is_empty() || colours.is_empty() {
+            let json = match db.part_raw(*id).await? {
+                Some(j) => Some(j),
+                None => db.raw_log(*id).await?,
+            };
+            if let Some(v) = json.and_then(|j| serde_json::from_str::<serde_json::Value>(&j).ok()) {
+                let rs: Vec<i64> = v["rounds"].as_array().into_iter().flatten().filter_map(|r| r["start_time"].as_i64()).collect();
+                if starts.is_empty() {
+                    starts = rs.into_iter().collect();
+                }
+                if colours.is_empty() {
+                    colours = v["players"]
+                        .as_object()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|(k, p)| Some((i64::from(hl_core::SteamId::parse(k).ok()?.account_id()), p["team"].as_str()?.to_string())))
+                        .collect();
+                }
+            }
+        }
         let (map, title, demo) = info.unwrap_or_default();
-        let combined = title.as_deref().is_some_and(|t| t.to_ascii_lowercase().contains("combined"));
+        // A combine of the map's games: logs.tf names it "Combined ..." or
+        // the uploader names it after the map, with no map of its own.
+        let combined = title.as_deref().is_some_and(|t| t.to_ascii_lowercase().contains("combined")) || map.is_none();
         parts.push(P { id: *id, map, starts, colours, demo, combined });
     }
     // A combine of other parts ("Combined Upward") adds nothing of its own:
@@ -132,6 +164,10 @@ pub async fn ledger(db: &Db, log_id: i64) -> Result<Option<Ledger>> {
     let mut ordered: Vec<&&P> = own.iter().filter(|p| out.rounds.iter().any(|r| r.part == Some(p.id))).collect();
     ordered.sort_by_key(|p| p.starts.iter().min().copied().unwrap_or(i64::MAX));
     let mut per_map: HashMap<String, usize> = HashMap::new();
+    let mut of_map: HashMap<String, usize> = HashMap::new();
+    for p in &ordered {
+        *of_map.entry(p.map.as_deref().map(hl_core::maps::map_base).unwrap_or_default()).or_default() += 1;
+    }
     for p in ordered {
         let map = p.map.clone();
         let base = map.as_deref().map(hl_core::maps::map_base).unwrap_or_default();
@@ -141,7 +177,13 @@ pub async fn ledger(db: &Db, log_id: i64) -> Result<Option<Ledger>> {
         // A stopwatch log is one game: both teams attack once, and ETF2L
         // scores the map in games won (the S36 High final's Upward: three
         // logs, ETF2L 2-1). A KOTH map is one log.
-        let label = if koth { "whole map".to_string() } else { format!("game {n}") };
+        // A KOTH map split over several logs (a restart, a change of server)
+        // reads as its parts.
+        let label = match (koth, of_map.get(&base).copied().unwrap_or(1)) {
+            (true, 1) => "whole map".to_string(),
+            (true, _) => format!("part {n}"),
+            (false, _) => format!("game {n}"),
+        };
         // Which way its teams run: the combined log's Red players' colour in it.
         let (mut same, mut flipped) = (0usize, 0usize);
         for (account, c) in &colours {
@@ -179,6 +221,12 @@ pub async fn ledger(db: &Db, log_id: i64) -> Result<Option<Ledger>> {
         if agrees == Some(false) {
             out.problems.push(format!("{map}: the rounds say {red}-{blue}, ETF2L {}-{}", theirs.map_or(0, |t| t.0), theirs.map_or(0, |t| t.1)));
         }
+        // The map's rounds, by start time, and the logs that cover them:
+        // the one holding exactly them is the whole map.
+        let map_starts: HashSet<i64> = rounds.iter().filter(|(n, ..)| *n >= first && *n <= last).map(|(_, s, ..)| *s).collect();
+        let mut logs: Vec<&P> = parts.iter().filter(|p| !p.starts.is_empty() && p.starts.iter().all(|s| map_starts.contains(s))).collect();
+        logs.sort_by_key(|p| (p.starts.iter().min().copied().unwrap_or(i64::MAX), std::cmp::Reverse(p.starts.len())));
+        let whole_log = logs.iter().find(|p| p.starts == map_starts).map(|p| p.id);
         out.maps.push(LedgerMap {
             map,
             first_round: first,
@@ -188,6 +236,8 @@ pub async fn ledger(db: &Db, log_id: i64) -> Result<Option<Ledger>> {
             etf2l_red: theirs.map(|t| t.0),
             etf2l_blue: theirs.map(|t| t.1),
             agrees,
+            whole_log,
+            logs: logs.iter().map(|p| p.id).collect(),
         });
     }
     Ok(Some(out))
