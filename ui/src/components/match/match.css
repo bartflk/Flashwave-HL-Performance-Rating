@@ -1935,3 +1935,48 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
   font-variant-numeric: tabular-nums;
 }
 .match-page .hh-victim .muted { margin-left: auto; }
+
+/* The hero's sides, cleaned up: the colour and you pills one height, and
+   the facts under the name a single line of pills -- country, then the
+   season's record with its medal -- centred on one line. */
+.match-page .mx-tags { align-items: center; }
+.match-page :is(.mx-colour, .mx-you) { display: inline-flex; align-items: center; height: 20px; padding: 0 9px; box-sizing: border-box; line-height: 1; }
+.match-page .mx-facts { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; margin-top: 2px; }
+.match-page .mx-fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+.match-page .mx-fact img, .match-page .mx-fact svg { display: block; flex: none; }
+.match-page .mx-fact > * { display: inline-flex; align-items: center; gap: 6px; }
+
+/* The hero's footer links: the sites as pills, a combined log's own logs as
+   a quieter numbered group after them. */
+.match-page .mh-links { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; }
+.match-page .mx-link {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 26px; padding: 0 10px; box-sizing: border-box;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 50%, transparent);
+  color: var(--text); font: inherit; font-size: 0.8rem; line-height: 1; cursor: pointer;
+}
+.match-page .mx-link:hover { border-color: var(--accent-dim); color: var(--text-hi); }
+.match-page .mx-link span { color: var(--muted); }
+.match-page .mx-part-links { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-left: 6px; padding-left: 10px; border-left: 1px solid var(--border); }
+.match-page .mx-part-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-right: 2px; }
+.match-page .mx-part-link {
+  height: 22px; padding: 0 7px; border: 0; border-radius: 6px;
+  background: none; color: var(--muted); font: inherit; font-size: 0.78rem; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.match-page .mx-part-link:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
+.match-page .mx-foot { min-height: 48px; }

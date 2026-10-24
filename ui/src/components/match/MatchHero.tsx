@@ -204,17 +204,21 @@ function Side(props: { side: "Red" | "Blue"; team: SideTeam | null; you: boolean
         ) : (
           <span className="mx-name">{name}</span>
         )}
+        {/* One line of pills, one height (Flashy: "the country and the
+            standings and medal are not lined up"). */}
         <span className="mx-facts">
-          {team?.country && <Country raw={team.country} />}
+          {team?.country && (
+            <span className="mx-fact">
+              <Country raw={team.country} />
+            </span>
+          )}
           {that && (
-            <span title={t("Their regular season, as ETF2L's results stand")}>
-              {tx("{0}–{1} in {2}", { "0": that.won, "1": that.lost, "2": that.division })}
-              {that.place && (
-                <>
-                  {" "}
-                  <MedalGlyph size={14} place={that.place} />
-                </>
-              )}
+            <span className="mx-fact" title={t("Their regular season, as ETF2L's results stand")}>
+              {that.place && <MedalGlyph size={15} place={that.place} />}
+              <strong>
+                {that.won}–{that.lost}
+              </strong>
+              <span className="muted">{tx("in {0}", { "0": that.division })}</span>
             </span>
           )}
         </span>
@@ -290,14 +294,26 @@ function Links({ d }: { d: MatchDetail }) {
   const links: Array<[string, string]> = d.logId > 0 ? [["logs.tf", `https://logs.tf/${d.logId}`]] : [];
   if (d.demosTfId) links.push(["demos.tf", `https://demos.tf/${d.demosTfId}`]);
   if (etf2lId) links.push(["ETF2L", `https://etf2l.org/matches/${etf2lId}/`]);
-  for (const p of d.parts) links.push([`#${p.logId}`, `https://logs.tf/${p.logId}`]);
+  // The sites as pills; a combined log's own logs as a quieter group beside
+  // them, so seven look-alike links read as two things (Flashy: "every link,
+  // button and text has to have its place").
   return (
     <span className="mh-links">
       {links.map(([label, url]) => (
-        <button key={label} className="linkish" onClick={() => void api.openExternal(url)}>
-          {t(label)} ↗
+        <button key={label} className="mx-link" onClick={() => void api.openExternal(url)}>
+          {t(label)} <span aria-hidden>↗</span>
         </button>
       ))}
+      {d.parts.length > 0 && (
+        <span className="mx-part-links">
+          <span className="mx-part-label">{t("Its logs")}</span>
+          {d.parts.map((p) => (
+            <button key={p.logId} className="mx-part-link" onClick={() => void api.openExternal(`https://logs.tf/${p.logId}`)} title={t("Open log {0} on logs.tf", { "0": p.logId })}>
+              {p.logId}
+            </button>
+          ))}
+        </span>
+      )}
     </span>
   );
 }
