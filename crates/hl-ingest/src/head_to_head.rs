@@ -106,7 +106,7 @@ pub async fn head_to_head(db: &Db, w: &Weights, log_id: i64, a: u32, b: u32) -> 
             let r = perf.and_then(|x| rate(x, &baseline, w));
             let mut victims: Vec<(String, i64, f64)> =
                 p.vs.iter().filter(|v| v.kills > 0).map(|v| (v.other_class.as_str().to_string(), v.kills, w.victim(v.other_class))).collect();
-            victims.sort_by(|x, y| y.1.cmp(&x.1));
+            victims.sort_by_key(|v| std::cmp::Reverse(v.1));
             Some(Side {
                 account_id: acc,
                 team: format!("{:?}", p.team),
