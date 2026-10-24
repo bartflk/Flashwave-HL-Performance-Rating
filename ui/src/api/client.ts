@@ -113,6 +113,7 @@ import type {
   SeasonTable,
   PlayerDeep,
   DataReport,
+  HeadToHead,
 } from "./types";
 import { withChosenNames } from "../lib/names";
 
@@ -165,6 +166,7 @@ const realApi = {
   getPlayerDeep: (accountId: number) => invoke<PlayerDeep>("get_player_deep", { accountId }),
   getMatchImpact: (logId: number) => invoke<Record<string, number>>("get_match_impact", { logId }),
   getDataAudit: (season: number, tier: number | null) => invoke<DataReport>("get_data_audit", { season, tier }),
+  getHeadToHead: (logId: number, a: number, b: number) => invoke<HeadToHead>("get_head_to_head", { logId, a, b }),
   syncStart: (full: boolean) => invoke<void>("sync_start", { full }),
   reprocessStart: () => invoke<void>("reprocess_start"),
   getMatch: (logId: number) => invoke<MatchDetail | null>("get_match", { logId }),

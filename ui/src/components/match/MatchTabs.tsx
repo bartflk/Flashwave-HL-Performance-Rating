@@ -6,6 +6,7 @@ import { openFold } from "../Fold";
 const SECTIONS: Array<[string, string]> = [
   ["scoreboard", k("Scoreboard")],
   ["matchups", k("Matchups")],
+  ["h2h", k("Head to head")],
   ["demos", k("Demos")],
   ["spychecks", k("Spychecks")],
   ["reflects", k("Reflects")],

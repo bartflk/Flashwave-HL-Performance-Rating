@@ -2659,3 +2659,29 @@ export interface DataReport {
   byCode: Record<string, number>;
   issues: DataIssue[];
 }
+
+/** One player's side of a log in a head to head (head_to_head.rs). */
+export interface H2hSide {
+  accountId: number;
+  team: string;
+  class: string | null;
+  minutes: number;
+  rating: number | null;
+  score: number | null;
+  parts: { component: string; label: string; unit: string; raw: number; percentile: number; weight: number }[];
+  impact: number | null;
+  kills: number;
+  deaths: number;
+  assists: number;
+  dmg: number;
+  /** Kills on each class, and what a kill of that class is worth. */
+  victims: [string, number, number][];
+  onOther: number;
+}
+
+export interface HeadToHead {
+  accounts: [number, number];
+  logs: { logId: number; map: string | null; minutes: number; winner: string | null; sides: [H2hSide | null, H2hSide | null] }[];
+  scaleMean: number;
+  scaleSd: number;
+}

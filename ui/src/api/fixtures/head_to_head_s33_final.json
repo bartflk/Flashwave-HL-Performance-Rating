@@ -1,0 +1,1500 @@
+{
+  "accounts": [
+    139131191,
+    89356918
+  ],
+  "logs": [
+    {
+      "logId": 3863166,
+      "map": "koth_ashville_final1",
+      "minutes": 14.1,
+      "winner": "Blue",
+      "sides": [
+        {
+          "accountId": 139131191,
+          "team": "Blue",
+          "class": "sniper",
+          "minutes": 14.1,
+          "rating": 1.42,
+          "score": 89.2,
+          "parts": [
+            {
+              "component": "impact_kills",
+              "label": "Impact kills",
+              "unit": "per 10 min",
+              "raw": 23.83,
+              "percentile": 87.3,
+              "weight": 0.25
+            },
+            {
+              "component": "deaths",
+              "label": "Deaths",
+              "unit": "per 10 min",
+              "raw": 6.38,
+              "percentile": 72.9,
+              "weight": 0.08
+            },
+            {
+              "component": "dpm",
+              "label": "Damage / min",
+              "unit": "per min",
+              "raw": 510.78,
+              "percentile": 91.0,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded",
+              "label": "Kills not traded",
+              "unit": "% of kills",
+              "raw": 80.95,
+              "percentile": 89.2,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded_deaths",
+              "label": "Untraded deaths",
+              "unit": "per 10 min",
+              "raw": 0.71,
+              "percentile": 99.4,
+              "weight": 0.05
+            },
+            {
+              "component": "round_impact",
+              "label": "Round impact",
+              "unit": "rounds won per 10 min",
+              "raw": 0.46,
+              "percentile": 91.6,
+              "weight": 0.5
+            }
+          ],
+          "impact": 0.6432749999999998,
+          "kills": 21,
+          "deaths": 9,
+          "assists": 3,
+          "dmg": 7202,
+          "victims": [
+            [
+              "demoman",
+              5,
+              2.2
+            ],
+            [
+              "sniper",
+              4,
+              1.8
+            ],
+            [
+              "soldier",
+              3,
+              1.2
+            ],
+            [
+              "scout",
+              2,
+              1.15
+            ],
+            [
+              "pyro",
+              2,
+              1.5
+            ],
+            [
+              "heavy",
+              2,
+              1.4
+            ],
+            [
+              "spy",
+              2,
+              1.3
+            ],
+            [
+              "engineer",
+              1,
+              1.1
+            ]
+          ],
+          "onOther": 4
+        },
+        {
+          "accountId": 89356918,
+          "team": "Red",
+          "class": "sniper",
+          "minutes": 14.1,
+          "rating": 0.93,
+          "score": 43.7,
+          "parts": [
+            {
+              "component": "impact_kills",
+              "label": "Impact kills",
+              "unit": "per 10 min",
+              "raw": 15.85,
+              "percentile": 44.1,
+              "weight": 0.25
+            },
+            {
+              "component": "deaths",
+              "label": "Deaths",
+              "unit": "per 10 min",
+              "raw": 7.8,
+              "percentile": 48.2,
+              "weight": 0.08
+            },
+            {
+              "component": "dpm",
+              "label": "Damage / min",
+              "unit": "per min",
+              "raw": 341.63,
+              "percentile": 44.7,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded",
+              "label": "Kills not traded",
+              "unit": "% of kills",
+              "raw": 57.14,
+              "percentile": 26.3,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded_deaths",
+              "label": "Untraded deaths",
+              "unit": "per 10 min",
+              "raw": 4.26,
+              "percentile": 54.3,
+              "weight": 0.05
+            },
+            {
+              "component": "round_impact",
+              "label": "Round impact",
+              "unit": "rounds won per 10 min",
+              "raw": 0.07,
+              "percentile": 43.7,
+              "weight": 0.5
+            }
+          ],
+          "impact": 0.09272499999999992,
+          "kills": 14,
+          "deaths": 11,
+          "assists": 1,
+          "dmg": 4817,
+          "victims": [
+            [
+              "sniper",
+              4,
+              1.8
+            ],
+            [
+              "scout",
+              3,
+              1.15
+            ],
+            [
+              "heavy",
+              2,
+              1.4
+            ],
+            [
+              "engineer",
+              2,
+              1.1
+            ],
+            [
+              "pyro",
+              1,
+              1.5
+            ],
+            [
+              "demoman",
+              1,
+              2.2
+            ],
+            [
+              "medic",
+              1,
+              3.0
+            ]
+          ],
+          "onOther": 4
+        }
+      ]
+    },
+    {
+      "logId": 3863186,
+      "map": "koth_ashville_final1",
+      "minutes": 15.866666666666667,
+      "winner": "Blue",
+      "sides": [
+        {
+          "accountId": 139131191,
+          "team": "Blue",
+          "class": "sniper",
+          "minutes": 15.866666666666667,
+          "rating": 1.11,
+          "score": 60.7,
+          "parts": [
+            {
+              "component": "impact_kills",
+              "label": "Impact kills",
+              "unit": "per 10 min",
+              "raw": 18.66,
+              "percentile": 59.5,
+              "weight": 0.25
+            },
+            {
+              "component": "deaths",
+              "label": "Deaths",
+              "unit": "per 10 min",
+              "raw": 7.56,
+              "percentile": 53.0,
+              "weight": 0.08
+            },
+            {
+              "component": "dpm",
+              "label": "Damage / min",
+              "unit": "per min",
+              "raw": 413.45,
+              "percentile": 69.7,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded",
+              "label": "Kills not traded",
+              "unit": "% of kills",
+              "raw": 73.68,
+              "percentile": 72.4,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded_deaths",
+              "label": "Untraded deaths",
+              "unit": "per 10 min",
+              "raw": 3.78,
+              "percentile": 63.7,
+              "weight": 0.05
+            },
+            {
+              "component": "round_impact",
+              "label": "Round impact",
+              "unit": "rounds won per 10 min",
+              "raw": 0.17,
+              "percentile": 59.8,
+              "weight": 0.5
+            }
+          ],
+          "impact": 0.267475,
+          "kills": 19,
+          "deaths": 12,
+          "assists": 3,
+          "dmg": 6560,
+          "victims": [
+            [
+              "heavy",
+              6,
+              1.4
+            ],
+            [
+              "scout",
+              2,
+              1.15
+            ],
+            [
+              "pyro",
+              2,
+              1.5
+            ],
+            [
+              "demoman",
+              2,
+              2.2
+            ],
+            [
+              "sniper",
+              2,
+              1.8
+            ],
+            [
+              "spy",
+              2,
+              1.3
+            ],
+            [
+              "soldier",
+              1,
+              1.2
+            ],
+            [
+              "engineer",
+              1,
+              1.1
+            ],
+            [
+              "medic",
+              1,
+              3.0
+            ]
+          ],
+          "onOther": 2
+        },
+        {
+          "accountId": 89356918,
+          "team": "Red",
+          "class": "sniper",
+          "minutes": 15.866666666666667,
+          "rating": 1.24,
+          "score": 72.2,
+          "parts": [
+            {
+              "component": "impact_kills",
+              "label": "Impact kills",
+              "unit": "per 10 min",
+              "raw": 18.66,
+              "percentile": 59.5,
+              "weight": 0.25
+            },
+            {
+              "component": "deaths",
+              "label": "Deaths",
+              "unit": "per 10 min",
+              "raw": 4.41,
+              "percentile": 93.3,
+              "weight": 0.08
+            },
+            {
+              "component": "dpm",
+              "label": "Damage / min",
+              "unit": "per min",
+              "raw": 357.48,
+              "percentile": 52.6,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded",
+              "label": "Kills not traded",
+              "unit": "% of kills",
+              "raw": 76.47,
+              "percentile": 78.7,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded_deaths",
+              "label": "Untraded deaths",
+              "unit": "per 10 min",
+              "raw": 4.41,
+              "percentile": 51.6,
+              "weight": 0.05
+            },
+            {
+              "component": "round_impact",
+              "label": "Round impact",
+              "unit": "rounds won per 10 min",
+              "raw": 0.31,
+              "percentile": 78.9,
+              "weight": 0.5
+            }
+          ],
+          "impact": 0.4863499999999997,
+          "kills": 17,
+          "deaths": 7,
+          "assists": 5,
+          "dmg": 5672,
+          "victims": [
+            [
+              "demoman",
+              5,
+              2.2
+            ],
+            [
+              "sniper",
+              4,
+              1.8
+            ],
+            [
+              "scout",
+              2,
+              1.15
+            ],
+            [
+              "engineer",
+              2,
+              1.1
+            ],
+            [
+              "soldier",
+              1,
+              1.2
+            ],
+            [
+              "heavy",
+              1,
+              1.4
+            ],
+            [
+              "medic",
+              1,
+              3.0
+            ],
+            [
+              "spy",
+              1,
+              1.3
+            ]
+          ],
+          "onOther": 4
+        }
+      ]
+    },
+    {
+      "logId": 3863214,
+      "map": "pl_vigil_rc10",
+      "minutes": 22.766666666666666,
+      "winner": "Blue",
+      "sides": [
+        {
+          "accountId": 139131191,
+          "team": "Red",
+          "class": "sniper",
+          "minutes": 22.766666666666666,
+          "rating": 0.72,
+          "score": 24.4,
+          "parts": [
+            {
+              "component": "impact_kills",
+              "label": "Impact kills",
+              "unit": "per 10 min",
+              "raw": 9.97,
+              "percentile": 30.6,
+              "weight": 0.26
+            },
+            {
+              "component": "dpm",
+              "label": "Damage / min",
+              "unit": "per min",
+              "raw": 236.62,
+              "percentile": 32.3,
+              "weight": 0.07
+            },
+            {
+              "component": "untraded",
+              "label": "Kills not traded",
+              "unit": "% of kills",
+              "raw": 50.0,
+              "percentile": 14.1,
+              "weight": 0.07
+            },
+            {
+              "component": "untraded_deaths",
+              "label": "Untraded deaths",
+              "unit": "per 10 min",
+              "raw": 5.27,
+              "percentile": 20.5,
+              "weight": 0.05
+            },
+            {
+              "component": "round_impact",
+              "label": "Round impact",
+              "unit": "rounds won per 10 min",
+              "raw": -0.13,
+              "percentile": 22.2,
+              "weight": 0.53
+            },
+            {
+              "component": "deaths_attack_defend",
+              "label": "Deaths (attack/defend maps)",
+              "unit": "per 10 min",
+              "raw": 8.78,
+              "percentile": 13.1,
+              "weight": 0.03
+            }
+          ],
+          "impact": -0.29095,
+          "kills": 16,
+          "deaths": 20,
+          "assists": 2,
+          "dmg": 5387,
+          "victims": [
+            [
+              "engineer",
+              5,
+              1.1
+            ],
+            [
+              "sniper",
+              3,
+              1.8
+            ],
+            [
+              "spy",
+              3,
+              1.3
+            ],
+            [
+              "scout",
+              2,
+              1.15
+            ],
+            [
+              "soldier",
+              1,
+              1.2
+            ],
+            [
+              "pyro",
+              1,
+              1.5
+            ],
+            [
+              "heavy",
+              1,
+              1.4
+            ]
+          ],
+          "onOther": 3
+        },
+        {
+          "accountId": 89356918,
+          "team": "Blue",
+          "class": "sniper",
+          "minutes": 22.766666666666666,
+          "rating": 1.29,
+          "score": 77.5,
+          "parts": [
+            {
+              "component": "impact_kills",
+              "label": "Impact kills",
+              "unit": "per 10 min",
+              "raw": 16.27,
+              "percentile": 77.8,
+              "weight": 0.26
+            },
+            {
+              "component": "dpm",
+              "label": "Damage / min",
+              "unit": "per min",
+              "raw": 267.06,
+              "percentile": 45.0,
+              "weight": 0.07
+            },
+            {
+              "component": "untraded",
+              "label": "Kills not traded",
+              "unit": "% of kills",
+              "raw": 86.36,
+              "percentile": 90.3,
+              "weight": 0.07
+            },
+            {
+              "component": "untraded_deaths",
+              "label": "Untraded deaths",
+              "unit": "per 10 min",
+              "raw": 2.64,
+              "percentile": 73.8,
+              "weight": 0.05
+            },
+            {
+              "component": "round_impact",
+              "label": "Round impact",
+              "unit": "rounds won per 10 min",
+              "raw": 0.22,
+              "percentile": 78.5,
+              "weight": 0.53
+            },
+            {
+              "component": "deaths_attack_defend",
+              "label": "Deaths (attack/defend maps)",
+              "unit": "per 10 min",
+              "raw": 4.39,
+              "percentile": 83.8,
+              "weight": 0.03
+            }
+          ],
+          "impact": 0.4932499999999998,
+          "kills": 22,
+          "deaths": 10,
+          "assists": 3,
+          "dmg": 6080,
+          "victims": [
+            [
+              "demoman",
+              5,
+              2.2
+            ],
+            [
+              "sniper",
+              5,
+              1.8
+            ],
+            [
+              "scout",
+              3,
+              1.15
+            ],
+            [
+              "soldier",
+              2,
+              1.2
+            ],
+            [
+              "pyro",
+              2,
+              1.5
+            ],
+            [
+              "heavy",
+              2,
+              1.4
+            ],
+            [
+              "engineer",
+              2,
+              1.1
+            ],
+            [
+              "medic",
+              1,
+              3.0
+            ]
+          ],
+          "onOther": 5
+        }
+      ]
+    },
+    {
+      "logId": 3863238,
+      "map": "pl_vigil_rc10",
+      "minutes": 14.35,
+      "winner": "Red",
+      "sides": [
+        {
+          "accountId": 139131191,
+          "team": "Blue",
+          "class": "sniper",
+          "minutes": 14.35,
+          "rating": 0.93,
+          "score": 43.6,
+          "parts": [
+            {
+              "component": "impact_kills",
+              "label": "Impact kills",
+              "unit": "per 10 min",
+              "raw": 10.1,
+              "percentile": 31.7,
+              "weight": 0.26
+            },
+            {
+              "component": "dpm",
+              "label": "Damage / min",
+              "unit": "per min",
+              "raw": 357.49,
+              "percentile": 81.8,
+              "weight": 0.07
+            },
+            {
+              "component": "untraded",
+              "label": "Kills not traded",
+              "unit": "% of kills",
+              "raw": 77.78,
+              "percentile": 75.2,
+              "weight": 0.07
+            },
+            {
+              "component": "untraded_deaths",
+              "label": "Untraded deaths",
+              "unit": "per 10 min",
+              "raw": 3.48,
+              "percentile": 56.7,
+              "weight": 0.05
+            },
+            {
+              "component": "round_impact",
+              "label": "Round impact",
+              "unit": "rounds won per 10 min",
+              "raw": -0.03,
+              "percentile": 37.6,
+              "weight": 0.53
+            },
+            {
+              "component": "deaths_attack_defend",
+              "label": "Deaths (attack/defend maps)",
+              "unit": "per 10 min",
+              "raw": 6.27,
+              "percentile": 52.3,
+              "weight": 0.03
+            }
+          ],
+          "impact": -0.04187500000000012,
+          "kills": 9,
+          "deaths": 9,
+          "assists": 4,
+          "dmg": 5130,
+          "victims": [
+            [
+              "engineer",
+              3,
+              1.1
+            ],
+            [
+              "soldier",
+              2,
+              1.2
+            ],
+            [
+              "sniper",
+              2,
+              1.8
+            ],
+            [
+              "pyro",
+              1,
+              1.5
+            ],
+            [
+              "demoman",
+              1,
+              2.2
+            ]
+          ],
+          "onOther": 2
+        },
+        {
+          "accountId": 89356918,
+          "team": "Red",
+          "class": "sniper",
+          "minutes": 14.35,
+          "rating": 1.35,
+          "score": 82.2,
+          "parts": [
+            {
+              "component": "impact_kills",
+              "label": "Impact kills",
+              "unit": "per 10 min",
+              "raw": 20.21,
+              "percentile": 92.4,
+              "weight": 0.26
+            },
+            {
+              "component": "dpm",
+              "label": "Damage / min",
+              "unit": "per min",
+              "raw": 308.85,
+              "percentile": 64.4,
+              "weight": 0.07
+            },
+            {
+              "component": "untraded",
+              "label": "Kills not traded",
+              "unit": "% of kills",
+              "raw": 75.0,
+              "percentile": 67.6,
+              "weight": 0.07
+            },
+            {
+              "component": "untraded_deaths",
+              "label": "Untraded deaths",
+              "unit": "per 10 min",
+              "raw": 2.09,
+              "percentile": 83.4,
+              "weight": 0.05
+            },
+            {
+              "component": "round_impact",
+              "label": "Round impact",
+              "unit": "rounds won per 10 min",
+              "raw": 0.24,
+              "percentile": 80.8,
+              "weight": 0.53
+            },
+            {
+              "component": "deaths_attack_defend",
+              "label": "Deaths (attack/defend maps)",
+              "unit": "per 10 min",
+              "raw": 5.57,
+              "percentile": 65.2,
+              "weight": 0.03
+            }
+          ],
+          "impact": 0.33785,
+          "kills": 16,
+          "deaths": 8,
+          "assists": 0,
+          "dmg": 4432,
+          "victims": [
+            [
+              "sniper",
+              5,
+              1.8
+            ],
+            [
+              "demoman",
+              4,
+              2.2
+            ],
+            [
+              "pyro",
+              2,
+              1.5
+            ],
+            [
+              "spy",
+              2,
+              1.3
+            ],
+            [
+              "soldier",
+              1,
+              1.2
+            ],
+            [
+              "heavy",
+              1,
+              1.4
+            ],
+            [
+              "medic",
+              1,
+              3.0
+            ]
+          ],
+          "onOther": 5
+        }
+      ]
+    },
+    {
+      "logId": 3863253,
+      "map": "koth_proot_b5b",
+      "minutes": 10.883333333333333,
+      "winner": "Blue",
+      "sides": [
+        {
+          "accountId": 139131191,
+          "team": "Blue",
+          "class": "sniper",
+          "minutes": 10.883333333333333,
+          "rating": 1.3,
+          "score": 78.1,
+          "parts": [
+            {
+              "component": "impact_kills",
+              "label": "Impact kills",
+              "unit": "per 10 min",
+              "raw": 19.57,
+              "percentile": 71.3,
+              "weight": 0.25
+            },
+            {
+              "component": "deaths",
+              "label": "Deaths",
+              "unit": "per 10 min",
+              "raw": 4.59,
+              "percentile": 91.1,
+              "weight": 0.08
+            },
+            {
+              "component": "dpm",
+              "label": "Damage / min",
+              "unit": "per min",
+              "raw": 544.41,
+              "percentile": 97.8,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded",
+              "label": "Kills not traded",
+              "unit": "% of kills",
+              "raw": 100.0,
+              "percentile": 99.0,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded_deaths",
+              "label": "Untraded deaths",
+              "unit": "per 10 min",
+              "raw": 4.59,
+              "percentile": 45.9,
+              "weight": 0.05
+            },
+            {
+              "component": "round_impact",
+              "label": "Round impact",
+              "unit": "rounds won per 10 min",
+              "raw": 0.29,
+              "percentile": 77.8,
+              "weight": 0.5
+            }
+          ],
+          "impact": 0.31675,
+          "kills": 12,
+          "deaths": 5,
+          "assists": 3,
+          "dmg": 5925,
+          "victims": [
+            [
+              "sniper",
+              4,
+              1.8
+            ],
+            [
+              "scout",
+              2,
+              1.15
+            ],
+            [
+              "engineer",
+              2,
+              1.1
+            ],
+            [
+              "medic",
+              2,
+              3.0
+            ],
+            [
+              "demoman",
+              1,
+              2.2
+            ],
+            [
+              "heavy",
+              1,
+              1.4
+            ]
+          ],
+          "onOther": 4
+        },
+        {
+          "accountId": 89356918,
+          "team": "Red",
+          "class": "sniper",
+          "minutes": 10.883333333333333,
+          "rating": 0.81,
+          "score": 32.5,
+          "parts": [
+            {
+              "component": "impact_kills",
+              "label": "Impact kills",
+              "unit": "per 10 min",
+              "raw": 12.45,
+              "percentile": 21.0,
+              "weight": 0.25
+            },
+            {
+              "component": "deaths",
+              "label": "Deaths",
+              "unit": "per 10 min",
+              "raw": 8.27,
+              "percentile": 37.1,
+              "weight": 0.08
+            },
+            {
+              "component": "dpm",
+              "label": "Damage / min",
+              "unit": "per min",
+              "raw": 278.77,
+              "percentile": 21.9,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded",
+              "label": "Kills not traded",
+              "unit": "% of kills",
+              "raw": 80.0,
+              "percentile": 86.7,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded_deaths",
+              "label": "Untraded deaths",
+              "unit": "per 10 min",
+              "raw": 5.51,
+              "percentile": 29.0,
+              "weight": 0.05
+            },
+            {
+              "component": "round_impact",
+              "label": "Round impact",
+              "unit": "rounds won per 10 min",
+              "raw": -0.01,
+              "percentile": 32.6,
+              "weight": 0.5
+            }
+          ],
+          "impact": -0.009099999999999775,
+          "kills": 10,
+          "deaths": 9,
+          "assists": 2,
+          "dmg": 3034,
+          "victims": [
+            [
+              "soldier",
+              3,
+              1.2
+            ],
+            [
+              "heavy",
+              2,
+              1.4
+            ],
+            [
+              "sniper",
+              2,
+              1.8
+            ],
+            [
+              "scout",
+              1,
+              1.15
+            ],
+            [
+              "engineer",
+              1,
+              1.1
+            ],
+            [
+              "spy",
+              1,
+              1.3
+            ]
+          ],
+          "onOther": 2
+        }
+      ]
+    },
+    {
+      "logId": 3863275,
+      "map": "koth_proot_b5b",
+      "minutes": 17.7,
+      "winner": "Red",
+      "sides": [
+        {
+          "accountId": 139131191,
+          "team": "Blue",
+          "class": "sniper",
+          "minutes": 17.7,
+          "rating": 0.84,
+          "score": 35.2,
+          "parts": [
+            {
+              "component": "impact_kills",
+              "label": "Impact kills",
+              "unit": "per 10 min",
+              "raw": 15.93,
+              "percentile": 47.9,
+              "weight": 0.25
+            },
+            {
+              "component": "deaths",
+              "label": "Deaths",
+              "unit": "per 10 min",
+              "raw": 9.6,
+              "percentile": 17.9,
+              "weight": 0.08
+            },
+            {
+              "component": "dpm",
+              "label": "Damage / min",
+              "unit": "per min",
+              "raw": 352.09,
+              "percentile": 51.5,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded",
+              "label": "Kills not traded",
+              "unit": "% of kills",
+              "raw": 47.06,
+              "percentile": 6.6,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded_deaths",
+              "label": "Untraded deaths",
+              "unit": "per 10 min",
+              "raw": 4.52,
+              "percentile": 48.4,
+              "weight": 0.05
+            },
+            {
+              "component": "round_impact",
+              "label": "Round impact",
+              "unit": "rounds won per 10 min",
+              "raw": -0.01,
+              "percentile": 31.8,
+              "weight": 0.5
+            }
+          ],
+          "impact": -0.021250000000000005,
+          "kills": 17,
+          "deaths": 17,
+          "assists": 3,
+          "dmg": 6232,
+          "victims": [
+            [
+              "heavy",
+              4,
+              1.4
+            ],
+            [
+              "sniper",
+              4,
+              1.8
+            ],
+            [
+              "scout",
+              2,
+              1.15
+            ],
+            [
+              "medic",
+              2,
+              3.0
+            ],
+            [
+              "spy",
+              2,
+              1.3
+            ],
+            [
+              "soldier",
+              1,
+              1.2
+            ],
+            [
+              "demoman",
+              1,
+              2.2
+            ],
+            [
+              "engineer",
+              1,
+              1.1
+            ]
+          ],
+          "onOther": 4
+        },
+        {
+          "accountId": 89356918,
+          "team": "Red",
+          "class": "sniper",
+          "minutes": 17.7,
+          "rating": 1.16,
+          "score": 65.1,
+          "parts": [
+            {
+              "component": "impact_kills",
+              "label": "Impact kills",
+              "unit": "per 10 min",
+              "raw": 15.42,
+              "percentile": 44.2,
+              "weight": 0.25
+            },
+            {
+              "component": "deaths",
+              "label": "Deaths",
+              "unit": "per 10 min",
+              "raw": 5.08,
+              "percentile": 87.4,
+              "weight": 0.08
+            },
+            {
+              "component": "dpm",
+              "label": "Damage / min",
+              "unit": "per min",
+              "raw": 333.67,
+              "percentile": 44.5,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded",
+              "label": "Kills not traded",
+              "unit": "% of kills",
+              "raw": 77.78,
+              "percentile": 82.9,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded_deaths",
+              "label": "Untraded deaths",
+              "unit": "per 10 min",
+              "raw": 2.26,
+              "percentile": 88.9,
+              "weight": 0.05
+            },
+            {
+              "component": "round_impact",
+              "label": "Round impact",
+              "unit": "rounds won per 10 min",
+              "raw": 0.24,
+              "percentile": 69.9,
+              "weight": 0.5
+            }
+          ],
+          "impact": 0.4258,
+          "kills": 18,
+          "deaths": 9,
+          "assists": 3,
+          "dmg": 5906,
+          "victims": [
+            [
+              "sniper",
+              5,
+              1.8
+            ],
+            [
+              "soldier",
+              3,
+              1.2
+            ],
+            [
+              "scout",
+              2,
+              1.15
+            ],
+            [
+              "demoman",
+              2,
+              2.2
+            ],
+            [
+              "heavy",
+              2,
+              1.4
+            ],
+            [
+              "spy",
+              2,
+              1.3
+            ],
+            [
+              "pyro",
+              1,
+              1.5
+            ],
+            [
+              "engineer",
+              1,
+              1.1
+            ]
+          ],
+          "onOther": 5
+        }
+      ]
+    },
+    {
+      "logId": 3863286,
+      "map": "koth_proot_b5b",
+      "minutes": 12.3,
+      "winner": null,
+      "sides": [
+        {
+          "accountId": 139131191,
+          "team": "Blue",
+          "class": "sniper",
+          "minutes": 12.3,
+          "rating": 1.26,
+          "score": 74.7,
+          "parts": [
+            {
+              "component": "impact_kills",
+              "label": "Impact kills",
+              "unit": "per 10 min",
+              "raw": 18.82,
+              "percentile": 67.0,
+              "weight": 0.25
+            },
+            {
+              "component": "deaths",
+              "label": "Deaths",
+              "unit": "per 10 min",
+              "raw": 6.5,
+              "percentile": 67.9,
+              "weight": 0.08
+            },
+            {
+              "component": "dpm",
+              "label": "Damage / min",
+              "unit": "per min",
+              "raw": 444.72,
+              "percentile": 85.9,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded",
+              "label": "Kills not traded",
+              "unit": "% of kills",
+              "raw": 68.75,
+              "percentile": 53.6,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded_deaths",
+              "label": "Untraded deaths",
+              "unit": "per 10 min",
+              "raw": 3.25,
+              "percentile": 75.1,
+              "weight": 0.05
+            },
+            {
+              "component": "round_impact",
+              "label": "Round impact",
+              "unit": "rounds won per 10 min",
+              "raw": 0.32,
+              "percentile": 80.7,
+              "weight": 0.5
+            }
+          ],
+          "impact": 0.394825,
+          "kills": 16,
+          "deaths": 8,
+          "assists": 5,
+          "dmg": 5470,
+          "victims": [
+            [
+              "soldier",
+              4,
+              1.2
+            ],
+            [
+              "heavy",
+              4,
+              1.4
+            ],
+            [
+              "pyro",
+              2,
+              1.5
+            ],
+            [
+              "demoman",
+              2,
+              2.2
+            ],
+            [
+              "scout",
+              1,
+              1.15
+            ],
+            [
+              "engineer",
+              1,
+              1.1
+            ],
+            [
+              "sniper",
+              1,
+              1.8
+            ],
+            [
+              "spy",
+              1,
+              1.3
+            ]
+          ],
+          "onOther": 1
+        },
+        {
+          "accountId": 89356918,
+          "team": "Red",
+          "class": "sniper",
+          "minutes": 12.3,
+          "rating": 1.08,
+          "score": 57.1,
+          "parts": [
+            {
+              "component": "impact_kills",
+              "label": "Impact kills",
+              "unit": "per 10 min",
+              "raw": 17.89,
+              "percentile": 61.4,
+              "weight": 0.25
+            },
+            {
+              "component": "deaths",
+              "label": "Deaths",
+              "unit": "per 10 min",
+              "raw": 6.5,
+              "percentile": 67.9,
+              "weight": 0.08
+            },
+            {
+              "component": "dpm",
+              "label": "Damage / min",
+              "unit": "per min",
+              "raw": 283.25,
+              "percentile": 23.5,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded",
+              "label": "Kills not traded",
+              "unit": "% of kills",
+              "raw": 53.85,
+              "percentile": 14.4,
+              "weight": 0.06
+            },
+            {
+              "component": "untraded_deaths",
+              "label": "Untraded deaths",
+              "unit": "per 10 min",
+              "raw": 2.44,
+              "percentile": 86.7,
+              "weight": 0.05
+            },
+            {
+              "component": "round_impact",
+              "label": "Round impact",
+              "unit": "rounds won per 10 min",
+              "raw": 0.16,
+              "percentile": 59.5,
+              "weight": 0.5
+            }
+          ],
+          "impact": 0.19660000000000005,
+          "kills": 13,
+          "deaths": 8,
+          "assists": 1,
+          "dmg": 3484,
+          "victims": [
+            [
+              "demoman",
+              4,
+              2.2
+            ],
+            [
+              "soldier",
+              3,
+              1.2
+            ],
+            [
+              "scout",
+              2,
+              1.15
+            ],
+            [
+              "heavy",
+              1,
+              1.4
+            ],
+            [
+              "engineer",
+              1,
+              1.1
+            ],
+            [
+              "medic",
+              1,
+              3.0
+            ],
+            [
+              "sniper",
+              1,
+              1.8
+            ]
+          ],
+          "onOther": 1
+        }
+      ]
+    }
+  ],
+  "scaleMean": 50.055480043149444,
+  "scaleSd": 23.289733488552756
+}

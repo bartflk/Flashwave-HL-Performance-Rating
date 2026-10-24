@@ -15,6 +15,7 @@ import seasonPodiums33 from "./fixtures/season_podiums_33.json";
 import seasonTable34 from "./fixtures/season_table_34_open_demoman.json";
 import playerDeepFlashy from "./fixtures/player_deep_flashy.json";
 import dataAudit31 from "./fixtures/data_audit_31_low.json";
+import headToHeadS33 from "./fixtures/head_to_head_s33_final.json";
 import teamHonours35600 from "./fixtures/team_honours_35600.json";
 import teamTransfers35600 from "./fixtures/team_transfers_35600.json";
 import teamInfo35600 from "./fixtures/team_info_35600.json";
@@ -41,6 +42,7 @@ import type {
   SeasonTable,
   PlayerDeep,
   DataReport,
+  HeadToHead,
   LogsTfCareer,
   LogsTfPlayer,
   Bookmark,
@@ -1861,6 +1863,12 @@ export const mockApi: Api = {
   // From `hl deep` for the preview's player, 21 October 2026.
   getPlayerDeep: (accountId: number) => delay({ ...(playerDeepFlashy as unknown as PlayerDeep), accountId }),
   // From `hl data-audit 31 3 --json` on a copy, 22 October 2026.
+  // From `hl head-to-head` on the S33 Low Grand Final, 24 October 2026:
+  // every pair answers with it, relabelled.
+  getHeadToHead: (_logId: number, a: number, b: number) => {
+    const h = headToHeadS33 as unknown as HeadToHead;
+    return delay({ ...h, accounts: [a, b] as [number, number], logs: h.logs.map((l) => ({ ...l, sides: l.sides.map((s, i) => s && { ...s, accountId: i === 0 ? a : b }) as HeadToHead["logs"][number]["sides"] })) });
+  },
   getDataAudit: (season: number) => delay({ ...(dataAudit31 as unknown as DataReport), season }),
   getMatchImpact: (logId: number) => {
     const m = FIXTURES.find((f) => f.logId === logId) ?? FIXTURES[0];

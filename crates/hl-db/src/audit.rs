@@ -127,6 +127,30 @@ impl Db {
         .await?)
     }
 
+    /// The ETF2L match a log belongs to, however it is known: the league's
+    /// list, the owner's own context, trends.tf's index, or a combined log's
+    /// parts.
+    pub async fn etf2l_match_of(&self, log_id: i64) -> Result<Option<i64>> {
+        Ok(sqlx::query_scalar(
+            "SELECT COALESCE(
+                (SELECT l.etf2l_match_id FROM league_log l WHERE l.log_id = ?1),
+                (SELECT c.etf2l_match_id FROM match_context c WHERE c.log_id = ?1),
+                (SELECT i.etf2l_match_id FROM log_index i WHERE i.log_id = ?1),
+                (SELECT i.etf2l_match_id FROM log_index i WHERE i.superseded_by = ?1 AND i.etf2l_match_id IS NOT NULL LIMIT 1))",
+        )
+        .bind(log_id)
+        .fetch_one(self.pool())
+        .await?)
+    }
+
+    /// A match's league logs, in the order they were played.
+    pub async fn league_logs_of_match(&self, match_id: i64) -> Result<Vec<i64>> {
+        Ok(sqlx::query_scalar("SELECT log_id FROM league_log WHERE etf2l_match_id = ?1 ORDER BY played_at")
+            .bind(match_id)
+            .fetch_all(self.pool())
+            .await?)
+    }
+
     /// Every ETF2L team's name.
     pub async fn team_names(&self) -> Result<Vec<(i64, String)>> {
         Ok(sqlx::query_as("SELECT team_id, name FROM etf2l_team").fetch_all(self.pool()).await?)

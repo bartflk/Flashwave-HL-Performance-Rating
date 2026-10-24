@@ -1692,6 +1692,14 @@ async fn run() -> Result<()> {
             }
             Ok(())
         }
+        ["head-to-head", log, a, b] => {
+            // Two players in one match, log by log, with every rating's parts.
+            let db = Db::connect(&db_path).await?;
+            let (w, _) = hl_rating::Weights::load(&db_path.with_file_name("weights.toml"));
+            let h = hl_ingest::head_to_head::head_to_head(&db, &w, log.parse()?, a.parse()?, b.parse()?).await?;
+            println!("{}", serde_json::to_string_pretty(&h)?);
+            Ok(())
+        }
         ["podiums", season] => {
             // A season's podiums and awards, as the app's season page reads them.
             let db = Db::connect(&db_path).await?;

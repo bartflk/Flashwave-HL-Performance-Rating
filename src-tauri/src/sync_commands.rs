@@ -1903,6 +1903,13 @@ pub async fn get_player_deep(state: State<'_, AppState>, account_id: u32) -> Cmd
     Ok(hl_ingest::season_stats::player_deep(&state.db, account_id).await?)
 }
 
+/// Two players in one match, log by log, with each rating's full breakdown.
+#[tauri::command]
+pub async fn get_head_to_head(state: State<'_, AppState>, log_id: i64, a: u32, b: u32) -> CmdResult<hl_ingest::head_to_head::HeadToHead> {
+    let (weights, _) = hl_rating::Weights::load(&state.db_path.with_file_name("weights.toml"));
+    Ok(hl_ingest::head_to_head::head_to_head(&state.db, &weights, log_id, a, b).await?)
+}
+
 /// A season's data check: every played official against ETF2L's record and
 /// the logs held (missing maps, double uploads, logs not read).
 #[tauri::command]

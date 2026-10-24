@@ -1,3 +1,4 @@
+import { HeadToHead } from "./HeadToHead";
 import { ReflectPanel } from "./DemoStats";
 import { MatchTabs } from "./MatchTabs";
 import { useState } from "react";
@@ -125,6 +126,9 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
           </Fold>
           <Fold id="matchups">
             <Matchups d={shown} />
+          </Fold>
+          <Fold id="h2h">
+            <HeadToHead d={q.data} />
           </Fold>
           <Fold id="demos">
             <DemoPanel d={q.data} />
