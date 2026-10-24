@@ -521,7 +521,8 @@ dpm = 0.0
         // ahead even when they die more.
         let w = Weights::default_weights();
         for c in TfClass::ALL {
-            let model = w.model_for(c);
+            // As on a KOTH map: deaths there, not their attack/defend twin (v13).
+            let model: Vec<(Component, f64)> = w.model_for(c).iter().copied().filter(|(x, _)| *x != Component::DeathsAttackDefend).collect();
             let total: f64 = model.iter().map(|(_, x)| x).sum();
             let share = |k: Component| model.iter().filter(|(x, _)| *x == k).map(|(_, x)| x).sum::<f64>() / total;
             assert!((share(Component::RoundImpact) - 0.5).abs() < 0.01, "{} round impact {}", c.as_str(), share(Component::RoundImpact));

@@ -120,8 +120,17 @@ pub struct Mvp {
 }
 
 /// Pseudo-officials at 1.00 that a season rating is pulled towards, so four
-/// good officials cannot beat eight nearly as good (the MVP research).
-pub const SHRINK_OFFICIALS: f64 = 2.0;
+/// good officials cannot beat eight nearly as good. Measured (Flashy's
+/// audit, 24 Oct 2026): one official varies by 0.19 around a Sniper's level
+/// and Snipers' levels differ by 0.11, so k = 0.19^2/0.11^2 = 3.0 (2.7 over
+/// every class); it was 2, chosen.
+pub const SHRINK_OFFICIALS: f64 = 3.0;
+/// How much an official's rating is adjusted for the strength of the team
+/// faced: measured within players, each 0.10 of opponent strength (their
+/// season's average official rating) costs 0.075 of rating; adjusting made
+/// a season agree with itself between its halves 0.48 -> 0.56. An official
+/// against a team at 1.10 counts 0.075 more, one against 0.90 0.075 less.
+pub const OPPONENT_SLOPE: f64 = 0.75;
 /// Pseudo-maps at 1.00 that a Grand Final's or a playoff run's own figure
 /// is pulled towards, by the real maps in it.
 pub const SHRINK_MAPS: f64 = 4.0;
@@ -214,6 +223,8 @@ pub struct SeasonLine {
     pub officials: std::collections::HashSet<i64>,
     /// Official -> how they played it.
     pub games: HashMap<i64, OfficialGame>,
+    /// The opponents' strength over the officials that had one: sum and count.
+    pub opponents: (f64, usize),
 }
 
 impl SeasonLine {
@@ -238,6 +249,11 @@ impl SeasonLine {
     pub fn logs(&self) -> usize {
         self.games.values().map(|o| o.logs).sum()
     }
+    /// The average strength of the teams faced, where known.
+    pub fn opponent_strength(&self) -> Option<f64> {
+        (self.opponents.1 > 0).then(|| self.opponents.0 / self.opponents.1 as f64)
+    }
+
     /// The plain average over their officials.
     pub fn average(&self) -> f64 {
         if self.games.is_empty() { 1.0 } else { self.games.values().map(OfficialGame::rating).sum::<f64>() / self.games.len() as f64 }
@@ -874,14 +890,36 @@ impl Catalogue {
     /// that season: officials only, a cup left out. Keyed `(season, tier,
     /// class, account)`.
     pub fn season_lines(&self, games: &[hl_db::RatedGame]) -> HashMap<(i64, i64, String, u32), SeasonLine> {
+        self.season_lines_with(games, games)
+    }
+
+    /// [`Catalogue::season_lines`] over `games`, the opponents' strength
+    /// measured on `all`: a table of the playoffs alone still knows how
+    /// strong a team was over the whole season.
+    pub fn season_lines_with(&self, games: &[hl_db::RatedGame], all: &[hl_db::RatedGame]) -> HashMap<(i64, i64, String, u32), SeasonLine> {
         let windows = self.season_windows();
         let divisions = self.played_divisions();
+        let strength = self.team_strength(all);
         let mut out: HashMap<(i64, i64, String, u32), SeasonLine> = HashMap::new();
         for g in games.iter().filter(|g| g.official) {
             let Some(season) = game_season(self, &windows, g) else { continue };
             let Some((tier, division, team)) = divisions.get(&(g.account_id, season)) else { continue };
             let w = self.stage_weight(g.etf2l_match_id);
-            out.entry((season, *tier, g.class.clone(), g.account_id))
+            // The opponent's strength, from their other officials that season.
+            let opp = g.etf2l_match_id.and_then(|id| {
+                let m = self.matches.get(&id)?;
+                let mine = self.rosters.get(&id)?.iter().find(|(a, _, _)| *a == g.account_id)?.1?;
+                let other = if mine == m.clan1 { m.clan2 } else if mine == m.clan2 { m.clan1 } else { return None };
+                strength.get(&(m.season, other)).and_then(|by| {
+                    let rest: Vec<f64> = by.iter().filter(|(mid, _)| **mid != id).map(|(_, r)| *r).collect();
+                    (rest.len() >= 3).then(|| rest.iter().sum::<f64>() / rest.len() as f64)
+                })
+            });
+            let mut adjusted = g.clone();
+            if let Some(s) = opp {
+                adjusted.score += OPPONENT_SLOPE * (s - 1.0);
+            }
+            let line = out.entry((season, *tier, g.class.clone(), g.account_id))
                 .or_insert_with(|| SeasonLine {
                     season,
                     tier: *tier,
@@ -890,8 +928,12 @@ impl Catalogue {
                     account_id: g.account_id,
                     team: *team,
                     ..Default::default()
-                })
-                .add(g, w);
+                });
+            line.add(&adjusted, w);
+            if let Some(s) = opp {
+                line.opponents.0 += s;
+                line.opponents.1 += 1;
+            }
         }
         out
     }
@@ -917,6 +959,32 @@ impl Catalogue {
     pub fn award_lines(&self, games: &[hl_db::RatedGame]) -> HashMap<(i64, i64, String, u32), SeasonLine> {
         let own: Vec<hl_db::RatedGame> = games.iter().filter(|g| self.own_team_game(g)).cloned().collect();
         self.season_lines(&own)
+    }
+
+    /// Each team's officials in a season, by how its players rated in them:
+    /// `(season, team) -> match -> the team's average official rating`.
+    fn team_strength(&self, games: &[hl_db::RatedGame]) -> HashMap<(i64, i64), HashMap<i64, f64>> {
+        // (match, account) -> (rating x minutes, minutes): one rating an official.
+        let mut per: HashMap<(i64, u32), (f64, f64)> = HashMap::new();
+        for g in games.iter().filter(|g| g.official) {
+            let Some(id) = g.etf2l_match_id else { continue };
+            let m = if g.minutes > 0.0 { g.minutes } else { 1.0 };
+            let e = per.entry((id, g.account_id)).or_default();
+            e.0 += g.score * m;
+            e.1 += m;
+        }
+        let mut teams: HashMap<(i64, i64, i64), Vec<f64>> = HashMap::new();
+        for ((id, a), (sm, m)) in per {
+            let (Some(mt), Some(team)) = (self.matches.get(&id), self.rosters.get(&id).and_then(|r| r.iter().find(|(x, _, _)| *x == a)).and_then(|r| r.1)) else { continue };
+            teams.entry((mt.season, team, id)).or_default().push(sm / m);
+        }
+        let mut out: HashMap<(i64, i64), HashMap<i64, f64>> = HashMap::new();
+        for ((season, team, id), v) in teams {
+            if v.len() >= 6 {
+                out.entry((season, team)).or_default().insert(id, v.iter().sum::<f64>() / v.len() as f64);
+            }
+        }
+        out
     }
 
     /// The thresholds and playoff places [`Catalogue::mvps`] reads.

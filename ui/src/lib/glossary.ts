@@ -83,7 +83,7 @@ export const GLOSSARY = {
   mvp: {
     label: k("Season awards"),
     what: k("Each division's season ends with three kinds of award: the Season MVP (the champions' best), up to five EVPs (the best seasons on any team) and the best player of each class."),
-    how: k("All three use the season rating: every official on the class for the player's own team (merc games are left out), playoffs counting 1.5 times and the Grand Final twice, pulled towards 1.00 so a short season cannot run away with it. Enough officials to be eligible: 60% of the most anyone in the division played that season, never fewer than four."),
+    how: k("All three use the season rating: every official on the class for the player's own team (merc games are left out), adjusted for the strength of the team faced, playoffs counting 1.5 times and the Grand Final twice, pulled towards 1.00 so a short season cannot run away with it. Enough officials to be eligible: 60% of the most anyone in the division played that season, never fewer than four."),
     source: ["logs.tf", "server log", "ETF2L"],
     more: "mvp",
   },
@@ -111,7 +111,7 @@ export const GLOSSARY = {
   seasonRating: {
     label: k("Season rating"),
     what: k("A player's season on one class: what the season tables rank by and the awards are decided on."),
-    how: k("The average rating over every official that season, playoff maps counting 1.5 times and the Grand Final twice, pulled towards 1.00 by four maps: 1.30 over 4 maps reads about 1.15, 1.15 over 20 maps 1.13."),
+    how: k("One rating per official (its maps by minutes played), each adjusted for how strong the team faced was (0.075 for every 0.10 of their season's average rating), playoffs counting 1.5 times and the Grand Final twice, then pulled towards 1.00 by three officials' worth of average games, so a short season counts for less. The three and the 0.075 are measured on the league's officials, not chosen."),
     source: ["logs.tf", "server log", "ETF2L"],
     more: "ranks",
   },

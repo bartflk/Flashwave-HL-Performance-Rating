@@ -2565,6 +2565,8 @@ export interface SeasonRow {
   maps: number;
   /** Enough officials and a playoff place: may take the class award. */
   eligible: boolean;
+  /** The average strength of the teams faced, which the rating is adjusted for. */
+  opponents?: number | null;
   /** The season rating (ranks and awards) and the plain average. */
   rating: number;
   average: number;

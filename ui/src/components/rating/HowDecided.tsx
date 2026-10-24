@@ -18,7 +18,8 @@ export function HowDecided() {
         <h3>{t("The season rating")}</h3>
         <ol>
           <li>{t("Every official a player played on the class that season for their own team counts, playoffs included; games as a merc for another team are shown in the tables but left out of the awards. A playoff official counts 1.5 times and a Grand Final twice, as the harder games.")}</li>
-          <li>{t("The average is pulled towards 1.00 by four maps' worth of average games, so a short season cannot run away with it: 1.30 over 4 maps reads about 1.15, while 1.15 over 20 maps reads 1.13.")}</li>
+          <li>{t("Each official is adjusted for the team faced: 0.075 more for every 0.10 the opponents' season average was above 1.00, 0.075 less below. Within the same player, a stronger opponent costs that much rating, and adjusting for it makes a season agree with itself far better.")}</li>
+          <li>{t("The season is pulled towards 1.00 by three officials' worth of average games, so a short season cannot run away with it: one official's rating varies by about 0.19 around a player's level, players' levels by about 0.11, which is what three measures.")}</li>
           <li>{t("The season tables rank by this number. An award needs enough of the season: 60% of the most officials anyone in the division played that season, and never fewer than four, so a Premiership season of seven games asks for fewer than a Low season of ten.")}</li>
         </ol>
         <h3>{t("The awards")}</h3>

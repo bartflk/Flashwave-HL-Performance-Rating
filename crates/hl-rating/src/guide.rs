@@ -94,6 +94,7 @@ impl Component {
             Component::Drops => "Ubers you died holding, per 10 minutes. Fewer is better.",
             Component::Caps => "Points you capped, per 10 minutes.",
             Component::Deaths => "How often you died, per 10 minutes. Fewer is better: every death is a player down for a respawn.",
+            Component::DeathsAttackDefend => "How often you died on a payload or attack/defend map, per 10 minutes. Weighed apart from KOTH deaths: on attack a death is the price of pushing, and for a Sniper it costs about a third of a KOTH death.",
             Component::Dpm => "Damage per minute. Measured twice and found to add nothing on top of what your kills and assists already count, so only the fallback model uses it.",
             Component::Opening => "The first kill of a fight, got minus given away. Opening a fight a player up decides most fights.",
             Component::Untraded => "The share of your kills after which your team did not lose someone within 3 seconds. A kill that is instantly traded back won nothing.",
@@ -115,7 +116,7 @@ impl Component {
     pub fn group(self) -> Group {
         match self {
             Component::ImpactKills | Component::Dpm | Component::SituationKills | Component::FightSwing | Component::FightSwingShared | Component::Opening | Component::RoundImpact => Group::Fragging,
-            Component::Deaths | Component::UntradedDeaths | Component::FlankDeaths | Component::StationaryDeaths => Group::Survival,
+            Component::Deaths | Component::DeathsAttackDefend | Component::UntradedDeaths | Component::FlankDeaths | Component::StationaryDeaths => Group::Survival,
             Component::ImpactAssists | Component::Untraded | Component::FightKast | Component::FightKastEngaged | Component::MedicPicks => Group::Teamplay,
             Component::Caps | Component::CapsContested | Component::CapsMatesDead | Component::CapsSpawnDelay => Group::Objective,
             Component::Heal | Component::Ubers | Component::Drops => Group::Medic,
@@ -134,6 +135,7 @@ impl Component {
             | Component::Drops
             | Component::Caps
             | Component::Deaths
+            | Component::DeathsAttackDefend
             | Component::Dpm => Source::Log,
             Component::ImpactKills
             | Component::ImpactAssists

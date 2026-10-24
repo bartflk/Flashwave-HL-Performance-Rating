@@ -212,6 +212,9 @@ pub struct SeasonRow {
     /// average beside it.
     pub rating: f64,
     pub average: f64,
+    /// The average strength of the teams faced (their season's average
+    /// official rating), which the season rating is adjusted for.
+    pub opponents: Option<f64>,
     /// The season's impact on the rating's scale, and per 30 minutes.
     pub impact: Option<f64>,
     pub impact_per30: Option<f64>,
@@ -279,14 +282,16 @@ pub async fn season_table(db: &Db, season: Option<i64>, tier: Option<i64>, class
     let award_lines = cat.award_lines(&rated);
     let rules = cat.award_rules(&award_lines);
 
-    // Per player: the stage's season line, and the summed numbers.
+    // Per player: the stage's season line (opponent-adjusted, as the awards
+    // read it), and the summed numbers.
+    let stage_games: Vec<hl_db::RatedGame> = games.iter().map(|g| (*g).clone()).collect();
+    let stage_lines = cat.season_lines_with(&stage_games, &rated);
     let mut per: HashMap<u32, (crate::catalogue::SeasonLine, Totals)> = HashMap::new();
     for g in &games {
         let e = per.entry(g.account_id).or_insert_with(|| {
-            let l = members[&g.account_id];
-            (crate::catalogue::SeasonLine { officials: HashSet::new(), games: HashMap::new(), ..l.clone() }, Totals::default())
+            let l = stage_lines.get(&(season, tier, class.to_string(), g.account_id)).cloned().unwrap_or_else(|| members[&g.account_id].clone());
+            (l, Totals::default())
         });
-        e.0.add(g, cat.stage_weight(g.etf2l_match_id));
         if let Some(s) = stats.get(&(g.log_id, i64::from(g.account_id), class.to_string())) {
             e.1.add(s);
         }
@@ -302,6 +307,7 @@ pub async fn season_table(db: &Db, season: Option<i64>, tier: Option<i64>, class
                 team: Some(cat.team(line.team)),
                 officials: line.officials.len(),
                 maps: line.maps(),
+                opponents: line.opponent_strength(),
                 eligible: award_lines.get(&(season, tier, class.to_string(), a)).is_some_and(|l| rules.class_award(l)),
                 rating: line.rating(),
                 average: line.average(),

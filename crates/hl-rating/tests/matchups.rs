@@ -104,8 +104,9 @@ fn ratings_show_their_working() {
     assert!((r.score - expected).abs() < 0.01, "score {} vs parts {sum} -> {expected}", r.score);
     assert!((0.0..=3.0).contains(&r.score), "a rating, not a percentile: {}", r.score);
     let keys: Vec<_> = r.parts.iter().map(|p| p.component.key()).collect();
-    // v9: the Sniper's picks and deaths (situation kills left the model).
-    assert!(keys.contains(&"impact_kills") && keys.contains(&"deaths"), "{keys:?}");
+    // v9: the Sniper's picks and deaths (situation kills left the model);
+    // v13: on a payload or attack/defend map, the deaths are read as such.
+    assert!(keys.contains(&"impact_kills") && (keys.contains(&"deaths") || keys.contains(&"deaths_attack_defend")), "{keys:?}");
     // No raw log in this fixture, so the components that need the fights
     // pass are missing and the rest renormalise around them.
     assert!(!keys.contains(&"untraded_deaths"), "{keys:?}");
