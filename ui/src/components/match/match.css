@@ -1801,3 +1801,95 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 .hh-bar > span { position: absolute; left: 0; top: 0; bottom: 0; background: #e0b440; }
 .hh-bar > span.good { background: #3fbf6a; }
 .hh-bar > span.poor { background: #e05252; }
+
+/* ---- Match page UX pass (Flashy: "all the buttons styled, put in concrete
+   lined up positions and have more defined paddings"). One rule set for
+   every section: the same padding, the same header -- title and hint left,
+   controls right, on one line -- and one control height. Last in the file,
+   so it settles what the sections' own rules left uneven. ---- */
+.match-page {
+  --sec-pad-y: 20px;
+  --sec-pad-x: 22px;
+  --ctl-h: 34px;
+}
+.match-page .fold > .panel:not(.mx-hero),
+.match-page > .panel:not(.mx-hero) {
+  padding: var(--sec-pad-y) var(--sec-pad-x);
+}
+
+/* Every section's header row. */
+.match-page :is(.box-head, .mu-head, .hh-head, .demo-head, .rounds-head, .an-head, .parts-head) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  min-height: var(--ctl-h);
+  margin: 0 0 16px;
+}
+.match-page :is(.box-head, .mu-head, .hh-head, .demo-head, .rounds-head, .an-head, .parts-head) > :first-child {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.match-page :is(.box-head, .mu-head, .hh-head, .demo-head, .rounds-head, .an-head, .parts-head) > :not(:first-child) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+.match-page .mu-head-right { flex-direction: row; align-items: center; }
+.match-page .panel h2 { margin: 0; }
+.match-page .panel h2 + .hint,
+.match-page :is(.box-head, .mu-head, .hh-head, .demo-head, .rounds-head, .an-head, .parts-head) .hint {
+  margin: 4px 0 0;
+  flex-basis: auto;
+}
+
+/* One control height: buttons, chips and dropdowns alike. */
+.match-page .panel :is(.km-chip, button.primary, .demo-head button, .hh-pick select, .box-tools select, .an-head select, .demo-source > button, .by-link button) {
+  box-sizing: border-box;
+  height: var(--ctl-h);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+.match-page .panel :is(.hh-pick select, .box-tools select, .an-head select) {
+  justify-content: flex-start;
+  padding: 0 30px 0 12px;
+}
+.match-page .hh-pick { display: flex; align-items: center; gap: 8px; }
+.match-page .box-tools .find-parts-quiet { height: var(--ctl-h); font-size: 0.86rem; opacity: 1; }
+
+/* "Show every ..." under a list: a quiet button, not a bare link. */
+.match-page :is(.spy-panel, .reflect-panel) .linkish {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  margin-top: 14px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 0.84rem;
+  text-decoration: none;
+}
+.match-page :is(.spy-panel, .reflect-panel) .linkish:hover { border-color: var(--accent-dim); }
+/* The demos.tf link box and its button, and the Kill by kill player
+   picker, on the same height as every other control here. */
+.match-page .demo-panel form :is(input, button) { box-sizing: border-box; height: var(--ctl-h); }
+.match-page .demo-panel form button { padding: 0 14px; font-size: 0.86rem; }
+.match-page .ctl-select select { box-sizing: border-box; height: var(--ctl-h); padding: 0 30px 0 12px; }
+/* Head to head: both players' cards the same height, the kill line's
+   "worth" pinned to its right end on both. */
+.match-page .hh-totals { align-items: stretch; }
+.match-page .hh-victims { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.match-page .hh-value { margin-left: auto; white-space: nowrap; }
