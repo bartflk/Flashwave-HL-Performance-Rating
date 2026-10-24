@@ -1125,10 +1125,11 @@ impl Catalogue {
         };
         let better = |a: &&SeasonLine, b: &&SeasonLine| a.rating().total_cmp(&b.rating()).then(a.officials.len().cmp(&b.officials.len()));
 
-        // Best of each class.
-        let mut tables: HashMap<(i64, i64, &str), Vec<&SeasonLine>> = HashMap::new();
+        // Best of each class. By division, not only tier: two divisions can
+        // share a tier (S33's Fresh Meat and Freshest), and each has its own.
+        let mut tables: HashMap<(i64, i64, &str, &str), Vec<&SeasonLine>> = HashMap::new();
         for l in lines.values().filter(|l| rules.class_award(l)) {
-            tables.entry((l.season, l.tier, l.class.as_str())).or_default().push(l);
+            tables.entry((l.season, l.tier, l.division.as_str(), l.class.as_str())).or_default().push(l);
         }
         for rows in tables.values() {
             if let Some(top) = rows.iter().max_by(|a, b| better(a, b)) {
@@ -1137,13 +1138,13 @@ impl Catalogue {
         }
 
         // EVPs: each player's best class; the division's best seasons.
-        let mut teams: HashMap<(i64, i64), std::collections::HashSet<i64>> = HashMap::new();
+        let mut teams: HashMap<(i64, i64, &str), std::collections::HashSet<i64>> = HashMap::new();
         for l in lines.values() {
-            teams.entry((l.season, l.tier)).or_default().insert(l.team);
+            teams.entry((l.season, l.tier, l.division.as_str())).or_default().insert(l.team);
         }
-        let mut divisions: HashMap<(i64, i64), HashMap<u32, &SeasonLine>> = HashMap::new();
+        let mut divisions: HashMap<(i64, i64, &str), HashMap<u32, &SeasonLine>> = HashMap::new();
         for l in lines.values().filter(eligible) {
-            let e = divisions.entry((l.season, l.tier)).or_default();
+            let e = divisions.entry((l.season, l.tier, l.division.as_str())).or_default();
             let keep = e.get(&l.account_id).is_some_and(|b| better(b, &l).is_ge());
             if !keep {
                 e.insert(l.account_id, l);
@@ -1151,7 +1152,7 @@ impl Catalogue {
         }
         for (key, by) in divisions {
             let n = if teams.get(&key).map_or(0, |t| t.len()) < EVPS_SMALL_BELOW_TEAMS { EVPS_SMALL } else { EVPS };
-            let mut rows: Vec<&SeasonLine> = by.into_values().filter(|l| !season_mvp.get(&key).is_some_and(|v| v.contains(&l.account_id))).collect();
+            let mut rows: Vec<&SeasonLine> = by.into_values().filter(|l| !season_mvp.get(&(key.0, key.1)).is_some_and(|v| v.contains(&l.account_id))).collect();
             rows.sort_by(|a, b| better(b, a));
             out.extend(rows.into_iter().take(n).map(|l| award(l, "evp")));
         }
@@ -2196,6 +2197,10 @@ pub struct Podium {
     pub mvp_name: Option<String>,
     /// The EVPs and the best of each class, with their names.
     pub awards: Vec<(Mvp, String)>,
+    /// Another playoff bracket of the same regular-season division holds
+    /// them (S33: Fresh Meat and Freshest were one division until the
+    /// playoffs): its name, and `awards` is empty here.
+    pub awards_with: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -2300,14 +2305,35 @@ pub async fn season_podiums(db: &Db, season: i64) -> Result<Vec<Podium>> {
             medals.sort_by_key(|p| p.place);
             let tier = cat.tier_of_name(season, &division);
             let mvp = mvps.iter().find(|m| m.event && m.season == season && m.division == division).cloned();
-            let awards = mvps
-                .iter()
-                .filter(|m| !m.event && m.season == season && tier.is_some() && m.tier == tier)
-                .map(|m| (m.clone(), cat.name_of(m.account_id)))
-                .collect();
-            Podium { tier, mvp_name: mvp.as_ref().map(|m| cat.name_of(m.account_id)), division, medals, mvp, awards }
+            // The division's own, by name; by tier where the names differ.
+            let awards: Vec<(Mvp, String)> =
+                mvps.iter().filter(|m| !m.event && m.season == season && m.division == division).map(|m| (m.clone(), cat.name_of(m.account_id))).collect();
+            Podium { tier, mvp_name: mvp.as_ref().map(|m| cat.name_of(m.account_id)), division, medals, mvp, awards, awards_with: None }
         })
         .collect();
+    // A podium whose awards go by another name (a playoff bracket): the
+    // tier's awards, once -- on the bracket that has the division's name,
+    // and pointed to from the others.
+    let tiers: Vec<Option<i64>> = out.iter().map(|p| p.tier).collect();
+    for (i, tier) in tiers.into_iter().enumerate() {
+        if !out[i].awards.is_empty() || tier.is_none() {
+            continue;
+        }
+        if let Some(holder) = out.iter().find(|p| p.tier == tier && !p.awards.is_empty()).map(|p| p.division.clone()) {
+            out[i].awards_with = Some(holder);
+            continue;
+        }
+        let by_tier: Vec<(Mvp, String)> =
+            mvps.iter().filter(|m| !m.event && m.season == season && m.tier == tier).map(|m| (m.clone(), cat.name_of(m.account_id))).collect();
+        if !by_tier.is_empty() {
+            for j in 0..out.len() {
+                if j != i && out[j].tier == tier && out[j].awards.is_empty() {
+                    out[j].awards_with = Some(out[i].division.clone());
+                }
+            }
+            out[i].awards = by_tier;
+        }
+    }
     out.sort_by_key(|p| (p.tier.unwrap_or(99), p.division.clone()));
     Ok(out)
 }

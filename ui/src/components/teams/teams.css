@@ -322,3 +322,30 @@
 tr.dc-error .dc-code { color: #e05252; }
 tr.dc-warn .dc-code { color: #e0b440; }
 tr.dc-info .dc-code { color: var(--muted); }
+
+/* A podium's awards (UX pass, Flashy): the Season MVP as the headline, EVPs
+   numbered, the best of each class in class order with a dash where nobody
+   qualified, ratings in one right-hand column. */
+.ts-podium { justify-content: flex-start; }
+.aw-section { display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--border); padding-top: 9px; }
+.aw-title { font: 700 0.72rem var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+.aw-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.aw-row { display: grid; grid-template-columns: 16px 18px minmax(0, 1fr) auto; align-items: center; gap: 7px; width: 100%; padding: 3px 6px; border: 0; border-radius: 6px; background: transparent; color: var(--text); font: inherit; font-size: 0.86rem; text-align: left; cursor: pointer; }
+button.aw-row:hover { background: var(--raised); }
+button.aw-row:hover .aw-name { color: var(--tf2-tan); }
+.aw-class-row { grid-template-columns: 18px 46px minmax(0, 1fr) auto; }
+.aw-rank { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+.aw-class { color: var(--muted); font-size: 0.76rem; }
+.aw-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aw-rating { font-weight: 600; font-variant-numeric: tabular-nums; }
+.aw-none { cursor: default; color: var(--muted); }
+.aw-none .aw-name { opacity: 0.6; }
+.aw-mvp { --medal: #b48cff; }
+.aw-mvp-row { grid-template-columns: 16px 20px minmax(0, 1fr) auto; padding: 7px 8px; background: rgba(180, 140, 255, 0.08); border: 1px solid rgba(180, 140, 255, 0.25); }
+button.aw-mvp-row:hover { background: rgba(180, 140, 255, 0.14); }
+.aw-mvp-row .aw-rating { font-size: 1.05rem; font-weight: 700; }
+.aw-who { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.aw-who .aw-name { font-size: 0.95rem; }
+.aw-team { color: var(--muted); font-size: 0.76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aw-empty { margin: 0; color: var(--muted); font-size: 0.82rem; line-height: 1.4; }
+.aw-shared { border-top: 1px solid var(--border); padding-top: 9px; }

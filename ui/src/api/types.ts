@@ -2219,6 +2219,8 @@ export interface Podium {
   mvpName: string | null;
   /** The EVPs and the best of each class, with names. */
   awards?: [Mvp, string][];
+  /** Another playoff bracket of the same division holds them. */
+  awardsWith?: string | null;
 }
 
 export interface TeamSeason {
