@@ -85,8 +85,18 @@ export function HeadToHead({ d }: { d: MatchDetail }) {
           <div className="hh-totals">
             {[0, 1].map((i) => (
               <div key={i} className={`hh-card hh-${i === 0 ? "a" : "b"}`}>
-                <strong className="hh-name">{name(h.accounts[i])}</strong>
-                <dl>
+                {/* One layout for both cards (Flashy: "the box design is very
+                    inconsistant"): the name and what their kills were worth on
+                    top, six numbers in fixed columns, then the kills by class
+                    as tiles of one size. */}
+                <header className="hh-card-head">
+                  <strong className="hh-name">{name(h.accounts[i])}</strong>
+                  <span className="hh-worth" title={t("Kills by the class that died, and what a kill of that class is worth in the rating")}>
+                    <span className="hh-worth-label">{t("Kill value")}</span>
+                    <strong>{totals[i].value.toFixed(1)}</strong>
+                  </span>
+                </header>
+                <dl className="hh-stats">
                   <div>
                     <dt>
                       <StatTip k="rating" inline>
@@ -124,13 +134,17 @@ export function HeadToHead({ d }: { d: MatchDetail }) {
                     </dd>
                   </div>
                 </dl>
-                <div className="hh-victims" title={t("Kills by the class that died, and what a kill of that class is worth in the rating")}>
-                  {totals[i].victims.map(([c, [n, v]]) => (
-                    <span key={c} className="hh-victim">
-                      <ClassIcon cls={c} size={14} /> {n} <span className="muted">×{v}</span>
-                    </span>
-                  ))}
-                  <span className="muted hh-value">{tx("worth {0}", { "0": totals[i].value.toFixed(1) })}</span>
+                <div className="hh-kills">
+                  <span className="hh-kills-label">{t("Kills by class")}</span>
+                  <div className="hh-victims" title={t("Kills by the class that died, and what a kill of that class is worth in the rating")}>
+                    {totals[i].victims.map(([c, [n, v]]) => (
+                      <span key={c} className="hh-victim" title={`${n} × ${v}`}>
+                        <ClassIcon cls={c} size={15} />
+                        <strong>{n}</strong>
+                        <span className="muted">×{v}</span>
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             ))}
