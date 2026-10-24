@@ -247,6 +247,10 @@ function PartPicker(props: {
   };
   const ordered = [...rows].sort((a, b) => at(a.logId) - at(b.logId));
   const lp = (id: number) => ledger?.parts.find((x) => x.logId === id) ?? null;
+  const fetched = (id: number) => {
+    const row = rows.find((x) => x.logId === id);
+    return !!row && "detail" in row && !!row.detail;
+  };
   const flipped = part !== null && lp(part)?.teamsFlipped === true;
   return (
     <div className="part-picker">
@@ -254,23 +258,70 @@ function PartPicker(props: {
         <span className="an-label">{t("Reading")}</span>
         <select value={part ?? ""} onChange={(e) => onPick(e.target.value === "" ? null : Number(e.target.value))}>
           <option value="">{tx("The whole match · {parts} logs combined", { parts: d.parts.length })}</option>
-          {ordered.map((p) => {
-            const l = lp(p.logId);
-            const map = capitalize(splitMap(p.map).name ?? "unknown");
-            return (
-              <option key={p.logId} value={p.logId}>
-                {l
-                  ? tx("{0} · {1} · log {logId}{2}", { "0": map, "1": l.label === "whole map" ? t("whole map") : t("game {0}", { "0": l.label.replace("game ", "") }), "2": "detail" in p && p.detail ? "" : t(" (fetches)"), logId: p.logId })
-                  : tx("{0} · log {logId}{2}", { "0": map, "2": "detail" in p && p.detail ? "" : t(" (fetches)"), logId: p.logId })}
-              </option>
-            );
-          })}
+          {/* By map (Flashy: "a per-map setting instead of per log"): each
+              map's whole-map log first -- a combine of its games uploaded
+              beside them, or its only log -- then its games or parts. */}
+          {ledger && ledger.maps.length > 0
+            ? (() => {
+                const listed = new Set<number>();
+                const groups = ledger.maps.map((m) => {
+                  const name = capitalize(splitMap(m.map).name ?? "unknown");
+                  const opts: Array<[number, React.ReactNode]> = [];
+                  if (m.wholeLog !== null) {
+                    opts.push([m.wholeLog, tx("{0} · whole map · log {logId}", { "0": name, logId: m.wholeLog })]);
+                    listed.add(m.wholeLog);
+                  }
+                  for (const id of m.logs) {
+                    if (id === m.wholeLog) continue;
+                    const l = lp(id);
+                    if (!l) continue;
+                    const label = l.label === "whole map" ? t("whole map") : l.label.startsWith("game ") ? t("game {0}", { "0": l.label.slice(5) }) : t("part {0}", { "0": l.label.slice(5) });
+                    opts.push([id, tx("{0} · {1} · log {logId}", { "0": name, "1": label, logId: id })]);
+                    listed.add(id);
+                  }
+                  return (
+                    <optgroup key={m.firstRound} label={name}>
+                      {opts.map(([id, label]) => (
+                        <option key={id} value={id}>
+                          {label}
+                          {fetched(id) ? "" : t(" (fetches)")}
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                });
+                // Anything the ledger could not place, as it was.
+                const rest = ordered.filter((p) => !listed.has(p.logId));
+                return (
+                  <>
+                    {groups}
+                    {rest.length > 0 && (
+                      <optgroup label={t("Other logs")}>
+                        {rest.map((p) => (
+                          <option key={p.logId} value={p.logId}>
+                            {tx("{0} · log {logId}{2}", { "0": p.title ?? capitalize(splitMap(p.map).name ?? "unknown"), "2": fetched(p.logId) ? "" : t(" (fetches)"), logId: p.logId })}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </>
+                );
+              })()
+            : ordered.map((p) => (
+                <option key={p.logId} value={p.logId}>
+                  {tx("{0} · log {logId}{2}", { "0": capitalize(splitMap(p.map).name ?? "unknown"), "2": "detail" in p && p.detail ? "" : t(" (fetches)"), logId: p.logId })}
+                </option>
+              ))}
         </select>
       </label>
       {fetching && <span className="hint"><Spinner /> {t("Fetching…")}</span>}
       {part !== null && !fetching && (
         <span className="hint" title={flipped ? t("Each log names its own RED: whoever was RED when it began. The whole match keeps each team on one colour.") : undefined}>
-          {flipped ? t("this log alone; its RED is the whole match's BLU") : t("this log alone")}
+          {ledger?.maps.some((m) => m.wholeLog === part)
+            ? t("this map alone")
+            : flipped
+              ? t("this log alone; its RED is the whole match's BLU")
+              : t("this log alone")}
         </span>
       )}
       {error && <p className="error">{error}</p>}
