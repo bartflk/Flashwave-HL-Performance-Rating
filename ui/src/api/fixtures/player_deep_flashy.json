@@ -1,0 +1,2665 @@
+{
+ "accountId": 139131191,
+ "classes": [
+  {
+   "class": "sniper",
+   "maps": 768,
+   "minutes": 16433.15,
+   "headline": [
+    {
+     "key": "rating",
+     "value": 1.024107946026986,
+     "average": 1.0,
+     "percentile": 53.27868065967009,
+     "verdict": "okay",
+     "lowerBetter": false
+    },
+    {
+     "key": "impact",
+     "value": 1.026399135319118,
+     "average": 1.0,
+     "percentile": 64.48717948717949,
+     "verdict": "okay",
+     "lowerBetter": false
+    },
+    {
+     "key": "kills_per30",
+     "value": 29.107018435296947,
+     "average": 27.667236346747774,
+     "percentile": 61.410256410256416,
+     "verdict": "okay",
+     "lowerBetter": false
+    },
+    {
+     "key": "deaths_per30",
+     "value": 20.709358826518347,
+     "average": 21.760616978512143,
+     "percentile": 62.69230769230769,
+     "verdict": "okay",
+     "lowerBetter": true
+    },
+    {
+     "key": "dpm",
+     "value": 339.00049594873775,
+     "average": 316.6239777818058,
+     "percentile": 63.97435897435897,
+     "verdict": "okay",
+     "lowerBetter": false
+    },
+    {
+     "key": "kast",
+     "value": 85.37954910073461,
+     "average": 84.16916597295511,
+     "percentile": 58.84615384615385,
+     "verdict": "okay",
+     "lowerBetter": false
+    }
+   ],
+   "attributes": [
+    {
+     "key": "firepower",
+     "score": 62.77777777777778,
+     "stats": [
+      {
+       "key": "kills_per30",
+       "value": 29.107018435296947,
+       "average": 27.667236346747774,
+       "percentile": 61.410256410256416,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "dpm",
+       "value": 339.00049594873775,
+       "average": 316.6239777818058,
+       "percentile": 63.97435897435897,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "kd",
+       "value": 1.4055007052186177,
+       "average": 1.3090793872776885,
+       "percentile": 62.94871794871795,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "opening",
+     "score": 69.1025641025641,
+     "stats": [
+      {
+       "key": "opening_kills_per30",
+       "value": 5.697997429412497,
+       "average": 4.777873129147189,
+       "percentile": 79.1025641025641,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "first_picks_per30",
+       "value": 0.8899622704092209,
+       "average": 0.7467090659418633,
+       "percentile": 68.84615384615384,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "opening_success",
+       "value": 0.6126379137412237,
+       "average": 0.5782958147402695,
+       "percentile": 59.35897435897436,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "trading",
+     "score": 41.92307692307692,
+     "stats": [
+      {
+       "key": "trade_kills_per30",
+       "value": 8.843650234255152,
+       "average": 9.058837301630339,
+       "percentile": 43.46153846153846,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "traded_death_share",
+       "value": 0.36160084626234135,
+       "average": 0.37104903216501867,
+       "percentile": 40.38461538461539,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "closing",
+     "score": 53.547008547008545,
+     "stats": [
+      {
+       "key": "cleanup_kills_per30",
+       "value": 11.498611053526266,
+       "average": 10.680121866690083,
+       "percentile": 60.128205128205124,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "down_kills_per30",
+       "value": 9.724283759691529,
+       "average": 9.80929197720531,
+       "percentile": 46.794871794871796,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "multi_kills_per30",
+       "value": 2.3340519922053153,
+       "average": 2.3187891019065594,
+       "percentile": 53.717948717948715,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "survival",
+     "score": 61.92307692307693,
+     "stats": [
+      {
+       "key": "deaths_per30",
+       "value": 20.709358826518347,
+       "average": 21.760616978512143,
+       "percentile": 62.69230769230769,
+       "verdict": "okay",
+       "lowerBetter": true
+      },
+      {
+       "key": "dtm",
+       "value": 238.87428764418263,
+       "average": 248.31608726791063,
+       "percentile": 64.23076923076923,
+       "verdict": "okay",
+       "lowerBetter": true
+      },
+      {
+       "key": "kast",
+       "value": 85.37954910073461,
+       "average": 84.16916597295511,
+       "percentile": 58.84615384615385,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "impact",
+     "score": 63.333333333333336,
+     "stats": [
+      {
+       "key": "impact_per30",
+       "value": 0.3610188388822092,
+       "average": 0.211262776892664,
+       "percentile": 64.48717948717949,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "forces_per30",
+       "value": 0.014925991956548779,
+       "average": 0.03816796489511277,
+       "percentile": 62.17948717948718,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "sniping",
+     "score": 66.53846153846153,
+     "stats": [
+      {
+       "key": "headshots_per30",
+       "value": 20.579742776035026,
+       "average": 18.94076925136205,
+       "percentile": 66.53846153846153,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    }
+   ],
+   "vsDivisions": [
+    {
+     "tier": 2,
+     "division": "Mid",
+     "rating": 1.0341242937853101,
+     "maps": 531
+    },
+    {
+     "tier": 4,
+     "division": "Open",
+     "rating": 1.0467415730337077,
+     "maps": 89
+    }
+   ],
+   "attack": {
+    "killsPer30": 21.504480833294235,
+    "deathsPer30": 20.417116313986767,
+    "impactPer30": 0.022950781213343974,
+    "minutes": 2841.733333333333
+   },
+   "defence": {
+    "killsPer30": 29.062115456636885,
+    "deathsPer30": 16.43571772510834,
+    "impactPer30": 0.5180092022898721,
+    "minutes": 2803.65
+   },
+   "downKills": 5212,
+   "multi2": 1102,
+   "multi3": 149,
+   "kast": 85.37954910073461,
+   "weapons": [
+    {
+     "weapon": "sniperrifle",
+     "kills": 14219,
+     "dmg": 5052719,
+     "accuracy": 0.4225491989650576
+    },
+    {
+     "weapon": "awper_hand",
+     "kills": 889,
+     "dmg": 321382,
+     "accuracy": 0.4240337627721013
+    },
+    {
+     "weapon": "nonnonviolent_protest",
+     "kills": 280,
+     "dmg": 52871,
+     "accuracy": null
+    },
+    {
+     "weapon": "smg",
+     "kills": 163,
+     "dmg": 28557,
+     "accuracy": 0.15537650452601215
+    },
+    {
+     "weapon": "world",
+     "kills": 130,
+     "dmg": 0,
+     "accuracy": null
+    },
+    {
+     "weapon": "tf_projectile_arrow",
+     "kills": 113,
+     "dmg": 48486,
+     "accuracy": null
+    },
+    {
+     "weapon": "pro_rifle",
+     "kills": 60,
+     "dmg": 22319,
+     "accuracy": 0.4024390243902439
+    },
+    {
+     "weapon": "sydney_sleeper",
+     "kills": 50,
+     "dmg": 13453,
+     "accuracy": 0.5
+    },
+    {
+     "weapon": "freedom_staff",
+     "kills": 25,
+     "dmg": 4228,
+     "accuracy": null
+    },
+    {
+     "weapon": "machina",
+     "kills": 20,
+     "dmg": 6418,
+     "accuracy": null
+    },
+    {
+     "weapon": "the_classic",
+     "kills": 12,
+     "dmg": 5657,
+     "accuracy": null
+    },
+    {
+     "weapon": "bushwacka",
+     "kills": 8,
+     "dmg": 0,
+     "accuracy": null
+    },
+    {
+     "weapon": "compound_bow",
+     "kills": 2,
+     "dmg": 2412,
+     "accuracy": null
+    },
+    {
+     "weapon": "shahanshah",
+     "kills": 2,
+     "dmg": 1215,
+     "accuracy": null
+    },
+    {
+     "weapon": "player",
+     "kills": 2,
+     "dmg": 0,
+     "accuracy": null
+    },
+    {
+     "weapon": "skullbat",
+     "kills": 1,
+     "dmg": 130,
+     "accuracy": null
+    },
+    {
+     "weapon": "telefrag",
+     "kills": 1,
+     "dmg": 0,
+     "accuracy": null
+    },
+    {
+     "weapon": "tf_weapon_sniperrifle",
+     "kills": 0,
+     "dmg": 16000,
+     "accuracy": null
+    },
+    {
+     "weapon": "club",
+     "kills": 0,
+     "dmg": 1027,
+     "accuracy": null
+    },
+    {
+     "weapon": "fryingpan",
+     "kills": 0,
+     "dmg": 455,
+     "accuracy": null
+    },
+    {
+     "weapon": "taunt_sniper",
+     "kills": 0,
+     "dmg": 450,
+     "accuracy": null
+    },
+    {
+     "weapon": "saxxy",
+     "kills": 0,
+     "dmg": 130,
+     "accuracy": null
+    },
+    {
+     "weapon": "pro_smg",
+     "kills": 0,
+     "dmg": 85,
+     "accuracy": null
+    }
+   ],
+   "totals": {
+    "maps": 768,
+    "timeS": 985989,
+    "kills": 15944,
+    "deaths": 11344,
+    "assists": 2314,
+    "dmg": 5570846,
+    "dt": 3925457,
+    "heal": 27751,
+    "ubers": 0,
+    "drops": 0,
+    "airshots": 0,
+    "headshots": 11273,
+    "backstabs": 0,
+    "caps": 1111,
+    "medkits": 3821,
+    "medkitsHp": 86510,
+    "longestStreak": 16,
+    "advLost": 0,
+    "buildS": null,
+    "useS": null,
+    "rawTimeS": 964760,
+    "rawMaps": 751,
+    "openingKills": 3054,
+    "openingDeaths": 1931,
+    "firstPicks": 477,
+    "tradeKills": 4740,
+    "tradedDeaths": 4102,
+    "cleanupKills": 6163,
+    "forces": 8,
+    "fightsPresent": 23686,
+    "fightsKast": 20223,
+    "impact": 193.49807500000009,
+    "impactAttack": 2.1740000000000004,
+    "impactDefence": 48.41055,
+    "killsAttack": 2037,
+    "deathsAttack": 1934,
+    "killsDefence": 2716,
+    "deathsDefence": 1536,
+    "secsAttack": 170504,
+    "secsDefence": 168219,
+    "downKills": 5212,
+    "multi2": 1102,
+    "multi3": 149
+   }
+  },
+  {
+   "class": "engineer",
+   "maps": 29,
+   "minutes": 650.45,
+   "headline": [
+    {
+     "key": "rating",
+     "value": 1.0979310344827584,
+     "average": 1.0,
+     "percentile": 63.31862068965515,
+     "verdict": "okay",
+     "lowerBetter": false
+    },
+    {
+     "key": "impact",
+     "value": 1.095503276396252,
+     "average": 1.0,
+     "percentile": 85.42234332425068,
+     "verdict": "good",
+     "lowerBetter": false
+    },
+    {
+     "key": "kills_per30",
+     "value": 16.327158121300638,
+     "average": 14.372346614686148,
+     "percentile": 76.97547683923706,
+     "verdict": "good",
+     "lowerBetter": false
+    },
+    {
+     "key": "deaths_per30",
+     "value": 13.421477438696288,
+     "average": 16.49810052385693,
+     "percentile": 82.15258855585832,
+     "verdict": "good",
+     "lowerBetter": true
+    },
+    {
+     "key": "dpm",
+     "value": 210.75101852563608,
+     "average": 177.83673801489903,
+     "percentile": 90.05449591280654,
+     "verdict": "good",
+     "lowerBetter": false
+    },
+    {
+     "key": "kast",
+     "value": 90.37304452466908,
+     "average": 87.96438528129354,
+     "percentile": 75.34059945504087,
+     "verdict": "good",
+     "lowerBetter": false
+    }
+   ],
+   "attributes": [
+    {
+     "key": "firepower",
+     "score": 84.42325158946413,
+     "stats": [
+      {
+       "key": "kills_per30",
+       "value": 16.327158121300638,
+       "average": 14.372346614686148,
+       "percentile": 76.97547683923706,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "dpm",
+       "value": 210.75101852563608,
+       "average": 177.83673801489903,
+       "percentile": 90.05449591280654,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "kd",
+       "value": 1.2164948453608246,
+       "average": 0.917796444069154,
+       "percentile": 86.23978201634877,
+       "verdict": "good",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "opening",
+     "score": 50.72661217075387,
+     "stats": [
+      {
+       "key": "opening_kills_per30",
+       "value": 1.2452917211161503,
+       "average": 1.2030249616110489,
+       "percentile": 55.99455040871935,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "first_picks_per30",
+       "value": 0.0,
+       "average": 0.08423381522854159,
+       "percentile": 18.93732970027248,
+       "verdict": "poor",
+       "lowerBetter": false
+      },
+      {
+       "key": "opening_success",
+       "value": 0.5094339622641509,
+       "average": 0.42519016515133,
+       "percentile": 77.24795640326975,
+       "verdict": "good",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "trading",
+     "score": 40.59945504087193,
+     "stats": [
+      {
+       "key": "trade_kills_per30",
+       "value": 7.379506495503113,
+       "average": 6.788030923147343,
+       "percentile": 65.80381471389646,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "traded_death_share",
+       "value": 0.35738831615120276,
+       "average": 0.40477963753630947,
+       "percentile": 15.39509536784741,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "closing",
+     "score": 56.9936421435059,
+     "stats": [
+      {
+       "key": "cleanup_kills_per30",
+       "value": 5.5346298716273346,
+       "average": 5.291619767210169,
+       "percentile": 58.44686648501363,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "down_kills_per30",
+       "value": 7.932969482665847,
+       "average": 6.069163534470421,
+       "percentile": 93.8692098092643,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "multi_kills_per30",
+       "value": 0.7840725651472058,
+       "average": 1.2060211922618806,
+       "percentile": 18.66485013623978,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "survival",
+     "score": 66.34877384196186,
+     "stats": [
+      {
+       "key": "deaths_per30",
+       "value": 13.421477438696288,
+       "average": 16.49810052385693,
+       "percentile": 82.15258855585832,
+       "verdict": "good",
+       "lowerBetter": true
+      },
+      {
+       "key": "dtm",
+       "value": 173.36613113998,
+       "average": 168.10500679132033,
+       "percentile": 41.55313351498637,
+       "verdict": "okay",
+       "lowerBetter": true
+      },
+      {
+       "key": "kast",
+       "value": 90.37304452466908,
+       "average": 87.96438528129354,
+       "percentile": 75.34059945504087,
+       "verdict": "good",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "impact",
+     "score": 88.283378746594,
+     "stats": [
+      {
+       "key": "impact_per30",
+       "value": 0.21570066876777613,
+       "average": -0.07682579788931526,
+       "percentile": 85.42234332425068,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "forces_per30",
+       "value": 0.09224383119378891,
+       "average": 0.02512216709572171,
+       "percentile": 91.14441416893733,
+       "verdict": "good",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "support",
+     "score": 62.80653950953678,
+     "stats": [
+      {
+       "key": "assists_per30",
+       "value": 12.360673379967714,
+       "average": 11.677576441932533,
+       "percentile": 62.80653950953678,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    }
+   ],
+   "vsDivisions": [
+    {
+     "tier": 2,
+     "division": "Mid",
+     "rating": 1.1609999999999998,
+     "maps": 10
+    }
+   ],
+   "attack": {
+    "killsPer30": 6.889605157131346,
+    "deathsPer30": 9.427880741337631,
+    "impactPer30": -0.060646655922642914,
+    "minutes": 82.73333333333333
+   },
+   "defence": {
+    "killsPer30": 16.686474922747802,
+    "deathsPer30": 9.41288328975517,
+    "impactPer30": 0.3949560256715001,
+    "minutes": 70.11666666666666
+   },
+   "downKills": 172,
+   "multi2": 16,
+   "multi3": 1,
+   "kast": 90.37304452466908,
+   "weapons": [
+    {
+     "weapon": "shotgun_primary",
+     "kills": 131,
+     "dmg": 44635,
+     "accuracy": 0.6024265048996733
+    },
+    {
+     "weapon": "obj_minisentry",
+     "kills": 126,
+     "dmg": 66988,
+     "accuracy": null
+    },
+    {
+     "weapon": "frontier_justice",
+     "kills": 24,
+     "dmg": 1035,
+     "accuracy": null
+    },
+    {
+     "weapon": "obj_sentrygun3",
+     "kills": 23,
+     "dmg": 8650,
+     "accuracy": null
+    },
+    {
+     "weapon": "world",
+     "kills": 17,
+     "dmg": 0,
+     "accuracy": null
+    },
+    {
+     "weapon": "pistol",
+     "kills": 12,
+     "dmg": 3152,
+     "accuracy": 0.22714285714285715
+    },
+    {
+     "weapon": "obj_sentrygun",
+     "kills": 12,
+     "dmg": 2827,
+     "accuracy": null
+    },
+    {
+     "weapon": "robot_arm",
+     "kills": 5,
+     "dmg": 572,
+     "accuracy": 0.002777777777777778
+    },
+    {
+     "weapon": "obj_sentrygun2",
+     "kills": 4,
+     "dmg": 2071,
+     "accuracy": null
+    },
+    {
+     "weapon": "wrangler_kill",
+     "kills": 2,
+     "dmg": 970,
+     "accuracy": null
+    },
+    {
+     "weapon": "sentry_revenge",
+     "kills": 0,
+     "dmg": 6880,
+     "accuracy": 0.39325842696629215
+    }
+   ],
+   "totals": {
+    "maps": 29,
+    "timeS": 39027,
+    "kills": 354,
+    "deaths": 291,
+    "assists": 268,
+    "dmg": 137083,
+    "dt": 112766,
+    "heal": 76945,
+    "ubers": 0,
+    "drops": 0,
+    "airshots": 0,
+    "headshots": 0,
+    "backstabs": 0,
+    "caps": 26,
+    "medkits": 299,
+    "medkitsHp": 6868,
+    "longestStreak": 11,
+    "advLost": 0,
+    "buildS": null,
+    "useS": null,
+    "rawTimeS": 39027,
+    "rawMaps": 29,
+    "openingKills": 27,
+    "openingDeaths": 26,
+    "firstPicks": 0,
+    "tradeKills": 160,
+    "tradedDeaths": 104,
+    "cleanupKills": 120,
+    "forces": 2,
+    "fightsPresent": 831,
+    "fightsKast": 751,
+    "impact": 4.67675,
+    "impactAttack": -0.16724999999999968,
+    "impactDefence": 0.9231000000000006,
+    "killsAttack": 19,
+    "deathsAttack": 26,
+    "killsDefence": 39,
+    "deathsDefence": 22,
+    "secsAttack": 4964,
+    "secsDefence": 4207,
+    "downKills": 172,
+    "multi2": 16,
+    "multi3": 1
+   }
+  },
+  {
+   "class": "demoman",
+   "maps": 17,
+   "minutes": 309.0,
+   "headline": [
+    {
+     "key": "rating",
+     "value": 0.9806666666666665,
+     "average": 1.0,
+     "percentile": 47.37066666666664,
+     "verdict": "okay",
+     "lowerBetter": false
+    },
+    {
+     "key": "impact",
+     "value": 0.9540054867154841,
+     "average": 1.0,
+     "percentile": 29.856115107913666,
+     "verdict": "poor",
+     "lowerBetter": false
+    },
+    {
+     "key": "kills_per30",
+     "value": 20.97087378640777,
+     "average": 24.669685869128948,
+     "percentile": 21.46282973621103,
+     "verdict": "poor",
+     "lowerBetter": false
+    },
+    {
+     "key": "deaths_per30",
+     "value": 21.74757281553398,
+     "average": 20.612687469647124,
+     "percentile": 34.412470023980816,
+     "verdict": "okay",
+     "lowerBetter": true
+    },
+    {
+     "key": "dpm",
+     "value": 418.02265372168284,
+     "average": 438.5207786070965,
+     "percentile": 33.69304556354916,
+     "verdict": "okay",
+     "lowerBetter": false
+    },
+    {
+     "key": "kast",
+     "value": 82.95739348370927,
+     "average": 86.38390324915648,
+     "percentile": 15.467625899280577,
+     "verdict": "poor",
+     "lowerBetter": false
+    }
+   ],
+   "attributes": [
+    {
+     "key": "firepower",
+     "score": 25.29976019184652,
+     "stats": [
+      {
+       "key": "kills_per30",
+       "value": 20.97087378640777,
+       "average": 24.669685869128948,
+       "percentile": 21.46282973621103,
+       "verdict": "poor",
+       "lowerBetter": false
+      },
+      {
+       "key": "dpm",
+       "value": 418.02265372168284,
+       "average": 438.5207786070965,
+       "percentile": 33.69304556354916,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "kd",
+       "value": 0.9642857142857143,
+       "average": 1.2434825184654614,
+       "percentile": 20.743405275779374,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "opening",
+     "score": 28.49720223820943,
+     "stats": [
+      {
+       "key": "opening_kills_per30",
+       "value": 2.180016515276631,
+       "average": 2.824485060191791,
+       "percentile": 20.26378896882494,
+       "verdict": "poor",
+       "lowerBetter": false
+      },
+      {
+       "key": "first_picks_per30",
+       "value": 0.0990916597853014,
+       "average": 0.3637215793495418,
+       "percentile": 9.47242206235012,
+       "verdict": "poor",
+       "lowerBetter": false
+      },
+      {
+       "key": "opening_success",
+       "value": 0.5641025641025641,
+       "average": 0.5448045739471669,
+       "percentile": 55.75539568345324,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "trading",
+     "score": 30.695443645083934,
+     "stats": [
+      {
+       "key": "trade_kills_per30",
+       "value": 9.11643270024773,
+       "average": 9.730808863636494,
+       "percentile": 35.13189448441247,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "traded_death_share",
+       "value": 0.3794642857142857,
+       "average": 0.40846105607929295,
+       "percentile": 26.258992805755394,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "closing",
+     "score": 25.059952038369303,
+     "stats": [
+      {
+       "key": "cleanup_kills_per30",
+       "value": 7.8282411230388105,
+       "average": 9.652347617007257,
+       "percentile": 25.29976019184652,
+       "verdict": "poor",
+       "lowerBetter": false
+      },
+      {
+       "key": "down_kills_per30",
+       "value": 8.918249380677127,
+       "average": 9.156170773904073,
+       "percentile": 49.040767386091126,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "multi_kills_per30",
+       "value": 0.990916597853014,
+       "average": 3.152660165715719,
+       "percentile": 0.8393285371702638,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "survival",
+     "score": 38.249400479616305,
+     "stats": [
+      {
+       "key": "deaths_per30",
+       "value": 21.74757281553398,
+       "average": 20.612687469647124,
+       "percentile": 34.412470023980816,
+       "verdict": "okay",
+       "lowerBetter": true
+      },
+      {
+       "key": "dtm",
+       "value": 330.4401294498382,
+       "average": 340.52458665209366,
+       "percentile": 64.86810551558753,
+       "verdict": "okay",
+       "lowerBetter": true
+      },
+      {
+       "key": "kast",
+       "value": 82.95739348370927,
+       "average": 86.38390324915648,
+       "percentile": 15.467625899280577,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "impact",
+     "score": 60.431654676258994,
+     "stats": [
+      {
+       "key": "impact_per30",
+       "value": -0.015002477291494716,
+       "average": 0.141653653637578,
+       "percentile": 29.856115107913666,
+       "verdict": "poor",
+       "lowerBetter": false
+      },
+      {
+       "key": "forces_per30",
+       "value": 0.990916597853014,
+       "average": 0.6239016806740707,
+       "percentile": 91.00719424460432,
+       "verdict": "good",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "airshots",
+     "score": 11.870503597122301,
+     "stats": [
+      {
+       "key": "airshots_per30",
+       "value": 0.0970873786407767,
+       "average": 0.444736199408659,
+       "percentile": 11.870503597122301,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    }
+   ],
+   "vsDivisions": [
+    {
+     "tier": 2,
+     "division": "Mid",
+     "rating": 0.98875,
+     "maps": 8
+    },
+    {
+     "tier": 4,
+     "division": "Open",
+     "rating": 1.2149999999999999,
+     "maps": 2
+    }
+   ],
+   "attack": {
+    "killsPer30": 21.796875,
+    "deathsPer30": 21.796875,
+    "impactPer30": -0.023396484375,
+    "minutes": 42.666666666666664
+   },
+   "defence": {
+    "killsPer30": 20.07168458781362,
+    "deathsPer30": 17.921146953405017,
+    "impactPer30": 0.07448028673835116,
+    "minutes": 41.85
+   },
+   "downKills": 90,
+   "multi2": 7,
+   "multi3": 3,
+   "kast": 82.95739348370927,
+   "weapons": [
+    {
+     "weapon": "tf_projectile_pipe_remote",
+     "kills": 124,
+     "dmg": 65323,
+     "accuracy": 0.2809320643255661
+    },
+    {
+     "weapon": "iron_bomber",
+     "kills": 66,
+     "dmg": 33163,
+     "accuracy": 0.244279176201373
+    },
+    {
+     "weapon": "tf_projectile_pipe",
+     "kills": 20,
+     "dmg": 6492,
+     "accuracy": 0.25
+    },
+    {
+     "weapon": "nonnonviolent_protest",
+     "kills": 3,
+     "dmg": 325,
+     "accuracy": null
+    },
+    {
+     "weapon": "quickiebomb_launcher",
+     "kills": 1,
+     "dmg": 362,
+     "accuracy": 0.5454545454545454
+    },
+    {
+     "weapon": "fryingpan",
+     "kills": 1,
+     "dmg": 130,
+     "accuracy": null
+    },
+    {
+     "weapon": "battleaxe",
+     "kills": 1,
+     "dmg": 78,
+     "accuracy": null
+    },
+    {
+     "weapon": "tf_weapon_pipebomblauncher",
+     "kills": 0,
+     "dmg": 13908,
+     "accuracy": null
+    },
+    {
+     "weapon": "tf_weapon_grenadelauncher",
+     "kills": 0,
+     "dmg": 9090,
+     "accuracy": null
+    },
+    {
+     "weapon": "loose_cannon",
+     "kills": 0,
+     "dmg": 168,
+     "accuracy": null
+    },
+    {
+     "weapon": "saxxy",
+     "kills": 0,
+     "dmg": 130,
+     "accuracy": null
+    }
+   ],
+   "totals": {
+    "maps": 17,
+    "timeS": 18540,
+    "kills": 216,
+    "deaths": 224,
+    "assists": 94,
+    "dmg": 129169,
+    "dt": 102106,
+    "heal": 3334,
+    "ubers": 0,
+    "drops": 0,
+    "airshots": 1,
+    "headshots": 8,
+    "backstabs": 0,
+    "caps": 43,
+    "medkits": 150,
+    "medkitsHp": 4834,
+    "longestStreak": 10,
+    "advLost": 0,
+    "buildS": null,
+    "useS": null,
+    "rawTimeS": 18165,
+    "rawMaps": 16,
+    "openingKills": 22,
+    "openingDeaths": 17,
+    "firstPicks": 1,
+    "tradeKills": 92,
+    "tradedDeaths": 85,
+    "cleanupKills": 79,
+    "forces": 10,
+    "fightsPresent": 399,
+    "fightsKast": 331,
+    "impact": -0.15140000000000084,
+    "impactAttack": -0.033275,
+    "impactDefence": 0.10389999999999988,
+    "killsAttack": 31,
+    "deathsAttack": 31,
+    "killsDefence": 28,
+    "deathsDefence": 25,
+    "secsAttack": 2560,
+    "secsDefence": 2511,
+    "downKills": 90,
+    "multi2": 7,
+    "multi3": 3
+   }
+  },
+  {
+   "class": "scout",
+   "maps": 15,
+   "minutes": 228.95,
+   "headline": [
+    {
+     "key": "rating",
+     "value": 1.0213333333333334,
+     "average": 1.0,
+     "percentile": 52.90133333333335,
+     "verdict": "okay",
+     "lowerBetter": false
+    },
+    {
+     "key": "impact",
+     "value": 1.0611442103488475,
+     "average": 1.0,
+     "percentile": 76.18577075098814,
+     "verdict": "good",
+     "lowerBetter": false
+    },
+    {
+     "key": "kills_per30",
+     "value": 28.82725485913955,
+     "average": 24.025958952066457,
+     "percentile": 81.91699604743083,
+     "verdict": "good",
+     "lowerBetter": false
+    },
+    {
+     "key": "deaths_per30",
+     "value": 23.7169687704739,
+     "average": 22.56041227292507,
+     "percentile": 32.90513833992095,
+     "verdict": "okay",
+     "lowerBetter": true
+    },
+    {
+     "key": "dpm",
+     "value": 274.69316444638565,
+     "average": 247.23955248512763,
+     "percentile": 73.61660079051383,
+     "verdict": "good",
+     "lowerBetter": false
+    },
+    {
+     "key": "kast",
+     "value": 87.16981132075472,
+     "average": 85.70099876066264,
+     "percentile": 60.7707509881423,
+     "verdict": "okay",
+     "lowerBetter": false
+    }
+   ],
+   "attributes": [
+    {
+     "key": "firepower",
+     "score": 73.48484848484848,
+     "stats": [
+      {
+       "key": "kills_per30",
+       "value": 28.82725485913955,
+       "average": 24.025958952066457,
+       "percentile": 81.91699604743083,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "dpm",
+       "value": 274.69316444638565,
+       "average": 247.23955248512763,
+       "percentile": 73.61660079051383,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "kd",
+       "value": 1.2154696132596685,
+       "average": 1.1039557199983625,
+       "percentile": 64.9209486166008,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "opening",
+     "score": 79.54545454545455,
+     "stats": [
+      {
+       "key": "opening_kills_per30",
+       "value": 2.8304111958487304,
+       "average": 2.5552251131211987,
+       "percentile": 65.9090909090909,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "first_picks_per30",
+       "value": 0.5660822391697461,
+       "average": 0.2245162869698199,
+       "percentile": 95.15810276679841,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "opening_success",
+       "value": 0.5714285714285714,
+       "average": 0.4920173338001709,
+       "percentile": 77.5691699604743,
+       "verdict": "good",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "trading",
+     "score": 63.09288537549408,
+     "stats": [
+      {
+       "key": "trade_kills_per30",
+       "value": 9.623398065885683,
+       "average": 9.60454937693674,
+       "percentile": 50.09881422924901,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "traded_death_share",
+       "value": 0.3867403314917127,
+       "average": 0.3528618909046492,
+       "percentile": 76.08695652173914,
+       "verdict": "good",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "closing",
+     "score": 80.33596837944664,
+     "stats": [
+      {
+       "key": "cleanup_kills_per30",
+       "value": 13.869014859658778,
+       "average": 9.705292434430607,
+       "percentile": 91.40316205533597,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "down_kills_per30",
+       "value": 10.755562544225175,
+       "average": 8.886732342366997,
+       "percentile": 82.11462450592886,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "multi_kills_per30",
+       "value": 2.8304111958487304,
+       "average": 2.394311932787421,
+       "percentile": 67.4901185770751,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "survival",
+     "score": 39.69038208168643,
+     "stats": [
+      {
+       "key": "deaths_per30",
+       "value": 23.7169687704739,
+       "average": 22.56041227292507,
+       "percentile": 32.90513833992095,
+       "verdict": "okay",
+       "lowerBetter": true
+      },
+      {
+       "key": "dtm",
+       "value": 232.5660624590522,
+       "average": 216.69922887162312,
+       "percentile": 25.395256916996047,
+       "verdict": "poor",
+       "lowerBetter": true
+      },
+      {
+       "key": "kast",
+       "value": 87.16981132075472,
+       "average": 85.70099876066264,
+       "percentile": 60.7707509881423,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "impact",
+     "score": 81.12648221343873,
+     "stats": [
+      {
+       "key": "impact_per30",
+       "value": 0.34669706737951095,
+       "average": 0.07816520884299344,
+       "percentile": 76.18577075098814,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "forces_per30",
+       "value": 0.28304111958487305,
+       "average": 0.13085960289322285,
+       "percentile": 86.06719367588933,
+       "verdict": "good",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "objective",
+     "score": 48.91304347826087,
+     "stats": [
+      {
+       "key": "caps_per30",
+       "value": 5.2413190652981,
+       "average": 5.205566767668971,
+       "percentile": 48.91304347826087,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    }
+   ],
+   "vsDivisions": [
+    {
+     "tier": 2,
+     "division": "Mid",
+     "rating": 1.04,
+     "maps": 6
+    },
+    {
+     "tier": 4,
+     "division": "Open",
+     "rating": 0.875,
+     "maps": 2
+    }
+   ],
+   "attack": {
+    "killsPer30": 21.186856302108875,
+    "deathsPer30": 23.835213339872485,
+    "impactPer30": 0.057645904855321034,
+    "minutes": 33.983333333333334
+   },
+   "defence": {
+    "killsPer30": 29.076923076923077,
+    "deathsPer30": 16.615384615384617,
+    "impactPer30": 0.6243057692307694,
+    "minutes": 43.333333333333336
+   },
+   "downKills": 76,
+   "multi2": 17,
+   "multi3": 3,
+   "kast": 87.16981132075472,
+   "weapons": [
+    {
+     "weapon": "scattergun",
+     "kills": 162,
+     "dmg": 47549,
+     "accuracy": 0.657184894556155
+    },
+    {
+     "weapon": "force_a_nature",
+     "kills": 35,
+     "dmg": 9249,
+     "accuracy": 0.6363636363636364
+    },
+    {
+     "weapon": "bleed_kill",
+     "kills": 7,
+     "dmg": 0,
+     "accuracy": null
+    },
+    {
+     "weapon": "the_winger",
+     "kills": 5,
+     "dmg": 1046,
+     "accuracy": 0.2
+    },
+    {
+     "weapon": "world",
+     "kills": 5,
+     "dmg": 0,
+     "accuracy": null
+    },
+    {
+     "weapon": "pistol_scout",
+     "kills": 4,
+     "dmg": 785,
+     "accuracy": 0.19117647058823528
+    },
+    {
+     "weapon": "holymackerel",
+     "kills": 3,
+     "dmg": 448,
+     "accuracy": null
+    },
+    {
+     "weapon": "back_scatter",
+     "kills": 1,
+     "dmg": 320,
+     "accuracy": null
+    },
+    {
+     "weapon": "nonnonviolent_protest",
+     "kills": 1,
+     "dmg": 70,
+     "accuracy": null
+    },
+    {
+     "weapon": "wrap_assassin",
+     "kills": 0,
+     "dmg": 3251,
+     "accuracy": null
+    },
+    {
+     "weapon": "pep_brawlerblaster",
+     "kills": 0,
+     "dmg": 469,
+     "accuracy": 0.625
+    },
+    {
+     "weapon": "pep_pistol",
+     "kills": 0,
+     "dmg": 141,
+     "accuracy": null
+    }
+   ],
+   "totals": {
+    "maps": 15,
+    "timeS": 13737,
+    "kills": 220,
+    "deaths": 181,
+    "assists": 99,
+    "dmg": 62891,
+    "dt": 53246,
+    "heal": 8556,
+    "ubers": 0,
+    "drops": 0,
+    "airshots": 2,
+    "headshots": 5,
+    "backstabs": 0,
+    "caps": 40,
+    "medkits": 258,
+    "medkitsHp": 6139,
+    "longestStreak": 7,
+    "advLost": 0,
+    "buildS": null,
+    "useS": null,
+    "rawTimeS": 12719,
+    "rawMaps": 13,
+    "openingKills": 20,
+    "openingDeaths": 15,
+    "firstPicks": 4,
+    "tradeKills": 68,
+    "tradedDeaths": 70,
+    "cleanupKills": 98,
+    "forces": 2,
+    "fightsPresent": 265,
+    "fightsKast": 231,
+    "impact": 2.4497999999999998,
+    "impactAttack": 0.06529999999999977,
+    "impactDefence": 0.9017750000000002,
+    "killsAttack": 24,
+    "deathsAttack": 27,
+    "killsDefence": 42,
+    "deathsDefence": 24,
+    "secsAttack": 2039,
+    "secsDefence": 2600,
+    "downKills": 76,
+    "multi2": 17,
+    "multi3": 3
+   }
+  },
+  {
+   "class": "soldier",
+   "maps": 13,
+   "minutes": 273.0833333333333,
+   "headline": [
+    {
+     "key": "rating",
+     "value": 0.8119999999999999,
+     "average": 1.0,
+     "percentile": 24.43199999999999,
+     "verdict": "poor",
+     "lowerBetter": false
+    },
+    {
+     "key": "impact",
+     "value": 0.8684414653116969,
+     "average": 1.0,
+     "percentile": 7.0858283433133735,
+     "verdict": "poor",
+     "lowerBetter": false
+    },
+    {
+     "key": "kills_per30",
+     "value": 15.929203539823009,
+     "average": 24.007718963931236,
+     "percentile": 3.6926147704590817,
+     "verdict": "poor",
+     "lowerBetter": false
+    },
+    {
+     "key": "deaths_per30",
+     "value": 24.82758620689655,
+     "average": 25.47391240223035,
+     "percentile": 58.18363273453094,
+     "verdict": "okay",
+     "lowerBetter": true
+    },
+    {
+     "key": "dpm",
+     "value": 238.19835215135794,
+     "average": 335.7270017646589,
+     "percentile": 1.6966067864271457,
+     "verdict": "poor",
+     "lowerBetter": false
+    },
+    {
+     "key": "kast",
+     "value": 79.54545454545455,
+     "average": 83.43336814266186,
+     "percentile": 14.071856287425149,
+     "verdict": "poor",
+     "lowerBetter": false
+    }
+   ],
+   "attributes": [
+    {
+     "key": "firepower",
+     "score": 4.091816367265469,
+     "stats": [
+      {
+       "key": "kills_per30",
+       "value": 15.929203539823009,
+       "average": 24.007718963931236,
+       "percentile": 3.6926147704590817,
+       "verdict": "poor",
+       "lowerBetter": false
+      },
+      {
+       "key": "dpm",
+       "value": 238.19835215135794,
+       "average": 335.7270017646589,
+       "percentile": 1.6966067864271457,
+       "verdict": "poor",
+       "lowerBetter": false
+      },
+      {
+       "key": "kd",
+       "value": 0.6415929203539823,
+       "average": 0.9647346559178707,
+       "percentile": 6.88622754491018,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "opening",
+     "score": 43.113772455089816,
+     "stats": [
+      {
+       "key": "opening_kills_per30",
+       "value": 2.175062306472321,
+       "average": 2.7412788422958863,
+       "percentile": 22.45508982035928,
+       "verdict": "poor",
+       "lowerBetter": false
+      },
+      {
+       "key": "first_picks_per30",
+       "value": 0.40782418246356017,
+       "average": 0.27405112128080084,
+       "percentile": 77.9441117764471,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "opening_success",
+       "value": 0.42105263157894735,
+       "average": 0.469133732997093,
+       "percentile": 28.942115768463072,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "trading",
+     "score": 18.862275449101794,
+     "stats": [
+      {
+       "key": "trade_kills_per30",
+       "value": 8.156483649271204,
+       "average": 9.67481938438682,
+       "percentile": 18.862275449101794,
+       "verdict": "poor",
+       "lowerBetter": false
+      },
+      {
+       "key": "traded_death_share",
+       "value": 0.3274336283185841,
+       "average": 0.3658915987351024,
+       "percentile": 18.862275449101794,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "closing",
+     "score": 27.178975382568197,
+     "stats": [
+      {
+       "key": "cleanup_kills_per30",
+       "value": 5.437655766180802,
+       "average": 9.676105061251679,
+       "percentile": 4.8902195608782435,
+       "verdict": "poor",
+       "lowerBetter": false
+      },
+      {
+       "key": "down_kills_per30",
+       "value": 9.108073408352844,
+       "average": 8.94230512704162,
+       "percentile": 58.78243512974052,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "multi_kills_per30",
+       "value": 1.7672381240087607,
+       "average": 2.4968030747830294,
+       "percentile": 17.864271457085827,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "survival",
+     "score": 52.39520958083832,
+     "stats": [
+      {
+       "key": "deaths_per30",
+       "value": 24.82758620689655,
+       "average": 25.47391240223035,
+       "percentile": 58.18363273453094,
+       "verdict": "okay",
+       "lowerBetter": true
+      },
+      {
+       "key": "dtm",
+       "value": 252.53097345132744,
+       "average": 279.53036021040964,
+       "percentile": 84.93013972055888,
+       "verdict": "good",
+       "lowerBetter": true
+      },
+      {
+       "key": "kast",
+       "value": 79.54545454545455,
+       "average": 83.43336814266186,
+       "percentile": 14.071856287425149,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "impact",
+     "score": 45.009980039920165,
+     "stats": [
+      {
+       "key": "impact_per30",
+       "value": -0.5731866928479721,
+       "average": -0.08191992313041482,
+       "percentile": 7.0858283433133735,
+       "verdict": "poor",
+       "lowerBetter": false
+      },
+      {
+       "key": "forces_per30",
+       "value": 0.6797069707726002,
+       "average": 0.4446538412264078,
+       "percentile": 82.93413173652695,
+       "verdict": "good",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "airshots",
+     "score": 2.7944111776447107,
+     "stats": [
+      {
+       "key": "airshots_per30",
+       "value": 0.0,
+       "average": 0.973746367809262,
+       "percentile": 2.7944111776447107,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    }
+   ],
+   "vsDivisions": [
+    {
+     "tier": 2,
+     "division": "Mid",
+     "rating": 0.796,
+     "maps": 5
+    }
+   ],
+   "attack": null,
+   "defence": null,
+   "downKills": 67,
+   "multi2": 12,
+   "multi3": 1,
+   "kast": 79.54545454545455,
+   "weapons": [
+    {
+     "weapon": "tf_projectile_rocket",
+     "kills": 117,
+     "dmg": 54701,
+     "accuracy": 0.41416309012875535
+    },
+    {
+     "weapon": "quake_rl",
+     "kills": 28,
+     "dmg": 13920,
+     "accuracy": 0.4983277591973244
+    },
+    {
+     "weapon": "world",
+     "kills": 7,
+     "dmg": 0,
+     "accuracy": null
+    },
+    {
+     "weapon": "shotgun_soldier",
+     "kills": 2,
+     "dmg": 348,
+     "accuracy": 0.3333333333333333
+    },
+    {
+     "weapon": "unique_pickaxe_escape",
+     "kills": 1,
+     "dmg": 65,
+     "accuracy": null
+    },
+    {
+     "weapon": "blackbox",
+     "kills": 1,
+     "dmg": 0,
+     "accuracy": null
+    },
+    {
+     "weapon": "rocketlauncher_directhit",
+     "kills": 0,
+     "dmg": 422,
+     "accuracy": null
+    },
+    {
+     "weapon": "disciplinary_action",
+     "kills": 0,
+     "dmg": 98,
+     "accuracy": null
+    },
+    {
+     "weapon": "pickaxe",
+     "kills": 0,
+     "dmg": 65,
+     "accuracy": null
+    }
+   ],
+   "totals": {
+    "maps": 13,
+    "timeS": 16385,
+    "kills": 145,
+    "deaths": 226,
+    "assists": 52,
+    "dmg": 65048,
+    "dt": 68962,
+    "heal": 5332,
+    "ubers": 0,
+    "drops": 0,
+    "airshots": 0,
+    "headshots": 14,
+    "backstabs": 3,
+    "caps": 19,
+    "medkits": 319,
+    "medkitsHp": 10665,
+    "longestStreak": 9,
+    "advLost": 0,
+    "buildS": null,
+    "useS": null,
+    "rawTimeS": 13241,
+    "rawMaps": 10,
+    "openingKills": 16,
+    "openingDeaths": 22,
+    "firstPicks": 3,
+    "tradeKills": 60,
+    "tradedDeaths": 74,
+    "cleanupKills": 40,
+    "forces": 5,
+    "fightsPresent": 308,
+    "fightsKast": 245,
+    "impact": -4.216424999999999,
+    "impactAttack": -0.14515000000000003,
+    "impactDefence": -0.16675000000000006,
+    "killsAttack": 4,
+    "deathsAttack": 6,
+    "killsDefence": 1,
+    "deathsDefence": 4,
+    "secsAttack": 427,
+    "secsDefence": 428,
+    "downKills": 67,
+    "multi2": 12,
+    "multi3": 1
+   }
+  },
+  {
+   "class": "pyro",
+   "maps": 8,
+   "minutes": 186.73333333333332,
+   "headline": [
+    {
+     "key": "rating",
+     "value": 1.1019999999999999,
+     "average": 1.0,
+     "percentile": 63.871999999999986,
+     "verdict": "good",
+     "lowerBetter": false
+    },
+    {
+     "key": "impact",
+     "value": 1.0054494680755812,
+     "average": 1.0,
+     "percentile": 53.81471389645777,
+     "verdict": "okay",
+     "lowerBetter": false
+    },
+    {
+     "key": "kills_per30",
+     "value": 16.547661549446627,
+     "average": 16.830134379218464,
+     "percentile": 47.002724795640326,
+     "verdict": "okay",
+     "lowerBetter": false
+    },
+    {
+     "key": "deaths_per30",
+     "value": 18.796858264905392,
+     "average": 18.626215691950666,
+     "percentile": 42.91553133514986,
+     "verdict": "okay",
+     "lowerBetter": true
+    },
+    {
+     "key": "dpm",
+     "value": 164.78579078900393,
+     "average": 173.21453952158706,
+     "percentile": 39.91825613079019,
+     "verdict": "okay",
+     "lowerBetter": false
+    },
+    {
+     "key": "kast",
+     "value": 87.5,
+     "average": 88.24457528014163,
+     "percentile": 32.561307901907355,
+     "verdict": "okay",
+     "lowerBetter": false
+    }
+   ],
+   "attributes": [
+    {
+     "key": "firepower",
+     "score": 43.55131698455949,
+     "stats": [
+      {
+       "key": "kills_per30",
+       "value": 16.547661549446627,
+       "average": 16.830134379218464,
+       "percentile": 47.002724795640326,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "dpm",
+       "value": 164.78579078900393,
+       "average": 173.21453952158706,
+       "percentile": 39.91825613079019,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "kd",
+       "value": 0.8803418803418803,
+       "average": 0.9465401635497681,
+       "percentile": 43.73297002724796,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "opening",
+     "score": 46.00363306085376,
+     "stats": [
+      {
+       "key": "opening_kills_per30",
+       "value": 1.0180995475113122,
+       "average": 1.5464948412537436,
+       "percentile": 15.39509536784741,
+       "verdict": "poor",
+       "lowerBetter": false
+      },
+      {
+       "key": "first_picks_per30",
+       "value": 0.25452488687782804,
+       "average": 0.11665153536335414,
+       "percentile": 87.32970027247956,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "opening_success",
+       "value": 0.4444444444444444,
+       "average": 0.4733889041625275,
+       "percentile": 35.28610354223433,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "trading",
+     "score": 23.024523160762943,
+     "stats": [
+      {
+       "key": "trade_kills_per30",
+       "value": 7.126696832579186,
+       "average": 7.473651546155487,
+       "percentile": 44.27792915531335,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "traded_death_share",
+       "value": 0.28205128205128205,
+       "average": 0.4360781694764471,
+       "percentile": 1.7711171662125342,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "closing",
+     "score": 60.71752951861944,
+     "stats": [
+      {
+       "key": "cleanup_kills_per30",
+       "value": 9.671945701357465,
+       "average": 6.538692294453086,
+       "percentile": 94.4141689373297,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "down_kills_per30",
+       "value": 5.345022624434389,
+       "average": 6.702659467511807,
+       "percentile": 20.844686648501362,
+       "verdict": "poor",
+       "lowerBetter": false
+      },
+      {
+       "key": "multi_kills_per30",
+       "value": 1.7816742081447965,
+       "average": 1.5524434487299112,
+       "percentile": 66.89373297002726,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "survival",
+     "score": 54.63215258855586,
+     "stats": [
+      {
+       "key": "deaths_per30",
+       "value": 18.796858264905392,
+       "average": 18.626215691950666,
+       "percentile": 42.91553133514986,
+       "verdict": "okay",
+       "lowerBetter": true
+      },
+      {
+       "key": "dtm",
+       "value": 242.3402356301321,
+       "average": 281.1487781371057,
+       "percentile": 88.41961852861036,
+       "verdict": "good",
+       "lowerBetter": true
+      },
+      {
+       "key": "kast",
+       "value": 87.5,
+       "average": 88.24457528014163,
+       "percentile": 32.561307901907355,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "impact",
+     "score": 37.39782016348774,
+     "stats": [
+      {
+       "key": "impact_per30",
+       "value": -0.009054722850678711,
+       "average": -0.0618183838965533,
+       "percentile": 53.81471389645777,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "forces_per30",
+       "value": 0.0,
+       "average": 0.09378606985278878,
+       "percentile": 20.98092643051771,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "support",
+     "score": 10.762942779291553,
+     "stats": [
+      {
+       "key": "assists_per30",
+       "value": 9.800071403070332,
+       "average": 13.320591170686033,
+       "percentile": 10.762942779291553,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    }
+   ],
+   "vsDivisions": [],
+   "attack": null,
+   "defence": {
+    "killsPer30": 29.548563611491108,
+    "deathsPer30": 4.924760601915184,
+    "impactPer30": 1.4457250341997265,
+    "minutes": 12.183333333333334
+   },
+   "downKills": 21,
+   "multi2": 6,
+   "multi3": 1,
+   "kast": 87.5,
+   "weapons": [
+    {
+     "weapon": "flamethrower",
+     "kills": 49,
+     "dmg": 11519,
+     "accuracy": null
+    },
+    {
+     "weapon": "degreaser",
+     "kills": 31,
+     "dmg": 7449,
+     "accuracy": null
+    },
+    {
+     "weapon": "shotgun_pyro",
+     "kills": 9,
+     "dmg": 3668,
+     "accuracy": 0.7692307692307693
+    },
+    {
+     "weapon": "scorch_shot",
+     "kills": 5,
+     "dmg": 4284,
+     "accuracy": null
+    },
+    {
+     "weapon": "flaregun",
+     "kills": 2,
+     "dmg": 1020,
+     "accuracy": null
+    },
+    {
+     "weapon": "deflect_rocket",
+     "kills": 2,
+     "dmg": 624,
+     "accuracy": null
+    },
+    {
+     "weapon": "loose_cannon_reflect",
+     "kills": 2,
+     "dmg": 140,
+     "accuracy": null
+    },
+    {
+     "weapon": "deflect_promode",
+     "kills": 1,
+     "dmg": 506,
+     "accuracy": null
+    },
+    {
+     "weapon": "dragons_fury",
+     "kills": 1,
+     "dmg": 204,
+     "accuracy": null
+    },
+    {
+     "weapon": "world",
+     "kills": 1,
+     "dmg": 0,
+     "accuracy": null
+    },
+    {
+     "weapon": "blackbox",
+     "kills": 0,
+     "dmg": 510,
+     "accuracy": null
+    },
+    {
+     "weapon": "detonator",
+     "kills": 0,
+     "dmg": 432,
+     "accuracy": null
+    },
+    {
+     "weapon": "sniperrifle",
+     "kills": 0,
+     "dmg": 150,
+     "accuracy": 0.5
+    },
+    {
+     "weapon": "tf_projectile_energy_ball",
+     "kills": 0,
+     "dmg": 144,
+     "accuracy": null
+    },
+    {
+     "weapon": "powerjack",
+     "kills": 0,
+     "dmg": 130,
+     "accuracy": null
+    },
+    {
+     "weapon": "loose_cannon_impact",
+     "kills": 0,
+     "dmg": 100,
+     "accuracy": null
+    },
+    {
+     "weapon": "tf_projectile_pipe",
+     "kills": 0,
+     "dmg": 41,
+     "accuracy": null
+    }
+   ],
+   "totals": {
+    "maps": 8,
+    "timeS": 11204,
+    "kills": 103,
+    "deaths": 117,
+    "assists": 61,
+    "dmg": 30771,
+    "dt": 45253,
+    "heal": 60033,
+    "ubers": 0,
+    "drops": 0,
+    "airshots": 0,
+    "headshots": 0,
+    "backstabs": 0,
+    "caps": 14,
+    "medkits": 139,
+    "medkitsHp": 4537,
+    "longestStreak": 10,
+    "advLost": 0,
+    "buildS": null,
+    "useS": null,
+    "rawTimeS": 7072,
+    "rawMaps": 5,
+    "openingKills": 4,
+    "openingDeaths": 5,
+    "firstPicks": 1,
+    "tradeKills": 28,
+    "tradedDeaths": 33,
+    "cleanupKills": 38,
+    "forces": 0,
+    "fightsPresent": 152,
+    "fightsKast": 133,
+    "impact": -0.03557499999999991,
+    "impactAttack": 0.3602750000000001,
+    "impactDefence": 0.587125,
+    "killsAttack": 7,
+    "deathsAttack": 1,
+    "killsDefence": 12,
+    "deathsDefence": 2,
+    "secsAttack": 429,
+    "secsDefence": 731,
+    "downKills": 21,
+    "multi2": 6,
+    "multi3": 1
+   }
+  },
+  {
+   "class": "heavy",
+   "maps": 6,
+   "minutes": 153.65,
+   "headline": [
+    {
+     "key": "rating",
+     "value": 1.0166666666666666,
+     "average": 1.0,
+     "percentile": 52.26666666666666,
+     "verdict": "okay",
+     "lowerBetter": false
+    },
+    {
+     "key": "impact",
+     "value": 0.9771592810107652,
+     "average": 1.0,
+     "percentile": 38.21428571428571,
+     "verdict": "okay",
+     "lowerBetter": false
+    },
+    {
+     "key": "kills_per30",
+     "value": 23.820370972990563,
+     "average": 23.164769266626674,
+     "percentile": 56.30952380952381,
+     "verdict": "okay",
+     "lowerBetter": false
+    },
+    {
+     "key": "deaths_per30",
+     "value": 21.67263260657338,
+     "average": 20.2538494194834,
+     "percentile": 31.785714285714278,
+     "verdict": "okay",
+     "lowerBetter": true
+    },
+    {
+     "key": "dpm",
+     "value": 312.1640091116173,
+     "average": 273.670097073514,
+     "percentile": 83.69047619047619,
+     "verdict": "good",
+     "lowerBetter": false
+    },
+    {
+     "key": "kast",
+     "value": 87.4439461883408,
+     "average": 87.6483400816529,
+     "percentile": 45.11904761904762,
+     "verdict": "okay",
+     "lowerBetter": false
+    }
+   ],
+   "attributes": [
+    {
+     "key": "firepower",
+     "score": 61.230158730158735,
+     "stats": [
+      {
+       "key": "kills_per30",
+       "value": 23.820370972990563,
+       "average": 23.164769266626674,
+       "percentile": 56.30952380952381,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "dpm",
+       "value": 312.1640091116173,
+       "average": 273.670097073514,
+       "percentile": 83.69047619047619,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "kd",
+       "value": 1.0990990990990992,
+       "average": 1.1798566292928088,
+       "percentile": 43.69047619047619,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "opening",
+     "score": 15.396825396825397,
+     "stats": [
+      {
+       "key": "opening_kills_per30",
+       "value": 1.561991539212496,
+       "average": 2.211316366654121,
+       "percentile": 15.357142857142858,
+       "verdict": "poor",
+       "lowerBetter": false
+      },
+      {
+       "key": "first_picks_per30",
+       "value": 0.0,
+       "average": 0.16476635897501643,
+       "percentile": 13.095238095238097,
+       "verdict": "poor",
+       "lowerBetter": false
+      },
+      {
+       "key": "opening_success",
+       "value": 0.42105263157894735,
+       "average": 0.5205520725802648,
+       "percentile": 17.738095238095237,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "trading",
+     "score": 64.52380952380952,
+     "stats": [
+      {
+       "key": "trade_kills_per30",
+       "value": 12.69118125610153,
+       "average": 9.664270428748495,
+       "percentile": 92.73809523809524,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "traded_death_share",
+       "value": 0.38738738738738737,
+       "average": 0.4030947916423653,
+       "percentile": 36.30952380952381,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "closing",
+     "score": 52.023809523809526,
+     "stats": [
+      {
+       "key": "cleanup_kills_per30",
+       "value": 8.78620240807029,
+       "average": 9.356589137535977,
+       "percentile": 46.54761904761905,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "down_kills_per30",
+       "value": 10.543442889684348,
+       "average": 8.79287088587635,
+       "percentile": 83.92857142857143,
+       "verdict": "good",
+       "lowerBetter": false
+      },
+      {
+       "key": "multi_kills_per30",
+       "value": 2.147738366417182,
+       "average": 2.932783950958216,
+       "percentile": 25.595238095238095,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "survival",
+     "score": 27.34126984126984,
+     "stats": [
+      {
+       "key": "deaths_per30",
+       "value": 21.67263260657338,
+       "average": 20.2538494194834,
+       "percentile": 31.785714285714278,
+       "verdict": "okay",
+       "lowerBetter": true
+      },
+      {
+       "key": "dtm",
+       "value": 528.0702896192646,
+       "average": 451.04714916084106,
+       "percentile": 5.11904761904762,
+       "verdict": "poor",
+       "lowerBetter": true
+      },
+      {
+       "key": "kast",
+       "value": 87.4439461883408,
+       "average": 87.6483400816529,
+       "percentile": 45.11904761904762,
+       "verdict": "okay",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "impact",
+     "score": 29.82142857142857,
+     "stats": [
+      {
+       "key": "impact_per30",
+       "value": 0.05683696713309482,
+       "average": 0.14745313586139852,
+       "percentile": 38.21428571428571,
+       "verdict": "okay",
+       "lowerBetter": false
+      },
+      {
+       "key": "forces_per30",
+       "value": 0.0,
+       "average": 0.08297372845326913,
+       "percentile": 21.428571428571427,
+       "verdict": "poor",
+       "lowerBetter": false
+      }
+     ]
+    },
+    {
+     "key": "support",
+     "score": 82.97619047619048,
+     "stats": [
+      {
+       "key": "assists_per30",
+       "value": 15.229417507321836,
+       "average": 13.216645649134039,
+       "percentile": 82.97619047619048,
+       "verdict": "good",
+       "lowerBetter": false
+      }
+     ]
+    }
+   ],
+   "vsDivisions": [
+    {
+     "tier": 2,
+     "division": "Mid",
+     "rating": 0.958,
+     "maps": 5
+    }
+   ],
+   "attack": {
+    "killsPer30": 22.25886232481451,
+    "deathsPer30": 19.29101401483924,
+    "impactPer30": 0.25363973619126173,
+    "minutes": 20.216666666666665
+   },
+   "defence": {
+    "killsPer30": 10.26615969581749,
+    "deathsPer30": 20.53231939163498,
+    "impactPer30": -0.5200665399239545,
+    "minutes": 17.533333333333335
+   },
+   "downKills": 54,
+   "multi2": 9,
+   "multi3": 2,
+   "kast": 87.4439461883408,
+   "weapons": [
+    {
+     "weapon": "tomislav",
+     "kills": 79,
+     "dmg": 31736,
+     "accuracy": null
+    },
+    {
+     "weapon": "minigun",
+     "kills": 46,
+     "dmg": 17515,
+     "accuracy": null
+    },
+    {
+     "weapon": "world",
+     "kills": 3,
+     "dmg": 0,
+     "accuracy": null
+    },
+    {
+     "weapon": "steel_fists",
+     "kills": 1,
+     "dmg": 260,
+     "accuracy": null
+    }
+   ],
+   "totals": {
+    "maps": 6,
+    "timeS": 9219,
+    "kills": 122,
+    "deaths": 111,
+    "assists": 78,
+    "dmg": 47964,
+    "dt": 81138,
+    "heal": 16361,
+    "ubers": 4,
+    "drops": 0,
+    "airshots": 0,
+    "headshots": 0,
+    "backstabs": 0,
+    "caps": 27,
+    "medkits": 61,
+    "medkitsHp": 2322,
+    "longestStreak": 8,
+    "advLost": 1,
+    "buildS": 67.0,
+    "useS": 22.5,
+    "rawTimeS": 9219,
+    "rawMaps": 6,
+    "openingKills": 8,
+    "openingDeaths": 11,
+    "firstPicks": 0,
+    "tradeKills": 65,
+    "tradedDeaths": 43,
+    "cleanupKills": 45,
+    "forces": 0,
+    "fightsPresent": 223,
+    "fightsKast": 195,
+    "impact": 0.29110000000000064,
+    "impactAttack": 0.17092500000000027,
+    "impactDefence": -0.30395000000000005,
+    "killsAttack": 15,
+    "deathsAttack": 13,
+    "killsDefence": 6,
+    "deathsDefence": 12,
+    "secsAttack": 1213,
+    "secsDefence": 1052,
+    "downKills": 54,
+    "multi2": 9,
+    "multi3": 2
+   }
+  }
+ ]
+}

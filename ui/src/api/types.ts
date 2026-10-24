@@ -480,7 +480,11 @@ export interface Medal {
   how: string;
 }
 
-/** An event's MVP: per class from the Grand Final, or the event's own. */
+/**
+ * A season award (the MVP research, October 2026): the Season MVP (the
+ * champions' best), an EVP (one of the division's best seasons, any team),
+ * or the best of a class (the top of its season table).
+ */
 export interface Mvp {
   season: number;
   seasonName: string;
@@ -489,10 +493,18 @@ export interface Mvp {
   class: string;
   accountId: number;
   team: CatTeam;
+  /** Their team won the division. */
   won: boolean;
+  /** The Season MVP. */
   event: boolean;
+  kind: "season" | "evp" | "class";
+  /** What decided it: the Season MVP's blend, else the season rating. */
   score: number;
-  finalRating: number;
+  /** Every official on the class, playoffs 1.5x and the final 2x, pulled towards 1.00. */
+  seasonRating: number;
+  officials: number;
+  seasonMaps: number;
+  finalRating: number | null;
   /** Logs of the final: one per KOTH round, one per stopwatch half. */
   finalMaps: number;
   playoffsRating: number | null;
@@ -2202,8 +2214,13 @@ export interface Podium {
   division: string;
   tier: number | null;
   medals: PodiumPlace[];
+  /** The Season MVP. */
   mvp: Mvp | null;
   mvpName: string | null;
+  /** The EVPs and the best of each class, with names. */
+  awards?: [Mvp, string][];
+  /** Another playoff bracket of the same division holds them. */
+  awardsWith?: string | null;
 }
 
 export interface TeamSeason {
@@ -2489,4 +2506,160 @@ export interface LeagueCatchUp {
   searched: number;
   rated: number;
   done: boolean;
+}
+
+// ---- Season rankings and the deeper profile (the MVP research, October 2026)
+
+/** Everything summed over a player's logs on one class. */
+export interface StatTotals {
+  maps: number;
+  timeS: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  dmg: number;
+  dt: number;
+  heal: number;
+  ubers: number;
+  drops: number;
+  airshots: number;
+  headshots: number;
+  backstabs: number;
+  caps: number;
+  medkits: number;
+  medkitsHp: number;
+  longestStreak: number;
+  advLost: number;
+  buildS: number | null;
+  useS: number | null;
+  /** Seconds and maps with a server log, which the next numbers come from. */
+  rawTimeS: number;
+  rawMaps: number;
+  openingKills: number;
+  openingDeaths: number;
+  firstPicks: number;
+  tradeKills: number;
+  tradedDeaths: number;
+  cleanupKills: number;
+  forces: number;
+  fightsPresent: number;
+  fightsKast: number;
+  impact: number;
+  impactAttack: number;
+  impactDefence: number;
+  killsAttack: number;
+  deathsAttack: number;
+  killsDefence: number;
+  deathsDefence: number;
+  secsAttack: number;
+  secsDefence: number;
+  downKills: number;
+  multi2: number;
+  multi3: number;
+}
+
+export interface SeasonRow {
+  /** From 3 officials; null below, listed after. */
+  rank: number | null;
+  accountId: number;
+  name: string;
+  team: CatTeam | null;
+  officials: number;
+  /** Rated maps (logs) in the stage shown. */
+  maps: number;
+  /** Enough officials and a playoff place: may take the class award. */
+  eligible: boolean;
+  /** The average strength of the teams faced, which the rating is adjusted for. */
+  opponents?: number | null;
+  /** The season rating (ranks and awards) and the plain average. */
+  rating: number;
+  average: number;
+  /** On the rating's scale, and per 30 minutes. */
+  impact: number | null;
+  impactPer30: number | null;
+  awards: ("season" | "evp" | "class")[];
+  totals: StatTotals;
+}
+
+export interface SeasonTable {
+  season: number;
+  seasonName: string;
+  tier: number;
+  division: string;
+  class: string;
+  stage: "all" | "regular" | "playoffs";
+  seasons: [number, string][];
+  divisions: [number, string][];
+  rows: SeasonRow[];
+  impactScale: { mean: number; sd: number };
+  /** What the class award asks: officials on the class, and a playoff place. */
+  awardOfficials: number;
+  playoffsRequired: boolean;
+}
+
+/** A number on a profile with the class average, a percentile and a verdict. */
+export interface DeepStat {
+  key: string;
+  value: number;
+  average: number;
+  percentile: number;
+  verdict: "good" | "okay" | "poor";
+  lowerBetter: boolean;
+}
+
+export interface DeepAttribute {
+  key: string;
+  score: number;
+  stats: DeepStat[];
+}
+
+export interface DeepSide {
+  killsPer30: number | null;
+  deathsPer30: number | null;
+  impactPer30: number | null;
+  minutes: number;
+}
+
+export interface ClassDeep {
+  class: string;
+  maps: number;
+  minutes: number;
+  headline: DeepStat[];
+  attributes: DeepAttribute[];
+  vsDivisions: { tier: number; division: string; rating: number; maps: number }[];
+  attack: DeepSide | null;
+  defence: DeepSide | null;
+  downKills: number;
+  multi2: number;
+  multi3: number;
+  kast: number | null;
+  weapons: { weapon: string; kills: number; dmg: number; accuracy: number | null }[];
+  totals: StatTotals;
+}
+
+export interface PlayerDeep {
+  accountId: number;
+  classes: ClassDeep[];
+}
+
+/** One thing the season data check found (data_audit.rs). */
+export interface DataIssue {
+  severity: "error" | "warn" | "info";
+  code: string;
+  matchId: number;
+  division: string;
+  tier: number | null;
+  round: string;
+  teams: string;
+  detail: string;
+  logs: number[];
+}
+
+export interface DataReport {
+  season: number;
+  officials: number;
+  logs: number;
+  clean: number;
+  byCode: Record<string, number>;
+  issues: DataIssue[];
 }

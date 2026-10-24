@@ -269,11 +269,23 @@ ours   = [1, 1, 1, 1, 1, 1, 1, 0.75, 0.5]
 # The fit wanted deaths at 0.35; held to half the model (0.30 + 0.20), the
 # 0.05 going to kills. Flank deaths and valued kills are gone: with 6x the
 # matchups they add nothing deaths and impact kills do not already say.
+# v12 (Flashy, 22 Oct 2026): every model is half round impact -- the
+# round-win chance each kill added and each death gave away, measured on 1.2
+# million league kills (round_impact.rs) -- and half what it was, with deaths
+# counting half as much outside the Medic's (a Medic's death is the uber).
+# The weight deaths gave up went to kills and damage: a Sniper who takes more
+# fights and dies more doing it is the proactive one (Flashy: S31 Low, more
+# kills, damage and impact than the Sniper rated above him). Picks the next
+# map's winner as well as v11 did (58.0% against 58.0% for Snipers, within
+# a point for every class); it stops paying for not taking fights.
 [model.sniper]
-impact_kills     = 0.375
-deaths           = 0.30
-untraded         = 0.125
-untraded_deaths  = 0.20
+impact_kills    = 0.5
+deaths          = 0.15
+deaths_attack_defend = 0.05   # v13: a Sniper's payload death costs a third of a KOTH one
+untraded        = 0.125
+untraded_deaths = 0.1
+dpm             = 0.125
+round_impact    = 1.0
 
 # Cross-validated 74.5%, against 70.7% on `generic`.
 #
@@ -286,23 +298,29 @@ untraded_deaths  = 0.20
 # before / after S34) 76.8 / 77.1 / 76.2 against 75.6 / 76.3 / 74.2 on the same matchups.
 # Flat caps, not contested ones, in the league: a Scout's cap is a Scout's cap.
 [model.scout]
-impact_kills     = 0.15
-impact_assists   = 0.15
-medic_picks      = 0.05
-caps             = 0.10
-deaths           = 0.20
-untraded         = 0.05
-untraded_deaths  = 0.10
+impact_kills    = 0.225
+impact_assists  = 0.15
+medic_picks     = 0.05
+caps            = 0.1
+deaths          = 0.1
+deaths_attack_defend = 0.1
+untraded        = 0.05
+untraded_deaths = 0.05
+dpm             = 0.075
+round_impact    = 0.8
 
 # Cross-validated 73.2%, against 72.2% on `generic` -- the smallest gain of
 # the nine, and the plainest model. The Soldier's contribution to winning is
 # the ordinary one: kill people, set up kills, stay up. Nothing class-shaped
 # survived the fit, and nothing was added to make the table look fuller.
 [model.soldier]
-impact_kills    = 0.35
-impact_assists  = 0.20
-deaths          = 0.20
-untraded_deaths = 0.25
+impact_kills    = 0.4625
+impact_assists  = 0.2
+deaths          = 0.1
+deaths_attack_defend = 0.1
+untraded_deaths = 0.125
+dpm             = 0.1125
+round_impact    = 1.0
 
 # Cross-validated 78.0%, against 73.5% on `generic` -- the largest gain of
 # the nine, and the clearest case for Q8 existing at all. A Pyro rated on
@@ -315,11 +333,14 @@ untraded_deaths = 0.25
 # before / after S34) 77.3 / 77.1 / 77.8 against 76.8 / 76.4 / 77.6 on the same matchups.
 # Assists still as heavy as kills; contested caps give way to the spawn cost.
 [model.pyro]
-impact_kills     = 0.19
-impact_assists   = 0.19
-medic_picks      = 0.12
-deaths           = 0.33
-untraded_deaths  = 0.17
+impact_kills    = 0.315
+impact_assists  = 0.19
+medic_picks     = 0.12
+deaths          = 0.165
+deaths_attack_defend = 0.165
+untraded_deaths = 0.085
+dpm             = 0.125
+round_impact    = 1.0
 
 # Cross-validated 75.6%, against 72.0% on `generic`.
 #
@@ -334,12 +355,15 @@ untraded_deaths  = 0.17
 # The shared swing stays, smaller; Fight KAST engaged and flank deaths add
 # nothing over the league's matchups.
 [model.demoman]
-impact_kills       = 0.20
+impact_kills       = 0.3125
 impact_assists     = 0.15
-deaths             = 0.35
+deaths             = 0.175
+deaths_attack_defend = 0.175
 untraded           = 0.05
-untraded_deaths    = 0.10
+untraded_deaths    = 0.05
 fight_swing_shared = 0.05
+dpm                = 0.1125
+round_impact       = 0.9
 
 # Cross-validated 76.8%, against 72.0% on `generic`.
 #
@@ -355,10 +379,13 @@ fight_swing_shared = 0.05
 # league says a Heavy who stays up and feeds his team's kills wins.
 # v11 (4 Oct 2026): kills in context out; impact kills already value them.
 [model.heavy]
-impact_kills     = 0.29
-impact_assists   = 0.21
-deaths           = 0.33
-untraded_deaths  = 0.17
+impact_kills    = 0.415
+impact_assists  = 0.21
+deaths          = 0.165
+deaths_attack_defend = 0.165
+untraded_deaths = 0.085
+dpm             = 0.125
+round_impact    = 1.0
 
 # Cross-validated 73.4%, against 71.8% on `generic`.
 #
@@ -376,13 +403,16 @@ untraded_deaths  = 0.17
 # before / after S34) 77.2 / 77.6 / 76.2 against 74.9 / 75.4 / 73.9 on the same matchups.
 # Still the class a log reads worst (no sentry damage, no teleporters).
 [model.engineer]
-impact_kills       = 0.15
+impact_kills       = 0.2375
 impact_assists     = 0.15
-deaths             = 0.30
+deaths             = 0.15
+deaths_attack_defend = 0.15
 untraded           = 0.05
-untraded_deaths    = 0.05
+untraded_deaths    = 0.025
 caps_contested     = 0.05
-fight_swing_shared = 0.10
+fight_swing_shared = 0.1
+dpm                = 0.0875
+round_impact       = 0.85
 
 # Cross-validated 75.4%, against 71.1% for the old hand-written model and
 # 62.6% on `generic` -- the class `generic` failed hardest, which is what you
@@ -402,12 +432,15 @@ fight_swing_shared = 0.10
 # better without them; drops are the game's own verdict on a Medic and stay
 # by the same judgement as above (Flashy: "an integral part of the game").
 [model.medic]
-impact_assists  = 0.14
-heal            = 0.22
-drops           = 0.10
+impact_assists = 0.14
+heal           = 0.22
+drops          = 0.1
+# Half the model, the other half being the rest below too.
+round_impact   = 1.0
 # Q17: captures weighed by enemies alive. See [model.scout].
 caps_contested  = 0.14
 deaths          = 0.25
+deaths_attack_defend = 0.25
 untraded_deaths = 0.15
 
 # Cross-validated 72.9%, against 71.0% for the old hand-written model -- and
@@ -436,23 +469,27 @@ untraded_deaths = 0.15
 # v11 (4 Oct 2026): deaths out. A Spy's death that is traded is part of the
 # job; the untraded ones stay. The rest rescales in proportion.
 [model.spy]
-impact_kills       = 0.25
-impact_assists     = 0.10
-medic_picks        = 0.10
-untraded           = 0.10
-untraded_deaths    = 0.15
-fight_kast_engaged = 0.10
+impact_kills       = 0.2875
+impact_assists     = 0.1
+medic_picks        = 0.1
+untraded           = 0.1
+untraded_deaths    = 0.075
+fight_kast_engaged = 0.1
+dpm                = 0.0375
+round_impact       = 0.8
 
 # The fallback, for a class with no model of its own. Every class has one as
 # of Q8, so nothing reads this today -- it stays because a weights file is
 # allowed to leave a class out, and because it is the bar each of the nine
 # above had to clear.
 [model.generic]
-impact_kills   = 0.35
-dpm            = 0.20
-deaths         = 0.20
+impact_kills   = 0.4
+dpm            = 0.25
+deaths         = 0.1
+deaths_attack_defend = 0.1
 impact_assists = 0.15
-caps           = 0.10
+caps           = 0.1
+round_impact   = 1.0
 
 [swing]
 # From `hl situation --swing`: winning the fight, 194025 kills in 737 logs.

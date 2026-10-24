@@ -1,0 +1,66 @@
+Rated performances: v12 110819, v13 110819
+
+1. Predicting the next map: the side whose player had the better form (last 15 maps on the class) won
+   class       v12     v13    maps
+   scout       58.5%   58.5%    2566
+   soldier     57.7%   57.7%    2742
+   pyro        57.0%   57.0%    3346
+   demoman     60.2%   60.2%    3307
+   heavy       60.1%   60.2%    3085
+   engineer    58.6%   58.5%    3349
+   medic       59.3%   59.3%    3068
+   sniper      58.6%   58.5%    3345
+   spy         57.5%   57.5%    3619
+   all         58.6%   58.6%   28427
+
+2. Describing the map played: the side whose player rated higher won it
+   v12: 77.7% of 54117 class match-ups
+   v13: 77.7% of 54106 class match-ups
+
+3. What drives each version (correlation with the rating, Snipers / all classes)
+   sniper  v12: kills/30 +0.80   deaths/30 -0.65   damage/min +0.70
+   sniper  v13: kills/30 +0.81   deaths/30 -0.63   damage/min +0.71
+   all     v12: kills/30 +0.54   deaths/30 -0.50   damage/min +0.32
+   all     v13: kills/30 +0.54   deaths/30 -0.50   damage/min +0.32
+
+4. Season ratings that moved most (by official, 6+ officials on the class, playoffs 1.5x, final 2x, pulled to 1.00 by two)
+   1575 player seasons; median change -0.001; within ±0.03: 100%
+   Up most:
+     +0.013  YsEn             S36 Low          sniper    1.13 -> 1.14 (6 officials)
+     +0.011  laiky            S34 Premiership  sniper    1.14 -> 1.15 (7 officials)
+     +0.010  veatut           S29 Low          sniper    1.16 -> 1.17 (7 officials)
+     +0.010  Aaron            S35 Low          sniper    1.18 -> 1.19 (8 officials)
+     +0.009  chocolate        S30 Division 2   sniper    1.08 -> 1.09 (6 officials)
+     +0.009  Morbus           S24 Low          sniper    0.96 -> 0.97 (6 officials)
+     +0.009  wicc             S35 Open         sniper    1.21 -> 1.22 (6 officials)
+     +0.008  Jamaal           S27 Open         sniper    1.03 -> 1.04 (6 officials)
+     +0.008  mellz            S28 Open         sniper    1.17 -> 1.18 (8 officials)
+     +0.008  Wattseyy         S27 Open         sniper    1.10 -> 1.11 (7 officials)
+     +0.008  piro             S25 Low          sniper    1.04 -> 1.05 (6 officials)
+     +0.007  Fluffy           S27 Open         sniper    1.05 -> 1.06 (7 officials)
+   Down most:
+     -0.004  broken           S27 Premiership  sniper    0.97 -> 0.96 (9 officials)
+     -0.005  emil             S34 Mid          sniper    1.07 -> 1.07 (6 officials)
+     -0.005  nitro            S34 High         sniper    0.97 -> 0.96 (7 officials)
+     -0.005  Mealvy           S36 Open         medic     1.03 -> 1.03 (7 officials)
+     -0.005  Norbi            S28 Premiership  sniper    0.96 -> 0.95 (6 officials)
+     -0.005  Yupsilon         S27 Mid          soldier   1.06 -> 1.05 (6 officials)
+     -0.005  wyser            S36 Premiership  sniper    1.03 -> 1.02 (7 officials)
+     -0.005  Fry_Friday       S36 Mid          medic     1.13 -> 1.13 (6 officials)
+     -0.005  Icey             S36 Open         medic     1.04 -> 1.04 (6 officials)
+     -0.006  Shud             S36 Low          sniper    0.94 -> 0.94 (6 officials)
+     -0.006  Sabre            S24 Mid          sniper    1.10 -> 1.09 (7 officials)
+     -0.007  lelopom          S36 Mid          sniper    0.98 -> 0.97 (6 officials)
+
+5. Awards, v12 against v13 (hl mvp --json; season tables and awards now opponent-adjusted, pulled by 3)
+   season: 6 of 80 change
+     S36 Premiership  DelT -> laiky
+     S33 Mid          def -> dicksauce
+     S31 Open         Burbie -> SPASP-12
+     S30 Division 5   tenshi -> Naxeron
+     S29 Low          2Suicides -> veatut
+     S29 Mid          toco -> asura
+   class: 60 of 618 change
+   EVPs: 257 of 307 the same players
+
+   S31 Low best Sniper: Flashy -> Deity

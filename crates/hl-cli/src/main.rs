@@ -32,6 +32,11 @@ COMMANDS:
     match <LOG_ID> [--json]
                            Matchups for one stored match
     rate                   Rebuild baselines and rate every stored performance
+    logstat [--all]        Every player's numbers in every log (season tables, profiles)
+    data-audit <SEASON> [TIER] [--json]
+                           Check a season's officials against ETF2L and the logs held
+    impact measure <OUT.json>
+                           Measure the round-win table impact is valued with
     logsdump <DUMP.sql> <OUT.sqlite3> [--limit ROWS]
                            Index every player in a logs.tf database dump and rate
                            every Highlander game in it, into a file of its own
@@ -1621,6 +1626,102 @@ async fn run() -> Result<()> {
             Ok(())
         }
 
+        ["logstat", rest @ ..] => {
+            // Every player's numbers in every log that has none yet (or, with
+            // --all, every log again): the season tables, profiles and awards.
+            let db = Db::connect(&db_path).await?;
+            if rest.contains(&"--all") {
+                db.clear_log_stats().await?;
+            }
+            let n = hl_ingest::logstat::fill_missing(&db, None, |i, n| {
+                if i % 500 == 0 || i == n {
+                    eprintln!("  {i}/{n} logs");
+                }
+            })
+            .await?;
+            println!("{n} logs read");
+            Ok(())
+        }
+        ["season-table", season, tier, class, rest @ ..] => {
+            // The season rankings page's table: every player with every
+            // number, ranked by the season rating.
+            let db = Db::connect(&db_path).await?;
+            let stage = rest.first().copied().unwrap_or("all");
+            let stage = if stage == "--json" { "all" } else { stage };
+            let t = hl_ingest::season_stats::season_table(&db, Some(season.parse()?), Some(tier.parse()?), class, stage).await?;
+            if rest.contains(&"--json") {
+                println!("{}", serde_json::to_string_pretty(&t)?);
+                return Ok(());
+            }
+            println!("{} {} {} ({}), impact scale {:.2} +- {:.2}", t.season_name, t.division, t.class, t.stage, t.impact_scale.mean, t.impact_scale.sd);
+            for r in &t.rows {
+                let m = r.totals.time_s as f64 / 1800.0;
+                println!(
+                    "{:<4} {:<20} {:>2} off {:>3} maps  rating {:.2} (avg {:.2})  impact {}  K/30 {:.1} D/30 {:.1} DPM {:.0}  {}",
+                    r.rank.map_or("-".into(), |x| x.to_string()),
+                    r.name.chars().take(20).collect::<String>(),
+                    r.officials,
+                    r.totals.maps,
+                    r.rating,
+                    r.average,
+                    r.impact.map_or("  -  ".into(), |v| format!("{v:.2}")),
+                    r.totals.kills as f64 / m.max(0.01),
+                    r.totals.deaths as f64 / m.max(0.01),
+                    r.totals.dmg as f64 * 60.0 / (r.totals.time_s.max(1) as f64),
+                    r.awards.join(",")
+                );
+            }
+            Ok(())
+        }
+        ["data-audit", season, rest @ ..] => {
+            // Every played official of a season against ETF2L's record and
+            // the logs held: missing maps, double counts, odd logs.
+            let db = Db::connect(&db_path).await?;
+            let tier = rest.iter().find_map(|s| s.parse().ok());
+            let r = hl_ingest::data_audit::audit(&db, season.parse()?, tier).await?;
+            if rest.contains(&"--json") {
+                println!("{}", serde_json::to_string_pretty(&r)?);
+                return Ok(());
+            }
+            println!("Season {}: {} officials, {} logs, {} clean", r.season, r.officials, r.logs, r.clean);
+            for (code, n) in &r.by_code {
+                println!("  {code:<15} {n}");
+            }
+            for i in &r.issues {
+                println!("{:<5} {:<14} {:<12} {:<14} {:<40} {}", i.severity, i.code, i.division, i.round.chars().take(14).collect::<String>(), i.teams.chars().take(40).collect::<String>(), i.detail);
+            }
+            Ok(())
+        }
+        ["podiums", season] => {
+            // A season's podiums and awards, as the app's season page reads them.
+            let db = Db::connect(&db_path).await?;
+            let p = hl_ingest::catalogue::season_podiums(&db, season.parse()?).await?;
+            println!("{}", serde_json::to_string_pretty(&p)?);
+            Ok(())
+        }
+        ["deep", account] => {
+            // A player's deeper profile, as JSON.
+            let db = Db::connect(&db_path).await?;
+            let a = hl_core::SteamId::parse(account)?.account_id();
+            let d = hl_ingest::season_stats::player_deep(&db, a).await?;
+            println!("{}", serde_json::to_string_pretty(&d)?);
+            Ok(())
+        }
+        ["impact", "measure", out] => {
+            // The round-win table impact is valued with, from every league
+            // sample log's raw server log. Written as JSON for
+            // crates/hl-ingest/src/round_win.json.
+            let db = Db::connect(&db_path).await?;
+            let t = hl_ingest::round_impact::measure(&db, |i, n| {
+                if i % 500 == 0 || i == n {
+                    eprintln!("  {i}/{n} logs");
+                }
+            })
+            .await?;
+            std::fs::write(out, serde_json::to_string(&t)?)?;
+            println!("{} kills; 9v9 {:.3}, 9v8 {:.3}, 5v4 {:.3}; with the advantage 9v9 {:.3}", t.kills, t.p(1, 9, 9), t.p(1, 9, 8), t.p(1, 5, 4), t.p(0, 9, 9));
+            Ok(())
+        }
         ["rankings", season, tier, class] => {
             // A season's table for one division and class, as the app's
             // ranking popover shows it.
@@ -1739,49 +1840,58 @@ async fn run() -> Result<()> {
         }
 
         ["mvp-audit"] => {
-            // Each class MVP beside the season table of its division and
-            // class: where the MVP stood, and who led it. Tab-separated.
+            // The awards before and after the October 2026 rules, side by
+            // side for every division the database holds: the old Grand Final
+            // MVPs per class and event, and the new Season MVP, EVPs and best
+            // of each class. Tab-separated, one award a line.
             let db = Db::connect(&db_path).await?;
             let cat = hl_ingest::catalogue::Catalogue::load(&db).await?;
             let names = db.log_names().await?;
-            let rated = db.rated_games(hl_rating::MODEL_VERSION, None).await?;
-            let tables = hl_ingest::catalogue::season_tables(&cat, &rated);
+            let rated = hl_ingest::catalogue::rated_officials(&db, None).await?;
             let name = |a: u32| names.get(&a).and_then(|n| n.first().cloned()).unwrap_or_else(|| a.to_string());
-            println!("season	division	class	mvp	won	score	final	final_maps	season_avg	season_n	rank	of	leader	leader_avg	leader_n");
-            for m in cat.mvps(&rated).into_iter().filter(|m| !m.event) {
-                let Some(tier) = m.tier else { continue };
-                let rows = tables.get(&(m.season, tier, m.class.clone())).cloned().unwrap_or_default();
-                let at = rows.iter().position(|r| r.0 == m.account_id);
-                let me = at.map(|i| rows[i]);
-                let lead = rows.first().copied();
+            let old = cat.mvps_final_only(&rated);
+            let new = cat.mvps(&rated);
+            println!("season	division	award	class	old	old_score	new	new_score	new_season	officials	changed");
+            let mut changed = 0;
+            let mut total = 0;
+            for m in &new {
+                // The old award this one replaces: the event MVP for the
+                // Season MVP, the class MVP for the best of the class.
+                let before = match m.kind.as_str() {
+                    "season" => old.iter().find(|o| o.event && o.season == m.season && o.tier == m.tier),
+                    "class" => old.iter().find(|o| !o.event && o.season == m.season && o.tier == m.tier && o.class == m.class),
+                    _ => None,
+                };
+                let differs = before.is_some_and(|b| b.account_id != m.account_id);
+                if m.kind != "evp" {
+                    total += 1;
+                    changed += usize::from(differs || before.is_none());
+                }
                 println!(
-                    "{}	{}	{}	{}	{}	{:.2}	{:.2}	{}	{}	{}	{}	{}	{}	{}	{}",
+                    "{}	{}	{}	{}	{}	{}	{}	{:.2}	{:.2}	{}	{}",
                     m.season,
                     m.division,
+                    m.kind,
                     m.class,
+                    before.map(|b| name(b.account_id)).unwrap_or_default(),
+                    before.map(|b| format!("{:.2}", b.score)).unwrap_or_default(),
                     name(m.account_id),
-                    m.won,
                     m.score,
-                    m.final_rating,
-                    m.final_maps,
-                    me.map(|r| format!("{:.2}", r.2)).unwrap_or_default(),
-                    me.map(|r| r.1.to_string()).unwrap_or_default(),
-                    at.map(|i| (i + 1).to_string()).unwrap_or_default(),
-                    rows.len(),
-                    lead.map(|r| name(r.0)).unwrap_or_default(),
-                    lead.map(|r| format!("{:.2}", r.2)).unwrap_or_default(),
-                    lead.map(|r| r.1.to_string()).unwrap_or_default()
+                    m.season_rating,
+                    m.officials,
+                    if before.is_none() { "new" } else if differs { "yes" } else { "" }
                 );
             }
+            eprintln!("{changed} of {total} Season MVPs and class awards differ from the old rule (or had none)");
             Ok(())
         }
 
         ["mvp", rest @ ..] => {
-            // Each event's MVPs: per class from the Grand Final, and the event's.
+            // Each division's awards: Season MVP, EVPs, best of each class.
             let db = Db::connect(&db_path).await?;
             let cat = hl_ingest::catalogue::Catalogue::load(&db).await?;
             let names = db.log_names().await?;
-            let rated = db.rated_games(hl_rating::MODEL_VERSION, None).await?;
+            let rated = hl_ingest::catalogue::rated_officials(&db, None).await?;
             let only: Option<i64> = rest.iter().find_map(|s| s.parse().ok());
             let json = rest.contains(&"--json");
             for m in cat.mvps(&rated) {
@@ -1794,16 +1904,22 @@ async fn run() -> Result<()> {
                     continue;
                 }
                 let who = names.get(&m.account_id).and_then(|n| n.first().cloned()).unwrap_or_else(|| m.account_id.to_string());
+                let what = match m.kind.as_str() {
+                    "season" => "SEASON MVP".to_string(),
+                    "evp" => format!("EVP {}", m.class),
+                    _ => m.class.clone(),
+                };
                 println!(
-                    "S{:<4} {:<12} {:<12} {:<20} {:<24} {:.2}  (final {:.2} over {}{})",
+                    "S{:<4} {:<12} {:<16} {:<20} {:<24} {:.2}  (season {:.2} over {} officials{}{})",
                     m.season,
                     m.division,
-                    if m.event { "EVENT MVP".to_string() } else { m.class.clone() },
+                    what,
                     who.chars().take(20).collect::<String>(),
                     m.team.name.chars().take(24).collect::<String>(),
                     m.score,
-                    m.final_rating,
-                    m.final_maps,
+                    m.season_rating,
+                    m.officials,
+                    m.final_rating.map(|f| format!(", final {f:.2} over {}", m.final_maps)).unwrap_or_default(),
                     m.playoffs_rating.map(|p| format!(", playoffs {p:.2} over {}", m.playoffs_maps)).unwrap_or_default()
                 );
             }

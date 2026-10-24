@@ -37,20 +37,37 @@ pub async fn rate_all(
     w: &Weights,
     mut progress: impl FnMut(Progress),
 ) -> Result<RateSummary> {
+    // Every log's numbers first: the season tables and profiles read them,
+    // and the owner's matches take their round impact from them (v12). Only
+    // the logs that have none yet, so after the first pass this is the new ones.
+    progress(Progress::Stage { what: "Reading every player's numbers" });
+    crate::logstat::fill_missing(db, None, |_, _| {}).await?;
+    rate_all_inner(db, me, w, &mut progress).await
+}
+
+async fn rate_all_inner(
+    db: &Db,
+    me: Option<SteamId>,
+    w: &Weights,
+    progress: &mut impl FnMut(Progress),
+) -> Result<RateSummary> {
     // Pass 1: every rateable performance in every kept Highlander log.
-    let (total, perfs) = collect_performances(db, w, &mut progress).await?;
+    let (total, perfs) = collect_performances(db, w, &mut *progress).await?;
     // ...and in the league sample: officials from every ETF2L division,
     // so the pool is the league and not only the owner's matches.
     progress(Progress::Stage { what: "Rating the league sample" });
-    let league = crate::league_rating::performances(db, w).await?;
-    tracing::info!(own = perfs.len(), league = league.len(), "rating pool");
+    // Every league log is rated; only the sample's, without the owner's own
+    // games twice, make up the pool.
+    let (league_all, pool_logs) = crate::league_rating::performances_all(db, w).await?;
+    let league: Vec<(i64, Performance)> = league_all.iter().filter(|(l, _)| pool_logs.contains(l)).cloned().collect();
+    tracing::info!(own = perfs.len(), league = league.len(), league_rated = league_all.len(), "rating pool");
 
     // An install rating on the league snapshot's scale (Q43) keeps it while
     // its own pool is the smaller: measuring a few hundred of its own games
     // would undo the league's "1.00".
     if let Some(snapshot) = crate::snapshot::pool(db).await? {
         if ((perfs.len() + league.len()) as i64) < snapshot {
-            if let Some(summary) = rate_on_stored_scale(db, me, w, total, &perfs, &league).await? {
+            if let Some(summary) = rate_on_stored_scale(db, me, w, total, &perfs, &league_all).await? {
                 progress(Progress::Rating { done: total, total });
                 return Ok(summary);
             }
@@ -88,8 +105,13 @@ pub async fn rate_all(
     // Measured over the league too: 1.00 is a typical league game. Only the
     // owner's own logs' ratings are stored; the sample's are not theirs.
     let league_rated: Vec<(i64, u32, hl_rating::Rating)> =
-        league.iter().filter_map(|(log_id, p)| Some((*log_id, p.account_id, rate(p, &baseline, w)?))).collect();
-    let raw: Vec<f64> = scored.iter().chain(league_rated.iter()).map(|(_, _, r)| r.score).collect();
+        league_all.iter().filter_map(|(log_id, p)| Some((*log_id, p.account_id, rate(p, &baseline, w)?))).collect();
+    // The scale over the pool only, like the baselines.
+    let raw: Vec<f64> = scored
+        .iter()
+        .chain(league_rated.iter().filter(|(l, _, _)| pool_logs.contains(l)))
+        .map(|(_, _, r)| r.score)
+        .collect();
     let Some(scale) = Scale::of(&raw) else {
         // Nothing to measure: leave the last scale and the last ratings alone
         // rather than writing numbers that mean nothing.
@@ -196,6 +218,8 @@ pub async fn rate_logs(db: &Db, w: &Weights, log_ids: &[i64]) -> Result<usize> {
         return Ok(0);
     }
     let mut scored = 0;
+    // Their numbers, round impact among them, before they are rated.
+    crate::logstat::fill(db, log_ids).await?;
     for &log_id in log_ids {
         let Some(json) = db.raw_log(log_id).await? else { continue };
         let Ok(value) = serde_json::from_str::<serde_json::Value>(&json) else { continue };
@@ -212,6 +236,9 @@ pub async fn rate_logs(db: &Db, w: &Weights, log_ids: &[i64]) -> Result<usize> {
         crate::kills::attach_shared_swing(&mut impact, &kills, Some(&situations), Some(&credits), w);
         let fights = db.fight_counts(Some(log_id)).await?;
         crate::kills::attach_fights(&mut impact, fights.get(&log_id).map_or(&[][..], |f| f.as_slice()));
+        if let Some(r) = db.round_impacts(Some(log_id)).await?.get(&log_id) {
+            crate::kills::attach_round(&mut impact, r);
+        }
 
         let rows: Vec<RatingRow> = log
             .players
@@ -252,6 +279,7 @@ pub async fn collect_performances(
     let fights = db.fight_counts(None).await?;
     let situations = db.all_kill_situations().await?;
     let credits = db.all_kill_credits().await?;
+    let rounds = db.round_impacts(None).await?;
     let mut perfs: Vec<(i64, Performance)> = Vec::new();
     for (i, log_id) in ids.iter().copied().enumerate() {
         if i % 25 == 0 {
@@ -277,6 +305,9 @@ pub async fn collect_performances(
         );
         crate::kills::attach_shared_swing(&mut impact, log_kills, situations.get(&log_id), credits.get(&log_id), w);
         crate::kills::attach_fights(&mut impact, fights.get(&log_id).map_or(&[][..], |f| f.as_slice()));
+        if let Some(r) = rounds.get(&log_id) {
+            crate::kills::attach_round(&mut impact, r);
+        }
         perfs.extend(
             log.players
                 .iter()

@@ -5,6 +5,7 @@
 //! would make a fresh clone fail to compile before it has ever been run.
 
 mod aim;
+mod audit;
 
 /// The logs the owner's own rating covers: their rated Highlander logs, and
 /// the per-map logs a rated combined log replaced. A league log among these
@@ -23,6 +24,7 @@ mod fights;
 mod catalogue;
 mod league_sample;
 mod leagues;
+mod logstat;
 mod mass;
 mod matches;
 mod players;
@@ -50,6 +52,8 @@ pub use leagues::{Competition, CompetitionRow, H2hRow, LaterTeam, MatchLog, Matc
 pub use catalogue::{CatMatch, Etf2lPlayer, RatedGame, RosterRow};
 pub use transfers::Transfer;
 pub use mass::{MassBatch, MassDemo};
+pub use audit::{AuditLog, AuditMatch};
+pub use logstat::{LogStat, LogWeapon, LOG_STAT_COLUMNS};
 pub use league_sample::{Candidate, LeagueLogRow, TierProgress};
 pub use snapshot::TableCopy;
 pub use players::{PlayerClass, PlayerHit, PlayerSummary};
@@ -394,6 +398,7 @@ mod frozen_migrations {
         ("0038_kind_override.sql", 0xc57e09ed6dc2a9e5),
         ("0039_mass_import.sql", 0xa59f6ce07de16df6),
         ("0040_fetch_given_up.sql", 0xc5df499f631c5a5c),
+        ("0041_log_stat.sql", 0x8718bcdfb5188432),
     ];
 
     fn fnv1a(bytes: &[u8]) -> u64 {

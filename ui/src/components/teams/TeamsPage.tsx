@@ -8,9 +8,12 @@ import { BookmarkButton } from "../Bookmarks";
 import { locale, t, tx } from "../../lib/i18n";
 import { ClassIcon } from "../ClassIcon";
 import { Country } from "../Country";
-import { classLabel } from "../analysis/common";
+import { CLASS_ORDER, classLabel } from "../analysis/common";
 import { MedalGlyph } from "../players/MedalGlyph";
-import { DivisionBadge, medalTitles, seasonLong, seasonShort } from "../players/PlayerProfile";
+import { awardName, DivisionBadge, medalTitles, mvpHow, seasonLong, seasonShort } from "../players/PlayerProfile";
+import { StatTip } from "../StatTip";
+import { SeasonRankings } from "./SeasonRankings";
+import { DataCheck } from "./DataCheck";
 import "../players/players.css";
 import "./teams.css";
 import { YouOnThisTeam } from "./YourTeams";
@@ -253,6 +256,10 @@ export function SeasonScreen({ season, onTeam, tables: showTables = true }: { se
         </section>
       )}
 
+      <h2 className="ts-section">{t("Season rankings")}</h2>
+      <SeasonRankings season={season} onTeam={onTeam} />
+      <DataCheck season={season} />
+
       {showTables && <h2 className="ts-section">{t("Divisions")}</h2>}
       {showTables && tables.isError && <p className="error">{errorMessage(tables.error)}</p>}
       {showTables && v && v.divisions.length > 0 && (
@@ -272,6 +279,9 @@ export function SeasonScreen({ season, onTeam, tables: showTables = true }: { se
 }
 
 function PodiumCard({ p, onTeam }: { p: Podium; onTeam: (id: number) => void }) {
+  const awards = p.awards ?? [];
+  const evps = awards.filter(([m]) => m.kind === "evp").sort((a, b) => b[0].score - a[0].score);
+  const byClass = new Map(awards.filter(([m]) => m.kind === "class").map(([m, name]) => [m.class, [m, name] as const]));
   return (
     <div className="panel ts-podium">
       <div className="ts-podium-head">
@@ -290,16 +300,89 @@ function PodiumCard({ p, onTeam }: { p: Podium; onTeam: (id: number) => void }) 
           </li>
         ))}
       </ol>
-      {p.mvp && (
-        <button className="ts-mvp" onClick={() => openPlayer(p.mvp!.accountId)} title={t("Grand Final {0} over {1} logs", { "0": p.mvp.finalRating.toFixed(2), "1": p.mvp.finalMaps })}>
-          <span className="pp-mvp-star" aria-hidden>
-            ★
-          </span>
-          <span className="ts-mvp-label">{t("MVP")}</span>
-          <ClassIcon cls={p.mvp.class} size={16} />
-          <strong>{p.mvpName ?? "?"}</strong>
-          <span className="ts-mvp-rating">{rating(p.mvp.score)}</span>
-        </button>
+
+      <section className="aw-section aw-mvp">
+        <span className="aw-title">
+          <StatTip k="eventMvp" inline>
+            {t("Season MVP")}
+          </StatTip>
+        </span>
+        {p.mvp ? (
+          <button className="aw-row aw-mvp-row" onClick={() => openPlayer(p.mvp!.accountId)} title={mvpHow(p.mvp)}>
+            <span className="pp-mvp-star" aria-hidden>
+              ★
+            </span>
+            <ClassIcon cls={p.mvp.class} size={18} />
+            <span className="aw-who">
+              <strong className="aw-name">{p.mvpName ?? "?"}</strong>
+              <span className="aw-team">{p.mvp.team.name}</span>
+            </span>
+            <span className="aw-rating">{rating(p.mvp.score)}</span>
+          </button>
+        ) : (
+          <p className="aw-empty">{p.medals.length > 0 ? t("None: the Grand Final's logs are not held, or no champion played enough of the season.") : t("Decided once the Grand Final is played.")}</p>
+        )}
+      </section>
+
+      {p.awardsWith ? (
+        <p className="aw-empty aw-shared">{t("EVPs and the best of each class are under {0}: one division in the regular season, two playoff brackets.", { "0": p.awardsWith })}</p>
+      ) : (
+        <>
+          {evps.length > 0 && (
+            <section className="aw-section">
+              <span className="aw-title">
+                <StatTip k="evp" inline>
+                  {t("EVPs")}
+                </StatTip>
+              </span>
+              <ol className="aw-list">
+                {evps.map(([m, name], i) => (
+                  <li key={m.accountId}>
+                    <button className="aw-row" onClick={() => openPlayer(m.accountId)} title={`${m.team.name} · ${mvpHow(m)}`}>
+                      <span className="aw-rank">{i + 1}</span>
+                      <ClassIcon cls={m.class} size={16} />
+                      <span className="aw-name">{name}</span>
+                      <span className="aw-rating">{rating(m.score)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+          {byClass.size > 0 && (
+            <section className="aw-section">
+              <span className="aw-title">
+                <StatTip k="classAward" inline>
+                  {t("Best of each class")}
+                </StatTip>
+              </span>
+              <ul className="aw-list">
+                {CLASS_ORDER.map((c) => {
+                  const hit = byClass.get(c);
+                  return (
+                    <li key={c}>
+                      {hit ? (
+                        <button className="aw-row aw-class-row" onClick={() => openPlayer(hit[0].accountId)} title={`${awardName(hit[0], false)} · ${hit[0].team.name} · ${mvpHow(hit[0])}`}>
+                          <ClassIcon cls={c} size={16} />
+                          <span className="aw-class">{classLabel(c, true)}</span>
+                          <span className="aw-name">{hit[1]}</span>
+                          <span className="aw-rating">{rating(hit[0].score)}</span>
+                        </button>
+                      ) : (
+                        <span className="aw-row aw-class-row aw-none" title={t("Nobody on a medal team played enough of the season on this class.")}>
+                          <ClassIcon cls={c} size={16} faded />
+                          <span className="aw-class">{classLabel(c, true)}</span>
+                          <span className="aw-name">–</span>
+                          <span className="aw-rating" />
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+        </>
       )}
     </div>
   );

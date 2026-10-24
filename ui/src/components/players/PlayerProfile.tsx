@@ -1,3 +1,4 @@
+import { DeepPanels } from "./DeepPanels";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -28,7 +29,7 @@ import { Backdrop } from "../Backdrop";
  * has no awards to fetch.
  */
 
-type Tab = "overview" | "teams" | "achievements" | "yours" | "lives";
+type Tab = "overview" | "depth" | "teams" | "achievements" | "yours" | "lives";
 
 const PLACE = ["gold", "silver", "bronze"] as const;
 
@@ -46,6 +47,7 @@ export function PlayerProfile({ accountId, yours }: { accountId: number; yours: 
           {(
             [
               ["overview", t("Overview")],
+              ["depth", t("In depth")],
               ["teams", t("Teams")],
               ["achievements", tx("Achievements ({0})", { "0": p.medals.length + (p.mvps?.length ?? 0) })],
               ["yours", t("In your matches")],
@@ -58,6 +60,7 @@ export function PlayerProfile({ accountId, yours }: { accountId: number; yours: 
           ))}
         </nav>
         {tab === "overview" && <Overview p={p} />}
+        {tab === "depth" && <DeepPanels accountId={p.accountId} />}
         {tab === "teams" && (
           <>
             <TeamStays accountId={p.accountId} />
@@ -290,31 +293,47 @@ export function medalTitles(medals: Medal[]): [string, number, number][] {
     .map(([label, [n, place]]) => [label, n, place]);
 }
 
-/** "Open Sniper MVP" x1, "Low MVP" x1: the event's first, then by class. */
+/** An award's name: "Open Season MVP", "Open EVP", "Open Sniper of the season". */
+export function awardName(m: Mvp, withDivision = true): string {
+  const kind = m.kind ?? (m.event ? "season" : "class");
+  if (!withDivision) return kind === "season" ? t("Season MVP") : kind === "evp" ? t("EVP") : t("{0} of the season", { "0": classLabel(m.class) });
+  return kind === "season"
+    ? t("{0} Season MVP", { "0": m.division })
+    : kind === "evp"
+      ? t("{0} EVP", { "0": m.division })
+      : t("{0} {1} of the season", { "0": m.division, "1": classLabel(m.class) });
+}
+
+/** "Open Season MVP" x1, "Low EVP" x2: the Season MVP first, then EVPs, then classes. */
 function mvpTitles(mvps: Mvp[]): [string, number][] {
+  const order = (m: Mvp) => ({ season: 0, evp: 1, class: 2 })[m.kind ?? (m.event ? "season" : "class")];
   const count = new Map<string, number>();
-  for (const m of [...mvps].sort((a, b) => Number(b.event) - Number(a.event))) {
-    const what = m.event ? t("{0} MVP", { "0": m.division }) : t("{0} {1} MVP", { "0": m.division, "1": classLabel(m.class) });
+  for (const m of [...mvps].sort((a, b) => order(a) - order(b))) {
+    const what = awardName(m);
     count.set(what, (count.get(what) ?? 0) + 1);
   }
   return [...count.entries()];
 }
 
-function mvpHow(m: Mvp): string {
-  const final = t("Grand Final {0} over {1} logs", { "0": m.finalRating.toFixed(2), "1": m.finalMaps });
-  return m.playoffsRating === null ? final : `${final} · ${t("playoffs {0} over {1}", { "0": m.playoffsRating.toFixed(2), "1": m.playoffsMaps })}`;
+/** What decided it, as numbers. */
+export function mvpHow(m: Mvp): string {
+  const season = t("season {0} over {1} officials", { "0": (m.seasonRating ?? m.score).toFixed(2), "1": m.officials ?? 0 });
+  const parts = [season];
+  if (m.finalRating !== null && m.finalRating !== undefined) parts.push(t("Grand Final {0} over {1} logs", { "0": m.finalRating.toFixed(2), "1": m.finalMaps }));
+  if (m.playoffsRating !== null) parts.push(t("playoffs {0} over {1}", { "0": m.playoffsRating.toFixed(2), "1": m.playoffsMaps }));
+  return parts.join(" · ");
 }
 
 function MvpIcon({ m }: { m: Mvp }) {
-  const what = m.event ? t("Event MVP") : t("{0} MVP", { "0": classLabel(m.class) });
+  const kind = m.kind ?? (m.event ? "season" : "class");
   return (
-    <span className="pp-medal pp-mvp" title={`${what} · ${m.division} · ${seasonLong(m.season, m.seasonName)} · ${m.team.name} · ${mvpHow(m)}`}>
+    <span className={`pp-medal pp-mvp pp-award-${kind}`} title={`${awardName(m, false)} · ${m.division} · ${seasonLong(m.season, m.seasonName)} · ${m.team.name} · ${mvpHow(m)}`}>
       <span className="pp-medal-tile pp-mvp-tile">
-        <span className="pp-mvp-star" aria-hidden>★</span>
-        {!m.event && <ClassIcon cls={m.class} size={18} />}
+        <span className="pp-mvp-star" aria-hidden>{kind === "evp" ? "☆" : "★"}</span>
+        {kind === "class" && <ClassIcon cls={m.class} size={18} />}
       </span>
       <span className="pp-medal-label">
-        {seasonShort(m.season, m.seasonName)} {shortDivision(m.division)} {m.event ? "MVP" : ""}
+        {seasonShort(m.season, m.seasonName)} {shortDivision(m.division)} {kind === "season" ? "MVP" : kind === "evp" ? "EVP" : ""}
       </span>
     </span>
   );
@@ -575,7 +594,7 @@ export function Achievements({ medals, mvps }: { medals: Medal[]; mvps: Mvp[] })
         <li key={`mvp-${i}`}>
           <MvpIcon m={m} />
           <span>
-            <strong>{m.event ? t("Event MVP") : t("{0} MVP", { "0": classLabel(m.class) })}</strong> · {m.division} · {seasonLong(m.season, m.seasonName)}
+            <strong>{awardName(m, false)}</strong> · {m.division} · {seasonLong(m.season, m.seasonName)}
           </span>
           <span className="pp-team">
             <TeamAvatar src={m.team.avatar} />

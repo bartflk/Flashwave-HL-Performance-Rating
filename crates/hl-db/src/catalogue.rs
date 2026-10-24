@@ -38,7 +38,7 @@ pub type RosterRow = (i64, u32, Option<i64>, String);
 /// One rated game of anyone's, for profiles and ranks (Q36): the owner's
 /// matches carry the full breakdown (`parts`, a JSON list); the league
 /// sample's carry the component groups already worked out (`groups`).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct RatedGame {
     pub account_id: u32,
     pub log_id: i64,
@@ -58,6 +58,10 @@ pub struct RatedGame {
     /// combined upload. Where a match has both, the MVPs read these, so no
     /// game is counted twice.
     pub listed: bool,
+    /// Minutes on the class: weighs the logs of one official.
+    pub minutes: f64,
+    /// The log's map (a combined log may name several).
+    pub map: Option<String>,
 }
 
 /// ETF2L's page for a player, as kept.
@@ -342,11 +346,12 @@ impl Db {
                              (SELECT i.etf2l_match_id FROM log_index i WHERE i.superseded_by = r.log_id AND i.etf2l_match_id IS NOT NULL LIMIT 1),
                              (SELECT l.etf2l_match_id FROM log_index p JOIN league_log l ON l.log_id = p.log_id WHERE p.superseded_by = r.log_id LIMIT 1),
                              (SELECT json_extract(x.json, '$.matchId') FROM etf2l_raw x WHERE x.kind = 'league_sides' AND x.id = r.log_id)) AS etf2l_match_id,
-                    EXISTS (SELECT 1 FROM league_log l WHERE l.log_id = r.log_id) AS listed
+                    EXISTS (SELECT 1 FROM league_log l WHERE l.log_id = r.log_id) AS listed,
+                    r.minutes AS minutes, m.map AS map
              FROM rating r JOIN match m ON m.log_id = r.log_id
              WHERE r.model_version = ?1 AND (?2 IS NULL OR r.account_id = ?2)
              UNION ALL
-             SELECT r.account_id, r.log_id, l.played_at, r.class, r.score, NULL, r.groups, 1, l.etf2l_match_id, 1
+             SELECT r.account_id, r.log_id, l.played_at, r.class, r.score, NULL, r.groups, 1, l.etf2l_match_id, 1, r.minutes, l.map
              FROM league_rating r JOIN league_log l ON l.log_id = r.log_id
              WHERE r.model_version = ?1 AND (?2 IS NULL OR r.account_id = ?2)
                AND r.log_id NOT IN ({covered})",
@@ -369,6 +374,40 @@ impl Db {
                 official: r.get::<i64, _>("official") != 0,
                 etf2l_match_id: r.get("etf2l_match_id"),
                 listed: r.get::<i64, _>("listed") != 0,
+                minutes: r.get("minutes"),
+                map: r.get("map"),
+            })
+            .collect())
+    }
+
+    /// Every league sample rating, the ones a combined log of the owner's
+    /// covers included: each official map by map, for season tables and
+    /// awards that must count everyone the same way.
+    pub async fn league_ratings_all(&self, version: &str, account: Option<u32>) -> Result<Vec<RatedGame>> {
+        let rows = sqlx::query(
+            "SELECT r.account_id, r.log_id, l.played_at, r.class, r.score, r.groups, l.etf2l_match_id, r.minutes, l.map
+             FROM league_rating r JOIN league_log l ON l.log_id = r.log_id
+             WHERE r.model_version = ?1 AND (?2 IS NULL OR r.account_id = ?2)",
+        )
+        .bind(version)
+        .bind(account.map(i64::from))
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| RatedGame {
+                account_id: r.get::<i64, _>("account_id") as u32,
+                log_id: r.get("log_id"),
+                played_at: r.get("played_at"),
+                class: r.get("class"),
+                score: r.get("score"),
+                parts: None,
+                groups: r.get("groups"),
+                official: true,
+                etf2l_match_id: r.get("etf2l_match_id"),
+                listed: true,
+                minutes: r.get("minutes"),
+                map: r.get("map"),
             })
             .collect())
     }

@@ -276,3 +276,76 @@
 .ts-result-row:hover td { background: rgba(var(--accent-rgb), 0.06); }
 .ts-open-match { color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
 .ts-result-row:hover .ts-open-match { color: var(--accent); }
+
+/* Season rankings (the MVP research, October 2026): every player of a
+   class in a division, every number, sortable. */
+.sr { display: flex; flex-direction: column; gap: 10px; }
+.sr-controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.sr-classes { display: flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--sunken); border: 1px solid var(--border); }
+.sr-class { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 30px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; opacity: 0.55; }
+.sr-class:hover { opacity: 0.9; background: var(--raised); }
+.sr-class.on { opacity: 1; background: var(--raised); box-shadow: inset 0 -2px 0 var(--accent); }
+.sr-min { color: var(--muted); font-size: 0.88rem; }
+.sr-caption { margin: 0; }
+.sr-scroll { overflow-x: auto; position: relative; }
+.sr-table { min-width: 100%; white-space: nowrap; }
+.sr-table td.num, .sr-table th { text-align: right; font-variant-numeric: tabular-nums; }
+.sr-table th:nth-child(2), .sr-table th:nth-child(3), .sr-table td.sr-name, .sr-table td.sr-team { text-align: left; }
+.sr-table td.strong { font-weight: 700; color: var(--accent-text); }
+.sr-name .linkish { font-weight: 600; }
+.sr-team { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.sr-award { margin-left: 5px; font-size: 0.9rem; cursor: help; }
+.sr-award-season { color: #f5c542; }
+.sr-award-evp { color: #b48cff; }
+.sr-award-class { color: var(--accent-text); }
+.sr-unranked td { opacity: 0.55; }
+.sr-noaward { margin-left: 5px; color: var(--muted); cursor: help; }
+
+/* A podium's EVPs and best of each class. */
+.ts-awards { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 8px; font-size: 0.85rem; }
+.ts-awards-label { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; margin-right: 2px; }
+.ts-award { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; background: var(--sunken); border: 1px solid var(--border); color: var(--text); cursor: pointer; }
+.ts-award:hover { border-color: var(--accent-dim); color: var(--accent-text); }
+
+/* A season's data check. */
+.dc { display: flex; flex-direction: column; gap: 8px; }
+.dc-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 0; border: 0; background: transparent; color: var(--text); cursor: pointer; text-align: left; }
+.dc-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.9rem; }
+.dc-sum { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.88rem; }
+.dc-chip { padding: 1px 8px; border-radius: 999px; font-size: 0.78rem; border: 1px solid currentColor; }
+.dc-error { color: #e05252; }
+.dc-warn { color: #e0b440; }
+.dc-caret { margin-left: auto; color: var(--muted); }
+.dc-all { color: var(--muted); font-size: 0.86rem; }
+.dc-table td { vertical-align: top; }
+.dc-code { white-space: nowrap; font-weight: 600; }
+tr.dc-error .dc-code { color: #e05252; }
+tr.dc-warn .dc-code { color: #e0b440; }
+tr.dc-info .dc-code { color: var(--muted); }
+
+/* A podium's awards (UX pass, Flashy): the Season MVP as the headline, EVPs
+   numbered, the best of each class in class order with a dash where nobody
+   qualified, ratings in one right-hand column. */
+.ts-podium { justify-content: flex-start; }
+.aw-section { display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--border); padding-top: 9px; }
+.aw-title { font: 700 0.72rem var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+.aw-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.aw-row { display: grid; grid-template-columns: 16px 18px minmax(0, 1fr) auto; align-items: center; gap: 7px; width: 100%; padding: 3px 6px; border: 0; border-radius: 6px; background: transparent; color: var(--text); font: inherit; font-size: 0.86rem; text-align: left; cursor: pointer; }
+button.aw-row:hover { background: var(--raised); }
+button.aw-row:hover .aw-name { color: var(--tf2-tan); }
+.aw-class-row { grid-template-columns: 18px 46px minmax(0, 1fr) auto; }
+.aw-rank { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+.aw-class { color: var(--muted); font-size: 0.76rem; }
+.aw-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aw-rating { font-weight: 600; font-variant-numeric: tabular-nums; }
+.aw-none { cursor: default; color: var(--muted); }
+.aw-none .aw-name { opacity: 0.6; }
+.aw-mvp { --medal: #b48cff; }
+.aw-mvp-row { grid-template-columns: 16px 20px minmax(0, 1fr) auto; padding: 7px 8px; background: rgba(180, 140, 255, 0.08); border: 1px solid rgba(180, 140, 255, 0.25); }
+button.aw-mvp-row:hover { background: rgba(180, 140, 255, 0.14); }
+.aw-mvp-row .aw-rating { font-size: 1.05rem; font-weight: 700; }
+.aw-who { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.aw-who .aw-name { font-size: 0.95rem; }
+.aw-team { color: var(--muted); font-size: 0.76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aw-empty { margin: 0; color: var(--muted); font-size: 0.82rem; line-height: 1.4; }
+.aw-shared { border-top: 1px solid var(--border); padding-top: 9px; }

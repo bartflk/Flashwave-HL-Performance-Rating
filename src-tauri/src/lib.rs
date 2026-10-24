@@ -193,6 +193,30 @@ pub fn run() {
                 }
             }
 
+            // Every player's numbers in every log that has none yet: the
+            // season tables, profiles and impact (Q85). A database from
+            // before them has thousands of logs to read; a few minutes in
+            // the background, a chunk at a time, then nothing until new
+            // logs arrive (Flashy: S31 Low's table was all dashes).
+            {
+                let db = db.clone();
+                tauri::async_runtime::spawn(async move {
+                    // Listed once: a log that cannot be read is passed over,
+                    // not tried again in a loop.
+                    let ids = match db.logs_without_stats(i64::MAX).await {
+                        Ok(ids) => ids,
+                        Err(e) => return tracing::warn!(error = %format!("{e:#}"), "listing logs without player numbers"),
+                    };
+                    let total = ids.len();
+                    for (i, chunk) in ids.chunks(100).enumerate() {
+                        match hl_ingest::logstat::fill(&db, chunk).await {
+                            Ok(n) => tracing::info!(read = n, done = (i + 1) * 100, total, "player numbers"),
+                            Err(e) => return tracing::warn!(error = %format!("{e:#}"), "reading player numbers stopped"),
+                        }
+                    }
+                });
+            }
+
             // The league sample, when it is switched on (Settings).
             let busy = Arc::new(AtomicBool::new(false));
             let league_activity = league::SharedActivity::default();
@@ -271,6 +295,10 @@ pub fn run() {
             sync_commands::get_player_teams,
             sync_commands::get_player_stats,
             sync_commands::get_rankings,
+            sync_commands::get_season_table,
+            sync_commands::get_player_deep,
+            sync_commands::get_match_impact,
+            sync_commands::get_data_audit,
             sync_commands::get_match_divisions,
             sync_commands::index_stats,
             sync_commands::list_matches,

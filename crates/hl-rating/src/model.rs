@@ -35,7 +35,12 @@ use std::collections::HashMap;
 /// backstabs out.
 /// v11: the cap's respawn cost out of every class; Medic ubers, Heavy kills
 /// in context and Spy deaths out (the class-by-class review).
-pub const MODEL_VERSION: &str = "v11";
+/// v12: round impact is half of every model; deaths count half as much
+/// outside the Medic's, their weight going to kills and damage (Flashy).
+/// v13: deaths on payload and attack/defend maps weighed apart; a Sniper's
+/// there count a third of a KOTH death (measured: under a kill each, a KOTH
+/// death about 1.4).
+pub const MODEL_VERSION: &str = "v13";
 
 /// How far one standard deviation moves the rating.
 ///
@@ -151,10 +156,18 @@ pub enum Component {
     /// the player's caps cost their own dead. Lower is taken as better;
     /// `hl situation --spawn-delay` found long delays go with losing.
     CapsSpawnDelay,
+    /// Round impact (v12): the round-win chance the player's kills added and
+    /// their deaths gave away, in rounds per 10 minutes (round_impact.rs).
+    RoundImpact,
+    /// Deaths on a payload or attack/defend map (v13). `Deaths` is the same
+    /// count on the symmetric maps (KOTH, 5CP): a class can weigh the two
+    /// apart, as the Sniper's measured cost of a death does (Flashy: "on
+    /// attack you should be dying and taking risks").
+    DeathsAttackDefend,
 }
 
 impl Component {
-    pub const ALL: [Component; 25] = [
+    pub const ALL: [Component; 27] = [
         Component::ImpactKills,
         Component::ImpactAssists,
         Component::MedicPicks,
@@ -180,6 +193,8 @@ impl Component {
         Component::CapsMatesDead,
         Component::FightSwingShared,
         Component::CapsSpawnDelay,
+        Component::RoundImpact,
+        Component::DeathsAttackDefend,
     ];
 
     pub fn key(self) -> &'static str {
@@ -209,6 +224,8 @@ impl Component {
             Component::CapsMatesDead => "caps_mates_dead",
             Component::FightSwingShared => "fight_swing_shared",
             Component::CapsSpawnDelay => "caps_spawn_delay",
+            Component::RoundImpact => "round_impact",
+            Component::DeathsAttackDefend => "deaths_attack_defend",
         }
     }
 
@@ -243,6 +260,8 @@ impl Component {
             Component::CapsMatesDead => "Caps with your team dead",
             Component::FightSwingShared => "Fight swing, shared",
             Component::CapsSpawnDelay => "Spawns delayed by your caps",
+            Component::RoundImpact => "Round impact",
+            Component::DeathsAttackDefend => "Deaths (attack/defend maps)",
         }
     }
 
@@ -258,6 +277,7 @@ impl Component {
             Component::CapsMatesDead => "teammates dead per 10 min",
             Component::FightSwingShared => "win % per 10 min",
             Component::CapsSpawnDelay => "seconds per 10 min",
+            Component::RoundImpact => "rounds won per 10 min",
             _ => "per 10 min",
         }
     }
@@ -267,6 +287,7 @@ impl Component {
         !matches!(
             self,
             Component::Deaths
+                | Component::DeathsAttackDefend
                 | Component::Drops
                 | Component::UntradedDeaths
                 | Component::FlankDeaths
@@ -343,7 +364,10 @@ pub fn extract(
             Component::Ubers => Some(s.ubers as f64 * per10),
             Component::Drops => Some(s.drops as f64 * per10),
             Component::Caps => flags.cp.then_some(s.cpc as f64 * per10),
-            Component::Deaths => Some(line.deaths as f64 * per10),
+            // v13: one count, read under one name or the other by the map's
+            // mode, so a class can weigh payload deaths apart from KOTH ones.
+            Component::Deaths => (!flags.attack_defend).then_some(line.deaths as f64 * per10),
+            Component::DeathsAttackDefend => flags.attack_defend.then_some(line.deaths as f64 * per10),
             Component::Dpm => Some(line.dmg as f64 / minutes),
             // Both need the fights pass, so a log without a raw log skips
             // them and the other weights take up the slack.
@@ -400,6 +424,9 @@ pub fn extract(
                 .flatten()
                 .map(|f| f64::from(f.caps_spawn_delay) * per10),
             Component::FightSwingShared => impact.and_then(|i| i.swing_shared).map(|s| s * 100.0 * per10),
+            // Needs the server log: without one the other half of the model
+            // carries the rating, as for every server-log part.
+            Component::RoundImpact => impact.and_then(|i| i.round).map(|r| r * per10),
         };
         if let Some(v) = v {
             values.push((*component, v));
