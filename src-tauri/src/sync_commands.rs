@@ -543,7 +543,20 @@ pub async fn list_matches(
         // Bound the page size so a bad argument cannot pull the whole table.
         limit: limit.clamp(1, 500),
         offset: offset.max(0),
+        order_values: None,
     };
+    // Class %: DPM or accuracy as a percentile of the class on its map,
+    // worked out here and ordered by in SQL.
+    let stat = match filter.sort.as_deref() {
+        Some("dpm_pct") => Some(hl_ingest::stat_scale::Stat::Dpm),
+        Some("acc_pct") => Some(hl_ingest::stat_scale::Stat::Accuracy),
+        _ => None,
+    };
+    let mut filter = filter;
+    if let (Some(stat), Some(me)) = (stat, me) {
+        let values = hl_ingest::stat_scale::own_percentiles(&state.db, me.account_id(), stat).await?;
+        filter.order_values = Some(serde_json::to_string(&values).map_err(anyhow::Error::from)?);
+    }
     Ok(state.db.list_matches(me.map(|m| m.account_id()), &filter).await?)
 }
 

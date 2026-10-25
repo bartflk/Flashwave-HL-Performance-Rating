@@ -111,6 +111,10 @@ pub struct MatchFilter {
     pub ascending: bool,
     /// The rating model whose scores the `rating` sort and column use.
     pub model_version: String,
+    /// A value per log id, as a JSON object, to order by instead of a
+    /// column: the owner's DPM or accuracy as a percentile of their class
+    /// (on the map where it has a scale), worked out outside SQL.
+    pub order_values: Option<String>,
 }
 
 /// The orderings the match list offers, as `(key, SQL)`. The owner's line is
@@ -119,7 +123,7 @@ pub struct MatchFilter {
 /// Every stat the match list can show has one (Flashy: "i want all the
 /// stats possible"): the owner's totals, per minute, per 30 minutes and the
 /// ratios.
-pub const SORTS: [(&str, &str); 33] = [
+pub const SORTS: [(&str, &str); 34] = [
     ("date", "m.played_at"),
     ("kills", "p.kills"),
     ("deaths", "p.deaths"),
@@ -153,6 +157,7 @@ pub const SORTS: [(&str, &str); 33] = [
     ("lks", "p.lks"),
     ("suicides", "p.suicides"),
     ("dmgk", "CASE WHEN COALESCE(p.kills, 0) > 0 THEN p.dmg * 1.0 / p.kills END"),
+    ("acc", "(SELECT CAST(SUM(w.hits) AS REAL) / SUM(w.shots) FROM log_weapon w WHERE w.log_id = m.log_id AND w.account_id = p.account_id AND w.class = p.main_class HAVING SUM(w.shots) >= 30)"),
 ];
 
 /// Q61 (Clark): `killed:<class>` sorts by the owner's kills on that class,
@@ -185,7 +190,12 @@ fn class_count_sql(f: &MatchFilter) -> Option<(String, &'static str)> {
 fn order_by(f: &MatchFilter) -> String {
     let key = f.sort.as_deref().unwrap_or("date");
     let by_class = class_count_sql(f);
-    let expr = by_class.as_ref().map(|(_, e)| *e).unwrap_or_else(|| SORTS.iter().find(|(k, _)| *k == key).map_or("m.played_at", |(_, e)| *e));
+    let by_value = "json_extract(?11, '$.\"' || m.log_id || '\"')";
+    let expr = if f.order_values.is_some() {
+        by_value
+    } else {
+        by_class.as_ref().map(|(_, e)| *e).unwrap_or_else(|| SORTS.iter().find(|(k, _)| *k == key).map_or("m.played_at", |(_, e)| *e))
+    };
     let dir = if f.ascending { "ASC" } else { "DESC" };
     // NULLs last whichever way round it is: an unplayed match has no line.
     format!("ORDER BY ({expr}) IS NULL, ({expr}) {dir}, m.played_at DESC, m.log_id DESC")
@@ -222,6 +232,8 @@ pub struct MatchSummary {
     pub parts: i64,
     /// The owner's rating in this match on their main class, where it has one.
     pub rating: Option<f64>,
+    /// The map as the stat scales name it, for the DPM and accuracy colours.
+    pub map_key: Option<String>,
 }
 
 /// One of the per-round logs a combined log was built from. Kept out of
@@ -265,6 +277,8 @@ pub struct MyLine {
     pub ic: i64,
     pub lks: i64,
     pub suicides: i64,
+    /// Hits over shots on the main class, where the log has 30 shots or more.
+    pub accuracy: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -910,6 +924,7 @@ impl Db {
                     p.team, p.main_class, p.kills, p.deaths, p.assists, p.dmg, p.time_s,
                     p.dt, p.hr, p.heal, p.ubers, p.drops, p.headshots, p.headshots_hit, p.backstabs, p.airshots, p.medkits, p.medkits_hp, p.sentries, p.cpc, p.ic, p.lks, p.suicides,
                     r.score AS my_rating,
+                    (SELECT CAST(SUM(w.hits) AS REAL) / SUM(w.shots) FROM log_weapon w WHERE w.log_id = m.log_id AND w.account_id = p.account_id AND w.class = p.main_class HAVING SUM(w.shots) >= 30) AS my_accuracy,
                     {CONTEXT_COLUMNS}
              FROM match m
              JOIN log_index i ON i.log_id = m.log_id
@@ -933,6 +948,7 @@ impl Db {
         .bind(&filter.model_version)
         .bind(&filter.class)
         .bind(&filter.map)
+        .bind(filter.order_values.as_deref().unwrap_or("{}"))
         .fetch_all(self.pool())
         .await?;
 
@@ -974,8 +990,22 @@ impl Db {
                         ic: r.get("ic"),
                         lks: r.get("lks"),
                         suicides: r.get("suicides"),
+                        accuracy: r.get("my_accuracy"),
                     }
                 });
+                let maps: Vec<String> = r
+                    .get::<Option<String>, _>("segment_maps")
+                    .map(|s| s.split('|').map(str::to_string).collect())
+                    .unwrap_or_default();
+                let parts: i64 = r.get("part_count");
+                // The map the stat scales place this match on: its one map,
+                // none for a log over several.
+                let bases: std::collections::BTreeSet<String> = maps.iter().map(|x| hl_core::maps::map_base(x)).collect();
+                let map_key = match bases.len() {
+                    1 => bases.into_iter().next(),
+                    0 if parts == 0 => r.get::<Option<String>, _>("map").map(|x| hl_core::maps::map_base(&x)),
+                    _ => None,
+                };
                 MatchSummary {
                     log_id: r.get("log_id"),
                     played_at: r.get("played_at"),
@@ -990,11 +1020,9 @@ impl Db {
                     blue_score: blue,
                     has_demo: r.get::<i64, _>("has_demo") != 0,
                     context: context_from_row(&r),
-                    maps: r
-                        .get::<Option<String>, _>("segment_maps")
-                        .map(|s| s.split('|').map(str::to_string).collect())
-                        .unwrap_or_default(),
-                    parts: r.get("part_count"),
+                    maps,
+                    parts,
+                    map_key,
                     rating: r.get("my_rating"),
                     class_count: r.get("class_count"),
                     me,
@@ -1187,6 +1215,7 @@ mod tests {
             class: None,
             map: None,
             stv_only: false,
+            order_values: None,
         }
     }
 

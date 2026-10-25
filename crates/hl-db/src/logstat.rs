@@ -210,6 +210,27 @@ impl Db {
         .await?)
     }
 
+    /// One player's main-class games of 5 minutes or more, for placing them
+    /// on the stat scales: `(log, class, damage, seconds, shots, hits, map)`,
+    /// shots and hits where the log recorded 30 shots or more.
+    pub async fn own_stat_lines(&self, account: u32) -> Result<Vec<(i64, String, i64, i64, Option<i64>, Option<i64>, Option<String>)>> {
+        Ok(sqlx::query_as(
+            "SELECT s.log_id, s.class, s.dmg, s.time_s, a.shots, a.hits,
+                    (SELECT COALESCE((SELECT l.map FROM league_log l WHERE l.log_id = s.log_id),
+                              (SELECT m.map FROM match m WHERE m.log_id = s.log_id))
+              WHERE NOT EXISTS (SELECT 1 FROM log_index pi WHERE pi.superseded_by = s.log_id)
+                AND (SELECT COUNT(DISTINCT g.map) FROM log_segment g WHERE g.log_id = s.log_id) <= 1)
+             FROM log_stat s
+             LEFT JOIN (SELECT w.log_id, w.class, SUM(w.shots) AS shots, SUM(w.hits) AS hits FROM log_weapon w
+                        WHERE w.account_id = ?1 GROUP BY w.log_id, w.class HAVING SUM(w.shots) >= 30) a
+               ON a.log_id = s.log_id AND a.class = s.class
+             WHERE s.account_id = ?1 AND s.main AND s.time_s >= 300",
+        )
+        .bind(i64::from(account))
+        .fetch_all(&self.pool)
+        .await?)
+    }
+
     /// The same games' accuracy where the log recorded it, 30 shots or
     /// more: `(class, shots, hits, weight, map)`.
     pub async fn accuracy_sample(&self) -> Result<Vec<(String, i64, i64, f64, Option<String>)>> {

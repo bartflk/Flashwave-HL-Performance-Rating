@@ -116,6 +116,71 @@ pub async fn stat_scales(db: &Db) -> Result<StatScales> {
     Ok(StatScales { percentiles: PERCENTILES.to_vec(), classes, maps })
 }
 
+/// Which stat a percentile is of.
+#[derive(Debug, Clone, Copy)]
+pub enum Stat {
+    Dpm,
+    Accuracy,
+}
+
+/// Where `v` stands among the games `cuts` were measured on, 0-100.
+fn percentile_of(v: f64, cuts: &[f64], pcts: &[f64]) -> Option<f64> {
+    if cuts.is_empty() || cuts.len() != pcts.len() {
+        return None;
+    }
+    if v <= cuts[0] {
+        return Some(0.0);
+    }
+    for i in 1..cuts.len() {
+        if v < cuts[i] {
+            let span = cuts[i] - cuts[i - 1];
+            let t = if span > 0.0 { (v - cuts[i - 1]) / span } else { 0.0 };
+            return Some(pcts[i - 1] + t * (pcts[i] - pcts[i - 1]));
+        }
+    }
+    Some(100.0)
+}
+
+impl StatScales {
+    /// Where a game's number stands: among the class's games on the map
+    /// where the map has a scale, else among all of the class's (300 games
+    /// or more), as the scoreboard's colours place it.
+    pub fn percentile(&self, class: &str, map: Option<&str>, stat: Stat, v: f64) -> Option<f64> {
+        let pick = |s: &ClassScale| match stat {
+            Stat::Dpm => (s.dpm.clone(), s.dpm_games),
+            Stat::Accuracy => (s.accuracy.clone(), s.accuracy_games),
+        };
+        let on_map = map.and_then(|m| self.maps.get(class)?.get(m)).map(pick).filter(|(c, _)| !c.is_empty());
+        let (cuts, _) = match on_map {
+            Some(x) => x,
+            None => self.classes.get(class).map(pick).filter(|(c, n)| !c.is_empty() && *n >= 300)?,
+        };
+        percentile_of(v, &cuts, &self.percentiles)
+    }
+}
+
+/// The owner's games as percentiles of their class (on the map where it has
+/// a scale): what the match list's Class % sort orders by (Flashy: "add the
+/// class % switch to the matches list too"). Keyed by log id.
+pub async fn own_percentiles(db: &Db, account: u32, stat: Stat) -> Result<BTreeMap<i64, f64>> {
+    let scales = stat_scales(db).await?;
+    let mut out = BTreeMap::new();
+    for (log, class, dmg, secs, shots, hits, map) in db.own_stat_lines(account).await? {
+        let v = match stat {
+            Stat::Dpm => dmg as f64 * 60.0 / secs as f64,
+            Stat::Accuracy => match (shots, hits) {
+                (Some(s), Some(h)) if s > 0 => h as f64 / s as f64,
+                _ => continue,
+            },
+        };
+        let key = map.as_deref().map(hl_core::maps::map_base);
+        if let Some(p) = scales.percentile(&class, key.as_deref(), stat, v) {
+            out.insert(log, p);
+        }
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

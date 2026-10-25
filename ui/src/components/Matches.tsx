@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { errorMessage, type ContextKind, type MatchSummary, type MyLine } from "../api/types";
+import { errorMessage, type ContextKind, type MatchSummary, type MyLine, type StatScales } from "../api/types";
 import { capitalize, clock, formatDate, rating, splitMap } from "../lib/format";
 import { ColumnPicker, useColumns, type PickerCol } from "./ColumnPicker";
+import { RankBySwitch, useRankBy } from "./RankBy";
+import { TierPill } from "./TierPill";
+import { tierOf, useStatScales } from "../lib/tiers";
 import { startSync, useSyncStatus } from "../lib/sync";
 import { bounds, usePeriod } from "../lib/period";
 import { KindPicker } from "./ContextBadge";
@@ -66,6 +69,7 @@ const STAT_COLS: StatCol[] = [
   { key: "kd", label: "K/D", name: k("Kills per death"), group: k("Ratios"), title: k("Kills per death"), value: (me) => me.kills / Math.max(1, me.deaths), fmt: f1, on: false },
   { key: "kad", label: "KA/D", name: k("Kills and assists per death"), group: k("Ratios"), title: k("Kills and assists per death"), value: (me) => (me.kills + me.assists) / Math.max(1, me.deaths), fmt: f1, on: false },
   { key: "dmgk", label: "DA/K", name: k("Damage per kill"), group: k("Ratios"), title: k("Damage dealt per kill"), value: (me) => (me.kills > 0 ? me.dmg / me.kills : null), fmt: f0, on: false },
+  { key: "acc", label: k("Acc"), name: k("Accuracy"), group: k("Ratios"), title: k("Accuracy: hits over shots on your main class, where the log has logs.tf's accuracy stats"), value: (me) => me.accuracy ?? null, fmt: (v) => `${Math.round(v * 100)}%` },
   { key: "rating", label: k("Rating"), name: k("Your rating"), group: k("Rating"), title: k("Sort by your rating on your main class"), value: (_me, m) => m.rating },
 ];
 
@@ -82,6 +86,12 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
   const classSort = parseClassSort(sort.key);
   const picker = useColumns("matches", STAT_COLS);
   const statCols = STAT_COLS.filter(picker.shown);
+  // Class % (Flashy: "add the class % switch to the matches list too"):
+  // DPM and accuracy ordered by where each game stands on its class and map,
+  // worked out by the backend across the whole history.
+  const [rankBy, pickRank] = useRankBy("matches");
+  const hasPct = statCols.some((c) => c.key === "dpm" || c.key === "acc");
+  const scales = useStatScales().data;
 
   const kind = view === "official" || view === "scrim" || view === "pug" ? view : null;
   const period = usePeriod();
@@ -100,7 +110,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
     ...bounds(period),
     limit: PAGE * pages,
     offset: 0,
-    sort: sort.key,
+    sort: rankBy === "pct" && (sort.key === "dpm" || sort.key === "acc") ? `${sort.key}_pct` : sort.key,
     ascending: sort.ascending,
     class: cls,
     map,
@@ -237,6 +247,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
           >
             {t("With STV")}
           </button>
+          {hasPct && <RankBySwitch value={rankBy} onPick={pickRank} stat="DPM" />}
           <ColumnPicker cols={STAT_COLS} state={picker} />
         </div>
       )}
@@ -279,7 +290,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
             </thead>
             <tbody>
               {items.map((m) => (
-                <MatchRow key={m.logId} m={m} onOpen={onOpen} classCol={!!classSort} cols={statCols} />
+                <MatchRow key={m.logId} m={m} onOpen={onOpen} classCol={!!classSort} cols={statCols} scales={scales} />
               ))}
             </tbody>
           </table>
@@ -428,7 +439,7 @@ function ImportLog({ onOpen }: { onOpen: (logId: number) => void }) {
   );
 }
 
-function MatchRow({ m, onOpen, classCol, cols }: { m: MatchSummary; onOpen: (logId: number) => void; classCol: boolean; cols: StatCol[] }) {
+function MatchRow({ m, onOpen, classCol, cols, scales }: { m: MatchSummary; onOpen: (logId: number) => void; classCol: boolean; cols: StatCol[]; scales: StatScales | undefined }) {
   const me = m.me;
   const [rMine, rTheirs] =
     me?.team === "Blue" ? [m.blueScore, m.redScore] : [m.redScore, m.blueScore];
@@ -498,6 +509,14 @@ function MatchRow({ m, onOpen, classCol, cols }: { m: MatchSummary; onOpen: (log
             </td>
           );
         const v = me ? c.value(me, m) : null;
+        // DPM and accuracy on their class's colours, on this map where it
+        // has a scale: the scoreboard's pills.
+        if ((c.key === "dpm" || c.key === "acc") && me && v !== null && v !== undefined)
+          return (
+            <td key={c.key} className="num">
+              <TierPill text={c.fmt ? c.fmt(v) : String(v)} tier={tierOf(scales, me.mainClass, c.key === "dpm" ? "dpm" : "accuracy", v, m.mapKey)} cls={me.mainClass} />
+            </td>
+          );
         return (
           <td key={c.key} className="num">
             {v === null || v === undefined ? (me ? <span className="muted">–</span> : "") : c.fmt ? c.fmt(v) : v}

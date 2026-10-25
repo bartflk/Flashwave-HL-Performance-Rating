@@ -92,6 +92,8 @@ export interface MyLine {
   dmg: number;
   timeS: number;
   result: "W" | "L" | "T";
+  /** Hits over shots on the main class, where the log has 30 shots or more. */
+  accuracy?: number | null;
   /** The rest of the owner's line, for the list's optional columns (an
    *  older backend leaves them out). */
   dt?: number;
@@ -136,6 +138,8 @@ export interface MatchSummary {
   parts: number;
   /** Your rating in this match on your main class, where it has one. */
   rating: number | null;
+  /** The map as the stat scales name it, for the DPM and accuracy colours. */
+  mapKey?: string | null;
   /** Under a `killed:`/`diedto:` sort (Q61): your kills on that class, or
    *  deaths to it. Null otherwise, or with no server log. */
   classCount: number | null;
