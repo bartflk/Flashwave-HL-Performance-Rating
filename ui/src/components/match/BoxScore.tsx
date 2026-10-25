@@ -42,7 +42,7 @@ const COLS: Col[] = [
   { key: "a", label: "A", title: k("Assists"), value: (p) => p.assists },
   { key: "d", label: "D", title: k("Deaths"), value: (p) => p.deaths },
   { key: "da", label: "DA", title: k("Damage dealt"), value: (p) => p.dmg, fmt: (v) => v.toLocaleString() },
-  { key: "dapm", label: "DA/M", title: k("Damage per minute, coloured by where it stands among the class's games: blue the bottom, through green, yellow and red to purple, near black for the top 1%."), value: (p) => p.dpm },
+  { key: "dapm", label: "DA/M", title: k("Damage per minute, coloured by where it stands among the class's games: muted slate for an ordinary game, through amber and red to violet, black for the top 1%."), value: (p) => p.dpm },
   {
     key: "acc",
     label: k("Acc"),

@@ -5,14 +5,17 @@ import type { StatScales } from "../api/types";
 /**
  * Colours for how a number stands on its class (Flashy: "a colour-coded
  * damage per minute, kind of like osu has colours for difficulties"): osu!'s
- * difficulty spectrum, blue through green, yellow, red and purple to near
- * black, laid over the percentiles of the class's games -- the deepest for
+ * difficulty order, muted slate and teal at the bottom through olive,
+ * amber, red and magenta to violet, then black, laid over the percentiles of the class's games -- the deepest for
  * the top 1%. The scale comes from the games held, officials counting fully
  * and scrims and pugs less (stat_scale.rs).
  */
 
-/** osu!'s star-rating colours, one per percentile the scale is given at. */
-const STOPS = ["#4290fb", "#4fc0ff", "#4fffd5", "#7cff4f", "#f6f05c", "#ff8068", "#ff4e6f", "#c645b8", "#6563de", "#18158e"];
+/** One colour per percentile the scale is given at: osu!'s order, blue,
+ *  green, yellow, red, purple, but quiet at the bottom and loud at the top
+ *  (Flashy: "the lower DPM colours are very bright, they should use muted
+ *  colours"). An ordinary game sits back; only a standout one catches the eye. */
+const STOPS = ["#323a46", "#36414f", "#34505e", "#365e55", "#58663a", "#8f7a2c", "#bf6a2a", "#d8484e", "#c23ba6", "#7a4cf0"];
 /** Past the top 1%: osu!'s black, with gold text. */
 const TOP = "#000000";
 
@@ -48,11 +51,11 @@ export function tierColour(pct: number, pcts: number[]): string {
   return STOPS[STOPS.length - 1];
 }
 
-/** Dark text on the light end of the spectrum, light on the dark end, gold on black. */
-export function tierText(bg: string): string {
+/** Gold on black at the top; white on the loud colours; a soft grey on the
+ *  quiet ones, so the bottom of the scale reads as quiet too. */
+export function tierText(bg: string, pct: number): string {
   if (bg === TOP) return "#f6d05c";
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(bg.slice(i, i + 2), 16) / 255);
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5 ? "#111" : "#fff";
+  return pct < 55 ? "#c4c9d2" : "#fff";
 }
 
 /** A stat's colour and where it stands, or null where the class has no scale. */
@@ -67,5 +70,5 @@ export function tierOf(scales: StatScales | undefined, cls: string | null | unde
   const pct = percentileOf(v, cuts, scales.percentiles);
   if (pct === null) return null;
   const bg = tierColour(pct, scales.percentiles);
-  return { pct, bg, fg: tierText(bg) };
+  return { pct, bg, fg: tierText(bg, pct) };
 }
