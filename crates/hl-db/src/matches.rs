@@ -436,6 +436,23 @@ impl Db {
                 .execute(&mut *tx)
                 .await?;
         }
+        // A combined log trends.tf could not place -- no single map, so
+        // "other" or nothing -- is the format its parts agree on. ivg, 24 Oct
+        // 2026: four Highlander maps uploaded again as "STEAMHAPPY MIX" came
+        // back as "other", the four were hidden behind it as its parts, and
+        // the evening was never downloaded. trends.tf's own label wins
+        // whenever it gives one of the formats; a person's override always.
+        sqlx::query(
+            "UPDATE log_index SET classified_by = 'parts',
+                    format = (SELECT MIN(p.format) FROM log_index p WHERE p.superseded_by = log_index.log_id)
+             WHERE (format IS NULL OR format NOT IN ('highlander', 'sixes'))
+               AND EXISTS (SELECT 1 FROM log_index p WHERE p.superseded_by = log_index.log_id)
+               AND NOT EXISTS (SELECT 1 FROM log_index p WHERE p.superseded_by = log_index.log_id
+                                 AND (p.format IS NULL OR p.format NOT IN ('highlander', 'sixes')))
+               AND (SELECT COUNT(DISTINCT p.format) FROM log_index p WHERE p.superseded_by = log_index.log_id) = 1",
+        )
+        .execute(&mut *tx)
+        .await?;
         tx.commit().await?;
         Ok(())
     }
@@ -1282,6 +1299,41 @@ mod tests {
         queue.sort_unstable();
         assert_eq!(queue, vec![1, 2, 3, 4]);
         assert_eq!(db.index_stats().await.unwrap().outside_window, 0, "and nothing is on offer");
+    }
+
+    #[tokio::test]
+    async fn a_combined_log_trends_cannot_place_takes_its_parts_format() {
+        // ivg, 24 Oct 2026: a Highlander evening's four maps and a combine
+        // of them that trends.tf called "other"; the parts are hidden behind
+        // it, so unless it counts as Highlander nothing of that night is
+        // downloaded.
+        let db = Db::connect_in_memory().await.unwrap();
+        for id in 1..=5 {
+            index(&db, id, 0.01).await;
+        }
+        sqlx::query("UPDATE log_index SET format = 'highlander', classified_by = 'trends' WHERE log_id <= 4")
+            .execute(db.pool())
+            .await
+            .unwrap();
+        sqlx::query("UPDATE log_index SET format = 'other', classified_by = 'trends', map = NULL WHERE log_id = 5")
+            .execute(db.pool())
+            .await
+            .unwrap();
+        let parts: HashMap<i64, i64> = (1..=4).map(|p| (p, 5)).collect();
+        db.apply_supersessions(&parts).await.unwrap();
+        assert_eq!(db.fetch_queue(3).await.unwrap(), vec![5], "the combine is fetched, its parts are not");
+        let (format, by): (String, String) = sqlx::query_as("SELECT format, classified_by FROM log_index WHERE log_id = 5")
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+        assert_eq!((format.as_str(), by.as_str()), ("highlander", "parts"));
+
+        // Parts that disagree leave it as trends.tf said.
+        sqlx::query("UPDATE log_index SET format = 'other' WHERE log_id = 5").execute(db.pool()).await.unwrap();
+        sqlx::query("UPDATE log_index SET format = 'sixes' WHERE log_id = 4").execute(db.pool()).await.unwrap();
+        db.apply_supersessions(&parts).await.unwrap();
+        let format: String = sqlx::query_scalar("SELECT format FROM log_index WHERE log_id = 5").fetch_one(db.pool()).await.unwrap();
+        assert_eq!(format, "other");
     }
 
     #[tokio::test]
