@@ -251,10 +251,10 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
             <div className="sb-rank" role="group" aria-label={tr("Sort DA/M and accuracy by")} title={tr("Sort DA/M and accuracy by the number, or by where it stands among the player's class's games")}>
               <span className="an-label">{tr("Rank by")}</span>
               <div className="sb-rank-seg">
-                <button className={rankBy === "value" ? "on" : undefined} aria-pressed={rankBy === "value"} onClick={() => pickRank("value")}>
+                <button className={rankBy === "value" ? "sb-rank-opt on" : "sb-rank-opt"} aria-pressed={rankBy === "value"} onClick={() => pickRank("value")}>
                   {tr("Value")}
                 </button>
-                <button className={rankBy === "pct" ? "on" : undefined} aria-pressed={rankBy === "pct"} onClick={() => pickRank("pct")}>
+                <button className={rankBy === "pct" ? "sb-rank-opt on" : "sb-rank-opt"} aria-pressed={rankBy === "pct"} onClick={() => pickRank("pct")}>
                   {tr("Class %")}
                 </button>
               </div>
