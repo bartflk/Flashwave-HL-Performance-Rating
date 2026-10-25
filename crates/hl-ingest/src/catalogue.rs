@@ -293,6 +293,9 @@ impl OfficialGame {
     }
 }
 
+/// An official's when, round, opponent and result: [`Catalogue::official_info`].
+pub type OfficialInfo = (Option<i64>, String, Option<Team>, Option<String>);
+
 /// One player's season on one class, in one division.
 #[derive(Debug, Clone, Default)]
 pub struct SeasonLine {
@@ -1064,7 +1067,7 @@ impl Catalogue {
     }
 
     /// An official's when, round, opponent and result, from `team`'s side.
-    pub fn official_info(&self, id: i64, team: i64) -> Option<(Option<i64>, String, Option<Team>, Option<String>)> {
+    pub fn official_info(&self, id: i64, team: i64) -> Option<OfficialInfo> {
         let m = self.matches.get(&id)?;
         let round = match (m.stage.as_str(), m.round.as_deref()) {
             (_, Some(r)) if !r.is_empty() => r.to_string(),
@@ -1111,7 +1114,7 @@ impl Catalogue {
             for &(id, a, b, _) in &games {
                 let fitted = bradley_terry(&games, Some(&full), 8, Some(id));
                 for team in [a, b] {
-                    if counts.get(&(season, team)).is_some_and(|n| n - 1 >= RESULTS_MIN) {
+                    if counts.get(&(season, team)).is_some_and(|n| *n > RESULTS_MIN) {
                         out.insert((id, team), 1.0 + RESULTS_SCALE * fitted.get(&team).copied().unwrap_or(0.0));
                     }
                 }
