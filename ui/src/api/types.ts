@@ -1006,6 +1006,8 @@ export interface MatchDetail {
   logId: number;
   title: string | null;
   map: string | null;
+  /** The map as the stat scales name it, for per-map percentiles. */
+  mapKey?: string | null;
   playedAt: number | null;
   durationS: number;
   redScore: number;
@@ -2709,6 +2711,8 @@ export interface H2hSide {
 export interface StatScales {
   percentiles: number[];
   classes: Record<string, { dpm: number[]; accuracy: number[]; dpmGames: number; accuracyGames: number }>;
+  /** Class, then map: the same scales on one map, where it has enough games. */
+  maps?: Record<string, Record<string, { dpm: number[]; accuracy: number[]; dpmGames: number; accuracyGames: number }>>;
 }
 
 /** Why a player's season rating is what it is (season_stats.rs). */

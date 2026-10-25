@@ -145,7 +145,8 @@ const ORDERED = [...COLS].sort((x, y) => ORDER.indexOf(x.key) - ORDER.indexOf(y.
 /** DA/M and accuracy sorted by the number, or by where it stands on the
  *  player's class (Flashy: "is it possible to sort accuracy and damage by
  *  percentile?"): the same percentile their colour shows, so a Medic's
- *  good game can outrank a Soldier's ordinary one. Remembered. */
+ *  good game can outrank a Soldier's ordinary one, on this map where it has
+ *  a scale of its own. Remembered. */
 const RANK_KEY = "hl.scoreboard.rankBy";
 function storedRank(): "value" | "pct" {
   try {
@@ -223,7 +224,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
       const stat = col.key === "dapm" ? "dpm" : col.key === "acc" ? "accuracy" : null;
       // By percentile: a class without a scale (too few games) sinks with
       // the unrecorded.
-      const v = stat && rankBy === "pct" ? (p: PlayerRow) => tierOf(scales, p.mainClass, stat, raw(p))?.pct ?? null : raw;
+      const v = stat && rankBy === "pct" ? (p: PlayerRow) => tierOf(scales, p.mainClass, stat, raw(p), d.mapKey)?.pct ?? null : raw;
       out.sort((a, b) => {
         const x = v(a);
         const y = v(b);
@@ -322,7 +323,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
                       {v === null ? (
                         <span className="muted">–</span>
                       ) : c.key === "dapm" || c.key === "acc" ? (
-                        <TierPill text={c.fmt ? c.fmt(v) : String(Math.round(v))} tier={tierOf(scales, p.mainClass, c.key === "dapm" ? "dpm" : "accuracy", v)} cls={p.mainClass} />
+                        <TierPill text={c.fmt ? c.fmt(v) : String(Math.round(v))} tier={tierOf(scales, p.mainClass, c.key === "dapm" ? "dpm" : "accuracy", v, d.mapKey)} cls={p.mainClass} />
                       ) : c.fmt ? (
                         c.fmt(v)
                       ) : (

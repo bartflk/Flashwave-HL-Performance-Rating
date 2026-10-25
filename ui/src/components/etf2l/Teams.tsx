@@ -8,6 +8,7 @@ import { DivisionBadge } from "../players/PlayerProfile";
 import { seasonTitle, TeamAvatar } from "../teams/TeamsPage";
 import { useYourTeams } from "../teams/YourTeams";
 import { tierOf } from "./Brackets";
+import { Loading } from "../Spinner";
 
 /**
  * The ETF2L tab's Teams (Flashy: "looks very discombobulated… come up with a
@@ -41,9 +42,13 @@ export function TeamsLanding({ onTeam }: { onTeam: (id: number) => void }) {
   const [q, setQ] = useState("");
   const term = q.trim();
   const hits = useQuery({ queryKey: ["search_teams", term], queryFn: () => api.searchTeams(term), enabled: term.length >= 2, placeholderData: keepPreviousData });
-  const tiles = useQuery({ queryKey: ["seasons_overview"], queryFn: api.getSeasonsOverview, staleTime: 5 * 60_000 }).data;
+  const tilesQ = useQuery({ queryKey: ["seasons_overview"], queryFn: api.getSeasonsOverview, staleTime: 5 * 60_000 });
+  const tiles = tilesQ.data;
   const latest = tiles?.[0] ?? null;
-  const tables = useQuery({ queryKey: ["leagues", latest?.season ?? null], queryFn: () => api.getLeagues(latest!.season), enabled: latest !== null, staleTime: 5 * 60_000 }).data;
+  const tablesQ = useQuery({ queryKey: ["leagues", latest?.season ?? null], queryFn: () => api.getLeagues(latest!.season), enabled: latest !== null, staleTime: 5 * 60_000 });
+  const tables = tablesQ.data;
+  // Waiting on ETF2L for the season's tables: a line where they will be.
+  const waiting = tilesQ.isPending || (latest !== null && tablesQ.isPending);
   // Avatars for your teams, where the season's tables have them.
   const avatars = new Map((tables?.divisions ?? []).flatMap((d) => d.teams.map((x) => [x.teamId, x.avatar] as const)));
   const allYours = useYourTeams();
@@ -130,6 +135,7 @@ export function TeamsLanding({ onTeam }: { onTeam: (id: number) => void }) {
         </section>
       )}
 
+      {waiting && <Loading className="tm-wait">{t("Loading this season's teams…")}</Loading>}
       {latest && divisions.length > 0 && (
         <section className="tm-section">
           <h2 className="ts-section">{tx("Teams in {0}", { "0": seasonTitle(latest) })}</h2>

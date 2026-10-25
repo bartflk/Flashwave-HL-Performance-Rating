@@ -114,17 +114,25 @@ export function tierText(bg: string, pct: number): string {
   return pct < 55 ? "#c4c9d2" : "#fff";
 }
 
-/** A stat's colour and where it stands, or null where the class has no scale. */
-export function tierOf(scales: StatScales | undefined, cls: string | null | undefined, stat: "dpm" | "accuracy", v: number | null) {
+/**
+ * A stat's colour and where it stands, or null where the class has no scale.
+ * With a map, among the class's games on that map where it has a scale of
+ * its own (Flashy: "300 dpm on steel on sniper is crazy vs 300 dpm on
+ * koth_product"), else among all the class's games.
+ */
+export function tierOf(scales: StatScales | undefined, cls: string | null | undefined, stat: "dpm" | "accuracy", v: number | null, map?: string | null) {
   if (!scales || !cls || v === null) return null;
-  const c = scales.classes[cls];
+  const onMap = map ? scales.maps?.[cls]?.[map] : undefined;
+  const mapCuts = onMap?.[stat];
+  const byMap = !!mapCuts && mapCuts.length > 0;
+  const c = byMap ? onMap : scales.classes[cls];
   const cuts = c?.[stat];
   // A scale from a handful of games says little: heavies and pyros rarely
-  // have logs.tf's accuracy stats.
+  // have logs.tf's accuracy stats. A map's scale already has 200 or more.
   const games = stat === "dpm" ? c?.dpmGames : c?.accuracyGames;
-  if (!cuts || cuts.length === 0 || (games ?? 0) < 300) return null;
+  if (!cuts || cuts.length === 0 || (games ?? 0) < (byMap ? 200 : 300)) return null;
   const pct = percentileOf(v, cuts, scales.percentiles);
   if (pct === null) return null;
   const bg = tierColour(pct, scales.percentiles);
-  return { pct, bg, fg: tierText(bg, pct) };
+  return { pct, bg, fg: tierText(bg, pct), map: byMap ? map! : null };
 }

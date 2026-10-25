@@ -1416,3 +1416,14 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
   font-size: var(--fs-small); color: var(--muted); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 @media (max-width: 900px) { .e2-head-tools { flex-basis: 100%; margin-left: 0; } }
+
+/* Waiting on ETF2L: the season strip's place held by a quiet card, the
+   teams page's tables by a line (Flashy: "more loading indicators"). */
+.e2-strip-wait {
+  margin: 0 0 16px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.tm-wait { margin-top: 18px; }

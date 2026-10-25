@@ -8,7 +8,7 @@ import { t, tx } from "../../lib/i18n";
 import { DivisionBadge } from "../players/PlayerProfile";
 import { MedalGlyph } from "../players/MedalGlyph";
 import { PlayersPage } from "../players/PlayersPage";
-import { SeasonScreen, SeasonsGrid, TeamAvatar, TeamScreen, seasonTitle, useBanner, useFixtures, wl } from "../teams/TeamsPage";
+import { SeasonScreen, SeasonsGrid, TeamAvatar, TeamScreen, seasonTitle, useBanner, useFixturesQuery, wl } from "../teams/TeamsPage";
 import { YourTeamsCompact, useYourTeams } from "../teams/YourTeams";
 import { Countdown, clockTime, fullDate } from "./Countdown";
 import { NewsCard, NewsList, NewsReader, useNews } from "./News";
@@ -397,11 +397,25 @@ function dayOffset(time: number): number {
 }
 
 function useSeasonTiles() {
-  return useQuery({ queryKey: ["seasons_overview"], queryFn: api.getSeasonsOverview, staleTime: 5 * 60_000 }).data;
+  return useQuery({ queryKey: ["seasons_overview"], queryFn: api.getSeasonsOverview, staleTime: 5 * 60_000 });
 }
 
 function useLeagueTables(season: number | null) {
-  return useQuery({ queryKey: ["leagues", season], queryFn: () => api.getLeagues(season!), enabled: season !== null, staleTime: 5 * 60_000 }).data;
+  return useQuery({ queryKey: ["leagues", season], queryFn: () => api.getLeagues(season!), enabled: season !== null, staleTime: 5 * 60_000 });
+}
+
+/** A panel waiting on ETF2L (Flashy: "i want more loading indicators, when
+ *  its waiting for a API reply on the tables in league overview"): its
+ *  heading and a waiting line where its rows will be. */
+function WaitingPanel({ title, children }: { title: string; children: string }) {
+  return (
+    <section className="panel e2-panel" aria-busy>
+      <div className="e2-panel-head">
+        <h2>{title}</h2>
+      </div>
+      <Loading>{children}</Loading>
+    </section>
+  );
 }
 
 /** "1st", "2nd", "3rd", "4th". */
@@ -435,9 +449,11 @@ function stagesOf(fixtures: Fixture[], season: number): Array<{ phase: string; r
 }
 
 function Home({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: (id: number, f?: Fixture) => void; go: (l: Loc) => void }) {
-  const fixtures = useFixtures();
+  const fixturesQ = useFixturesQuery();
+  const fixtures = fixturesQ.data ?? [];
   const mine = new Set(useYourTeams().map((e) => e.teamId));
-  const tiles = useSeasonTiles();
+  const tilesQ = useSeasonTiles();
+  const tiles = tilesQ.data;
   const latest = tiles?.[0] ?? null;
   // Your next official, if one of your teams has one coming.
   const next = fixtures.find((f) => mine.has(f.clan1.id) || mine.has(f.clan2.id)) ?? null;
@@ -451,7 +467,7 @@ function Home({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: 
   const seasonLine = seasons.length === 1 && seasons[0] !== null && latest?.season === seasons[0] ? seasonTitle(latest) : null;
   return (
     <div className="e2-home">
-      {latest && <SeasonStrip tile={latest} fixtures={fixtures} go={go} />}
+      {latest ? <SeasonStrip tile={latest} fixtures={fixtures} go={go} /> : tilesQ.isPending && <Loading className="e2-strip-wait">{t("Loading the season…")}</Loading>}
       <div className="e2-main">
         {next && <NextMatch f={next} side={mine.has(next.clan1.id) ? next.clan1.id : next.clan2.id} onTeam={onTeam} onOpen={() => onMatch(next.matchId, next)} />}
         <section className="panel e2-panel">
@@ -477,7 +493,9 @@ function Home({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: 
               ))}
             </div>
           </div>
-          {shown.length === 0 ? (
+          {fixturesQ.isPending ? (
+            <Loading>{t("Loading the officials…")}</Loading>
+          ) : shown.length === 0 ? (
             <p className="hint">{when === "today" ? t("No officials today.") : when === "tomorrow" ? t("No officials tomorrow.") : t("No officials in the next week.")}</p>
           ) : (
             <ol className="e2-fixtures">
@@ -490,8 +508,8 @@ function Home({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: 
         <LatestNews go={go} />
       </div>
       <aside className="e2-rail">
-        <YourSeason season={latest?.season ?? null} fixtures={fixtures} onTeam={onTeam} onMatch={onMatch} />
-        <DivisionLeaders season={latest?.season ?? null} onTeam={onTeam} go={go} />
+        <YourSeason season={latest?.season ?? null} waiting={tilesQ.isPending} fixtures={fixtures} onTeam={onTeam} onMatch={onMatch} />
+        <DivisionLeaders season={latest?.season ?? null} waiting={tilesQ.isPending} onTeam={onTeam} go={go} />
         <RecentResults onTeam={onTeam} onMatch={onMatch} go={go} />
         <RecruitPreview onAll={() => go({ at: "recruitment" })} onOpen={(post, kind) => go({ at: "recruit", post, kind })} />
       </aside>
@@ -560,14 +578,16 @@ function SeasonStrip({ tile, fixtures, go }: { tile: SeasonTile; fixtures: Fixtu
 
 /** Your teams in the season: division, place, record and next match. Without
  *  a team in it, your teams as before. */
-function YourSeason({ season, fixtures, onTeam, onMatch }: { season: number | null; fixtures: Fixture[]; onTeam: (id: number) => void; onMatch: (id: number, f?: Fixture) => void }) {
-  const tables = useLeagueTables(season);
+function YourSeason({ season, waiting, fixtures, onTeam, onMatch }: { season: number | null; waiting: boolean; fixtures: Fixture[]; onTeam: (id: number) => void; onMatch: (id: number, f?: Fixture) => void }) {
+  const tablesQ = useLeagueTables(season);
+  const tables = tablesQ.data;
   const yours = useYourTeams();
   const rows = (tables?.divisions ?? []).flatMap((d) =>
     d.teams
       .map((row, i) => ({ row, division: d.division, place: i + 1, of: d.teams.length, tier: tierOf(d.division) }))
       .filter((x) => yours.some((e) => e.teamId === x.row.teamId)),
   );
+  if (waiting || (season !== null && tablesQ.isPending)) return <WaitingPanel title={t("Your season")}>{t("Loading the tables…")}</WaitingPanel>;
   return (
     <section className="panel e2-panel">
       <div className="e2-panel-head">
@@ -626,9 +646,11 @@ function tierOf(division: string): number {
 /** Each division of the season: its winner once its final is played (a gold
  *  medal), its leader until then. The champions live here rather than on
  *  the banner (Flashy). */
-function DivisionLeaders({ season, onTeam, go }: { season: number | null; onTeam: (id: number) => void; go: (l: Loc) => void }) {
-  const tables = useLeagueTables(season);
-  const podiums = useQuery({ queryKey: ["season_podiums", season], queryFn: () => api.getSeasonPodiums(season!), enabled: season !== null, staleTime: 5 * 60_000 }).data ?? [];
+function DivisionLeaders({ season, waiting, onTeam, go }: { season: number | null; waiting: boolean; onTeam: (id: number) => void; go: (l: Loc) => void }) {
+  const tablesQ = useLeagueTables(season);
+  const tables = tablesQ.data;
+  const podiumsQ = useQuery({ queryKey: ["season_podiums", season], queryFn: () => api.getSeasonPodiums(season!), enabled: season !== null, staleTime: 5 * 60_000 });
+  const podiums = podiumsQ.data ?? [];
   const winner = (division: string) => podiums.find((p) => p.division === division)?.medals.find((m) => m.place === 1)?.team ?? null;
   type Row = { division: string; tier: number; won: CatTeam | null; lead: LeagueTableRow | null };
   const rows: Row[] = (tables?.divisions ?? [])
@@ -640,6 +662,7 @@ function DivisionLeaders({ season, onTeam, go }: { season: number | null; onTeam
     if (first && !rows.some((r) => r.division === p.division)) rows.push({ division: p.division, tier: p.tier ?? tierOf(p.division), won: first.team, lead: null });
   }
   rows.sort((a, b) => a.tier - b.tier);
+  if (waiting || (season !== null && rows.length === 0 && (tablesQ.isPending || podiumsQ.isPending))) return <WaitingPanel title={t("Divisions")}>{t("Loading the divisions…")}</WaitingPanel>;
   if (season === null || rows.length === 0) return null;
   const done = rows.every((r) => r.won !== null);
   return (
@@ -752,6 +775,7 @@ function when(time: number): string {
 function RecentResults({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: (id: number) => void; go: (l: Loc) => void }) {
   const q = useQuery({ queryKey: ["recent_results"], queryFn: () => api.getRecentResults(8), staleTime: 5 * 60_000 });
   const rows = q.data ?? [];
+  if (q.isPending) return <WaitingPanel title={t("Recent results")}>{t("Loading results…")}</WaitingPanel>;
   if (rows.length === 0) return null;
   const side = (x: ResultRow["clan1"], score: number | null, won: boolean) => (
     <button
