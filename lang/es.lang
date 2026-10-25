@@ -376,11 +376,8 @@ locale = "es-ES"
 "Acc." = "Prec."
 "Accent" = "Acento"
 "Accuracy" = "Precisión"
-<<<<<<< HEAD
-"Accuracy: hits over shots on the main class, coloured by where it stands among the class's games. Only logs with logs.tf's accuracy stats have it." = ""
-=======
 "Accuracy is hits over shots on the class's weapons, as logs.tf counts them." = "La precisión es aciertos entre disparos con las armas de la clase, según los cuenta logs.tf."
->>>>>>> main
+"Accuracy: hits over shots on the main class, coloured by where it stands among the class's games. Only logs with logs.tf's accuracy stats have it." = ""
 "Achievements ({0})" = "Logros ({0})"
 "Add a folder" = "Añadir una carpeta"
 "Add a log by hand" = "Añadir un log a mano"

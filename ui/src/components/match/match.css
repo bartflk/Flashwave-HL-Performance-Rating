@@ -1985,7 +1985,6 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 .match-page .mx-part-link:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
 .match-page .mx-foot { min-height: 48px; }
 
-<<<<<<< HEAD
 /* The scoreboard uses the whole window (Flashy: "I don't want to scroll
    unless I'm really forced to"): wider than the page's column when the
    window is, a scrollbar's width spared, and its cells tighter than the
@@ -2014,7 +2013,7 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
   .scoreboard .player-name { max-width: 140px; }
   .scoreboard .tier-pill { min-width: 2.2em; padding-inline: 5px; }
 }
-=======
+
 /* The scoreboard's class icons and their hover card: each class's time,
    K / D / A, damage and accuracy, airshots and backstabs beside the class
    that makes them. */
@@ -2040,4 +2039,3 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 /* Raised like the rest of the app's controls. */
 .match-page .mx-link { background: linear-gradient(var(--raised), var(--sunken)); box-shadow: var(--ctl-shadow); }
 .match-page .mx-link:hover { box-shadow: var(--ctl-shadow-hover); }
->>>>>>> main

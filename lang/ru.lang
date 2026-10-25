@@ -376,11 +376,8 @@ locale = "ru-RU"
 "Acc." = "Точн."
 "Accent" = "Акцент"
 "Accuracy" = "Точность"
-<<<<<<< HEAD
-"Accuracy: hits over shots on the main class, coloured by where it stands among the class's games. Only logs with logs.tf's accuracy stats have it." = ""
-=======
 "Accuracy is hits over shots on the class's weapons, as logs.tf counts them." = "Точность — попадания к выстрелам из оружия класса, как их считает logs.tf."
->>>>>>> main
+"Accuracy: hits over shots on the main class, coloured by where it stands among the class's games. Only logs with logs.tf's accuracy stats have it." = ""
 "Achievements ({0})" = "Достижения ({0})"
 "Add a folder" = "Добавить папку"
 "Add a log by hand" = "Добавить лог вручную"

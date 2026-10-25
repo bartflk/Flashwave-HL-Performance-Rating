@@ -130,14 +130,9 @@ pub struct ClassLine {
     pub assists: i64,
     pub deaths: i64,
     pub dmg: i64,
-<<<<<<< HEAD
-    /// Shots and hits over the class's weapons, where the log has logs.tf's
-    /// accuracy stats; 0 where not.
-=======
     /// Shots and hits over the class's weapons, from logs.tf's
     /// `class_stats[].weapon`: its accuracy (Flashy: "accuracy per class
     /// on hover like logs.tf"). Zero where logs.tf did not count them.
->>>>>>> main
     #[serde(default)]
     pub shots: i64,
     #[serde(default)]
