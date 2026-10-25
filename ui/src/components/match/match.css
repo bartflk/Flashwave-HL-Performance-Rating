@@ -2054,3 +2054,19 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 }
 .match-page .panel.box .scoreboard :is(td, th):first-child { padding-left: var(--sec-pad-x); }
 .match-page .panel.box .scoreboard :is(td, th):last-child { padding-right: var(--sec-pad-x); }
+
+/* Rank by: DA/M and accuracy sorted by value or by class percentile. Two
+   halves in one control, the picked one raised. */
+.sb-rank { display: inline-flex; align-items: center; gap: 8px; }
+.sb-rank-seg {
+  display: inline-flex; box-sizing: border-box; height: var(--ctl-h); padding: 3px; gap: 2px;
+  border: 1px solid var(--border); border-radius: var(--ctl-radius); background: var(--sunken);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.sb-rank-seg .sb-rank-opt {
+  box-sizing: border-box; min-height: 0; height: 100%; display: inline-flex; align-items: center; line-height: 1; padding: 0 12px; border: 1px solid transparent; border-radius: 6px;
+  background: none; box-shadow: none; color: var(--muted); font-size: var(--fs-small);
+}
+.sb-rank-seg .sb-rank-opt:hover:not(:disabled) { background: none; color: var(--text); box-shadow: none; }
+.sb-rank-seg .sb-rank-opt.on { background: linear-gradient(var(--raised), var(--sunken)); border-color: var(--line-2); color: var(--text-hi); box-shadow: var(--ctl-shadow); }
+.sb-rank-seg .sb-rank-opt:active:not(:disabled) { box-shadow: none; }
