@@ -1985,14 +1985,10 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 .match-page .mx-part-link:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
 .match-page .mx-foot { min-height: 48px; }
 
-/* The scoreboard uses the whole window (Flashy: "I don't want to scroll
-   unless I'm really forced to"): wider than the page's column when the
-   window is, a scrollbar's width spared, and its cells tighter than the
-   other tables'. */
-.match-page > .box,
-.match-page > * > .box {
-  margin-inline: min(0px, calc((100% - (100vw - 2 * var(--gutter) - 16px)) / 2));
-}
+/* The scoreboard's cells, tighter than the other tables' so it fits the
+   page's column (Flashy: "I don't want to scroll"). It no longer breaks out
+   to the window's width: "the full width table is kinda ugly, maybe go
+   back". */
 .scoreboard td,
 .scoreboard th {
   padding-inline: 6px;
