@@ -710,9 +710,10 @@ input:where(:not([type])) {
 .rank-by-seg .rank-by-opt.on { background: linear-gradient(var(--raised), var(--sunken)); border-color: var(--line-2); color: var(--text-hi); box-shadow: var(--ctl-shadow); }
 .rank-by-seg .rank-by-opt:active:not(:disabled) { box-shadow: none; }
 
-/* Ratings coloured like HLTV's (RatingValue.tsx): green above 1.00, red
-   below, plain at 1.00. The same two colours on every theme, as HLTV's. */
-:root { --rt-pos: #5fbf4f; --rt-neg: #e05a4e; }
+/* Ratings coloured like HLTV's (RatingValue.tsx): green above 1.05, red
+   below 0.95, grey in the band around 1.00. The same colours on every
+   theme, as HLTV's. */
+:root { --rt-pos: #5fbf4f; --rt-neg: #e05a4e; --rt-even: #9a9da3; }
 .rt-pos { color: var(--rt-pos); }
 .rt-neg { color: var(--rt-neg); }
-.rt-even { color: var(--text); }
+.rt-even { color: var(--rt-even); }
