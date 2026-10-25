@@ -115,7 +115,11 @@ pub struct MatchFilter {
 
 /// The orderings the match list offers, as `(key, SQL)`. The owner's line is
 /// `p`, so `p.kills IS NULL` puts matches they did not play last either way.
-pub const SORTS: [(&str, &str); 8] = [
+///
+/// Every stat the match list can show has one (Flashy: "i want all the
+/// stats possible"): the owner's totals, per minute, per 30 minutes and the
+/// ratios.
+pub const SORTS: [(&str, &str); 33] = [
     ("date", "m.played_at"),
     ("kills", "p.kills"),
     ("deaths", "p.deaths"),
@@ -123,7 +127,32 @@ pub const SORTS: [(&str, &str); 8] = [
     ("dmg", "p.dmg"),
     ("dpm", "CASE WHEN COALESCE(p.time_s, 0) > 0 THEN p.dmg * 60.0 / p.time_s END"),
     ("kd", "CASE WHEN COALESCE(p.deaths, 0) > 0 THEN p.kills * 1.0 / p.deaths ELSE p.kills END"),
+    ("kad", "CASE WHEN COALESCE(p.deaths, 0) > 0 THEN (p.kills + p.assists) * 1.0 / p.deaths ELSE p.kills + p.assists END"),
     ("rating", "r.score"),
+    ("time", "p.time_s"),
+    ("k30", "CASE WHEN COALESCE(p.time_s, 0) > 0 THEN p.kills * 1800.0 / p.time_s END"),
+    ("a30", "CASE WHEN COALESCE(p.time_s, 0) > 0 THEN p.assists * 1800.0 / p.time_s END"),
+    ("d30", "CASE WHEN COALESCE(p.time_s, 0) > 0 THEN p.deaths * 1800.0 / p.time_s END"),
+    ("dt", "p.dt"),
+    ("dtpm", "CASE WHEN COALESCE(p.time_s, 0) > 0 THEN p.dt * 60.0 / p.time_s END"),
+    ("hr", "p.hr"),
+    ("hrpm", "CASE WHEN COALESCE(p.time_s, 0) > 0 THEN p.hr * 60.0 / p.time_s END"),
+    ("heal", "p.heal"),
+    ("healpm", "CASE WHEN COALESCE(p.time_s, 0) > 0 THEN p.heal * 60.0 / p.time_s END"),
+    ("ubers", "p.ubers"),
+    ("drops", "p.drops"),
+    ("headshots", "p.headshots"),
+    ("headshots_hit", "p.headshots_hit"),
+    ("backstabs", "p.backstabs"),
+    ("airshots", "p.airshots"),
+    ("medkits", "p.medkits"),
+    ("medkits_hp", "p.medkits_hp"),
+    ("sentries", "p.sentries"),
+    ("cpc", "p.cpc"),
+    ("ic", "p.ic"),
+    ("lks", "p.lks"),
+    ("suicides", "p.suicides"),
+    ("dmgk", "CASE WHEN COALESCE(p.kills, 0) > 0 THEN p.dmg * 1.0 / p.kills END"),
 ];
 
 /// Q61 (Clark): `killed:<class>` sorts by the owner's kills on that class,
@@ -220,6 +249,22 @@ pub struct MyLine {
     pub time_s: i64,
     /// `W`, `L` or `T` from the owner's side.
     pub result: String,
+    pub dt: i64,
+    pub hr: i64,
+    pub heal: i64,
+    pub ubers: i64,
+    pub drops: i64,
+    pub headshots: i64,
+    pub headshots_hit: i64,
+    pub backstabs: i64,
+    pub airshots: i64,
+    pub medkits: i64,
+    pub medkits_hp: i64,
+    pub sentries: i64,
+    pub cpc: i64,
+    pub ic: i64,
+    pub lks: i64,
+    pub suicides: i64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -863,6 +908,7 @@ impl Db {
                         (SELECT map FROM log_segment s WHERE s.log_id = m.log_id AND map IS NOT NULL ORDER BY seq)
                     ) AS segment_maps,
                     p.team, p.main_class, p.kills, p.deaths, p.assists, p.dmg, p.time_s,
+                    p.dt, p.hr, p.heal, p.ubers, p.drops, p.headshots, p.headshots_hit, p.backstabs, p.airshots, p.medkits, p.medkits_hp, p.sentries, p.cpc, p.ic, p.lks, p.suicides,
                     r.score AS my_rating,
                     {CONTEXT_COLUMNS}
              FROM match m
@@ -912,6 +958,22 @@ impl Db {
                         dmg: r.get("dmg"),
                         time_s: r.get("time_s"),
                         result: result.to_string(),
+                        dt: r.get("dt"),
+                        hr: r.get("hr"),
+                        heal: r.get("heal"),
+                        ubers: r.get("ubers"),
+                        drops: r.get("drops"),
+                        headshots: r.get("headshots"),
+                        headshots_hit: r.get("headshots_hit"),
+                        backstabs: r.get("backstabs"),
+                        airshots: r.get("airshots"),
+                        medkits: r.get("medkits"),
+                        medkits_hp: r.get("medkits_hp"),
+                        sentries: r.get("sentries"),
+                        cpc: r.get("cpc"),
+                        ic: r.get("ic"),
+                        lks: r.get("lks"),
+                        suicides: r.get("suicides"),
                     }
                 });
                 MatchSummary {

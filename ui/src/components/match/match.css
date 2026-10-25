@@ -2038,20 +2038,6 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 .sb-cc-row > * { white-space: nowrap; }
 .sb-class-card { font-size: 0.86rem; padding: 14px 16px; }
 
-/* The scoreboard's column picker. */
+
+/* The scoreboard header's tools: the reading picker and Columns. */
 .sb-head-tools { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
-.sb-cols { position: relative; }
-.sb-cols-open { gap: 8px; }
-.sb-cols-pop {
-  position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; width: 320px;
-  padding: 10px; border-radius: 10px; border: 1px solid var(--line);
-  background: var(--panel-2); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
-  display: flex; flex-direction: column; gap: 6px;
-}
-.sb-cols-list { display: flex; flex-direction: column; max-height: 60vh; overflow-y: auto; }
-.sb-cols-item { display: grid; grid-template-columns: 18px 52px minmax(0, 1fr); align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; cursor: pointer; }
-.sb-cols-item:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
-.sb-cols-item input { margin: 0; accent-color: var(--accent); }
-.sb-cols-label { font-weight: 700; font-variant-numeric: tabular-nums; }
-.sb-cols-what { color: var(--muted); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sb-cols-reset { align-self: flex-end; font-size: 0.8rem; }

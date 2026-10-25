@@ -604,3 +604,44 @@ input:where(:not([type])) {
 .tier-rg-text, .tier-rg-star { position: relative; }
 .tier-rg-star { color: #f0b840; font-size: 0.9em; }
 .tier-pill { display: inline-block; min-width: 2.6em; padding: 1px 7px; border-radius: 999px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; line-height: 1.35; }
+
+/* A table's Columns button and checklist (ColumnPicker): a card like the
+   others, the stats grouped, each one a row with the app's own checkbox. */
+.cp { position: relative; }
+.cp-open { gap: 8px; }
+.cp-open.on { border-color: var(--line-2); color: var(--text-hi); }
+.cp-pop {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 45;
+  width: min(580px, calc(100vw - 32px)); box-sizing: border-box;
+  display: flex; flex-direction: column;
+  border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel-2); box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+  text-transform: none; letter-spacing: normal; font-weight: 400;
+}
+.cp-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
+.cp-head strong { font: 700 0.95rem var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-hi); }
+.cp-count { font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cp-groups { display: flex; flex-direction: column; gap: 12px; padding: 12px 12px 14px; max-height: min(62vh, 560px); overflow-y: auto; }
+.cp-group h4 { margin: 0 4px 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.cp-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+@media (max-width: 560px) { .cp-items { grid-template-columns: 1fr; } }
+.cp-item {
+  display: grid; grid-template-columns: 18px 74px minmax(0, 1fr); align-items: center; gap: 10px;
+  min-height: 36px; padding: 6px 10px; box-sizing: border-box;
+  border: 1px solid transparent; border-radius: 8px; background: none; box-shadow: none;
+  text-align: left; color: var(--muted); cursor: pointer;
+}
+.cp-item:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 6%, transparent); border-color: var(--border); box-shadow: none; }
+.cp-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cp-item.on { color: var(--text); background: color-mix(in srgb, var(--accent) 9%, transparent); border-color: color-mix(in srgb, var(--accent) 28%, transparent); }
+.cp-box {
+  display: grid; place-items: center; width: 18px; height: 18px; box-sizing: border-box;
+  border: 1.5px solid var(--line-2); border-radius: 5px; background: var(--sunken);
+  color: transparent; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4); transition: background 120ms, border-color 120ms, color 120ms;
+}
+.cp-item.on .cp-box { background: linear-gradient(var(--accent-hi), var(--accent-lo)); border-color: var(--accent-edge); color: #1f140d; box-shadow: none; }
+.cp-label { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-hi); }
+.cp-item:not(.on) .cp-label { color: var(--text); }
+.cp-name { font-size: 0.82rem; line-height: 1.25; }
+.cp-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border); }
+.cp-foot .cp-small { min-height: 30px; padding: 0 12px; font-size: 0.82rem; }

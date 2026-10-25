@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { errorMessage, type ContextKind, type MatchSummary } from "../api/types";
-import { capitalize, formatDate, rating, splitMap } from "../lib/format";
+import { errorMessage, type ContextKind, type MatchSummary, type MyLine } from "../api/types";
+import { capitalize, clock, formatDate, rating, splitMap } from "../lib/format";
+import { ColumnPicker, useColumns, type PickerCol } from "./ColumnPicker";
 import { startSync, useSyncStatus } from "../lib/sync";
 import { bounds, usePeriod } from "../lib/period";
 import { KindPicker } from "./ContextBadge";
@@ -24,12 +25,48 @@ const VIEWS: Array<{ id: View; label: string; hint?: string }> = [
 ];
 
 /** The sortable columns, in table order. `null` sorts by date. */
-const SORTS: Array<{ key: string; label: string; num?: boolean; title?: string }> = [
-  { key: "date", label: k("Date") },
-  { key: "kills", label: "K / D / A", num: true, title: k("Sort by kills") },
-  { key: "dmg", label: k("Dmg"), num: true, title: k("Sort by damage") },
-  { key: "dpm", label: k("DPM"), num: true, title: k("Sort by damage per minute") },
-  { key: "rating", label: k("Rating"), num: true, title: k("Sort by your rating on your main class") },
+const SORTS: Array<{ key: string; label: string; num?: boolean; title?: string }> = [{ key: "date", label: k("Date") }];
+
+/** Your numbers in each match, one column each, the keys the backend sorts
+ *  on (Flashy: "add the columns button to the other tables too ... kills
+ *  per 30 minutes and stuff like that. i want all the stats possible").
+ *  K / D / A, damage, DPM and rating show unless turned off. */
+type StatCol = PickerCol & { title: string; value: (me: MyLine, m: MatchSummary) => number | null | undefined; fmt?: (v: number) => string };
+const perMin = (n: number | undefined, me: MyLine) => (n === undefined || me.timeS <= 0 ? null : (n * 60) / me.timeS);
+const per30 = (n: number | undefined, me: MyLine) => (n === undefined || me.timeS <= 0 ? null : (n * 1800) / me.timeS);
+const f0 = (v: number) => v.toFixed(0);
+const f1 = (v: number) => v.toFixed(1);
+const thousands = (v: number) => Math.round(v).toLocaleString();
+const STAT_COLS: StatCol[] = [
+  { key: "kills", label: "K / D / A", name: k("Kills, deaths, assists"), group: k("Totals"), title: k("Sort by kills"), value: (me) => me.kills },
+  { key: "dmg", label: k("Dmg"), name: k("Damage dealt"), group: k("Totals"), title: k("Sort by damage"), value: (me) => me.dmg, fmt: thousands },
+  { key: "dt", label: "DT", name: k("Damage taken"), group: k("Totals"), title: k("Damage taken"), value: (me) => me.dt, fmt: thousands, on: false },
+  { key: "hr", label: "HR", name: k("Healing received"), group: k("Totals"), title: k("Healing received"), value: (me) => me.hr, fmt: thousands, on: false },
+  { key: "heal", label: k("Heals"), name: k("Healing given"), group: k("Totals"), title: k("Healing given, mostly the Medic's"), value: (me) => me.heal, fmt: thousands, on: false },
+  { key: "ubers", label: k("Ubers"), name: k("Ubers used"), group: k("Totals"), title: k("Charges used"), value: (me) => me.ubers, on: false },
+  { key: "drops", label: k("Drops"), name: k("Ubers dropped"), group: k("Totals"), title: k("Died with a full charge"), value: (me) => me.drops, on: false },
+  { key: "headshots", label: "HS", name: k("Headshot kills"), group: k("Totals"), title: k("Headshot kills"), value: (me) => me.headshots, on: false },
+  { key: "headshots_hit", label: "HSH", name: k("Headshots landed"), group: k("Totals"), title: k("Headshots landed, kills or not"), value: (me) => me.headshotsHit, on: false },
+  { key: "backstabs", label: "BS", name: k("Backstabs"), group: k("Totals"), title: k("Backstabs"), value: (me) => me.backstabs, on: false },
+  { key: "airshots", label: "AS", name: k("Airshots"), group: k("Totals"), title: k("Airshots"), value: (me) => me.airshots, on: false },
+  { key: "medkits", label: "HP", name: k("Health packs"), group: k("Totals"), title: k("Health packs picked up"), value: (me) => me.medkits, on: false },
+  { key: "medkits_hp", label: k("Pack HP"), name: k("Health from packs"), group: k("Totals"), title: k("Health gained from health packs"), value: (me) => me.medkitsHp, fmt: thousands, on: false },
+  { key: "sentries", label: k("SG"), name: k("Sentries built"), group: k("Totals"), title: k("Sentries built"), value: (me) => me.sentries, on: false },
+  { key: "cpc", label: k("CAP"), name: k("Points captured"), group: k("Totals"), title: k("Points captured"), value: (me) => me.cpc, on: false },
+  { key: "lks", label: k("Streak"), name: k("Longest killstreak"), group: k("Totals"), title: k("Longest killstreak"), value: (me) => me.lks, on: false },
+  { key: "suicides", label: k("Suicides"), name: k("Suicides"), group: k("Totals"), title: k("Suicides"), value: (me) => me.suicides, on: false },
+  { key: "time", label: k("Time"), name: k("Time played"), group: k("Totals"), title: k("Time played"), value: (me) => me.timeS, fmt: (v) => clock(v), on: false },
+  { key: "dpm", label: k("DPM"), name: k("Damage per minute"), group: k("Per minute"), title: k("Sort by damage per minute"), value: (me) => perMin(me.dmg, me), fmt: f0 },
+  { key: "dtpm", label: "DT/M", name: k("Damage taken per minute"), group: k("Per minute"), title: k("Damage taken per minute"), value: (me) => perMin(me.dt, me), fmt: f0, on: false },
+  { key: "hrpm", label: "HR/M", name: k("Healing received per minute"), group: k("Per minute"), title: k("Healing received per minute"), value: (me) => perMin(me.hr, me), fmt: f0, on: false },
+  { key: "healpm", label: k("Heals/M"), name: k("Healing given per minute"), group: k("Per minute"), title: k("Healing given per minute"), value: (me) => (me.heal ? perMin(me.heal, me) : null), fmt: f0, on: false },
+  { key: "k30", label: "K/30", name: k("Kills per 30 minutes"), group: k("Per 30 minutes"), title: k("Kills per 30 minutes played"), value: (me) => per30(me.kills, me), fmt: f1, on: false },
+  { key: "a30", label: "A/30", name: k("Assists per 30 minutes"), group: k("Per 30 minutes"), title: k("Assists per 30 minutes played"), value: (me) => per30(me.assists, me), fmt: f1, on: false },
+  { key: "d30", label: "D/30", name: k("Deaths per 30 minutes"), group: k("Per 30 minutes"), title: k("Deaths per 30 minutes played"), value: (me) => per30(me.deaths, me), fmt: f1, on: false },
+  { key: "kd", label: "K/D", name: k("Kills per death"), group: k("Ratios"), title: k("Kills per death"), value: (me) => me.kills / Math.max(1, me.deaths), fmt: f1, on: false },
+  { key: "kad", label: "KA/D", name: k("Kills and assists per death"), group: k("Ratios"), title: k("Kills and assists per death"), value: (me) => (me.kills + me.assists) / Math.max(1, me.deaths), fmt: f1, on: false },
+  { key: "dmgk", label: "DA/K", name: k("Damage per kill"), group: k("Ratios"), title: k("Damage dealt per kill"), value: (me) => (me.kills > 0 ? me.dmg / me.kills : null), fmt: f0, on: false },
+  { key: "rating", label: k("Rating"), name: k("Your rating"), group: k("Rating"), title: k("Sort by your rating on your main class"), value: (_me, m) => m.rating },
 ];
 
 export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
@@ -43,6 +80,8 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
   // Q56 (Emiel): straight to the matches with everyone's movement and aim.
   const [stvOnly, setStvOnly] = useState(false);
   const classSort = parseClassSort(sort.key);
+  const picker = useColumns("matches", STAT_COLS);
+  const statCols = STAT_COLS.filter(picker.shown);
 
   const kind = view === "official" || view === "scrim" || view === "pug" ? view : null;
   const period = usePeriod();
@@ -198,6 +237,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
           >
             {t("With STV")}
           </button>
+          <ColumnPicker cols={STAT_COLS} state={picker} />
         </div>
       )}
       </div>
@@ -231,15 +271,15 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
                 <th>{t("Class")}</th>
                 <th>{t("Result")}</th>
                 {classSort && <SortHead col={{ key: sort.key, label: classSortLabel(classSort), num: true, title: classSortLabel(classSort) }} sort={sort} onSort={setSort} />}
-                {SORTS.slice(1).map((c) => (
-                  <SortHead key={c.key} col={c} sort={sort} onSort={setSort} />
+                {statCols.map((c) => (
+                  <SortHead key={c.key} col={{ key: c.key, label: c.label, num: true, title: c.title }} sort={sort} onSort={setSort} />
                 ))}
                 <th>{t("Match")}</th>
               </tr>
             </thead>
             <tbody>
               {items.map((m) => (
-                <MatchRow key={m.logId} m={m} onOpen={onOpen} classCol={!!classSort} />
+                <MatchRow key={m.logId} m={m} onOpen={onOpen} classCol={!!classSort} cols={statCols} />
               ))}
             </tbody>
           </table>
@@ -388,7 +428,7 @@ function ImportLog({ onOpen }: { onOpen: (logId: number) => void }) {
   );
 }
 
-function MatchRow({ m, onOpen, classCol }: { m: MatchSummary; onOpen: (logId: number) => void; classCol: boolean }) {
+function MatchRow({ m, onOpen, classCol, cols }: { m: MatchSummary; onOpen: (logId: number) => void; classCol: boolean; cols: StatCol[] }) {
   const me = m.me;
   const [rMine, rTheirs] =
     me?.team === "Blue" ? [m.blueScore, m.redScore] : [m.redScore, m.blueScore];
@@ -397,7 +437,6 @@ function MatchRow({ m, onOpen, classCol }: { m: MatchSummary; onOpen: (logId: nu
   const etf2l = m.context?.kind === "official" ? m.context.official?.score ?? null : null;
   const [mine, theirs] = etf2l ?? [rMine, rTheirs];
   const result = etf2l ? (etf2l[0] > etf2l[1] ? "W" : etf2l[0] < etf2l[1] ? "L" : "T") : me?.result;
-  const dpm = me && me.timeS > 0 ? Math.round(me.dmg / (me.timeS / 60)) : null;
   // A combined log's own map field is free text; its resolved maps are not.
   const maps = [...new Set(m.maps)];
   const { mode, name } = splitMap(maps.length === 1 ? maps[0] : m.map);
@@ -450,12 +489,21 @@ function MatchRow({ m, onOpen, classCol }: { m: MatchSummary; onOpen: (logId: nu
           {m.classCount ?? <span className="muted">—</span>}
         </td>
       )}
-      <td className="num nowrap">{me ? `${me.kills} / ${me.deaths} / ${me.assists}` : ""}</td>
-      <td className="num">{me ? me.dmg.toLocaleString() : ""}</td>
-      <td className="num">{dpm ?? ""}</td>
-      <td className="num">
-        {m.rating === null ? <span className="muted">–</span> : <span className="sb-rating">{rating(m.rating)}</span>}
-      </td>
+      {cols.map((c) => {
+        if (c.key === "kills") return <td key={c.key} className="num nowrap">{me ? `${me.kills} / ${me.deaths} / ${me.assists}` : ""}</td>;
+        if (c.key === "rating")
+          return (
+            <td key={c.key} className="num">
+              {m.rating === null ? <span className="muted">–</span> : <span className="sb-rating">{rating(m.rating)}</span>}
+            </td>
+          );
+        const v = me ? c.value(me, m) : null;
+        return (
+          <td key={c.key} className="num">
+            {v === null || v === undefined ? (me ? <span className="muted">–</span> : "") : c.fmt ? c.fmt(v) : v}
+          </td>
+        );
+      })}
       <td className="title-cell">
         {m.context ? (
           <KindPicker logId={m.logId} c={m.context} />

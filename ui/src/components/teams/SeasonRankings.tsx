@@ -12,6 +12,7 @@ import { CLASS_ORDER, classLabel } from "../analysis/common";
 import { Loading, Refreshing } from "../Spinner";
 import { SeasonBreakdown } from "./SeasonBreakdown";
 import { StatTip } from "../StatTip";
+import { ColumnPicker, useColumns, type PickerCol } from "../ColumnPicker";
 
 /**
  * Season rankings (the MVP research, October 2026): every player of one
@@ -123,7 +124,15 @@ export function SeasonRankings({ season, onTeam }: { season: number; onTeam: (id
     staleTime: 5 * 60_000,
   });
   const v = q.data;
-  const cols = useMemo(() => columns(view).filter((c) => !c.only || c.only.includes(cls)), [view, cls]);
+  const offered = useMemo(() => columns(view).filter((c) => !c.only || c.only.includes(cls)), [view, cls]);
+  // The viewer's pick of them (Flashy: "add the columns button to the other
+  // tables too"); a stat and its per-30 form are picked apart.
+  const pickable: PickerCol[] = useMemo(
+    () => offered.map((c) => ({ key: c.key, label: c.label, name: typeof c.tip === "string" ? c.label : c.tip.what.replace(/\.$/, ""), group: c.raw ? t("From the server log") : t("From logs.tf") })),
+    [offered],
+  );
+  const picker = useColumns("season-table", pickable);
+  const cols = offered.filter((c) => picker.shown(pickable.find((x) => x.key === c.key)!));
   const rows = useMemo(() => (v?.rows ?? []).filter((r) => r.officials >= minOff || minOff <= 1), [v, minOff]);
   const sortCols: Record<string, (r: SeasonRow) => number | string | null> = {
     rank: (r) => r.rank ?? 9999,
@@ -190,6 +199,7 @@ export function SeasonRankings({ season, onTeam }: { season: number; onTeam: (id
           </select>{" "}
           {t("officials")}
         </label>
+        <ColumnPicker cols={pickable} state={picker} />
       </div>
       {q.isPending && <Loading>{t("Reading the season…")}</Loading>}
       {q.isError && <p className="error">{errorMessage(q.error)}</p>}
