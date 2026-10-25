@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
+import { RatingValue } from "../RatingValue";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -289,6 +290,8 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
                     >
                       {v === null ? (
                         <span className="muted">–</span>
+                      ) : c.key === "rating" || c.key === "impact" ? (
+                        <RatingValue v={v} />
                       ) : c.key === "dapm" || c.key === "acc" ? (
                         <TierPill text={c.fmt ? c.fmt(v) : String(Math.round(v))} tier={tierOf(scales, p.mainClass, c.key === "dapm" ? "dpm" : "accuracy", v, d.mapKey)} cls={p.mainClass} />
                       ) : c.fmt ? (

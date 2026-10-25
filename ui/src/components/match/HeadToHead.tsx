@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { RatingValue } from "../RatingValue";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type H2hSide, type MatchDetail } from "../../api/types";
@@ -178,7 +179,7 @@ export function HeadToHead({ d }: { d: MatchDetail }) {
                       <code>{(l.map ?? "?").replace(/_(final|rc|b)\w*$/i, "")}</code> <span className="muted">{Math.round(l.minutes)} min</span>
                       {x && l.winner && <span className={`hh-won ${l.winner === x.team ? "a" : "b"}`}>{l.winner === x.team ? "◀" : "▶"}</span>}
                     </td>
-                    <td className={`num strong${better === 0 ? " hh-best" : ""}`}>{x?.rating != null ? rating(x.rating) : "–"}</td>
+                    <td className={`num strong${better === 0 ? " hh-best" : ""}`}>{x?.rating != null ? <RatingValue v={x.rating} /> : "–"}</td>
                     <td className="num">{x?.impact != null ? (x.impact >= 0 ? "+" : "") + x.impact.toFixed(2) : "–"}</td>
                     <td className="num">{x ? `${x.kills}–${x.deaths}` : "–"}</td>
                     <td className="num hh-duel">
@@ -186,7 +187,7 @@ export function HeadToHead({ d }: { d: MatchDetail }) {
                     </td>
                     <td className="num">{y ? `${y.kills}–${y.deaths}` : "–"}</td>
                     <td className="num">{y?.impact != null ? (y.impact >= 0 ? "+" : "") + y.impact.toFixed(2) : "–"}</td>
-                    <td className={`num strong${better === 1 ? " hh-best" : ""}`}>{y?.rating != null ? rating(y.rating) : "–"}</td>
+                    <td className={`num strong${better === 1 ? " hh-best" : ""}`}>{y?.rating != null ? <RatingValue v={y.rating} /> : "–"}</td>
                     <td className="hh-caret">{isOpen ? "▴" : "▾"}</td>
                   </tr>,
                   isOpen && (

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { RatingValue } from "../RatingValue";
 import { createPortal } from "react-dom";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -241,7 +242,7 @@ export function TopPlayers({ onPick }: { onPick: (accountId: number) => void }) 
                 <td className="muted">{x.team?.name}</td>
                 <td>{x.games}</td>
                 <td>
-                  <strong>{rating(x.avg)}</strong>
+                  <strong><RatingValue v={x.avg} /></strong>
                 </td>
               </tr>
             ))}

@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { RatingValue } from "./RatingValue";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { errorMessage, type ContextKind, type MatchSummary, type MyLine, type StatScales } from "../api/types";
-import { capitalize, clock, formatDate, rating, splitMap } from "../lib/format";
+import { capitalize, clock, formatDate, splitMap } from "../lib/format";
 import { ColumnPicker, useColumns, type PickerCol } from "./ColumnPicker";
 import { RankBySwitch, useRankBy } from "./RankBy";
 import { TierPill } from "./TierPill";
@@ -505,7 +506,7 @@ function MatchRow({ m, onOpen, classCol, cols, scales }: { m: MatchSummary; onOp
         if (c.key === "rating")
           return (
             <td key={c.key} className="num">
-              {m.rating === null ? <span className="muted">–</span> : <span className="sb-rating">{rating(m.rating)}</span>}
+              {m.rating === null ? <span className="muted">–</span> : <span className="sb-rating"><RatingValue v={m.rating} /></span>}
             </td>
           );
         const v = me ? c.value(me, m) : null;

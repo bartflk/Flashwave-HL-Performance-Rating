@@ -1,4 +1,5 @@
 import { DeepPanels } from "../players/DeepPanels";
+import { RatingValue } from "../RatingValue";
 import { useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -807,7 +808,7 @@ function GameList(props: { title: string; games: GameRef[]; onOpen: (logId: numb
               const { mode, name } = splitMap(g.map);
               return (
                 <tr key={g.logId} className="clickable" tabIndex={0} onClick={() => onOpen(g.logId)} onKeyDown={(e) => e.key === "Enter" && onOpen(g.logId)}>
-                  <td className="num game-score">{rating(g.score)}</td>
+                  <td className="num game-score"><RatingValue v={g.score} /></td>
                   <td className="muted nowrap">{formatDate(g.playedAt, true)}</td>
                   <td className="nowrap" title={g.map ?? undefined}>
                     {mode && <span className="mode">{mode}</span>}
