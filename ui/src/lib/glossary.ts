@@ -103,8 +103,8 @@ export const GLOSSARY = {
   },
   classAward: {
     label: k("Best of the class"),
-    what: k("The top of the class's season table among the division's three medal teams."),
-    how: k("The highest season rating among players on the gold, silver and bronze teams with 60% of the most officials anyone in the division played (at least four) on the class. The same number the season table ranks by. EVPs are open to every team."),
+    what: k("The top of the class's season table among the division's three medal teams, EVPs aside."),
+    how: k("The highest season rating among players on the gold, silver and bronze teams with 60% of the most officials anyone in the division played (at least four) on the class. The same number the season table ranks by. An EVP already has an award, so the class's next best medallist takes it. EVPs are open to every team."),
     source: ["logs.tf", "ETF2L"],
     more: "mvp",
   },

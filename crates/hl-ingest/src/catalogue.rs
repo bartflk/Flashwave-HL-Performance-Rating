@@ -1219,18 +1219,6 @@ impl Catalogue {
         };
         let better = |a: &&SeasonLine, b: &&SeasonLine| a.rating().total_cmp(&b.rating()).then(a.officials.len().cmp(&b.officials.len()));
 
-        // Best of each class. By division, not only tier: two divisions can
-        // share a tier (S33's Fresh Meat and Freshest), and each has its own.
-        let mut tables: HashMap<(i64, i64, &str, &str), Vec<&SeasonLine>> = HashMap::new();
-        for l in lines.values().filter(|l| rules.class_award(l)) {
-            tables.entry((l.season, l.tier, l.division.as_str(), l.class.as_str())).or_default().push(l);
-        }
-        for rows in tables.values() {
-            if let Some(top) = rows.iter().max_by(|a, b| better(a, b)) {
-                out.push(award(top, "class"));
-            }
-        }
-
         // EVPs: each player's best class; the division's best seasons.
         let mut teams: HashMap<(i64, i64, &str), std::collections::HashSet<i64>> = HashMap::new();
         for l in lines.values() {
@@ -1250,6 +1238,28 @@ impl Catalogue {
             rows.sort_by(|a, b| better(b, a));
             out.extend(rows.into_iter().take(n).map(|l| award(l, "evp")));
         }
+
+        // Best of each class. By division, not only tier: two divisions can
+        // share a tier (S33's Fresh Meat and Freshest), and each has its own.
+        // On a medal team only, and not an EVP (Flashy, October 2026: "EVP
+        // can't be a player of the season because they already have an
+        // award") -- the class's next best medallist takes it.
+        let evps: std::collections::HashSet<(i64, i64, &str, u32)> =
+            out.iter().filter(|m| m.kind == "evp").map(|m| (m.season, m.tier.unwrap_or(0), m.division.as_str(), m.account_id)).collect();
+        let mut tables: HashMap<(i64, i64, &str, &str), Vec<&SeasonLine>> = HashMap::new();
+        for l in lines.values().filter(|l| rules.class_award(l)) {
+            if evps.contains(&(l.season, l.tier, l.division.as_str(), l.account_id)) {
+                continue;
+            }
+            tables.entry((l.season, l.tier, l.division.as_str(), l.class.as_str())).or_default().push(l);
+        }
+        let mut class_awards = Vec::new();
+        for rows in tables.values() {
+            if let Some(top) = rows.iter().max_by(|a, b| better(a, b)) {
+                class_awards.push(award(top, "class"));
+            }
+        }
+        out.extend(class_awards);
 
         let order = |k: &str| match k {
             "season" => 0,
@@ -2826,13 +2836,16 @@ mod tests {
         let v = c.mvps(&games);
         let season = v.iter().find(|x| x.kind == "season").unwrap();
         assert_eq!((season.account_id, season.won, season.final_maps), (211, true, 2), "the champions' best");
-        let sniper = v.iter().find(|x| x.kind == "class" && x.class == "sniper").unwrap();
-        assert_eq!((sniper.account_id, sniper.won), (12, false), "the class award goes to the season's best, finalist or not");
+        let sniper = v.iter().find(|x| x.kind == "evp" && x.account_id == 12).unwrap();
+        assert!(!sniper.won, "an EVP can come from any team");
         assert!(sniper.season_rating < 1.45 && sniper.season_rating > 1.2, "pulled towards 1.00, the final counting double");
         let evps: Vec<u32> = v.iter().filter(|x| x.kind == "evp").map(|x| x.account_id).collect();
         assert_eq!(evps.len(), 3, "three in a division of fewer than eight teams");
         assert_eq!(evps[0], 12);
         assert!(!evps.contains(&211), "the Season MVP is not also an EVP");
+        // Every Sniper and the other Medic are EVPs: an EVP has an award
+        // already, so neither class has a best of the class to give.
+        assert!(!v.iter().any(|x| x.kind == "class" && evps.contains(&x.account_id)), "an EVP is not also the best of the class");
         assert!(!v.iter().any(|x| x.account_id == 311));
         // The season table ranks by the same number.
         let lines = c.season_lines(&games);
