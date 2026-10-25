@@ -689,6 +689,6 @@ input:where(:not([type])) {
 .cp-foot .cp-small { min-height: 30px; padding: 0 12px; font-size: var(--fs-small); }
 
 /* A help mark with words beside it, for a tab with no heading. */
-.stip.help.labelled { gap: 6px; margin-left: 0; color: var(--muted); font-size: 0.8rem; }
+.stip.help.labelled { gap: 6px; margin-left: 0; color: var(--muted); font-size: var(--fs-small); }
 .stip.help.labelled:hover, .stip.help.labelled:focus-visible { color: var(--text); }
 .how-counted { display: flex; justify-content: flex-end; margin: 0 0 8px; }
