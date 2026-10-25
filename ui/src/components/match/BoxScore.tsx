@@ -132,6 +132,16 @@ const COLS: Col[] = [
   },
 ];
 
+/** The table's order: logs.tf's for the stats it has (Flashy: "re-order
+ *  the table a bit to be more like logs.tf"), then the extras, then ping,
+ *  rating and impact last. The Columns list groups them as above. */
+const ORDER: Key[] = [
+  "k", "a", "d", "da", "dapm", "kad", "kd", "dt", "dtpm", "hp", "bs", "hs", "as", "cap", "acc",
+  "hr", "hrpm", "heal", "healpm", "ubers", "drops", "hshit", "k30", "a30", "d30", "ka30", "dmgk", "time",
+  "spawn", "ping", "rating", "impact",
+];
+const ORDERED = [...COLS].sort((x, y) => ORDER.indexOf(x.key) - ORDER.indexOf(y.key));
+
 /**
  * The scoreboard, laid out like logs.tf: one table, both teams, a column per
  * stat, every column sortable. It opens sorted by team then class, your team
@@ -159,7 +169,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
   );
   const hasAcc = d.players.some((p) => p.accuracy != null);
   // What this log has, then what the viewer picked of it.
-  const available = COLS.filter(
+  const available = ORDERED.filter(
     (c) =>
       (c.key !== "ping" || flags.ping) &&
       (c.key !== "impact" || flags.impact) &&
