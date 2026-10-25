@@ -51,7 +51,7 @@
   color: var(--muted);
   font-family: var(--font-display);
   font-size: var(--fs-ui);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: var(--ls-heading);
   text-transform: uppercase;
   cursor: pointer;
@@ -97,7 +97,7 @@
   margin: 8px 8px 4px;
   font-size: var(--fs-micro);
   letter-spacing: var(--ls-caps);
-  text-transform: uppercase;
+  text-transform: uppercase; font-family: var(--font-display); font-weight: 700;
   color: var(--muted);
 }
 .e2-search-panel .hint { margin: 8px; }
@@ -262,7 +262,7 @@
 .e2-fx.ours { background: rgba(var(--accent-rgb), 0.08); box-shadow: inset 3px 0 0 var(--tf2-tan); }
 .e2-fx-time { font-variant-numeric: tabular-nums; color: var(--tf2-tan); font-weight: 600; white-space: nowrap; }
 .e2-fx-teams { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.e2-vs { color: var(--faint); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: var(--ls-caps); flex: none; }
+.e2-vs { color: var(--faint); font-size: var(--fs-xs); text-transform: uppercase; font-family: var(--font-display); font-weight: 700; letter-spacing: var(--ls-caps); flex: none; }
 .e2-team {
   display: inline-flex;
   align-items: center;
@@ -344,7 +344,7 @@
   font-size: var(--fs-micro);
   font-weight: 700;
   letter-spacing: var(--ls-caps);
-  text-transform: uppercase;
+  text-transform: uppercase; font-family: var(--font-display);
 }
 
 /* Recent results: two teams, the winner bold, the score at the side. */
@@ -477,7 +477,7 @@
   font: 700 var(--fs-hero) / var(--lh-tight) var(--font-display);
   letter-spacing: var(--ls-heading);
 }
-.np-body { font-size: var(--fs-body); line-height: 1.7; color: var(--text); overflow-wrap: anywhere; }
+.np-body { font-size: var(--fs-body); line-height: var(--lh-prose); color: var(--text); overflow-wrap: anywhere; }
 .np-body > * { margin: 0 0 14px; }
 .np-body h2 { margin: 30px 0 10px; font: 700 var(--fs-heading) var(--font-display); letter-spacing: var(--ls-heading); }
 .np-body h3 { margin: 22px 0 8px; font: 700 var(--fs-section) var(--font-display); letter-spacing: var(--ls-heading); }
@@ -710,7 +710,7 @@
 .e2-strip-stats { display: flex; flex-wrap: wrap; gap: 10px 28px; margin-top: 8px; }
 .e2-strip-stats span { display: flex; flex-direction: column; gap: 1px; }
 .e2-strip-stats strong { font: 700 var(--fs-num-s) var(--font-display); color: #f4ece2; letter-spacing: var(--ls-heading); }
-.e2-strip-stats em { font-style: normal; font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: rgba(244, 236, 226, 0.65); }
+.e2-strip-stats em { font-style: normal; font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; font-family: var(--font-display); font-weight: 700; color: rgba(244, 236, 226, 0.65); }
 .e2-strip-divs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .e2-strip-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .e2-strip-actions .km-chip { background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(6px); border-color: rgba(255, 255, 255, 0.12); }
@@ -821,11 +821,11 @@
 .rc-avatar { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex: none; background: rgba(var(--muted-rgb), 0.18); }
 .rc-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rc-classes { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.rc-label { font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.rc-label { font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; font-family: var(--font-display); font-weight: 700; color: var(--muted); margin-right: 4px; }
 .rc-foot { display: flex; align-items: center; gap: 12px; font-size: var(--fs-small); padding-top: 10px; border-top: 1px solid var(--border); }
 .rc-foot .e2-more { margin-left: auto; }
 .rc-skill { padding: 2px 8px; border-radius: 999px; background: rgba(var(--accent-rgb), 0.14); color: var(--accent); font-weight: 600; font-size: var(--fs-small); }
-.e2-sub { font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+.e2-sub { font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; font-family: var(--font-display); font-weight: 700; color: var(--muted); margin-top: 2px; }
 .rc-mini { list-style: none; margin: 0 -8px; padding: 0; display: flex; flex-direction: column; gap: 1px; }
 .rc-mini button {
   display: grid;
@@ -874,7 +874,7 @@
   .e2-round-grid { grid-template-columns: minmax(0, 1fr); }
 }
 .e2-round-list .e2-rl { grid-template-columns: 64px 92px minmax(0, 1fr) 56px minmax(0, 1fr) 44px; }
-.e2-rl-vs { font-size: var(--fs-xs); font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: var(--ls-caps); }
+.e2-rl-vs { font-size: var(--fs-xs); font-weight: 700; color: var(--faint); text-transform: uppercase; font-family: var(--font-display); letter-spacing: var(--ls-caps); }
 .np-grid-home .np-card:not(.lead) img,
 .np-grid-home .np-card:not(.lead) .np-noimg { aspect-ratio: 21 / 9; }
 
@@ -938,7 +938,7 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
 
 .rc-history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .rc-history li { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: var(--fs-small); }
-.rc-h-act { font-size: var(--fs-xs); font-weight: 700; letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.rc-h-act { font-size: var(--fs-xs); font-weight: 700; letter-spacing: var(--ls-caps); text-transform: uppercase; font-family: var(--font-display); }
 .rc-h-act.in { color: var(--good, #7fb36a); }
 .rc-h-act.out { color: var(--muted); }
 .rc-h-time { font-size: var(--fs-small); white-space: nowrap; }
@@ -1284,7 +1284,7 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
   gap: 7px;
   font-size: var(--fs-small);
   letter-spacing: var(--ls-caps);
-  text-transform: uppercase;
+  text-transform: uppercase; font-family: var(--font-display); font-weight: 700;
   color: #d9a441;
   white-space: nowrap;
   overflow: hidden;

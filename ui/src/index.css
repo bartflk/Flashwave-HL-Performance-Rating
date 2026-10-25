@@ -65,9 +65,11 @@
 
   /* Headings: Windows' Bahnschrift, bold and condensed, is the closest
      built-in font to TF2's. Elsewhere it falls back to a narrow sans. */
-  --font-display: "Bahnschrift", "Arial Narrow", "Roboto Condensed", "Segoe UI", sans-serif;
-  --font-text: "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-mono: "Cascadia Mono", Consolas, monospace;
+  /* Off Windows (the Linux build): Liberation Sans Narrow is Arial Narrow's
+     metric twin on most distributions, then Ubuntu's and DejaVu's condensed. */
+  --font-display: "Bahnschrift", "Arial Narrow", "Liberation Sans Narrow", "Roboto Condensed", "Ubuntu Condensed", "DejaVu Sans Condensed", "Segoe UI", sans-serif;
+  --font-text: "Segoe UI", system-ui, -apple-system, "Ubuntu", "Cantarell", "Noto Sans", sans-serif;
+  --font-mono: "Cascadia Mono", Consolas, "DejaVu Sans Mono", "Liberation Mono", ui-monospace, monospace;
 
   /* The type scale (docs: "Flashwave.tf typography"). Every size in the app
      is one of these; a new rule picks a role, never a number. In rem, so
@@ -90,12 +92,17 @@
   --lh-tight: 1.1;
   --lh-snug: 1.35;
   --lh-body: 1.5;
+  --lh-prose: 1.7;                       /* long reading: news posts */
+  /* SVG chart text, in px because it is sized against the chart's viewBox,
+     not the page: it scales with the chart, so it must not grow with the root. */
+  --fs-chart: 11px;
+  --fs-chart-l: 12px;
 
   color-scheme: dark;
   font-family: var(--font-text);
   /* Text grows with the window, so a maximised app on a big monitor reads
      like a website rather than a column of small print. */
-  font-size: clamp(15px, 0.35vw + 10px, 18px);
+  font-size: clamp(15px, 0.35vw + 10px, 18px); /* type-ok: the root itself: every token is in rem of it */
   line-height: var(--lh-body);
 
   /* Every page centres a column of this width; the bars above it stay
@@ -241,7 +248,6 @@ h2,
 h3 {
   margin: 0;
   font-weight: 600;
-  letter-spacing: -0.01em;
 }
 
 h1,
@@ -392,7 +398,7 @@ option:disabled {
 
 .an-label {
   font-size: var(--fs-small);
-  text-transform: uppercase;
+  text-transform: uppercase; font-family: var(--font-display); font-weight: 700;
   letter-spacing: var(--ls-heading);
   color: var(--muted);
   white-space: nowrap;
@@ -658,7 +664,7 @@ input:where(:not([type])) {
 .cp-head strong { font: 700 var(--fs-ui) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--text-hi); }
 .cp-count { font-size: var(--fs-small); color: var(--muted); font-variant-numeric: tabular-nums; }
 .cp-groups { display: flex; flex-direction: column; gap: 12px; padding: 12px 12px 14px; max-height: min(62vh, 560px); overflow-y: auto; }
-.cp-group h4 { margin: 0 4px 6px; font-size: var(--fs-micro); font-weight: 700; text-transform: uppercase; letter-spacing: var(--ls-caps); color: var(--muted); }
+.cp-group h4 { margin: 0 4px 6px; font-size: var(--fs-micro); font-weight: 700; text-transform: uppercase; font-family: var(--font-display); letter-spacing: var(--ls-caps); color: var(--muted); }
 .cp-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 @media (max-width: 560px) { .cp-items { grid-template-columns: 1fr; } }
 .cp-item {

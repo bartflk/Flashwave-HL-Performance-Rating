@@ -13,6 +13,7 @@
     "ui:check": "npm --prefix ui run build",
     "icons": "node scripts/generate-icons.mjs",
     "i18n": "node scripts/i18n.mjs",
+    "type-scale": "node scripts/check-type.mjs",
     "tauri": "tauri"
   },
   "devDependencies": {

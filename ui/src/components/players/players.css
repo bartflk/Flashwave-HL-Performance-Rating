@@ -193,7 +193,7 @@
 /* ---- Player profiles, HLTV-style (Q35) ---- */
 .pp-head { padding: 0; overflow: hidden; }
 .pp-top { display: grid; grid-template-columns: auto 1fr auto; gap: 20px; padding: 20px; }
-.pp-avatar { width: 112px; height: 112px; border-radius: 10px; overflow: hidden; background: var(--sunken); border: 1px solid var(--border); display: grid; place-items: center; font-size: 2.6rem; font-weight: 700; color: var(--muted); }
+.pp-avatar { width: 112px; height: 112px; border-radius: 10px; overflow: hidden; background: var(--sunken); border: 1px solid var(--border); display: grid; place-items: center; font-size: 2.6rem; font-weight: 700; color: var(--muted); } /* type-ok: an avatar's letter */
 .pp-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .pp-name-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .pp-name { margin: 0; font-size: var(--fs-hero); }
@@ -304,7 +304,7 @@
 .pp-stays li.on { border-color: color-mix(in srgb, var(--accent, #cf7336) 60%, var(--border)); }
 .pp-stays li > .muted { grid-column: 1; font-size: var(--fs-small); }
 .pp-stay-team { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.pp-stay-type { padding: 1px 6px; border-radius: 4px; background: rgba(0, 0, 0, 0.25); color: var(--muted); font-size: var(--fs-micro); letter-spacing: var(--ls-heading); text-transform: uppercase; }
+.pp-stay-type { padding: 1px 6px; border-radius: 4px; background: rgba(0, 0, 0, 0.25); color: var(--muted); font-size: var(--fs-micro); letter-spacing: var(--ls-heading); text-transform: uppercase; font-family: var(--font-display); font-weight: 700; }
 .pp-stay-length { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-weight: 600; white-space: nowrap; }
 .pp-seasons { width: 100%; border-collapse: collapse; font-size: var(--fs-ui); }
 .pp-seasons th, .pp-seasons td { padding: 7px 10px; border-top: 1px solid var(--rule); text-align: left; }
@@ -415,9 +415,9 @@
 .pp-rosters { display: flex; flex-wrap: wrap; gap: 6px 14px; }
 .pp-roster { display: inline-flex; align-items: center; gap: 6px; color: var(--text); text-decoration: none; }
 .pp-roster:hover { color: var(--accent-text); }
-.pp-roster-tag { font-family: var(--font-display); font-size: var(--fs-small); letter-spacing: var(--ls-heading); padding: 1px 6px; border-radius: 4px; background: var(--sunken); border: 1px solid var(--border); color: var(--muted); }
-.pp-role { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: var(--ls-caps); padding: 2px 8px; border-radius: 999px; border: 1px solid var(--accent-dim); color: var(--accent-text); }
-.pp-banned { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: var(--ls-caps); padding: 2px 8px; border-radius: 999px; background: rgba(var(--bad-rgb), 0.14); border: 1px solid rgba(var(--bad-rgb), 0.5); color: var(--bad); }
+.pp-roster-tag { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-small); letter-spacing: var(--ls-heading); padding: 1px 6px; border-radius: 4px; background: var(--sunken); border: 1px solid var(--border); color: var(--muted); }
+.pp-role { font-size: var(--fs-xs); text-transform: uppercase; font-family: var(--font-display); font-weight: 700; letter-spacing: var(--ls-caps); padding: 2px 8px; border-radius: 999px; border: 1px solid var(--accent-dim); color: var(--accent-text); }
+.pp-banned { font-size: var(--fs-xs); text-transform: uppercase; font-family: var(--font-display); font-weight: 700; letter-spacing: var(--ls-caps); padding: 2px 8px; border-radius: 999px; background: rgba(var(--bad-rgb), 0.14); border: 1px solid rgba(var(--bad-rgb), 0.5); color: var(--bad); }
 .pp-side { display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
 
 /* --- your own header: more of you in it --- */
@@ -430,7 +430,7 @@
 .pp-own .pp-name { font-family: var(--font-display); font-size: var(--fs-hero); letter-spacing: var(--ls-heading); line-height: var(--lh-tight); color: var(--text-hi); }
 .pp-own .pp-trophies { position: relative; z-index: 1; background: rgba(0, 0, 0, 0.18); }
 .pp-sig { display: flex; flex-direction: column; align-items: flex-end; text-align: right; gap: 2px; padding: 12px 16px; border-radius: 10px; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border); min-width: 190px; }
-.pp-sig-label { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small); text-transform: uppercase; letter-spacing: var(--ls-caps); color: var(--muted); }
+.pp-sig-label { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small); text-transform: uppercase; font-family: var(--font-display); font-weight: 700; letter-spacing: var(--ls-caps); color: var(--muted); }
 .pp-sig-value { font-family: var(--font-display); font-size: var(--fs-num-xl); line-height: 1; font-weight: 700; color: var(--accent-text); font-variant-numeric: tabular-nums; }
 .pp-sig-sub { font-size: var(--fs-small); }
 .pp-own .pp-links { flex-direction: row; gap: 12px; }
@@ -463,7 +463,7 @@
 .pp-chip-team strong { font-weight: 700; }
 .pp-chip .teams-avatar { width: 18px; height: 18px; border-radius: 4px; }
 .pp-rosters-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 10px; font-size: var(--fs-small); }
-.pp-rosters-label { color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: var(--ls-caps); font-weight: 700; margin-right: 2px; }
+.pp-rosters-label { color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; font-family: var(--font-display); letter-spacing: var(--ls-caps); font-weight: 700; margin-right: 2px; }
 .pp-foot {
   display: flex;
   align-items: center;
@@ -532,7 +532,7 @@
 /* Also known as: each name a pill of its own, in a few quiet tints in turn,
    so where one name ends and the next starts is never in doubt. */
 .pp-aka { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 6px 0 0; }
-.pp-aka-label { margin-right: 4px; color: var(--muted); font-size: var(--fs-xs); font-weight: 700; letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.pp-aka-label { margin-right: 4px; color: var(--muted); font-size: var(--fs-xs); font-weight: 700; letter-spacing: var(--ls-caps); text-transform: uppercase; font-family: var(--font-display); }
 .pp-alias {
   display: inline-flex;
   align-items: center;
@@ -623,11 +623,11 @@ button.pp-alias-more:hover { border-color: var(--accent-dim); background: rgba(v
 .dp-headline { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 14px 18px; margin-top: 12px; }
 .dp-verdict { display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; }
 .dp-value { font-size: var(--fs-num-m); font-weight: 700; font-variant-numeric: tabular-nums; line-height: var(--lh-tight); }
-.dp-label { font-size: var(--fs-small); color: var(--muted); text-transform: uppercase; letter-spacing: var(--ls-heading); }
+.dp-label { font-size: var(--fs-small); color: var(--muted); text-transform: uppercase; font-family: var(--font-display); font-weight: 700; letter-spacing: var(--ls-heading); }
 .dp-bar { position: relative; display: block; width: 100%; height: 4px; border-radius: 2px; background: var(--sunken); overflow: visible; }
 .dp-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--accent); }
 .dp-mark { position: absolute; top: -3px; width: 2px; height: 10px; background: var(--text); opacity: 0.7; }
-.dp-word { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: var(--ls-caps); }
+.dp-word { font-size: var(--fs-xs); text-transform: uppercase; font-family: var(--font-display); font-weight: 700; letter-spacing: var(--ls-caps); }
 .dp-good .dp-fill { background: #3fbf6a; }
 .dp-good .dp-word { color: #3fbf6a; }
 .dp-okay .dp-fill { background: #e0b440; }
@@ -651,7 +651,7 @@ button.pp-alias-more:hover { border-color: var(--accent-dim); background: rgba(v
 .dp-tile strong { font-size: var(--fs-num-s); font-variant-numeric: tabular-nums; }
 .dp-tile span { font-size: var(--fs-small); }
 .dp-moments { display: flex; flex-wrap: wrap; gap: 6px 24px; margin: 6px 0 10px; }
-.dp-moments dt { font-size: var(--fs-xs); color: var(--muted); text-transform: uppercase; letter-spacing: var(--ls-heading); }
+.dp-moments dt { font-size: var(--fs-xs); color: var(--muted); text-transform: uppercase; font-family: var(--font-display); font-weight: 700; letter-spacing: var(--ls-heading); }
 .dp-moments dd { margin: 0; font-size: var(--fs-section); font-weight: 600; font-variant-numeric: tabular-nums; }
 .dp-sides td.num, .dp-weapons td.num { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 640px) { .dp-attr.open { grid-column: auto; } }

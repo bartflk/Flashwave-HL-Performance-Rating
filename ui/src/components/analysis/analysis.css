@@ -176,7 +176,7 @@
 }
 
 .km-round-label {
-  font-size: 11px;
+  font-size: var(--fs-chart);
   fill: var(--muted);
 }
 
@@ -207,7 +207,7 @@
 
 .pbp-round-head {
   font-size: var(--fs-small);
-  text-transform: uppercase;
+  text-transform: uppercase; font-family: var(--font-display); font-weight: 700;
   letter-spacing: var(--ls-caps);
   color: var(--muted);
   margin: 14px 0 4px;
@@ -445,7 +445,7 @@
 }
 
 .tlc-end {
-  font-size: 12px;
+  font-size: var(--fs-chart-l);
   fill: var(--text);
 }
 
@@ -563,7 +563,7 @@
   border: 1px solid var(--border);
   border-radius: 3px;
   font-size: var(--fs-xs);
-  line-height: 16px;
+  line-height: 16px; /* type-ok: fits the 16 px key cap */
   color: var(--muted);
   vertical-align: 1px;
 }
@@ -672,7 +672,7 @@
 
 .aim-label {
   font-size: var(--fs-xs);
-  text-transform: uppercase;
+  text-transform: uppercase; font-family: var(--font-display); font-weight: 700;
   letter-spacing: var(--ls-caps);
   color: var(--muted);
 }
@@ -843,7 +843,7 @@
 
 .aim-axis {
   fill: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-chart);
   font-variant-numeric: tabular-nums;
 }
 
@@ -917,7 +917,7 @@
 .board-read dt {
   color: var(--muted);
   font-size: var(--fs-xs);
-  text-transform: uppercase;
+  text-transform: uppercase; font-family: var(--font-display); font-weight: 700;
   letter-spacing: var(--ls-caps);
   margin-top: 8px;
 }
@@ -1159,7 +1159,7 @@
 .co-layer .co-zone path { transition: stroke-width 0.1s; }
 .co-label {
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: var(--fs-chart);
   font-weight: 700;
   letter-spacing: var(--ls-heading);
   fill: var(--text-hi);
@@ -1168,7 +1168,7 @@
   stroke-width: 3px;
   pointer-events: none;
 }
-.co-zone.selected .co-label { font-size: 13px; }
+.co-zone.selected .co-label { font-size: var(--fs-chart-l); }
 .co-drawing polyline { stroke: var(--accent); }
 .co-drawing circle { fill: var(--accent); }
 .co-editor {
@@ -1205,7 +1205,7 @@
   font-size: var(--fs-micro);
   font-weight: 700;
   letter-spacing: var(--ls-caps);
-  text-transform: uppercase;
+  text-transform: uppercase; font-family: var(--font-display);
   color: var(--muted);
   padding: 0 4px;
   border: 1px solid var(--border);
@@ -1240,7 +1240,7 @@
   font-size: var(--fs-micro);
   font-weight: 700;
   letter-spacing: var(--ls-caps);
-  text-transform: uppercase;
+  text-transform: uppercase; font-family: var(--font-display);
   color: var(--muted);
 }
 .km-field select { max-width: 280px; }

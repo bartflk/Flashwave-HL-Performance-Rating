@@ -76,7 +76,7 @@
 .rg-table th { font-weight: 400; color: var(--muted); }
 .rg-table tbody th { text-align: left; white-space: nowrap; padding-right: 10px; color: var(--text); }
 .rg-table td { text-align: center; min-width: 46px; height: 26px; padding: 0; }
-.rg-cell { display: block; line-height: 26px; border-radius: 4px; background: rgba(57, 135, 229, var(--rg-a)); color: var(--text-hi); font-variant-numeric: tabular-nums; }
+.rg-cell { display: block; line-height: 26px; border-radius: 4px; background: rgba(57, 135, 229, var(--rg-a)); color: var(--text-hi); font-variant-numeric: tabular-nums; } /* type-ok: fits the 26 px heat-map cell */
 .rg-th-class { background: none; border: 0; padding: 2px; cursor: pointer; border-radius: 6px; box-shadow: none; }
 .rg-th-class:hover { background: var(--raised); }
 
