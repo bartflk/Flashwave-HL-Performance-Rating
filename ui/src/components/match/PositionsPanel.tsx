@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Help } from "../StatTip";
 import { api } from "../../api/client";
 import { errorMessage, type MatchDetail, type PositionsView } from "../../api/types";
 import { t } from "../../lib/i18n";
@@ -55,11 +56,13 @@ export function PositionsPanel({ d }: { d: MatchDetail }) {
   const sided = paired.size > 0;
   return (
     <section className="panel positions-panel">
-      <h2>{t("Positions")}</h2>
-      <p className="hint">
-        {t("Where each player spent their time alive, by callout, from the STV demo: one position a second.")}
-        {v.draft && t(" The callouts are a draft; fix them with Edit callouts on the kill map.")}
-      </p>
+      <h2>
+        {t("Positions")}
+        <Help>
+          {t("Where each player spent their time alive, by callout, from the STV demo: one position a second.")}
+          {v.draft && t(" The callouts are a draft; fix them with Edit callouts on the kill map.")}
+        </Help>
+      </h2>
       {sided && (
         <div className="pos-legend hint">
           <span><i className="pos-seg-red" /> {t("RED's side")}</span>

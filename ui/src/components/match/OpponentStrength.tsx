@@ -85,7 +85,6 @@ export function OpponentStrength({ sides, score }: { sides: [Side, Side]; score?
           </div>
         );
       })}
-      <p className="hint os-note">{t("Career ratings on logs.tf's own numbers, from the summary built into the app; 1.00 is a typical competitive game.")}</p>
     </section>
   );
 }
@@ -156,7 +155,6 @@ export function RosterStrength({ roster, onPlayer }: { roster: TeamRosterRow[]; 
           </li>
         ))}
       </ul>
-      <p className="hint os-note">{t("Their last official's players (or the nine seen most recently), each on their logs.tf competitive career.")}</p>
     </section>
   );
 }

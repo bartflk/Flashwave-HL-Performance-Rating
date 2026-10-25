@@ -129,6 +129,10 @@ fn classes(p: &Value) -> Vec<ClassLine> {
             shots: 0,
             hits: 0,
         });
+        for w in c.get("weapon").and_then(Value::as_object).into_iter().flat_map(|m| m.values()) {
+            line.shots += int(w, "shots");
+            line.hits += int(w, "hits");
+        }
         line.time_s += int(c, "total_time");
         line.kills += int(c, "kills");
         line.assists += int(c, "assists");

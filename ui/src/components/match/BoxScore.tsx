@@ -1,7 +1,8 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { LogFlags, MatchDetail, PlayerPing, PlayerRow } from "../../api/types";
+import type { ClassStat, LogFlags, MatchDetail, PlayerPing, PlayerRow } from "../../api/types";
 import { clock, rating, teamLabel } from "../../lib/format";
 import { ClassIcon } from "../ClassIcon";
 import { t as tr, tx, k } from "../../lib/i18n";
@@ -54,9 +55,7 @@ const COLS: Col[] = [
   { key: "dt", label: "DT", title: k("Damage taken"), value: (p, f) => (f.dt ? p.dt : null), fmt: (v) => v.toLocaleString() },
   { key: "dtpm", label: "DT/M", title: k("Damage taken per minute"), value: (p, f) => (f.dt ? per(p.dt, p) : null), fmt: (v) => v.toFixed(0) },
   { key: "hp", label: "HP", title: k("Health packs picked up"), value: (p) => p.medkits },
-  { key: "bs", label: "BS", title: k("Backstabs"), value: (p, f) => (f.bs ? p.backstabs : null) },
   { key: "hs", label: "HS", title: k("Headshot kills"), value: (p, f) => (f.hs ? p.headshots : null) },
-  { key: "as", label: "AS", title: k("Airshots"), value: (p, f) => (f.airshots ? p.airshots : null) },
   { key: "cap", label: k("CAP"), title: k("Points captured"), value: (p, f) => (f.cp ? p.cpc : null) },
   {
     key: "spawn",
@@ -145,10 +144,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
   return (
     <section className="panel box">
       <header className="box-head">
-        <div>
-          <h2>{tr("Scoreboard")}</h2>
-          <p className="hint">{tr("Click a column to sort.")}</p>
-        </div>
+        <h2>{tr("Scoreboard")}</h2>
         {/* Which log the page is reading. It had a panel of its own for one
             select; it belongs with the numbers it scopes. */}
         {reading}
@@ -191,11 +187,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
                   {p.isMe && <span className="you-tag">{tr("you")}</span>}
                 </td>
                 <td className="sb-classes">
-                  {p.classes.map(([c, t], i) => (
-                    <span key={c} title={`${classLabel(c)} ${clock(t)}`}>
-                      <ClassIcon cls={c} size={i === 0 ? 22 : 16} faded={i > 0} />
-                    </span>
-                  ))}
+                  <ClassCard p={p} flags={flags} />
                 </td>
                 {cols.map((c) => {
                   const v = c.value(p, flags);
@@ -232,5 +224,71 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
       </div>
       {card.target && <PlayerPopCard target={card.target} divisions={divisions} onClose={card.close} />}
     </section>
+  );
+}
+
+/**
+ * A player's classes, and on hover what each was (Flashy: "hide airshots
+ * behind a hover over the soldier icon ... same for backstabs. Accuracy per
+ * class also on hover like logs.tf"): time, K / D / A, damage and accuracy
+ * per class, airshots beside Soldier and Demoman, backstabs beside Spy. The
+ * scoreboard keeps one column fewer for each.
+ */
+function ClassCard({ p, flags }: { p: PlayerRow; flags: Flags }) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const box = useRef<HTMLSpanElement>(null);
+  // An older backend sends only each class's time: the rest shows as "–".
+  const known = p.classLines !== undefined;
+  const lines: ClassStat[] = p.classLines ?? p.classes.map(([c, t]) => ({ class: c, timeS: t, kills: 0, deaths: 0, assists: 0, dmg: 0, shots: 0, hits: 0 }));
+  const show = () => {
+    const r = box.current?.getBoundingClientRect();
+    if (!r) return;
+    const width = 340;
+    setPos({ top: r.bottom + 6, left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)) });
+  };
+  const acc = (c: ClassStat) => (c.shots > 0 ? `${Math.round((c.hits / c.shots) * 100)}%` : "–");
+  // Airshots and backstabs are the log's totals, not per class: they go on
+  // the class that makes them.
+  const extra = (c: ClassStat): string | null => {
+    if (c.class === "spy" && flags.bs && p.backstabs > 0) return tr("{0} backstabs", { "0": p.backstabs });
+    if ((c.class === "soldier" || c.class === "demoman") && flags.airshots && p.airshots > 0) return tr("{0} airshots", { "0": p.airshots });
+    if (c.class === "sniper" && flags.hs && p.headshots > 0) return tr("{0} headshot kills", { "0": p.headshots });
+    return null;
+  };
+  return (
+    <span className="sb-class-icons" ref={box} tabIndex={0} onMouseEnter={show} onMouseLeave={() => setPos(null)} onFocus={show} onBlur={() => setPos(null)}>
+      {p.classes.map(([c], i) => (
+        <ClassIcon key={c} cls={c} size={i === 0 ? 22 : 16} faded={i > 0} />
+      ))}
+      {pos &&
+        createPortal(
+          <span className="sb-class-card" role="tooltip" style={{ top: pos.top, left: pos.left }}>
+            <span className="sb-cc-head">{p.name}</span>
+            <span className="sb-cc-row sb-cc-labels">
+              <span>{tr("Class")}</span>
+              <span>{tr("Time")}</span>
+              <span>{tr("K / D / A")}</span>
+              <span>{tr("DA")}</span>
+              <span>{tr("Acc.")}</span>
+            </span>
+            {lines.map((c) => (
+              <span key={c.class} className="sb-cc-class">
+                <span className="sb-cc-row">
+                  <span className="sb-cc-name">
+                    <ClassIcon cls={c.class} size={16} /> {classLabel(c.class)}
+                  </span>
+                  <span>{clock(c.timeS)}</span>
+                  <span>{known ? `${c.kills} / ${c.deaths} / ${c.assists}` : "–"}</span>
+                  <span>{known ? c.dmg.toLocaleString() : "–"}</span>
+                  <span>{acc(c)}</span>
+                </span>
+                {extra(c) && <span className="sb-cc-extra">{extra(c)}</span>}
+              </span>
+            ))}
+            <span className="sb-cc-foot">{tr("Accuracy is hits over shots on the class's weapons, as logs.tf counts them.")}</span>
+          </span>,
+          document.body,
+        )}
+    </span>
   );
 }

@@ -172,6 +172,7 @@
   padding: 9px 10px;
   text-align: left;
   font-size: 0.9rem;
+  box-shadow: none;
 }
 
 .mu-row:hover:not(:disabled) {
@@ -621,6 +622,7 @@
   color: var(--text);
   width: auto;
   min-width: 26px;
+  box-shadow: none;
 }
 
 .round-num.jumpable:hover:not(:disabled) {
@@ -1657,7 +1659,9 @@ button.mx-logo:hover, button.mx-logo:focus-visible { transform: translateY(-2px)
 .mx-colour-blue { background: var(--tf2-blu); }
 .mx-you { font: 700 0.7rem var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--tf2-tan); color: var(--tf2-tan); }
 .mx-name { font: 700 clamp(1.3rem, 2.2vw, 1.9rem)/1.1 var(--font-display); text-transform: uppercase; letter-spacing: 0.02em; color: var(--text-hi);
-  background: none; border: 0; padding: 0; text-align: inherit; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  background: none; border: 0; padding: 0; text-align: inherit; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  box-shadow: none;
+}
 button.mx-name { cursor: pointer; }
 button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 .mx-facts { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; font-size: 0.86rem; color: var(--muted); }
@@ -1976,10 +1980,12 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 .match-page .mx-part-link {
   height: 22px; padding: 0 7px; border: 0; border-radius: 6px;
   background: none; color: var(--muted); font: inherit; font-size: 0.78rem; font-variant-numeric: tabular-nums; cursor: pointer;
+  box-shadow: none;
 }
 .match-page .mx-part-link:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
 .match-page .mx-foot { min-height: 48px; }
 
+<<<<<<< HEAD
 /* The scoreboard uses the whole window (Flashy: "I don't want to scroll
    unless I'm really forced to"): wider than the page's column when the
    window is, a scrollbar's width spared, and its cells tighter than the
@@ -2008,3 +2014,30 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
   .scoreboard .player-name { max-width: 140px; }
   .scoreboard .tier-pill { min-width: 2.2em; padding-inline: 5px; }
 }
+=======
+/* The scoreboard's class icons and their hover card: each class's time,
+   K / D / A, damage and accuracy, airshots and backstabs beside the class
+   that makes them. */
+.sb-class-icons { display: inline-flex; align-items: center; gap: 4px; cursor: help; border-radius: 4px; }
+.sb-class-icons:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sb-class-card {
+  position: fixed; z-index: 60; width: 340px; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 12px 14px; border-radius: 10px;
+  background: var(--panel-2); border: 1px solid var(--line); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+  font-size: 0.82rem; color: var(--text); pointer-events: none;
+}
+.sb-cc-head { font-weight: 700; margin-bottom: 4px; }
+.sb-cc-row { display: grid; grid-template-columns: 1.4fr 0.8fr 1fr 0.8fr 0.6fr; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; }
+.sb-cc-row > :not(:first-child) { text-align: right; }
+.sb-cc-labels { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+.sb-cc-class { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
+.sb-cc-class:last-of-type { border-bottom: 0; }
+.sb-cc-name { display: inline-flex; align-items: center; gap: 6px; }
+.sb-cc-extra { padding-left: 22px; font-size: 0.76rem; color: var(--accent-text); }
+.sb-cc-foot { margin-top: 4px; font-size: 0.72rem; color: var(--muted); }
+
+/* Raised like the rest of the app's controls. */
+.match-page .mx-link { background: linear-gradient(var(--raised), var(--sunken)); box-shadow: var(--ctl-shadow); }
+.match-page .mx-link:hover { box-shadow: var(--ctl-shadow-hover); }
+>>>>>>> main

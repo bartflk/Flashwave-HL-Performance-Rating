@@ -148,6 +148,20 @@ pub struct Side {
     pub rating: Option<Rating>,
 }
 
+/// One class a player played in a log, for the scoreboard's hover card.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClassStat {
+    pub class: TfClass,
+    pub time_s: i64,
+    pub kills: i64,
+    pub deaths: i64,
+    pub assists: i64,
+    pub dmg: i64,
+    pub shots: i64,
+    pub hits: i64,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayerRow {
@@ -158,6 +172,10 @@ pub struct PlayerRow {
     pub main_class: Option<TfClass>,
     /// Every class played, longest first.
     pub classes: Vec<(TfClass, i64)>,
+    /// Each class played, longest first: what the class icons' hover card
+    /// shows (Flashy: airshots, backstabs and accuracy per class moved off
+    /// the scoreboard into it).
+    pub class_lines: Vec<ClassStat>,
     pub time_s: i64,
     pub kills: i64,
     pub deaths: i64,
@@ -474,6 +492,16 @@ fn players(log: &NormalizedLog, me: Option<SteamId>, rater: &Rater<'_>) -> Vec<P
                 name: display_name(p),
                 team: p.team,
                 main_class: main,
+                class_lines: {
+                    let mut v: Vec<ClassStat> = p
+                        .classes
+                        .iter()
+                        .filter(|c| c.time_s > 0)
+                        .map(|c| ClassStat { class: c.class, time_s: c.time_s, kills: c.kills, deaths: c.deaths, assists: c.assists, dmg: c.dmg, shots: c.shots, hits: c.hits })
+                        .collect();
+                    v.sort_by_key(|c| std::cmp::Reverse(c.time_s));
+                    v
+                },
                 classes,
                 time_s,
                 kills: s.kills,

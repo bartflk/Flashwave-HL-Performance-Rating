@@ -19,8 +19,66 @@ export function StatTip({ k: key, entry, children, inline }: { k?: GlossaryKey; 
   // A glossary entry, or one written where the number is (a table's own
   // columns: Fights, Aim, the scoreboard).
   const e: Entry = entry ?? GLOSSARY[key ?? "rating"];
-  const id = useId();
   const more = "more" in e ? e.more : undefined;
+  return (
+    <Tip
+      className={inline ? "stip inline" : "stip"}
+      label={children ?? t(e.label)}
+      card={(close) => (
+        <>
+          <strong>{t(e.label)}</strong>
+          <span className="stip-what">{t(e.what)}</span>
+          <span className="stip-how">{t(e.how)}</span>
+          <span className="stip-foot">
+            {e.source.map((s) => (
+              <span key={s} className="stip-src">
+                {s}
+              </span>
+            ))}
+            {more && (
+              <button
+                className="linkish stip-more"
+                onMouseDown={(ev) => ev.preventDefault()}
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  close();
+                  goTo("rating", more);
+                }}
+              >
+                {t("How it's decided")} ›
+              </button>
+            )}
+          </span>
+        </>
+      )}
+    />
+  );
+}
+
+/**
+ * A section's explanation behind its help mark (Flashy: "most of the
+ * descriptions can be removed, and if it's really needed, put them into the
+ * questionmark icon instead"): the mark alone beside a heading, the text on
+ * hover or focus. A click on it never folds the section it sits in.
+ */
+export function Help({ children, title }: { children: ReactNode; title?: string }) {
+  return <Tip className="stip help" label={null} ariaLabel={title ?? t("What this shows")} card={() => <span className="stip-what">{children}</span>} />;
+}
+
+/** The help mark: a ring with a question mark, drawn so it sits centred at
+ *  any size (the text "?" in a bordered circle never did). */
+export function HelpIcon() {
+  return (
+    <svg className="stip-mark" viewBox="0 0 16 16" width="14" height="14" aria-hidden focusable="false">
+      <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M6.1 6.2a1.95 1.95 0 0 1 3.8.55c0 1.3-1.9 1.6-1.9 2.75" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="8" cy="11.6" r="0.85" fill="currentColor" />
+    </svg>
+  );
+}
+
+function Tip({ className, label, ariaLabel, card: body }: { className: string; label: ReactNode; ariaLabel?: string; card: (close: () => void) => ReactNode }) {
+  const id = useId();
   const anchor = useRef<HTMLSpanElement>(null);
   const card = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
@@ -49,19 +107,19 @@ export function StatTip({ k: key, entry, children, inline }: { k?: GlossaryKey; 
   return (
     <span
       ref={anchor}
-      className={inline ? "stip inline" : "stip"}
+      className={className}
       tabIndex={0}
+      aria-label={ariaLabel}
       aria-describedby={open ? id : undefined}
+      onClick={label === null ? (ev) => ev.stopPropagation() : undefined}
       onMouseEnter={show}
       onMouseLeave={leave}
       onFocus={show}
       onBlur={leave}
       onKeyDown={(ev) => ev.key === "Escape" && setOpen(false)}
     >
-      {children ?? t(e.label)}
-      <span className="stip-mark" aria-hidden>
-        ?
-      </span>
+      {label}
+      <HelpIcon />
       {open &&
         createPortal(
           <span
@@ -73,29 +131,7 @@ export function StatTip({ k: key, entry, children, inline }: { k?: GlossaryKey; 
             onMouseEnter={show}
             onMouseLeave={leave}
           >
-            <strong>{t(e.label)}</strong>
-            <span className="stip-what">{t(e.what)}</span>
-            <span className="stip-how">{t(e.how)}</span>
-            <span className="stip-foot">
-              {e.source.map((s) => (
-                <span key={s} className="stip-src">
-                  {s}
-                </span>
-              ))}
-              {more && (
-                <button
-                  className="linkish stip-more"
-                  onMouseDown={(ev) => ev.preventDefault()}
-                  onClick={(ev) => {
-                    ev.stopPropagation();
-                    setOpen(false);
-                    goTo("rating", more);
-                  }}
-                >
-                  {t("How it's decided")} ›
-                </button>
-              )}
-            </span>
+            {body(() => setOpen(false))}
           </span>,
           document.body,
         )}

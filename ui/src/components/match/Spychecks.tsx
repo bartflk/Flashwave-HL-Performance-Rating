@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Help } from "../StatTip";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type MatchDetail, type SpyPlayer, type Team } from "../../api/types";
@@ -40,10 +41,10 @@ export function Spychecks({ d }: { d: MatchDetail }) {
 
   return (
     <section className="panel spy-panel">
-      <h2>{t("Spychecks")}</h2>
-      <p className="hint">
-        {t("Hits on a Spy who had been fully cloaked for a second and was not blinking, burning, jarated, milked or bleeding. One per attacker per Spy every 2 seconds, so a held minigun counts once.")}
-      </p>
+      <h2>
+        {t("Spychecks")}
+        <Help>{t("Hits on a Spy who had been fully cloaked for a second and was not blinking, burning, jarated, milked or bleeding. One per attacker per Spy every 2 seconds, so a held minigun counts once.")}</Help>
+      </h2>
       {r.checks.length === 0 ? (
         <p className="hint" style={{ marginTop: 8 }}>{t("Nobody found a cloaked Spy in this match.")}</p>
       ) : (

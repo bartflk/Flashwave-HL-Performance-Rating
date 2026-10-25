@@ -7,7 +7,7 @@ import { t, tx } from "../../lib/i18n";
 import { ClassIcon } from "../ClassIcon";
 import { classLabel } from "../analysis/common";
 import { Loading } from "../Spinner";
-import { StatTip } from "../StatTip";
+import { Help, StatTip } from "../StatTip";
 
 /**
  * Two players in one match, log by log (Flashy: "more granular info and a
@@ -70,7 +70,10 @@ export function HeadToHead({ d }: { d: MatchDetail }) {
   return (
     <section className="panel hh">
       <header className="hh-head">
-        <h2>{t("Head to head")}</h2>
+        <h2>
+          {t("Head to head")}
+          <Help>{t("Click a log for both ratings' working. ◀ ▶ marks the side that won the log. The duel is how often each killed the other.")}</Help>
+        </h2>
         <div className="hh-pick">
           {picker(a, setA, t("First player"))}
           <span className="muted">{t("vs")}</span>
@@ -201,7 +204,6 @@ export function HeadToHead({ d }: { d: MatchDetail }) {
               })}
             </tbody>
           </table>
-          <p className="hint">{t("Click a log for both ratings' working. ◀ ▶ marks the side that won the log. The duel is how often each killed the other.")}</p>
         </>
       )}
     </section>

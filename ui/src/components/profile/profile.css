@@ -425,6 +425,7 @@
   background: none;
   border: 1px solid transparent;
   padding: 8px 10px;
+  box-shadow: none;
 }
 
 .ks-row:hover:not(:disabled) {
@@ -681,6 +682,7 @@
   letter-spacing: 0.07em;
   text-transform: uppercase;
   cursor: pointer;
+  box-shadow: none;
 }
 .pf-tab:hover { color: var(--text); background: var(--panel-2); border: 0; }
 .pf-tab.on {
@@ -767,6 +769,7 @@
   font-size: 0.86rem;
   text-align: left;
   cursor: pointer;
+  box-shadow: none;
 }
 .pf-comp-rows button:hover { background: rgba(var(--accent-rgb), 0.1); }
 .pf-comp-rows button.won { border-left-color: #7fb36a; }

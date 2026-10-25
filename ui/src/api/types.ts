@@ -921,6 +921,8 @@ export interface PlayerRow {
   team: Team;
   mainClass: string | null;
   classes: Array<[string, number]>;
+  /** Each class played, longest first, for the class icons' hover card. */
+  classLines?: ClassStat[];
   timeS: number;
   kills: number;
   deaths: number;
@@ -2721,4 +2723,17 @@ export interface HeadToHead {
   logs: { logId: number; map: string | null; minutes: number; winner: string | null; sides: [H2hSide | null, H2hSide | null] }[];
   scaleMean: number;
   scaleSd: number;
+}
+
+/** One class a player played in a log: what the scoreboard's class hover
+ *  card shows, accuracy from logs.tf's shots and hits. */
+export interface ClassStat {
+  class: string;
+  timeS: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  dmg: number;
+  shots: number;
+  hits: number;
 }
