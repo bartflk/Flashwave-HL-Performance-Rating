@@ -2016,14 +2016,14 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 .sb-class-icons { display: inline-flex; align-items: center; gap: 4px; cursor: help; border-radius: 4px; }
 .sb-class-icons:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sb-class-card {
-  position: fixed; z-index: 60; width: 340px; box-sizing: border-box;
+  position: fixed; z-index: 60; width: 460px; box-sizing: border-box;
   display: flex; flex-direction: column; gap: 4px;
   padding: 12px 14px; border-radius: 10px;
   background: var(--panel-2); border: 1px solid var(--line); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
   font-size: var(--fs-small); color: var(--text); pointer-events: none;
 }
 .sb-cc-head { font-weight: 700; margin-bottom: 4px; }
-.sb-cc-row { display: grid; grid-template-columns: 1.4fr 0.8fr 1fr 0.8fr 0.6fr; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; }
+.sb-cc-row { display: grid; grid-template-columns: minmax(96px, 1.3fr) 60px minmax(100px, 1.2fr) 60px 44px; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; }
 .sb-cc-row > :not(:first-child) { text-align: right; }
 .sb-cc-labels { font-size: var(--fs-micro); color: var(--muted); text-transform: uppercase; letter-spacing: var(--ls-caps); padding-bottom: 4px; border-bottom: 1px solid var(--border); }
 .sb-cc-class { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
@@ -2035,3 +2035,9 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 /* Raised like the rest of the app's controls. */
 .match-page .mx-link { background: linear-gradient(var(--raised), var(--sunken)); box-shadow: var(--ctl-shadow); }
 .match-page .mx-link:hover { box-shadow: var(--ctl-shadow-hover); }
+.sb-cc-row > * { white-space: nowrap; }
+.sb-class-card { font-size: var(--fs-small); padding: 14px 16px; }
+
+
+/* The scoreboard header's tools: the reading picker and Columns. */
+.sb-head-tools { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }

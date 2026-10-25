@@ -92,6 +92,24 @@ export interface MyLine {
   dmg: number;
   timeS: number;
   result: "W" | "L" | "T";
+  /** The rest of the owner's line, for the list's optional columns (an
+   *  older backend leaves them out). */
+  dt?: number;
+  hr?: number;
+  heal?: number;
+  ubers?: number;
+  drops?: number;
+  headshots?: number;
+  headshotsHit?: number;
+  backstabs?: number;
+  airshots?: number;
+  medkits?: number;
+  medkitsHp?: number;
+  sentries?: number;
+  cpc?: number;
+  ic?: number;
+  lks?: number;
+  suicides?: number;
 }
 
 export interface MatchSummary {

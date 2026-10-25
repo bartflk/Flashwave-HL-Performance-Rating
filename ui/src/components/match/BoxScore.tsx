@@ -13,10 +13,13 @@ import { StatTip } from "../StatTip";
 import { tip } from "../../lib/glossary";
 import { tierOf, useStatScales } from "../../lib/tiers";
 import { TierPill } from "../TierPill";
+import { ColumnPicker, useColumns } from "../ColumnPicker";
 
 const CLASS_ORDER = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
 
-type Key = "team" | "name" | "k" | "a" | "d" | "da" | "dapm" | "acc" | "kad" | "kd" | "dt" | "dtpm" | "hp" | "bs" | "hs" | "as" | "cap" | "spawn" | "ping" | "rating" | "impact";
+type Key =
+  | "team" | "name" | "k" | "a" | "d" | "da" | "dt" | "hr" | "heal" | "ubers" | "drops" | "hp" | "hs" | "hshit" | "bs" | "as" | "cap" | "time"
+  | "dapm" | "dtpm" | "hrpm" | "healpm" | "k30" | "a30" | "d30" | "ka30" | "kad" | "kd" | "dmgk" | "acc" | "spawn" | "ping" | "rating" | "impact";
 
 /** The log's flags, and whether anyone's caps cost their team a respawn. */
 type Flags = LogFlags & { spawn: boolean; ping: Map<number, PlayerPing> | null; impact: Map<number, number> | null };
@@ -24,6 +27,11 @@ type Flags = LogFlags & { spawn: boolean; ping: Map<number, PlayerPing> | null; 
 type Col = {
   key: Key;
   label: string;
+  /** What it is in words, for the Columns list. */
+  name: string;
+  group: string;
+  /** Shown before the viewer picks; true unless said. */
+  on?: boolean;
   title: string;
   /** The value sorted on and shown; `null` when the log did not record it. */
   value: (p: PlayerRow, f: Flags) => number | null;
@@ -37,29 +45,61 @@ const BOX_HOW = k("logs.tf's own count for the whole match, or the part picked; 
 const PING_HOW = k("Read from a demo of this match (the STV, or your own recording): what the server measured, about once a second. Blank without one.");
 const SPAWN_HOW = k("Worked out from the server log: each cap's reset of the respawn wave, against the teammates who were dead and waiting.");
 
+const per30 = (n: number, p: PlayerRow) => (p.timeS > 0 ? n / (p.timeS / 1800) : 0);
+const f1 = (v: number) => v.toFixed(1);
+const f0 = (v: number) => v.toFixed(0);
+const thousands = (v: number) => v.toLocaleString();
+
+/** Every stat the log has (Flashy: "i want all the stats possible"): the
+ *  common ones on, the rest a tick away in Columns. Accuracy, backstabs
+ *  and airshots start off, the class card has them. */
 const COLS: Col[] = [
-  { key: "k", label: "K", title: k("Kills"), value: (p) => p.kills },
-  { key: "a", label: "A", title: k("Assists"), value: (p) => p.assists },
-  { key: "d", label: "D", title: k("Deaths"), value: (p) => p.deaths },
-  { key: "da", label: "DA", title: k("Damage dealt"), value: (p) => p.dmg, fmt: (v) => v.toLocaleString() },
-  { key: "dapm", label: "DA/M", title: k("Damage per minute, coloured by where it stands among the class's games: muted slate for an ordinary game, through amber and red to violet, black for the top 1%."), value: (p) => p.dpm },
+  { key: "k", label: "K", name: k("Kills"), group: k("Totals"), title: k("Kills"), value: (p) => p.kills },
+  { key: "a", label: "A", name: k("Assists"), group: k("Totals"), title: k("Assists"), value: (p) => p.assists },
+  { key: "d", label: "D", name: k("Deaths"), group: k("Totals"), title: k("Deaths"), value: (p) => p.deaths },
+  { key: "da", label: "DA", name: k("Damage dealt"), group: k("Totals"), title: k("Damage dealt"), value: (p) => p.dmg, fmt: thousands },
+  { key: "dt", label: "DT", name: k("Damage taken"), group: k("Totals"), title: k("Damage taken"), value: (p, f) => (f.dt ? p.dt : null), fmt: thousands },
+  { key: "hr", label: "HR", name: k("Healing received"), group: k("Totals"), title: k("Healing received"), value: (p) => p.hr, fmt: thousands, on: false },
+  { key: "heal", label: k("Heals"), name: k("Healing given"), group: k("Totals"), title: k("Healing given, mostly the Medic's"), value: (p) => p.heal, fmt: thousands, on: false },
+  { key: "ubers", label: k("Ubers"), name: k("Ubers used"), group: k("Totals"), title: k("Charges used"), value: (p) => p.ubers, on: false },
+  { key: "drops", label: k("Drops"), name: k("Ubers dropped"), group: k("Totals"), title: k("Died with a full charge"), value: (p) => p.drops, on: false },
+  { key: "hp", label: "HP", name: k("Health packs"), group: k("Totals"), title: k("Health packs picked up"), value: (p) => p.medkits },
+  { key: "hs", label: "HS", name: k("Headshot kills"), group: k("Totals"), title: k("Headshot kills"), value: (p, f) => (f.hs ? p.headshots : null) },
+  { key: "hshit", label: "HSH", name: k("Headshots landed"), group: k("Totals"), title: k("Headshots landed, kills or not"), value: (p, f) => (f.hs ? p.headshotsHit : null), on: false },
+  { key: "bs", label: "BS", name: k("Backstabs"), group: k("Totals"), title: k("Backstabs"), value: (p, f) => (f.bs ? p.backstabs : null), on: false },
+  { key: "as", label: "AS", name: k("Airshots"), group: k("Totals"), title: k("Airshots"), value: (p, f) => (f.airshots ? p.airshots : null), on: false },
+  { key: "cap", label: k("CAP"), name: k("Points captured"), group: k("Totals"), title: k("Points captured"), value: (p, f) => (f.cp ? p.cpc : null) },
+  { key: "time", label: k("Time"), name: k("Time played"), group: k("Totals"), title: k("Time played"), value: (p) => p.timeS, fmt: (v) => clock(v), on: false },
+
+  { key: "dapm", label: "DA/M", name: k("Damage per minute"), group: k("Per minute"), title: k("Damage per minute, coloured by where it stands among the class's games: muted slate for an ordinary game, through amber and red to violet, black for the top 1%."), value: (p) => p.dpm },
+  { key: "dtpm", label: "DT/M", name: k("Damage taken per minute"), group: k("Per minute"), title: k("Damage taken per minute"), value: (p, f) => (f.dt ? per(p.dt, p) : null), fmt: f0 },
+  { key: "hrpm", label: "HR/M", name: k("Healing received per minute"), group: k("Per minute"), title: k("Healing received per minute"), value: (p) => per(p.hr, p), fmt: f0, on: false },
+  { key: "healpm", label: k("Heals/M"), name: k("Healing given per minute"), group: k("Per minute"), title: k("Healing given per minute"), value: (p) => (p.heal > 0 ? per(p.heal, p) : null), fmt: f0, on: false },
+
+  { key: "k30", label: "K/30", name: k("Kills per 30 minutes"), group: k("Per 30 minutes"), title: k("Kills per 30 minutes played"), value: (p) => per30(p.kills, p), fmt: f1, on: false },
+  { key: "a30", label: "A/30", name: k("Assists per 30 minutes"), group: k("Per 30 minutes"), title: k("Assists per 30 minutes played"), value: (p) => per30(p.assists, p), fmt: f1, on: false },
+  { key: "d30", label: "D/30", name: k("Deaths per 30 minutes"), group: k("Per 30 minutes"), title: k("Deaths per 30 minutes played"), value: (p) => per30(p.deaths, p), fmt: f1, on: false },
+  { key: "ka30", label: "KA/30", name: k("Kills and assists per 30 minutes"), group: k("Per 30 minutes"), title: k("Kills and assists per 30 minutes played"), value: (p) => per30(p.kills + p.assists, p), fmt: f1, on: false },
+
+  { key: "kad", label: "KA/D", name: k("Kills and assists per death"), group: k("Ratios"), title: k("Kills and assists per death"), value: (p) => (p.kills + p.assists) / Math.max(1, p.deaths), fmt: f1 },
+  { key: "kd", label: "K/D", name: k("Kills per death"), group: k("Ratios"), title: k("Kills per death"), value: (p) => p.kills / Math.max(1, p.deaths), fmt: f1 },
+  { key: "dmgk", label: "DA/K", name: k("Damage per kill"), group: k("Ratios"), title: k("Damage dealt per kill"), value: (p) => (p.kills > 0 ? p.dmg / p.kills : null), fmt: f0, on: false },
   {
     key: "acc",
     label: k("Acc"),
+    name: k("Accuracy"),
+    group: k("Ratios"),
     title: k("Accuracy: hits over shots on the main class, coloured by where it stands among the class's games. Only logs with logs.tf's accuracy stats have it."),
     value: (p) => p.accuracy ?? null,
     fmt: (v) => `${Math.round(v * 100)}%`,
+    on: false,
   },
-  { key: "kad", label: "KA/D", title: k("Kills and assists per death"), value: (p) => (p.kills + p.assists) / Math.max(1, p.deaths), fmt: (v) => v.toFixed(1) },
-  { key: "kd", label: "K/D", title: k("Kills per death"), value: (p) => p.kills / Math.max(1, p.deaths), fmt: (v) => v.toFixed(1) },
-  { key: "dt", label: "DT", title: k("Damage taken"), value: (p, f) => (f.dt ? p.dt : null), fmt: (v) => v.toLocaleString() },
-  { key: "dtpm", label: "DT/M", title: k("Damage taken per minute"), value: (p, f) => (f.dt ? per(p.dt, p) : null), fmt: (v) => v.toFixed(0) },
-  { key: "hp", label: "HP", title: k("Health packs picked up"), value: (p) => p.medkits },
-  { key: "hs", label: "HS", title: k("Headshot kills"), value: (p, f) => (f.hs ? p.headshots : null) },
-  { key: "cap", label: k("CAP"), title: k("Points captured"), value: (p, f) => (f.cp ? p.cpc : null) },
+
   {
     key: "spawn",
     label: k("RSP"),
+    name: k("Respawn cost of caps"),
+    group: k("Match"),
     title: k("Seconds of respawn your caps cost your own dead teammates: capping resets the wave, so whoever was waiting waits longer. KOTH and 5CP only. Shown, not rated."),
     value: (p, f) => (f.spawn ? (p.spawnDelayS ?? null) : null),
     fmt: (v) => `${v}s`,
@@ -67,12 +107,16 @@ const COLS: Col[] = [
   {
     key: "ping",
     label: k("Ping"),
+    name: k("Average ping"),
+    group: k("Match"),
     title: k("Their average ping over the match, in milliseconds; hover a cell for the lowest, the highest and any spikes."),
     value: (p, f) => f.ping?.get(p.accountId)?.avg ?? null,
   },
   {
     key: "rating",
     label: k("Rating"),
+    name: k("Rating"),
+    group: k("Match"),
     title: k("Rating on the main class against the players you face: 1.00 is an average game. Not rated under 5 minutes."),
     value: (p) => p.rating?.score ?? null,
     fmt: (v) => rating(v),
@@ -80,6 +124,8 @@ const COLS: Col[] = [
   {
     key: "impact",
     label: k("Impact"),
+    name: k("Round-win impact"),
+    group: k("Match"),
     title: k("Round-win chance their kills added and their deaths gave away, against the class: 1.00 is an average game. Shown beside the rating, never part of it."),
     value: (p, f) => f.impact?.get(p.accountId) ?? null,
     fmt: (v) => rating(v),
@@ -112,7 +158,22 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
     [d.flags, d.players, pings, impact.data],
   );
   const hasAcc = d.players.some((p) => p.accuracy != null);
-  const cols = COLS.filter((c) => (c.key !== "ping" || flags.ping) && (c.key !== "impact" || flags.impact) && (c.key !== "acc" || hasAcc));
+  // What this log has, then what the viewer picked of it.
+  const available = COLS.filter(
+    (c) =>
+      (c.key !== "ping" || flags.ping) &&
+      (c.key !== "impact" || flags.impact) &&
+      (c.key !== "acc" || hasAcc) &&
+      (c.key !== "dt" && c.key !== "dtpm" || flags.dt) &&
+      (c.key !== "hs" && c.key !== "hshit" || flags.hs) &&
+      (c.key !== "cap" || flags.cp) &&
+      (c.key !== "spawn" || flags.spawn) &&
+      ((c.key !== "heal" && c.key !== "healpm" && c.key !== "ubers" && c.key !== "drops") || d.players.some((p) => p.heal > 0)) &&
+      (c.key !== "bs" || flags.bs) &&
+      (c.key !== "as" || flags.airshots),
+  );
+  const picker = useColumns("scoreboard", available);
+  const cols = available.filter(picker.shown);
   const scales = useStatScales().data;
   const [sort, setSort] = useState<{ key: Key; desc: boolean }>({ key: "team", desc: false });
   const rows = useMemo(() => {
@@ -147,7 +208,10 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
         <h2>{tr("Scoreboard")}</h2>
         {/* Which log the page is reading. It had a panel of its own for one
             select; it belongs with the numbers it scopes. */}
-        {reading}
+        <div className="sb-head-tools">
+          {reading}
+          <ColumnPicker cols={available} state={picker} />
+        </div>
       </header>
       <div className="table-wrap">
         <table className="match-table scoreboard">
@@ -235,7 +299,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
  * scoreboard keeps one column fewer for each.
  */
 function ClassCard({ p, flags }: { p: PlayerRow; flags: Flags }) {
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
   const box = useRef<HTMLSpanElement>(null);
   // An older backend sends only each class's time: the rest shows as "–".
   const known = p.classLines !== undefined;
@@ -243,8 +307,11 @@ function ClassCard({ p, flags }: { p: PlayerRow; flags: Flags }) {
   const show = () => {
     const r = box.current?.getBoundingClientRect();
     if (!r) return;
-    const width = 340;
-    setPos({ top: r.bottom + 6, left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)) });
+    const width = 460;
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
+    // Above the icons when the card would run off the window's foot.
+    const tall = 120 + 46 * Math.max(1, p.classes.length);
+    setPos(r.bottom + 6 + tall > window.innerHeight ? { bottom: window.innerHeight - r.top + 6, left } : { top: r.bottom + 6, left });
   };
   const acc = (c: ClassStat) => (c.shots > 0 ? `${Math.round((c.hits / c.shots) * 100)}%` : "–");
   // Airshots and backstabs are the log's totals, not per class: they go on
@@ -258,11 +325,11 @@ function ClassCard({ p, flags }: { p: PlayerRow; flags: Flags }) {
   return (
     <span className="sb-class-icons" ref={box} tabIndex={0} onMouseEnter={show} onMouseLeave={() => setPos(null)} onFocus={show} onBlur={() => setPos(null)}>
       {p.classes.map(([c], i) => (
-        <ClassIcon key={c} cls={c} size={i === 0 ? 22 : 16} faded={i > 0} />
+        <ClassIcon key={c} cls={c} size={i === 0 ? 22 : 16} faded={i > 0} untitled />
       ))}
       {pos &&
         createPortal(
-          <span className="sb-class-card" role="tooltip" style={{ top: pos.top, left: pos.left }}>
+          <span className="sb-class-card" role="tooltip" style={pos}>
             <span className="sb-cc-head">{p.name}</span>
             <span className="sb-cc-row sb-cc-labels">
               <span>{tr("Class")}</span>

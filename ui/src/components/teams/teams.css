@@ -374,3 +374,4 @@ button.aw-mvp-row:hover { background: rgba(180, 140, 255, 0.14); }
 .sb-bar > span { position: absolute; left: 0; top: 0; bottom: 0; background: #e0b440; }
 .sb-bar > span.good { background: #3fbf6a; }
 .sb-bar > span.poor { background: #e05252; }
+.sr-controls .cp { margin-left: auto; }
