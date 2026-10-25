@@ -111,7 +111,7 @@ export const GLOSSARY = {
   seasonRating: {
     label: k("Season rating"),
     what: k("A player's season on one class: what the season tables rank by and the awards are decided on."),
-    how: k("One rating per official (its maps by minutes played), each adjusted for how strong the team faced was (0.075 for every 0.10 of their season's average rating), playoffs counting 1.5 times and the Grand Final twice, then pulled towards 1.00 by three officials' worth of average games, so a short season counts for less. The three and the 0.075 are measured on the league's officials, not chosen."),
+    how: k("One rating per official (its maps by minutes played), each adjusted for how strong the team faced was (0.075 for every 0.10 of their strength, from what they won that season), playoffs counting 1.5 times and the Grand Final twice, then pulled towards 1.00 by three officials' worth of average games, so a short season counts for less. The three and the 0.075 are measured on the league's officials, not chosen."),
     source: ["logs.tf", "server log", "ETF2L"],
     more: "ranks",
   },

@@ -1692,6 +1692,45 @@ async fn run() -> Result<()> {
             }
             Ok(())
         }
+        ["strength-research", rest @ ..] => {
+            // Every official with both measures of the opponent: how its
+            // players rated (the old one) and what it won, for the
+            // results-based team strength's calibration.
+            let db = Db::connect(&db_path).await?;
+            let cat = hl_ingest::catalogue::Catalogue::load(&db).await?;
+            let rated = hl_ingest::catalogue::rated_officials(&db, None).await?;
+            let own: Vec<hl_db::RatedGame> = rated.iter().filter(|g| cat.own_team_game(g)).cloned().collect();
+            let lines = cat.season_lines_with(&own, &rated);
+            let results = cat.team_results();
+            let share = |season: i64, team: i64, skip: i64| -> Option<(f64, usize)> {
+                let v: Vec<f64> = results.get(&(season, team))?.iter().filter(|(m, _)| *m != skip).map(|(_, s)| *s).collect();
+                (!v.is_empty()).then(|| (v.iter().sum::<f64>(), v.len()))
+            };
+            if rest.contains(&"--matches") {
+                // The results themselves: season, match, a side, its share.
+                for ((season, team), v) in &results {
+                    for (id, share) in v {
+                        println!("M,{season},{id},{team},{share:.4}");
+                    }
+                }
+                return Ok(());
+            }
+            println!("season,tier,class,account,team,match,stage,rating,opp_rating,opp_won,opp_n,own_won,own_n,result");
+            for l in lines.values() {
+                for (&id, o) in &l.games {
+                    let Some((_, _, Some(opp), result)) = cat.official_info(id, l.team) else { continue };
+                    let raw = o.rating() - o.opponent.map_or(0.0, |s| hl_ingest::catalogue::OPPONENT_SLOPE * (s - 1.0));
+                    let (ow, on) = share(l.season, opp.id, id).unwrap_or((0.0, 0));
+                    let (mw, mn) = share(l.season, l.team, id).unwrap_or((0.0, 0));
+                    println!(
+                        "{},{},{},{},{},{},{},{:.4},{},{:.4},{},{:.4},{},{}",
+                        l.season, l.tier, l.class, l.account_id, l.team, id, o.stage, raw,
+                        o.opponent.map_or(String::new(), |s| format!("{s:.4}")), ow, on, mw, mn, result.unwrap_or_default()
+                    );
+                }
+            }
+            Ok(())
+        }
         ["season-breakdown", season, tier, class, account] => {
             // Why a player's season rating is what it is.
             let db = Db::connect(&db_path).await?;

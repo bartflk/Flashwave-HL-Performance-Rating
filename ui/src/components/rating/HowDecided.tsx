@@ -18,7 +18,7 @@ export function HowDecided() {
         <h3>{t("The season rating")}</h3>
         <ol>
           <li>{t("Every official a player played on the class that season for their own team counts, playoffs included; games as a merc for another team are shown in the tables but left out of the awards. A playoff official counts 1.5 times and a Grand Final twice, as the harder games.")}</li>
-          <li>{t("Each official is adjusted for the team faced: 0.075 more for every 0.10 the opponents' season average was above 1.00, 0.075 less below. Within the same player, a stronger opponent costs that much rating, and adjusting for it makes a season agree with itself far better.")}</li>
+          <li>{t("Each official is adjusted for the team faced: 0.075 more for every 0.10 the opponents were above 1.00, 0.075 less below. A team's strength is what it won that season, not how its players' logs rated: the share of rounds it took in each official, with wins over strong teams counting for more than wins over weak ones, and the official being adjusted left out. Within the same player, a stronger opponent costs that much rating, and adjusting for it makes a season agree with itself far better.")}</li>
           <li>{t("The season is pulled towards 1.00 by three officials' worth of average games, so a short season cannot run away with it: one official's rating varies by about 0.19 around a player's level, players' levels by about 0.11, which is what three measures.")}</li>
           <li>{t("The season tables rank by this number. An award needs enough of the season: 60% of the most officials anyone in the division played that season, and never fewer than four, so a Premiership season of seven games asks for fewer than a Low season of ten.")}</li>
         </ol>
@@ -27,6 +27,7 @@ export function HowDecided() {
           <li>{t("Season MVP, one per division: the best player of the team that won it. 50% their season rating, 35% their Grand Final and 15% the rest of their playoffs, each pulled towards 1.00 the same way; with no other playoff games their 15% goes to the season. They need enough officials in the season and to have played more than half of the final's logs. A tie goes to more officials, then more final maps.")}</li>
           <li>{t("EVPs: the five best season ratings in the division on any team and any class, each player once, the Season MVP aside; three in a division of fewer than eight teams.")}</li>
           <li>{t("Best of the class: the top of each class's season table among the division's three medal teams, with enough officials on the class, EVPs aside: an EVP already has an award, so the next best medallist on the class takes it. A great season on a team that went out early is an EVP at most.")}</li>
+          <li>{t("A tie, two season ratings the same to two decimals, goes to the output: the typical official's kills per 30 minutes and damage per minute, the median over the season, so holding a level all season beats one big game.")}</li>
         </ul>
         <p className="hint">{t("A player the roster does not place, a merc or someone ETF2L never listed, is on the side the final's logs put them on. A division whose final logs are not held has no Season MVP rather than a guess.")}</p>
       </section>
