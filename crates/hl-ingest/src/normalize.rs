@@ -126,12 +126,18 @@ fn classes(p: &Value) -> Vec<ClassLine> {
             assists: 0,
             deaths: 0,
             dmg: 0,
+            shots: 0,
+            hits: 0,
         });
         line.time_s += int(c, "total_time");
         line.kills += int(c, "kills");
         line.assists += int(c, "assists");
         line.deaths += int(c, "deaths");
         line.dmg += int(c, "dmg");
+        for w in c.get("weapon").and_then(Value::as_object).into_iter().flatten().map(|(_, w)| w) {
+            line.shots += int(w, "shots");
+            line.hits += int(w, "hits");
+        }
     }
     by_class.into_values().collect()
 }

@@ -939,6 +939,8 @@ export interface PlayerRow {
   cpc: number;
   /** Health packs picked up. */
   medkits: number;
+  /** Hits over shots on the main class, 0-1, where the log has logs.tf's accuracy stats. */
+  accuracy?: number | null;
   /** Seconds of respawn this player's caps cost their own dead (v11: shown, not rated). */
   spawnDelayS?: number | null;
   rating: Rating | null;
@@ -2681,6 +2683,12 @@ export interface H2hSide {
   /** Kills on each class, and what a kill of that class is worth. */
   victims: [string, number, number][];
   onOther: number;
+}
+
+/** Each class's DPM and accuracy at fixed percentiles (stat_scale.rs). */
+export interface StatScales {
+  percentiles: number[];
+  classes: Record<string, { dpm: number[]; accuracy: number[]; dpmGames: number; accuracyGames: number }>;
 }
 
 /** Why a player's season rating is what it is (season_stats.rs). */

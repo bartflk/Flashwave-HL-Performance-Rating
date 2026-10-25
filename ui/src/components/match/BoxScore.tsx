@@ -10,10 +10,12 @@ import { DivTag, useMatchDivisions } from "./Divisions";
 import { PlayerPopCard, nameProps, usePlayerCard } from "../players/PlayerPopCard";
 import { StatTip } from "../StatTip";
 import { tip } from "../../lib/glossary";
+import { tierOf, useStatScales } from "../../lib/tiers";
+import { TierPill } from "../TierPill";
 
 const CLASS_ORDER = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
 
-type Key = "team" | "name" | "k" | "a" | "d" | "da" | "dapm" | "kad" | "kd" | "dt" | "dtpm" | "hp" | "bs" | "hs" | "as" | "cap" | "spawn" | "ping" | "rating" | "impact";
+type Key = "team" | "name" | "k" | "a" | "d" | "da" | "dapm" | "acc" | "kad" | "kd" | "dt" | "dtpm" | "hp" | "bs" | "hs" | "as" | "cap" | "spawn" | "ping" | "rating" | "impact";
 
 /** The log's flags, and whether anyone's caps cost their team a respawn. */
 type Flags = LogFlags & { spawn: boolean; ping: Map<number, PlayerPing> | null; impact: Map<number, number> | null };
@@ -39,7 +41,14 @@ const COLS: Col[] = [
   { key: "a", label: "A", title: k("Assists"), value: (p) => p.assists },
   { key: "d", label: "D", title: k("Deaths"), value: (p) => p.deaths },
   { key: "da", label: "DA", title: k("Damage dealt"), value: (p) => p.dmg, fmt: (v) => v.toLocaleString() },
-  { key: "dapm", label: "DA/M", title: k("Damage per minute"), value: (p) => p.dpm },
+  { key: "dapm", label: "DA/M", title: k("Damage per minute, coloured by where it stands among the class's games: blue the bottom, through green, yellow and red to purple, near black for the top 1%."), value: (p) => p.dpm },
+  {
+    key: "acc",
+    label: k("Acc"),
+    title: k("Accuracy: hits over shots on the main class, coloured by where it stands among the class's games. Only logs with logs.tf's accuracy stats have it."),
+    value: (p) => p.accuracy ?? null,
+    fmt: (v) => `${Math.round(v * 100)}%`,
+  },
   { key: "kad", label: "KA/D", title: k("Kills and assists per death"), value: (p) => (p.kills + p.assists) / Math.max(1, p.deaths), fmt: (v) => v.toFixed(1) },
   { key: "kd", label: "K/D", title: k("Kills per death"), value: (p) => p.kills / Math.max(1, p.deaths), fmt: (v) => v.toFixed(1) },
   { key: "dt", label: "DT", title: k("Damage taken"), value: (p, f) => (f.dt ? p.dt : null), fmt: (v) => v.toLocaleString() },
@@ -103,7 +112,9 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
     }),
     [d.flags, d.players, pings, impact.data],
   );
-  const cols = COLS.filter((c) => (c.key !== "ping" || flags.ping) && (c.key !== "impact" || flags.impact));
+  const hasAcc = d.players.some((p) => p.accuracy != null);
+  const cols = COLS.filter((c) => (c.key !== "ping" || flags.ping) && (c.key !== "impact" || flags.impact) && (c.key !== "acc" || hasAcc));
+  const scales = useStatScales().data;
   const [sort, setSort] = useState<{ key: Key; desc: boolean }>({ key: "team", desc: false });
   const rows = useMemo(() => {
     const byTeamClass = (a: PlayerRow, b: PlayerRow) =>
@@ -202,7 +213,15 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
                           : undefined
                       }
                     >
-                      {v === null ? <span className="muted">–</span> : c.fmt ? c.fmt(v) : String(Math.round(v))}
+                      {v === null ? (
+                        <span className="muted">–</span>
+                      ) : c.key === "dapm" || c.key === "acc" ? (
+                        <TierPill text={c.fmt ? c.fmt(v) : String(Math.round(v))} tier={tierOf(scales, p.mainClass, c.key === "dapm" ? "dpm" : "accuracy", v)} cls={p.mainClass} />
+                      ) : c.fmt ? (
+                        c.fmt(v)
+                      ) : (
+                        String(Math.round(v))
+                      )}
                     </td>
                   );
                 })}

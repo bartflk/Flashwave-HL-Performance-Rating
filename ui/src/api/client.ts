@@ -115,6 +115,7 @@ import type {
   DataReport,
   HeadToHead,
   SeasonBreakdown,
+  StatScales,
 } from "./types";
 import { withChosenNames } from "../lib/names";
 
@@ -168,6 +169,7 @@ const realApi = {
   getMatchImpact: (logId: number) => invoke<Record<string, number>>("get_match_impact", { logId }),
   getDataAudit: (season: number, tier: number | null) => invoke<DataReport>("get_data_audit", { season, tier }),
   getHeadToHead: (logId: number, a: number, b: number) => invoke<HeadToHead>("get_head_to_head", { logId, a, b }),
+  getStatScales: () => invoke<StatScales>("get_stat_scales"),
   getSeasonBreakdown: (season: number, tier: number, cls: string, accountId: number) =>
     invoke<SeasonBreakdown>("get_season_breakdown", { season, tier, class: cls, accountId }),
   syncStart: (full: boolean) => invoke<void>("sync_start", { full }),

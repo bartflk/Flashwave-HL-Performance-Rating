@@ -176,6 +176,9 @@ pub struct PlayerRow {
     pub cpc: i64,
     /// Health packs picked up (logs.tf's HP column).
     pub medkits: i64,
+    /// Hits over shots on the main class, 0-1, where the log has logs.tf's
+    /// accuracy stats.
+    pub accuracy: Option<f64>,
     /// Rating on the player's main class; `None` if too short to rate.
     pub rating: Option<Rating>,
     pub is_me: bool,
@@ -489,6 +492,7 @@ fn players(log: &NormalizedLog, me: Option<SteamId>, rater: &Rater<'_>) -> Vec<P
                 airshots: s.airshots,
                 cpc: s.cpc,
                 medkits: s.medkits,
+                accuracy: main.and_then(|c| p.classes.iter().find(|l| l.class == c)).filter(|l| l.shots > 0).map(|l| l.hits as f64 / l.shots as f64),
                 rating: rater.of(p, &log.flags),
                 is_me: me == Some(p.id),
                 spawn_delay_s: rater.impacts.get(&p.id.account_id()).and_then(|i| i.fights.as_ref()).map(|f| f.caps_spawn_delay),

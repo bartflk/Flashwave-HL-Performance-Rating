@@ -17,6 +17,7 @@ import playerDeepFlashy from "./fixtures/player_deep_flashy.json";
 import dataAudit31 from "./fixtures/data_audit_31_low.json";
 import headToHeadS33 from "./fixtures/head_to_head_s33_final.json";
 import seasonBreakdown33 from "./fixtures/season_breakdown_flashy_33.json";
+import statScales from "./fixtures/stat_scales.json";
 import teamHonours35600 from "./fixtures/team_honours_35600.json";
 import teamTransfers35600 from "./fixtures/team_transfers_35600.json";
 import teamInfo35600 from "./fixtures/team_info_35600.json";
@@ -45,6 +46,7 @@ import type {
   DataReport,
   HeadToHead,
   SeasonBreakdown,
+  StatScales,
   LogsTfCareer,
   LogsTfPlayer,
   Bookmark,
@@ -691,7 +693,10 @@ export const mockApi: Api = {
   getMatch: (logId: number) => {
     const exact = FIXTURES.find((f) => f.logId === logId);
     // The list's second match was stored from more.tf, so its banner can be seen.
-    return delay(exact ?? { ...FIXTURES[0], logId, standIn: logId === FAKE_MATCHES[1]?.logId ? "more.tf" : null });
+    const d = exact ?? { ...FIXTURES[0], logId, standIn: logId === FAKE_MATCHES[1]?.logId ? "more.tf" : null };
+    // Fixtures stored before accuracy was read carry none: a spread from
+    // the player's id, so the column and its colours can be seen.
+    return delay({ ...d, players: d.players.map((p) => (p.accuracy !== undefined ? p : { ...p, accuracy: p.mainClass === "heavy" || p.mainClass === "pyro" ? null : 0.2 + ((p.accountId % 37) / 37) * 0.45 })) });
   },
 
   // Real profiles exported with `hl profile <class> --json`. Classes without
@@ -1873,6 +1878,8 @@ export const mockApi: Api = {
   },
   // From `hl season-breakdown 33 3 sniper` for Flashy, 24 October 2026:
   // every row opens it.
+  // From `hl stat-scales` on a copy, 25 October 2026.
+  getStatScales: () => delay(statScales as unknown as StatScales),
   getSeasonBreakdown: (_season: number, _tier: number, _cls: string, _accountId: number) => delay(seasonBreakdown33 as unknown as SeasonBreakdown),
   getDataAudit: (season: number) => delay({ ...(dataAudit31 as unknown as DataReport), season }),
   getMatchImpact: (logId: number) => {

@@ -1903,6 +1903,13 @@ pub async fn get_player_deep(state: State<'_, AppState>, account_id: u32) -> Cmd
     Ok(hl_ingest::season_stats::player_deep(&state.db, account_id).await?)
 }
 
+/// Each class's damage per minute and accuracy at fixed percentiles, for the
+/// scoreboard's colours.
+#[tauri::command]
+pub async fn get_stat_scales(state: State<'_, AppState>) -> CmdResult<hl_ingest::stat_scale::StatScales> {
+    Ok(hl_ingest::stat_scale::stat_scales(&state.db).await?)
+}
+
 /// Why a player's season rating is what it is: every official, the sum,
 /// the rating's parts over the season.
 #[tauri::command]

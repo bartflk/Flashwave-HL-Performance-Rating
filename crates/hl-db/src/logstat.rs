@@ -191,6 +191,35 @@ impl Db {
         Ok(out)
     }
 
+    /// Every main-class game of 5 minutes or more: `(class, damage, seconds,
+    /// weight)`, an official weighing 1, a scrim 0.5 and a pug 0.25
+    /// (Flashy: "take the DPM from scrims and pugs less serious").
+    pub async fn dpm_sample(&self) -> Result<Vec<(String, i64, i64, f64)>> {
+        Ok(sqlx::query_as(
+            "SELECT s.class, s.dmg, s.time_s, CASE WHEN EXISTS (SELECT 1 FROM league_log l WHERE l.log_id = s.log_id) THEN 1.0
+                  ELSE COALESCE((SELECT CASE c.kind WHEN 'official' THEN 1.0 WHEN 'scrim' THEN 0.5 ELSE 0.25 END
+                                 FROM match_context c WHERE c.log_id = s.log_id), 0.5) END
+             FROM log_stat s WHERE s.main AND s.time_s >= 300",
+        )
+        .fetch_all(&self.pool)
+        .await?)
+    }
+
+    /// The same games' accuracy where the log recorded it, 30 shots or
+    /// more: `(class, shots, hits, weight)`.
+    pub async fn accuracy_sample(&self) -> Result<Vec<(String, i64, i64, f64)>> {
+        Ok(sqlx::query_as(
+            "SELECT s.class, SUM(w.shots), SUM(w.hits), CASE WHEN EXISTS (SELECT 1 FROM league_log l WHERE l.log_id = s.log_id) THEN 1.0
+                  ELSE COALESCE((SELECT CASE c.kind WHEN 'official' THEN 1.0 WHEN 'scrim' THEN 0.5 ELSE 0.25 END
+                                 FROM match_context c WHERE c.log_id = s.log_id), 0.5) END
+             FROM log_stat s JOIN log_weapon w ON w.log_id = s.log_id AND w.account_id = s.account_id AND w.class = s.class
+             WHERE s.main AND s.time_s >= 300
+             GROUP BY s.log_id, s.account_id, s.class HAVING SUM(w.shots) >= 30",
+        )
+        .fetch_all(&self.pool)
+        .await?)
+    }
+
     /// Every log's kills, damage and seconds by player and class:
     /// `(log, account, class, kills, dmg, secs)`.
     pub async fn log_output(&self) -> Result<Vec<(i64, i64, String, i64, i64, i64)>> {

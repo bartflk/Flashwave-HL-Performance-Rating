@@ -569,3 +569,6 @@ input:where(:not([type])) {
   padding: 0 12px;
   border-radius: var(--ctl-radius);
 }
+
+/* A number on its tier's colour (lib/tiers.ts): osu!'s difficulty pills. */
+.tier-pill { display: inline-block; min-width: 2.6em; padding: 1px 7px; border-radius: 999px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; line-height: 1.35; }

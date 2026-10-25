@@ -130,6 +130,12 @@ pub struct ClassLine {
     pub assists: i64,
     pub deaths: i64,
     pub dmg: i64,
+    /// Shots and hits over the class's weapons, where the log has logs.tf's
+    /// accuracy stats; 0 where not.
+    #[serde(default)]
+    pub shots: i64,
+    #[serde(default)]
+    pub hits: i64,
 }
 
 /// One row of the class-vs-class breakdown for a single player.

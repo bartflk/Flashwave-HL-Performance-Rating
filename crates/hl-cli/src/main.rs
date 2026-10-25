@@ -1692,6 +1692,13 @@ async fn run() -> Result<()> {
             }
             Ok(())
         }
+        ["stat-scales"] => {
+            // The scoreboard's colour scales: each class's DPM and accuracy
+            // at fixed percentiles.
+            let db = Db::connect(&db_path).await?;
+            println!("{}", serde_json::to_string_pretty(&hl_ingest::stat_scale::stat_scales(&db).await?)?);
+            Ok(())
+        }
         ["strength-research", rest @ ..] => {
             // Every official with both measures of the opponent: how its
             // players rated (the old one) and what it won, for the
