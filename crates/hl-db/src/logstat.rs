@@ -191,6 +191,12 @@ impl Db {
         Ok(out)
     }
 
+    /// Every log's kills, damage and seconds by player and class:
+    /// `(log, account, class, kills, dmg, secs)`.
+    pub async fn log_output(&self) -> Result<Vec<(i64, i64, String, i64, i64, i64)>> {
+        Ok(sqlx::query_as("SELECT log_id, account_id, class, kills, dmg, time_s FROM log_stat").fetch_all(&self.pool).await?)
+    }
+
     /// The rows of the given logs.
     pub async fn log_stats_for_logs(&self, logs: &[i64]) -> Result<Vec<LogStat>> {
         let ids = serde_json::to_string(logs)?;

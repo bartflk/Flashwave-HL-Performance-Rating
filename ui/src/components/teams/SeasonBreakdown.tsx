@@ -32,7 +32,7 @@ export function SeasonBreakdown({ season, tier, cls, accountId }: { season: numb
               <th>{t("Opponent")}</th>
               <th>{t("Maps")}</th>
               <th className="num">{t("Rating")}</th>
-              <th className="num" title={t("The opponents' season average rating: 1.00 an average team")}>
+              <th className="num" title={t("How strong the opponents were from what they won that season, this match left out: 1.00 an average team")}>
                 {t("Opp.")}
               </th>
               <th className="num" title={t("{0} for every 0.10 the opponents were above 1.00", { "0": (b.opponentSlope * 0.1).toFixed(3) })}>

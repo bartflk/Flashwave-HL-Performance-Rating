@@ -126,11 +126,25 @@ pub struct Mvp {
 /// every class); it was 2, chosen.
 pub const SHRINK_OFFICIALS: f64 = 3.0;
 /// How much an official's rating is adjusted for the strength of the team
-/// faced: measured within players, each 0.10 of opponent strength (their
-/// season's average official rating) costs 0.075 of rating; adjusting made
-/// a season agree with itself between its halves 0.48 -> 0.56. An official
-/// against a team at 1.10 counts 0.075 more, one against 0.90 0.075 less.
+/// faced: an official against a team at 1.10 counts 0.075 more, one against
+/// 0.90 0.075 less.
 pub const OPPONENT_SLOPE: f64 = 0.75;
+/// A team's strength is what it won, not how its players' logs rated
+/// (Flashy, S31 Low: the rating-based measure put a quarter-finalist at
+/// 1.16 and the finalist that beat them at 1.00). Each season's results --
+/// the share of rounds won in each official -- are fitted as a
+/// Bradley-Terry model, so beating strong teams counts for more than
+/// beating weak ones, leaving out the official being adjusted. On the 1.00
+/// scale a team is `1 + RESULTS_SCALE x` its fitted strength: measured
+/// within players over 26,000 officials, a unit of fitted strength costs
+/// 0.129 of rating, and 0.129 / [`OPPONENT_SLOPE`] = 0.172. A season agrees
+/// with itself between its halves 0.46 unadjusted, 0.56 adjusted by the
+/// old measure, 0.57 by this one.
+pub const RESULTS_SCALE: f64 = 0.172;
+/// The ridge that holds a team with few results near average.
+const RESULTS_PRIOR: f64 = 1.0;
+/// Officials an opponent needs besides the one adjusted.
+const RESULTS_MIN: usize = 3;
 /// Pseudo-maps at 1.00 that a Grand Final's or a playoff run's own figure
 /// is pulled towards, by the real maps in it.
 pub const SHRINK_MAPS: f64 = 4.0;
@@ -185,6 +199,67 @@ pub const EVPS: usize = 5;
 pub const EVPS_SMALL: usize = 3;
 pub const EVPS_SMALL_BELOW_TEAMS: usize = 8;
 
+/// Season ratings closer than this are a tie (Flashy, S31 Low: "we are
+/// 1.09 both ... you look at the stats and see that I'm working harder"):
+/// the same to two decimals.
+pub const AWARD_TIE: f64 = 0.005;
+
+/// Award candidates best first: by season rating, and where ratings tie
+/// (within [`AWARD_TIE`] of the first of a run) by their typical official's
+/// output -- kills per 30 and damage per minute, each as a share of the
+/// run's best, added. A candidate with no output counted keeps its place
+/// behind those with one.
+pub fn award_order(rows: &mut [&SeasonLine]) {
+    rows.sort_by(|a, b| b.rating().total_cmp(&a.rating()).then(b.officials.len().cmp(&a.officials.len())));
+    let mut i = 0;
+    while i < rows.len() {
+        let head = rows[i].rating();
+        let mut j = i + 1;
+        while j < rows.len() && head - rows[j].rating() < AWARD_TIE {
+            j += 1;
+        }
+        if j - i > 1 {
+            let run = &mut rows[i..j];
+            let (mk, md) = run.iter().filter_map(|l| l.output()).fold((0.0f64, 0.0f64), |(k, d), (a, b)| (k.max(a), d.max(b)));
+            let value = |l: &SeasonLine| l.output().map_or(-1.0, |(k, d)| if mk > 0.0 && md > 0.0 { k / mk + d / md } else { 0.0 });
+            run.sort_by(|a, b| value(b).total_cmp(&value(a)));
+        }
+        i = j;
+    }
+}
+
+/// Teams' strengths from results `(match, team 1, team 2, team 1's share of
+/// the rounds)`: a logistic model of the share, Newton steps from `start`,
+/// a ridge of [`RESULTS_PRIOR`] towards 0, leaving out `skip`.
+fn bradley_terry(games: &[(i64, i64, i64, f64)], start: Option<&HashMap<i64, f64>>, steps: usize, skip: Option<i64>) -> HashMap<i64, f64> {
+    let mut s: HashMap<i64, f64> = start.cloned().unwrap_or_default();
+    for &(_, a, b, _) in games {
+        s.entry(a).or_insert(0.0);
+        s.entry(b).or_insert(0.0);
+    }
+    for _ in 0..steps {
+        let mut grad: HashMap<i64, (f64, f64)> = HashMap::new();
+        for &(id, a, b, y) in games {
+            if Some(id) == skip {
+                continue;
+            }
+            let p = 1.0 / (1.0 + (s[&b] - s[&a]).exp());
+            let (d, w) = (y - p, p * (1.0 - p));
+            let ga = grad.entry(a).or_default();
+            ga.0 += d;
+            ga.1 += w;
+            let gb = grad.entry(b).or_default();
+            gb.0 -= d;
+            gb.1 += w;
+        }
+        for (t, v) in s.iter_mut() {
+            let (g, h) = grad.get(t).copied().unwrap_or_default();
+            *v += (g - RESULTS_PRIOR * *v) / (h + RESULTS_PRIOR);
+        }
+    }
+    s
+}
+
 /// A weighted average pulled towards 1.00 by [`SHRINK_MAPS`].
 pub fn shrunk(sum_weighted: f64, sum_weights: f64) -> f64 {
     (sum_weighted + SHRINK_MAPS) / (sum_weights + SHRINK_MAPS)
@@ -206,6 +281,10 @@ pub struct OfficialGame {
     pub opponent: Option<f64>,
     /// The logs in it, for a breakdown.
     pub log_ids: Vec<i64>,
+    /// Kills, damage and seconds on the class over its logs.
+    pub kills: i64,
+    pub dmg: i64,
+    pub secs: i64,
 }
 
 impl OfficialGame {
@@ -213,6 +292,9 @@ impl OfficialGame {
         if self.minutes > 0.0 { self.score_minutes / self.minutes } else { 1.0 }
     }
 }
+
+/// An official's when, round, opponent and result: [`Catalogue::official_info`].
+pub type OfficialInfo = (Option<i64>, String, Option<Team>, Option<String>);
 
 /// One player's season on one class, in one division.
 #[derive(Debug, Clone, Default)]
@@ -232,6 +314,24 @@ pub struct SeasonLine {
 }
 
 impl SeasonLine {
+    /// Their typical official's output: the median kills per 30 minutes and
+    /// damage per minute over the officials it was counted for. A median,
+    /// so a season held at a level beats one carried by a single game.
+    pub fn output(&self) -> Option<(f64, f64)> {
+        let median = |mut v: Vec<f64>| {
+            v.sort_by(f64::total_cmp);
+            let n = v.len();
+            if n % 2 == 1 { v[n / 2] } else { (v[n / 2 - 1] + v[n / 2]) / 2.0 }
+        };
+        let games: Vec<&OfficialGame> = self.games.values().filter(|o| o.secs >= 300).collect();
+        if games.is_empty() {
+            return None;
+        }
+        let k30 = median(games.iter().map(|o| o.kills as f64 * 1800.0 / o.secs as f64).collect());
+        let dpm = median(games.iter().map(|o| o.dmg as f64 * 60.0 / o.secs as f64).collect());
+        Some((k30, dpm))
+    }
+
     /// One rated log into its official.
     pub fn add(&mut self, g: &hl_db::RatedGame, stage: f64) {
         let key = g.etf2l_match_id.unwrap_or(-g.log_id);
@@ -242,6 +342,9 @@ impl SeasonLine {
         e.minutes += m;
         e.logs += 1;
         e.log_ids.push(g.log_id);
+        e.kills += g.kills;
+        e.dmg += g.dmg;
+        e.secs += g.secs;
         for name in g.map.as_deref().unwrap_or("").split(|c: char| !(c.is_ascii_alphanumeric() || c == '_')).filter(|n| n.contains('_')) {
             e.maps.insert(hl_core::maps::map_base(name));
         }
@@ -408,6 +511,8 @@ pub struct Catalogue {
     /// `(season, division)` -> ETF2L's own final placings, `(place, team)`,
     /// from the league table's `ach` once the season is over.
     official_places: HashMap<(i64, String), Vec<(u8, i64)>>,
+    /// [`Catalogue::results_strength`], fitted once.
+    results_fit: std::sync::OnceLock<HashMap<(i64, i64), f64>>,
 }
 
 /// ETF2L's placings in a league table: `(division, place, team)` for every
@@ -483,7 +588,7 @@ impl Catalogue {
                 official_places.entry((season, Self::ungrouped(&division))).or_default().push((place, team));
             }
         }
-        Ok(Catalogue { matches, rosters, teams: db.etf2l_teams().await?, tiers, tier_by_name, newest_season, mercs, transfers, season_end, final_colours, official_places })
+        Ok(Catalogue { matches, rosters, teams: db.etf2l_teams().await?, tiers, tier_by_name, newest_season, mercs, transfers, season_end, final_colours, official_places, results_fit: Default::default() })
     }
 
     /// Each team's last decided match of each season.
@@ -904,21 +1009,19 @@ impl Catalogue {
     pub fn season_lines_with(&self, games: &[hl_db::RatedGame], all: &[hl_db::RatedGame]) -> HashMap<(i64, i64, String, u32), SeasonLine> {
         let windows = self.season_windows();
         let divisions = self.played_divisions();
-        let strength = self.team_strength(all);
+        let _ = all;
+        let strength = self.results_strength();
         let mut out: HashMap<(i64, i64, String, u32), SeasonLine> = HashMap::new();
         for g in games.iter().filter(|g| g.official) {
             let Some(season) = game_season(self, &windows, g) else { continue };
             let Some((tier, division, team)) = divisions.get(&(g.account_id, season)) else { continue };
             let w = self.stage_weight(g.etf2l_match_id);
-            // The opponent's strength, from their other officials that season.
+            // The opponent's strength, from their other results that season.
             let opp = g.etf2l_match_id.and_then(|id| {
                 let m = self.matches.get(&id)?;
                 let mine = self.rosters.get(&id)?.iter().find(|(a, _, _)| *a == g.account_id)?.1?;
                 let other = if mine == m.clan1 { m.clan2 } else if mine == m.clan2 { m.clan1 } else { return None };
-                strength.get(&(m.season, other)).and_then(|by| {
-                    let rest: Vec<f64> = by.iter().filter(|(mid, _)| **mid != id).map(|(_, r)| *r).collect();
-                    (rest.len() >= 3).then(|| rest.iter().sum::<f64>() / rest.len() as f64)
-                })
+                strength.get(&(id, other)).copied()
             });
             let mut adjusted = g.clone();
             if let Some(s) = opp {
@@ -964,7 +1067,7 @@ impl Catalogue {
     }
 
     /// An official's when, round, opponent and result, from `team`'s side.
-    pub fn official_info(&self, id: i64, team: i64) -> Option<(Option<i64>, String, Option<Team>, Option<String>)> {
+    pub fn official_info(&self, id: i64, team: i64) -> Option<OfficialInfo> {
         let m = self.matches.get(&id)?;
         let round = match (m.stage.as_str(), m.round.as_deref()) {
             (_, Some(r)) if !r.is_empty() => r.to_string(),
@@ -987,28 +1090,49 @@ impl Catalogue {
         self.season_lines(&own)
     }
 
-    /// Each team's officials in a season, by how its players rated in them:
-    /// `(season, team) -> match -> the team's average official rating`.
-    fn team_strength(&self, games: &[hl_db::RatedGame]) -> HashMap<(i64, i64), HashMap<i64, f64>> {
-        // (match, account) -> (rating x minutes, minutes): one rating an official.
-        let mut per: HashMap<(i64, u32), (f64, f64)> = HashMap::new();
-        for g in games.iter().filter(|g| g.official) {
-            let Some(id) = g.etf2l_match_id else { continue };
-            let m = if g.minutes > 0.0 { g.minutes } else { 1.0 };
-            let e = per.entry((id, g.account_id)).or_default();
-            e.0 += g.score * m;
-            e.1 += m;
+    /// Every opponent's strength in every official, on the 1.00 scale:
+    /// `(match, team) -> that team's strength without this match`. See
+    /// [`RESULTS_SCALE`]. A team with fewer than [`RESULTS_MIN`] other
+    /// results that season has none.
+    pub fn results_strength(&self) -> &HashMap<(i64, i64), f64> {
+        self.results_fit.get_or_init(|| self.fit_results())
+    }
+
+    fn fit_results(&self) -> HashMap<(i64, i64), f64> {
+        let mut out = HashMap::new();
+        let mut seasons: HashMap<i64, Vec<(i64, i64, i64, f64)>> = HashMap::new();
+        let mut counts: HashMap<(i64, i64), usize> = HashMap::new();
+        for ((season, team), v) in self.team_results() {
+            counts.insert((season, team), v.len());
         }
-        let mut teams: HashMap<(i64, i64, i64), Vec<f64>> = HashMap::new();
-        for ((id, a), (sm, m)) in per {
-            let (Some(mt), Some(team)) = (self.matches.get(&id), self.rosters.get(&id).and_then(|r| r.iter().find(|(x, _, _)| *x == a)).and_then(|r| r.1)) else { continue };
-            teams.entry((mt.season, team, id)).or_default().push(sm / m);
+        for m in self.matches.values().filter(|m| Self::played(m) && m.stage != "Cup") {
+            let (Some(a), Some(b)) = (m.r1, m.r2) else { continue };
+            seasons.entry(m.season).or_default().push((m.match_id, m.clan1, m.clan2, a as f64 / (a + b) as f64));
         }
-        let mut out: HashMap<(i64, i64), HashMap<i64, f64>> = HashMap::new();
-        for ((season, team, id), v) in teams {
-            if v.len() >= 6 {
-                out.entry((season, team)).or_default().insert(id, v.iter().sum::<f64>() / v.len() as f64);
+        for (season, games) in seasons {
+            let full = bradley_terry(&games, None, 60, None);
+            for &(id, a, b, _) in &games {
+                let fitted = bradley_terry(&games, Some(&full), 8, Some(id));
+                for team in [a, b] {
+                    if counts.get(&(season, team)).is_some_and(|n| *n > RESULTS_MIN) {
+                        out.insert((id, team), 1.0 + RESULTS_SCALE * fitted.get(&team).copied().unwrap_or(0.0));
+                    }
+                }
             }
+        }
+        out
+    }
+
+    /// Each team's results in a season, by official: `(season, team) ->
+    /// [(match, share of the rounds won)]`. A cup and a default win left
+    /// out. What a team did, not how its players' logs rated.
+    pub fn team_results(&self) -> HashMap<(i64, i64), Vec<(i64, f64)>> {
+        let mut out: HashMap<(i64, i64), Vec<(i64, f64)>> = HashMap::new();
+        for m in self.matches.values().filter(|m| Self::played(m) && m.stage != "Cup") {
+            let (Some(a), Some(b)) = (m.r1, m.r2) else { continue };
+            let total = (a + b) as f64;
+            out.entry((m.season, m.clan1)).or_default().push((m.match_id, a as f64 / total));
+            out.entry((m.season, m.clan2)).or_default().push((m.match_id, b as f64 / total));
         }
         out
     }
@@ -1235,7 +1359,7 @@ impl Catalogue {
         for (key, by) in divisions {
             let n = if teams.get(&key).map_or(0, |t| t.len()) < EVPS_SMALL_BELOW_TEAMS { EVPS_SMALL } else { EVPS };
             let mut rows: Vec<&SeasonLine> = by.into_values().filter(|l| !season_mvp.get(&(key.0, key.1)).is_some_and(|v| v.contains(&l.account_id))).collect();
-            rows.sort_by(|a, b| better(b, a));
+            award_order(&mut rows);
             out.extend(rows.into_iter().take(n).map(|l| award(l, "evp")));
         }
 
@@ -1254,8 +1378,9 @@ impl Catalogue {
             tables.entry((l.season, l.tier, l.division.as_str(), l.class.as_str())).or_default().push(l);
         }
         let mut class_awards = Vec::new();
-        for rows in tables.values() {
-            if let Some(top) = rows.iter().max_by(|a, b| better(a, b)) {
+        for rows in tables.values_mut() {
+            award_order(rows);
+            if let Some(top) = rows.first() {
                 class_awards.push(award(top, "class"));
             }
         }
@@ -1978,6 +2103,13 @@ pub async fn rated_officials(db: &Db, account: Option<u32>) -> Result<Vec<hl_db:
             continue;
         }
         out.push(g);
+    }
+    let output: HashMap<(i64, u32, String), (i64, i64, i64)> =
+        db.log_output().await?.into_iter().map(|(l, a, c, k, d, s)| ((l, a as u32, c), (k, d, s))).collect();
+    for g in &mut out {
+        if let Some(&(k, d, s)) = output.get(&(g.log_id, g.account_id, g.class.clone())) {
+            (g.kills, g.dmg, g.secs) = (k, d, s);
+        }
     }
     Ok(out)
 }
@@ -2761,6 +2893,7 @@ mod tests {
             listed: true,
             minutes: 15.0,
             map: None,
+            ..Default::default()
         };
         let games = vec![
             // The losing Sniper had the better final; the winners' Medic the
@@ -2784,6 +2917,34 @@ mod tests {
         assert_eq!((event.account_id, event.class.as_str(), event.won), (211, "medic", true));
         assert!(!v.iter().any(|x| x.account_id == 311), "more than half the final to be a candidate");
         assert_eq!(event.final_maps, 2);
+    }
+
+    #[test]
+    fn a_near_tie_goes_to_the_output() {
+        // S31 Low as Flashy saw it: 1.088 against 1.086, both "1.09"; the
+        // second held more kills and damage official after official.
+        let line = |account: u32, rating: f64, kills: i64, dmg: i64| {
+            let mut l = SeasonLine { account_id: account, ..Default::default() };
+            for id in 0..7 {
+                l.officials.insert(id);
+                l.games.insert(id, OfficialGame { score_minutes: rating * 30.0, minutes: 30.0, stage: 1.0, kills, dmg, secs: 1800, ..Default::default() });
+            }
+            l
+        };
+        let (deity, flashy, third) = (line(1, 1.088, 32, 10_800), line(2, 1.086, 35, 11_900), line(3, 1.07, 50, 15_000));
+        let mut rows = vec![&third, &deity, &flashy];
+        award_order(&mut rows);
+        assert_eq!(rows.iter().map(|l| l.account_id).collect::<Vec<_>>(), [2, 1, 3], "a tie on the rating, then output; a clear gap stays");
+    }
+
+    #[test]
+    fn team_strength_is_what_a_team_won_and_whom_it_beat() {
+        // A beats B and C, B beats C; D only ever played C and beat it.
+        let games = vec![(1, 1, 2, 0.8), (2, 1, 3, 0.8), (3, 2, 3, 0.7), (4, 4, 3, 0.8), (5, 1, 2, 0.75), (6, 2, 3, 0.7)];
+        let s = bradley_terry(&games, None, 60, None);
+        assert!(s[&1] > s[&2] && s[&2] > s[&3], "{s:?}");
+        let without = bradley_terry(&games, Some(&s), 8, Some(4));
+        assert!(without[&4].abs() < 1e-6, "a team with no other result is average");
     }
 
     #[test]
@@ -2814,6 +2975,7 @@ mod tests {
             listed: true,
             minutes: 15.0,
             map: None,
+            ..Default::default()
         };
         let mut games = Vec::new();
         for week in 101..=104 {
@@ -3126,7 +3288,7 @@ mod tests {
             }
         }
         let tiers = matches.iter().filter_map(|x| Some(((x.season, x.division.clone()?), x.tier?))).collect();
-        Catalogue { newest_season: matches.iter().map(|x| x.season).max().unwrap_or(0), matches: matches.into_iter().map(|x| (x.match_id, x)).collect(), rosters, teams: HashMap::new(), tiers, tier_by_name: HashMap::new(), mercs: Default::default(), transfers: HashMap::new(), season_end: HashMap::new(), final_colours: HashMap::new(), official_places: HashMap::new() }
+        Catalogue { newest_season: matches.iter().map(|x| x.season).max().unwrap_or(0), matches: matches.into_iter().map(|x| (x.match_id, x)).collect(), rosters, teams: HashMap::new(), tiers, tier_by_name: HashMap::new(), mercs: Default::default(), transfers: HashMap::new(), season_end: HashMap::new(), final_colours: HashMap::new(), official_places: HashMap::new(), results_fit: Default::default() }
     }
 
     #[test]

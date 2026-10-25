@@ -62,6 +62,11 @@ pub struct RatedGame {
     pub minutes: f64,
     /// The log's map (a combined log may name several).
     pub map: Option<String>,
+    /// Kills, damage and seconds on the class, from `log_stat`: a near tie
+    /// for an award goes to the output (0 where not counted).
+    pub kills: i64,
+    pub dmg: i64,
+    pub secs: i64,
 }
 
 /// ETF2L's page for a player, as kept.
@@ -376,6 +381,7 @@ impl Db {
                 listed: r.get::<i64, _>("listed") != 0,
                 minutes: r.get("minutes"),
                 map: r.get("map"),
+                ..Default::default()
             })
             .collect())
     }
@@ -408,6 +414,7 @@ impl Db {
                 listed: true,
                 minutes: r.get("minutes"),
                 map: r.get("map"),
+                ..Default::default()
             })
             .collect())
     }

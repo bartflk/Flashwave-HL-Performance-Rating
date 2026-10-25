@@ -232,7 +232,7 @@ export function SeasonRankings({ season, onTeam }: { season: number; onTeam: (id
                   <SortTh k="average" s={s} tip={tip(t("Average"), t("The plain average rating over the season's officials."), t("Each official once, not adjusted for the opponents and not pulled towards 1.00."), "logs.tf")}>
                     {t("Avg")}
                   </SortTh>
-                  <SortTh k="opp" s={s} tip={tip(t("Opponents"), t("How strong the teams faced were: their season's average official rating, 1.00 an average team."), t("The season rating adds 0.075 for every 0.10 above 1.00, and takes it off below."), "logs.tf", "ETF2L")}>
+                  <SortTh k="opp" s={s} tip={tip(t("Opponents"), t("How strong the teams faced were, from what they won that season: rounds taken, and against whom. 1.00 an average team."), t("The season rating adds 0.075 for every 0.10 above 1.00, and takes it off below."), "logs.tf", "ETF2L")}>
                     {t("Opp.")}
                   </SortTh>
                   <SortTh k="impact" s={s} tip="impact">
