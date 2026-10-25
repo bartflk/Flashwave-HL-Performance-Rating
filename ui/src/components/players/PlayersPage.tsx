@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Help } from "../StatTip";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type CatalogueHit } from "../../api/types";
@@ -63,8 +64,7 @@ export function PlayersPage({ onOpenMatch }: { onOpenMatch: (logId: number) => v
     <div className="content players">
       <div className="panel has-refresh">
         <Refreshing on={term.length >= 2 && (hits.isFetching || older.isFetching)} />
-        <h2>{t("Look someone up")}</h2>
-        <p className="hint" style={{ marginTop: 6 }}>{t("Anyone who played an ETF2L official in the last six years, is in your matches, or played Highlander on logs.tf since 2012. Any name they used, or a Steam ID.")}</p>
+        <h2>{t("Look someone up")}<Help>{t("Anyone who played an ETF2L official in the last six years, is in your matches, or played Highlander on logs.tf since 2012. Any name they used, or a Steam ID.")}</Help></h2>
         <input
           className="player-search"
           value={query}

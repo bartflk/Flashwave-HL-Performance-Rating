@@ -44,7 +44,6 @@ export function SeasonsPanel({ cls }: { cls: string }) {
     <section className="panel seasons-panel">
       <header>
         <h2>{t("By season")}</h2>
-        <p className="hint">{t("Click a season to filter everything to it.")}</p>
       </header>
       <div className="table-wrap">
         <table className="match-table seasons-table">

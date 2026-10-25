@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { HowCounted } from "../StatTip";
 import { api } from "../../api/client";
 import { errorMessage, type Analysis, type AimRow, type AimTotals, type DeathRow, type LifeTotals } from "../../api/types";
 import { AimCharts } from "./AimCharts";
@@ -87,6 +88,7 @@ export function Aim(props: {
 
   return (
     <div className="aim">
+      <HowCounted>{t("Angles are measured to the middle of the victim's head. A small crosshair error a second before the kill means the angle was already held; a large one followed by a flick means it was a reaction.")}</HowCounted>
       {d.totals && !filtered && <Summary t={d.totals} career={d.career} life={d.life} careerLife={d.careerLife} />}
       {cls !== null && !HITSCAN.has(cls) && (
         <p className="hint">{tx("Crosshair error is the angle to the victim's head, which is a hitscan measure. A{0} {cls} kills with splash and projectiles that never had to be on the head, so read these as where they were looking, not how well they aimed.", { "0": cls === "soldier" || cls === "engineer" ? "n" : "", cls: classLabel(cls) })}</p>
@@ -106,7 +108,6 @@ export function Aim(props: {
           <Deaths rows={deaths} names={names} />
         </details>
       )}
-      <p className="hint aim-foot">{t("Angles are measured to the middle of the victim's head. A small crosshair error a second before the kill means the angle was already held; a large one followed by a flick means it was a reaction.")}</p>
     </div>
   );
 }

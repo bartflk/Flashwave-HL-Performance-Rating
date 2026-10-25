@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Help } from "./StatTip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { errorMessage, type FailedLog, type Imported } from "../api/types";
@@ -108,8 +109,7 @@ export function ImportPanel() {
         </details>
       )}
 
-      <h3 style={{ marginTop: 22 }}>{t("Add a log by hand")}</h3>
-      <p className="hint" style={{ marginTop: 6 }}>{t("A log id or logs.tf link. Fetched now, not at the next sync.")}</p>
+      <h3 style={{ marginTop: 22 }}>{t("Add a log by hand")}<Help>{t("A log id or logs.tf link. Fetched now, not at the next sync.")}</Help></h3>
       <div className="row" style={{ marginTop: 10, gap: 8 }}>
         <input
           value={text}

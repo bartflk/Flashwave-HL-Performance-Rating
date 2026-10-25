@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { HowCounted } from "../StatTip";
 import type { Analysis, TeamfightView } from "../../api/types";
 import { clock } from "../../lib/format";
 import { playerMap, type Slice } from "./common";
@@ -90,6 +91,7 @@ export function Teamfights({ a, player, slice }: { a: Analysis; player: number; 
 
   return (
     <div className="teamfights">
+      <HowCounted>{tx("A player is in a fight from their first damage, kill or death. In together means within {TOGETHER_S}s of their side's first.", { TOGETHER_S: TOGETHER_S })}</HowCounted>
       <dl className="kv">
         <dt>{t("Your side in together")}</dt>
         <dd>
@@ -142,7 +144,6 @@ export function Teamfights({ a, player, slice }: { a: Analysis; player: number; 
           </tbody>
         </table>
       </div>
-      <p className="hint">{tx("A player is in a fight from their first damage, kill or death. In together means within {TOGETHER_S}s of their side's first.", { TOGETHER_S: TOGETHER_S })}</p>
     </div>
   );
 }
