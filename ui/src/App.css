@@ -183,6 +183,7 @@
   background: none;
   border: none;
   padding: 0;
+  box-shadow: none;
 }
 
 /* --- ready state --- */
@@ -267,6 +268,7 @@
   color: var(--accent);
   padding: 0;
   font-size: 0.85rem;
+  box-shadow: none;
 }
 
 .linkish:hover:not(:disabled) {
@@ -315,6 +317,7 @@
   font-size: 0.92rem;
   font-weight: 500;
   letter-spacing: 0.01em;
+  box-shadow: none;
 }
 
 .tab:hover:not(:disabled) {
@@ -326,6 +329,7 @@
   color: var(--text);
   background: none;
   border-bottom-color: var(--accent);
+  box-shadow: none;
 }
 
 /* A filling bar. The demo panel uses it; so does the corner card. */
@@ -586,6 +590,7 @@
   padding: 4px 10px 5px;
   font-size: 0.86rem;
   color: var(--muted);
+  box-shadow: none;
 }
 
 .seg:hover:not(:disabled) {
@@ -597,6 +602,7 @@
   background: none;
   color: var(--text);
   border-bottom-color: var(--accent);
+  box-shadow: none;
 }
 
 .empty {
@@ -891,6 +897,7 @@ th.num {
   border: none;
   padding: 0;
   color: var(--muted);
+  box-shadow: none;
 }
 
 .owner-avatar {
@@ -922,6 +929,7 @@ th.num {
   cursor: pointer;
   text-transform: none;
   letter-spacing: normal;
+  box-shadow: none;
 }
 .owner-button:hover,
 .owner-button.open { border-color: var(--border); background: var(--panel-2); }
@@ -959,10 +967,11 @@ th.num {
   text-transform: none;
   letter-spacing: normal;
   cursor: pointer;
+  box-shadow: none;
 }
 .owner-recent-row:hover { background: var(--panel-2); }
 .owner-recent-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.owner-recent-row code { font-size: 0.7rem; color: var(--muted); background: none; border: none; }
+.owner-recent-row code { font-size: 0.7rem; color: var(--muted); background: none; border: none; box-shadow: none; }
 
 /* --- class icons --- */
 
@@ -1135,6 +1144,7 @@ th.num {
   line-height: 1;
   padding: 0 2px;
   cursor: pointer;
+  box-shadow: none;
 }
 
 .dl-close:hover {
@@ -1177,6 +1187,7 @@ th.num {
   color: var(--muted);
   font-size: 0.75rem;
   cursor: pointer;
+  box-shadow: none;
 }
 
 .dl-cancel:hover:not(:disabled) {
@@ -1653,9 +1664,10 @@ button.mini {
   color: inherit;
   font: inherit;
   cursor: pointer;
+  box-shadow: none;
 }
 .theme-pick:hover, .theme-pick:focus-visible { background: transparent; border: 0; }
-.theme-new { border: 1px dashed var(--line-2); background: transparent; }
+.theme-new { border: 1px dashed var(--line-2); background: transparent; box-shadow: none; }
 .theme-new:hover { border-color: var(--accent); }
 
 .theme-swatch {
@@ -1718,6 +1730,7 @@ button.mini {
 }
 .th-field input[type="color"] {
   width: 34px; height: 28px; padding: 0; border: 1px solid var(--line-2); border-radius: 6px; background: none; cursor: pointer;
+  box-shadow: none;
 }
 .th-field input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
 .th-field input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 4px; }
@@ -1756,6 +1769,7 @@ button.mini {
 .settings-nav-item {
   display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 0; border-radius: 6px;
   background: transparent; color: var(--text); font: inherit; font-size: 0.88rem; text-align: left; cursor: pointer;
+  box-shadow: none;
 }
 .settings-nav-item:hover:not(:disabled) { background: var(--panel-2); border: 0; }
 .settings-nav-item svg { color: var(--muted); flex: none; }
@@ -1776,6 +1790,7 @@ button.mini {
 .set-toggle {
   flex: 1; display: flex; align-items: center; gap: 12px; padding: 12px 14px; min-width: 0;
   border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 10px;
+  box-shadow: none;
 }
 .set-toggle:hover:not(:disabled) { background: transparent; border: 0; }
 .set-toggle:hover .set-title { color: var(--accent); }
@@ -1792,6 +1807,7 @@ button.mini {
 .set-info-btn {
   display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border-radius: 50%;
   border: 1px solid transparent; background: transparent; color: var(--muted); cursor: help;
+  box-shadow: none;
 }
 .set-info-btn:hover:not(:disabled), .set-info-btn[aria-expanded="true"] { color: var(--text); background: var(--panel-2); border-color: var(--border); }
 .set-info-pop {

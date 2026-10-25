@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Help } from "../StatTip";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type MatchDemoStats, type MatchDetail, type ReflectOutcome } from "../../api/types";
@@ -60,10 +61,10 @@ export function ReflectPanel({ d }: { d: MatchDetail }) {
   const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%` : "–");
   return (
     <section className="panel reflect-panel">
-      <h2>{t("Reflects")}</h2>
-      <p className="hint">
-        {t("Every rocket, pipe and other projectile a Pyro sent back, and how it ended: a hit when it damaged someone as it landed. Headed at the team is an estimate: the projectile carried on along its path would have passed close to the Pyro or a teammate (walls are not known).")}
-      </p>
+      <h2>
+        {t("Reflects")}
+        <Help>{t("Every rocket, pipe and other projectile a Pyro sent back, and how it ended: a hit when it damaged someone as it landed. Headed at the team is an estimate: the projectile carried on along its path would have passed close to the Pyro or a teammate (walls are not known).")}</Help>
+      </h2>
       {!r.stv && (
         <p className="hint" style={{ marginTop: 6 }}>
           {t("From your own recording: only the reflects near you are in it, and those that flew out of view end as not seen. The STV demo has them all.")}

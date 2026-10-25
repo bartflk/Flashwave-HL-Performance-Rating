@@ -1,4 +1,5 @@
 import type { MatchDetail } from "../../api/types";
+import { Help } from "../StatTip";
 import { capitalize, formatDate, minutes, splitMap } from "../../lib/format";
 import { t, tx } from "../../lib/i18n";
 import { SortTh, useSort } from "../../lib/sort";
@@ -24,8 +25,10 @@ export function Parts({ d }: { d: MatchDetail }) {
   return (
     <section className="panel parts">
       <header className="parts-head">
-        <h2>{tx("Combined from {parts} logs", { parts: d.parts.length })}</h2>
-        <p className="hint">{t("Someone uploaded these rounds as one log. The parts are not counted again here, so your totals stay right; open one on logs.tf to see it on its own.")}</p>
+        <h2>
+          {tx("Combined from {parts} logs", { parts: d.parts.length })}
+          <Help>{t("Someone uploaded these rounds as one log. The parts are not counted again here, so your totals stay right; open one on logs.tf to see it on its own.")}</Help>
+        </h2>
       </header>
       <div className="table-wrap">
         <table className="match-table">

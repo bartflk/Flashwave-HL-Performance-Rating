@@ -55,6 +55,7 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   cursor: pointer;
+  box-shadow: none;
 }
 .e2-menu > button:hover { color: var(--text); background: rgba(var(--text-rgb), 0.05); }
 .e2-menu > button.on { color: var(--text); background: rgba(var(--accent-rgb), 0.16); box-shadow: inset 0 -2px 0 var(--accent); }
@@ -116,6 +117,7 @@
   text-transform: none;
   letter-spacing: normal;
   cursor: pointer;
+  box-shadow: none;
 }
 .e2-hit:hover { background: rgba(var(--accent-rgb), 0.12); }
 .e2-hit-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -145,6 +147,7 @@
   text-transform: none;
   letter-spacing: normal;
   cursor: pointer;
+  box-shadow: none;
 }
 .e2-crumbs button:hover { color: var(--accent); background: rgba(var(--accent-rgb), 0.08); }
 .e2-crumb { display: inline-flex; align-items: center; gap: 2px; min-width: 0; }
@@ -194,6 +197,7 @@
   text-transform: none;
   letter-spacing: normal;
   cursor: pointer;
+  box-shadow: none;
 }
 .e2-more:hover { background: none; text-decoration: underline; }
 .e2-label {
@@ -235,6 +239,7 @@
   letter-spacing: 0.02em;
   text-transform: none;
   cursor: pointer;
+  box-shadow: none;
 }
 .e2-nm-team.r { flex-direction: row-reverse; text-align: right; }
 .e2-nm-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -272,6 +277,7 @@
   text-transform: none;
   letter-spacing: normal;
   cursor: pointer;
+  box-shadow: none;
 }
 .e2-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .e2-team:hover { color: var(--tf2-tan); background: none; }
@@ -320,6 +326,7 @@
   text-transform: none;
   letter-spacing: normal;
   cursor: pointer;
+  box-shadow: none;
 }
 .yt-compact button:hover { background: rgba(var(--accent-rgb), 0.1); }
 .yt-c-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
@@ -365,6 +372,7 @@
   text-transform: none;
   letter-spacing: normal;
   cursor: pointer;
+  box-shadow: none;
 }
 .e2-res-team span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .e2-res-team.won { color: var(--text); font-weight: 700; }
@@ -616,6 +624,7 @@
   text-transform: none;
   letter-spacing: normal;
   cursor: pointer;
+  box-shadow: none;
 }
 .e2-lineup button:hover { background: rgba(var(--accent-rgb), 0.1); }
 .e2-lu-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -731,6 +740,7 @@
   text-transform: none;
   text-align: left;
   cursor: pointer;
+  box-shadow: none;
 }
 .e2-yours-team:hover { color: var(--tf2-tan); background: none; }
 .e2-yours-team .teams-avatar { width: 30px; height: 30px; border-radius: 6px; }
@@ -778,6 +788,7 @@
   letter-spacing: normal;
   cursor: pointer;
   opacity: 0.7;
+  box-shadow: none;
 }
 .e2-classes > button:hover { opacity: 1; background: rgba(var(--text-rgb), 0.05); }
 .e2-classes > button.on { opacity: 1; color: var(--text); background: rgba(var(--accent-rgb), 0.16); box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.55); }
@@ -804,6 +815,7 @@
   text-transform: none;
   text-align: left;
   cursor: pointer;
+  box-shadow: none;
 }
 .rc-who:hover { color: var(--tf2-tan); background: none; }
 .rc-avatar { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex: none; background: rgba(var(--muted-rgb), 0.18); }
@@ -832,6 +844,7 @@
   text-transform: none;
   letter-spacing: normal;
   cursor: pointer;
+  box-shadow: none;
 }
 .rc-mini button:hover { background: rgba(var(--accent-rgb), 0.1); }
 .rc-mini-classes { display: inline-flex; gap: 2px; }
@@ -964,7 +977,7 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
 .br-cell.lost { background: rgba(214, 92, 84, 0.16); color: #e79a93; }
 .br-cell.drawn { background: rgba(var(--muted-rgb), 0.2); color: var(--text); }
 .br-cell.todo { font-weight: 500; }
-.br-cell.none { background: none; cursor: default; color: var(--faint); }
+.br-cell.none { background: none; cursor: default; color: var(--faint); box-shadow: none; }
 .br-cell:hover:not(.none) { outline: 1px solid var(--line-2); }
 
 
@@ -1030,6 +1043,7 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
   text-transform: none;
   letter-spacing: normal;
   cursor: pointer;
+  box-shadow: none;
 }
 .br-team .teams-avatar { width: 16px; height: 16px; border-radius: 3px; flex: none; }
 .br-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1186,6 +1200,7 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
   text-transform: none;
   letter-spacing: normal;
   cursor: pointer;
+  box-shadow: none;
 }
 .tm-row:hover { background: rgba(var(--accent-rgb), 0.1); }
 .tm-row .teams-avatar,

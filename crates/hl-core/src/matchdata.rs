@@ -130,6 +130,13 @@ pub struct ClassLine {
     pub assists: i64,
     pub deaths: i64,
     pub dmg: i64,
+    /// Shots and hits over the class's weapons, from logs.tf's
+    /// `class_stats[].weapon`: its accuracy (Flashy: "accuracy per class
+    /// on hover like logs.tf"). Zero where logs.tf did not count them.
+    #[serde(default)]
+    pub shots: i64,
+    #[serde(default)]
+    pub hits: i64,
 }
 
 /// One row of the class-vs-class breakdown for a single player.

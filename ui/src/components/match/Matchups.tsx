@@ -7,7 +7,7 @@ import { classLabel } from "../analysis/common";
 import { goTo } from "../../lib/goto";
 import { DivTag, SideDivisions, useMatchDivisions } from "./Divisions";
 import { PlayerPopCard, nameProps, usePlayerCard } from "../players/PlayerPopCard";
-import { ComponentTip, StatTip } from "../StatTip";
+import { Help, ComponentTip, StatTip } from "../StatTip";
 
 /**
  * The nine class matchups: the headline of the match page.
@@ -41,11 +41,14 @@ export function Matchups({ d }: { d: MatchDetail }) {
     <section className="panel mu">
       <header className="mu-head">
         <div>
-          <h2>{t("Class matchups")}</h2>
+          <h2>
+            {t("Class matchups")}
+            <Help>{t("Ratings measure individual play, not who won the match. Click a row for the working.")}</Help>
+          </h2>
           <p className="hint">
             {d.rated ? (
               <>
-                {tx("{0} won {wonByLeft}, {2} won {wonByRight}{4}. Ratings measure individual play, not who won the match. Click a row for the working.", { "0": us ? t("You") : teamLabel(left), "2": us ? t("they") : teamLabel(right), "4": even > 0 && t(", {even} even", { even: even }), wonByLeft: wonByLeft, wonByRight: wonByRight })}</>
+                {tx("{0} won {wonByLeft}, {2} won {wonByRight}{4}.", { "0": us ? t("You") : teamLabel(left), "2": us ? t("they") : teamLabel(right), "4": even > 0 && t(", {even} even", { even: even }), wonByLeft: wonByLeft, wonByRight: wonByRight })}</>
             ) : (
               t("Not rated yet — ratings appear after the next Sync or Rebuild.")
             )}

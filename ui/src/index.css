@@ -429,7 +429,9 @@ th.sortable:hover .sort-arrow { opacity: 0.7; }
 /* Q80: a statistic that explains itself. A faint "?" beside the label;
    the card on hover or focus, kept on while the pointer is over it. */
 .stip { position: relative; display: inline-flex; align-items: center; gap: 4px; cursor: help; outline: none; }
-.stip-mark { display: inline-grid; place-items: center; width: 13px; height: 13px; border-radius: 50%; border: 1px solid currentColor; font-size: 0.6rem; font-weight: 700; line-height: 1; opacity: 0.4; flex: none; }
+.stip-mark { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; opacity: 0.45; flex: none; transition: opacity 0.12s, color 0.12s; }
+.stip.help { display: inline-flex; align-items: center; margin-left: 8px; cursor: help; border-radius: 50%; text-transform: none; letter-spacing: normal; font-weight: 400; }
+.stip.help .stip-mark { width: 15px; height: 15px; opacity: 0.55; }
 .stip:hover .stip-mark, .stip:focus-visible .stip-mark { opacity: 0.9; color: var(--accent-text); }
 .stip-card {
   position: fixed;
@@ -530,7 +532,33 @@ html[data-backdrop="sides"] body {
    height, its label centred. Buttons styled as links, rows, tabs or icons
    carry classes of their own and keep their sizes. The hover and dropdown
    colours follow the theme (they were Gravel's browns on every theme). ---- */
-:root { --ctl-h: 36px; --ctl-radius: 8px; }
+/* Depth for everything clickable (Flashy: "a lot of clickable things don't
+   really have a border or a shadow, you can't really tell you can click
+   these"): a lit top edge and a shadow under it, more on hover, pressed in
+   on a click. Flat link-style buttons clear it. */
+:root {
+  --ctl-h: 36px; --ctl-radius: 8px;
+  --ctl-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.28);
+  --ctl-shadow-hover: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 2px 4px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.32);
+  --ctl-shadow-press: inset 0 2px 4px rgba(0, 0, 0, 0.45);
+}
+/* No weight of their own (:where), so any button that sets its shadow, or
+   clears it, keeps its own. */
+:where(button, select) { box-shadow: var(--ctl-shadow); transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease, color 120ms ease; }
+:where(button:hover:not(:disabled), select:hover) { box-shadow: var(--ctl-shadow-hover); }
+:where(button:active:not(:disabled)) { box-shadow: var(--ctl-shadow-press); }
+:where(button:disabled) { box-shadow: none; }
+/* The bookmarks list and the star that opens it: each row a raised tile. */
+.bm-open { border: 1px solid var(--border); border-radius: var(--ctl-radius); background: linear-gradient(var(--raised), var(--sunken)); }
+.bm-pop li { margin-bottom: 6px; }
+.bm-pop .bm-go {
+  border: 1px solid var(--border); border-radius: var(--ctl-radius);
+  background: linear-gradient(var(--raised), var(--sunken)); box-shadow: var(--ctl-shadow);
+  padding: 7px 10px;
+}
+.bm-pop .bm-go:hover { border-color: var(--line-2); box-shadow: var(--ctl-shadow-hover); background: linear-gradient(color-mix(in srgb, var(--raised) 80%, var(--text) 8%), var(--raised)); }
+.bm-pop .bm-x { height: 30px; width: 30px; padding: 0; border-radius: 6px; }
+.bm-pop .bm-x:hover { background: var(--panel-2); }
 button:not([class]),
 button.primary,
 button.km-chip,

@@ -42,6 +42,7 @@
   padding: 8px 14px;
   color: var(--muted);
   white-space: nowrap;
+  box-shadow: none;
 }
 
 .an-tab:hover:not(:disabled) {
@@ -195,6 +196,7 @@
   font-size: 0.85rem;
   color: var(--muted);
   background: none;
+  box-shadow: none;
 }
 
 .chip.on {
@@ -812,6 +814,7 @@
 .aim-dot-open {
   background: none;
   border: 2px solid var(--muted);
+  box-shadow: none;
 }
 
 /* Wide screens would stretch the plot to a letterbox; its shape carries
@@ -1028,6 +1031,7 @@
   text-align: left;
   cursor: pointer;
   font-variant-numeric: tabular-nums;
+  box-shadow: none;
 }
 
 .km-life:hover {
@@ -1263,6 +1267,7 @@
   letter-spacing: normal;
   white-space: nowrap;
   cursor: pointer;
+  box-shadow: none;
 }
 .km-seg > button:hover:not(:disabled) { color: var(--text); background: rgba(var(--text-rgb), 0.05); }
 .km-seg > button.on {
@@ -1310,6 +1315,7 @@
   background: none;
   color: var(--text);
   cursor: pointer;
+  box-shadow: none;
 }
 .km-ovstack > button + button { border-top: 1px solid var(--border); }
 .km-ovstack > button:hover:not(:disabled) { background: rgba(var(--accent-rgb), 0.14); color: var(--accent); }
@@ -1375,6 +1381,7 @@
   text-transform: none;
   letter-spacing: normal;
   cursor: pointer;
+  box-shadow: none;
 }
 .km-switch:hover:not(:disabled) { background: none; }
 .km-switch:disabled { opacity: 0.45; cursor: default; }

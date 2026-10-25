@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Help } from "../StatTip";
 import { api } from "../../api/client";
 import { errorMessage, type CartFight, type CartHold, type CartRound, type MatchDetail, type RoundFight } from "../../api/types";
 import { clock } from "../../lib/format";
@@ -111,10 +112,10 @@ export function CartPanel({ d }: { d: MatchDetail }) {
 
       {(v.holds?.length ?? 0) + (v.allFights?.length ?? 0) > 0 && (
         <>
-          <h3>{t("Momentum")}</h3>
-          <p className="hint">
-            {t("How far BLU pushed the cart through each round. A flat stretch with fights in it is a hold; dots are fights, blue where BLU won it and red where the defence did.")}
-          </p>
+          <h3>
+            {t("Momentum")}
+            <Help>{t("How far BLU pushed the cart through each round. A flat stretch with fights in it is a hold; dots are fights, blue where BLU won it and red where the defence did.")}</Help>
+          </h3>
           {v.rounds.map((r, i) => (
             <Momentum key={i} n={i} r={r} fights={v.allFights.filter((f) => f.round === i)} holds={v.holds.filter((h) => h.round === i)} />
           ))}
