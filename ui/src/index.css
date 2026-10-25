@@ -66,13 +66,37 @@
   /* Headings: Windows' Bahnschrift, bold and condensed, is the closest
      built-in font to TF2's. Elsewhere it falls back to a narrow sans. */
   --font-display: "Bahnschrift", "Arial Narrow", "Roboto Condensed", "Segoe UI", sans-serif;
+  --font-text: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "Cascadia Mono", Consolas, monospace;
+
+  /* The type scale (docs: "Flashwave.tf typography"). Every size in the app
+     is one of these; a new rule picks a role, never a number. In rem, so
+     each grows with the root below and with the Interface size setting. */
+  --fs-hero: clamp(1.7rem, 3vw, 2.4rem); /* a page's hero title */
+  --fs-title: 1.5rem;                    /* h1 */
+  --fs-heading: 1.25rem;                 /* a card's or a sub-page's title */
+  --fs-section: 1.05rem;                 /* a panel's h2, uppercase */
+  --fs-body: 1rem;                       /* running text */
+  --fs-ui: 0.9rem;                       /* table cells, controls, menus */
+  --fs-small: 0.82rem;                   /* hints, secondary lines */
+  --fs-xs: 0.74rem;                      /* uppercase labels, captions */
+  --fs-micro: 0.66rem;                   /* tags and badges */
+  --fs-num-xl: 3rem;                     /* a score or signature number */
+  --fs-num-l: 2.2rem;
+  --fs-num-m: 1.6rem;                    /* a KPI value */
+  --fs-num-s: 1.3rem;                    /* a rating beside a name */
+  --ls-heading: 0.03em;                  /* uppercase headings */
+  --ls-caps: 0.06em;                     /* uppercase labels and tags */
+  --lh-tight: 1.1;
+  --lh-snug: 1.35;
+  --lh-body: 1.5;
 
   color-scheme: dark;
-  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-text);
   /* Text grows with the window, so a maximised app on a big monitor reads
      like a website rather than a column of small print. */
   font-size: clamp(15px, 0.35vw + 10px, 18px);
-  line-height: 1.5;
+  line-height: var(--lh-body);
 
   /* Every page centres a column of this width; the bars above it stay
      full-bleed but line their content up with it. */
@@ -227,14 +251,26 @@ h2 {
   font-stretch: 85%;
   font-variation-settings: "wdth" 85;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: var(--ls-heading);
 }
 
 h1 {
-  font-size: 1.5rem;
+  font-size: var(--fs-title);
 }
 h2 {
-  font-size: 1.05rem;
+  font-size: var(--fs-section);
+}
+/* A sub-heading inside a panel: the section's size in the text face, so it
+   sits under its uppercase h2 rather than over it (the browser's own h3 is
+   1.17em, bigger than the h2). */
+h3 {
+  font-size: var(--fs-section);
+  line-height: var(--lh-snug);
+}
+h4 {
+  margin: 0;
+  font-size: var(--fs-ui);
+  font-weight: 600;
 }
 
 p {
@@ -242,7 +278,7 @@ p {
 }
 
 code {
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 0.85em;
   background: var(--bg);
   border: 1px solid var(--border);
@@ -281,7 +317,7 @@ button.primary {
   font-family: var(--font-display);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--ls-heading);
 }
 
 /* A language button: the orange already marks the chosen one, and a name
@@ -355,9 +391,9 @@ option:disabled {
 }
 
 .an-label {
-  font-size: 0.78rem;
+  font-size: var(--fs-small);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--ls-heading);
   color: var(--muted);
   white-space: nowrap;
 }
@@ -422,7 +458,7 @@ button .spinner { color: inherit; margin-right: 6px; }
 th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
 th.sortable:hover { color: var(--text); }
 th.sortable:focus-visible { outline: 2px solid var(--accent-dim); outline-offset: -2px; }
-th .sort-arrow { margin-left: 4px; font-size: 0.72em; opacity: 0.3; }
+th .sort-arrow { margin-left: 4px; font-size: var(--fs-micro); opacity: 0.3; }
 th.sorted .sort-arrow { opacity: 1; color: var(--accent-text); }
 th.sortable:hover .sort-arrow { opacity: 0.7; }
 
@@ -447,7 +483,7 @@ th.sortable:hover .sort-arrow { opacity: 0.7; }
   background: var(--panel-2);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
   color: var(--text);
-  font: 400 0.82rem/1.45 "Segoe UI", system-ui, sans-serif;
+  font: 400 var(--fs-small) / var(--lh-body) var(--font-text);
   letter-spacing: normal;
   text-transform: none;
   text-align: left;
@@ -458,8 +494,8 @@ th.sortable:hover .sort-arrow { opacity: 0.7; }
 .stip-card strong { font-weight: 700; color: var(--text-hi); }
 .stip-how { color: var(--muted); }
 .stip-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 2px; }
-.stip-src { padding: 1px 7px; border-radius: 999px; font-size: 0.72rem; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-text); }
-.stip-more { margin-left: auto; font-size: 0.78rem; }
+.stip-src { padding: 1px 7px; border-radius: 999px; font-size: var(--fs-xs); background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-text); }
+.stip-more { margin-left: auto; font-size: var(--fs-small); }
 th .stip-card { font-weight: 400; }
 
 /* Q81: content being fetched again, a spinner in its corner. */
@@ -486,7 +522,7 @@ th .stip-card { font-weight: 400; }
 .ctl-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 22px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--bg) 45%, var(--panel)); }
 .ctl-bar + .ctl-bar { margin-top: 8px; }
 .ctl-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.ctl-group-label { font: 700 0.68rem var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.ctl-group-label { font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .ctl-group-body { display: flex; align-items: center; gap: 8px; min-height: 34px; }
 .ctl-bar .km-seg button { display: inline-flex; align-items: center; gap: 6px; }
 .ctl-select { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
@@ -570,7 +606,7 @@ button.secondary {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  line-height: 1.15;
+  line-height: var(--lh-tight);
   border-radius: var(--ctl-radius);
 }
 button:hover:not(:disabled) {
@@ -603,4 +639,4 @@ input:where(:not([type])) {
 .tier-rg-bar { position: absolute; left: 0; top: 0; bottom: 0; opacity: 0.13; }
 .tier-rg-text, .tier-rg-star { position: relative; }
 .tier-rg-star { color: #f0b840; font-size: 0.9em; }
-.tier-pill { display: inline-block; min-width: 2.6em; padding: 1px 7px; border-radius: 999px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; line-height: 1.35; }
+.tier-pill { display: inline-block; min-width: 2.6em; padding: 1px 7px; border-radius: 999px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; line-height: var(--lh-snug); }

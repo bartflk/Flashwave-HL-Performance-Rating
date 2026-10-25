@@ -1297,7 +1297,7 @@ function AutoDelete() {
 
   return (
     <div style={{ marginTop: 14 }}>
-      <label className="row" style={{ gap: 8, cursor: "pointer", fontSize: "0.9rem" }}>
+      <label className="row" style={{ gap: 8, cursor: "pointer", fontSize: "var(--fs-ui)" }}>
         <input
           type="checkbox"
           checked={q.data ?? false}

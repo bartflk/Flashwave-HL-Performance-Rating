@@ -24,13 +24,13 @@
 
 .class-tab {
   padding: 5px 12px;
-  font-size: 0.86rem;
+  font-size: var(--fs-small);
   background: var(--panel);
 }
 
 .class-tab .count {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: var(--fs-small);
   margin-left: 4px;
 }
 
@@ -40,7 +40,7 @@
 }
 
 .thin-note {
-  font-size: 0.86rem;
+  font-size: var(--fs-small);
   color: var(--warn);
 }
 
@@ -67,7 +67,7 @@
 }
 
 .kpi-label {
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   color: var(--muted);
 }
 
@@ -75,13 +75,13 @@
 /* Big numbers in the display face, like a TF2 scoreboard. */
 .kpi-value {
   font-family: var(--font-display);
-  font-size: 1.9rem;
+  font-size: var(--fs-num-m);
   font-weight: 700;
-  line-height: 1.1;
+  line-height: var(--lh-tight);
 }
 
 .kpi-value.small {
-  font-size: 1.25rem;
+  font-size: var(--fs-num-s);
   margin-top: 6px;
 }
 
@@ -90,16 +90,16 @@
 }
 
 .kpi.hero .kpi-value {
-  font-size: 3rem;
+  font-size: var(--fs-num-xl);
 }
 
 .kpi-sub {
-  font-size: 0.78rem;
+  font-size: var(--fs-small);
   color: var(--muted);
 }
 
 .kpi-delta {
-  font-size: 0.82rem;
+  font-size: var(--fs-small);
   font-weight: 600;
 }
 
@@ -148,7 +148,7 @@
   align-items: center;
   column-gap: 12px;
   padding: 6px 0;
-  font-size: 0.88rem;
+  font-size: var(--fs-ui);
 }
 
 .comp-label {
@@ -159,10 +159,10 @@
 }
 
 .tag {
-  font-size: 0.64rem;
+  font-size: var(--fs-micro);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--ls-caps);
   border-radius: 4px;
   padding: 0 5px;
   border: 1px solid currentColor;
@@ -172,7 +172,7 @@
 .tag.strong { color: var(--ok); }
 
 .comp-weight {
-  font-size: 0.78rem;
+  font-size: var(--fs-small);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -221,7 +221,7 @@
 }
 
 .comp-raw {
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -340,7 +340,7 @@
   border-radius: 8px;
   padding: 8px 10px;
   width: 178px;
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -354,13 +354,13 @@
 }
 
 .tip-row strong {
-  font-size: 0.95rem;
+  font-size: var(--fs-ui);
   font-variant-numeric: tabular-nums;
 }
 
 .tip-meta {
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: var(--fs-xs);
   margin-top: 2px;
 }
 
@@ -469,14 +469,14 @@
 }
 
 .ks-value {
-  font-size: 1.25rem;
+  font-size: var(--fs-num-s);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
 .ks-meta {
-  font-size: 0.86rem;
+  font-size: var(--fs-small);
 }
 
 @media (max-width: 700px) {
@@ -524,7 +524,7 @@
 }
 
 .season-dates {
-  font-size: 12px;
+  font-size: var(--fs-small);
 }
 
 .seasons-total td {
@@ -533,7 +533,7 @@
 }
 
 .badge-now {
-  font-size: 10px;
+  font-size: var(--fs-micro);
   padding: 0 5px;
   border: 1px solid var(--border);
   border-radius: 3px;
@@ -543,7 +543,7 @@
 /* Blue is better, orange worse: the same pair as everywhere else, always
    with an arrow and a word. */
 .verdict {
-  font-size: 12px;
+  font-size: var(--fs-small);
   white-space: nowrap;
 }
 
@@ -566,10 +566,10 @@
 
 /* Q28: where you play, by callout. */
 .tendencies .tend-maps { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 10px; }
-.tend-map h3 { margin: 0; font-size: 0.95rem; }
+.tend-map h3 { margin: 0; font-size: var(--fs-ui); }
 .tend-map .hint { margin: 2px 0 8px; }
 .tend-bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.tend-bars li { display: grid; grid-template-columns: minmax(0, 7em) 1fr 3em; gap: 8px; align-items: center; font-size: 0.82rem; }
+.tend-bars li { display: grid; grid-template-columns: minmax(0, 7em) 1fr 3em; gap: 8px; align-items: center; font-size: var(--fs-small); }
 .tend-zone { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tend-track { display: flex; flex-direction: column; gap: 2px; }
 .tend-track i, .tend-legend i { display: block; height: 5px; border-radius: 3px; }
@@ -577,7 +577,7 @@
 .tend-d { background: var(--bad, #d9534f); opacity: 0.8; }
 .tend-legend i { display: inline-block; width: 14px; vertical-align: middle; margin: 0 4px 0 10px; }
 .tend-n { text-align: right; font-variant-numeric: tabular-nums; }
-.tend-stand { margin: 8px 0 0; font-size: 0.8rem; }
+.tend-stand { margin: 8px 0 0; font-size: var(--fs-small); }
 
 
 /* --- teammates, on the profile --- */
@@ -613,7 +613,7 @@
 }
 
 .mate-name {
-  font-weight: 500;
+  font-weight: 400;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -651,7 +651,7 @@
 }
 
 .pf-side .pp-achievements li > .muted {
-  font-size: 0.84rem;
+  font-size: var(--fs-small);
 }
 
 /* ---- Profile, tidied (Flashy: "sauce up the profile page"): the hero, a
@@ -678,8 +678,8 @@
   border-radius: 7px;
   background: none;
   color: var(--muted);
-  font: 700 0.86rem var(--font-display);
-  letter-spacing: 0.07em;
+  font: 700 var(--fs-small) var(--font-display);
+  letter-spacing: var(--ls-caps);
   text-transform: uppercase;
   cursor: pointer;
   box-shadow: none;
@@ -720,8 +720,8 @@
 /* The officials/scrims/pugs split, narrowed for the side column: the meta
    under the bar instead of beside it. */
 .pf-side .kind-split .ks-row { grid-template-columns: 5.5em minmax(0, 1fr) 2.6em; row-gap: 2px; }
-.pf-side .kind-split .ks-meta { grid-column: 2 / -1; font-size: 0.76rem; }
-.pf-side .kind-split header .hint { font-size: 0.78rem; }
+.pf-side .kind-split .ks-meta { grid-column: 2 / -1; font-size: var(--fs-xs); }
+.pf-side .kind-split header .hint { font-size: var(--fs-small); }
 
 .pf-side .pp-matches li { grid-template-columns: minmax(0, 1fr) auto; }
 .pf-side .pp-matches .pp-where { grid-column: 1 / -1; grid-row: 2; }
@@ -740,7 +740,7 @@
   padding: 9px 12px;
   cursor: pointer;
   list-style: none;
-  font-size: 0.9rem;
+  font-size: var(--fs-ui);
 }
 .pf-comp summary::-webkit-details-marker { display: none; }
 .pf-comp summary:hover { background: rgba(var(--accent-rgb), 0.06); }
@@ -748,7 +748,7 @@
 .pf-comp[open] .pf-comp-caret { transform: rotate(90deg); }
 .pf-comp[open] summary { border-bottom: 1px solid var(--border); }
 .pf-comp-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pf-comp-n { font-size: 0.8rem; }
+.pf-comp-n { font-size: var(--fs-small); }
 .pf-comp-wl { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
 .pf-comp-wl .w { color: #8fc27a; }
 .pf-comp-wl .l { color: #d98a80; }
@@ -766,7 +766,7 @@
   background: none;
   color: var(--text);
   font: inherit;
-  font-size: 0.86rem;
+  font-size: var(--fs-small);
   text-align: left;
   cursor: pointer;
   box-shadow: none;
@@ -774,7 +774,7 @@
 .pf-comp-rows button:hover { background: rgba(var(--accent-rgb), 0.1); }
 .pf-comp-rows button.won { border-left-color: #7fb36a; }
 .pf-comp-rows button.lost { border-left-color: #c96a5e; }
-.pf-when, .pf-round { font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-when, .pf-round { font-size: var(--fs-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pf-teams { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; overflow: hidden; }
 .pf-teams .teams-avatar { width: 18px; height: 18px; border-radius: 4px; flex: none; }
 .pf-score { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
@@ -782,10 +782,10 @@
   .pf-comp-rows button { grid-template-columns: minmax(0, 1fr) 3.6em; }
   .pf-when, .pf-round { display: none; }
 }
-.pf-side .pp-vs { font-size: 0.86rem; }
+.pf-side .pp-vs { font-size: var(--fs-small); }
 .pf-side .pp-achievements li { padding: 8px 0; }
 /* Team history's own heading, dressed like the side column's others. */
-.pf-stays .pp-stays h3 { margin: 0 0 10px; font: 700 0.95rem var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-hi); }
+.pf-stays .pp-stays h3 { margin: 0 0 10px; font: 700 var(--fs-ui) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--text-hi); }
 
 /* The headline numbers: time, record, DPM, accuracy, K/D, as trends.tf
    leads with them, in a row of their own under the rating. */
@@ -800,9 +800,9 @@
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--accent) 4%, var(--panel));
 }
-.pf-hl-label { color: var(--muted); font-size: 0.74rem; letter-spacing: 0.06em; text-transform: uppercase; }
-.pf-hl-value { font: 700 1.55rem var(--font-display); font-variant-numeric: tabular-nums; color: var(--text-hi); }
-.pf-hl-sub { color: var(--muted); font-size: 0.78rem; }
+.pf-hl-label { color: var(--muted); font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.pf-hl-value { font: 700 var(--fs-num-m) var(--font-display); font-variant-numeric: tabular-nums; color: var(--text-hi); }
+.pf-hl-sub { color: var(--muted); font-size: var(--fs-small); }
 .pf-hl.rec { border-top-color: color-mix(in srgb, #7fb36a 60%, var(--border)); }
 .pf-w { color: #8fc27a; }
 .pf-l { color: #d98a80; }
