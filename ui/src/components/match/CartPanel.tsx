@@ -16,6 +16,12 @@ import { tip } from "../../lib/glossary";
  */
 export function CartPanel({ d }: { d: MatchDetail }) {
   const q = useQuery({ queryKey: ["cart", d.logId], queryFn: () => api.getCart(d.logId, d.map ?? undefined) });
+  // Every hook before any return: the error answer used to come first,
+  // so the sorts were skipped on that render and React's hook order broke
+  // when the query recovered.
+  const v = q.data;
+  const stalls = useSort("cart-stalls", v?.stalls ?? [], { round: (x) => x.round * 100000 + x.atS, at: (x) => x.atS, still: (x) => x.seconds, up: (x) => x.mostUp, why: (x) => (x.emptyS * 2 >= x.seconds ? 0 : 1) });
+  const holds = useSort("cart-holds", v?.holds ?? [], { round: (x) => x.round * 100000 + x.fromS, at: (x) => x.fromS, held: (x) => x.seconds, where: (x) => x.zone ?? null, pushes: (x) => x.pushesFailed, lost: (x) => x.lostAttackers - x.lostDefenders, then: (x) => (x.broke ? 1 : 0) });
   if (q.isError) {
     return (
       <section className="panel cart-panel">
@@ -24,9 +30,6 @@ export function CartPanel({ d }: { d: MatchDetail }) {
       </section>
     );
   }
-  const v = q.data;
-  const stalls = useSort("cart-stalls", v?.stalls ?? [], { round: (x) => x.round * 100000 + x.atS, at: (x) => x.atS, still: (x) => x.seconds, up: (x) => x.mostUp, why: (x) => (x.emptyS * 2 >= x.seconds ? 0 : 1) });
-  const holds = useSort("cart-holds", v?.holds ?? [], { round: (x) => x.round * 100000 + x.fromS, at: (x) => x.fromS, held: (x) => x.seconds, where: (x) => x.zone ?? null, pushes: (x) => x.pushesFailed, lost: (x) => x.lostAttackers - x.lostDefenders, then: (x) => (x.broke ? 1 : 0) });
   if (!v) return null;
   const wasted = v.rounds.reduce((a, r) => a + r.upStillS, 0);
   const empty = v.rounds.reduce((a, r) => a + r.upStillEmptyS, 0);

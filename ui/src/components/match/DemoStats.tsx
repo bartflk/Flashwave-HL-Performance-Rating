@@ -43,6 +43,15 @@ export function ReflectPanel({ d }: { d: MatchDetail }) {
   const q = useDemoStats(d);
   const who = useWho(d);
   const [open, setOpen] = useState(false);
+  // Every hook before any return: the error answer used to come first,
+  // so the sorts were skipped on that render and React's hook order broke
+  // when the query recovered.
+  const r = q.data;
+  const pyros = useSort("reflect-pyros", r?.pyros ?? [], {
+    name: (p) => p.name, reflects: (p) => p.reflects, hit: (p) => (p.hits + p.misses > 0 ? p.hits / (p.hits + p.misses) : null), missed: (p) => p.misses,
+    back: (p) => p.sentBack, unseen: (p) => p.unknown, damage: (p) => p.damage, kills: (p) => p.kills, threat: (p) => (p.judged > 0 ? p.threats / p.judged : null),
+  });
+  const each = useSort("reflect-each", r?.reflects ?? [], { time: (x) => x.atS, what: (x) => x.what, ended: (x) => x.outcome, damage: (x) => x.damage, threat: (x) => (x.threat === null ? null : x.threat ? 1 : 0) });
   if (q.isError) {
     return (
       <section className="panel">
@@ -51,12 +60,6 @@ export function ReflectPanel({ d }: { d: MatchDetail }) {
       </section>
     );
   }
-  const r = q.data;
-  const pyros = useSort("reflect-pyros", r?.pyros ?? [], {
-    name: (p) => p.name, reflects: (p) => p.reflects, hit: (p) => (p.hits + p.misses > 0 ? p.hits / (p.hits + p.misses) : null), missed: (p) => p.misses,
-    back: (p) => p.sentBack, unseen: (p) => p.unknown, damage: (p) => p.damage, kills: (p) => p.kills, threat: (p) => (p.judged > 0 ? p.threats / p.judged : null),
-  });
-  const each = useSort("reflect-each", r?.reflects ?? [], { time: (x) => x.atS, what: (x) => x.what, ended: (x) => x.outcome, damage: (x) => x.damage, threat: (x) => (x.threat === null ? null : x.threat ? 1 : 0) });
   if (!r) return null;
   const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%` : "–");
   return (
