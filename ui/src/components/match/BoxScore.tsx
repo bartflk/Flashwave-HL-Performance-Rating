@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -56,6 +56,8 @@ const COLS: Col[] = [
   { key: "dtpm", label: "DT/M", title: k("Damage taken per minute"), value: (p, f) => (f.dt ? per(p.dt, p) : null), fmt: (v) => v.toFixed(0) },
   { key: "hp", label: "HP", title: k("Health packs picked up"), value: (p) => p.medkits },
   { key: "hs", label: "HS", title: k("Headshot kills"), value: (p, f) => (f.hs ? p.headshots : null) },
+  { key: "bs", label: "BS", title: k("Backstabs"), value: (p, f) => (f.bs ? p.backstabs : null) },
+  { key: "as", label: "AS", title: k("Airshots"), value: (p, f) => (f.airshots ? p.airshots : null) },
   { key: "cap", label: k("CAP"), title: k("Points captured"), value: (p, f) => (f.cp ? p.cpc : null) },
   {
     key: "spawn",
@@ -86,6 +88,88 @@ const COLS: Col[] = [
   },
 ];
 
+/** Off until picked: each player's class card already has them (Flashy:
+ *  "keep the hover card, drop the accuracy column ... a button top right,
+ *  you click on it, you checkmark whatever stat you want to see"). */
+const HIDDEN_BY_DEFAULT: Key[] = ["acc", "bs", "as"];
+const COLS_KEY = "hl.scoreboard.hidden";
+
+/** The columns this viewer has turned off, remembered across matches. */
+function useHiddenCols(): [Set<Key>, (k: Key) => void, () => void] {
+  const [hidden, setHidden] = useState<Set<Key>>(() => {
+    try {
+      const s = localStorage.getItem(COLS_KEY);
+      if (s) return new Set(JSON.parse(s) as Key[]);
+    } catch {
+      // Blocked or broken storage: the defaults.
+    }
+    return new Set(HIDDEN_BY_DEFAULT);
+  });
+  const save = (next: Set<Key>) => {
+    setHidden(next);
+    try {
+      localStorage.setItem(COLS_KEY, JSON.stringify([...next]));
+    } catch {
+      // Blocked storage: the choice holds for this session.
+    }
+  };
+  const toggle = (key: Key) => {
+    const next = new Set(hidden);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    save(next);
+  };
+  return [hidden, toggle, () => save(new Set(HIDDEN_BY_DEFAULT))];
+}
+
+/** The scoreboard's column picker: a button in its header, a checklist. */
+function ColumnPicker({ cols, hidden, toggle, reset }: { cols: Col[]; hidden: Set<Key>; toggle: (k: Key) => void; reset: () => void }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  return (
+    <div className="sb-cols" ref={box}>
+      <button className="secondary sb-cols-open" aria-expanded={open} onClick={() => setOpen((o) => !o)} title={tr("Pick the scoreboard's columns")}>
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden focusable="false">
+          <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          <circle cx="5" cy="4" r="1.8" fill="var(--panel)" stroke="currentColor" strokeWidth="1.4" />
+          <circle cx="11" cy="8" r="1.8" fill="var(--panel)" stroke="currentColor" strokeWidth="1.4" />
+          <circle cx="7" cy="12" r="1.8" fill="var(--panel)" stroke="currentColor" strokeWidth="1.4" />
+        </svg>
+        {tr("Columns")}
+      </button>
+      {open && (
+        <div className="sb-cols-pop" role="dialog" aria-label={tr("Columns")}>
+          <div className="sb-cols-list">
+            {cols.map((c) => (
+              <label key={c.key} className="sb-cols-item" title={tr(c.title)}>
+                <input type="checkbox" checked={!hidden.has(c.key)} onChange={() => toggle(c.key)} />
+                <span className="sb-cols-label">{tr(c.label)}</span>
+                <span className="sb-cols-what">{tr(c.title).split(/[:.,(]/)[0]}</span>
+              </label>
+            ))}
+          </div>
+          <button className="linkish sb-cols-reset" onClick={reset}>
+            {tr("Back to the defaults")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * The scoreboard, laid out like logs.tf: one table, both teams, a column per
  * stat, every column sortable. It opens sorted by team then class, your team
@@ -112,7 +196,17 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
     [d.flags, d.players, pings, impact.data],
   );
   const hasAcc = d.players.some((p) => p.accuracy != null);
-  const cols = COLS.filter((c) => (c.key !== "ping" || flags.ping) && (c.key !== "impact" || flags.impact) && (c.key !== "acc" || hasAcc));
+  // What this log has, then what the viewer picked of it.
+  const available = COLS.filter(
+    (c) =>
+      (c.key !== "ping" || flags.ping) &&
+      (c.key !== "impact" || flags.impact) &&
+      (c.key !== "acc" || hasAcc) &&
+      (c.key !== "bs" || flags.bs) &&
+      (c.key !== "as" || flags.airshots),
+  );
+  const [hidden, toggle, reset] = useHiddenCols();
+  const cols = available.filter((c) => !hidden.has(c.key));
   const scales = useStatScales().data;
   const [sort, setSort] = useState<{ key: Key; desc: boolean }>({ key: "team", desc: false });
   const rows = useMemo(() => {
@@ -147,7 +241,10 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
         <h2>{tr("Scoreboard")}</h2>
         {/* Which log the page is reading. It had a panel of its own for one
             select; it belongs with the numbers it scopes. */}
-        {reading}
+        <div className="sb-head-tools">
+          {reading}
+          <ColumnPicker cols={available} hidden={hidden} toggle={toggle} reset={reset} />
+        </div>
       </header>
       <div className="table-wrap">
         <table className="match-table scoreboard">
@@ -235,7 +332,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
  * scoreboard keeps one column fewer for each.
  */
 function ClassCard({ p, flags }: { p: PlayerRow; flags: Flags }) {
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
   const box = useRef<HTMLSpanElement>(null);
   // An older backend sends only each class's time: the rest shows as "–".
   const known = p.classLines !== undefined;
@@ -243,8 +340,11 @@ function ClassCard({ p, flags }: { p: PlayerRow; flags: Flags }) {
   const show = () => {
     const r = box.current?.getBoundingClientRect();
     if (!r) return;
-    const width = 340;
-    setPos({ top: r.bottom + 6, left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)) });
+    const width = 460;
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
+    // Above the icons when the card would run off the window's foot.
+    const tall = 120 + 46 * Math.max(1, p.classes.length);
+    setPos(r.bottom + 6 + tall > window.innerHeight ? { bottom: window.innerHeight - r.top + 6, left } : { top: r.bottom + 6, left });
   };
   const acc = (c: ClassStat) => (c.shots > 0 ? `${Math.round((c.hits / c.shots) * 100)}%` : "–");
   // Airshots and backstabs are the log's totals, not per class: they go on
@@ -258,11 +358,11 @@ function ClassCard({ p, flags }: { p: PlayerRow; flags: Flags }) {
   return (
     <span className="sb-class-icons" ref={box} tabIndex={0} onMouseEnter={show} onMouseLeave={() => setPos(null)} onFocus={show} onBlur={() => setPos(null)}>
       {p.classes.map(([c], i) => (
-        <ClassIcon key={c} cls={c} size={i === 0 ? 22 : 16} faded={i > 0} />
+        <ClassIcon key={c} cls={c} size={i === 0 ? 22 : 16} faded={i > 0} untitled />
       ))}
       {pos &&
         createPortal(
-          <span className="sb-class-card" role="tooltip" style={{ top: pos.top, left: pos.left }}>
+          <span className="sb-class-card" role="tooltip" style={pos}>
             <span className="sb-cc-head">{p.name}</span>
             <span className="sb-cc-row sb-cc-labels">
               <span>{tr("Class")}</span>
