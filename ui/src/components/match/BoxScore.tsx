@@ -142,6 +142,19 @@ const ORDER: Key[] = [
 ];
 const ORDERED = [...COLS].sort((x, y) => ORDER.indexOf(x.key) - ORDER.indexOf(y.key));
 
+/** DA/M and accuracy sorted by the number, or by where it stands on the
+ *  player's class (Flashy: "is it possible to sort accuracy and damage by
+ *  percentile?"): the same percentile their colour shows, so a Medic's
+ *  good game can outrank a Soldier's ordinary one. Remembered. */
+const RANK_KEY = "hl.scoreboard.rankBy";
+function storedRank(): "value" | "pct" {
+  try {
+    return localStorage.getItem(RANK_KEY) === "pct" ? "pct" : "value";
+  } catch {
+    return "value";
+  }
+}
+
 /**
  * The scoreboard, laid out like logs.tf: one table, both teams, a column per
  * stat, every column sortable. It opens sorted by team then class, your team
@@ -186,6 +199,16 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
   const cols = available.filter(picker.shown);
   const scales = useStatScales().data;
   const [sort, setSort] = useState<{ key: Key; desc: boolean }>({ key: "team", desc: false });
+  const [rankBy, setRankBy] = useState<"value" | "pct">(storedRank);
+  const pickRank = (r: "value" | "pct") => {
+    setRankBy(r);
+    try {
+      localStorage.setItem(RANK_KEY, r);
+    } catch {
+      // Blocked storage: the choice holds for this session.
+    }
+  };
+  const hasPct = cols.some((c) => c.key === "dapm" || c.key === "acc");
   const rows = useMemo(() => {
     const byTeamClass = (a: PlayerRow, b: PlayerRow) =>
       (a.team === d.leftTeam ? 0 : 1) - (b.team === d.leftTeam ? 0 : 1) ||
@@ -196,7 +219,11 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
     else if (sort.key === "name") out.sort((a, b) => a.name.localeCompare(b.name));
     else if (col) {
       // Unrecorded values sink to the bottom whichever way the column is sorted.
-      const v = (p: PlayerRow) => col.value(p, flags);
+      const raw = (p: PlayerRow) => col.value(p, flags);
+      const stat = col.key === "dapm" ? "dpm" : col.key === "acc" ? "accuracy" : null;
+      // By percentile: a class without a scale (too few games) sinks with
+      // the unrecorded.
+      const v = stat && rankBy === "pct" ? (p: PlayerRow) => tierOf(scales, p.mainClass, stat, raw(p))?.pct ?? null : raw;
       out.sort((a, b) => {
         const x = v(a);
         const y = v(b);
@@ -206,7 +233,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
     }
     if (sort.desc) out.reverse();
     return out;
-  }, [d, sort, flags, cols]);
+  }, [d, sort, flags, cols, rankBy, scales]);
 
   const click = (key: Key) =>
     setSort((s) => (s.key === key ? { key, desc: !s.desc } : { key, desc: false }));
@@ -220,6 +247,19 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
             select; it belongs with the numbers it scopes. */}
         <div className="sb-head-tools">
           {reading}
+          {hasPct && (
+            <div className="sb-rank" role="group" aria-label={tr("Sort DA/M and accuracy by")} title={tr("Sort DA/M and accuracy by the number, or by where it stands among the player's class's games")}>
+              <span className="an-label">{tr("Rank by")}</span>
+              <div className="sb-rank-seg">
+                <button className={rankBy === "value" ? "on" : undefined} aria-pressed={rankBy === "value"} onClick={() => pickRank("value")}>
+                  {tr("Value")}
+                </button>
+                <button className={rankBy === "pct" ? "on" : undefined} aria-pressed={rankBy === "pct"} onClick={() => pickRank("pct")}>
+                  {tr("Class %")}
+                </button>
+              </div>
+            </div>
+          )}
           <ColumnPicker cols={available} state={picker} />
         </div>
       </header>
