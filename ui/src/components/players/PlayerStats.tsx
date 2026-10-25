@@ -11,7 +11,7 @@ import { seasonShort } from "./PlayerProfile";
 import { DivisionBadge } from "./PlayerProfile";
 import "../rating/rating.css";
 import { SortTh, useSort } from "../../lib/sort";
-import { StatTip } from "../StatTip";
+import { Help, StatTip } from "../StatTip";
 import { tip } from "../../lib/glossary";
 import { Loading, Refreshing, Spinner } from "../Spinner";
 
@@ -186,8 +186,7 @@ export function TopPlayers({ onPick }: { onPick: (accountId: number) => void }) 
   return (
     <div className="panel top-players has-refresh">
       <Refreshing on={q.isPlaceholderData} />
-      <h2>{t("Top players")}</h2>
-      <p className="hint" style={{ marginTop: 6 }}>{tx("By average rating in one season, on one class, in the division they played, over their officials. {0} or more officials to be ranked; everyone else is listed, greyed out.", { "0": 3 })}</p>
+      <h2>{t("Top players")}<Help>{tx("By average rating in one season, on one class, in the division they played, over their officials. {0} or more officials to be ranked; everyone else is listed, greyed out.", { "0": 3 })}</Help></h2>
       <div className="tp-controls">
         <div className="ps-classes">
           {CLASSES.map((c) => (

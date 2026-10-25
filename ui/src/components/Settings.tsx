@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Help } from "./StatTip";
 import { LeagueSamplePanel } from "./LeagueSamplePanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -424,10 +425,7 @@ function LeagueDataPanel() {
   const f = fresh.data;
   return (
     <div className="panel">
-      <h2>{t("League data")}</h2>
-      <p className="hint" style={{ marginTop: 6 }}>
-        {t("Every team's ETF2L officials, rated: what the season tables, medals, MVPs and player ranks are built from. The app ships with them up to its release; every sync adds the officials played since, a few hundred logs at a time from drops.tf.")}
-      </p>
+      <h2>{t("League data")}<Help>{t("Every team's ETF2L officials, rated: what the season tables, medals, MVPs and player ranks are built from. The app ships with them up to its release; every sync adds the officials played since, a few hundred logs at a time from drops.tf.")}</Help></h2>
       {f && (
         <dl className="kv" style={{ marginTop: 10 }}>
           <dt>{t("Newest official")}</dt>
@@ -460,7 +458,6 @@ function ChangelogPanel() {
   return (
     <div className="panel">
       <h2>{tr("Changelog")}</h2>
-      <p className="hint" style={{ marginTop: 6 }}>{tr("What changed in each release, newest first. The notes are in English.")}</p>
       <div className="changelog">
         {RELEASES.map((r, i) => (
           <details key={r.version} open={i === 0} className="changelog-entry">
@@ -617,10 +614,7 @@ function LanguagePanel() {
         </p>
       )}
 
-      <h3 style={{ marginTop: 18 }}>{tr("Translation files")}</h3>
-      <p className="hint" style={{ marginTop: 6 }}>
-        {tr("Fix a line or start a new language, then press Reload to see it.")}
-      </p>
+      <h3 style={{ marginTop: 18 }}>{tr("Translation files")}<Help>{tr("Fix a line or start a new language, then press Reload to see it.")}</Help></h3>
       <div className="row" style={{ marginTop: 10, gap: 8, flexWrap: "wrap" }}>
         <button onClick={() => void edit()} disabled={busy}>
           {lang === "en" ? tr("Start a new language") : tr("Edit this language")}
@@ -862,8 +856,7 @@ function ScalePanel() {
   const scale = useScale();
   return (
     <div className="panel">
-      <h2>{t("Interface size")}</h2>
-      <p className="hint">{t("Makes everything in the app bigger or smaller: text, maps and charts together. Useful on 2K and 4K screens. Ctrl + and Ctrl − change it from anywhere, Ctrl 0 resets it.")}</p>
+      <h2>{t("Interface size")}<Help>{t("Makes everything in the app bigger or smaller: text, maps and charts together. Useful on 2K and 4K screens. Ctrl + and Ctrl − change it from anywhere, Ctrl 0 resets it.")}</Help></h2>
       <div className="scale-row">
         <button className="km-chip scale-step" onClick={() => stepScale(-1)} disabled={scale <= SCALES[0]} aria-label={t("Smaller")}>
           −
@@ -900,8 +893,7 @@ function StatColoursPanel() {
   ];
   return (
     <div className="panel">
-      <h2>{t("Stat colours")}</h2>
-      <p className="hint">{t("How the scoreboard colours damage per minute and accuracy, by where each stands among that class's games: osu!'s difficulty colours, or red for a poor game through grey to green for a great one.")}</p>
+      <h2>{t("Stat colours")}<Help>{t("How the scoreboard colours damage per minute and accuracy, by where each stands among that class's games: osu!'s difficulty colours, or red for a poor game through grey to green for a great one.")}</Help></h2>
       <div className="scale-row">
         <div className="km-seg" role="radiogroup" aria-label={t("Stat colours")}>
           {options.map(([v, label]) => (
@@ -1113,8 +1105,7 @@ function DemoFolders({ onScanned }: { onScanned: (s: DemoIndexSummary) => void }
 
   return (
     <div className="demo-folders">
-      <h3>{tr("Other demo folders")}</h3>
-      <p className="hint">{tr("An archive on another drive, demo review folders: every demo in them, subfolders included, is matched to its match like those in tf/demos. They are only read, never moved or deleted.")}</p>
+      <h3>{tr("Other demo folders")}<Help>{tr("An archive on another drive, demo review folders: every demo in them, subfolders included, is matched to its match like those in tf/demos. They are only read, never moved or deleted.")}</Help></h3>
       {folders.length > 0 && (
         <ul>
           {folders.map((f) => (
@@ -1191,8 +1182,7 @@ function DownloadedDemosPanel() {
 
   return (
     <div className="panel">
-      <h2>{t("Downloaded demos")}</h2>
-      <p className="hint" style={{ marginTop: 6 }}>{tr("STV demos the app fetched. Each is read once; after that it is only taking up space, and it can be downloaded again whenever it is wanted. Your own recordings are never touched.")}</p>
+      <h2>{t("Downloaded demos")}<Help>{tr("STV demos the app fetched. Each is read once; after that it is only taking up space, and it can be downloaded again whenever it is wanted. Your own recordings are never touched.")}</Help></h2>
 
       {items.length === 0 ? (
         <p className="hint" style={{ marginTop: 14 }}>
@@ -1318,8 +1308,7 @@ function Etf2lPanel() {
   const c = q.data;
   return (
     <div className="panel">
-      <h2>{t("ETF2L and match types")}</h2>
-      <p className="hint" style={{ marginTop: 6 }}>{tr("Your ETF2L results are fetched on every sync. Each Highlander match you played is then sorted into an official, a scrim (most of your side are regular teammates or your ETF2L roster) or a pug.")}</p>
+      <h2>{t("ETF2L and match types")}<Help>{tr("Your ETF2L results are fetched on every sync. Each Highlander match you played is then sorted into an official, a scrim (most of your side are regular teammates or your ETF2L roster) or a pug.")}</Help></h2>
       {c && (
         <dl className="kv" style={{ marginTop: 14 }}>
           <dt>{tr("ETF2L player")}</dt>
@@ -1365,8 +1354,7 @@ function RawlogPanel() {
   const s = q.data;
   return (
     <div className="panel">
-      <h2>{t("Raw logs")}</h2>
-      <p className="hint" style={{ marginTop: 6 }}>{tr("The server log behind each logs.tf page. It has every kill with its time, both classes and where both players stood, so kills are valued one by one: by the victim's class, the map, and whether they were defending. Fetched on every sync.")}</p>
+      <h2>{t("Raw logs")}<Help>{tr("The server log behind each logs.tf page. It has every kill with its time, both classes and where both players stood, so kills are valued one by one: by the victim's class, the map, and whether they were defending. Fetched on every sync.")}</Help></h2>
       {s && (
         <dl className="kv" style={{ marginTop: 14 }}>
           <dt>{tr("Stored")}</dt>

@@ -2043,3 +2043,14 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 
 /* The scoreboard header's tools: the reading picker and Columns. */
 .sb-head-tools { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+
+/* The scoreboard runs to the section's edges (Flashy: "remove the side
+   margin padding for the table so there is more space in the section"):
+   no side border or rounding, its outer cells keep the heading's line. */
+.match-page .panel.box > .table-wrap {
+  margin-inline: calc(-1 * var(--sec-pad-x));
+  border-inline: 0;
+  border-radius: 0;
+}
+.match-page .panel.box .scoreboard :is(td, th):first-child { padding-left: var(--sec-pad-x); }
+.match-page .panel.box .scoreboard :is(td, th):last-child { padding-right: var(--sec-pad-x); }

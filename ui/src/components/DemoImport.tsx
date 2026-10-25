@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Help } from "./StatTip";
 import { useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../api/client";
@@ -47,10 +48,7 @@ export function DemoImport() {
 
   return (
     <>
-      <h3 style={{ marginTop: 22 }}>{t("A match with no log")}</h3>
-      <p className="hint" style={{ marginTop: 6 }}>
-        {t("For a server that wrote no logs.tf log. Pick the match's demo, an STV ideally, and it becomes the match: kills, damage, ubers, captures and rounds are all read from it, and it is rated like any other.")}
-      </p>
+      <h3 style={{ marginTop: 22 }}>{t("A match with no log")}<Help>{t("For a server that wrote no logs.tf log. Pick the match's demo, an STV ideally, and it becomes the match: kills, damage, ubers, captures and rounds are all read from it, and it is rated like any other.")}</Help></h3>
       <div className="row" style={{ marginTop: 10, gap: 8 }}>
         <button disabled={busy} onClick={() => void pick()}>
           {busy ? (

@@ -61,8 +61,26 @@ export function StatTip({ k: key, entry, children, inline }: { k?: GlossaryKey; 
  * questionmark icon instead"): the mark alone beside a heading, the text on
  * hover or focus. A click on it never folds the section it sits in.
  */
-export function Help({ children, title }: { children: ReactNode; title?: string }) {
-  return <Tip className="stip help" label={null} ariaLabel={title ?? t("What this shows")} card={() => <span className="stip-what">{children}</span>} />;
+export function Help({ children, title, label }: { children: ReactNode; title?: string; label?: string }) {
+  // A section with no heading of its own shows a few words beside the mark.
+  return (
+    <Tip
+      className={label ? "stip help labelled" : "stip help"}
+      label={label ? <span className="stip-help-label">{label}</span> : null}
+      ariaLabel={title ?? label ?? t("What this shows")}
+      stop
+      card={() => <span className="stip-what">{children}</span>}
+    />
+  );
+}
+
+/** "How it's counted", top right of a tab that has no heading. */
+export function HowCounted({ children }: { children: ReactNode }) {
+  return (
+    <div className="how-counted">
+      <Help label={t("How it's counted")}>{children}</Help>
+    </div>
+  );
 }
 
 /** The help mark: a ring with a question mark, drawn so it sits centred at
@@ -77,7 +95,7 @@ export function HelpIcon() {
   );
 }
 
-function Tip({ className, label, ariaLabel, card: body }: { className: string; label: ReactNode; ariaLabel?: string; card: (close: () => void) => ReactNode }) {
+function Tip({ className, label, ariaLabel, stop, card: body }: { className: string; label: ReactNode; ariaLabel?: string; stop?: boolean; card: (close: () => void) => ReactNode }) {
   const id = useId();
   const anchor = useRef<HTMLSpanElement>(null);
   const card = useRef<HTMLSpanElement>(null);
@@ -111,7 +129,7 @@ function Tip({ className, label, ariaLabel, card: body }: { className: string; l
       tabIndex={0}
       aria-label={ariaLabel}
       aria-describedby={open ? id : undefined}
-      onClick={label === null ? (ev) => ev.stopPropagation() : undefined}
+      onClick={stop ? (ev) => ev.stopPropagation() : undefined}
       onMouseEnter={show}
       onMouseLeave={leave}
       onFocus={show}

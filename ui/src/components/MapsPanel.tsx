@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Help } from "./StatTip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { errorMessage, type MapRow } from "../api/types";
@@ -60,10 +61,7 @@ export function MapsPanel() {
 
   return (
     <div className="panel">
-      <h2>{t("Maps")}</h2>
-      <p className="hint" style={{ marginTop: 6 }}>
-        {t("The top-down image under each kill map, and its callouts. The app's default images are more.tf's; import your own for any map, and line it up if it does not sit right. Callouts export as a file to share, and a .callouts.json dropped on the window imports.")}
-      </p>
+      <h2>{t("Maps")}<Help>{t("The top-down image under each kill map, and its callouts. The app's default images are more.tf's; import your own for any map, and line it up if it does not sit right. Callouts export as a file to share, and a .callouts.json dropped on the window imports.")}</Help></h2>
       {q.data.unknownMatches > 0 && (
         <p className="hint" style={{ marginTop: 6 }}>
           {tx("{n} of your matches have rounds on a map nobody could tell. The kill map of each one lets you say which.", { n: <strong>{q.data.unknownMatches}</strong> })}

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { HowCounted } from "../StatTip";
 import type { Analysis, FightStats } from "../../api/types";
 import { clock, teamLabel } from "../../lib/format";
 import { playerMap, sliceScope, type Slice } from "./common";
@@ -66,7 +67,7 @@ export function Fights({ a, player, slice, onPick }: { a: Analysis; player: numb
 
   return (
     <div className="fights">
-      <p className="hint">{tx("A fight starts after 10 s with no kill. A kill is {0} when the killer's team loses someone within 3 s.", { "0": <strong>{t("traded")}</strong> })}</p>
+      <HowCounted>{tx("A fight starts after 10 s with no kill. A kill is {0} when the killer's team loses someone within 3 s.", { "0": <strong>{t("traded")}</strong> })}</HowCounted>
       {partial && (
         <p className="hint">{tx("Counted from the kills in {0}. Fight KAST, forces and deaths around an uber need the whole match, so they are blank here.", { "0": sliceScope(slice) })}</p>
       )}

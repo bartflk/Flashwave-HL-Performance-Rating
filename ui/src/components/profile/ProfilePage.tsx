@@ -34,7 +34,7 @@ import { Fold } from "../Fold";
 import "./profile.css";
 import { t, tx, k } from "../../lib/i18n";
 import { classLabel } from "../analysis/common";
-import { ComponentTip, StatTip } from "../StatTip";
+import { Help, ComponentTip, StatTip } from "../StatTip";
 import type { GlossaryKey } from "../../lib/glossary";
 import { SortTh, useSort } from "../../lib/sort";
 import { Loading, Refreshing } from "../Spinner";
@@ -307,8 +307,7 @@ function KindSplit(props: { split: ContextSplit[]; active: ContextKind | null; o
   return (
     <section className="panel kind-split">
       <header>
-        <h2>{t("Officials, scrims and pugs")}</h2>
-        <p className="hint">{t("Average rating by kind of game, over every game on this class. Click one to filter.")}</p>
+        <h2>{t("Officials, scrims and pugs")}<Help>{t("Average rating by kind of game, over every game on this class. Click one to filter.")}</Help></h2>
       </header>
       <div className="ks-rows">
         {split.map((s) => (
@@ -358,8 +357,7 @@ function Opposition({ bands, byDivision }: { bands: OppositionBand[]; byDivision
   return (
     <section className="panel kind-split">
       <header>
-        <h2>{t("Who you played")}</h2>
-        <p className="hint">{t("Your rating by how good the opposite number was, averaged over their other games.")}</p>
+        <h2>{t("Who you played")}<Help>{t("Your rating by how good the opposite number was, averaged over their other games.")}</Help></h2>
       </header>
       <div className="ks-rows">
         {bands.map((b) => (
@@ -414,8 +412,7 @@ function Tendencies({ cls }: { cls: string }) {
   return (
     <section className="panel tendencies">
       <header>
-        <h2>{t("Where you play")}</h2>
-        <p className="hint">{t("By callout, on your own side of the map. Fights: where your kills and deaths happened, every match. Standing: where you spent your time alive, from STV demos.")}</p>
+        <h2>{t("Where you play")}<Help>{t("By callout, on your own side of the map. Fights: where your kills and deaths happened, every match. Standing: where you spent your time alive, from STV demos.")}</Help></h2>
       </header>
       <div className="tend-maps">
         {maps.map((m) => {
@@ -742,8 +739,7 @@ function Components({ items, formWindow }: { items: ComponentSummary[]; formWind
     <section className="panel comps">
       <header className="comps-head">
         <div>
-          <h2>{t("What the rating is made of")}</h2>
-          <p className="hint">{t("Percentile against the players you face, 0–100. Deaths are flipped: higher always means better.")}</p>
+          <h2>{t("What the rating is made of")}<Help>{t("Percentile against the players you face, 0–100. Deaths are flipped: higher always means better.")}</Help></h2>
         </div>
         <div className="legend">
           <span>

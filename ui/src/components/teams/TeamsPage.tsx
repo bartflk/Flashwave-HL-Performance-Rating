@@ -11,7 +11,7 @@ import { Country } from "../Country";
 import { CLASS_ORDER, classLabel } from "../analysis/common";
 import { MedalGlyph } from "../players/MedalGlyph";
 import { awardName, DivisionBadge, medalTitles, mvpHow, seasonLong, seasonShort } from "../players/PlayerProfile";
-import { StatTip } from "../StatTip";
+import { Help, StatTip } from "../StatTip";
 import { SeasonRankings } from "./SeasonRankings";
 import { DataCheck } from "./DataCheck";
 import "../players/players.css";
@@ -792,8 +792,7 @@ function Lineup({ v, roles }: { v: TeamView; roles: Map<number, string> }) {
           </tbody>
         </table>
       </div>
-      <h3 className="ts-maps-title">{t("By map")}</h3>
-      <p className="hint">{t("Maps won and lost in officials. Maps of the current pool first.")}</p>
+      <h3 className="ts-maps-title">{t("By map")}<Help>{t("Maps won and lost in officials. Maps of the current pool first.")}</Help></h3>
       <MapBars maps={[...v.maps.filter((m) => m.inPool), ...v.maps.filter((m) => !m.inPool)]} />
     </>
   );
@@ -861,7 +860,6 @@ function RosterHistoryView({ v, etf2lUrl, roles }: { v: TeamTransfers; etf2lUrl:
         {past.length > 0 && (
           <>
             <h3>{tx("Who came and went ({0})", { "0": past.length })}</h3>
-            <p className="hint">{t("Longest stay first.")}</p>
             <ul className="ts-stays">{shownPast.map(stayRow)}</ul>
             {past.length > shownPast.length && (
               <button className="ts-more" onClick={() => setShowAll(true)}>
@@ -966,8 +964,7 @@ function Seasons({ honours, etf2l, info }: { honours: TeamHonours | undefined; e
         <aside className="ts-awards">
           {info && info.cups.length > 0 && (
             <>
-              <h3>{tx("Cups ({0})", { "0": info.cups.length })}</h3>
-              <p className="hint">{t("Every Highlander cup the team entered, from ETF2L; the placing where ETF2L awarded one.")}</p>
+              <h3>{tx("Cups ({0})", { "0": info.cups.length })}<Help>{t("Every Highlander cup the team entered, from ETF2L; the placing where ETF2L awarded one.")}</Help></h3>
               <ul className="ts-cups">
                 {info.cups.map((c) => {
                   const place = c.place?.startsWith("1") ? 1 : c.place?.startsWith("2") ? 2 : c.place?.startsWith("3") ? 3 : null;
@@ -992,7 +989,6 @@ function Seasons({ honours, etf2l, info }: { honours: TeamHonours | undefined; e
           {etf2l && etf2l.awards.length > 0 && (
             <>
           <h3>{t("ETF2L awards")}</h3>
-          <p className="hint">{t("As ETF2L's team page lists them, cups included.")}</p>
           <ul>
             {etf2l.awards.map((a, i) => {
               const place = a.place.startsWith("1") ? 1 : a.place.startsWith("2") ? 2 : a.place.startsWith("3") ? 3 : null;
@@ -1037,8 +1033,7 @@ function Results({ v, onTeam }: { v: TeamView; onTeam: (id: number) => void }) {
     <>
       {rivals.some((o) => o.r.played > 1) && (
         <section className="ts-h2h">
-          <h3>{t("Head-to-head")}</h3>
-          <p className="hint">{t("Every team met in more than one official, most met first. Pick one for just those matches.")}</p>
+          <h3>{t("Head-to-head")}<Help>{t("Every team met in more than one official, most met first. Pick one for just those matches.")}</Help></h3>
           <div className="ts-h2h-list">
             {rivals
               .filter((o) => o.r.played > 1)

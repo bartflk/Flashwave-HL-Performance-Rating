@@ -51,8 +51,9 @@ const f0 = (v: number) => v.toFixed(0);
 const thousands = (v: number) => v.toLocaleString();
 
 /** Every stat the log has (Flashy: "i want all the stats possible"): the
- *  common ones on, the rest a tick away in Columns. Accuracy, backstabs
- *  and airshots start off, the class card has them. */
+ *  common ones on, the rest a tick away in Columns. Backstabs and
+ *  airshots start off, the class card has them; accuracy shows (Flashy:
+ *  "the accuracy can be on by default"). */
 const COLS: Col[] = [
   { key: "k", label: "K", name: k("Kills"), group: k("Totals"), title: k("Kills"), value: (p) => p.kills },
   { key: "a", label: "A", name: k("Assists"), group: k("Totals"), title: k("Assists"), value: (p) => p.assists },
@@ -92,7 +93,6 @@ const COLS: Col[] = [
     title: k("Accuracy: hits over shots on the main class, coloured by where it stands among the class's games. Only logs with logs.tf's accuracy stats have it."),
     value: (p) => p.accuracy ?? null,
     fmt: (v) => `${Math.round(v * 100)}%`,
-    on: false,
   },
 
   {

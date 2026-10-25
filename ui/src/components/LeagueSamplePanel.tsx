@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Help } from "./StatTip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { errorMessage } from "../api/types";
@@ -52,10 +53,7 @@ export function LeagueSamplePanel() {
 
   return (
     <div className="panel league-panel">
-      <h2>{t("League sample")}</h2>
-      <p className="hint" style={{ marginTop: 6 }}>
-        {t("Every ETF2L Highlander official of the last six years, playoffs and preseason cups included, downloaded slowly in the background while the app is open. Kept apart from your own matches: it lets ratings be read against the whole league, and tells you which division the players you face come from.")}
-      </p>
+      <h2>{t("League sample")}<Help>{t("Every ETF2L Highlander official of the last six years, playoffs and preseason cups included, downloaded slowly in the background while the app is open. Kept apart from your own matches: it lets ratings be read against the whole league, and tells you which division the players you face come from.")}</Help></h2>
       {q.isError && <p className="error">{errorMessage(q.error)}</p>}
       {s && (
         <>
