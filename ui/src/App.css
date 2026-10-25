@@ -739,6 +739,13 @@ th.num {
 
 .load-more {
   align-self: center;
+  box-sizing: border-box;
+  min-height: var(--ctl-h);
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--ctl-radius);
 }
 
 /* --- M5: kinds of game --- */
