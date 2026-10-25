@@ -599,4 +599,8 @@ input:where(:not([type])) {
 }
 
 /* A number on its tier's colour (lib/tiers.ts): osu!'s difficulty pills. */
+.tier-rg { position: relative; display: inline-flex; align-items: center; justify-content: flex-end; gap: 3px; min-width: 3.6em; padding: 1px 6px; border-radius: 4px; font-weight: 600; font-variant-numeric: tabular-nums; overflow: hidden; }
+.tier-rg-bar { position: absolute; left: 0; top: 0; bottom: 0; opacity: 0.13; }
+.tier-rg-text, .tier-rg-star { position: relative; }
+.tier-rg-star { color: #f0b840; font-size: 0.9em; }
 .tier-pill { display: inline-block; min-width: 2.6em; padding: 1px 7px; border-radius: 999px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; line-height: 1.35; }

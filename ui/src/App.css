@@ -1855,3 +1855,4 @@ button.mini {
 .dl-report { margin: 6px 0 0; padding-left: 16px; font-size: 0.8rem; line-height: 1.45; color: var(--text); }
 .dl-report li::marker { color: var(--accent); }
 .dl-took { color: var(--muted); }
+.stat-colours-sample { display: inline-flex; gap: 6px; margin-left: 8px; }

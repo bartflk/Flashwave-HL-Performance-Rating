@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { StatScales } from "../api/types";
@@ -18,6 +19,61 @@ import type { StatScales } from "../api/types";
 const STOPS = ["#323a46", "#36414f", "#34505e", "#365e55", "#58663a", "#8f7a2c", "#bf6a2a", "#d8484e", "#c23ba6", "#7a4cf0"];
 /** Past the top 1%: osu!'s black, with gold text. */
 const TOP = "#000000";
+
+/**
+ * Which colours the numbers wear (Flashy: "an option to have a red to green
+ * scale instead"): osu!'s pills, red-to-green text over a faint bar like
+ * Leetify's, or none. A preference about this screen, kept in localStorage
+ * like the theme.
+ */
+export type Palette = "osu" | "redgreen" | "off";
+const PALETTE_KEY = "hl.statColours";
+let palette: Palette = (() => {
+  try {
+    const v = localStorage.getItem(PALETTE_KEY);
+    return v === "redgreen" || v === "off" ? v : "osu";
+  } catch {
+    return "osu";
+  }
+})();
+const paletteListeners = new Set<() => void>();
+export function setPalette(p: Palette) {
+  palette = p;
+  try {
+    localStorage.setItem(PALETTE_KEY, p);
+  } catch {
+    // Storage can be blocked; the choice then lasts until the app closes.
+  }
+  paletteListeners.forEach((f) => f());
+}
+export function usePalette(): Palette {
+  return useSyncExternalStore(
+    (f) => {
+      paletteListeners.add(f);
+      return () => paletteListeners.delete(f);
+    },
+    () => palette,
+  );
+}
+
+/** Red to green: red the bottom, amber and yellow below average, a plain
+ *  light grey around it, green above, the brightest green at the top. */
+const RG: [number, string][] = [
+  [0, "#e5534b"],
+  [20, "#e8873a"],
+  [40, "#e3c04d"],
+  [55, "#d4d7dd"],
+  [75, "#8fd48a"],
+  [100, "#3fcf6e"],
+];
+
+/** The red-to-green colour at a percentile. */
+export function redGreen(pct: number): string {
+  for (let i = 1; i < RG.length; i++) {
+    if (pct <= RG[i][0]) return mix(RG[i - 1][1], RG[i][1], (pct - RG[i - 1][0]) / (RG[i][0] - RG[i - 1][0]));
+  }
+  return RG[RG.length - 1][1];
+}
 
 export function useStatScales() {
   return useQuery({ queryKey: ["stat_scales"], queryFn: () => api.getStatScales(), staleTime: Infinity });

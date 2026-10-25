@@ -13,6 +13,7 @@ import { ImportPanel } from "./ImportPanel";
 import { startRebuild, useSyncStatus } from "../lib/sync";
 import { contrast, deleteCustomTheme, luminance, previewTheme, readThemeCode, saveCustomTheme, setTheme, themeById, themeCode, useTheme, useThemes, type Base, type Theme, BACKDROP_MAPS, BACKDROP_NAMES, backdropUrl, setBackdropMode, useBackdropMode, type BackdropMap, type BackdropMode } from "../lib/theme";
 import { DEFAULT_SCALE, SCALES, setScale, stepScale, useScale } from "../lib/scale";
+import { redGreen, setPalette, tierColour, tierText, usePalette, type Palette } from "../lib/tiers";
 import { allLanguages, languageFile, setLanguage, t, t as tr, useLanguage, userLanguageFiles, tx } from "../lib/i18n";
 import { loadUserLanguages } from "../lib/userLang";
 import { setNameSource, useNameSource } from "../lib/names";
@@ -169,6 +170,7 @@ export function Settings({
             <SettingsSection id="scale" icon="scale" title={t("Interface size")} keywords="scale zoom size 4k 2k 1440p dpi bigger smaller text"
               summary={t("How big everything is drawn")}>
               <ScalePanel />
+              <StatColoursPanel />
             </SettingsSection>
             <SettingsSection id="problems" icon="alert" title={t("Problems")} keywords="errors bug report discord"
               summary={t("What went wrong since the app started")}
@@ -880,6 +882,49 @@ function ScalePanel() {
           <button className="km-chip" onClick={() => setScale(DEFAULT_SCALE)}>
             {t("Reset")}
           </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** How the scoreboard colours damage per minute and accuracy (Flashy). */
+function StatColoursPanel() {
+  const palette = usePalette();
+  const pcts = [0, 10, 25, 40, 55, 70, 80, 90, 95, 99];
+  const sample = [5, 30, 50, 70, 90, 100];
+  const options: [Palette, string][] = [
+    ["osu", t("osu! colours")],
+    ["redgreen", t("Red to green")],
+    ["off", t("None")],
+  ];
+  return (
+    <div className="panel">
+      <h2>{t("Stat colours")}</h2>
+      <p className="hint">{t("How the scoreboard colours damage per minute and accuracy, by where each stands among that class's games: osu!'s difficulty colours, or red for a poor game through grey to green for a great one.")}</p>
+      <div className="scale-row">
+        <div className="km-seg" role="radiogroup" aria-label={t("Stat colours")}>
+          {options.map(([v, label]) => (
+            <button key={v} role="radio" aria-checked={palette === v} className={palette === v ? "on" : undefined} onClick={() => setPalette(v)}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {palette !== "off" && (
+          <span className="stat-colours-sample" aria-hidden>
+            {sample.map((p) =>
+              palette === "osu" ? (
+                <span key={p} className="tier-pill" style={{ background: tierColour(p, pcts), color: tierText(tierColour(p, pcts), p) }}>
+                  {p >= 100 ? "1%" : p}
+                </span>
+              ) : (
+                <span key={p} className="tier-rg" style={{ color: redGreen(p) }}>
+                  <span className="tier-rg-bar" style={{ width: `${Math.max(4, p)}%`, background: redGreen(p) }} />
+                  <span className="tier-rg-text">{p >= 100 ? "1%" : p}</span>
+                </span>
+              ),
+            )}
+          </span>
         )}
       </div>
     </div>
