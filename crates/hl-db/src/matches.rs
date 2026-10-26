@@ -538,6 +538,25 @@ impl Db {
     }
 
     /// Highest `updated` timestamp seen from trends.tf, for incremental sync.
+    /// When a log was played, as the index has it.
+    pub async fn log_played_at(&self, log_id: i64) -> Result<Option<i64>> {
+        Ok(sqlx::query_scalar("SELECT played_at FROM log_index WHERE log_id = ?1")
+            .bind(log_id)
+            .fetch_optional(self.pool())
+            .await?
+            .flatten())
+    }
+
+    /// Whether a source has ever been read in full: the logs.tf search runs
+    /// over the whole history once, on the first sync.
+    pub async fn source_synced(&self, source: &str) -> Result<bool> {
+        Ok(sqlx::query_scalar::<_, i64>("SELECT 1 FROM sync_state WHERE source = ?1 AND last_error IS NULL")
+            .bind(source)
+            .fetch_optional(self.pool())
+            .await?
+            .is_some())
+    }
+
     pub async fn trends_cursor(&self) -> Result<Option<i64>> {
         let v: Option<String> =
             sqlx::query_scalar("SELECT cursor FROM sync_state WHERE source = 'trends'")

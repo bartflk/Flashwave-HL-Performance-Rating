@@ -155,13 +155,20 @@ pub async fn sync(
         db.record_sync("trends", Some(&cursor.to_string()), None).await?;
     }
 
-    // 2. logs.tf search: catches what trends.tf never indexed. A supplement,
-    //    so a logs.tf that is down costs those older logs, not the sync.
+    // 2. logs.tf: only the last hour, the logs drops.tf has not mirrored and
+    //    trends.tf may not have listed yet (Flashy: "logs.tf is only to check
+    //    if there is a new log in the past 1 hour"). The whole history once,
+    //    on the first sync or a full one, for the old logs trends.tf never
+    //    indexed. A supplement, so a logs.tf that is down costs nothing else.
     progress(Progress::Indexing { source: "logs.tf", rows: 0 });
-    let logstf = match sources.logstf_search(&steamid64).await {
+    let whole = opts.full || !db.source_synced("logstf_search").await?;
+    let search = if whole { sources.logstf_search(&steamid64).await } else { sources.logstf_last_hour(&steamid64).await };
+    let logstf = match search {
         Ok(rows) => {
             store_logstf(db, &rows).await?;
-            db.record_sync("logstf_search", None, None).await?;
+            if whole {
+                db.record_sync("logstf_search", None, None).await?;
+            }
             rows
         }
         Err(e) => {
@@ -226,14 +233,17 @@ pub async fn sync(
     for (i, log_id) in queue.iter().copied().enumerate() {
         progress(Progress::Fetching { done: i, total, log_id });
         let result = async {
-            // drops.tf first, logs.tf for what it does not have yet.
+            // drops.tf, and logs.tf only for a log under an hour old.
             let json = if logstf_out {
                 match sources.drops_log(log_id).await? {
                     Some(body) => body,
                     None => return Ok(false),
                 }
             } else {
-                sources.log_json(log_id).await?.0
+                match sources.sync_log_json(log_id, db.log_played_at(log_id).await?).await? {
+                    Some((body, _)) => body,
+                    None => return Ok(false),
+                }
             };
             db.store_raw_log(log_id, &json).await?;
             process_raw(db, log_id, &json).await?;

@@ -313,22 +313,16 @@ async fn log_step(db: &Db, sources: &Sources, resting: bool, doing: &mut (impl F
                 return Ok(Some(Step::Json { log_id, source: crate::sources::DROPS }));
             }
             Ok(None) => {}
-            Err(e) => tracing::info!(log_id, error = %format!("{e:#}"), "drops.tf would not give the log"),
+            // drops.tf not answering is not the log's fault: no attempt spent.
+            Err(e) => return Ok(Some(Step::Failed { what: format!("drops.tf: {e:#}") })),
         }
-        if !resting {
-            doing(&format!("Downloading log {log_id} from logs.tf"));
-            return Ok(Some(match sources.logstf_log(log_id).await {
-                Ok(body) => {
-                    db.put_league_json(log_id, &body, "logs.tf").await?;
-                    Step::Json { log_id, source: "logs.tf" }
-                }
-                Err(e) if crate::http::unreachable(&e) => Step::Failed { what: format!("logs.tf: {e:#}") },
-                Err(e) => {
-                    db.league_json_failed(log_id).await?;
-                    Step::Failed { what: format!("log {log_id}: {e:#}") }
-                }
-            }));
-        }
+        // An official is hours old at least: drops.tf has it or it is lost,
+        // and logs.tf is not asked (Flashy: "drops.tf is the main api that
+        // should be called for logs"). An attempt is counted, so a log
+        // drops.tf lacks does not hold up the rest.
+        let _ = resting;
+        db.league_json_failed(log_id).await?;
+        return Ok(Some(Step::Failed { what: format!("log {log_id}: not on drops.tf") }));
     }
     if let Some(log_id) = db.league_raw_todo(1).await?.first().copied() {
         doing(&format!("Downloading the server log of {log_id} from drops.tf"));
@@ -338,19 +332,11 @@ async fn log_step(db: &Db, sources: &Sources, resting: bool, doing: &mut (impl F
                 return Ok(Some(Step::Raw { log_id, found: true, source: crate::sources::DROPS }));
             }
             Ok(None) => {}
-            Err(e) => tracing::info!(log_id, error = %format!("{e:#}"), "drops.tf would not give the raw log"),
+            Err(e) => return Ok(Some(Step::Failed { what: format!("drops.tf raw log {log_id}: {e:#}") })),
         }
-        if !resting {
-            doing(&format!("Downloading the server log of {log_id} from logs.tf"));
-            return Ok(Some(match sources.logstf_rawlog(log_id).await {
-                Ok(zip) => {
-                    let found = zip.is_some();
-                    db.put_league_raw(log_id, zip.as_deref()).await?;
-                    Step::Raw { log_id, found, source: "logs.tf" }
-                }
-                Err(e) => Step::Failed { what: format!("logs.tf raw log {log_id}: {e:#}") },
-            }));
-        }
+        // drops.tf only, as for the log: none there is none to have.
+        db.put_league_raw(log_id, None).await?;
+        return Ok(Some(Step::Raw { log_id, found: false, source: crate::sources::DROPS }));
     }
     Ok(None)
 }

@@ -88,8 +88,10 @@ pub async fn fetch_parts(db: &Db, sources: &Sources, mut progress: impl FnMut(Pr
     let mut failing = 0;
     for (i, id) in todo.iter().enumerate() {
         progress(Progress::Parts { done: i, total: todo.len() });
-        match sources.log_json(*id).await {
-            Ok((json, _)) => {
+        // drops.tf, and logs.tf only for a log under an hour old.
+        match sources.sync_log_json(*id, db.log_played_at(*id).await?).await {
+            Ok(None) => failing = 0,
+            Ok(Some((json, _))) => {
                 db.store_part_raw(*id, &json).await?;
                 s.fetched += 1;
                 failing = 0;

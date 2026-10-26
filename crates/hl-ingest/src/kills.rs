@@ -54,11 +54,17 @@ pub async fn fetch(
     let mut unreachable_run = 0usize;
     for (i, log_id) in queue.into_iter().enumerate() {
         progress(Progress::RawLogs { done: i, total });
-        // drops.tf's copy first, logs.tf's zip behind it.
-        match sources.rawlog_zip(log_id).await {
+        // drops.tf, and logs.tf only for a log under an hour old.
+        let played_at = db.log_played_at(log_id).await?;
+        match sources.sync_rawlog_zip(log_id, played_at).await {
+            // A day-old log drops.tf has not got may still arrive there: asked
+            // again next sync rather than marked missing for a week.
+            Ok(None) if played_at.is_some_and(|t| now_s() - t < 86_400) => {
+                unreachable_run = 0;
+            }
             Ok(None) => {
                 unreachable_run = 0;
-                db.mark_rawlog_missing(log_id, "neither drops.tf nor logs.tf has a raw log").await?;
+                db.mark_rawlog_missing(log_id, "drops.tf has no raw log").await?;
                 s.missing += 1;
             }
             // A zip that does not open is not stored: it would only fail again
@@ -410,4 +416,8 @@ pub fn enrich(log: &NormalizedLog, kills: &[StoredKill], me: Option<SteamId>, de
     for round in &mut detail.rounds {
         round.events.sort_by_key(|e| e.at_s);
     }
+}
+
+fn now_s() -> i64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64)
 }

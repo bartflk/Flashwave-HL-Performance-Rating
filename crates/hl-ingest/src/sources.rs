@@ -218,6 +218,58 @@ impl Sources {
         Ok((self.logstf_log(log_id).await?, "logs.tf"))
     }
 
+    /// One log's JSON for the sync (Flashy: "drops.tf is the main api that
+    /// should be called for logs. logs.tf is only to check if there is a
+    /// new log in the past 1 hour"): drops.tf, and logs.tf only for a log
+    /// under an hour old, which drops.tf has not mirrored yet. `None` when
+    /// drops.tf has not got an older one: more.tf's copy, or the next sync.
+    pub async fn sync_log_json(&self, log_id: i64, played_at: Option<i64>) -> Result<Option<(String, &'static str)>> {
+        match self.drops_log(log_id).await {
+            Ok(Some(body)) => return Ok(Some((body, DROPS))),
+            Ok(None) => {}
+            Err(e) if !within_logstf_hour(played_at) => return Err(e),
+            Err(e) => tracing::info!(log_id, error = %format!("{e:#}"), "drops.tf would not give the log; asking logs.tf"),
+        }
+        if !within_logstf_hour(played_at) {
+            return Ok(None);
+        }
+        Ok(Some((self.logstf_log(log_id).await?, "logs.tf")))
+    }
+
+    /// One raw server log for the sync, by the same rule: drops.tf, and
+    /// logs.tf only for a log under an hour old.
+    pub async fn sync_rawlog_zip(&self, log_id: i64, played_at: Option<i64>) -> Result<Option<Vec<u8>>> {
+        match self.drops_rawlog(log_id).await {
+            Ok(Some(zip)) => return Ok(Some(zip)),
+            Ok(None) => {}
+            Err(e) if !within_logstf_hour(played_at) => return Err(e),
+            Err(e) => tracing::info!(log_id, error = %format!("{e:#}"), "drops.tf would not give the raw log; asking logs.tf"),
+        }
+        if !within_logstf_hour(played_at) {
+            return Ok(None);
+        }
+        self.logstf_rawlog(log_id).await
+    }
+
+    /// A player's logs.tf logs from the last hour: what drops.tf has not
+    /// mirrored and trends.tf may not have listed yet. One small request,
+    /// newest first; anything older comes from trends.tf.
+    pub async fn logstf_last_hour(&self, steamid64: &str) -> Result<Vec<(LogsTfRow, String)>> {
+        let search = url("https://logs.tf/api/v1/log", [("player", steamid64), ("limit", "10")]);
+        let body = self.logstf_gated(self.logstf.get_text(&search)).await?;
+        let page: Value = serde_json::from_str(&body).context("parsing logs.tf search")?;
+        page.get("logs")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .map(|raw| {
+                let row: LogsTfRow = serde_json::from_value(raw.clone()).context("parsing logs.tf search row")?;
+                Ok((row, raw.to_string()))
+            })
+            .filter(|r: &Result<(LogsTfRow, String)>| r.as_ref().map_or(true, |(row, _)| within_logstf_hour(row.date)))
+            .collect()
+    }
+
     /// One log's JSON from drops.tf; `None` when it does not have it.
     pub async fn drops_log(&self, log_id: i64) -> Result<Option<String>> {
         let Some(body) = self.drops.get_text_opt(&format!("https://drops.tf/api/log/{log_id}")).await? else { return Ok(None) };
@@ -477,6 +529,17 @@ impl Sources {
 /// drops.tf's name, as a log's source is stored and shown.
 pub const DROPS: &str = "drops.tf";
 
+/// How far back logs.tf is asked about logs: drops.tf mirrors it about an
+/// hour behind, and everything older comes from drops.tf.
+pub const LOGSTF_WINDOW_S: i64 = 3600;
+
+/// Whether a log is new enough that drops.tf may not have it yet, so logs.tf
+/// may be asked. An unknown age is not.
+pub fn within_logstf_hour(played_at: Option<i64>) -> bool {
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64);
+    played_at.is_some_and(|t| now - t <= LOGSTF_WINDOW_S)
+}
+
 /// Where drops.tf keeps a raw server log: by million, then by thousand,
 /// each seven digits -- `4000000/4118000/log_4118933.log`.
 pub fn drops_rawlog_url(log_id: i64) -> String {
@@ -577,5 +640,18 @@ mod tests {
         assert_eq!(m.duration, Some(1157));
         assert_eq!(m.time, Some(1787516129));
         assert!(m.url.ends_with(".dem"));
+    }
+}
+
+#[cfg(test)]
+mod logstf_window_tests {
+    use super::within_logstf_hour;
+
+    #[test]
+    fn logs_tf_is_asked_only_about_the_last_hour() {
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64;
+        assert!(within_logstf_hour(Some(now - 600)), "ten minutes old: drops.tf may not have it yet");
+        assert!(!within_logstf_hour(Some(now - 2 * 3600)), "two hours old: drops.tf's");
+        assert!(!within_logstf_hour(None), "an unknown age is drops.tf's too");
     }
 }
