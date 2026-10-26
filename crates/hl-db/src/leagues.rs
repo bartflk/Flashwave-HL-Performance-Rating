@@ -281,6 +281,32 @@ impl Db {
         .await?)
     }
 
+    /// One season's played matches whose page is not read yet: all of them,
+    /// for an old season's import.
+    pub async fn season_matches_without_detail_in(&self, season: i64) -> Result<Vec<i64>> {
+        Ok(sqlx::query_scalar(
+            "SELECT m.match_id FROM etf2l_season_match m JOIN etf2l_competition c ON c.competition_id = m.competition_id
+             WHERE m.detail_fetched = 0 AND m.default_win = 0 AND c.season = ?1 AND COALESCE(m.r1, 0) + COALESCE(m.r2, 0) > 0
+             ORDER BY m.time",
+        )
+        .bind(season)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    /// Who played each of a season's matches, by team: `(match, account, team)`.
+    pub async fn season_lineups(&self, season: i64) -> Result<Vec<(i64, i64, Option<i64>)>> {
+        Ok(sqlx::query_as(
+            "SELECT p.match_id, p.account_id, p.team_id FROM etf2l_season_player p
+             JOIN etf2l_season_match m ON m.match_id = p.match_id
+             JOIN etf2l_competition c ON c.competition_id = m.competition_id
+             WHERE c.season = ?1",
+        )
+        .bind(season)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
     /// A match's per-map scores and players, replacing what was there.
     pub async fn put_season_match_detail(
         &self,

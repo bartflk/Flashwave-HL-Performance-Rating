@@ -25,6 +25,7 @@ mod catalogue;
 mod league_sample;
 mod leagues;
 mod logstat;
+mod logsdump;
 mod mass;
 mod matches;
 mod players;
@@ -35,6 +36,7 @@ mod snapshot;
 mod timeline;
 mod transfers;
 
+pub use logsdump::{DumpIndex, DumpLog};
 pub use context::{
     ContextCounts, ContextGameRow, ContextRow, Etf2lMatchRow, MatchContext, MatchSides, MateRow, OfficialInfo,
     OfficialRow, OwnGameRow, SideTeam,

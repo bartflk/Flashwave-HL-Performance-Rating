@@ -224,6 +224,15 @@ pub async fn select(db: &Db) -> Result<(usize, usize)> {
             picked_logs.push(id);
         }
     }
+    // Logs from before the window are only here because an old season was
+    // imported (old_seasons.rs): picking again must not drop them.
+    let floor = t - MAX_YEARS * YEAR_S;
+    let mut held: HashSet<i64> = picked_logs.iter().copied().collect();
+    for c in candidates.iter().filter(|c| c.played_at < floor && played_map(&c.map)) {
+        if held.insert(c.log_id) {
+            picked_logs.push(c.log_id);
+        }
+    }
     db.set_league_picked(&picked_logs).await?;
     Ok((picked_matches, picked_logs.len()))
 }

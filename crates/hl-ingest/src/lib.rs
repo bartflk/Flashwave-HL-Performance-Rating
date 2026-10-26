@@ -64,6 +64,7 @@ pub mod snapshot;
 pub mod mapsettings;
 pub mod moretf;
 pub mod league_sample;
+pub mod old_seasons;
 pub mod league_rating;
 pub mod round_impact;
 pub mod logstat;

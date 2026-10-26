@@ -184,6 +184,17 @@ impl Db {
     }
 
     /// Pick these logs too, beside what the last choice picked.
+    /// Forget the logs linked to these matches that nothing has been
+    /// downloaded for yet: an old season's import links again from scratch.
+    pub async fn clear_unfetched_league_logs(&self, match_ids: &[i64]) -> Result<u64> {
+        let ids = serde_json::to_string(match_ids)?;
+        Ok(sqlx::query("DELETE FROM league_log WHERE etf2l_match_id IN (SELECT value FROM json_each(?1)) AND json_source IS NULL")
+            .bind(ids)
+            .execute(self.pool())
+            .await?
+            .rows_affected())
+    }
+
     pub async fn pick_league_logs(&self, log_ids: &[i64]) -> Result<()> {
         for id in log_ids {
             sqlx::query("UPDATE league_log SET picked = 1 WHERE log_id = ?1").bind(id).execute(self.pool()).await?;

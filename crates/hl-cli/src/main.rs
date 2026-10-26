@@ -1308,6 +1308,25 @@ async fn run() -> Result<()> {
             Ok(())
         }
 
+        ["old-season", season, rest @ ..] => {
+            // A season from before the league sample's window: ETF2L's
+            // results and match pages, and each match's logs found in the
+            // logs.tf dump's index; `league-sample catch-up` then downloads
+            // and rates them.
+            let db = Db::connect(&db_path).await?;
+            let sources = Sources::new()?;
+            let dump = rest.first().map_or_else(|| PathBuf::from("F:/logs.tf database/index-v2.sqlite3"), PathBuf::from);
+            let (weights, _) = hl_rating::Weights::load(&db_path.with_file_name("weights.toml"));
+            let r = hl_ingest::old_seasons::import(&db, &sources, &weights, &dump, season.parse()?, |what| eprintln!("  {what}")).await?;
+            println!(
+                "Season {}: {} competitions, {} matches, {} played, {} with lineups, {} linked to {} logs; {} with lineups but no log",
+                r.season, r.competitions, r.matches, r.played, r.with_lineups, r.linked, r.logs, r.unlinked.len()
+            );
+            if !r.unlinked.is_empty() {
+                println!("  unlinked: {:?}", r.unlinked);
+            }
+            Ok(())
+        }
         ["league-sample", rest @ ..] => {
             let db = Db::connect(&db_path).await?;
             let sources = Sources::new()?;

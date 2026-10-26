@@ -24,6 +24,9 @@ pub const SEASONS_BACK: i64 = 2;
 pub const DETAILS_PER_SYNC: i64 = 60;
 /// Competition-list pages read at most: a guard, not a limit.
 const MAX_LIST_PAGES: i64 = 25;
+/// The same guard for an old season's walk, which goes to the list's end
+/// (51 pages in October 2026, Season 1 on page 47).
+const OLD_LIST_PAGES: i64 = 80;
 
 /// Today's ladder, top first: the tier every division of every era is put
 /// on (see [`canonical_tier`]).
@@ -126,6 +129,14 @@ pub fn parse_name(name: &str) -> Option<(i64, String, String, String)> {
         let division = label.split_once(':').map_or("", |(_, d)| d).trim().trim_end_matches("Playoffs").trim().to_string();
         return Some((season, season_name, division, "Cup".to_string()));
     }
+    // Seasons 12 and 13 opened with "Preseason playoffs": a qualifier that
+    // seeded the Premiership before the season, with a Grand Final of its
+    // own that is not the season's (it made a Season MVP of a team that never
+    // reached the real one).
+    let lower = label.to_ascii_lowercase();
+    if lower.starts_with("preseason") && lower.contains("playoff") {
+        return Some((season, season_name, label.to_string(), "Qualifiers".to_string()));
+    }
     const STAGES: [(&str, &str); 8] = [
         ("Grand Final", "Grand Final"),
         ("3rd Place Match", "3rd Place"),
@@ -220,7 +231,7 @@ pub async fn fetch_seasons(
 
     // 1. Which competitions: newest first, until the seasons run out.
     // (id, name, archived, season for a tournament)
-    let mut found: Vec<(i64, String, bool, Option<i64>)> = Vec::new();
+    let mut found: Vec<Found> = Vec::new();
     let mut newest: Option<i64> = None;
     // A tournament goes with the season after it (a preseason cup is for the
     // season it comes before): the last numbered season met, walking back.
@@ -283,8 +294,27 @@ pub async fn fetch_seasons(
         }
     }
 
-    // 2. Each competition's pool and results. An archived one already held is
-    // settled and not asked for again.
+    fetch_competitions(db, sources, &found, newest, &mut out, &mut progress).await?;
+
+    // 3. Match pages: who played, and each map's score.
+    let recent = newest.unwrap_or(0) - SEASONS_BACK;
+    for match_id in db.season_matches_without_detail(details, recent).await? {
+        if !fetch_match_detail(db, sources, match_id).await? {
+            out.failed += 1;
+            continue;
+        }
+        out.details += 1;
+    }
+    Ok(out)
+}
+
+/// One competition as the list walk found it: `(id, name, archived, the
+/// season a tournament goes with)`.
+type Found = (i64, String, bool, Option<i64>);
+
+/// Each competition's pool, results and (for a league) table, into the
+/// database. An archived one already held is settled and not asked for again.
+async fn fetch_competitions(db: &Db, sources: &Sources, found: &[Found], newest: Option<i64>, out: &mut FetchSummary, progress: &mut impl FnMut(usize, usize)) -> Result<()> {
     let held: HashMap<i64, bool> = db.competitions().await?.into_iter().map(|c| (c.competition_id, c.archived)).collect();
     let todo: Vec<&(i64, String, bool, Option<i64>)> = found.iter().filter(|(id, _, archived, _)| !(*archived && held.get(id) == Some(&true))).collect();
     for (i, (id, name, archived, cup_season)) in todo.iter().enumerate() {
@@ -358,7 +388,7 @@ pub async fn fetch_seasons(
     // checked against (Flashy: "use the etf2l api to verify the season
     // winners"). A running season's every sync; a finished one's once.
     let have_tables: std::collections::HashSet<i64> = db.etf2l_raw("tables").await?.into_iter().map(|(id, _, _)| id).collect();
-    for (id, name, archived, _) in &found {
+    for (id, name, archived, _) in found {
         if *archived && have_tables.contains(id) {
             continue;
         }
@@ -377,14 +407,57 @@ pub async fn fetch_seasons(
         }
     }
 
-    // 3. Match pages: who played, and each map's score.
-    let recent = newest.unwrap_or(0) - SEASONS_BACK;
-    for match_id in db.season_matches_without_detail(details, recent).await? {
-        if !fetch_match_detail(db, sources, match_id).await? {
-            out.failed += 1;
-            continue;
+    Ok(())
+}
+
+/// One old season, whole (Flashy, October 2026: Clark asked for the seasons
+/// before 24): every competition ETF2L files under it -- the league, its
+/// tiers and playoffs, not the cups -- with their results, tables and every
+/// played match's page (who played, each map's score). The list is walked to
+/// its end, since an old season sits far down it.
+pub async fn fetch_season(db: &Db, sources: &Sources, season: i64, mut progress: impl FnMut(&str)) -> Result<FetchSummary> {
+    let mut out = FetchSummary::default();
+    let mut found: Vec<Found> = Vec::new();
+    for page in 1..=OLD_LIST_PAGES {
+        progress(&format!("Reading ETF2L's competition list, page {page}"));
+        let Some(body) = sources.etf2l_page("/competition/list", page).await? else { break };
+        let Ok(v) = serde_json::from_str::<Value>(&body) else {
+            anyhow::bail!("ETF2L's competition list page {page} was not JSON; try again later");
+        };
+        let data = v.pointer("/competitions/data").and_then(Value::as_array).cloned().unwrap_or_default();
+        if data.is_empty() {
+            break;
         }
-        out.details += 1;
+        let mut older = false;
+        for c in &data {
+            let (Some(id), Some(name)) = (c.get("id").and_then(Value::as_i64), c.get("name").and_then(Value::as_str)) else { continue };
+            if c.get("category").and_then(Value::as_str) != Some("Highlander Season") {
+                continue;
+            }
+            match parse_name(name) {
+                Some((s, ..)) if s == season => found.push((id, name.to_string(), c.get("archived").and_then(Value::as_bool).unwrap_or(false), None)),
+                Some((s, ..)) if s < OFF_SEASON && s < season => older = true,
+                _ => {}
+            }
+        }
+        // Newest first: a page wholly older than the season ends the walk.
+        if older && !found.is_empty() {
+            break;
+        }
+    }
+    if found.is_empty() {
+        anyhow::bail!("ETF2L lists no competition for Highlander Season {season}");
+    }
+    let mut each = |done: usize, total: usize| progress(&format!("Reading results, competition {} of {total}", done + 1));
+    fetch_competitions(db, sources, &found, Some(season), &mut out, &mut each).await?;
+    let todo = db.season_matches_without_detail_in(season).await?;
+    for (i, match_id) in todo.iter().enumerate() {
+        progress(&format!("Reading who played, match {} of {}", i + 1, todo.len()));
+        if fetch_match_detail(db, sources, *match_id).await? {
+            out.details += 1;
+        } else {
+            out.failed += 1;
+        }
     }
     Ok(out)
 }
@@ -755,6 +828,9 @@ mod tests {
         // Before season 32: no season name in brackets.
         assert_eq!(parse_name("Highlander Season 22"), Some((22, "Season 22".into(), "".into(), "regular".into())));
         assert_eq!(parse_name("Highlander Season 22: Premiership Qualifiers"), Some((22, "Season 22".into(), "Premiership".into(), "Qualifiers".into())));
+        // S12 and S13's qualifiers before the season, in both spellings.
+        assert_eq!(parse_name("Highlander Season 12: Preseason playoffs").map(|p| p.3), Some("Qualifiers".into()));
+        assert_eq!(parse_name("Highlander Season 13: Preseason Playoffs").map(|p| p.3), Some("Qualifiers".into()));
         assert_eq!(parse_name("Highlander Season 34: High 3rd Place Match"), Some((34, "Season 34".into(), "High".into(), "3rd Place".into())));
         // Between 27 and 32: named by the time of year.
         assert_eq!(parse_name("Highlander Winter 2024: Low Playoffs"), Some((31, "Winter 2024".into(), "Low".into(), "Playoffs".into())));

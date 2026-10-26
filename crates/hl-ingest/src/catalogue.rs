@@ -824,7 +824,8 @@ impl Catalogue {
     }
 
     fn is_final(m: &CatMatch) -> bool {
-        m.stage != "Cup" && (m.stage == "Grand Final" || Self::round_kind(m.round.as_deref()) == Some(RoundKind::Final))
+        // A qualifier's final is not the season's (S12's preseason playoffs).
+        !matches!(m.stage.as_str(), "Cup" | "Qualifiers") && (m.stage == "Grand Final" || Self::round_kind(m.round.as_deref()) == Some(RoundKind::Final))
     }
 
     fn played(m: &CatMatch) -> bool {
