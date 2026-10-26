@@ -24,6 +24,9 @@ pub struct MatchDetail {
     pub log_id: i64,
     pub title: Option<String>,
     pub map: Option<String>,
+    /// The map as the stat scales name it ([`hl_core::maps::map_base`]), for
+    /// placing a number among the class's games on this map.
+    pub map_key: Option<String>,
     pub played_at: Option<i64>,
     pub duration_s: i64,
     pub red_score: i64,
@@ -308,6 +311,7 @@ pub fn build(
         log_id: log.log_id,
         title: log.title.clone(),
         map: log.map.clone(),
+        map_key: pool_map.clone(),
         played_at: log.played_at,
         duration_s: log.duration_s,
         red_score: log.red_score,

@@ -92,6 +92,8 @@ export interface MyLine {
   dmg: number;
   timeS: number;
   result: "W" | "L" | "T";
+  /** Hits over shots on the main class, where the log has 30 shots or more. */
+  accuracy?: number | null;
   /** The rest of the owner's line, for the list's optional columns (an
    *  older backend leaves them out). */
   dt?: number;
@@ -136,6 +138,8 @@ export interface MatchSummary {
   parts: number;
   /** Your rating in this match on your main class, where it has one. */
   rating: number | null;
+  /** The map as the stat scales name it, for the DPM and accuracy colours. */
+  mapKey?: string | null;
   /** Under a `killed:`/`diedto:` sort (Q61): your kills on that class, or
    *  deaths to it. Null otherwise, or with no server log. */
   classCount: number | null;
@@ -1006,6 +1010,8 @@ export interface MatchDetail {
   logId: number;
   title: string | null;
   map: string | null;
+  /** The map as the stat scales name it, for per-map percentiles. */
+  mapKey?: string | null;
   playedAt: number | null;
   durationS: number;
   redScore: number;
@@ -2709,6 +2715,8 @@ export interface H2hSide {
 export interface StatScales {
   percentiles: number[];
   classes: Record<string, { dpm: number[]; accuracy: number[]; dpmGames: number; accuracyGames: number }>;
+  /** Class, then map: the same scales on one map, where it has enough games. */
+  maps?: Record<string, Record<string, { dpm: number[]; accuracy: number[]; dpmGames: number; accuracyGames: number }>>;
 }
 
 /** Why a player's season rating is what it is (season_stats.rs). */

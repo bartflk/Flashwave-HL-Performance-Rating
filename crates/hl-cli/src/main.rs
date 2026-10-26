@@ -2714,7 +2714,18 @@ class       games  rating");
                 ascending: false,
                 model_version: hl_rating::MODEL_VERSION.to_string(),
                 stv_only: rest.contains(&"--stv"),
+                order_values: None,
             };
+            // --sort dpm_pct / acc_pct: the app's Class % order.
+            let mut filter = filter;
+            let stat = match filter.sort.as_deref() {
+                Some("dpm_pct") => Some(hl_ingest::stat_scale::Stat::Dpm),
+                Some("acc_pct") => Some(hl_ingest::stat_scale::Stat::Accuracy),
+                _ => None,
+            };
+            if let (Some(stat), Some(me)) = (stat, me) {
+                filter.order_values = Some(serde_json::to_string(&hl_ingest::stat_scale::own_percentiles(&db, me.account_id(), stat).await?)?);
+            }
             let page = db.list_matches(me.map(|m| m.account_id()), &filter).await?;
             println!("{} match(es) total, showing {}\n", page.total, page.items.len());
             println!("log       date       map                  league class          K/D/A   dmg  title");

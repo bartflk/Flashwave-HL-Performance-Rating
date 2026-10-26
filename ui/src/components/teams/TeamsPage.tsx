@@ -38,7 +38,12 @@ const PLACE = ["gold", "silver", "bronze"] as const;
 
 /** Every upcoming Highlander official (Q48), read from ETF2L at most every half hour. */
 export function useFixtures() {
-  return useQuery({ queryKey: ["fixtures"], queryFn: api.getFixtures, staleTime: 10 * 60_000 }).data ?? [];
+  return useFixturesQuery().data ?? [];
+}
+
+/** The same, with whether ETF2L has answered yet (for a waiting line). */
+export function useFixturesQuery() {
+  return useQuery({ queryKey: ["fixtures"], queryFn: api.getFixtures, staleTime: 10 * 60_000 });
 }
 
 /** When a match is: "Sun 4 Oct, 20:15". */

@@ -7,13 +7,17 @@ import { classLabel } from "./analysis/common";
  * faint bar of where it stands (Leetify's look), as Settings picks; plain
  * where there is no scale or colours are off.
  */
-export function TierPill({ text, tier, cls }: { text: string; tier: { pct: number; bg: string; fg: string } | null; cls?: string | null }) {
+export function TierPill({ text, tier, cls }: { text: string; tier: { pct: number; bg: string; fg: string; map?: string | null } | null; cls?: string | null }) {
   const palette = usePalette();
   if (!tier || palette === "off") return <>{text}</>;
-  const where =
-    tier.pct >= 100
-      ? t("Top 1% of {0} games", { "0": classLabel(cls ?? "") })
-      : t("Better than {0}% of {1} games", { "0": Math.floor(tier.pct), "1": classLabel(cls ?? "") });
+  const c = classLabel(cls ?? "");
+  const where = tier.map
+    ? tier.pct >= 100
+      ? t("Top 1% of {0} games on {1}", { "0": c, "1": tier.map })
+      : t("Better than {0}% of {1} games on {2}", { "0": Math.floor(tier.pct), "1": c, "2": tier.map })
+    : tier.pct >= 100
+      ? t("Top 1% of {0} games", { "0": c })
+      : t("Better than {0}% of {1} games", { "0": Math.floor(tier.pct), "1": c });
   if (palette === "redgreen") {
     const c = redGreen(tier.pct);
     return (

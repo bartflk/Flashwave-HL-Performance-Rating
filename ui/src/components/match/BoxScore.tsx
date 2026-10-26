@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
+import { RatingValue } from "../RatingValue";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -14,6 +15,7 @@ import { tip } from "../../lib/glossary";
 import { tierOf, useStatScales } from "../../lib/tiers";
 import { TierPill } from "../TierPill";
 import { ColumnPicker, useColumns } from "../ColumnPicker";
+import { RankBySwitch, useRankBy } from "../RankBy";
 
 const CLASS_ORDER = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
 
@@ -142,19 +144,6 @@ const ORDER: Key[] = [
 ];
 const ORDERED = [...COLS].sort((x, y) => ORDER.indexOf(x.key) - ORDER.indexOf(y.key));
 
-/** DA/M and accuracy sorted by the number, or by where it stands on the
- *  player's class (Flashy: "is it possible to sort accuracy and damage by
- *  percentile?"): the same percentile their colour shows, so a Medic's
- *  good game can outrank a Soldier's ordinary one. Remembered. */
-const RANK_KEY = "hl.scoreboard.rankBy";
-function storedRank(): "value" | "pct" {
-  try {
-    return localStorage.getItem(RANK_KEY) === "pct" ? "pct" : "value";
-  } catch {
-    return "value";
-  }
-}
-
 /**
  * The scoreboard, laid out like logs.tf: one table, both teams, a column per
  * stat, every column sortable. It opens sorted by team then class, your team
@@ -199,15 +188,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
   const cols = available.filter(picker.shown);
   const scales = useStatScales().data;
   const [sort, setSort] = useState<{ key: Key; desc: boolean }>({ key: "team", desc: false });
-  const [rankBy, setRankBy] = useState<"value" | "pct">(storedRank);
-  const pickRank = (r: "value" | "pct") => {
-    setRankBy(r);
-    try {
-      localStorage.setItem(RANK_KEY, r);
-    } catch {
-      // Blocked storage: the choice holds for this session.
-    }
-  };
+  const [rankBy, pickRank] = useRankBy("scoreboard");
   const hasPct = cols.some((c) => c.key === "dapm" || c.key === "acc");
   const rows = useMemo(() => {
     const byTeamClass = (a: PlayerRow, b: PlayerRow) =>
@@ -223,7 +204,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
       const stat = col.key === "dapm" ? "dpm" : col.key === "acc" ? "accuracy" : null;
       // By percentile: a class without a scale (too few games) sinks with
       // the unrecorded.
-      const v = stat && rankBy === "pct" ? (p: PlayerRow) => tierOf(scales, p.mainClass, stat, raw(p))?.pct ?? null : raw;
+      const v = stat && rankBy === "pct" ? (p: PlayerRow) => tierOf(scales, p.mainClass, stat, raw(p), d.mapKey)?.pct ?? null : raw;
       out.sort((a, b) => {
         const x = v(a);
         const y = v(b);
@@ -247,19 +228,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
             select; it belongs with the numbers it scopes. */}
         <div className="sb-head-tools">
           {reading}
-          {hasPct && (
-            <div className="sb-rank" role="group" aria-label={tr("Sort DA/M and accuracy by")} title={tr("Sort DA/M and accuracy by the number, or by where it stands among the player's class's games")}>
-              <span className="an-label">{tr("Rank by")}</span>
-              <div className="sb-rank-seg">
-                <button className={rankBy === "value" ? "sb-rank-opt on" : "sb-rank-opt"} aria-pressed={rankBy === "value"} onClick={() => pickRank("value")}>
-                  {tr("Value")}
-                </button>
-                <button className={rankBy === "pct" ? "sb-rank-opt on" : "sb-rank-opt"} aria-pressed={rankBy === "pct"} onClick={() => pickRank("pct")}>
-                  {tr("Class %")}
-                </button>
-              </div>
-            </div>
-          )}
+          {hasPct && <RankBySwitch value={rankBy} onPick={pickRank} stat="DA/M" />}
           <ColumnPicker cols={available} state={picker} />
         </div>
       </header>
@@ -321,8 +290,10 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
                     >
                       {v === null ? (
                         <span className="muted">–</span>
+                      ) : c.key === "rating" || c.key === "impact" ? (
+                        <RatingValue v={v} />
                       ) : c.key === "dapm" || c.key === "acc" ? (
-                        <TierPill text={c.fmt ? c.fmt(v) : String(Math.round(v))} tier={tierOf(scales, p.mainClass, c.key === "dapm" ? "dpm" : "accuracy", v)} cls={p.mainClass} />
+                        <TierPill text={c.fmt ? c.fmt(v) : String(Math.round(v))} tier={tierOf(scales, p.mainClass, c.key === "dapm" ? "dpm" : "accuracy", v, d.mapKey)} cls={p.mainClass} />
                       ) : c.fmt ? (
                         c.fmt(v)
                       ) : (

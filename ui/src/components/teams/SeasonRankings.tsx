@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { RatingValue } from "../RatingValue";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type SeasonRow, type StatTotals } from "../../api/types";
@@ -294,10 +295,10 @@ export function SeasonRankings({ season, onTeam }: { season: number; onTeam: (id
                     </td>
                     <td className="num">{r.officials}</td>
                     <td className="num">{r.maps}</td>
-                    <td className="num strong">{rating(r.rating)}</td>
-                    <td className="num muted">{rating(r.average)}</td>
+                    <td className="num strong"><RatingValue v={r.rating} /></td>
+                    <td className="num"><RatingValue v={r.average} /></td>
                     <td className="num muted">{r.opponents == null ? "–" : rating(r.opponents)}</td>
-                    <td className="num">{r.impact === null ? "–" : rating(r.impact)}</td>
+                    <td className="num">{r.impact === null ? "–" : <RatingValue v={r.impact} />}</td>
                     {cols.map((c) => (
                       <td key={c.key} className="num">
                         {fmt(c.value(r), c.digits)}

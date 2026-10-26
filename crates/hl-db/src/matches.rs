@@ -111,6 +111,10 @@ pub struct MatchFilter {
     pub ascending: bool,
     /// The rating model whose scores the `rating` sort and column use.
     pub model_version: String,
+    /// A value per log id, as a JSON object, to order by instead of a
+    /// column: the owner's DPM or accuracy as a percentile of their class
+    /// (on the map where it has a scale), worked out outside SQL.
+    pub order_values: Option<String>,
 }
 
 /// The orderings the match list offers, as `(key, SQL)`. The owner's line is
@@ -119,7 +123,7 @@ pub struct MatchFilter {
 /// Every stat the match list can show has one (Flashy: "i want all the
 /// stats possible"): the owner's totals, per minute, per 30 minutes and the
 /// ratios.
-pub const SORTS: [(&str, &str); 33] = [
+pub const SORTS: [(&str, &str); 34] = [
     ("date", "m.played_at"),
     ("kills", "p.kills"),
     ("deaths", "p.deaths"),
@@ -153,6 +157,7 @@ pub const SORTS: [(&str, &str); 33] = [
     ("lks", "p.lks"),
     ("suicides", "p.suicides"),
     ("dmgk", "CASE WHEN COALESCE(p.kills, 0) > 0 THEN p.dmg * 1.0 / p.kills END"),
+    ("acc", "(SELECT CAST(SUM(w.hits) AS REAL) / SUM(w.shots) FROM log_weapon w WHERE w.log_id = m.log_id AND w.account_id = p.account_id AND w.class = p.main_class HAVING SUM(w.shots) >= 30)"),
 ];
 
 /// Q61 (Clark): `killed:<class>` sorts by the owner's kills on that class,
@@ -185,7 +190,12 @@ fn class_count_sql(f: &MatchFilter) -> Option<(String, &'static str)> {
 fn order_by(f: &MatchFilter) -> String {
     let key = f.sort.as_deref().unwrap_or("date");
     let by_class = class_count_sql(f);
-    let expr = by_class.as_ref().map(|(_, e)| *e).unwrap_or_else(|| SORTS.iter().find(|(k, _)| *k == key).map_or("m.played_at", |(_, e)| *e));
+    let by_value = "json_extract(?11, '$.\"' || m.log_id || '\"')";
+    let expr = if f.order_values.is_some() {
+        by_value
+    } else {
+        by_class.as_ref().map(|(_, e)| *e).unwrap_or_else(|| SORTS.iter().find(|(k, _)| *k == key).map_or("m.played_at", |(_, e)| *e))
+    };
     let dir = if f.ascending { "ASC" } else { "DESC" };
     // NULLs last whichever way round it is: an unplayed match has no line.
     format!("ORDER BY ({expr}) IS NULL, ({expr}) {dir}, m.played_at DESC, m.log_id DESC")
@@ -222,6 +232,8 @@ pub struct MatchSummary {
     pub parts: i64,
     /// The owner's rating in this match on their main class, where it has one.
     pub rating: Option<f64>,
+    /// The map as the stat scales name it, for the DPM and accuracy colours.
+    pub map_key: Option<String>,
 }
 
 /// One of the per-round logs a combined log was built from. Kept out of
@@ -265,6 +277,8 @@ pub struct MyLine {
     pub ic: i64,
     pub lks: i64,
     pub suicides: i64,
+    /// Hits over shots on the main class, where the log has 30 shots or more.
+    pub accuracy: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -296,6 +310,15 @@ pub const KEEP_YEARS: i64 = 2;
 /// each log was placed against before any of this was downloaded (see
 /// `etf2l::match_by_time`). A log with no date at all is kept — not knowing
 /// when it was played is not a reason to throw it away.
+/// A log worth downloading by its format: Highlander, unclassified with a
+/// Highlander headcount, or trends.tf's "other" with one. trends.tf says
+/// "other" for a Highlander game a sub joined (19-24 players in the log),
+/// and our classifier, counting each side's classes, is the one that can
+/// tell (audit, Oct 2026: such games were never downloaded).
+const WORTH_FETCHING: &str = "( COALESCE(i.format_override, i.format) = 'highlander'
+       OR (COALESCE(i.format_override, i.format) IS NULL AND COALESCE(i.player_count, 0) >= 16)
+       OR (i.format_override IS NULL AND i.format = 'other' AND i.player_count BETWEEN 16 AND 24) )";
+
 fn in_window() -> String {
     format!(
         "(i.played_at IS NULL OR i.played_at >= unixepoch() - {KEEP_YEARS} * 365 * 86400
@@ -325,12 +348,17 @@ impl Db {
                     played_at      = COALESCE(excluded.played_at, log_index.played_at),
                     duration_s     = COALESCE(excluded.duration_s, log_index.duration_s),
                     trends_json    = excluded.trends_json,
-                    format         = COALESCE(excluded.format, log_index.format),
+                    -- trends.tf's 'other' never undoes what our classifier
+                    -- or a combine's parts placed.
+                    format         = CASE WHEN excluded.format = 'other' AND log_index.classified_by IN ('heuristic', 'parts')
+                                          THEN log_index.format ELSE COALESCE(excluded.format, log_index.format) END,
                     league         = excluded.league,
                     etf2l_match_id = excluded.etf2l_match_id,
                     demos_tf_id    = excluded.demos_tf_id,
                     duplicate_of   = excluded.duplicate_of,
-                    classified_by  = CASE WHEN excluded.format IS NOT NULL THEN 'trends'
+                    classified_by  = CASE WHEN excluded.format = 'other' AND log_index.classified_by IN ('heuristic', 'parts')
+                                          THEN log_index.classified_by
+                                          WHEN excluded.format IS NOT NULL THEN 'trends'
                                           ELSE log_index.classified_by END,
                     updated_at     = excluded.updated_at",
             )
@@ -422,6 +450,23 @@ impl Db {
                 .execute(&mut *tx)
                 .await?;
         }
+        // A combined log trends.tf could not place -- no single map, so
+        // "other" or nothing -- is the format its parts agree on. ivg, 24 Oct
+        // 2026: four Highlander maps uploaded again as "STEAMHAPPY MIX" came
+        // back as "other", the four were hidden behind it as its parts, and
+        // the evening was never downloaded. trends.tf's own label wins
+        // whenever it gives one of the formats; a person's override always.
+        sqlx::query(
+            "UPDATE log_index SET classified_by = 'parts',
+                    format = (SELECT MIN(p.format) FROM log_index p WHERE p.superseded_by = log_index.log_id)
+             WHERE (format IS NULL OR format NOT IN ('highlander', 'sixes'))
+               AND EXISTS (SELECT 1 FROM log_index p WHERE p.superseded_by = log_index.log_id)
+               AND NOT EXISTS (SELECT 1 FROM log_index p WHERE p.superseded_by = log_index.log_id
+                                 AND (p.format IS NULL OR p.format NOT IN ('highlander', 'sixes')))
+               AND (SELECT COUNT(DISTINCT p.format) FROM log_index p WHERE p.superseded_by = log_index.log_id) = 1",
+        )
+        .execute(&mut *tx)
+        .await?;
         tx.commit().await?;
         Ok(())
     }
@@ -444,8 +489,7 @@ impl Db {
              -- A log stored from more.tf is asked of logs.tf again (0031).
              WHERE (r.log_id IS NULL OR i.log_id IN (SELECT log_id FROM log_stand_in))
                AND i.superseded_by IS NULL
-               AND ( {EFFECTIVE_FORMAT} = 'highlander'
-                  OR ({EFFECTIVE_FORMAT} IS NULL AND COALESCE(i.player_count, 0) >= 16) )
+               AND {WORTH_FETCHING}
                -- Never a deleted log (Q77); a failing one on its first tries,
                -- then once a week until it has had them all.
                AND (e.log_id IS NULL OR (e.gone = 0 AND (e.attempts < ?1
@@ -486,8 +530,7 @@ impl Db {
              LEFT JOIN log_raw r ON r.log_id = i.log_id
              WHERE r.log_id IS NULL
                AND i.superseded_by IS NULL
-               AND ( {EFFECTIVE_FORMAT} = 'highlander'
-                  OR ({EFFECTIVE_FORMAT} IS NULL AND COALESCE(i.player_count, 0) >= 16) )
+               AND {WORTH_FETCHING}
                AND NOT {window}"
         ))
         .fetch_one(self.pool())
@@ -495,6 +538,25 @@ impl Db {
     }
 
     /// Highest `updated` timestamp seen from trends.tf, for incremental sync.
+    /// When a log was played, as the index has it.
+    pub async fn log_played_at(&self, log_id: i64) -> Result<Option<i64>> {
+        Ok(sqlx::query_scalar("SELECT played_at FROM log_index WHERE log_id = ?1")
+            .bind(log_id)
+            .fetch_optional(self.pool())
+            .await?
+            .flatten())
+    }
+
+    /// Whether a source has ever been read in full: the logs.tf search runs
+    /// over the whole history once, on the first sync.
+    pub async fn source_synced(&self, source: &str) -> Result<bool> {
+        Ok(sqlx::query_scalar::<_, i64>("SELECT 1 FROM sync_state WHERE source = ?1 AND last_error IS NULL")
+            .bind(source)
+            .fetch_optional(self.pool())
+            .await?
+            .is_some())
+    }
+
     pub async fn trends_cursor(&self) -> Result<Option<i64>> {
         let v: Option<String> =
             sqlx::query_scalar("SELECT cursor FROM sync_state WHERE source = 'trends'")
@@ -662,11 +724,16 @@ impl Db {
         .flatten())
     }
 
-    /// Record our own classification — only where trends.tf gave none.
+    /// Record our own classification -- where trends.tf gave none, or could
+    /// only say "other": it says that for a Highlander game a sub joined,
+    /// which our classifier, counting each side's classes, places (audit,
+    /// Oct 2026: such games were never shown, and importing one by hand left
+    /// it hidden too).
     pub async fn set_heuristic_format(&self, log_id: i64, format: Format) -> Result<()> {
         sqlx::query(
             "UPDATE log_index SET format = ?2, classified_by = 'heuristic'
-             WHERE log_id = ?1 AND (format IS NULL OR classified_by = 'heuristic')",
+             WHERE log_id = ?1 AND (format IS NULL OR classified_by = 'heuristic'
+                                    OR (classified_by = 'trends' AND format = 'other'))",
         )
         .bind(log_id)
         .bind(format.as_str())
@@ -910,6 +977,7 @@ impl Db {
                     p.team, p.main_class, p.kills, p.deaths, p.assists, p.dmg, p.time_s,
                     p.dt, p.hr, p.heal, p.ubers, p.drops, p.headshots, p.headshots_hit, p.backstabs, p.airshots, p.medkits, p.medkits_hp, p.sentries, p.cpc, p.ic, p.lks, p.suicides,
                     r.score AS my_rating,
+                    (SELECT CAST(SUM(w.hits) AS REAL) / SUM(w.shots) FROM log_weapon w WHERE w.log_id = m.log_id AND w.account_id = p.account_id AND w.class = p.main_class HAVING SUM(w.shots) >= 30) AS my_accuracy,
                     {CONTEXT_COLUMNS}
              FROM match m
              JOIN log_index i ON i.log_id = m.log_id
@@ -933,6 +1001,7 @@ impl Db {
         .bind(&filter.model_version)
         .bind(&filter.class)
         .bind(&filter.map)
+        .bind(filter.order_values.as_deref().unwrap_or("{}"))
         .fetch_all(self.pool())
         .await?;
 
@@ -974,8 +1043,22 @@ impl Db {
                         ic: r.get("ic"),
                         lks: r.get("lks"),
                         suicides: r.get("suicides"),
+                        accuracy: r.get("my_accuracy"),
                     }
                 });
+                let maps: Vec<String> = r
+                    .get::<Option<String>, _>("segment_maps")
+                    .map(|s| s.split('|').map(str::to_string).collect())
+                    .unwrap_or_default();
+                let parts: i64 = r.get("part_count");
+                // The map the stat scales place this match on: its one map,
+                // none for a log over several.
+                let bases: std::collections::BTreeSet<String> = maps.iter().map(|x| hl_core::maps::map_base(x)).collect();
+                let map_key = match bases.len() {
+                    1 => bases.into_iter().next(),
+                    0 if parts == 0 => r.get::<Option<String>, _>("map").map(|x| hl_core::maps::map_base(&x)),
+                    _ => None,
+                };
                 MatchSummary {
                     log_id: r.get("log_id"),
                     played_at: r.get("played_at"),
@@ -990,11 +1073,9 @@ impl Db {
                     blue_score: blue,
                     has_demo: r.get::<i64, _>("has_demo") != 0,
                     context: context_from_row(&r),
-                    maps: r
-                        .get::<Option<String>, _>("segment_maps")
-                        .map(|s| s.split('|').map(str::to_string).collect())
-                        .unwrap_or_default(),
-                    parts: r.get("part_count"),
+                    maps,
+                    parts,
+                    map_key,
                     rating: r.get("my_rating"),
                     class_count: r.get("class_count"),
                     me,
@@ -1187,6 +1268,7 @@ mod tests {
             class: None,
             map: None,
             stv_only: false,
+            order_values: None,
         }
     }
 
@@ -1253,6 +1335,75 @@ mod tests {
         queue.sort_unstable();
         assert_eq!(queue, vec![1, 2, 3, 4]);
         assert_eq!(db.index_stats().await.unwrap().outside_window, 0, "and nothing is on offer");
+    }
+
+    #[tokio::test]
+    async fn a_highlander_game_with_a_sub_trends_calls_other_is_fetched_and_shown() {
+        // Audit, Oct 2026: trends.tf says "other" for a Highlander log a sub
+        // joined (20 players); it was never downloaded, and importing it by
+        // hand left it hidden.
+        let db = Db::connect_in_memory().await.unwrap();
+        index(&db, 1, 0.01).await;
+        sqlx::query("UPDATE log_index SET player_count = 20 WHERE log_id = 1").execute(db.pool()).await.unwrap();
+        let trends = |format: &'static str| TrendsIndexRow {
+            log_id: 1,
+            title: Some("a game"),
+            map: Some("pl_upward_f12"),
+            played_at: None,
+            duration_s: Some(1800),
+            format: Some(format),
+            league: None,
+            etf2l_match_id: None,
+            demos_tf_id: None,
+            duplicate_of: None,
+            raw_json: "{}",
+        };
+        db.upsert_trends_rows(&[trends("other")]).await.unwrap();
+        assert_eq!(db.fetch_queue(3).await.unwrap(), vec![1], "queued for our classifier to see");
+
+        db.set_heuristic_format(1, Format::Highlander).await.unwrap();
+        assert_eq!(db.effective_format(1).await.unwrap().as_deref(), Some("highlander"));
+        // trends.tf saying "other" again on a later sync does not undo it.
+        db.upsert_trends_rows(&[trends("other")]).await.unwrap();
+        assert_eq!(db.effective_format(1).await.unwrap().as_deref(), Some("highlander"));
+        // trends.tf's own formats still win.
+        db.upsert_trends_rows(&[trends("sixes")]).await.unwrap();
+        assert_eq!(db.effective_format(1).await.unwrap().as_deref(), Some("sixes"));
+    }
+
+    #[tokio::test]
+    async fn a_combined_log_trends_cannot_place_takes_its_parts_format() {
+        // ivg, 24 Oct 2026: a Highlander evening's four maps and a combine
+        // of them that trends.tf called "other"; the parts are hidden behind
+        // it, so unless it counts as Highlander nothing of that night is
+        // downloaded.
+        let db = Db::connect_in_memory().await.unwrap();
+        for id in 1..=5 {
+            index(&db, id, 0.01).await;
+        }
+        sqlx::query("UPDATE log_index SET format = 'highlander', classified_by = 'trends' WHERE log_id <= 4")
+            .execute(db.pool())
+            .await
+            .unwrap();
+        sqlx::query("UPDATE log_index SET format = 'other', classified_by = 'trends', map = NULL WHERE log_id = 5")
+            .execute(db.pool())
+            .await
+            .unwrap();
+        let parts: HashMap<i64, i64> = (1..=4).map(|p| (p, 5)).collect();
+        db.apply_supersessions(&parts).await.unwrap();
+        assert_eq!(db.fetch_queue(3).await.unwrap(), vec![5], "the combine is fetched, its parts are not");
+        let (format, by): (String, String) = sqlx::query_as("SELECT format, classified_by FROM log_index WHERE log_id = 5")
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+        assert_eq!((format.as_str(), by.as_str()), ("highlander", "parts"));
+
+        // Parts that disagree leave it as trends.tf said.
+        sqlx::query("UPDATE log_index SET format = 'other' WHERE log_id = 5").execute(db.pool()).await.unwrap();
+        sqlx::query("UPDATE log_index SET format = 'sixes' WHERE log_id = 4").execute(db.pool()).await.unwrap();
+        db.apply_supersessions(&parts).await.unwrap();
+        let format: String = sqlx::query_scalar("SELECT format FROM log_index WHERE log_id = 5").fetch_one(db.pool()).await.unwrap();
+        assert_eq!(format, "other");
     }
 
     #[tokio::test]
