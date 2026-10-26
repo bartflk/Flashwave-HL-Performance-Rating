@@ -53,7 +53,8 @@ ivg for the report, and Icewind for drops.tf.
 **SHA-256**
 
 ```
-HASHES
+E31AE2DF405E8C3D5599DF691A8CE868AC849CEDD84494F0B133890BD2D7EC5C  Flashwave.tf_0.12.1_x64-setup.exe
+4AEE8DE0B77E5529B381847F47F2A7BD432BA74B88B445F14B56EB1A784BEF32  Flashwave.tf_0.12.1_x64_en-US.msi
 ```
 
 The Linux files are built on GitHub; their hashes are on the release page
