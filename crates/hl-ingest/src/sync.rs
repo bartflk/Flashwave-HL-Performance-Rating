@@ -128,14 +128,27 @@ pub async fn sync(
 ) -> Result<SyncSummary> {
     let steamid64 = me.to_steamid64();
 
-    // 1. trends.tf: the classified index.
+    // 1. trends.tf: the classified index. Down is not a failed sync (audit,
+    //    Oct 2026: it used to end the whole sync, so a trends.tf outage
+    //    stopped everyone's new games although logs.tf still listed them):
+    //    the logs.tf search below finds them, and our own classifier places
+    //    them once they are read.
     let since = if opts.full { None } else { db.trends_cursor().await? };
-    let trends = sources
+    let trends = match sources
         .trends_index(&steamid64, since, |rows| {
             progress(Progress::Indexing { source: "trends.tf", rows })
         })
         .await
-        .context("indexing trends.tf")?;
+    {
+        Ok(rows) => rows,
+        Err(e) => {
+            let error = format!("{e:#}");
+            tracing::warn!(%error, "trends.tf index failed");
+            db.record_sync("trends", since.map(|c| c.to_string()).as_deref(), Some(&error)).await?;
+            progress(Progress::SourceFailed { source: "trends.tf", error });
+            Vec::new()
+        }
+    };
     store_trends(db, &trends.iter().map(|(r, raw)| (r.clone(), raw.as_str())).collect::<Vec<_>>())
         .await?;
     if let Some(cursor) = trends.iter().filter_map(|(r, _)| r.updated).max() {
@@ -203,21 +216,40 @@ pub async fn sync(
     // log gets before it waits for a retry by hand — so an outage must not
     // spend them. Consecutive unreachable logs end the pass instead.
     let mut unreachable_run = 0usize;
-    // Where logs.tf stopped giving us logs, if it did.
-    let mut stopped_at: Option<usize> = None;
+    // Once logs.tf turns us away, drops.tf alone for the rest of the pass
+    // (audit, Oct 2026: a refusal used to end the pass, though drops.tf
+    // serves every log older than about an hour). What neither gives waits
+    // here for more.tf, then the next sync.
+    let mut logstf_out = false;
+    let mut left: Vec<i64> = Vec::new();
 
     for (i, log_id) in queue.iter().copied().enumerate() {
         progress(Progress::Fetching { done: i, total, log_id });
         let result = async {
             // drops.tf first, logs.tf for what it does not have yet.
-            let (json, _) = sources.log_json(log_id).await?;
+            let json = if logstf_out {
+                match sources.drops_log(log_id).await? {
+                    Some(body) => body,
+                    None => return Ok(false),
+                }
+            } else {
+                sources.log_json(log_id).await?.0
+            };
             db.store_raw_log(log_id, &json).await?;
-            process_raw(db, log_id, &json).await
+            process_raw(db, log_id, &json).await?;
+            anyhow::Ok(true)
         }
         .await;
 
         match result {
-            Ok(()) => {
+            Ok(false) => left.push(log_id),
+            Err(e) if !logstf_out && crate::http::refused(&e) => {
+                tracing::warn!(log_id, error = %format!("{e:#}"), "logs.tf refused us; drops.tf only for the rest of the pass");
+                progress(Progress::SourceFailed { source: "logs.tf", error: "refusing requests for now; carrying on with drops.tf".into() });
+                logstf_out = true;
+                left.push(log_id);
+            }
+            Ok(true) => {
                 unreachable_run = 0;
                 fetched += 1;
                 // A log stored from more.tf has its real JSON now.
@@ -232,13 +264,12 @@ pub async fn sync(
             }
             Err(e) if crate::http::unreachable(&e) => {
                 unreachable_run += 1;
-                tracing::warn!(log_id, error = %format!("{e:#}"), "logs.tf unreachable");
-                // A refusal ends the pass at once: every further request
-                // only keeps logs.tf's ban on this address going.
-                if unreachable_run >= GIVE_UP_AFTER || crate::http::refused(&e) {
-                    tracing::warn!(done = i, total, "logs.tf stopped answering; the rest waits for the next sync");
-                    progress(Progress::GaveUp { source: "logs.tf", done: i, total, what: "logs" });
-                    stopped_at = Some(i + 1 - unreachable_run);
+                left.push(log_id);
+                tracing::warn!(log_id, error = %format!("{e:#}"), "log source unreachable");
+                if unreachable_run >= GIVE_UP_AFTER {
+                    tracing::warn!(done = i, total, "the log sources stopped answering; the rest waits for the next sync");
+                    progress(Progress::GaveUp { source: if logstf_out { "drops.tf" } else { "logs.tf" }, done: i, total, what: "logs" });
+                    left.extend_from_slice(&queue[i + 1..]);
                     break;
                 }
             }
@@ -257,13 +288,13 @@ pub async fn sync(
     progress(Progress::Fetching { done: total, total, log_id: 0 });
 
     // What logs.tf would not give us, from more.tf's copy of it.
-    if let Some(from) = stopped_at {
-        fetched += stand_ins(db, sources, w, &queue[from..], &mut progress).await?;
+    if !left.is_empty() {
+        fetched += stand_ins(db, sources, w, &left, &mut progress).await?;
     }
     // A log deleted from logs.tf may still be on more.tf: asked once, then
     // left given up whatever the answer (Q77). Not while more.tf would be
     // asked for the logs above anyway.
-    if stopped_at.is_none() {
+    if left.is_empty() {
         let rescue = db.gone_rescue_todo(STAND_INS_PER_SYNC as i64).await?;
         if !rescue.is_empty() {
             let got = stand_ins(db, sources, w, &rescue, &mut progress).await?;

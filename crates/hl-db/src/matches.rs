@@ -310,6 +310,15 @@ pub const KEEP_YEARS: i64 = 2;
 /// each log was placed against before any of this was downloaded (see
 /// `etf2l::match_by_time`). A log with no date at all is kept — not knowing
 /// when it was played is not a reason to throw it away.
+/// A log worth downloading by its format: Highlander, unclassified with a
+/// Highlander headcount, or trends.tf's "other" with one. trends.tf says
+/// "other" for a Highlander game a sub joined (19-24 players in the log),
+/// and our classifier, counting each side's classes, is the one that can
+/// tell (audit, Oct 2026: such games were never downloaded).
+const WORTH_FETCHING: &str = "( COALESCE(i.format_override, i.format) = 'highlander'
+       OR (COALESCE(i.format_override, i.format) IS NULL AND COALESCE(i.player_count, 0) >= 16)
+       OR (i.format_override IS NULL AND i.format = 'other' AND i.player_count BETWEEN 16 AND 24) )";
+
 fn in_window() -> String {
     format!(
         "(i.played_at IS NULL OR i.played_at >= unixepoch() - {KEEP_YEARS} * 365 * 86400
@@ -339,12 +348,17 @@ impl Db {
                     played_at      = COALESCE(excluded.played_at, log_index.played_at),
                     duration_s     = COALESCE(excluded.duration_s, log_index.duration_s),
                     trends_json    = excluded.trends_json,
-                    format         = COALESCE(excluded.format, log_index.format),
+                    -- trends.tf's 'other' never undoes what our classifier
+                    -- or a combine's parts placed.
+                    format         = CASE WHEN excluded.format = 'other' AND log_index.classified_by IN ('heuristic', 'parts')
+                                          THEN log_index.format ELSE COALESCE(excluded.format, log_index.format) END,
                     league         = excluded.league,
                     etf2l_match_id = excluded.etf2l_match_id,
                     demos_tf_id    = excluded.demos_tf_id,
                     duplicate_of   = excluded.duplicate_of,
-                    classified_by  = CASE WHEN excluded.format IS NOT NULL THEN 'trends'
+                    classified_by  = CASE WHEN excluded.format = 'other' AND log_index.classified_by IN ('heuristic', 'parts')
+                                          THEN log_index.classified_by
+                                          WHEN excluded.format IS NOT NULL THEN 'trends'
                                           ELSE log_index.classified_by END,
                     updated_at     = excluded.updated_at",
             )
@@ -475,8 +489,7 @@ impl Db {
              -- A log stored from more.tf is asked of logs.tf again (0031).
              WHERE (r.log_id IS NULL OR i.log_id IN (SELECT log_id FROM log_stand_in))
                AND i.superseded_by IS NULL
-               AND ( {EFFECTIVE_FORMAT} = 'highlander'
-                  OR ({EFFECTIVE_FORMAT} IS NULL AND COALESCE(i.player_count, 0) >= 16) )
+               AND {WORTH_FETCHING}
                -- Never a deleted log (Q77); a failing one on its first tries,
                -- then once a week until it has had them all.
                AND (e.log_id IS NULL OR (e.gone = 0 AND (e.attempts < ?1
@@ -517,8 +530,7 @@ impl Db {
              LEFT JOIN log_raw r ON r.log_id = i.log_id
              WHERE r.log_id IS NULL
                AND i.superseded_by IS NULL
-               AND ( {EFFECTIVE_FORMAT} = 'highlander'
-                  OR ({EFFECTIVE_FORMAT} IS NULL AND COALESCE(i.player_count, 0) >= 16) )
+               AND {WORTH_FETCHING}
                AND NOT {window}"
         ))
         .fetch_one(self.pool())
@@ -693,11 +705,16 @@ impl Db {
         .flatten())
     }
 
-    /// Record our own classification — only where trends.tf gave none.
+    /// Record our own classification -- where trends.tf gave none, or could
+    /// only say "other": it says that for a Highlander game a sub joined,
+    /// which our classifier, counting each side's classes, places (audit,
+    /// Oct 2026: such games were never shown, and importing one by hand left
+    /// it hidden too).
     pub async fn set_heuristic_format(&self, log_id: i64, format: Format) -> Result<()> {
         sqlx::query(
             "UPDATE log_index SET format = ?2, classified_by = 'heuristic'
-             WHERE log_id = ?1 AND (format IS NULL OR classified_by = 'heuristic')",
+             WHERE log_id = ?1 AND (format IS NULL OR classified_by = 'heuristic'
+                                    OR (classified_by = 'trends' AND format = 'other'))",
         )
         .bind(log_id)
         .bind(format.as_str())
@@ -1299,6 +1316,40 @@ mod tests {
         queue.sort_unstable();
         assert_eq!(queue, vec![1, 2, 3, 4]);
         assert_eq!(db.index_stats().await.unwrap().outside_window, 0, "and nothing is on offer");
+    }
+
+    #[tokio::test]
+    async fn a_highlander_game_with_a_sub_trends_calls_other_is_fetched_and_shown() {
+        // Audit, Oct 2026: trends.tf says "other" for a Highlander log a sub
+        // joined (20 players); it was never downloaded, and importing it by
+        // hand left it hidden.
+        let db = Db::connect_in_memory().await.unwrap();
+        index(&db, 1, 0.01).await;
+        sqlx::query("UPDATE log_index SET player_count = 20 WHERE log_id = 1").execute(db.pool()).await.unwrap();
+        let trends = |format: &'static str| TrendsIndexRow {
+            log_id: 1,
+            title: Some("a game"),
+            map: Some("pl_upward_f12"),
+            played_at: None,
+            duration_s: Some(1800),
+            format: Some(format),
+            league: None,
+            etf2l_match_id: None,
+            demos_tf_id: None,
+            duplicate_of: None,
+            raw_json: "{}",
+        };
+        db.upsert_trends_rows(&[trends("other")]).await.unwrap();
+        assert_eq!(db.fetch_queue(3).await.unwrap(), vec![1], "queued for our classifier to see");
+
+        db.set_heuristic_format(1, Format::Highlander).await.unwrap();
+        assert_eq!(db.effective_format(1).await.unwrap().as_deref(), Some("highlander"));
+        // trends.tf saying "other" again on a later sync does not undo it.
+        db.upsert_trends_rows(&[trends("other")]).await.unwrap();
+        assert_eq!(db.effective_format(1).await.unwrap().as_deref(), Some("highlander"));
+        // trends.tf's own formats still win.
+        db.upsert_trends_rows(&[trends("sixes")]).await.unwrap();
+        assert_eq!(db.effective_format(1).await.unwrap().as_deref(), Some("sixes"));
     }
 
     #[tokio::test]
