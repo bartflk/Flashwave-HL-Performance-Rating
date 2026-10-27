@@ -52,6 +52,10 @@ pub struct LogStat {
     pub down_kills: Option<i64>,
     pub multi2: Option<i64>,
     pub multi3: Option<i64>,
+    /// Sentries and all buildings destroyed on this class, from the server
+    /// log; `None` without one.
+    pub sentry_kills: Option<i64>,
+    pub building_kills: Option<i64>,
 }
 
 /// Kills and damage with one weapon, one class, one log.
@@ -75,6 +79,7 @@ pub const LOG_STAT_COLUMNS: &[&str] = &[
     "opening_kills", "opening_deaths", "first_picks", "trade_kills", "traded_deaths", "cleanup_kills", "forces",
     "fights_present", "fights_kast", "impact", "impact_attack", "impact_defence", "kills_attack", "deaths_attack",
     "kills_defence", "deaths_defence", "secs_attack", "secs_defence", "down_kills", "multi2", "multi3",
+    "sentry_kills", "building_kills",
 ];
 
 impl Db {
@@ -134,6 +139,8 @@ impl Db {
                 .bind(s.down_kills)
                 .bind(s.multi2)
                 .bind(s.multi3)
+                .bind(s.sentry_kills)
+                .bind(s.building_kills)
                 .execute(&mut *tx)
                 .await?;
         }
@@ -155,6 +162,55 @@ impl Db {
         }
         tx.commit().await?;
         Ok(())
+    }
+
+    /// Logs whose rows were written before buildings were counted and that
+    /// have a server log to count them from: read again for them alone.
+    pub async fn logs_without_building_kills(&self, limit: i64) -> Result<Vec<i64>> {
+        Ok(sqlx::query_scalar(
+            "SELECT DISTINCT s.log_id FROM log_stat s
+             WHERE s.sentry_kills IS NULL
+               AND (EXISTS (SELECT 1 FROM rawlog r WHERE r.log_id = s.log_id)
+                    OR EXISTS (SELECT 1 FROM league_rawlog r WHERE r.log_id = s.log_id))
+             ORDER BY s.log_id DESC LIMIT ?1",
+        )
+        .bind(limit)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    /// One log's building kills, `(account, class, sentries, buildings)`;
+    /// every other row of the log gets none.
+    pub async fn put_building_kills(&self, log_id: i64, rows: &[(i64, String, i64, i64)]) -> Result<()> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("UPDATE log_stat SET sentry_kills = 0, building_kills = 0 WHERE log_id = ?1")
+            .bind(log_id)
+            .execute(&mut *tx)
+            .await?;
+        for (account, class, sentries, buildings) in rows {
+            sqlx::query("UPDATE log_stat SET sentry_kills = ?3, building_kills = ?4 WHERE log_id = ?1 AND account_id = ?2 AND class = ?5")
+                .bind(log_id)
+                .bind(account)
+                .bind(sentries)
+                .bind(buildings)
+                .bind(class)
+                .execute(&mut *tx)
+                .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// One log's sentry kills by account, every class together: the
+    /// scoreboard's column.
+    pub async fn sentry_kills_of_log(&self, log_id: i64) -> Result<Vec<(i64, i64, i64)>> {
+        Ok(sqlx::query_as(
+            "SELECT account_id, SUM(sentry_kills), SUM(building_kills) FROM log_stat
+             WHERE log_id = ?1 AND sentry_kills IS NOT NULL GROUP BY account_id",
+        )
+        .bind(log_id)
+        .fetch_all(self.pool())
+        .await?)
     }
 
     /// Forgets every row, to read them all again.

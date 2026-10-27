@@ -69,6 +69,9 @@ pub struct Totals {
     pub down_kills: i64,
     pub multi2: i64,
     pub multi3: i64,
+    /// Sentries and all buildings destroyed, over the maps with a server log.
+    pub sentry_kills: i64,
+    pub building_kills: i64,
     #[serde(skip)]
     build_n: usize,
     #[serde(skip)]
@@ -128,6 +131,8 @@ impl Totals {
             self.down_kills += o(s.down_kills);
             self.multi2 += o(s.multi2);
             self.multi3 += o(s.multi3);
+            self.sentry_kills += o(s.sentry_kills);
+            self.building_kills += o(s.building_kills);
         }
     }
 
@@ -476,6 +481,8 @@ const BS: Def = d("backstabs_per30", false, false, |t| t.per30(t.backstabs));
 const AIR: Def = d("airshots_per30", false, false, |t| t.per30(t.airshots));
 const FORCES: Def = d("forces_per30", false, true, |t| t.per30_raw(t.forces as f64));
 const CAPS: Def = d("caps_per30", false, false, |t| t.per30(t.caps));
+const SENTRIES: Def = d("sentry_kills_per30", false, true, |t| t.per30_raw(t.sentry_kills as f64));
+const BUILDINGS: Def = d("building_kills_per30", false, true, |t| t.per30_raw(t.building_kills as f64));
 
 /// The attribute cards for a class: name and the stats it averages.
 fn attributes_of(class: &str) -> Vec<(&'static str, Vec<&'static Def>)> {
@@ -497,6 +504,12 @@ fn attributes_of(class: &str) -> Vec<(&'static str, Vec<&'static Def>)> {
         "soldier" | "demoman" => v.push(("airshots", vec![&AIR])),
         "scout" => v.push(("objective", vec![&CAPS])),
         _ => v.push(("support", vec![&A30])),
+    }
+    // Sentry busting, placed among everyone on the class (Flashy: "who is
+    // the top percentile in sentry kills per game per class"). Not for the
+    // Engineer, whose buildings are the ones being destroyed, nor the Medic.
+    if class != "engineer" && class != "medic" {
+        v.push(("sentry_busting", vec![&SENTRIES, &BUILDINGS]));
     }
     v
 }

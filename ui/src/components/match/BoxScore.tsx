@@ -21,7 +21,8 @@ const CLASS_ORDER = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer",
 
 type Key =
   | "team" | "name" | "k" | "a" | "d" | "da" | "dt" | "hr" | "heal" | "ubers" | "drops" | "hp" | "hs" | "hshit" | "bs" | "as" | "cap" | "time"
-  | "dapm" | "dtpm" | "hrpm" | "healpm" | "k30" | "a30" | "d30" | "ka30" | "kad" | "kd" | "dmgk" | "acc" | "spawn" | "ping" | "rating" | "impact";
+  | "dapm" | "dtpm" | "hrpm" | "healpm" | "k30" | "a30" | "d30" | "ka30" | "kad" | "kd" | "dmgk" | "acc" | "spawn" | "ping" | "rating" | "impact"
+  | "sg" | "bld";
 
 /** The log's flags, and whether anyone's caps cost their team a respawn. */
 type Flags = LogFlags & { spawn: boolean; ping: Map<number, PlayerPing> | null; impact: Map<number, number> | null };
@@ -72,6 +73,8 @@ const COLS: Col[] = [
   { key: "bs", label: "BS", name: k("Backstabs"), group: k("Totals"), title: k("Backstabs"), value: (p, f) => (f.bs ? p.backstabs : null), on: false },
   { key: "as", label: "AS", name: k("Airshots"), group: k("Totals"), title: k("Airshots"), value: (p, f) => (f.airshots ? p.airshots : null), on: false },
   { key: "cap", label: k("CAP"), name: k("Points captured"), group: k("Totals"), title: k("Points captured"), value: (p, f) => (f.cp ? p.cpc : null) },
+  { key: "sg", label: k("SG"), name: k("Sentries destroyed"), group: k("Totals"), title: k("Sentries destroyed, from the server log"), value: (p) => p.sentryKills ?? null, on: false },
+  { key: "bld", label: k("BLD"), name: k("Buildings destroyed"), group: k("Totals"), title: k("Sentries, dispensers and teleporters destroyed, from the server log"), value: (p) => p.buildingKills ?? null, on: false },
   { key: "time", label: k("Time"), name: k("Time played"), group: k("Totals"), title: k("Time played"), value: (p) => p.timeS, fmt: (v) => clock(v), on: false },
 
   { key: "dapm", label: "DA/M", name: k("Damage per minute"), group: k("Per minute"), title: k("Damage per minute, coloured by where it stands among the class's games: muted slate for an ordinary game, through amber and red to violet, black for the top 1%."), value: (p) => p.dpm },
@@ -138,7 +141,7 @@ const COLS: Col[] = [
  *  the table a bit to be more like logs.tf"), then the extras, then ping,
  *  rating and impact last. The Columns list groups them as above. */
 const ORDER: Key[] = [
-  "k", "a", "d", "da", "dapm", "kad", "kd", "dt", "dtpm", "hp", "bs", "hs", "as", "cap", "acc",
+  "k", "a", "d", "da", "dapm", "kad", "kd", "dt", "dtpm", "hp", "bs", "hs", "as", "cap", "sg", "bld", "acc",
   "hr", "hrpm", "heal", "healpm", "ubers", "drops", "hshit", "k30", "a30", "d30", "ka30", "dmgk", "time",
   "spawn", "ping", "rating", "impact",
 ];

@@ -207,6 +207,10 @@ pub struct PlayerRow {
     /// (Q25), from the server log; `None` without one. Shown, not rated
     /// (v11): on payload and attack/defend it is always 0.
     pub spawn_delay_s: Option<u32>,
+    /// Sentries and all buildings destroyed, from the server log; `None`
+    /// without one (filled by the ingest crate, which reads it).
+    pub sentry_kills: Option<i64>,
+    pub building_kills: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -528,6 +532,8 @@ fn players(log: &NormalizedLog, me: Option<SteamId>, rater: &Rater<'_>) -> Vec<P
                 rating: rater.of(p, &log.flags),
                 is_me: me == Some(p.id),
                 spawn_delay_s: rater.impacts.get(&p.id.account_id()).and_then(|i| i.fights.as_ref()).map(|f| f.caps_spawn_delay),
+                sentry_kills: None,
+                building_kills: None,
             }
         })
         .collect();

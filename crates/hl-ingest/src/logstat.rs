@@ -14,6 +14,31 @@ use std::collections::HashMap;
 pub struct FromRaw<'a> {
     pub fights: &'a Fights,
     pub impact: &'a HashMap<u32, PlayerImpact>,
+    pub buildings: &'a HashMap<(u32, hl_core::TfClass), (i64, i64)>,
+}
+
+/// Buildings each player destroyed, by the class they were on: `(sentries,
+/// all buildings)`, from the server log's `killedobject` lines (Flashy: "is
+/// there a way to see if a player kills a sentry like a sniper?"). The
+/// destroyer only, not the assist line written beside it; a sentry, a
+/// dispenser or a teleporter, not a sapper an Engineer removed; never an
+/// Engineer's own building.
+pub fn building_kills(raw: &crate::rawlog::RawLog) -> HashMap<(u32, hl_core::TfClass), (i64, i64)> {
+    let mut out: HashMap<(u32, hl_core::TfClass), (i64, i64)> = HashMap::new();
+    for e in &raw.events {
+        let crate::rawlog::EventKind::ObjectKilled { by, owner, object, assist } = &e.kind else { continue };
+        let Some(class) = by.class else { continue };
+        let building = ["OBJ_SENTRYGUN", "OBJ_DISPENSER", "OBJ_TELEPORTER"].iter().any(|o| object.eq_ignore_ascii_case(o));
+        if *assist || !building || *owner == Some(by.account) {
+            continue;
+        }
+        let n = out.entry((by.account, class)).or_default();
+        if object.eq_ignore_ascii_case("OBJ_SENTRYGUN") {
+            n.0 += 1;
+        }
+        n.1 += 1;
+    }
+    out
 }
 
 /// Every player's rows in one log.
@@ -113,6 +138,10 @@ pub fn rows(log_id: i64, json: &Value, log: &NormalizedLog, raw: Option<FromRaw<
                 row.down_kills = z(i.down_kills);
                 row.multi2 = z(i.multi2);
                 row.multi3 = z(i.multi3);
+                // By the class they were on, so every class row has its own.
+                let (sentries, buildings) = r.buildings.get(&(account, c.class)).copied().unwrap_or_default();
+                row.sentry_kills = Some(sentries);
+                row.building_kills = Some(buildings);
             }
             stats.push(row);
         }
@@ -157,7 +186,8 @@ pub fn derive(log_id: i64, json: &str, zip: Option<&[u8]>) -> anyhow::Result<(Ve
         log.flags.attack_defend,
         crate::round_impact::WinTable::shipped(),
     );
-    Ok(rows(log_id, &value, &log, Some(FromRaw { fights: &fights, impact: &impact })))
+    let buildings = building_kills(&raw);
+    Ok(rows(log_id, &value, &log, Some(FromRaw { fights: &fights, impact: &impact, buildings: &buildings })))
 }
 
 /// Derives and stores the rows of the given logs, league or the owner's,
@@ -194,5 +224,31 @@ pub async fn fill_missing(db: &hl_db::Db, limit: Option<i64>, mut progress: impl
         n += fill(db, chunk).await?;
     }
     progress(ids.len(), ids.len());
+    // Rows from before buildings were counted: their server logs read again
+    // for that alone, once.
+    let todo = db.logs_without_building_kills(limit.unwrap_or(i64::MAX)).await?;
+    for (i, &log_id) in todo.iter().enumerate() {
+        if i % 50 == 0 {
+            progress(i, todo.len());
+        }
+        let zip = match db.league_log_files(log_id).await?.1 {
+            Some(z) => Some(z),
+            None => db.rawlog(log_id).await?,
+        };
+        let Some(zip) = zip else { continue };
+        let counted = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
+            let raw = crate::rawlog::parse(&crate::rawlog::unzip(&zip)?);
+            Ok(building_kills(&raw))
+        })
+        .await?;
+        match counted {
+            Ok(b) => {
+                let rows: Vec<(i64, String, i64, i64)> =
+                    b.into_iter().map(|((a, c), (s, all))| (i64::from(a), c.as_str().to_string(), s, all)).collect();
+                db.put_building_kills(log_id, &rows).await?;
+            }
+            Err(e) => tracing::warn!(log_id, error = %format!("{e:#}"), "building kills not counted"),
+        }
+    }
     Ok(n)
 }

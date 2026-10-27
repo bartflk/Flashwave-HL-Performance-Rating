@@ -123,7 +123,7 @@ pub struct MatchFilter {
 /// Every stat the match list can show has one (Flashy: "i want all the
 /// stats possible"): the owner's totals, per minute, per 30 minutes and the
 /// ratios.
-pub const SORTS: [(&str, &str); 34] = [
+pub const SORTS: [(&str, &str); 35] = [
     ("date", "m.played_at"),
     ("kills", "p.kills"),
     ("deaths", "p.deaths"),
@@ -157,6 +157,7 @@ pub const SORTS: [(&str, &str); 34] = [
     ("lks", "p.lks"),
     ("suicides", "p.suicides"),
     ("dmgk", "CASE WHEN COALESCE(p.kills, 0) > 0 THEN p.dmg * 1.0 / p.kills END"),
+    ("sentries", "(SELECT SUM(ls.sentry_kills) FROM log_stat ls WHERE ls.log_id = m.log_id AND ls.account_id = p.account_id)"),
     ("acc", "(SELECT CAST(SUM(w.hits) AS REAL) / SUM(w.shots) FROM log_weapon w WHERE w.log_id = m.log_id AND w.account_id = p.account_id AND w.class = p.main_class HAVING SUM(w.shots) >= 30)"),
 ];
 
@@ -279,6 +280,8 @@ pub struct MyLine {
     pub suicides: i64,
     /// Hits over shots on the main class, where the log has 30 shots or more.
     pub accuracy: Option<f64>,
+    /// Sentries destroyed, from the server log; `None` without one.
+    pub sentry_kills: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -977,6 +980,7 @@ impl Db {
                     p.team, p.main_class, p.kills, p.deaths, p.assists, p.dmg, p.time_s,
                     p.dt, p.hr, p.heal, p.ubers, p.drops, p.headshots, p.headshots_hit, p.backstabs, p.airshots, p.medkits, p.medkits_hp, p.sentries, p.cpc, p.ic, p.lks, p.suicides,
                     r.score AS my_rating,
+                    (SELECT SUM(ls.sentry_kills) FROM log_stat ls WHERE ls.log_id = m.log_id AND ls.account_id = p.account_id) AS my_sentries,
                     (SELECT CAST(SUM(w.hits) AS REAL) / SUM(w.shots) FROM log_weapon w WHERE w.log_id = m.log_id AND w.account_id = p.account_id AND w.class = p.main_class HAVING SUM(w.shots) >= 30) AS my_accuracy,
                     {CONTEXT_COLUMNS}
              FROM match m
@@ -1044,6 +1048,7 @@ impl Db {
                         lks: r.get("lks"),
                         suicides: r.get("suicides"),
                         accuracy: r.get("my_accuracy"),
+                        sentry_kills: r.get("my_sentries"),
                     }
                 });
                 let maps: Vec<String> = r

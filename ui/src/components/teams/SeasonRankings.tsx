@@ -86,6 +86,7 @@ function columns(view: View): Col[] {
     count("bs", t("BS"), t("Backstabs."), "backstabs", { only: ["spy"] }),
     count("air", t("Air"), t("Airshots."), "airshots", { only: ["soldier", "demoman"] }),
     count("caps", t("Caps"), t("Points captured."), "caps"),
+    count("sg", t("SG"), t("Sentries destroyed."), "sentryKills", { raw: true }),
     c("kast", t("KAST"), t("Share of fights with a kill, assist, survival or trade."), t("From the server log's fights."), (x) => ratio(x.fightsKast, x.fightsPresent) && ratio(x.fightsKast, x.fightsPresent)! * 100, 0, { raw: true }),
     count("open", t("Open"), t("Opening kills: the first kill of a fight."), "openingKills", { raw: true }),
     count("trade", t("Trades"), t("Kills avenging a teammate within 3 s."), "tradeKills", { raw: true }),

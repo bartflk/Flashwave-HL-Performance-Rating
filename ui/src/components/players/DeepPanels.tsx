@@ -49,6 +49,8 @@ const STATS: Record<string, [string, string, string]> = {
   airshots_per30: [k("Airshots/30"), k("Airshots per 30 minutes."), k("logs.tf.")],
   forces_per30: [k("Forced ubers/30"), k("Enemy charges popped under their damage."), k("From the server log.")],
   caps_per30: [k("Caps/30"), k("Points captured per 30 minutes."), k("logs.tf.")],
+  sentry_kills_per30: [k("Sentries/30"), k("Sentries destroyed per 30 minutes."), k("From the server log: the player who destroyed it, not the assists.")],
+  building_kills_per30: [k("Buildings/30"), k("Sentries, dispensers and teleporters destroyed per 30 minutes."), k("From the server log: the player who destroyed it, not the assists.")],
 };
 
 const ATTRS: Record<string, [string, string]> = {
@@ -65,11 +67,12 @@ const ATTRS: Record<string, [string, string]> = {
   airshots: [k("Airshots"), k("Hitting players in the air.")],
   objective: [k("Objective"), k("Capping points.")],
   support: [k("Support"), k("Assists.")],
+  sentry_busting: [k("Sentry busting"), k("Sentries and other buildings destroyed.")],
 };
 
 function statEntry(key: string): Entry {
   const [label, what, how] = STATS[key] ?? [key, "", ""];
-  return tip(t(label), t(what), t(how), key.includes("open") || key.includes("trade") || key.includes("kast") || key.includes("impact") || key.includes("cleanup") || key.includes("down") || key.includes("multi") || key.includes("forces") ? "server log" : "logs.tf");
+  return tip(t(label), t(what), t(how), key.includes("open") || key.includes("trade") || key.includes("kast") || key.includes("impact") || key.includes("cleanup") || key.includes("down") || key.includes("multi") || key.includes("forces") || key.includes("sentry") || key.includes("building") ? "server log" : "logs.tf");
 }
 
 function fmtStat(s: DeepStat): string {

@@ -91,6 +91,18 @@ pub async fn match_detail_from(
     crate::kills::enrich(&log, &kills, me, &mut detail);
     crate::demos::enrich(db, &log, &mut detail).await?;
 
+    // Buildings destroyed, from the server log's rows (Flashy: "see if a
+    // player kills a sentry like a sniper").
+    let buildings: std::collections::HashMap<i64, (i64, i64)> =
+        db.sentry_kills_of_log(log_id).await?.into_iter().map(|(a, s, b)| (a, (s, b))).collect();
+    if !buildings.is_empty() {
+        for p in &mut detail.players {
+            let (s, b) = buildings.get(&i64::from(p.account_id)).copied().unwrap_or((0, 0));
+            p.sentry_kills = Some(s);
+            p.building_kills = Some(b);
+        }
+    }
+
     detail.parts = db
         .parts_of(log_id)
         .await?

@@ -509,7 +509,7 @@ impl Builder {
                     }
                 }
             }
-            EventKind::ObjectKilled { by, owner, object } => {
+            EventKind::ObjectKilled { by, owner, object, .. } => {
                 if let (true, Some(owner)) = (is_sentry(object), owner) {
                     self.end_sentry(*owner, at, SentryEnd::Destroyed { by: by.account });
                 }

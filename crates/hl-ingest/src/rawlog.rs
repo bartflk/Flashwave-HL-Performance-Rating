@@ -82,7 +82,9 @@ pub enum EventKind {
     PointCaptured { team: Option<Team>, cp: u32, name: String, cappers: Vec<u32> },
     CaptureBlocked { by: Actor, cp: u32 },
     Built { by: Actor, object: String },
-    ObjectKilled { by: Actor, owner: Option<u32>, object: String },
+    /// `assist` is the line written for whoever helped: the same event, not
+    /// a second building.
+    ObjectKilled { by: Actor, owner: Option<u32>, object: String, assist: bool },
     /// An Engineer blew up their own building, usually to move it.
     Detonated { by: Actor, object: String },
     /// Picked up (`true`) or put down (`false`).
@@ -375,7 +377,12 @@ fn state_event(me: Actor, r: &str) -> Option<EventKind> {
         "first_heal_after_spawn" => EventKind::FirstHeal(me),
         "captureblocked" => EventKind::CaptureBlocked { by: me, cp: prop(tail, "cp").and_then(|v| v.parse().ok()).unwrap_or(0) },
         "player_builtobject" => EventKind::Built { by: me, object: object() },
-        "killedobject" => EventKind::ObjectKilled { by: me, owner: prop(tail, "objectowner").and_then(account_of), object: object() },
+        "killedobject" => EventKind::ObjectKilled {
+            by: me,
+            owner: prop(tail, "objectowner").and_then(account_of),
+            object: object(),
+            assist: prop(tail, "assist") == Some("1"),
+        },
         "object_detonated" => EventKind::Detonated { by: me, object: object() },
         "player_carryobject" => EventKind::Carried { by: me, object: object(), picked: true },
         "player_dropobject" => EventKind::Carried { by: me, object: object(), picked: false },

@@ -112,6 +112,8 @@ export interface MyLine {
   ic?: number;
   lks?: number;
   suicides?: number;
+  /** Sentries destroyed, from the server log. */
+  sentryKills?: number | null;
 }
 
 export interface MatchSummary {
@@ -967,6 +969,9 @@ export interface PlayerRow {
   accuracy?: number | null;
   /** Seconds of respawn this player's caps cost their own dead (v11: shown, not rated). */
   spawnDelayS?: number | null;
+  /** Sentries and all buildings destroyed, from the server log. */
+  sentryKills?: number | null;
+  buildingKills?: number | null;
   rating: Rating | null;
   isMe: boolean;
 }
@@ -2584,6 +2589,9 @@ export interface StatTotals {
   downKills: number;
   multi2: number;
   multi3: number;
+  /** Sentries and all buildings destroyed, over the maps with a server log. */
+  sentryKills?: number;
+  buildingKills?: number;
 }
 
 export interface SeasonRow {

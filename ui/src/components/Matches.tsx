@@ -57,6 +57,7 @@ const STAT_COLS: StatCol[] = [
   { key: "medkits_hp", label: k("Pack HP"), name: k("Health from packs"), group: k("Totals"), title: k("Health gained from health packs"), value: (me) => me.medkitsHp, fmt: thousands, on: false },
   { key: "sentries", label: k("SG"), name: k("Sentries built"), group: k("Totals"), title: k("Sentries built"), value: (me) => me.sentries, on: false },
   { key: "cpc", label: k("CAP"), name: k("Points captured"), group: k("Totals"), title: k("Points captured"), value: (me) => me.cpc, on: false },
+  { key: "sentries", label: k("SG"), name: k("Sentries destroyed"), group: k("Totals"), title: k("Sentries destroyed, from the server log"), value: (me) => me.sentryKills ?? null, on: false },
   { key: "lks", label: k("Streak"), name: k("Longest killstreak"), group: k("Totals"), title: k("Longest killstreak"), value: (me) => me.lks, on: false },
   { key: "suicides", label: k("Suicides"), name: k("Suicides"), group: k("Totals"), title: k("Suicides"), value: (me) => me.suicides, on: false },
   { key: "time", label: k("Time"), name: k("Time played"), group: k("Totals"), title: k("Time played"), value: (me) => me.timeS, fmt: (v) => clock(v), on: false },
