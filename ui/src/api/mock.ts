@@ -41,6 +41,7 @@ import fightsSniper from "./fixtures/fights_sniper.json";
 import leagues from "./fixtures/leagues.json";
 import team37805 from "./fixtures/team_37805.json";
 import type {
+  Tournament,
   SeasonTable,
   PlayerDeep,
   DataReport,
@@ -1701,6 +1702,12 @@ export const mockApi: Api = {
   rawlogStats: () => delay({ stored: 740, pending: 16, missing: 2, bytes: 79_900_000, kills: 226_784 }),
 
   getTeammates: (all: boolean) => delay((all ? teammatesAll : teammatesTeam) as unknown as Teammates),
+
+  myTournaments: () =>
+    delay<Tournament[]>([
+      { name: "Highlander Season 36 (Autumn 2026)", kind: "season", division: "High", first: 1_787_436_000, last: 1_790_719_200, from: 1_786_831_200, to: 1_790_805_600, officials: 9 },
+      { name: "Highlander Experimental Cup #10", kind: "cup", division: "Mid", first: 1_785_621_600, last: 1_786_744_800, from: 1_785_016_800, to: 1_786_831_199, officials: 3 },
+    ]),
 
   contextCounts: () =>
     delay({ officials: 58, scrims: 544, pugs: 156, rosterOfficials: 15, etf2lMatches: 46, etf2lPlayer: 97913, lastFetch: 1_789_700_000 }),

@@ -315,6 +315,7 @@ pub fn run() {
             sync_commands::get_seasons,
             sync_commands::get_teammates,
             sync_commands::context_counts,
+            sync_commands::my_tournaments,
             sync_commands::rawlog_stats,
             sync_commands::get_match_analysis,
             sync_commands::get_aim,

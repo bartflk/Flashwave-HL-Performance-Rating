@@ -1017,6 +1017,13 @@ pub async fn rawlog_stats(state: State<'_, AppState>) -> CmdResult<hl_db::Rawlog
     Ok(state.db.rawlog_stats().await?)
 }
 
+/// The tournaments the owner played, with the stretch of the match list
+/// each heads (Flashy: tournament dividers in the match list).
+#[tauri::command]
+pub async fn my_tournaments(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::tournaments::Tournament>> {
+    Ok(hl_ingest::tournaments::mine(&state.db).await?)
+}
+
 #[tauri::command]
 pub async fn context_counts(state: State<'_, AppState>) -> CmdResult<hl_db::ContextCounts> {
     Ok(state.db.context_counts(hl_ingest::etf2l::PLAYER_KEY).await?)

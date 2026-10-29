@@ -2801,3 +2801,17 @@ export interface ClassStat {
   shots: number;
   hits: number;
 }
+
+/** A tournament the owner played, and the stretch of the match list it heads
+ *  (tournaments.rs): a week before its first official to the day after its
+ *  last. */
+export interface Tournament {
+  name: string;
+  kind: "season" | "cup" | "other";
+  division: string | null;
+  first: number;
+  last: number;
+  from: number;
+  to: number;
+  officials: number;
+}

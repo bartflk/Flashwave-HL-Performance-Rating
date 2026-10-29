@@ -13,6 +13,7 @@ import type {
   Cleaned,
   CmdError,
   ContextCounts,
+  Tournament,
   ContextKind,
   DownloadedDemo,
   DemoIndexSummary,
@@ -187,6 +188,7 @@ const realApi = {
   /** `all` includes pugs; otherwise officials and scrims only. */
   getTeammates: (all: boolean) => invoke<Teammates>("get_teammates", { all }),
   contextCounts: () => invoke<ContextCounts>("context_counts"),
+  myTournaments: () => invoke<Tournament[]>("my_tournaments"),
   rawlogStats: () => invoke<RawlogStats>("rawlog_stats"),
   /** Null when the match's raw log is not stored. */
   getMatchAnalysis: (logId: number) => invoke<Analysis | null>("get_match_analysis", { logId }),

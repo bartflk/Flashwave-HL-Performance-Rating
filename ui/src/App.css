@@ -1887,3 +1887,29 @@ button.mini {
 .bk-meter { display: block; height: 8px; border-radius: 4px; background: var(--sunken); overflow: hidden; }
 .bk-meter > span { display: block; height: 100%; background: var(--accent); }
 .bk-meter > span.out { background: var(--ok); }
+
+/* The match list's tournament dividers (Matches.tsx): a band across the
+   table naming the tournament the rows below were played around. */
+.match-table tr.tourney-row td {
+  padding: 14px 16px 10px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 14%, var(--panel)), var(--panel) 70%);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
+  cursor: default;
+}
+.match-table tr.tourney-row.tourney-cup td {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--text) 7%, var(--panel)), var(--panel) 70%);
+}
+.tourney-head { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tourney-name { color: var(--text-hi); font-family: var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.tourney-meta { color: var(--muted); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+.match-table tr.tourney-none td {
+  padding: 6px 16px;
+  background: none;
+  border-top: 0;
+  border-bottom: 0;
+}
+.match-table tr.tourney-none td { display: table-cell; }
+.tourney-none td > * { vertical-align: middle; }
+.tourney-rule { display: inline-block; width: calc(50% - 90px); height: 1px; background: var(--border); }
+.tourney-between { display: inline-block; width: 180px; text-align: center; color: var(--muted); font-family: var(--font-display); font-size: var(--fs-small); text-transform: uppercase; letter-spacing: var(--ls-caps); }
