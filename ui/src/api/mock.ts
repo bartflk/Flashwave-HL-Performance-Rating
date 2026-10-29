@@ -47,6 +47,8 @@ import type {
   HeadToHead,
   SeasonBreakdown,
   StorageOverview,
+  OldSeasonsStatus,
+  OldSeasonAdded,
   StoragePart,
   StatScales,
   LogsTfCareer,
@@ -1610,8 +1612,25 @@ export const mockApi: Api = {
       1500,
     ),
   leagueFreshness: () => delay<LeagueFreshness>({ newest: Math.floor(Date.now() / 1000) - 3 * 86400, officials: 3201, toDownload: 160 }, 150),
+  // Seasons 12 to 23 as the import left them on the 26 October copy.
+  oldSeasonsStatus: () =>
+    delay<OldSeasonsStatus>({
+      index: "F:/logs.tf database/index-v2.sqlite3",
+      seasons: [
+        { season: 12, played: 154, linked: 146, logs: 336, downloaded: 336, rated: 336 },
+        { season: 13, played: 160, linked: 120, logs: 290, downloaded: 0, rated: 0 },
+        ...[24, 25, 26].map((season) => ({ season, played: 300, linked: 290, logs: 700, downloaded: 700, rated: 700 })),
+      ],
+    }),
+  setLogsDumpIndex: (path: string) => delay<OldSeasonsStatus>({ index: path, seasons: [] }),
+  importOldSeason: (season: number) =>
+    delay<OldSeasonAdded>(
+      { imported: { season, competitions: 6, matches: 179, played: 154, withLineups: 147, linked: 146, logs: 336, byRoster: 0, fromTrends: 0, trendsLogs: 0, unlinked: [68059] }, caught: { logs: 336, raw: 336, rosters: 0, searched: 0, rated: 336, done: true } },
+      2500,
+    ),
   updateLeague: () => delay<LeagueCatchUp>({ logs: 160, raw: 158, rosters: 4, searched: 2, rated: 160, done: true }, 2500),
   onLeagueProgress: async (_cb: (p: { what: string; logs: number; raw: number; rosters: number }) => void) => () => {},
+  onOldSeasonProgress: async (_cb: (p: { what: string; logs?: number }) => void) => () => {},
   refreshEtf2l: () => delay<Etf2lRefreshed>({ competitions: 11, results: 168, details: 0, failed: 0, tables: 5 }, 1500),
   findParts: (_logId: number) => delay<FoundParts>({ candidates: 8, added: 0 }, 1200),
   refreshDemostf: (_logId: number) => delay<DemosTfFound>({ listed: 50, matched: 0 }, 1200),

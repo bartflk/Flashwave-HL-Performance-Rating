@@ -375,6 +375,28 @@ impl Db {
         .await?)
     }
 
+    /// Each season held: `(season, played matches, matches with a log, logs,
+    /// logs downloaded, logs rated)` for the Older seasons panel.
+    pub async fn season_coverage(&self, version: &str) -> Result<Vec<(i64, i64, i64, i64, i64, i64)>> {
+        Ok(sqlx::query_as(
+            "SELECT c.season,
+                    COUNT(DISTINCT CASE WHEN m.default_win = 0 AND COALESCE(m.r1, 0) + COALESCE(m.r2, 0) > 0 THEN m.match_id END),
+                    COUNT(DISTINCT l.etf2l_match_id),
+                    COUNT(DISTINCT l.log_id),
+                    COUNT(DISTINCT CASE WHEN l.json_source IS NOT NULL THEN l.log_id END),
+                    COUNT(DISTINCT r.log_id)
+             FROM etf2l_competition c
+             JOIN etf2l_season_match m ON m.competition_id = c.competition_id
+             LEFT JOIN league_log l ON l.etf2l_match_id = m.match_id
+             LEFT JOIN league_rating r ON r.log_id = l.log_id AND r.model_version = ?1
+             WHERE c.stage <> 'Cup'
+             GROUP BY c.season ORDER BY c.season",
+        )
+        .bind(version)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
     /// Sample logs that can join the rating pool: picked, with their JSON,
     /// and not one of the owner's own logs (their officials are in the
     /// sample too, and a game must not be in the pool twice).

@@ -286,12 +286,33 @@ impl Db {
     pub async fn season_matches_without_detail_in(&self, season: i64) -> Result<Vec<i64>> {
         Ok(sqlx::query_scalar(
             "SELECT m.match_id FROM etf2l_season_match m JOIN etf2l_competition c ON c.competition_id = m.competition_id
-             WHERE m.detail_fetched = 0 AND m.default_win = 0 AND c.season = ?1 AND COALESCE(m.r1, 0) + COALESCE(m.r2, 0) > 0
+             WHERE m.default_win = 0 AND c.season = ?1 AND COALESCE(m.r1, 0) + COALESCE(m.r2, 0) > 0
+               -- Read, but with nobody in it: seasons 19 to 21's pages, before
+               -- their players' Steam IDs were looked up.
+               AND (m.detail_fetched = 0 OR NOT EXISTS (SELECT 1 FROM etf2l_season_player p WHERE p.match_id = m.match_id))
              ORDER BY m.time",
         )
         .bind(season)
         .fetch_all(self.pool())
         .await?)
+    }
+
+    /// Who played a match, added beside what its page gave (its map scores
+    /// kept): for a match whose page lists nobody, the players found in its
+    /// logs.
+    pub async fn add_season_players(&self, match_id: i64, players: &[(u32, i64, &str)]) -> Result<()> {
+        let mut tx = self.pool().begin().await?;
+        for (account, team, name) in players {
+            sqlx::query("INSERT OR REPLACE INTO etf2l_season_player (match_id, account_id, team_id, name) VALUES (?1, ?2, ?3, ?4)")
+                .bind(match_id)
+                .bind(i64::from(*account))
+                .bind(team)
+                .bind(name)
+                .execute(&mut *tx)
+                .await?;
+        }
+        tx.commit().await?;
+        Ok(())
     }
 
     /// Who played each of a season's matches, by team: `(match, account, team)`.

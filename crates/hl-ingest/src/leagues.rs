@@ -462,6 +462,21 @@ pub async fn fetch_season(db: &Db, sources: &Sources, season: i64, mut progress:
     Ok(out)
 }
 
+/// An ETF2L player's Steam account, from their own page, read once and
+/// kept (`etf2l_raw` kind `player_steam`; 0 for a page without one).
+pub(crate) async fn steam_of_player(db: &Db, sources: &Sources, etf2l_id: i64) -> Result<Option<u32>> {
+    if let Some((_, json)) = db.etf2l_raw_one("player_steam", etf2l_id).await? {
+        return Ok(json.trim().parse::<u32>().ok().filter(|a| *a != 0));
+    }
+    let Ok(Some(body)) = sources.etf2l_get(&format!("/player/{etf2l_id}")).await else { return Ok(None) };
+    let account = serde_json::from_str::<Value>(&body)
+        .ok()
+        .and_then(|v| v.pointer("/player/steam/id3").and_then(Value::as_str).and_then(|id3| SteamId::parse(id3).ok()))
+        .map(|id| id.account_id());
+    db.store_etf2l_raw("player_steam", etf2l_id, &account.unwrap_or(0).to_string()).await?;
+    Ok(account)
+}
+
 /// Read one match's page: each map's score and who played. False when
 /// ETF2L would not give it.
 pub async fn fetch_match_detail(db: &Db, sources: &Sources, match_id: i64) -> Result<bool> {
@@ -489,17 +504,24 @@ pub async fn fetch_match_detail(db: &Db, sources: &Sources, match_id: i64) -> Re
                 ))
             })
             .collect();
-        let players: Vec<(u32, Option<i64>, String)> = m
-            .get("players")
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-            .filter_map(|p| {
-                let id3 = p.pointer("/steam/id3")?.as_str()?;
-                let account = SteamId::parse(id3).ok()?.account_id();
-                Some((account, p.get("team_id").and_then(Value::as_i64), p.get("name").and_then(Value::as_str).unwrap_or("").to_string()))
-            })
-            .collect();
+        let mut players: Vec<(u32, Option<i64>, String)> = Vec::new();
+        for p in m.get("players").and_then(Value::as_array).into_iter().flatten() {
+            let team = p.get("team_id").and_then(Value::as_i64);
+            let name = p.get("name").and_then(Value::as_str).unwrap_or("").to_string();
+            let account = match p.pointer("/steam/id3").and_then(Value::as_str).and_then(|id3| SteamId::parse(id3).ok()) {
+                Some(id) => Some(id.account_id()),
+                // Seasons 19 to 21's pages list their players with an empty
+                // `steam` (Flashy's old-season import found none of them in
+                // a log): the player's own page has it.
+                None => match p.get("id").and_then(Value::as_i64) {
+                    Some(etf2l_id) => steam_of_player(db, sources, etf2l_id).await?,
+                    None => None,
+                },
+            };
+            if let Some(account) = account {
+                players.push((account, team, name));
+            }
+        }
         let maps_ref: Vec<(i64, &str, i64, i64, bool)> = maps.iter().map(|(o, m, a, b, g)| (*o, m.as_str(), *a, *b, *g)).collect();
         let players_ref: Vec<(u32, Option<i64>, &str)> = players.iter().map(|(a, t, n)| (*a, *t, n.as_str())).collect();
         db.put_season_match_detail(match_id, &maps_ref, &players_ref).await?;

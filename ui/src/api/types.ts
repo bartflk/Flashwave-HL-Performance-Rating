@@ -2571,6 +2571,17 @@ export interface LeagueCatchUp {
   done: boolean;
 }
 
+/** Older seasons (old_seasons.rs): what is held, season by season. */
+export interface OldSeasonsStatus {
+  index: string | null;
+  seasons: { season: number; played: number; linked: number; logs: number; downloaded: number; rated: number }[];
+}
+
+export interface OldSeasonAdded {
+  imported: { season: number; competitions: number; matches: number; played: number; withLineups: number; linked: number; logs: number; byRoster: number; fromTrends: number; trendsLogs: number; unlinked: number[] };
+  caught: LeagueCatchUp;
+}
+
 // ---- Season rankings and the deeper profile (the MVP research, October 2026)
 
 /** Everything summed over a player's logs on one class. */

@@ -102,6 +102,51 @@ pub async fn league_freshness(state: State<'_, AppState>) -> CmdResult<LeagueFre
     Ok(LeagueFreshness { newest, officials, to_download })
 }
 
+/// Settings > Older seasons: which seasons are held and how far, and the
+/// logs.tf dump's index their logs are found in.
+#[tauri::command]
+pub async fn old_seasons_status(state: State<'_, AppState>) -> CmdResult<hl_ingest::old_seasons::Status> {
+    Ok(hl_ingest::old_seasons::status(&state.db).await?)
+}
+
+/// Use this file as the logs.tf dump's index (`hl logsdump`'s index-v2).
+#[tauri::command]
+pub async fn set_logs_dump_index(state: State<'_, AppState>, path: String) -> CmdResult<hl_ingest::old_seasons::Status> {
+    if !std::path::Path::new(&path).is_file() {
+        return Err(CmdError::new("not_found", "That file is not there."));
+    }
+    state.db.set_setting(hl_ingest::old_seasons::INDEX_KEY, &path).await?;
+    Ok(hl_ingest::old_seasons::status(&state.db).await?)
+}
+
+/// Add one season from before the league sample's window (Flashy, for
+/// Clark): ETF2L's results and who played, each match's logs found in the
+/// dump's index, then downloaded and rated, telling the window each step.
+#[tauri::command]
+pub async fn import_old_season(app: AppHandle, state: State<'_, AppState>, season: i64) -> CmdResult<OldSeasonAdded> {
+    let _guard = BusyGuard::acquire(&state.busy).ok_or_else(|| CmdError::new("busy", "A sync is running; add the season when it is done."))?;
+    let index = hl_ingest::old_seasons::index_path(&state.db)
+        .await?
+        .ok_or_else(|| CmdError::new("no_index", "The logs.tf dump's index is not on this computer."))?;
+    let (weights, _) = hl_rating::Weights::load(&state.db_path.with_file_name("weights.toml"));
+    let say = |what: &str| {
+        let _ = app.emit("oldseason://progress", serde_json::json!({ "what": what }));
+    };
+    let imported = hl_ingest::old_seasons::import(&state.db, &state.sources, &weights, &index, season, |w| say(w)).await?;
+    let caught = hl_ingest::league_sample::catch_up(&state.db, &state.sources, &weights, 20_000, 3_600, |what, c| {
+        let _ = app.emit("oldseason://progress", serde_json::json!({ "what": what, "logs": c.logs }));
+    })
+    .await?;
+    Ok(OldSeasonAdded { imported, caught })
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OldSeasonAdded {
+    pub imported: hl_ingest::old_seasons::Imported,
+    pub caught: hl_ingest::league_sample::CatchUp,
+}
+
 /// Settings > League data: catch up with ETF2L's officials now, as far as
 /// it goes, telling the window each step (Flashy: "someone could also
 /// manually update the snapshot for themselves").

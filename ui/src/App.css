@@ -1887,3 +1887,13 @@ button.mini {
 .bk-meter { display: block; height: 8px; border-radius: 4px; background: var(--sunken); overflow: hidden; }
 .bk-meter > span { display: block; height: 100%; background: var(--accent); }
 .bk-meter > span.out { background: var(--ok); }
+
+/* Older seasons (settings/OlderSeasonsPanel.tsx). */
+.os-index { margin-top: 10px; font-size: var(--fs-small); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.os-step { margin-top: 10px; display: flex; align-items: center; gap: 8px; }
+.os-table { width: 100%; margin-top: 12px; border-collapse: collapse; font-size: var(--fs-ui); }
+.os-table th { text-align: left; font-family: var(--font-display); font-weight: 700; font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); padding: 0 8px 6px; border-bottom: 1px solid var(--border); }
+.os-table td { padding: 6px 8px; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.os-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.os-act { text-align: right; white-space: nowrap; }
+.os-done { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--ok); }

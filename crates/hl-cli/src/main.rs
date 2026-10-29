@@ -1319,8 +1319,8 @@ async fn run() -> Result<()> {
             let (weights, _) = hl_rating::Weights::load(&db_path.with_file_name("weights.toml"));
             let r = hl_ingest::old_seasons::import(&db, &sources, &weights, &dump, season.parse()?, |what| eprintln!("  {what}")).await?;
             println!(
-                "Season {}: {} competitions, {} matches, {} played, {} with lineups, {} linked to {} logs; {} with lineups but no log",
-                r.season, r.competitions, r.matches, r.played, r.with_lineups, r.linked, r.logs, r.unlinked.len()
+                "Season {}: {} competitions, {} matches, {} played, {} linked by trends.tf, {} with lineups, {} by rosters, {} linked to {} logs; {} unlinked",
+                r.season, r.competitions, r.matches, r.played, r.from_trends, r.with_lineups, r.by_roster, r.linked, r.logs, r.unlinked.len()
             );
             if !r.unlinked.is_empty() {
                 println!("  unlinked: {:?}", r.unlinked);

@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Help } from "./StatTip";
 import { LeagueSamplePanel } from "./LeagueSamplePanel";
 import { BackupsPanel } from "./settings/BackupsPanel";
+import { OlderSeasonsPanel } from "./settings/OlderSeasonsPanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../api/client";
@@ -246,6 +247,7 @@ export function Settings({
               summary={t("Every team's officials, for the season tables, medals and MVPs")}
               info={t("The app ships with every ETF2L official's ratings up to its release, and each sync adds the officials played since. Update now to catch up in one go.")}>
               <LeagueDataPanel />
+              <OlderSeasonsPanel />
             </SettingsSection>
 
             <SettingsSection id="data" icon="database" title={t("Data")} keywords="rebuild database reprocess"
