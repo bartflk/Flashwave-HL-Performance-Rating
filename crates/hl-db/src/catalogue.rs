@@ -282,10 +282,26 @@ impl Db {
     }
 
     /// The league sample's ratings for a model: `(log, account, class,
-    /// score, minutes, groups JSON)`, replacing the model's old ones.
+    /// score, minutes, groups JSON)`, replacing the model's old ones for
+    /// every log whose JSON is here. A log whose JSON is not -- a restored
+    /// backup leaves the league's logs out, and they download again --
+    /// keeps the rating it had, rather than the season tables emptying until
+    /// they are back.
     pub async fn replace_league_ratings(&self, version: &str, rows: &[(i64, u32, &str, f64, f64, String)]) -> Result<()> {
         let mut tx = self.pool().begin().await?;
-        sqlx::query("DELETE FROM league_rating WHERE model_version = ?1").bind(version).execute(&mut *tx).await?;
+        sqlx::query("DELETE FROM league_rating WHERE model_version = ?1 AND log_id IN (SELECT log_id FROM league_log_json)")
+            .bind(version)
+            .execute(&mut *tx)
+            .await?;
+        // Whatever is written now replaces what was there, JSON or not.
+        for chunk in rows.chunks(500) {
+            let ids = serde_json::to_string(&chunk.iter().map(|r| r.0).collect::<std::collections::BTreeSet<i64>>())?;
+            sqlx::query("DELETE FROM league_rating WHERE model_version = ?1 AND log_id IN (SELECT value FROM json_each(?2))")
+                .bind(version)
+                .bind(ids)
+                .execute(&mut *tx)
+                .await?;
+        }
         Self::insert_league_ratings(&mut tx, version, rows).await?;
         tx.commit().await?;
         Ok(())

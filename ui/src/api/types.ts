@@ -1934,6 +1934,36 @@ export interface Backup {
   madeAt: number;
 }
 
+/** A file beside the copies that takes room (backup.rs). */
+export interface StorageStray {
+  path: string;
+  bytes: number;
+  madeAt: number;
+  kind: "partial" | "unreadable" | "replaced";
+}
+
+/** The database, its copies and what else lies beside them (backup.rs). */
+export interface StorageOverview {
+  dir: string;
+  database: number;
+  backups: Backup[];
+  backupsBytes: number;
+  strays: StorageStray[];
+  straysBytes: number;
+  keep: number;
+  budget: number;
+}
+
+/** One part of what the database holds. */
+export interface StoragePart {
+  key: string;
+  label: string;
+  bytes: number;
+  inBackups: boolean;
+  comesBack: boolean;
+  tables: [string, number][];
+}
+
 export interface Backups {
   dir: string;
   items: Backup[];

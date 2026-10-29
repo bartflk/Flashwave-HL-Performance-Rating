@@ -1856,3 +1856,34 @@ button.mini {
 .dl-report li::marker { color: var(--accent); }
 .dl-took { color: var(--muted); }
 .stat-colours-sample { display: inline-flex; gap: 6px; margin-left: 8px; }
+
+/* Backups (settings/BackupsPanel.tsx): what the app keeps on disk, its
+   copies, what an interrupted copy left behind, and what the database holds. */
+.bk-total { margin-top: 14px; font-size: var(--fs-section); }
+.bk-total strong { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-num-s); font-variant-numeric: tabular-nums; }
+.bk-bar { display: flex; height: 12px; margin-top: 8px; border-radius: 6px; overflow: hidden; background: var(--sunken); border: 1px solid var(--border); }
+.bk-bar > span { height: 100%; }
+.bk-db { background: var(--accent); }
+.bk-copies { background: color-mix(in srgb, var(--accent) 45%, var(--sunken)); }
+.bk-strays { background: var(--bad); }
+.bk-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 8px 0 0; padding: 0; list-style: none; font-size: var(--fs-small); color: var(--muted); }
+.bk-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.bk-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+.bk-legend strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.bk-actions { margin-top: 16px; gap: 8px; flex-wrap: wrap; align-items: center; }
+.bk-note { margin-top: 10px; }
+.bk-sub { margin: 22px 0 6px; }
+.bk-table { width: 100%; margin-top: 12px; border-collapse: collapse; font-size: var(--fs-ui); }
+.bk-table th { text-align: left; font-family: var(--font-display); font-weight: 700; font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); padding: 0 8px 6px; border-bottom: 1px solid var(--border); }
+.bk-table td { padding: 8px; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); vertical-align: middle; }
+.bk-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bk-row-actions { text-align: right; white-space: nowrap; }
+.bk-row-actions button { margin-left: 6px; }
+.bk-danger { border-color: var(--bad); color: var(--bad); }
+.bk-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); font-family: var(--font-display); font-weight: 700; font-size: var(--fs-micro); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+.bk-tag.out { border-color: color-mix(in srgb, var(--ok) 50%, transparent); color: var(--ok); }
+.bk-tables { font-size: var(--fs-xs); margin-top: 2px; }
+.bk-share { width: 34%; }
+.bk-meter { display: block; height: 8px; border-radius: 4px; background: var(--sunken); overflow: hidden; }
+.bk-meter > span { display: block; height: 100%; background: var(--accent); }
+.bk-meter > span.out { background: var(--ok); }

@@ -78,6 +78,8 @@ import type {
   CartView,
   Backup,
   Backups,
+  StorageOverview,
+  StoragePart,
   PathRow,
   BuildingRow,
   PartScore,
@@ -211,6 +213,9 @@ const realApi = {
   allHistory: () => invoke<boolean>("all_history"),
   setAllHistory: (on: boolean) => invoke<boolean>("set_all_history", { on }),
   listBackups: () => invoke<Backups>("list_backups"),
+  getStorageOverview: () => invoke<StorageOverview>("get_storage_overview"),
+  getStorageBreakdown: () => invoke<StoragePart[]>("get_storage_breakdown"),
+  deleteBackup: (path: string) => invoke<number>("delete_backup", { path }),
   /** Show a file or folder in Explorer. */
   revealPath: (path: string) => invoke<void>("reveal_path", { path }),
   languageFiles: () => invoke<LanguageFiles>("language_files"),

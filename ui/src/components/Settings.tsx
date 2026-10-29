@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Help } from "./StatTip";
 import { LeagueSamplePanel } from "./LeagueSamplePanel";
+import { BackupsPanel } from "./settings/BackupsPanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../api/client";
@@ -919,92 +920,6 @@ function StatColoursPanel() {
           </span>
         )}
       </div>
-    </div>
-  );
-}
-
-/**
- * Copies of the database. One is taken before every sync and rebuild, five
- * are kept, and this is where to check they exist — the file holds every log,
- * demo index and rating, and nothing else here can rebuild it from nothing.
- */
-function BackupsPanel() {
-  const qc = useQueryClient();
-  const q = useQuery({ queryKey: ["backups"], queryFn: api.listBackups });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState<string | null>(null);
-
-  /** A name that says what it is and when, so a folder of them sorts. */
-  function suggestedName() {
-    const d = new Date();
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `flashwave-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.sqlite3`;
-  }
-
-  async function saveElsewhere() {
-    setBusy(true);
-    setError(null);
-    setSaved(null);
-    try {
-      const b = await api.saveBackupAs(suggestedName());
-      if (b) setSaved(b.path);
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function backupNow() {
-    setBusy(true);
-    setError(null);
-    try {
-      await api.backupNow();
-      await qc.invalidateQueries({ queryKey: ["backups"] });
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const items = q.data?.items ?? [];
-  return (
-    <div className="panel">
-      <h2>{t("Backups")}</h2>
-      <p className="hint">{tx("Taken before every sync and rebuild; the newest five are kept. To restore one, close the app and rename it over {0}.", { "0": <code>{tr("hl.sqlite3")}</code> })}</p>
-      <p className="hint">
-        {tx("{0} Keep a copy on another drive.", { "0": <strong>{tr("Uninstalling can delete these.")}</strong> })}</p>
-      <div className="row" style={{ marginTop: 14 }}>
-        <button onClick={() => void backupNow()} disabled={busy}>
-          {busy ? tr("Copying…") : tr("Back up now")}
-        </button>
-        <button onClick={() => void saveElsewhere()} disabled={busy}>
-          {busy ? tr("Copying…") : tr("Save a copy elsewhere…")}
-        </button>
-      </div>
-      {saved && (
-        <p className="hint" style={{ marginTop: 10 }}>{tx("Written to {0}.", { "0": <code>{saved}</code> })}</p>
-      )}
-      {error && <p className="error" style={{ marginTop: 10 }}>{error}</p>}
-      {items.length === 0 ? (
-        <p className="hint" style={{ marginTop: 14 }}>{tr("No copies yet. The next sync makes one.")}</p>
-      ) : (
-        <dl className="kv" style={{ marginTop: 16 }}>
-          <dt>{tr("Folder")}</dt>
-          <dd className="path-row">
-            <code>{q.data?.dir}</code>
-            <button className="linkish" onClick={() => void api.revealPath(q.data!.dir)}>{tr("Show in Explorer")}</button>
-          </dd>
-          {items.map((b) => (
-            <Fragment key={b.path}>
-              <dt>{formatDate(b.madeAt, true)}</dt>
-              <dd>{tx("{0} MB", { "0": (b.bytes / 1_000_000).toFixed(0) })}</dd>
-            </Fragment>
-          ))}
-        </dl>
-      )}
     </div>
   );
 }

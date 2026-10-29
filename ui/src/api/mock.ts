@@ -46,6 +46,8 @@ import type {
   DataReport,
   HeadToHead,
   SeasonBreakdown,
+  StorageOverview,
+  StoragePart,
   StatScales,
   LogsTfCareer,
   LogsTfPlayer,
@@ -1097,6 +1099,44 @@ export const mockApi: Api = {
   setAllHistory: (on: boolean) => {
     allHistory = on;
     return delay(on);
+  },
+  // A tester's folder as it was in October 2026: a whole copy of a 2.3 GB
+  // database from before, a new one without the league's logs, a copy a
+  // sync was cut off writing, and the database a restore replaced.
+  getStorageOverview: () => {
+    const now = Math.floor(Date.now() / 1000);
+    const backups = [
+      { path: "C:/data/backups/hl-20261029-201000.sqlite3", bytes: 760_000_000, madeAt: now - 1_800 },
+      { path: "C:/data/backups/hl-20261028-190000.sqlite3", bytes: 2_300_000_000, madeAt: now - 90_000 },
+    ];
+    const strays: StorageOverview["strays"] = [
+      { path: "C:/data/backups/hl-20261027-150000.part", bytes: 1_900_000_000, madeAt: now - 190_000, kind: "partial" },
+      { path: "C:/data/hl.sqlite3.replaced", bytes: 1_400_000_000, madeAt: now - 600_000, kind: "replaced" },
+    ];
+    return delay<StorageOverview>({
+      dir: "C:/data/backups",
+      database: 2_300_000_000,
+      backups,
+      backupsBytes: backups.reduce((n, b) => n + b.bytes, 0),
+      strays,
+      straysBytes: strays.reduce((n, b) => n + b.bytes, 0),
+      keep: 5,
+      budget: 3_000_000_000,
+    });
+  },
+  // Measured on the 25 October copy, in the app's grouping.
+  getStorageBreakdown: () =>
+    delay<StoragePart[]>([
+      { key: "league_logs", label: "League officials' logs: logs.tf JSON and server logs", bytes: 746_000_000, inBackups: false, comesBack: true, tables: [["league_rawlog", 540_000_000], ["league_log_json", 206_000_000]] },
+      { key: "ratings", label: "Ratings, baselines and stats", bytes: 289_000_000, inBackups: true, comesBack: false, tables: [["baseline", 134_000_000], ["rating", 103_000_000], ["log_weapon", 15_000_000]] },
+      { key: "demos", label: "Demo timelines, aim and positions", bytes: 150_000_000, inBackups: true, comesBack: false, tables: [["demo_timeline", 127_000_000], ["demo_path", 16_000_000]] },
+      { key: "your_logs", label: "Your logs, server logs and kills", bytes: 135_000_000, inBackups: true, comesBack: true, tables: [["rawlog", 80_000_000], ["log_raw", 28_000_000], ["kill_event", 22_000_000]] },
+      { key: "league", label: "League ratings, seasons, rosters and teams", bytes: 70_000_000, inBackups: true, comesBack: true, tables: [["league_rating", 58_000_000]] },
+      { key: "other", label: "Settings, bookmarks and the rest", bytes: 4_000_000, inBackups: true, comesBack: false, tables: [["app_config", 1_000_000]] },
+    ]),
+  deleteBackup: (path: string) => {
+    console.info("would delete", path);
+    return delay(1_900_000_000);
   },
   listBackups: () =>
     delay({

@@ -137,6 +137,70 @@ impl Db {
         Ok(())
     }
 
+    /// Make a fresh copy (from [`Db::vacuum_into`]) a backup: the league's
+    /// logs out of it -- every official's logs.tf JSON and server log, half
+    /// the database, all of it downloaded again by the league sample -- and
+    /// the file compacted. Their rows stay, marked not downloaded, so a
+    /// restored copy fetches them on the next syncs; their ratings stay too
+    /// ([`Db::replace_league_ratings`]). The copy only, never the database.
+    pub async fn slim_backup(path: &Path) -> Result<()> {
+        let opts = SqliteConnectOptions::new().filename(path).create_if_missing(false);
+        let mut conn = <sqlx::sqlite::SqliteConnection as sqlx::Connection>::connect_with(&opts)
+            .await
+            .with_context(|| format!("opening the copy `{}`", path.display()))?;
+        for sql in [
+            // A copy nobody else has open, written once: no journal and no
+            // waiting on the disk (64 s to 19 s on a 1.5 GB copy). A crash
+            // midway leaves the `.part`, which is never taken for a backup.
+            "PRAGMA journal_mode = OFF",
+            "PRAGMA synchronous = OFF",
+            "DELETE FROM league_rawlog",
+            "DELETE FROM league_log_json",
+            "UPDATE league_log SET json_source = NULL, json_attempts = 0, raw_state = NULL
+               WHERE json_source IS NOT NULL AND json_source <> 'snapshot'",
+            "INSERT INTO app_config (key, value, updated_at) VALUES ('backup_without_league_logs', '1', datetime('now'))
+               ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+            "VACUUM",
+        ] {
+            sqlx::query(sql).execute(&mut conn).await.with_context(|| format!("slimming the copy `{}`", path.display()))?;
+        }
+        sqlx::Connection::close(conn).await?;
+        Ok(())
+    }
+
+    /// What each table takes on disk, its indexes with it, largest first:
+    /// for the Backups panel's breakdown. SQLite's page count where the
+    /// build has it, else the bytes in each table's rows (slower, and close).
+    pub async fn table_sizes(&self) -> Result<Vec<(String, i64)>> {
+        let pages: Result<Vec<(String, i64)>, sqlx::Error> = sqlx::query_as(
+            "SELECT COALESCE(m.tbl_name, d.name), SUM(d.pgsize) FROM dbstat d
+             LEFT JOIN sqlite_master m ON m.name = d.name
+             GROUP BY 1 ORDER BY 2 DESC",
+        )
+        .fetch_all(&self.pool)
+        .await;
+        if let Ok(rows) = pages {
+            return Ok(rows);
+        }
+        let tables: Vec<String> = sqlx::query_scalar("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+            .fetch_all(&self.pool)
+            .await?;
+        let mut out = Vec::new();
+        for t in tables {
+            let cols: Vec<String> = sqlx::query_scalar(&format!("SELECT name FROM pragma_table_info('{}')", t.replace('\'', "''")))
+                .fetch_all(&self.pool)
+                .await?;
+            if cols.is_empty() {
+                continue;
+            }
+            let sum = cols.iter().map(|c| format!("COALESCE(LENGTH(\"{}\"), 0)", c.replace('"', "\"\""))).collect::<Vec<_>>().join(" + ");
+            let bytes: Option<i64> = sqlx::query_scalar(&format!("SELECT SUM({sum}) FROM \"{}\"", t.replace('"', "\"\""))).fetch_one(&self.pool).await?;
+            out.push((t, bytes.unwrap_or(0)));
+        }
+        out.sort_by_key(|t| std::cmp::Reverse(t.1));
+        Ok(out)
+    }
+
     /// How many logs a database file holds, without opening it properly.
     ///
     /// Read-only and without migrations, because the caller is asking about a

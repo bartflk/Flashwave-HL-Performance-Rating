@@ -723,6 +723,25 @@ pub async fn list_backups(state: State<'_, AppState>) -> CmdResult<Backups> {
     })
 }
 
+/// The database, its copies and what else lies beside them (Flashy: a
+/// tester's folder had reached 14 GB, and nothing in the app said so).
+#[tauri::command]
+pub async fn get_storage_overview(state: State<'_, AppState>) -> CmdResult<hl_ingest::backup::Overview> {
+    Ok(hl_ingest::backup::overview(&state.db_path))
+}
+
+/// What the database is made of, by part. Reads the whole file: seconds.
+#[tauri::command]
+pub async fn get_storage_breakdown(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::backup::Part>> {
+    Ok(hl_ingest::backup::breakdown(&state.db).await?)
+}
+
+/// Delete one copy, or a half-written or set-aside file, the overview lists.
+#[tauri::command]
+pub async fn delete_backup(state: State<'_, AppState>, path: String) -> CmdResult<u64> {
+    Ok(hl_ingest::backup::delete(&state.db_path, &path)?)
+}
+
 /// Whether every log ever played is downloaded, rather than the recent years
 /// plus every official.
 #[tauri::command]
