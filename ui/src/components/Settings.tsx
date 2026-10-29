@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { onOpenSettingsSection, takePendingSettingsSection } from "../lib/goto";
 import { Help } from "./StatTip";
 import { LeagueSamplePanel } from "./LeagueSamplePanel";
 import { BackupsPanel } from "./settings/BackupsPanel";
@@ -45,6 +46,23 @@ export function Settings({
   const [query, setQuery] = useState("");
   const [foldAll, setFoldAll] = useState({ n: 0, closed: false });
   const [focus, setFocus] = useState<{ id: string; n: number } | null>(null);
+  // A section asked for from elsewhere: the storage card's "Open Backups".
+  // A moment after the page is shown, so the tab's own scroll reset does
+  // not undo it.
+  const [askedFirst] = useState(() => takePendingSettingsSection());
+  useEffect(() => {
+    if (!askedFirst) return;
+    const later = window.setTimeout(() => setFocus((f) => ({ id: askedFirst, n: (f?.n ?? 0) + 1 })), 250);
+    return () => window.clearTimeout(later);
+  }, [askedFirst]);
+  useEffect(() => {
+    const later: number[] = [];
+    const off = onOpenSettingsSection((id) => later.push(window.setTimeout(() => setFocus((f) => ({ id, n: (f?.n ?? 0) + 1 })), 250)));
+    return () => {
+      off();
+      later.forEach((t) => window.clearTimeout(t));
+    };
+  }, []);
   const [matched, setMatched] = useState<Record<string, boolean>>({});
   const report = useCallback((id: string, m: boolean) => setMatched((x) => (x[id] === m ? x : { ...x, [id]: m })), []);
   const shared = useMemo(() => ({ query, foldAll, report, focus }), [query, foldAll, report, focus]);
