@@ -410,6 +410,7 @@ pub struct Weapon {
 #[serde(rename_all = "camelCase")]
 pub struct ClassDeep {
     pub class: String,
+    pub coverage: Coverage,
     pub maps: usize,
     pub minutes: f64,
     /// The headline row: rating, impact and the usual per-30s, with verdicts.
@@ -433,7 +434,32 @@ pub struct ClassDeep {
 #[serde(rename_all = "camelCase")]
 pub struct PlayerDeep {
     pub account_id: u32,
+    /// Officials only, or every game.
+    pub officials_only: bool,
     pub classes: Vec<ClassDeep>,
+    /// Classes left out for having too few games: `(class, games)`.
+    pub too_few: Vec<(String, usize)>,
+}
+
+/// What a class's numbers were made from, and what is missing and why
+/// (Flashy: "a way to see what is missing and why").
+#[derive(Debug, Clone, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Coverage {
+    /// Maps of 5 minutes or more on the class: all of them, the officials,
+    /// and the ones used here.
+    pub all_maps: usize,
+    pub official_maps: usize,
+    pub used_maps: usize,
+    /// Of those used: read from a server log (fights, impact, KAST, sentries).
+    pub raw_maps: usize,
+    /// Of those used: rated.
+    pub rated_maps: usize,
+    /// Of those used: an opposite number found, and their ETF2L division known.
+    pub opponent_maps: usize,
+    pub division_maps: usize,
+    /// Players on the class each stat is placed among.
+    pub population: usize,
 }
 
 /// What a stat is, how it is worked out from the totals, and which way is good.
@@ -545,33 +571,84 @@ fn verdict(p: f64) -> &'static str {
 
 /// A player's numbers on every class they have [`MIN_POPULATION_MAPS`] on,
 /// each placed among everyone else's on that class.
-pub async fn player_deep(db: &Db, account: u32) -> Result<PlayerDeep> {
+///
+/// Officials only by default (Flashy: "can this be for officials by
+/// default"): the people they are placed among are almost all officials, so
+/// their own scrims and pugs would not compare like with like. `progress`
+/// hears each step: `(what, done, total)`.
+pub async fn player_deep(db: &Db, account: u32, officials_only: bool, mut progress: impl FnMut(&str, usize, usize)) -> Result<PlayerDeep> {
+    const STEPS: usize = 4;
+    progress("Reading their games", 0, STEPS);
     let mine = db.log_stats(Some(account)).await?;
+    progress("Telling the officials apart", 1, STEPS);
+    let officials = db.official_log_ids().await?;
+    let parts = db.superseded_log_ids().await?;
+    let in_scope = |log_id: i64| !parts.contains(&log_id) && (!officials_only || officials.contains(&log_id));
+    let mut all_by_class: BTreeMap<String, (usize, usize)> = BTreeMap::new();
     let mut by_class: BTreeMap<String, Vec<&LogStat>> = BTreeMap::new();
-    for s in mine.iter().filter(|s| s.time_s >= MIN_SECS) {
-        by_class.entry(s.class.clone()).or_default().push(s);
+    for s in mine.iter().filter(|s| s.time_s >= MIN_SECS && !parts.contains(&s.log_id)) {
+        let e = all_by_class.entry(s.class.clone()).or_default();
+        e.0 += 1;
+        if officials.contains(&s.log_id) {
+            e.1 += 1;
+        }
+        if in_scope(s.log_id) {
+            by_class.entry(s.class.clone()).or_default().push(s);
+        }
     }
-    let rated = db.rated_games(hl_rating::MODEL_VERSION, Some(account)).await?;
-    let opp = crate::catalogue::opponent_divisions(db, &rated.iter().map(|g| (g.log_id, g.account_id, g.played_at)).collect::<Vec<_>>()).await?;
+    progress("Reading their ratings", 2, STEPS);
+    let rated: Vec<hl_db::RatedGame> =
+        db.rated_games(hl_rating::MODEL_VERSION, Some(account)).await?.into_iter().filter(|g| in_scope(g.log_id)).collect();
+    // Against each division: the opposite number's division at the time
+    // (it was the player's own, a mistake the audit found).
+    progress("Finding each opposite number", 3, STEPS);
+    let when: HashMap<i64, i64> = rated.iter().map(|g| (g.log_id, g.played_at)).collect();
+    let mut opposite: HashMap<(i64, String), i64> = HashMap::new();
+    for (log_id, class, opp) in db.opposite_numbers(account).await? {
+        opposite.entry((log_id, class)).or_insert(opp);
+    }
+    let pairs: Vec<(i64, u32, i64)> =
+        opposite.iter().filter_map(|((log_id, _), opp)| Some((*log_id, u32::try_from(*opp).ok()?, *when.get(log_id)?))).collect();
+    let opp = crate::catalogue::opponent_divisions(db, &pairs).await?;
     let weapons = db.log_weapons(account).await?;
 
+    let too_few: Vec<(String, usize)> = all_by_class
+        .iter()
+        .filter(|(c, _)| by_class.get(*c).map_or(0, |r| r.len()) < MIN_POPULATION_MAPS)
+        .map(|(c, _)| (c.clone(), by_class.get(c).map_or(0, |r| r.len())))
+        .filter(|(_, n)| *n > 0)
+        .collect();
+    let n_classes = by_class.values().filter(|r| r.len() >= MIN_POPULATION_MAPS).count();
     let mut classes = Vec::new();
     for (class, rows) in by_class {
         if rows.len() < MIN_POPULATION_MAPS {
             continue;
         }
+        progress(&format!("Placing them among everyone on {class}"), STEPS + classes.len(), STEPS + n_classes);
         let mut t = Totals::default();
         for r in &rows {
             t.add(r);
         }
         // Everyone on the class: one total per player.
-        let all = db.log_stats_of_class(&class).await?;
+        let all: Vec<LogStat> = db.log_stats_of_class(&class).await?.into_iter().filter(|r| in_scope(r.log_id)).collect();
         let scale = ImpactScale::of(&all);
         let mut players: HashMap<i64, Totals> = HashMap::new();
         for r in all.iter().filter(|r| r.time_s >= MIN_SECS) {
             players.entry(r.account_id).or_default().add(r);
         }
         let pop: Vec<&Totals> = players.values().filter(|p| p.maps >= MIN_POPULATION_MAPS).collect();
+        let (all_maps, official_maps) = all_by_class.get(&class).copied().unwrap_or_default();
+        let rated_here: std::collections::HashSet<i64> = rated.iter().filter(|g| g.class == class).map(|g| g.log_id).collect();
+        let coverage = Coverage {
+            all_maps,
+            official_maps,
+            used_maps: rows.len(),
+            raw_maps: rows.iter().filter(|r| r.impact.is_some()).count(),
+            rated_maps: rows.iter().filter(|r| rated_here.contains(&r.log_id)).count(),
+            opponent_maps: rows.iter().filter(|r| opposite.contains_key(&(r.log_id, class.clone()))).count(),
+            division_maps: rows.iter().filter(|r| opposite.contains_key(&(r.log_id, class.clone())) && opp.contains_key(&r.log_id)).count(),
+            population: pop.len(),
+        };
         let stat = |def: &Def| -> Option<Stat> {
             let value = (def.f)(&t)?;
             let mut vals: Vec<f64> = pop.iter().filter(|p| !def.raw || p.raw_time_s > 0).filter_map(|p| (def.f)(p)).collect();
@@ -650,6 +727,7 @@ pub async fn player_deep(db: &Db, account: u32) -> Result<PlayerDeep> {
 
         classes.push(ClassDeep {
             class: class.clone(),
+            coverage,
             maps: t.maps,
             minutes: t.time_s as f64 / 60.0,
             headline,
@@ -666,7 +744,8 @@ pub async fn player_deep(db: &Db, account: u32) -> Result<PlayerDeep> {
         });
     }
     classes.sort_by_key(|c| std::cmp::Reverse(c.maps));
-    Ok(PlayerDeep { account_id: account, classes })
+    progress("Done", STEPS + n_classes, STEPS + n_classes);
+    Ok(PlayerDeep { account_id: account, officials_only, classes, too_few })
 }
 
 #[cfg(test)]

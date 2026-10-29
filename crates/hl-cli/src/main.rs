@@ -1781,11 +1781,12 @@ async fn run() -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&p)?);
             Ok(())
         }
-        ["deep", account] => {
-            // A player's deeper profile, as JSON.
+        ["deep", account, rest @ ..] => {
+            // A player's deeper profile, as JSON: officials only, or every
+            // game with --all.
             let db = Db::connect(&db_path).await?;
             let a = hl_core::SteamId::parse(account)?.account_id();
-            let d = hl_ingest::season_stats::player_deep(&db, a).await?;
+            let d = hl_ingest::season_stats::player_deep(&db, a, !rest.contains(&"--all"), |what, done, total| eprintln!("  {done}/{total} {what}")).await?;
             println!("{}", serde_json::to_string_pretty(&d)?);
             Ok(())
         }

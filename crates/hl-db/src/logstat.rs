@@ -213,6 +213,43 @@ impl Db {
         .await?)
     }
 
+    /// Every log known as an ETF2L official: the league sample's, the owner's
+    /// matches classified as one, and any log trends.tf linked to a match.
+    pub async fn official_log_ids(&self) -> Result<std::collections::HashSet<i64>> {
+        let ids: Vec<i64> = sqlx::query_scalar(
+            "SELECT log_id FROM league_log
+             UNION SELECT log_id FROM match_context WHERE kind = 'official'
+             UNION SELECT log_id FROM log_index WHERE etf2l_match_id IS NOT NULL",
+        )
+        .fetch_all(self.pool())
+        .await?;
+        Ok(ids.into_iter().collect())
+    }
+
+    /// Logs a stored combined log stands for: each map counted once, through
+    /// the combine (the audit found officials counted twice, the combine and
+    /// ETF2L's per-map logs).
+    pub async fn superseded_log_ids(&self) -> Result<std::collections::HashSet<i64>> {
+        let ids: Vec<i64> = sqlx::query_scalar("SELECT log_id FROM log_index WHERE superseded_by IS NOT NULL").fetch_all(self.pool()).await?;
+        Ok(ids.into_iter().collect())
+    }
+
+    /// For each of a player's logs, the opposite number on their main class:
+    /// the other player whose main class it was, the one with the most time
+    /// on it (Highlander fields one of each class a side). `(log, class,
+    /// opponent)`.
+    pub async fn opposite_numbers(&self, account: u32) -> Result<Vec<(i64, String, i64)>> {
+        Ok(sqlx::query_as(
+            "SELECT s.log_id, s.class, o.account_id FROM log_stat s
+             JOIN log_stat o ON o.log_id = s.log_id AND o.class = s.class AND o.account_id <> s.account_id AND o.main
+             WHERE s.account_id = ?1 AND s.main
+             ORDER BY s.log_id, o.time_s DESC",
+        )
+        .bind(i64::from(account))
+        .fetch_all(self.pool())
+        .await?)
+    }
+
     /// Forgets every row, to read them all again.
     pub async fn clear_log_stats(&self) -> Result<()> {
         sqlx::query("DELETE FROM log_stat").execute(self.pool()).await?;
