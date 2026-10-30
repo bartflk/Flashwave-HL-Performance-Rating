@@ -22,6 +22,9 @@ use std::path::Path;
 const BEFORE_S: i64 = 3 * 3600;
 /// ...and after: a match played late on its night, or both maps back to back.
 const AFTER_S: i64 = 8 * 3600;
+/// A week's deadline stands for a match played any day of the week before
+/// it, and a match is often a day or two late.
+const DEADLINE_WEEK_S: i64 = 8 * 86400;
 /// Players of each lineup a log must hold to be the match's: a scrim of one
 /// of the teams the same evening has one lineup, not both.
 const MIN_EACH_SIDE: usize = 5;
@@ -95,6 +98,12 @@ const SAME_GAME_S: i64 = 15;
 /// A log whose length is the sum of two or more of the match's others, to
 /// this many seconds, is their combine.
 const COMBINE_SLACK_S: i64 = 30;
+
+/// A week's deadline for a time: midnight in Central Europe, 23:00 UTC in
+/// winter and 22:00 in summer, on the hour. Nobody plays an official then.
+fn is_deadline(time: i64) -> bool {
+    time % 3600 == 0 && matches!(time.rem_euclid(86400) / 3600, 22 | 23)
+}
 
 /// One map's name in two spellings: ETF2L's `koth_coalpant_b7` is
 /// `koth_coalplant_b7`. The same base, or one letter apart.
@@ -220,7 +229,15 @@ pub async fn import(db: &Db, sources: &crate::sources::Sources, w: &hl_rating::W
         let mut path: Option<String> = None;
         for page in 0..400 {
             progress(&format!("Reading trends.tf's links, page {}", page + 1));
-            let (rows, next) = sources.trends_league_page(path.as_deref()).await?;
+            // trends.tf down (all of 29-30 October 2026, and on page 79
+            // of S21's): the links it gave so far, and the dump for the rest.
+            let (rows, next) = match sources.trends_league_page(path.as_deref()).await {
+                Ok(page) => page,
+                Err(e) => {
+                    tracing::warn!(error = %e, "trends.tf's links stopped; the dump finds the rest");
+                    break;
+                }
+            };
             let keep: Vec<&crate::sources::TrendsRow> = rows
                 .iter()
                 .filter(|r| r.matchid.is_some_and(|m| ids.contains(&m)) && r.duplicate_of.as_ref().is_none_or(|d| d.is_empty()))
@@ -293,10 +310,22 @@ pub async fn import(db: &Db, sources: &crate::sources::Sources, w: &hl_rating::W
             }
         };
         let accounts: Vec<i64> = a.iter().chain(b.iter()).copied().collect();
-        let found = index.logs_with(&accounts, time - BEFORE_S, time + AFTER_S).await?;
-        let candidates: Vec<i64> = found.keys().copied().collect();
-        let logs: HashMap<i64, DumpLog> = index.logs(&candidates).await?.into_iter().map(|l| (l.log_id, l)).collect();
-        let picked = pick(&m.maps, &found, &logs, &a, &b, |map| w.attack_defend(map));
+        let mut found = index.logs_with(&accounts, time - BEFORE_S, time + AFTER_S).await?;
+        let mut logs: HashMap<i64, DumpLog> = index.logs(&found.keys().copied().collect::<Vec<_>>()).await?.into_iter().map(|l| (l.log_id, l)).collect();
+        let mut picked = pick(&m.maps, &found, &logs, &a, &b, |map| w.attack_defend(map));
+        if picked.is_empty() && is_deadline(time) {
+            // The week's deadline, not when it was played (S20's Week 4:
+            // Saturday 23:00 UTC): the week before it, and of that the
+            // evening of the latest log both lineups played on the match's
+            // maps, not a scrim of the same two teams days before.
+            found = index.logs_with(&accounts, time - DEADLINE_WEEK_S, time + AFTER_S).await?;
+            logs = index.logs(&found.keys().copied().collect::<Vec<_>>()).await?.into_iter().map(|l| (l.log_id, l)).collect();
+            let wide = pick(&m.maps, &found, &logs, &a, &b, |map| w.attack_defend(map));
+            if let Some(last) = wide.iter().filter_map(|(id, _)| logs.get(id)).map(|l| l.played_at).max() {
+                found.retain(|id, _| logs.get(id).is_some_and(|l| l.played_at > last - BEFORE_S - AFTER_S && l.played_at <= last));
+                picked = pick(&m.maps, &found, &logs, &a, &b, |map| w.attack_defend(map));
+            }
+        }
         if picked.is_empty() {
             out.unlinked.push(m.match_id);
             continue;
@@ -387,6 +416,14 @@ mod tests {
 
     fn log(id: i64, map: &str, at: i64) -> DumpLog {
         DumpLog { log_id: id, map: map.into(), played_at: at, duration_s: 1500, title: String::new(), players: 18, duplicate: false }
+    }
+
+    #[test]
+    fn a_deadline_is_midnight_in_central_europe_on_the_hour() {
+        assert!(is_deadline(1_575_759_600), "S20 Week 4: 7 December 2019, 23:00 UTC");
+        assert!(is_deadline(1_563_660_000), "summer: 22:00 UTC");
+        assert!(!is_deadline(1_581_178_243), "S20 Open's quarter-final at 16:10:43");
+        assert!(!is_deadline(1_575_748_800), "20:00 UTC, an evening's time");
     }
 
     #[test]
