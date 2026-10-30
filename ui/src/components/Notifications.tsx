@@ -4,6 +4,8 @@ import { cancelSync, dismissSync, fractionOf, labelOf, matchOf, phaseOf, useSync
 import { dismissDemoSeen, useDemoSeen } from "../lib/demowatch";
 import { dismissNewLogs, useNewLogs } from "../lib/newlogs";
 import { dismissEtf2lCheck, useEtf2lCheck } from "../lib/etf2lcheck";
+import { dismissStorage, gb, useStorageNotice } from "../lib/storagewatch";
+import { openSettingsSection } from "../lib/goto";
 import { formatDate } from "../lib/format";
 import { dismissUpdate, installUpdate, restartNow, useUpdate } from "../lib/update";
 import { t, tx } from "../lib/i18n";
@@ -25,14 +27,16 @@ export function Notifications({ onOpenMatch }: { onOpenMatch: (logId: number) =>
   const fresh = useNewLogs();
   const update = useUpdate();
   const etf2l = useEtf2lCheck();
+  const storage = useStorageNotice();
   const quiet = update.state === "idle" || update.state === "checking" || update.state === "current";
-  if (downloads.length === 0 && sync.state === "idle" && !demo && !fresh && !etf2l && quiet) return null;
+  if (downloads.length === 0 && sync.state === "idle" && !demo && !fresh && !etf2l && !storage && quiet) return null;
 
   return (
     <div className="downloads" role="status" aria-live="polite">
       <UpdateCard />
       <NewLogsCard />
       <Etf2lCheckCard />
+      <StorageCard />
       <DemoSeenCard />
       <SyncCard />
       {downloads.map((d) => (
@@ -69,6 +73,38 @@ function Etf2lCheckCard() {
       </ul>
       {c.changed.length > shown.length && <p className="dl-sub">{t("and {0} more", { "0": c.changed.length - shown.length })}</p>}
       <p className="dl-sub dl-took">{t("Medals checked against ETF2L's final standings in {0} divisions.", { "0": c.confirmed })}</p>
+    </div>
+  );
+}
+
+/**
+ * Backups piling up or the app's folder growing (Flashy: "a notification if
+ * you have more than 2 backups and also notify you if you exceed 5 gb"),
+ * with the way to Settings > Backups, where copies are deleted.
+ */
+function StorageCard() {
+  const s = useStorageNotice();
+  if (!s) return null;
+  return (
+    <div className="dl dl-running">
+      <div className="dl-head">
+        <span className="dl-title">{t("Storage")}</span>
+        <button className="dl-close" onClick={() => dismissStorage()} title={t("Dismiss")}>
+          ×
+        </button>
+      </div>
+      {s.tooMany && <p className="dl-label">{t("{0} backups kept, {1} together", { "0": s.backups, "1": gb(s.backupsBytes) })}</p>}
+      {s.tooBig && <p className="dl-label">{t("The app takes {0} on disk", { "0": gb(s.total) })}</p>}
+      <p className="dl-sub">{t("Settings › Backups shows what takes the room, and deletes the copies you do not need.")}</p>
+      <button
+        className="dl-go"
+        onClick={() => {
+          openSettingsSection("backups");
+          dismissStorage();
+        }}
+      >
+        {t("Open Backups")}
+      </button>
     </div>
   );
 }

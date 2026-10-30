@@ -1,4 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { setTournamentDividers, useTournamentDividers } from "../lib/tourneys";
+import { onOpenSettingsSection, takePendingSettingsSection } from "../lib/goto";
 import { Help } from "./StatTip";
 import { LeagueSamplePanel } from "./LeagueSamplePanel";
 import { BackupsPanel } from "./settings/BackupsPanel";
@@ -46,6 +48,23 @@ export function Settings({
   const [query, setQuery] = useState("");
   const [foldAll, setFoldAll] = useState({ n: 0, closed: false });
   const [focus, setFocus] = useState<{ id: string; n: number } | null>(null);
+  // A section asked for from elsewhere: the storage card's "Open Backups".
+  // A moment after the page is shown, so the tab's own scroll reset does
+  // not undo it.
+  const [askedFirst] = useState(() => takePendingSettingsSection());
+  useEffect(() => {
+    if (!askedFirst) return;
+    const later = window.setTimeout(() => setFocus((f) => ({ id: askedFirst, n: (f?.n ?? 0) + 1 })), 250);
+    return () => window.clearTimeout(later);
+  }, [askedFirst]);
+  useEffect(() => {
+    const later: number[] = [];
+    const off = onOpenSettingsSection((id) => later.push(window.setTimeout(() => setFocus((f) => ({ id, n: (f?.n ?? 0) + 1 })), 250)));
+    return () => {
+      off();
+      later.forEach((t) => window.clearTimeout(t));
+    };
+  }, []);
   const [matched, setMatched] = useState<Record<string, boolean>>({});
   const report = useCallback((id: string, m: boolean) => setMatched((x) => (x[id] === m ? x : { ...x, [id]: m })), []);
   const shared = useMemo(() => ({ query, foldAll, report, focus }), [query, foldAll, report, focus]);
@@ -174,6 +193,7 @@ export function Settings({
               summary={t("How big everything is drawn")}>
               <ScalePanel />
               <StatColoursPanel />
+              <TournamentDividersPanel />
             </SettingsSection>
             <SettingsSection id="problems" icon="alert" title={t("Problems")} keywords="errors bug report discord"
               summary={t("What went wrong since the app started")}
@@ -879,6 +899,33 @@ function ScalePanel() {
             {t("Reset")}
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Tournament dividers in the match list, on or off (Flashy). */
+function TournamentDividersPanel() {
+  const on = useTournamentDividers();
+  return (
+    <div className="panel">
+      <h2>
+        {t("Tournament dividers")}
+        <Help>{t("Your matches list, sorted by date, gets a band at each tournament you played: its name, division and dates, from a week before its first official, for the scrims that prepared for it, to the day after its last.")}</Help>
+      </h2>
+      <div className="scale-row">
+        <div className="km-seg" role="radiogroup" aria-label={t("Tournament dividers")}>
+          {(
+            [
+              [true, t("On")],
+              [false, t("Off")],
+            ] as [boolean, string][]
+          ).map(([v, label]) => (
+            <button key={String(v)} role="radio" aria-checked={on === v} className={on === v ? "on" : undefined} onClick={() => setTournamentDividers(v)}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

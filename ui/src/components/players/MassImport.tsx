@@ -1,4 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { ApiError } from "../ApiError";
+import { friendlyError } from "../../lib/apierror";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { errorMessage, type MassBatch, type MassCandidate, type MassRunStep, type MassSearchStep, type MassSummary } from "../../api/types";
@@ -203,7 +205,7 @@ function Find({ accountId, map: initialMap, cls, onManage }: { accountId: number
   return (
     <div className="mi-body">
       {answered && <p className="demo-drop-ok">{answered}</p>}
-      {r.error && <p className="error">{r.error}</p>}
+      {r.error && <ApiError error={r.error} />}
       <div className="mi-form">
         <label className="an-field">
           <span className="an-label">{t("Map")}</span>
@@ -261,7 +263,7 @@ function Find({ accountId, map: initialMap, cls, onManage }: { accountId: number
               : t("Asking demos.tf…")}
         </p>
       )}
-      {error && <p className="error">{error}</p>}
+      {error && <ApiError error={error} />}
       {found && found.length === 0 && <p className="hint">{t("demos.tf has none for them on this map with these settings.")}</p>}
       {found && found.length > 0 && (
         <>
@@ -399,7 +401,7 @@ function Imported({ batches }: { batches: MassBatch[] }) {
                     <a href={`https://demos.tf/${d.demosTfId}`} target="_blank" rel="noreferrer">
                       #{d.demosTfId}
                     </a>
-                    : {d.error}
+                    : {friendlyError(d.error).text}
                   </li>
                 ))}
               </ul>

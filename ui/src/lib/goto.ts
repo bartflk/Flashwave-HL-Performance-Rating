@@ -5,7 +5,34 @@
  */
 const EVENT = "hl:goto";
 
-export type Destination = "rating" | "etf2l";
+export type Destination = "rating" | "etf2l" | "settings";
+
+const SETTINGS_EVENT = "hl:settings-section";
+let pendingSettingsSection: string | null = null;
+
+/** Settings, scrolled to one section: a notification's "Open Backups". */
+export function openSettingsSection(id: string) {
+  pendingSettingsSection = id;
+  goTo("settings");
+  window.dispatchEvent(new CustomEvent<string>(SETTINGS_EVENT, { detail: id }));
+}
+
+/** For Settings: the section asked for before it was first shown. */
+export function takePendingSettingsSection(): string | null {
+  const id = pendingSettingsSection;
+  pendingSettingsSection = null;
+  return id;
+}
+
+/** For Settings: a section asked for while it is mounted. */
+export function onOpenSettingsSection(open: (id: string) => void): () => void {
+  const handler = (e: Event) => {
+    pendingSettingsSection = null;
+    open((e as CustomEvent<string>).detail);
+  };
+  window.addEventListener(SETTINGS_EVENT, handler);
+  return () => window.removeEventListener(SETTINGS_EVENT, handler);
+}
 
 const PLAYER_EVENT = "hl:player";
 let pendingPlayer: number | null = null;

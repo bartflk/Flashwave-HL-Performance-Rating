@@ -619,7 +619,18 @@ button.pp-alias-more:hover { border-color: var(--accent-dim); background: rgba(v
 .dp-classes .seg { display: inline-flex; align-items: center; gap: 5px; }
 .dp-row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .dp-row-head h3 { margin: 0; }
-.dp-avg { color: var(--muted); font-size: var(--fs-small); }
+/* "Show the class average": the app's own checkbox (Flashy: "the checkmark
+   and the text isn't styled"). */
+.dp-avg { position: relative; display: inline-flex; align-items: center; gap: 8px; color: var(--text); font-size: var(--fs-small); cursor: pointer; user-select: none; }
+.dp-avg input { position: absolute; opacity: 0; width: 0; height: 0; }
+.dp-check {
+  display: grid; place-items: center; width: 18px; height: 18px; box-sizing: border-box;
+  border: 1.5px solid var(--line-2); border-radius: 5px; background: var(--sunken);
+  color: transparent; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4); transition: background 120ms, border-color 120ms, color 120ms;
+}
+.dp-avg:hover .dp-check { border-color: var(--accent-edge); }
+.dp-avg input:checked + .dp-check { background: linear-gradient(var(--accent-hi), var(--accent-lo)); border-color: var(--accent-edge); color: #1f140d; box-shadow: none; }
+.dp-avg input:focus-visible + .dp-check { outline: 2px solid var(--accent); outline-offset: 2px; }
 .dp-headline { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 14px 18px; margin-top: 12px; }
 .dp-verdict { display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; }
 .dp-value { font-size: var(--fs-num-m); font-weight: 700; font-variant-numeric: tabular-nums; line-height: var(--lh-tight); }
@@ -655,3 +666,38 @@ button.pp-alias-more:hover { border-color: var(--accent-dim); background: rgba(v
 .dp-moments dd { margin: 0; font-size: var(--fs-section); font-weight: 600; font-variant-numeric: tabular-nums; }
 .dp-sides td.num, .dp-weapons td.num { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 640px) { .dp-attr.open { grid-column: auto; } }
+
+/* The headline bars: where Poor and Good start, faintly (the bottom and top
+   30% of the class), the fill above them. */
+.dp-zone { position: absolute; top: calc(100% + 2px); height: 2px; }
+.dp-zone-poor { left: 0; width: 30%; background: rgba(224, 82, 82, 0.45); border-radius: 1px; }
+.dp-zone-good { right: 0; width: 30%; background: rgba(63, 191, 106, 0.45); border-radius: 1px; }
+.dp-fill { z-index: 1; }
+.dp-mark { z-index: 2; }
+
+/* In depth's toolbar: which games, Refresh, and the step it is on. */
+.dp-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 14px; }
+.dp-refresh { gap: 6px; }
+.dp-progress { display: inline-flex; align-items: center; gap: 10px; flex: 1 1 260px; min-width: 200px; }
+.dp-progress-bar { position: relative; flex: 0 0 160px; height: 6px; border-radius: 3px; background: var(--sunken); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4); }
+.dp-progress-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(90deg, var(--accent-lo), var(--accent-hi)); transition: width 200ms ease; }
+.dp-progress-unknown { width: 35%; animation: dp-progress-slide 1.2s ease-in-out infinite; }
+@keyframes dp-progress-slide { 0% { left: -35%; } 100% { left: 100%; } }
+.dp-progress-what { color: var(--muted); font-size: var(--fs-small); }
+.dp-busy > .panel, .dp-busy > .dp-head { opacity: 0.6; transition: opacity 150ms; }
+
+/* What the numbers are made of: each step, how many maps made it, why not. */
+.dp-coverage h3 { margin: 0 0 12px; }
+.dp-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.dp-step { display: flex; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--ctl-radius); background: var(--sunken); }
+.dp-step-icon { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-weight: 700; font-size: var(--fs-small); }
+.dp-step.ok .dp-step-icon { background: rgba(63, 191, 106, 0.18); color: #6fd38f; }
+.dp-step.short .dp-step-icon { background: rgba(224, 180, 64, 0.18); color: #e8c25a; }
+.dp-step-body { display: flex; flex-direction: column; gap: 5px; min-width: 0; flex: 1; }
+.dp-step-head { display: flex; justify-content: space-between; gap: 10px; }
+.dp-step-count { color: var(--text-hi); font-variant-numeric: tabular-nums; }
+.dp-step-bar { position: relative; height: 4px; border-radius: 2px; background: var(--panel); overflow: hidden; }
+.dp-step-bar > span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 2px; }
+.dp-step.ok .dp-step-bar > span { background: #3fbf6a; }
+.dp-step-why { color: var(--muted); font-size: var(--fs-small); line-height: var(--lh-snug); }
+.dp-too-few { margin-top: 12px; }

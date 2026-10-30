@@ -1062,6 +1062,13 @@ pub async fn rawlog_stats(state: State<'_, AppState>) -> CmdResult<hl_db::Rawlog
     Ok(state.db.rawlog_stats().await?)
 }
 
+/// The tournaments the owner played, with the stretch of the match list
+/// each heads (Flashy: tournament dividers in the match list).
+#[tauri::command]
+pub async fn my_tournaments(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::tournaments::Tournament>> {
+    Ok(hl_ingest::tournaments::mine(&state.db).await?)
+}
+
 #[tauri::command]
 pub async fn context_counts(state: State<'_, AppState>) -> CmdResult<hl_db::ContextCounts> {
     Ok(state.db.context_counts(hl_ingest::etf2l::PLAYER_KEY).await?)
@@ -1976,8 +1983,22 @@ pub async fn get_season_table(
 /// A player's deeper profile: verdicts, attribute cards, rating by the
 /// opposite number's division, attack and defence, weapons.
 #[tauri::command]
-pub async fn get_player_deep(state: State<'_, AppState>, account_id: u32) -> CmdResult<hl_ingest::season_stats::PlayerDeep> {
-    Ok(hl_ingest::season_stats::player_deep(&state.db, account_id).await?)
+pub async fn get_player_deep(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    account_id: u32,
+    officials_only: Option<bool>,
+    refresh: Option<bool>,
+) -> CmdResult<hl_ingest::season_stats::PlayerDeep> {
+    // Refresh: any log whose numbers were never read is read first.
+    if refresh.unwrap_or(false) {
+        let _ = app.emit("deep://progress", serde_json::json!({ "accountId": account_id, "what": "Reading logs not read yet", "done": 0, "total": 1 }));
+        hl_ingest::logstat::fill_missing(&state.db, None, |_, _| {}).await?;
+    }
+    Ok(hl_ingest::season_stats::player_deep(&state.db, account_id, officials_only.unwrap_or(true), |what, done, total| {
+        let _ = app.emit("deep://progress", serde_json::json!({ "accountId": account_id, "what": what, "done": done, "total": total }));
+    })
+    .await?)
 }
 
 /// Each class's damage per minute and accuracy at fixed percentiles, for the

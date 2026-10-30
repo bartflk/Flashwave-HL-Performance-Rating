@@ -7,6 +7,7 @@ import { t } from "./i18n";
 import { formatDate } from "./format";
 import { loadEtf2lNames } from "./etf2lNames";
 import { checkEtf2lDaily } from "./etf2lcheck";
+import { checkStorage } from "./storagewatch";
 
 /**
  * A sync, tracked app-wide rather than by the strip that started it.
@@ -131,6 +132,8 @@ export function watchSync(qc: QueryClient) {
       void loadEtf2lNames();
       // The daily ETF2L check, if the sync kept it from running at startup.
       void checkEtf2lDaily(qc);
+      // A sync makes a backup: whether they have piled up.
+      void checkStorage();
     },
     onError: (e) => {
       if (e.kind === "cancelled") {

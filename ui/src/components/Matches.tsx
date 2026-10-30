@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { RatingValue } from "./RatingValue";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { errorMessage, type ContextKind, type MatchSummary, type MyLine, type StatScales } from "../api/types";
+import { errorMessage, type ContextKind, type MatchSummary, type MyLine, type StatScales, type Tournament } from "../api/types";
+import { useTournamentDividers } from "../lib/tourneys";
+import { DivisionBadge } from "./players/PlayerProfile";
+import { tierOf as divisionTier } from "./etf2l/Brackets";
+import { Etf2lMark } from "./Etf2lMark";
 import { capitalize, clock, formatDate, splitMap } from "../lib/format";
 import { ColumnPicker, useColumns, type PickerCol } from "./ColumnPicker";
 import { RankBySwitch, useRankBy } from "./RankBy";
@@ -94,6 +98,15 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
   const [rankBy, pickRank] = useRankBy("matches");
   const hasPct = statCols.some((c) => c.key === "dpm" || c.key === "acc");
   const scales = useStatScales().data;
+  // Tournament dividers (Flashy: "separates timelines by the tournaments
+  // played"), on a date order only.
+  const dividersOn = useTournamentDividers();
+  const tourneys = useQuery({ queryKey: ["my_tournaments"], queryFn: api.myTournaments, staleTime: 10 * 60_000, enabled: dividersOn }).data ?? [];
+  const dividers = dividersOn && sort.key === "date" && tourneys.length > 0;
+  // The tournament whose stretch a match falls in; the latest to start when
+  // two overlap (a preseason cup inside a season's run-up).
+  const tourneyOf = (m: MatchSummary): Tournament | undefined =>
+    m.playedAt === null ? undefined : tourneys.filter((x) => m.playedAt! >= x.from && m.playedAt! <= x.to).sort((a, b) => b.first - a.first)[0];
 
   const kind = view === "official" || view === "scrim" || view === "pug" ? view : null;
   const period = usePeriod();
@@ -291,9 +304,21 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
               </tr>
             </thead>
             <tbody>
-              {items.map((m) => (
-                <MatchRow key={m.logId} m={m} onOpen={onOpen} classCol={!!classSort} cols={statCols} scales={scales} />
-              ))}
+              {items.map((m, i) => {
+                // A divider where the list enters a tournament's stretch,
+                // or leaves it (by date only: another order mixes them).
+                const here = dividers ? tourneyOf(m) : undefined;
+                const before = i > 0 && dividers ? tourneyOf(items[i - 1]) : undefined;
+                const span = 5 + statCols.length + (classSort ? 1 : 0);
+                return (
+                  <Fragment key={m.logId}>
+                    {dividers && here !== before && (here || i > 0) && (
+                      <TournamentRow t={here ?? null} span={span} />
+                    )}
+                    <MatchRow m={m} onOpen={onOpen} classCol={!!classSort} cols={statCols} scales={scales} />
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -344,6 +369,44 @@ function ClassSortPicker({ sort, onSort }: { sort: { key: string; ascending: boo
         </optgroup>
       </select>
     </label>
+  );
+}
+
+/** "1 Feb – 14 Mar 2026". */
+function stretch(a: number, b: number): string {
+  return `${formatDate(a)} – ${formatDate(b, true)}`;
+}
+
+/**
+ * A divider in the match list: the tournament the rows below were played
+ * around, with its division, its officials' dates and how many; or, where
+ * the list leaves one, a quiet line for the games between tournaments.
+ */
+function TournamentRow({ t: x, span }: { t: Tournament | null; span: number }) {
+  if (!x) {
+    return (
+      <tr className="tourney-row tourney-none" aria-hidden>
+        <td colSpan={span}>
+          <span className="tourney-rule" />
+          <span className="tourney-between">{t("Between tournaments")}</span>
+          <span className="tourney-rule" />
+        </td>
+      </tr>
+    );
+  }
+  return (
+    <tr className={`tourney-row tourney-${x.kind}`}>
+      <td colSpan={span}>
+        <span className="tourney-head">
+          <Etf2lMark size={16} />
+          <strong className="tourney-name">{x.name}</strong>
+          {x.division && <DivisionBadge d={{ name: x.division, tier: Math.floor(divisionTier(x.division)) }} />}
+          <span className="tourney-meta">
+            {stretch(x.first, x.last)} · {x.officials === 1 ? t("1 official") : t("{0} officials", { "0": x.officials })}
+          </span>
+        </span>
+      </td>
+    </tr>
   );
 }
 

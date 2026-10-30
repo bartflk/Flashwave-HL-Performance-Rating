@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
+import { ApiError } from "../ApiError";
 import { Help } from "../StatTip";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type CatalogueHit } from "../../api/types";
+import { type CatalogueHit } from "../../api/types";
 import { capitalize, formatDate, rating, ratingPercent, signed, splitMap } from "../../lib/format";
 import { ClassIcon } from "../ClassIcon";
 import "./players.css";
@@ -171,7 +172,7 @@ function PlayerCard({ accountId, onOpenMatch }: { accountId: number; onOpenMatch
   const mates = useQuery({ queryKey: ["teammates", true], queryFn: () => api.getTeammates(true), staleTime: 5 * 60_000 });
 
   if (q.isPending) return <div className="panel"><Loading>{t("Loading…")}</Loading></div>;
-  if (q.isError) return <div className="panel"><p className="error">{errorMessage(q.error)}</p></div>;
+  if (q.isError) return <div className="panel"><ApiError error={q.error} /></div>;
 
   const { summary: s, profile } = q.data!;
   const shown = q.data!.class;

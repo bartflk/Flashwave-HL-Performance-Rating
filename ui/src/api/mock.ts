@@ -41,6 +41,7 @@ import fightsSniper from "./fixtures/fights_sniper.json";
 import leagues from "./fixtures/leagues.json";
 import team37805 from "./fixtures/team_37805.json";
 import type {
+  Tournament,
   SeasonTable,
   PlayerDeep,
   DataReport,
@@ -1721,6 +1722,12 @@ export const mockApi: Api = {
 
   getTeammates: (all: boolean) => delay((all ? teammatesAll : teammatesTeam) as unknown as Teammates),
 
+  myTournaments: () =>
+    delay<Tournament[]>([
+      { name: "Highlander Season 36 (Autumn 2026)", kind: "season", division: "High", first: 1_787_436_000, last: 1_790_719_200, from: 1_786_831_200, to: 1_790_805_600, officials: 9 },
+      { name: "Highlander Experimental Cup #10", kind: "cup", division: "Mid", first: 1_785_621_600, last: 1_786_744_800, from: 1_785_016_800, to: 1_786_831_199, officials: 3 },
+    ]),
+
   contextCounts: () =>
     delay({ officials: 58, scrims: 544, pugs: 156, rosterOfficials: 15, etf2lMatches: 46, etf2lPlayer: 97913, lastFetch: 1_789_700_000 }),
 
@@ -1927,7 +1934,32 @@ export const mockApi: Api = {
     return delay({ ...t, season: season ?? t.season, seasonName: season ? `Season ${season}` : t.seasonName, tier: division[0], division: division[1], class: cls, stage: stage as SeasonTable["stage"] });
   },
   // From `hl deep` for the preview's player, 21 October 2026.
-  getPlayerDeep: (accountId: number) => delay({ ...(playerDeepFlashy as unknown as PlayerDeep), accountId }),
+  getPlayerDeep: (accountId: number, officialsOnly = true) => {
+    const d = playerDeepFlashy as unknown as PlayerDeep;
+    return delay<PlayerDeep>(
+      {
+        ...d,
+        accountId,
+        officialsOnly,
+        tooFew: [["demoman", 1], ["pyro", 3]],
+        classes: d.classes.map((c) => ({
+          ...c,
+          coverage: {
+            allMaps: officialsOnly ? c.maps * 5 : c.maps,
+            officialMaps: officialsOnly ? c.maps : Math.round(c.maps / 5),
+            usedMaps: c.maps,
+            rawMaps: c.maps - 1,
+            ratedMaps: c.maps,
+            opponentMaps: c.maps,
+            divisionMaps: Math.round(c.maps * 0.8),
+            population: 380,
+          },
+        })),
+      },
+      1200,
+    );
+  },
+  onDeepProgress: async (_cb: (p: { accountId: number; what: string; done: number; total: number }) => void) => () => {},
   // From `hl data-audit 31 3 --json` on a copy, 22 October 2026.
   // From `hl head-to-head` on the S33 Low Grand Final, 24 October 2026:
   // every pair answers with it, relabelled.

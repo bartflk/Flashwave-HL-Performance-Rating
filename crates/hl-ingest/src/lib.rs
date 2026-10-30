@@ -70,6 +70,7 @@ pub mod round_impact;
 pub mod logstat;
 pub mod season_stats;
 pub mod stat_scale;
+pub mod tournaments;
 pub mod data_audit;
 pub mod head_to_head;
 pub mod catalogue;

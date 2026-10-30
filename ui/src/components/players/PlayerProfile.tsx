@@ -1,8 +1,10 @@
 import { DeepPanels } from "./DeepPanels";
+import { ApiError } from "../ApiError";
+import { friendlyError } from "../../lib/apierror";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type Career, type CatDivision, type Etf2lRoster, type Medal, type Mvp, type PlayerProfile as Profile } from "../../api/types";
+import { type Career, type CatDivision, type Etf2lRoster, type Medal, type Mvp, type PlayerProfile as Profile } from "../../api/types";
 import { formatDate, formatMonth, formatStay } from "../../lib/format";
 import { openLeagueMatch } from "../../lib/goto";
 import { ClassIcon } from "../ClassIcon";
@@ -37,7 +39,7 @@ export function PlayerProfile({ accountId, yours }: { accountId: number; yours: 
   const q = useQuery({ queryKey: ["player_profile", accountId], queryFn: () => api.getPlayerProfile(accountId) });
   const [tab, setTab] = useState<Tab>("overview");
   if (q.isPending) return <div className="panel"><Loading>{t("Loading…")}</Loading></div>;
-  if (q.isError) return <div className="panel"><p className="error">{errorMessage(q.error)}</p></div>;
+  if (q.isError) return <div className="panel"><ApiError error={q.error} /></div>;
   const p = q.data;
   return (
     <>
@@ -447,12 +449,12 @@ export function RecentOfficials({ p, count = 10 }: { p: Profile; count?: number 
 export function TrendsCareer({ accountId }: { accountId: number }) {
   const q = useQuery({ queryKey: ["trends_career", accountId], queryFn: () => api.getTrendsCareer(accountId), staleTime: 60 * 60_000 });
   if (q.isPending) return <Loading>{t("Reading trends.tf…")}</Loading>;
-  if (q.isError) return <p className="hint">{errorMessage(q.error)}</p>;
+  if (q.isError) return <ApiError error={q.error} className="hint" />;
   const v = q.data;
   const c = v.career;
   const hours = (s: number) => Math.round(s / 3600);
   if (!c || (c.wins + c.losses + c.ties === 0 && c.classes.length === 0)) {
-    return <p className="hint">{v.error ?? t("trends.tf has no ETF2L Highlander officials for them.")}</p>;
+    return v.error ? <ApiError error={v.error} className="hint" /> : <p className="hint">{t("trends.tf has no ETF2L Highlander officials for them.")}</p>;
   }
   return (
     <div className="pp-career">
@@ -465,7 +467,7 @@ export function TrendsCareer({ accountId }: { accountId: number }) {
       </p>
       <TrendsClasses classes={c.classes.filter((x) => x.timeS >= 600).slice(0, 6)} />
       <p className="hint pp-career-foot">
-        {v.error && <>{v.error} · </>}
+        {v.error && <span title={v.error}>{friendlyError(v.error).text} · </span>}
         {v.fetchedAt !== null && <>{tx("Read {0}", { "0": formatDate(v.fetchedAt, true) })} · </>}
         <a href={v.url} target="_blank" rel="noreferrer">
           {t("From trends.tf ↗")}

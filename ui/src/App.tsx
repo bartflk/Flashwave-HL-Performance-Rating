@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { checkStorage } from "./lib/storagewatch";
 import { useEffect, useRef, useState } from "react";
 import { checkEtf2lDaily } from "./lib/etf2lcheck";
 import { lookForNewLogs } from "./lib/newlogs";
@@ -93,7 +94,11 @@ export default function App() {
     // ETF2L's results and final standings, once a day (Flashy). After the
     // look for new logs: a sync it starts reads ETF2L itself, and asks again
     // when it ends.
-    const id = window.setTimeout(() => void checkEtf2lDaily(qc), 8_000);
+    const id = window.setTimeout(() => {
+      void checkEtf2lDaily(qc);
+      // Backups piling up, or the app's folder over 5 GB (Flashy).
+      void checkStorage();
+    }, 8_000);
     return () => window.clearTimeout(id);
   }, [ready, qc]);
 

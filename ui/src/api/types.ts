@@ -2697,8 +2697,21 @@ export interface DeepSide {
   minutes: number;
 }
 
+/** What a class's numbers were made from, and what is missing (season_stats.rs). */
+export interface DeepCoverage {
+  allMaps: number;
+  officialMaps: number;
+  usedMaps: number;
+  rawMaps: number;
+  ratedMaps: number;
+  opponentMaps: number;
+  divisionMaps: number;
+  population: number;
+}
+
 export interface ClassDeep {
   class: string;
+  coverage?: DeepCoverage;
   maps: number;
   minutes: number;
   headline: DeepStat[];
@@ -2716,7 +2729,18 @@ export interface ClassDeep {
 
 export interface PlayerDeep {
   accountId: number;
+  officialsOnly?: boolean;
   classes: ClassDeep[];
+  /** Classes left out for too few games: [class, games]. */
+  tooFew?: [string, number][];
+}
+
+/** A step of working out a player's In depth numbers. */
+export interface DeepProgress {
+  accountId: number;
+  what: string;
+  done: number;
+  total: number;
 }
 
 /** One thing the season data check found (data_audit.rs). */
@@ -2811,4 +2835,18 @@ export interface ClassStat {
   dmg: number;
   shots: number;
   hits: number;
+}
+
+/** A tournament the owner played, and the stretch of the match list it heads
+ *  (tournaments.rs): a week before its first official to the day after its
+ *  last. */
+export interface Tournament {
+  name: string;
+  kind: "season" | "cup" | "other";
+  division: string | null;
+  first: number;
+  last: number;
+  from: number;
+  to: number;
+  officials: number;
 }

@@ -37,7 +37,7 @@ mod timeline;
 mod transfers;
 
 pub use logsdump::{DumpIndex, DumpLog};
-pub use context::{
+pub use context::{MyCompetition, 
     ContextCounts, ContextGameRow, ContextRow, Etf2lMatchRow, MatchContext, MatchSides, MateRow, OfficialInfo,
     OfficialRow, OwnGameRow, SideTeam,
 };

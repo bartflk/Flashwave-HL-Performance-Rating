@@ -197,7 +197,32 @@ pub(crate) fn context_from_row(r: &sqlx::sqlite::SqliteRow) -> Option<MatchConte
     })
 }
 
+/// One competition the owner played officials in, with when.
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct MyCompetition {
+    pub competition: String,
+    pub category: Option<String>,
+    pub division: Option<String>,
+    pub first: i64,
+    pub last: i64,
+    pub officials: i64,
+}
+
 impl Db {
+    /// The owner's officials by competition: name, kind, division, first and
+    /// last match time and how many (the match list's tournament dividers).
+    pub async fn my_competitions(&self) -> Result<Vec<MyCompetition>> {
+        Ok(sqlx::query_as(
+            "SELECT competition, MAX(category) AS category, MAX(division) AS division,
+                    MIN(time) AS first, MAX(time) AS last, COUNT(*) AS officials
+             FROM etf2l_match
+             WHERE time IS NOT NULL AND competition IS NOT NULL AND competition <> ''
+             GROUP BY competition",
+        )
+        .fetch_all(self.pool())
+        .await?)
+    }
+
     // ---- ETF2L sources -----------------------------------------------------
 
     pub async fn store_etf2l_raw(&self, kind: &str, id: i64, json: &str) -> Result<()> {
