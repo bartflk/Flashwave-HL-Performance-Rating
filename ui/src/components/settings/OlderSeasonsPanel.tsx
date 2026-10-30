@@ -12,6 +12,10 @@ const OLDEST = 1;
 const FIRST_IN_WINDOW = 24;
 /** logs.tf began in 2013: before Season 5, results and medals but no logs. */
 const FIRST_WITH_LOGS = 5;
+/** Season 19 (summer 2019): ETF2L gives a deadline for every match's time
+ *  and nobody who played, and its teams' rosters are in no log near it
+ *  (Flashy's import, October 2026): results and medals only. */
+const NO_LOGS = new Set([19]);
 
 /**
  * Seasons before the league sample's six years (Flashy, October 2026, for
@@ -124,7 +128,7 @@ export function OlderSeasonsPanel() {
           <tbody>
             {seasons.map((n) => {
               const h = held.get(n);
-              const logsExist = n >= FIRST_WITH_LOGS;
+              const logsExist = n >= FIRST_WITH_LOGS && !NO_LOGS.has(n);
               const complete = h && h.logs > 0 && h.rated >= h.logs;
               return (
                 <tr key={n}>
@@ -134,7 +138,7 @@ export function OlderSeasonsPanel() {
                   <td className="num">{h && logsExist ? `${h.rated} / ${h.logs}` : "–"}</td>
                   <td className="os-act">
                     {!logsExist ? (
-                      <span className="muted">{t("before logs.tf")}</span>
+                      <span className="muted">{NO_LOGS.has(n) ? t("no logs found") : t("before logs.tf")}</span>
                     ) : complete ? (
                       <span className="os-done">{t("Added")}</span>
                     ) : (
