@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { ApiError } from "../ApiError";
+import { friendlyError } from "../../lib/apierror";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type ClassDeep, type DeepAttribute, type DeepCoverage, type DeepProgress, type DeepStat, type PlayerDeep } from "../../api/types";
+import { type ClassDeep, type DeepAttribute, type DeepCoverage, type DeepProgress, type DeepStat, type PlayerDeep } from "../../api/types";
 import { rating } from "../../lib/format";
 import { k, t, tx } from "../../lib/i18n";
 import { tip, type Entry, type GlossaryKey } from "../../lib/glossary";
@@ -136,7 +138,7 @@ export function DeepPanels({ accountId }: { accountId: number }) {
       const d = await api.getPlayerDeep(accountId, officials, true);
       qc.setQueryData<PlayerDeep>(key, d);
     } catch (e) {
-      setRefreshError(errorMessage(e));
+      setRefreshError(friendlyError(e).text);
     } finally {
       setRefreshing(false);
     }
@@ -174,7 +176,7 @@ export function DeepPanels({ accountId }: { accountId: number }) {
         <Loading>{t("Reading their games…")}</Loading>
       </div>
     );
-  if (q.isError) return <p className="error">{errorMessage(q.error)}</p>;
+  if (q.isError) return <ApiError error={q.error} />;
   const classes = q.data.classes;
   if (classes.length === 0)
     return (

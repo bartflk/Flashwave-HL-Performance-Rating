@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ApiError } from "../ApiError";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type LifeOnMap } from "../../api/types";
+import { type LifeOnMap } from "../../api/types";
 import { capitalize, formatDate } from "../../lib/format";
 import { k, t, tx } from "../../lib/i18n";
 import { ClassIcon } from "../ClassIcon";
@@ -114,7 +115,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
     });
 
   if (mapsQ.isPending) return <Loading>{t("Loading…")}</Loading>;
-  if (mapsQ.isError) return <p className="error">{errorMessage(mapsQ.error)}</p>;
+  if (mapsQ.isError) return <ApiError error={mapsQ.error} />;
   if (maps.length === 0) {
     return (
       <div className="lm-empty">
@@ -261,7 +262,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
         </p>
       )}
       {livesQ.isPending && <Loading>{t("Reading the routes…")}</Loading>}
-      {livesQ.isError && <p className="error">{errorMessage(livesQ.error)}</p>}
+      {livesQ.isError && <ApiError error={livesQ.error} />}
 
       {v && <Drawing lives={shown} overview={overviewQ.data ?? null} hover={hover} onHover={setHover} mode={mode} />}
 
