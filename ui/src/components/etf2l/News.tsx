@@ -1,8 +1,8 @@
 import { Fragment, useMemo, type ReactNode } from "react";
+import { ApiError } from "../ApiError";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { NewsItem } from "../../api/types";
-import { errorMessage } from "../../api/types";
 import { formatDate } from "../../lib/format";
 import { openTeam } from "../../lib/goto";
 import { t } from "../../lib/i18n";
@@ -33,7 +33,7 @@ export function NewsList({ onPost }: { onPost: (id: number) => void }) {
         <h1>{t("News")}</h1>
       </header>
       {q.isPending && <Loading>{t("Loading the news…")}</Loading>}
-      {q.isError && <p className="error">{errorMessage(q.error)}</p>}
+      {q.isError && <ApiError error={q.error} />}
       {q.data && items.length === 0 && <p className="hint">{t("No news could be read from ETF2L just now.")}</p>}
       {items.length > 0 && (
         <div className="np-grid">
@@ -77,7 +77,7 @@ export function NewsReader({ id }: { id: number }) {
   const q = useQuery({ queryKey: ["etf2l_news_post", id], queryFn: () => api.getNewsPost(id), staleTime: 30 * 60_000 });
   const body = useMemo(() => (q.data ? build(q.data.html) : null), [q.data]);
   if (q.isPending) return <Loading>{t("Loading the post…")}</Loading>;
-  if (q.isError) return <p className="error">{errorMessage(q.error)}</p>;
+  if (q.isError) return <ApiError error={q.error} />;
   if (!q.data) return <p className="hint">{t("That post could not be read from ETF2L.")}</p>;
   const p = q.data;
   return (

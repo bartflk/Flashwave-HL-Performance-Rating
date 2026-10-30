@@ -13,7 +13,7 @@
 use anyhow::Result;
 use hl_db::Db;
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 /// Games a class needs on a map before the map has a scale of its own.
 pub const MIN_MAP_GAMES: usize = 200;
@@ -31,6 +31,46 @@ pub struct ClassScale {
     /// Games each was measured on.
     pub dpm_games: usize,
     pub accuracy_games: usize,
+    /// Of those games, the officials, and the players they were played by
+    /// (Flashy: "out of how many games, how many players").
+    pub dpm_officials: usize,
+    pub accuracy_officials: usize,
+    pub dpm_players: usize,
+    pub accuracy_players: usize,
+}
+
+/// One scale's games while they are gathered.
+#[derive(Default)]
+struct Sample {
+    values: Vec<(f64, f64)>,
+    officials: usize,
+    players: HashSet<i64>,
+}
+
+impl Sample {
+    fn push(&mut self, x: f64, w: f64, account: i64) {
+        self.values.push((x, w));
+        if w >= 1.0 {
+            self.officials += 1;
+        }
+        self.players.insert(account);
+    }
+}
+
+impl ClassScale {
+    fn set_dpm(&mut self, s: Sample) {
+        self.dpm_games = s.values.len();
+        self.dpm_officials = s.officials;
+        self.dpm_players = s.players.len();
+        self.dpm = weighted_percentiles(s.values);
+    }
+
+    fn set_accuracy(&mut self, s: Sample) {
+        self.accuracy_games = s.values.len();
+        self.accuracy_officials = s.officials;
+        self.accuracy_players = s.players.len();
+        self.accuracy = weighted_percentiles(s.values);
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -68,50 +108,42 @@ pub fn weighted_percentiles(mut v: Vec<(f64, f64)>) -> Vec<f64> {
 }
 
 pub async fn stat_scales(db: &Db) -> Result<StatScales> {
-    type ByMap = BTreeMap<(String, String), Vec<(f64, f64)>>;
-    let mut dpm: BTreeMap<String, Vec<(f64, f64)>> = BTreeMap::new();
+    type ByMap = BTreeMap<(String, String), Sample>;
+    let mut dpm: BTreeMap<String, Sample> = BTreeMap::new();
     let mut dpm_map: ByMap = BTreeMap::new();
-    for (class, dmg, secs, w, map) in db.dpm_sample().await? {
-        let x = (dmg as f64 * 60.0 / secs as f64, w);
+    for (class, dmg, secs, w, map, account) in db.dpm_sample().await? {
+        let x = dmg as f64 * 60.0 / secs as f64;
         if let Some(m) = map.as_deref().map(hl_core::maps::map_base).filter(|m| !m.is_empty()) {
-            dpm_map.entry((class.clone(), m)).or_default().push(x);
+            dpm_map.entry((class.clone(), m)).or_default().push(x, w, account);
         }
-        dpm.entry(class).or_default().push(x);
+        dpm.entry(class).or_default().push(x, w, account);
     }
-    let mut acc: BTreeMap<String, Vec<(f64, f64)>> = BTreeMap::new();
+    let mut acc: BTreeMap<String, Sample> = BTreeMap::new();
     let mut acc_map: ByMap = BTreeMap::new();
-    for (class, shots, hits, w, map) in db.accuracy_sample().await? {
-        let x = (hits as f64 / shots as f64, w);
+    for (class, shots, hits, w, map, account) in db.accuracy_sample().await? {
+        let x = hits as f64 / shots as f64;
         if let Some(m) = map.as_deref().map(hl_core::maps::map_base).filter(|m| !m.is_empty()) {
-            acc_map.entry((class.clone(), m)).or_default().push(x);
+            acc_map.entry((class.clone(), m)).or_default().push(x, w, account);
         }
-        acc.entry(class).or_default().push(x);
+        acc.entry(class).or_default().push(x, w, account);
     }
     let mut maps: BTreeMap<String, BTreeMap<String, ClassScale>> = BTreeMap::new();
     for ((c, m), v) in dpm_map {
-        if v.len() >= MIN_MAP_GAMES {
-            let e = maps.entry(c).or_default().entry(m).or_default();
-            e.dpm_games = v.len();
-            e.dpm = weighted_percentiles(v);
+        if v.values.len() >= MIN_MAP_GAMES {
+            maps.entry(c).or_default().entry(m).or_default().set_dpm(v);
         }
     }
     for ((c, m), v) in acc_map {
-        if v.len() >= MIN_MAP_GAMES {
-            let e = maps.entry(c).or_default().entry(m).or_default();
-            e.accuracy_games = v.len();
-            e.accuracy = weighted_percentiles(v);
+        if v.values.len() >= MIN_MAP_GAMES {
+            maps.entry(c).or_default().entry(m).or_default().set_accuracy(v);
         }
     }
     let mut classes: BTreeMap<String, ClassScale> = BTreeMap::new();
     for (c, v) in dpm {
-        let e = classes.entry(c).or_default();
-        e.dpm_games = v.len();
-        e.dpm = weighted_percentiles(v);
+        classes.entry(c).or_default().set_dpm(v);
     }
     for (c, v) in acc {
-        let e = classes.entry(c).or_default();
-        e.accuracy_games = v.len();
-        e.accuracy = weighted_percentiles(v);
+        classes.entry(c).or_default().set_accuracy(v);
     }
     Ok(StatScales { percentiles: PERCENTILES.to_vec(), classes, maps })
 }

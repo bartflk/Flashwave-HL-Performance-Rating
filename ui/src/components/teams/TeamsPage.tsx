@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
+import { ApiError } from "../ApiError";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type Fixture, type LeagueRecord, type LeagueTableRow, type Podium, type SeasonTile, type Stay, type TeamEtf2l, type TeamHonours, type TeamInfo, type TeamTransfers, type TeamView } from "../../api/types";
+import { type Fixture, type LeagueRecord, type LeagueTableRow, type Podium, type SeasonTile, type Stay, type TeamEtf2l, type TeamHonours, type TeamInfo, type TeamTransfers, type TeamView } from "../../api/types";
 import { formatDate, formatMonth, formatStay, rating } from "../../lib/format";
 import { openLeagueMatch, openPlayer } from "../../lib/goto";
 import { BookmarkButton } from "../Bookmarks";
@@ -102,7 +103,7 @@ export function SeasonsGrid({ onSeason }: { onSeason: (season: number) => void }
         <p className="hint">{t("Pick a season for its podiums, its divisions and every team in them.")}</p>
       </header>
       {q.isPending && <Loading>{t("Loading seasons…")}</Loading>}
-      {q.isError && <p className="error">{errorMessage(q.error)}</p>}
+      {q.isError && <ApiError error={q.error} />}
       {q.data && q.data.length === 0 && (
         <section className="panel">
           <p className="hint">{t("No seasons yet. The next sync reads the last year of ETF2L Highlander: every division, team and result.")}</p>
@@ -266,7 +267,7 @@ export function SeasonScreen({ season, onTeam, tables: showTables = true }: { se
       <DataCheck season={season} />
 
       {showTables && <h2 className="ts-section">{t("Divisions")}</h2>}
-      {showTables && tables.isError && <p className="error">{errorMessage(tables.error)}</p>}
+      {showTables && tables.isError && <ApiError error={tables.error} />}
       {showTables && v && v.divisions.length > 0 && (
         <div className="teams-divisions has-refresh">
           <Refreshing on={tables.isPlaceholderData} />
@@ -407,7 +408,7 @@ export function TeamScreen({ teamId, onTeam }: { teamId: number; onTeam: (id: nu
   return (
     <>
       {q.isPending && <Loading>{t("Loading team…")}</Loading>}
-      {q.isError && <p className="error">{errorMessage(q.error)}</p>}
+      {q.isError && <ApiError error={q.error} />}
       {q.data === null && (
         <>
           <p className="hint">{t("This team's seasons are older than the ones read, so only your own games with it are here.")}</p>
@@ -812,7 +813,7 @@ function stayLength(s: Stay, now: number): number {
 function RosterHistory({ teamId, etf2lUrl, roles }: { teamId: number; etf2lUrl: string | undefined; roles: Map<number, string> }) {
   const q = useQuery({ queryKey: ["team_transfers", teamId], queryFn: () => api.getTeamTransfers(teamId), staleTime: 60 * 60_000 });
   if (q.isPending) return <Loading>{t("Reading the team's transfers from ETF2L…")}</Loading>;
-  if (q.isError) return <p className="error">{errorMessage(q.error)}</p>;
+  if (q.isError) return <ApiError error={q.error} />;
   const v: TeamTransfers = q.data;
   if (v.rows.length === 0) return <p className="hint">{t("ETF2L lists no transfers for this team.")}</p>;
   return <RosterHistoryView v={v} etf2lUrl={etf2lUrl} roles={roles} />;

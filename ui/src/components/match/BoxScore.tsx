@@ -296,7 +296,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
                       ) : c.key === "rating" || c.key === "impact" ? (
                         <RatingValue v={v} />
                       ) : c.key === "dapm" || c.key === "acc" ? (
-                        <TierPill text={c.fmt ? c.fmt(v) : String(Math.round(v))} tier={tierOf(scales, p.mainClass, c.key === "dapm" ? "dpm" : "accuracy", v, d.mapKey)} cls={p.mainClass} />
+                        <TierPill text={c.fmt ? c.fmt(v) : String(Math.round(v))} tier={tierOf(scales, p.mainClass, c.key === "dapm" ? "dpm" : "accuracy", v, d.mapKey)} cls={p.mainClass} fmt={c.fmt} />
                       ) : c.fmt ? (
                         c.fmt(v)
                       ) : (

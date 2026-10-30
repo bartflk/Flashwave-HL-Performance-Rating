@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
+import { ApiError } from "../ApiError";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type Analysis, type MatchDetail } from "../../api/types";
+import { type Analysis, type MatchDetail } from "../../api/types";
 import { capitalize, splitMap, teamLabel } from "../../lib/format";
 import type { Slice } from "./common";
 import { Aim } from "./Aim";
@@ -44,7 +45,7 @@ export function AnalysisPanel({ d, onlyRounds }: { d: MatchDetail; onlyRounds?: 
         <h2>{t("Kill by kill")}</h2>
       </header>
       {q.isPending && <Loading>{t("Reading the raw log…")}</Loading>}
-      {q.isError && <p className="error">{errorMessage(q.error)}</p>}
+      {q.isError && <ApiError error={q.error} />}
       {q.data === null && (
         <p className="hint">{t("Raw log not stored yet — run a sync.")}</p>
       )}

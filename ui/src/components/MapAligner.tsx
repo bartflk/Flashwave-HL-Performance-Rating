@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { friendlyText } from "../lib/apierror";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { errorMessage, type MapRow, type MapView, type Placement } from "../api/types";
+import { type MapRow, type MapView, type Placement } from "../api/types";
 import { capitalize, splitMap } from "../lib/format";
 import { t } from "../lib/i18n";
 import { themeColour } from "./analysis/common";
@@ -40,7 +41,7 @@ export function MapAligner({ row, onClose, onSaved }: { row: MapRow; onClose: ()
       await api.saveOverviewPlacement(row.base, p);
       onSaved();
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
       setBusy(false);
     }
   };

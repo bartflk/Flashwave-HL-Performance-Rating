@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { friendlyText } from "../lib/apierror";
 import { Help } from "./StatTip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { errorMessage, type FailedLog, type Imported } from "../api/types";
+import { type FailedLog, type Imported } from "../api/types";
 import { formatDate } from "../lib/format";
 import { t, tx } from "../lib/i18n";
 import { DemoImport } from "./DemoImport";
@@ -53,7 +54,7 @@ export function ImportPanel() {
       setText("");
       await refresh();
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }
@@ -66,7 +67,7 @@ export function ImportPanel() {
       await api.retryFailed(logId);
       await refresh();
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }

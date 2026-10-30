@@ -1,10 +1,12 @@
 import { HeadToHead } from "./HeadToHead";
+import { ApiError } from "../ApiError";
+import { friendlyText } from "../../lib/apierror";
 import { ReflectPanel } from "./DemoStats";
 import { MatchTabs } from "./MatchTabs";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type Ledger, type MatchDetail, type PartScore } from "../../api/types";
+import { type Ledger, type MatchDetail, type PartScore } from "../../api/types";
 import { capitalize, splitMap } from "../../lib/format";
 import { MatchHero } from "./MatchHero";
 import { BoxScore } from "./BoxScore";
@@ -64,7 +66,7 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
       await api.fetchPart(next);
       await qc.invalidateQueries({ queryKey: ["parts", logId] });
     } catch (e) {
-      setPartError(errorMessage(e));
+      setPartError(friendlyText(e));
       setPart(null);
     } finally {
       setFetching(false);
@@ -78,7 +80,7 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
       </button>
 
       {q.isPending && <Loading>{t("Loading match…")}</Loading>}
-      {q.isError && <p className="error">{errorMessage(q.error)}</p>}
+      {q.isError && <ApiError error={q.error} />}
       {q.data === null && (
         <p className="hint">{t("This log is not stored yet. Run a sync, then open it again.")}</p>
       )}
@@ -204,7 +206,7 @@ function FindParts({ d }: { d: MatchDetail }) {
         void qc.invalidateQueries({ queryKey: ["ledger", d.logId] });
       }
     } catch (e) {
-      setMsg(errorMessage(e));
+      setMsg(friendlyText(e));
     } finally {
       setBusy(false);
     }

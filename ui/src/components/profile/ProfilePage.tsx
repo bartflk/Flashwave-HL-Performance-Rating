@@ -1,10 +1,10 @@
 import { DeepPanels } from "../players/DeepPanels";
+import { ApiError } from "../ApiError";
 import { RatingValue } from "../RatingValue";
 import { useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import {
-  errorMessage,
   type ComponentSummary,
   type ContextKind,
   type ContextSplit,
@@ -71,7 +71,7 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
   const ownAccount = steamid ? accountOf(steamid) : null;
 
   if (q.isPending) return <div className="profile-page"><Loading>{t("Loading profile…")}</Loading></div>;
-  if (q.isError) return <div className="profile-page"><p className="error">{errorMessage(q.error)}</p></div>;
+  if (q.isError) return <div className="profile-page"><ApiError error={q.error} /></div>;
 
   const { classes, profile, fights } = q.data;
   const active = cls ?? profile?.class ?? classes[0]?.[0] ?? null;

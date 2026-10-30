@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { ApiError } from "../ApiError";
+import { friendlyText } from "../../lib/apierror";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type StorageStray } from "../../api/types";
+import { type StorageStray } from "../../api/types";
 import { formatDate } from "../../lib/format";
 import { t, tx } from "../../lib/i18n";
 import { Spinner } from "../Spinner";
@@ -68,7 +70,7 @@ export function BackupsPanel() {
       await qc.invalidateQueries({ queryKey: ["storage_overview"] });
       await qc.invalidateQueries({ queryKey: ["backups"] });
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }
@@ -202,7 +204,7 @@ export function BackupsPanel() {
           <Spinner /> {t("Reading the whole database: a few seconds.")}
         </p>
       ) : parts.isError ? (
-        <p className="error">{errorMessage(parts.error)}</p>
+        <ApiError error={parts.error} />
       ) : (
         <table className="bk-table bk-parts">
           <tbody>

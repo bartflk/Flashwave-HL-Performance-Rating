@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { friendlyText } from "../lib/apierror";
 import { Help } from "./StatTip";
 import { useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../api/client";
-import { errorMessage, type DemoImported } from "../api/types";
+import { type DemoImported } from "../api/types";
 import { t, tx } from "../lib/i18n";
 import { Spinner } from "./Spinner";
 
@@ -40,7 +41,7 @@ export function DemoImport() {
         qc.invalidateQueries({ queryKey: ["demo_stats"] }),
       ]);
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }

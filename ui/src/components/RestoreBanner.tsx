@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { friendlyText } from "../lib/apierror";
 import { api } from "../api/client";
-import { errorMessage, type RestoreOffer } from "../api/types";
+import { type RestoreOffer } from "../api/types";
 import { formatDate } from "../lib/format";
 import { t, tx } from "../lib/i18n";
 
@@ -33,7 +34,7 @@ export function RestoreBanner({ offer, onSettled }: { offer: RestoreOffer; onSet
       // The app restarts into the restored database; this never returns.
       await api.restoreBackup(path);
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
       setBusy(null);
     }
   }
@@ -45,7 +46,7 @@ export function RestoreBanner({ offer, onSettled }: { offer: RestoreOffer; onSet
       await api.declineRestore();
       onSettled();
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
       setBusy(null);
     }
   }

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { friendlyText } from "../lib/apierror";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { errorMessage, type Owner } from "../api/types";
+import { type Owner } from "../api/types";
 import { startSync } from "../lib/sync";
 import { t } from "../lib/i18n";
 
@@ -118,7 +119,7 @@ function SwitchMenu({ current, steamid, onDone }: { current: Owner | null; steam
       // Their matches may not be stored yet; one already running will do.
       if (!(await api.syncBusy())) void startSync(false);
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }

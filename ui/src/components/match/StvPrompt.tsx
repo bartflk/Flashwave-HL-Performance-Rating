@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { friendlyText } from "../../lib/apierror";
 import { api } from "../../api/client";
-import { errorMessage, type MatchDetail } from "../../api/types";
+import { type MatchDetail } from "../../api/types";
 import { beginDownload, failDownload, useDownload } from "../../lib/downloads";
 import { t, tx } from "../../lib/i18n";
 
@@ -52,8 +53,8 @@ export function StvPrompt({ d }: { d: MatchDetail }) {
     try {
       await api.fetchStv(d.logId);
     } catch (e) {
-      setError(errorMessage(e));
-      failDownload(d.logId, errorMessage(e));
+      setError(friendlyText(e));
+      failDownload(d.logId, friendlyText(e));
       setOpen(true);
     }
   }

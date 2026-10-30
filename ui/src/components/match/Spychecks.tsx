@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { ApiError } from "../ApiError";
 import { Help } from "../StatTip";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type MatchDetail, type SpyPlayer, type Team } from "../../api/types";
+import { type MatchDetail, type SpyPlayer, type Team } from "../../api/types";
 import { clock, teamLabel } from "../../lib/format";
 import { copy } from "../../lib/toast";
 import { t, tx } from "../../lib/i18n";
@@ -22,7 +23,7 @@ export function Spychecks({ d }: { d: MatchDetail }) {
     return (
       <section className="panel spy-panel">
         <h2>{t("Spychecks")}</h2>
-        <p className="error">{errorMessage(q.error)}</p>
+        <ApiError error={q.error} />
       </section>
     );
   }

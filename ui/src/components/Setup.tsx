@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { friendlyText } from "../lib/apierror";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../api/client";
-import { errorMessage, type AppStatus, type TfPathInfo } from "../api/types";
+import { type AppStatus, type TfPathInfo } from "../api/types";
 import { t, tx, k } from "../lib/i18n";
 import { Logo } from "./Logo";
 import { Backdrop } from "./Backdrop";
@@ -56,7 +57,7 @@ function FirstSyncStep({ ready, onFinish }: { ready: boolean; onFinish: () => vo
       if (!(await api.syncBusy())) await api.syncStart(false);
       onFinish();
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
       setBusy(false);
     }
   }
@@ -98,7 +99,7 @@ function SteamIdStep({
       setValue("");
       onSaved();
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }
@@ -165,7 +166,7 @@ function TfPathStep({
       setInfo(await api.inspectTfPath(path));
     } catch (e) {
       setInfo(null);
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }
@@ -188,7 +189,7 @@ function TfPathStep({
       setInfo(found);
       if (!found) setError("No TF2 install found in the usual Steam locations — browse for it.");
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }
@@ -203,7 +204,7 @@ function TfPathStep({
       setInfo(null);
       onSaved();
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }

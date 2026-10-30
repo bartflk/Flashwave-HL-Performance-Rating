@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { ApiError } from "../ApiError";
 import { Help } from "../StatTip";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type MatchDemoStats, type MatchDetail, type ReflectOutcome } from "../../api/types";
+import { type MatchDemoStats, type MatchDetail, type ReflectOutcome } from "../../api/types";
 import { clock } from "../../lib/format";
 import { copy } from "../../lib/toast";
 import { t, tx } from "../../lib/i18n";
@@ -56,7 +57,7 @@ export function ReflectPanel({ d }: { d: MatchDetail }) {
     return (
       <section className="panel">
         <h2>{t("Reflects")}</h2>
-        <p className="error">{errorMessage(q.error)}</p>
+        <ApiError error={q.error} />
       </section>
     );
   }

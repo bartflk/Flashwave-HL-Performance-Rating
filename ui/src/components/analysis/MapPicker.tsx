@@ -1,7 +1,7 @@
 import { useState } from "react";
+import { friendlyText } from "../../lib/apierror";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage } from "../../api/types";
 import { capitalize, splitMap } from "../../lib/format";
 import { t as tr } from "../../lib/i18n";
 
@@ -40,7 +40,7 @@ export function MapPicker({ logId, rounds, current }: { logId: number; rounds: n
       setPick("");
       if (map !== null) setOpen(false);
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }

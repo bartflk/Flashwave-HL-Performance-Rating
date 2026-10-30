@@ -120,6 +120,8 @@ export function tierText(bg: string, pct: number): string {
  * its own (Flashy: "300 dpm on steel on sniper is crazy vs 300 dpm on
  * koth_product"), else among all the class's games.
  */
+export type Tier = NonNullable<ReturnType<typeof tierOf>>;
+
 export function tierOf(scales: StatScales | undefined, cls: string | null | undefined, stat: "dpm" | "accuracy", v: number | null, map?: string | null) {
   if (!scales || !cls || v === null) return null;
   const onMap = map ? scales.maps?.[cls]?.[map] : undefined;
@@ -134,5 +136,20 @@ export function tierOf(scales: StatScales | undefined, cls: string | null | unde
   const pct = percentileOf(v, cuts, scales.percentiles);
   if (pct === null) return null;
   const bg = tierColour(pct, scales.percentiles);
-  return { pct, bg, fg: tierText(bg, pct), map: byMap ? map! : null };
+  return {
+    pct,
+    bg,
+    fg: tierText(bg, pct),
+    map: byMap ? map! : null,
+    // What the scale was measured on, for the hover card (Flashy: "out of
+    // how many games, how many players").
+    stat,
+    cuts,
+    pcts: scales.percentiles,
+    games: games ?? 0,
+    officials: stat === "dpm" ? c?.dpmOfficials : c?.accuracyOfficials,
+    players: stat === "dpm" ? c?.dpmPlayers : c?.accuracyPlayers,
+    // A map asked for that has too few games for a scale of its own.
+    missedMap: !byMap && map ? map : null,
+  };
 }

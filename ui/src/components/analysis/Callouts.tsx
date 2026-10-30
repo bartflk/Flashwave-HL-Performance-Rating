@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { friendlyText } from "../../lib/apierror";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type CalloutFile, type CalloutZone } from "../../api/types";
+import { type CalloutFile, type CalloutZone } from "../../api/types";
 import { t, tx } from "../../lib/i18n";
 import { CalloutPresetButtons } from "../CalloutPresets";
 
@@ -236,7 +237,7 @@ export function CalloutEditor(props: {
       void qc.invalidateQueries({ queryKey: ["positions"] });
       onSaved();
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }
@@ -250,7 +251,7 @@ export function CalloutEditor(props: {
       onSaved();
       onSelect(null);
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }

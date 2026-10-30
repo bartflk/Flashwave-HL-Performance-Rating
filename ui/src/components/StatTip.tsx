@@ -95,7 +95,13 @@ export function HelpIcon() {
   );
 }
 
-function Tip({ className, label, ariaLabel, stop, card: body }: { className: string; label: ReactNode; ariaLabel?: string; stop?: boolean; card: (close: () => void) => ReactNode }) {
+/** Any number with a card of its own on hover or focus, without the help
+ *  mark: the scoreboard's coloured DPM and accuracy. */
+export function HoverCard({ className, label, card }: { className?: string; label: ReactNode; card: ReactNode }) {
+  return <Tip className={`stip bare ${className ?? ""}`} label={label} mark={false} card={() => card} />;
+}
+
+function Tip({ className, label, ariaLabel, stop, mark = true, card: body }: { className: string; label: ReactNode; ariaLabel?: string; stop?: boolean; mark?: boolean; card: (close: () => void) => ReactNode }) {
   const id = useId();
   const anchor = useRef<HTMLSpanElement>(null);
   const card = useRef<HTMLSpanElement>(null);
@@ -137,7 +143,7 @@ function Tip({ className, label, ariaLabel, stop, card: body }: { className: str
       onKeyDown={(ev) => ev.key === "Escape" && setOpen(false)}
     >
       {label}
-      <HelpIcon />
+      {mark && <HelpIcon />}
       {open &&
         createPortal(
           <span
