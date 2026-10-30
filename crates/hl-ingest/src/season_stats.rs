@@ -624,7 +624,7 @@ pub async fn player_deep(db: &Db, account: u32, officials_only: bool, mut progre
         if rows.len() < MIN_POPULATION_MAPS {
             continue;
         }
-        progress(&format!("Placing them among everyone on {class}"), STEPS + classes.len(), STEPS + n_classes);
+        progress("Placing them among everyone on the class", STEPS + classes.len(), STEPS + n_classes);
         let mut t = Totals::default();
         for r in &rows {
             t.add(r);

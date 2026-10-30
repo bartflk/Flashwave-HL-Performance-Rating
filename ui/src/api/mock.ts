@@ -1915,7 +1915,32 @@ export const mockApi: Api = {
     return delay({ ...t, season: season ?? t.season, seasonName: season ? `Season ${season}` : t.seasonName, tier: division[0], division: division[1], class: cls, stage: stage as SeasonTable["stage"] });
   },
   // From `hl deep` for the preview's player, 21 October 2026.
-  getPlayerDeep: (accountId: number) => delay({ ...(playerDeepFlashy as unknown as PlayerDeep), accountId }),
+  getPlayerDeep: (accountId: number, officialsOnly = true) => {
+    const d = playerDeepFlashy as unknown as PlayerDeep;
+    return delay<PlayerDeep>(
+      {
+        ...d,
+        accountId,
+        officialsOnly,
+        tooFew: [["demoman", 1], ["pyro", 3]],
+        classes: d.classes.map((c) => ({
+          ...c,
+          coverage: {
+            allMaps: officialsOnly ? c.maps * 5 : c.maps,
+            officialMaps: officialsOnly ? c.maps : Math.round(c.maps / 5),
+            usedMaps: c.maps,
+            rawMaps: c.maps - 1,
+            ratedMaps: c.maps,
+            opponentMaps: c.maps,
+            divisionMaps: Math.round(c.maps * 0.8),
+            population: 380,
+          },
+        })),
+      },
+      1200,
+    );
+  },
+  onDeepProgress: async (_cb: (p: { accountId: number; what: string; done: number; total: number }) => void) => () => {},
   // From `hl data-audit 31 3 --json` on a copy, 22 October 2026.
   // From `hl head-to-head` on the S33 Low Grand Final, 24 October 2026:
   // every pair answers with it, relabelled.

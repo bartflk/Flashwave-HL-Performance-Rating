@@ -115,6 +115,7 @@ import type {
   MatchDivisions,
   SeasonTable,
   PlayerDeep,
+  DeepProgress,
   DataReport,
   HeadToHead,
   SeasonBreakdown,
@@ -168,7 +169,9 @@ const realApi = {
   getRankings: (season: number | null, tier: number | null, cls: string) => invoke<Rankings>("get_rankings", { season, tier, class: cls }),
   getSeasonTable: (season: number | null, tier: number | null, cls: string, stage: string) =>
     invoke<SeasonTable>("get_season_table", { season, tier, class: cls, stage }),
-  getPlayerDeep: (accountId: number) => invoke<PlayerDeep>("get_player_deep", { accountId }),
+  getPlayerDeep: (accountId: number, officialsOnly = true, refresh = false) =>
+    invoke<PlayerDeep>("get_player_deep", { accountId, officialsOnly, refresh }),
+  onDeepProgress: (cb: (p: DeepProgress) => void): Promise<UnlistenFn> => listen<DeepProgress>("deep://progress", (e) => cb(e.payload)),
   getMatchImpact: (logId: number) => invoke<Record<string, number>>("get_match_impact", { logId }),
   getDataAudit: (season: number, tier: number | null) => invoke<DataReport>("get_data_audit", { season, tier }),
   getHeadToHead: (logId: number, a: number, b: number) => invoke<HeadToHead>("get_head_to_head", { logId, a, b }),
