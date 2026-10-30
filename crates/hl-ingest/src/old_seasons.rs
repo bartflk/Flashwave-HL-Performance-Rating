@@ -22,8 +22,8 @@ use std::path::Path;
 const BEFORE_S: i64 = 3 * 3600;
 /// ...and after: a match played late on its night, or both maps back to back.
 const AFTER_S: i64 = 8 * 3600;
-/// A week's deadline stands for a match played any day of the week before
-/// it, and a match is often a day or two late.
+/// A week's time on the hour at midnight stands for a match played any day
+/// of that week, and a match is often a day or two late.
 const DEADLINE_WEEK_S: i64 = 8 * 86400;
 /// Players of each lineup a log must hold to be the match's: a scrim of one
 /// of the teams the same evening has one lineup, not both.
@@ -314,15 +314,17 @@ pub async fn import(db: &Db, sources: &crate::sources::Sources, w: &hl_rating::W
         let mut logs: HashMap<i64, DumpLog> = index.logs(&found.keys().copied().collect::<Vec<_>>()).await?.into_iter().map(|l| (l.log_id, l)).collect();
         let mut picked = pick(&m.maps, &found, &logs, &a, &b, |map| w.attack_defend(map));
         if picked.is_empty() && is_deadline(time) {
-            // The week's deadline, not when it was played (S20's Week 4:
-            // Saturday 23:00 UTC): the week before it, and of that the
-            // evening of the latest log both lineups played on the match's
-            // maps, not a scrim of the same two teams days before.
-            found = index.logs_with(&accounts, time - DEADLINE_WEEK_S, time + AFTER_S).await?;
+            // The week's, not when it was played: S20's Week 2 says Saturday
+            // 23:00 UTC, and its maps were played the Sunday and Tuesday
+            // after. The week either side, and of that the evening with the
+            // most of the lineups on the match's maps, not a scrim of the
+            // same two teams another night.
+            found = index.logs_with(&accounts, time - DEADLINE_WEEK_S, time + DEADLINE_WEEK_S).await?;
             logs = index.logs(&found.keys().copied().collect::<Vec<_>>()).await?.into_iter().map(|l| (l.log_id, l)).collect();
             let wide = pick(&m.maps, &found, &logs, &a, &b, |map| w.attack_defend(map));
-            if let Some(last) = wide.iter().filter_map(|(id, _)| logs.get(id)).map(|l| l.played_at).max() {
-                found.retain(|id, _| logs.get(id).is_some_and(|l| l.played_at > last - BEFORE_S - AFTER_S && l.played_at <= last));
+            let best = wide.iter().filter_map(|(id, _)| Some((found.get(id)?.len(), logs.get(id)?.played_at))).max();
+            if let Some((_, at)) = best {
+                found.retain(|id, _| logs.get(id).is_some_and(|l| (l.played_at - at).abs() <= AFTER_S));
                 picked = pick(&m.maps, &found, &logs, &a, &b, |map| w.attack_defend(map));
             }
         }
