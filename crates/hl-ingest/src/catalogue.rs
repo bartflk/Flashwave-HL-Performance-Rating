@@ -840,6 +840,12 @@ impl Catalogue {
         let mut out = self.medals_from_results();
         for (key, places) in &self.official_places {
             let ours = out.remove(key).unwrap_or_default();
+            // A team once, at its best place: ETF2L's S18 Mid had one team
+            // both second and third.
+            let mut places = places.clone();
+            places.sort_unstable();
+            let mut seen = std::collections::HashSet::new();
+            places.retain(|(_, team)| seen.insert(*team));
             let mut confirmed: Vec<(u8, i64, String)> = places
                 .iter()
                 .map(|(place, team)| {
@@ -851,6 +857,14 @@ impl Catalogue {
                     (*place, *team, how)
                 })
                 .collect();
+            // A place ETF2L left out is the results' (its S22 Premiership
+            // names second and third and no winner; S14 and S17 Mid the
+            // same), so long as that team has no place of ETF2L's.
+            for (place, team, how) in &ours {
+                if !places.iter().any(|(p, t)| p == place || t == team) {
+                    confirmed.push((*place, *team, how.clone()));
+                }
+            }
             confirmed.sort_by_key(|(p, t, _)| (*p, *t));
             out.insert(key.clone(), confirmed);
         }
@@ -3352,6 +3366,22 @@ mod tests {
         ]);
         let bronze: Vec<i64> = c.medals()[&(34, "Mid".to_string())].iter().filter(|x| x.0 == 3).map(|x| x.1).collect();
         assert_eq!(bronze, vec![10]);
+    }
+
+    #[test]
+    fn a_place_etf2l_left_out_is_filled_from_the_results() {
+        // S22 Premiership: ETF2L names second and third and no winner; S18
+        // Mid had one team both second and third.
+        let mut c = cat(vec![
+            m(1, 22, "Playoffs", None, "Mid", Some("Semi-finals"), 10, 13, 6, 0),
+            m(2, 22, "Playoffs", None, "Mid", Some("Semi-finals"), 11, 12, 6, 0),
+            m(3, 22, "Playoffs", None, "Mid", Some("Grand Final"), 10, 11, 6, 0),
+        ]);
+        c.official_places.insert((22, "Mid".into()), vec![(2, 11), (3, 12), (3, 11)]);
+        let prem = &c.medals()[&(22, "Mid".to_string())];
+        let places: Vec<(u8, i64)> = prem.iter().map(|x| (x.0, x.1)).collect();
+        assert_eq!(places, vec![(1, 10), (2, 11), (3, 12)], "the winner from the final, team 11 once, 13 not added to ETF2L's third");
+        assert!(prem.contains(&(1, 10, "Grand Final 6-0".into())));
     }
 
     #[test]
