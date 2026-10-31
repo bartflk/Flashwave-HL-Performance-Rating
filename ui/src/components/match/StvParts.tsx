@@ -62,7 +62,16 @@ function useFetchParts(logId: number, label: string) {
       const parts = await api.findStvParts(logId);
       const get = parts.filter((p) => !p.here);
       if (get.length === 0) {
-        setSaid(t("demos.tf has no other part of this match's SourceTV."));
+        // Which rounds no part on demos.tf holds: the server never uploaded
+        // that file, so no fetch can fill them.
+        const c = await api.stvCoverage(logId);
+        const held = new Set([...(c?.covered ?? []), ...parts.flatMap((p) => p.rounds)]);
+        const none = (c?.rounds ?? []).filter((r) => !held.has(r));
+        setSaid(
+          none.length > 0
+            ? t("demos.tf has no part with rounds {0}: the server never uploaded it.", { "0": roundRanges(none) })
+            : t("demos.tf has no other part of this match's SourceTV."),
+        );
         return false;
       }
       setSaid(t("Downloading {0} part{1}: rounds {2}.", { "0": get.length, "1": get.length === 1 ? "" : "s", "2": roundRanges(get.flatMap((p) => p.rounds)) }));

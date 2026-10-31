@@ -49,6 +49,10 @@ const HEXES = 70;
  *  room and the way out of it, which every rollout shares. */
 const OUT_OF_SPAWN_S = 8;
 
+/** Nor anywhere this close (map units) to where a route began: the spawn
+ *  room and its doors. */
+const SPAWN_RADIUS = 900;
+
 /** How many tiles around where each route begins are left undrawn. */
 const SPAWN_TILES = 2;
 
@@ -1039,8 +1043,12 @@ function hexesOf(groups: LifeOnMap[][], frame: { minX: number; maxY: number; w: 
     seenOut.clear();
     around.clear();
     let prev: [number, number] | null = null;
+    const begin = l.points[0];
     l.points.forEach((p, j) => {
-      const out = (l.openingT[j] ?? Infinity) >= OUT_OF_SPAWN_S;
+      // Out of spawn: past its first seconds, and well away from where the
+      // route began (a koth round starts in the pre-round freeze, so at 8 s
+      // everyone still stood at the door: both rings sat there).
+      const out = (l.openingT[j] ?? Infinity) >= OUT_OF_SPAWN_S && Math.hypot(p[0] - begin[0], p[1] - begin[1]) >= SPAWN_RADIUS;
       const [pq, pr] = hexAt(p[0] - frame.minX, frame.maxY - p[1], size);
       const tk = `${pq},${pr}`;
       const tc = time.get(tk) ?? groups.map(() => 0);

@@ -91,7 +91,7 @@ pub struct Part {
 /// The parts of this match's SourceTV demos.tf has: demos on its maps whose
 /// recording holds one of its rounds' starts. Kept with the match, so a
 /// fetch takes them all. Asks demos.tf about the owner when they played,
-/// otherwise up to four of its players, until one brings demos.
+/// then up to eight of its players, until the parts cover every round.
 pub async fn find(db: &Db, sources: &Sources, me: SteamId, log_id: i64) -> Result<Vec<Part>> {
     let Some(offset) = db.log_clock_offset(log_id).await? else { return Ok(Vec::new()) };
     let rounds = rounds_of(db, log_id).await?;
@@ -111,21 +111,31 @@ pub async fn find(db: &Db, sources: &Sources, me: SteamId, log_id: i64) -> Resul
     if players.contains(&me.account_id()) {
         ask.push(me.account_id());
     }
-    ask.extend(players.iter().copied().filter(|a| *a != me.account_id()).take(4));
+    ask.extend(players.iter().copied().filter(|a| *a != me.account_id()).take(8));
 
     // The match on the real clock: a part ends after its first round began
     // and begins before its last one ended.
     let (from, to) = (first + offset as f64, last + offset as f64);
+    // Every player asked until the parts cover every round: one player's
+    // list leaves out a part they were not in (Flashy: "why the 3 rounds are
+    // missing"; a koth match's last part, after a substitution).
+    let mut found: Vec<Part> = Vec::new();
     for account in ask {
         let listed: Vec<DemosTfMeta> =
             walk_player(sources, &SteamId::from_account_id(account).to_steamid64(), (to as i64) + LATE_S, (from as i64) - EARLY_S).await?;
-        let parts = parts_of(&listed, &maps, &rounds, offset as f64, &here);
-        if !parts.is_empty() {
-            db.add_stv_parts(log_id, &parts.iter().map(|p| p.demos_tf_id).collect::<Vec<_>>()).await?;
-            return Ok(parts);
+        for p in parts_of(&listed, &maps, &rounds, offset as f64, &here) {
+            if !found.iter().any(|f| f.demos_tf_id == p.demos_tf_id) {
+                found.push(p);
+            }
+        }
+        let covered: HashSet<i64> = found.iter().flat_map(|p| p.rounds.iter().copied()).collect();
+        if rounds.iter().all(|r| covered.contains(&r.0)) {
+            break;
         }
     }
-    Ok(Vec::new())
+    found.sort_by_key(|p| p.time);
+    db.add_stv_parts(log_id, &found.iter().map(|p| p.demos_tf_id).collect::<Vec<_>>()).await?;
+    Ok(found)
 }
 
 /// The demos among `listed` that are parts of this match: on one of its
