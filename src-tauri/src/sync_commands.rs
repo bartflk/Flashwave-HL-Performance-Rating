@@ -1880,6 +1880,12 @@ pub async fn get_news_post(state: State<'_, AppState>, id: i64) -> CmdResult<Opt
     Ok(hl_ingest::news::post(&state.db, &state.sources, id).await?)
 }
 
+/// A season's own ETF2L posts, oldest first, for its page.
+#[tauri::command]
+pub async fn get_season_news(state: State<'_, AppState>, season: i64, season_name: String) -> CmdResult<Vec<hl_ingest::news::NewsItem>> {
+    Ok(hl_ingest::news::season(&state.db, &state.sources, season, &season_name).await?)
+}
+
 /// The latest played officials of every team (Q74's results).
 #[tauri::command]
 pub async fn get_recent_results(state: State<'_, AppState>, limit: Option<i64>) -> CmdResult<Vec<hl_db::ResultRow>> {
