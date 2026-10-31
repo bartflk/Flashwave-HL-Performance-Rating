@@ -342,10 +342,6 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
             ]}
           />
         </CtlGroup>
-        {/* Q69: far more than this machine recorded, from demos.tf. */}
-        <span className="lm-head-actions">
-          <MassImportButton accountId={accountId} name={name} map={map} cls={cls} />
-        </span>
       </div>
 
       <div className="ctl-bar">
@@ -452,6 +448,10 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
         <p className="hint lm-count">{t("No opposite number in these rounds: the demos here did not follow anyone on that class on the other team.")}</p>
       )}
 
+      {/* What is drawn, and (Q69) far more than this machine recorded, from
+          demos.tf: an action, so beside the count rather than among the
+          filters, where it wrapped onto a row of its own. */}
+      <div className="lm-summary">
       {v && (
         <p className="hint lm-count">
           {tx("{0} lives drawn, from {1} match{2} on {3}: {4} with a SourceTV demo, {5} from their own recordings. Matches without either have no routes.", {
@@ -465,6 +465,8 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
           {lastN !== null && <> {tx("Only the last {0} of them with this class and side.", { "0": recent.matches })}</>}
         </p>
       )}
+        <MassImportButton accountId={accountId} name={name} map={map} cls={cls} />
+      </div>
       {livesQ.isPending && <Loading>{t("Reading the routes…")}</Loading>}
       {livesQ.isError && <ApiError error={livesQ.error} />}
 

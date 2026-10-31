@@ -525,11 +525,22 @@ th .stip-card { font-weight: 400; }
 
 /* A map's controls (the kill map, Lives on a map): labelled groups in a bar,
    an icon on every option. */
-.ctl-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 22px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--bg) 45%, var(--panel)); }
+/* A row of labelled control groups (the kill map's, Lives on a map's): the
+   labels on one line, every control one height (--ctl-h), so a row reads as a
+   row (Flashy: "the buttons on the lives on map are very out of order"). */
+.ctl-bar { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px 24px; padding: 12px 16px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--bg) 45%, var(--panel)); }
 .ctl-bar + .ctl-bar { margin-top: 8px; }
 .ctl-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.ctl-group-label { font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
-.ctl-group-body { display: flex; align-items: center; gap: 8px; min-height: 34px; }
+.ctl-group-label { font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); line-height: var(--lh-tight); }
+.ctl-group-body { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: var(--ctl-h); }
+.ctl-bar .km-seg { box-sizing: border-box; height: var(--ctl-h); padding: 2px; align-items: stretch; }
+.ctl-bar .km-seg > button { min-height: 0; padding: 0 12px; }
+.ctl-bar .class-filter .cf,
+.ctl-bar .lm-toggle,
+.ctl-bar .lm-lastn { box-sizing: border-box; height: var(--ctl-h); }
+.ctl-bar .class-filter .cf { min-height: 0; padding: 0 10px; }
+/* An action at the row's end: level with the controls, not the labels. */
+.ctl-bar .lm-head-actions { margin-left: auto; align-self: flex-end; }
 .ctl-bar .km-seg button { display: inline-flex; align-items: center; gap: 6px; }
 .ctl-select { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
 .ctl-select select { max-width: 280px; }
