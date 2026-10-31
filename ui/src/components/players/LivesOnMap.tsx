@@ -9,6 +9,7 @@ import { ClassIcon } from "../ClassIcon";
 import { MassImportButton } from "./MassImport";
 import { Loading } from "../Spinner";
 import { CtlGroup, Icon, Seg } from "../analysis/MapChrome";
+import { ReadAgain } from "../match/DemoPanel";
 
 /**
  * A player's lives on one map (Q57, Emiel): pick a map and a class, and
@@ -501,7 +502,12 @@ export function MatchOpenings({
   if (q.isPending) return <Loading>{t("Reading the routes…")}</Loading>;
   if (q.isError) return <ApiError error={q.error} />;
   if ((q.data ?? []).length === 0) {
-    return <p className="hint">{t("No demo of this match has routes yet. Round openings come from its SourceTV demo, or from a player's own recording.")}</p>;
+    return (
+      <div className="lm-empty">
+        <p className="hint">{t("No demo of this match has routes yet. Round openings come from its SourceTV demo, or from a player's own recording.")}</p>
+        <ReadAgain logId={logId} />
+      </div>
+    );
   }
   if (mapName === null) return <p className="hint">{t("Pick one map above: the openings of different maps do not share a picture.")}</p>;
   return (
@@ -532,6 +538,11 @@ export function MatchOpenings({
             </span>
           </button>
         </CtlGroup>
+        {/* The routes come from reading the demos: after an update that reads
+            them better, this match catches up here. */}
+        <span className="lm-head-actions">
+          <ReadAgain logId={logId} />
+        </span>
       </div>
       <Drawing
         lives={groups.flatMap((g) => g.lives)}
