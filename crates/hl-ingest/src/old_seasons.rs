@@ -22,11 +22,19 @@ use std::path::Path;
 const BEFORE_S: i64 = 3 * 3600;
 /// ...and after: a match played late on its night, or both maps back to back.
 const AFTER_S: i64 = 8 * 3600;
+/// A week's time on the hour at midnight stands for a match played any day
+/// of that week, and a match is often a day or two late.
+const DEADLINE_WEEK_S: i64 = 8 * 86400;
 /// Players of each lineup a log must hold to be the match's: a scrim of one
 /// of the teams the same evening has one lineup, not both.
 const MIN_EACH_SIDE: usize = 5;
 /// Shorter logs are restarts and forfeits.
 const MIN_DURATION_S: i64 = 300;
+/// trends.tf's links of ETF2L logs to their matches start here (24 March
+/// 2019). A season from then on takes its links first, and the dump only for
+/// the matches left: S19 to S21's pages give a deadline for a time, players
+/// on the wrong team or no players at all.
+const TRENDS_FROM: i64 = 1_553_385_600;
 
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -41,8 +49,46 @@ pub struct Imported {
     /// Played matches some log was found for.
     pub linked: usize,
     pub logs: usize,
+    /// Played matches whose page lists nobody (Season 19's), found by the
+    /// teams' rosters on the day instead.
+    pub by_roster: usize,
+    /// Matches linked by trends.tf, and their logs.
+    pub from_trends: usize,
+    pub trends_logs: usize,
     /// Matches with lineups but no log: no upload, or one too far from the time.
     pub unlinked: Vec<i64>,
+}
+
+/// A team's players on a day, from ETF2L's transfers (read once per team):
+/// `account -> name` for everyone whose last move before `at` was joining.
+async fn roster_on(db: &Db, sources: &crate::sources::Sources, team: i64, at: i64) -> Result<HashMap<i64, String>> {
+    if db.transfers_fetched("team", team).await?.is_none() {
+        crate::transfers::fetch_team(db, sources, team).await?;
+    }
+    let mut last: HashMap<i64, (i64, bool, Option<u32>, String)> = HashMap::new();
+    for t in db.team_transfers(team).await? {
+        if t.time > at {
+            continue;
+        }
+        let e = last.entry(t.player_id).or_insert((i64::MIN, false, None, String::new()));
+        if t.time >= e.0 {
+            *e = (t.time, t.kind == "joined", t.account_id.or(e.2), t.player_name.clone());
+        }
+    }
+    let mut out = HashMap::new();
+    for (player, (_, member, account, name)) in last {
+        if !member {
+            continue;
+        }
+        let account = match account {
+            Some(a) => Some(a),
+            None => crate::leagues::steam_of_player(db, sources, player).await?,
+        };
+        if let Some(a) = account {
+            out.insert(i64::from(a), name);
+        }
+    }
+    Ok(out)
 }
 
 /// A player's log and the server's of one map this close in length are the
@@ -52,6 +98,12 @@ const SAME_GAME_S: i64 = 15;
 /// A log whose length is the sum of two or more of the match's others, to
 /// this many seconds, is their combine.
 const COMBINE_SLACK_S: i64 = 30;
+
+/// A week's deadline for a time: midnight in Central Europe, 23:00 UTC in
+/// winter and 22:00 in summer, on the hour. Nobody plays an official then.
+fn is_deadline(time: i64) -> bool {
+    time % 3600 == 0 && matches!(time.rem_euclid(86400) / 3600, 22 | 23)
+}
 
 /// One map's name in two spellings: ETF2L's `koth_coalpant_b7` is
 /// `koth_coalplant_b7`. The same base, or one letter apart.
@@ -107,7 +159,9 @@ fn pick(
         let Some(map) = map_of(&l.map, maps) else { continue };
         let a = accounts.iter().filter(|x| side_a.contains(x)).count();
         let b = accounts.iter().filter(|x| side_b.contains(x)).count();
-        if a < MIN_EACH_SIDE || b < MIN_EACH_SIDE {
+        // Sides unknown (`side_b` empty): most of the one lineup instead.
+        let enough = if side_b.is_empty() { a >= 2 * MIN_EACH_SIDE } else { a >= MIN_EACH_SIDE && b >= MIN_EACH_SIDE };
+        if !enough {
             continue;
         }
         let server = ["koth_", "pl_", "cp_", "ctf_", "plr_"].iter().any(|p| l.map.to_ascii_lowercase().starts_with(p));
@@ -163,27 +217,140 @@ pub async fn import(db: &Db, sources: &crate::sources::Sources, w: &hl_rating::W
         lineups.entry(m).or_default().push((account, team));
     }
     let mut out = Imported { season, competitions: fetched.competitions, matches: matches.len(), ..Default::default() };
+    // Links found by an earlier run and not downloaded yet are found again.
+    db.clear_unfetched_league_logs(&matches.iter().map(|m| m.match_id).collect::<Vec<_>>()).await?;
+
+    // trends.tf's own links, where it has them: newest first, down to the
+    // season's start.
+    let ids: HashSet<i64> = matches.iter().map(|m| m.match_id).collect();
+    let first = matches.iter().filter_map(|m| m.time).filter(|t| *t > 0).min().unwrap_or(0);
+    let mut by_trends: HashSet<i64> = HashSet::new();
+    if first >= TRENDS_FROM - 30 * 86_400 {
+        let mut path: Option<String> = None;
+        for page in 0..400 {
+            progress(&format!("Reading trends.tf's links, page {}", page + 1));
+            // trends.tf down (all of 29-30 October 2026, and on page 79
+            // of S21's): the links it gave so far, and the dump for the rest.
+            let (rows, next) = match sources.trends_league_page(path.as_deref()).await {
+                Ok(page) => page,
+                Err(e) => {
+                    tracing::warn!(error = %e, "trends.tf's links stopped; the dump finds the rest");
+                    break;
+                }
+            };
+            let keep: Vec<&crate::sources::TrendsRow> = rows
+                .iter()
+                .filter(|r| r.matchid.is_some_and(|m| ids.contains(&m)) && r.duplicate_of.as_ref().is_none_or(|d| d.is_empty()))
+                .collect();
+            let league: Vec<LeagueLogRow> = keep
+                .iter()
+                .filter_map(|r| Some(LeagueLogRow { log_id: r.logid, etf2l_match_id: r.matchid?, map: r.map.as_deref()?, played_at: r.time?, duration_s: r.duration, title: r.title.as_deref() }))
+                .collect();
+            db.upsert_league_logs(&league).await?;
+            db.pick_league_logs(&league.iter().map(|l| l.log_id).collect::<Vec<_>>()).await?;
+            out.trends_logs += league.len();
+            by_trends.extend(league.iter().map(|l| l.etf2l_match_id));
+            let oldest = rows.iter().filter_map(|r| r.time).min().unwrap_or(0);
+            match next {
+                Some(n) if !rows.is_empty() && oldest >= first - 2 * 86_400 => path = Some(n),
+                _ => break,
+            }
+        }
+        out.from_trends = by_trends.len();
+    }
     // (log, match, the match's map it is of, the dump's row)
     let mut rows: Vec<(i64, i64, String, DumpLog)> = Vec::new();
     for (i, m) in matches.iter().enumerate() {
         let played = !m.default_win && m.r1.unwrap_or(0) + m.r2.unwrap_or(0) > 0;
         let Some(time) = m.time.filter(|_| played) else { continue };
         out.played += 1;
-        let Some(players) = lineups.get(&m.match_id).filter(|p| !p.is_empty()) else { continue };
-        out.with_lineups += 1;
+        if by_trends.contains(&m.match_id) {
+            out.linked += 1;
+            continue;
+        }
         progress(&format!("Finding the logs of match {} of {}", i + 1, matches.len()));
-        let side = |team: i64| players.iter().filter(|(_, t)| *t == Some(team)).map(|(a, _)| *a).collect::<HashSet<i64>>();
-        let (a, b) = (side(m.clan1_id), side(m.clan2_id));
-        let accounts: Vec<i64> = players.iter().map(|(a, _)| *a).collect();
-        let found = index.logs_with(&accounts, time - BEFORE_S, time + AFTER_S).await?;
-        let candidates: Vec<i64> = found.keys().copied().collect();
-        let logs: HashMap<i64, DumpLog> = index.logs(&candidates).await?.into_iter().map(|l| (l.log_id, l)).collect();
-        let picked = pick(&m.maps, &found, &logs, &a, &b, |map| w.attack_defend(map));
+        // Who played, from the page; or, where it lists nobody, each team's
+        // roster that day, and those of them the logs then show did play.
+        let (a, b, rosters) = match lineups.get(&m.match_id).filter(|p| !p.is_empty()) {
+            Some(players) => {
+                out.with_lineups += 1;
+                let side = |team: i64| players.iter().filter(|(_, t)| *t == Some(team)).map(|(a, _)| *a).collect::<HashSet<i64>>();
+                let (a, b) = (side(m.clan1_id), side(m.clan2_id));
+                if a.len() >= MIN_EACH_SIDE && b.len() >= MIN_EACH_SIDE {
+                    (a, b, None)
+                } else {
+                    // Seasons 20 and 21's pages give each player some other
+                    // team (theirs when the API was asked): split them by
+                    // the teams' rosters that day, and store them on the
+                    // right side; else one lineup of both.
+                    let all: HashSet<i64> = players.iter().map(|(a, _)| *a).collect();
+                    let (ra, rb) = (roster_on(db, sources, m.clan1_id, time).await?, roster_on(db, sources, m.clan2_id, time).await?);
+                    let fa: HashSet<i64> = all.iter().filter(|x| ra.contains_key(x)).copied().collect();
+                    let fb: HashSet<i64> = all.iter().filter(|x| rb.contains_key(x) && !fa.contains(x)).copied().collect();
+                    if fa.len() >= MIN_EACH_SIDE && fb.len() >= MIN_EACH_SIDE {
+                        let fixed: Vec<(u32, i64, &str)> = fa
+                            .iter()
+                            .map(|x| (*x as u32, m.clan1_id, ra[x].as_str()))
+                            .chain(fb.iter().map(|x| (*x as u32, m.clan2_id, rb[x].as_str())))
+                            .collect();
+                        db.add_season_players(m.match_id, &fixed).await?;
+                        (fa, fb, None)
+                    } else {
+                        (all, HashSet::new(), None)
+                    }
+                }
+            }
+            None => {
+                let (ra, rb) = (roster_on(db, sources, m.clan1_id, time).await?, roster_on(db, sources, m.clan2_id, time).await?);
+                if ra.len() < MIN_EACH_SIDE || rb.len() < MIN_EACH_SIDE {
+                    continue;
+                }
+                out.by_roster += 1;
+                (ra.keys().copied().collect(), rb.keys().copied().collect(), Some((ra, rb)))
+            }
+        };
+        let accounts: Vec<i64> = a.iter().chain(b.iter()).copied().collect();
+        let mut found = index.logs_with(&accounts, time - BEFORE_S, time + AFTER_S).await?;
+        let mut logs: HashMap<i64, DumpLog> = index.logs(&found.keys().copied().collect::<Vec<_>>()).await?.into_iter().map(|l| (l.log_id, l)).collect();
+        let mut picked = pick(&m.maps, &found, &logs, &a, &b, |map| w.attack_defend(map));
+        if picked.is_empty() && is_deadline(time) {
+            // The week's, not when it was played: S20's Week 2 says Saturday
+            // 23:00 UTC, and its maps were played the Sunday and Tuesday
+            // after. The week either side, and of that the evening with the
+            // most of the lineups on the match's maps, not a scrim of the
+            // same two teams another night.
+            found = index.logs_with(&accounts, time - DEADLINE_WEEK_S, time + DEADLINE_WEEK_S).await?;
+            logs = index.logs(&found.keys().copied().collect::<Vec<_>>()).await?.into_iter().map(|l| (l.log_id, l)).collect();
+            let wide = pick(&m.maps, &found, &logs, &a, &b, |map| w.attack_defend(map));
+            let best = wide.iter().filter_map(|(id, _)| Some((found.get(id)?.len(), logs.get(id)?.played_at))).max();
+            if let Some((_, at)) = best {
+                found.retain(|id, _| logs.get(id).is_some_and(|l| (l.played_at - at).abs() <= AFTER_S));
+                picked = pick(&m.maps, &found, &logs, &a, &b, |map| w.attack_defend(map));
+            }
+        }
         if picked.is_empty() {
             out.unlinked.push(m.match_id);
             continue;
         }
         out.linked += 1;
+        if let Some((ra, rb)) = &rosters {
+            // The roster players in the match's logs: who played, by team.
+            let mut played: Vec<(u32, i64, &str)> = Vec::new();
+            let mut seen = HashSet::new();
+            for (id, _) in &picked {
+                for acc in found.get(id).into_iter().flatten() {
+                    if !seen.insert(*acc) {
+                        continue;
+                    }
+                    if let Some(n) = ra.get(acc) {
+                        played.push((*acc as u32, m.clan1_id, n.as_str()));
+                    } else if let Some(n) = rb.get(acc) {
+                        played.push((*acc as u32, m.clan2_id, n.as_str()));
+                    }
+                }
+            }
+            db.add_season_players(m.match_id, &played).await?;
+        }
         for (id, map) in picked {
             if let Some(l) = logs.get(&id) {
                 rows.push((id, m.match_id, map, l.clone()));
@@ -196,11 +363,53 @@ pub async fn import(db: &Db, sources: &crate::sources::Sources, w: &hl_rating::W
         // sample picks by real maps.
         .map(|(id, m, map, l)| LeagueLogRow { log_id: *id, etf2l_match_id: *m, map: map.as_str(), played_at: l.played_at, duration_s: Some(l.duration_s), title: Some(l.title.as_str()) })
         .collect();
-    db.clear_unfetched_league_logs(&matches.iter().map(|m| m.match_id).collect::<Vec<_>>()).await?;
     db.upsert_league_logs(&league).await?;
     db.pick_league_logs(&rows.iter().map(|r| r.0).collect::<Vec<_>>()).await?;
-    out.logs = rows.len();
+    out.logs = rows.len() + out.trends_logs;
     Ok(out)
+}
+
+/// Where the dump's index is looked for when none is set: where `hl
+/// logsdump` wrote it on Flashy's machine.
+pub const DEFAULT_INDEX: &str = "F:/logs.tf database/index-v2.sqlite3";
+/// The setting naming the index, once chosen.
+pub const INDEX_KEY: &str = "logs_dump_index";
+
+/// The dump's index to use: the one chosen, else the default where it
+/// exists. `None` on a machine without the dump.
+pub async fn index_path(db: &Db) -> Result<Option<std::path::PathBuf>> {
+    let chosen = db.get_setting(INDEX_KEY).await?.map(std::path::PathBuf::from);
+    Ok(chosen.or_else(|| Some(std::path::PathBuf::from(DEFAULT_INDEX))).filter(|p| p.is_file()))
+}
+
+/// One season as the Older seasons panel shows it.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SeasonCoverage {
+    pub season: i64,
+    pub played: i64,
+    pub linked: i64,
+    pub logs: i64,
+    pub downloaded: i64,
+    pub rated: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Status {
+    /// The dump's index, where there is one.
+    pub index: Option<String>,
+    pub seasons: Vec<SeasonCoverage>,
+}
+
+pub async fn status(db: &Db) -> Result<Status> {
+    let seasons = db
+        .season_coverage(hl_rating::MODEL_VERSION)
+        .await?
+        .into_iter()
+        .map(|(season, played, linked, logs, downloaded, rated)| SeasonCoverage { season, played, linked, logs, downloaded, rated })
+        .collect();
+    Ok(Status { index: index_path(db).await?.map(|p| p.to_string_lossy().into_owned()), seasons })
 }
 
 #[cfg(test)]
@@ -209,6 +418,14 @@ mod tests {
 
     fn log(id: i64, map: &str, at: i64) -> DumpLog {
         DumpLog { log_id: id, map: map.into(), played_at: at, duration_s: 1500, title: String::new(), players: 18, duplicate: false }
+    }
+
+    #[test]
+    fn a_deadline_is_midnight_in_central_europe_on_the_hour() {
+        assert!(is_deadline(1_575_759_600), "S20 Week 4: 7 December 2019, 23:00 UTC");
+        assert!(is_deadline(1_563_660_000), "summer: 22:00 UTC");
+        assert!(!is_deadline(1_581_178_243), "S20 Open's quarter-final at 16:10:43");
+        assert!(!is_deadline(1_575_748_800), "20:00 UTC, an evening's time");
     }
 
     #[test]

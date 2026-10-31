@@ -51,6 +51,8 @@ const KEY_ON: &str = "league_sample_on";
 const KEY_DISCOVERED: &str = "league_sample_discovered_at";
 /// The window the last discovery used: a wider one lists again from scratch.
 const KEY_WINDOW: &str = "league_sample_window";
+/// When a discovery that failed may be tried again.
+const KEY_DISCOVER_RETRY: &str = "league_sample_discover_retry_at";
 
 /// Changes when discovery must run again at once: a wider window, or a
 /// name parser that reads competitions it skipped before (2: the unnumbered
@@ -360,8 +362,19 @@ pub async fn step(db: &Db, sources: &Sources, mut doing: impl FnMut(&str) + Send
         .and_then(|s| s.parse::<i64>().ok())
         .is_none_or(|at| now() - at > REDISCOVER_S)
         || db.get_setting(KEY_WINDOW).await?.as_deref() != Some(window().as_str());
-    if due {
-        return Ok(Step::Discovered(discover(db, sources, &mut doing).await?));
+    // Not again while the last attempt's hour is running.
+    let resting = db.get_setting(KEY_DISCOVER_RETRY).await?.and_then(|s| s.parse::<i64>().ok()).is_some_and(|at| now() < at);
+    if due && !resting {
+        match discover(db, sources, &mut doing).await {
+            Ok(d) => return Ok(Step::Discovered(d)),
+            // trends.tf or ETF2L down (October 2026: trends.tf timing out for
+            // hours) must not stop the downloads, which come from drops.tf:
+            // listed again in an hour, and on with what is already picked.
+            Err(e) => {
+                tracing::warn!(error = %format!("{e:#}"), "league discovery failed; downloading what is picked, listing again in an hour");
+                db.set_setting(KEY_DISCOVER_RETRY, &(now() + 3600).to_string()).await?;
+            }
+        }
     }
 
     // ETF2L is another host: one match page each step, beside the logs.

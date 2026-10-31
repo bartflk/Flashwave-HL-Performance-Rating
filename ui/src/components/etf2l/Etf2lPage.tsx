@@ -12,7 +12,7 @@ import { PlayersPage } from "../players/PlayersPage";
 import { SeasonScreen, SeasonsGrid, TeamAvatar, TeamScreen, seasonTitle, useBanner, useFixturesQuery, wl } from "../teams/TeamsPage";
 import { YourTeamsCompact, useYourTeams } from "../teams/YourTeams";
 import { Countdown, clockTime, fullDate } from "./Countdown";
-import { NewsCard, NewsList, NewsReader, useNews } from "./News";
+import { NewsCard, NewsList, NewsReader, SeasonNews, useNews } from "./News";
 import { FixtureRow, LeagueMatchPage, MatchesPage, SeasonFixtures } from "./Matches";
 import { SeasonDivisions, laneOf } from "./Brackets";
 import { TeamsLanding } from "./Teams";
@@ -49,12 +49,13 @@ type Loc =
   | { at: "news" }
   | { at: "recruitment" }
   | { at: "recruit"; post: RecruitPost; kind: RecruitKind }
-  | { at: "post"; id: number };
+  // A post opened from a season's page goes back to it.
+  | { at: "post"; id: number; from?: Loc };
 
 /** The menu entry a place belongs to: a team under whatever it was opened from. */
 function sectionOf(l: Loc): Section {
   if (l.at === "season") return "seasons";
-  if (l.at === "post") return "news";
+  if (l.at === "post") return l.from ? sectionOf(l.from) : "news";
   if (l.at === "recruit") return "recruitment";
   if (l.at === "team" || l.at === "match") return sectionOf(l.from);
   return l.at;
@@ -227,6 +228,7 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
       {loc.at === "season" && (
         <>
           <SeasonScreen season={loc.season} onTeam={openTeam} tables={false} />
+          <SeasonNews season={loc.season} onPost={(id) => go({ at: "post", id, from: loc })} />
           <SeasonDivisions season={loc.season} onTeam={openTeam} onMatch={(id) => openMatch(id)} />
           <SeasonFixtures season={loc.season} onTeam={openTeam} onMatch={(id) => openMatch(id)} />
         </>
@@ -279,7 +281,8 @@ function Crumbs({ loc, go }: { loc: Loc; go: (l: Loc) => void }) {
       trail.push([t("Recruitment"), { at: "recruitment" }]);
       trail.push([l.post.name, l]);
     } else if (l.at === "post") {
-      trail.push([t("News"), { at: "news" }]);
+      if (l.from) add(l.from);
+      else trail.push([t("News"), { at: "news" }]);
       trail.push([post?.title ?? t("Post"), l]);
     } else if (l.at !== "home") {
       trail.push([{ matches: t("Matches"), seasons: t("Seasons"), teams: t("Teams"), players: t("Players"), news: t("News"), recruitment: t("Recruitment") }[l.at], l]);

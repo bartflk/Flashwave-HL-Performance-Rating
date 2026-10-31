@@ -840,6 +840,12 @@ impl Catalogue {
         let mut out = self.medals_from_results();
         for (key, places) in &self.official_places {
             let ours = out.remove(key).unwrap_or_default();
+            // A team once, at its best place: ETF2L's S18 Mid had one team
+            // both second and third.
+            let mut places = places.clone();
+            places.sort_unstable();
+            let mut seen = std::collections::HashSet::new();
+            places.retain(|(_, team)| seen.insert(*team));
             let mut confirmed: Vec<(u8, i64, String)> = places
                 .iter()
                 .map(|(place, team)| {
@@ -851,6 +857,14 @@ impl Catalogue {
                     (*place, *team, how)
                 })
                 .collect();
+            // A place ETF2L left out is the results' (its S22 Premiership
+            // names second and third and no winner; S14 and S17 Mid the
+            // same), so long as that team has no place of ETF2L's.
+            for (place, team, how) in &ours {
+                if !places.iter().any(|(p, t)| p == place || t == team) {
+                    confirmed.push((*place, *team, how.clone()));
+                }
+            }
             confirmed.sort_by_key(|(p, t, _)| (*p, *t));
             out.insert(key.clone(), confirmed);
         }
@@ -2648,7 +2662,9 @@ pub async fn team_honours(db: &Db, team: i64) -> Result<TeamHonours> {
 /// looked for once and kept ("-" when there is none, asked again after a
 /// week). Season tiles show it.
 pub async fn season_banner(db: &Db, sources: &Sources, season: i64, season_name: &str) -> Result<Option<String>> {
-    let key = format!("season_banner2:{season}");
+    // v3: looked for by the season's dates; v2's "none" was a search that
+    // never reached posts older than a year or two.
+    let key = format!("season_banner3:{season}");
     if let Some(v) = db.get_setting(&key).await? {
         let (url, at) = v.split_once('|').unwrap_or((v.as_str(), "0"));
         let fresh = now() - at.parse::<i64>().unwrap_or(0) < 7 * 24 * 3600;
@@ -2658,7 +2674,8 @@ pub async fn season_banner(db: &Db, sources: &Sources, season: i64, season_name:
     }
     // By number first ("Highlander Season 34"), then by name ("Winter
     // 2024", "AFA 2025") for the seasons without one.
-    let numbered = season < crate::leagues::OFF_SEASON && !(28..=31).contains(&season);
+    // The search by number only where the posts used one.
+    let numbered = title_number(season).is_some() && !(28..=31).contains(&season);
     let mut queries: Vec<String> = Vec::new();
     if numbered {
         queries.push(format!("Highlander Season {season}"));
@@ -2666,19 +2683,36 @@ pub async fn season_banner(db: &Db, sources: &Sources, season: i64, season_name:
     if !season_name.is_empty() && !season_name.starts_with("Season") {
         queries.push(format!("Highlander {season_name}"));
     }
-    let mut found = None;
+    let mut found: Option<(u8, String)> = None;
+    // First the Highlander posts of the season's own weeks, oldest first, so
+    // the announcement's banner: ETF2L's search matches any of its words and
+    // gives the newest first, so "Highlander Season 26" brought back fifty
+    // posts of S36 and S24 to S27 had none (Flashy, 31 Oct 2026). The search
+    // after, unless those weeks gave a picture naming the season; the better
+    // picture kept.
+    if let Some(span) = db.season_span(season).await? {
+        let url = season_posts_url(span, "title,content");
+        if let Ok(Some(body)) = sources.fetch_text_interactive(&url).await {
+            found = banner_in(&body, title_number(season), season_name);
+        }
+    }
     for q in queries {
+        if found.as_ref().is_some_and(|(score, _)| *score >= NAMES_SEASON) {
+            break;
+        }
         let url = crate::http::url(
             "https://etf2l.org/wp-json/wp/v2/posts",
             [("search", q.as_str()), ("per_page", "50"), ("_fields", "title,content")],
         );
         if let Ok(Some(body)) = sources.fetch_text_interactive(&url).await {
-            found = banner_in(&body, numbered.then_some(season), season_name);
-        }
-        if found.is_some() {
-            break;
+            if let Some(b) = banner_in(&body, title_number(season), season_name) {
+                if found.as_ref().is_none_or(|f| b.0 > f.0) {
+                    found = Some(b);
+                }
+            }
         }
     }
+    let found = found.map(|(_, url)| url);
     db.set_setting(&key, &format!("{}|{}", found.as_deref().unwrap_or("-"), now())).await?;
     Ok(found)
 }
@@ -2718,22 +2752,100 @@ fn shrink_to_jpeg(bytes: &[u8], width: u32) -> Result<Vec<u8>> {
     Ok(out)
 }
 
-/// The first picture in a post about this Highlander season: its title says
-/// "Highlander" and "Season 34" (not 340) or the season's name.
-fn banner_in(body: &str, number: Option<i64>, name: &str) -> Option<String> {
+/// A banner whose file names the season (`ETF2L-Banner-HLs21`, `HL_S_12`,
+/// `etf2l_hl_winter_24`).
+const NAMES_SEASON: u8 = 3;
+
+/// How much a picture's file looks like this season's banner: it names the
+/// season ([`NAMES_SEASON`]), it is a banner or Highlander's (2), or it is
+/// some picture (1).
+fn banner_score(src: &str, number: Option<i64>, name: &str) -> u8 {
+    let file = src.rsplit('/').next().unwrap_or(src).split('?').next().unwrap_or("").to_ascii_lowercase();
+    let names_number = number.is_some_and(|n| {
+        ["s", "s_", "season", "season_", "season-"].iter().any(|p| {
+            let w = format!("{p}{n}");
+            file.match_indices(&w).any(|(i, _)| {
+                let after = !file[i + w.len()..].starts_with(|c: char| c.is_ascii_digit());
+                let before = i == 0 || !file[..i].ends_with(|c: char| c.is_ascii_alphabetic()) || file[..i].ends_with("hl");
+                after && before
+            })
+        })
+    });
+    // "Winter 2024": winter, and 2024 or 24.
+    let mut words = name.split_whitespace();
+    let names_name = match (words.next(), words.next()) {
+        (Some(part), Some(year)) if !part.starts_with("season") && year.len() == 4 => file.contains(part) && (file.contains(year) || file.contains(&year[2..])),
+        _ => false,
+    };
+    if names_number || names_name {
+        NAMES_SEASON
+    } else if file.contains("banner") || file.contains("hl") {
+        2
+    } else {
+        1
+    }
+}
+
+/// ETF2L's Highlander posts of a season's weeks, oldest first: from six
+/// weeks before its first match (the announcement, the preseason cup) to a
+/// month after its last (the awards show, the wrap-up).
+pub(crate) fn season_posts_url((first, last): (i64, i64), fields: &str) -> String {
+    let day = |t: i64| chrono::DateTime::from_timestamp(t, 0).map(|d| d.format("%Y-%m-%dT00:00:00").to_string()).unwrap_or_default();
+    let (after, before) = (day(first - 45 * 86_400), day(last + 30 * 86_400));
+    crate::http::url(
+        "https://etf2l.org/wp-json/wp/v2/posts",
+        [
+            ("categories", "18"),
+            ("after", after.as_str()),
+            ("before", before.as_str()),
+            ("order", "asc"),
+            ("per_page", "100"),
+            ("_fields", fields),
+        ],
+    )
+}
+
+/// A league season's number, as its posts may call it: "Highlander Season
+/// 34". Seasons 28 to 31 mostly went by their names ("Winter 2023"); the
+/// off-season tournaments have none.
+pub(crate) fn title_number(season: i64) -> Option<i64> {
+    (season < crate::leagues::OFF_SEASON).then_some(season)
+}
+
+/// Whether a post's title (lower case) is about this season: "Season 34"
+/// (not 340), or each word of its name ("autumn 2023", lower case too: S30's
+/// posts say "Highlander Autumn Season 2023"). Not a 6v6 post naming the
+/// same months ("Season 53 (Autumn 2026)").
+pub(crate) fn title_names_season(title: &str, number: Option<i64>, name: &str) -> bool {
+    // Another season's number ("ahead of Season 53"), a year not one ("Spring
+    // Season 2023").
+    let others = title.match_indices("season ").filter_map(|(i, w)| {
+        let digits: String = title[i + w.len()..].chars().take_while(char::is_ascii_digit).collect();
+        digits.parse::<i64>().ok().filter(|n| *n < 1000)
+    });
+    if title.contains("6v6") || others.into_iter().any(|n| Some(n) != number) {
+        return false;
+    }
+    let by_number = number.is_some_and(|n| {
+        let w = format!("season {n}");
+        title.match_indices(&w).any(|(i, _)| !title[i + w.len()..].starts_with(|c: char| c.is_ascii_digit()))
+    });
+    by_number || (!name.is_empty() && !name.starts_with("season") && name.split_whitespace().all(|w| title.contains(w)))
+}
+
+/// The best picture in the posts about this Highlander season, the first of
+/// the best: a post's title says "Highlander" and "Season 34" (not 340) or
+/// the season's name. With its [`banner_score`].
+fn banner_in(body: &str, number: Option<i64>, name: &str) -> Option<(u8, String)> {
     let posts: Vec<Value> = serde_json::from_str(body).ok()?;
     let name = name.to_ascii_lowercase();
+    let mut best: Option<(u8, String)> = None;
     for p in posts {
         let title = p.pointer("/title/rendered").and_then(Value::as_str).unwrap_or("").to_ascii_lowercase();
         if !title.contains("highlander") {
             continue;
         }
-        let by_number = number.is_some_and(|n| {
-            let w = format!("season {n}");
-            title.match_indices(&w).any(|(i, _)| !title[i + w.len()..].starts_with(|c: char| c.is_ascii_digit()))
-        });
-        let by_name = !name.is_empty() && !name.starts_with("season") && title.contains(&name);
-        if !by_number && !by_name {
+        if !title_names_season(&title, number, &name) {
             continue;
         }
         let content = p.pointer("/content/rendered").and_then(Value::as_str).unwrap_or("");
@@ -2742,13 +2854,20 @@ fn banner_in(body: &str, number: Option<i64>, name: &str) -> Option<String> {
             let lower = src.to_ascii_lowercase();
             let path = lower.split('?').next().unwrap_or(&lower);
             let picture = path.ends_with(".jpg") || path.ends_with(".jpeg") || path.ends_with(".png") || path.ends_with(".webp");
-            let chrome = ["/flags/", "/achs/", "emoji", "placeholder", "avatar"].iter().any(|x| lower.contains(x));
+            // Not a season's: the site's pictures, and the ETF2L logo and
+            // the social marks old posts open with (S19's awards show).
+            let chrome = ["/flags/", "/achs/", "emoji", "placeholder", "avatar", "twitter", "discord", "facebook", "icon", "logo", "etf2l_long", "150x150"]
+                .iter()
+                .any(|x| lower.contains(x));
             if picture && !chrome && src.starts_with("http") {
-                return Some(src.replace("&amp;", "&"));
+                let score = banner_score(src, number, &name);
+                if best.as_ref().is_none_or(|(s, _)| score > *s) {
+                    best = Some((score, src.replace("&amp;", "&")));
+                }
             }
         }
     }
-    None
+    best
 }
 
 /// What ETF2L's own page says about a team: its description, and its
@@ -2835,7 +2954,9 @@ pub(crate) fn html_text(fragment: &str) -> String {
     while let Some(i) = rest.find('&') {
         text.push_str(&rest[..i]);
         let tail = &rest[i..];
-        let Some(semi) = tail[..tail.len().min(10)].find(';') else {
+        // Within ten bytes, by character: S30's "&" before a "’" cut it in
+        // two and panicked (31 Oct 2026).
+        let Some(semi) = tail.char_indices().take_while(|(i, _)| *i < 10).find(|(_, c)| *c == ';').map(|(i, _)| i) else {
             text.push('&');
             rest = &tail[1..];
             continue;
@@ -3225,10 +3346,36 @@ mod tests {
             {"title":{"rendered":"6v6 Season 34"},"content":{"rendered":"<img src=\"https://etf2l.org/wp-content/uploads/6v6.jpg\">"}},
             {"title":{"rendered":"Highlander Winter 2024: Playoffs"},"content":{"rendered":"<img src=\"https://etf2l.org/wp-content/uploads/w24.png\">"}}
         ]"#;
-        assert_eq!(banner_in(body, Some(3), "Season 3").as_deref(), Some("https://i.imgur.com/HL3.jpg?x=1"), "not Season 34's, not the placeholder, not a flag");
-        assert_eq!(banner_in(body, Some(34), "Summer 2025").as_deref(), Some("https://etf2l.org/wp-content/uploads/2025/HL34.png"), "not the 6v6 post");
-        assert_eq!(banner_in(body, None, "Winter 2024").as_deref(), Some("https://etf2l.org/wp-content/uploads/w24.png"), "by name");
+        assert_eq!(banner_in(body, Some(3), "Season 3").map(|b| b.1).as_deref(), Some("https://i.imgur.com/HL3.jpg?x=1"), "not Season 34's, not the placeholder, not a flag");
+        assert_eq!(banner_in(body, Some(34), "Summer 2025").map(|b| b.1).as_deref(), Some("https://etf2l.org/wp-content/uploads/2025/HL34.png"), "not the 6v6 post");
+        assert_eq!(banner_in(body, None, "Winter 2024").map(|b| b.1).as_deref(), Some("https://etf2l.org/wp-content/uploads/w24.png"), "by name");
         assert_eq!(banner_in(body, Some(35), "Spring 2026"), None);
+        // S19's awards show opens with the Twitter mark, then its banner.
+        let s19 = r#"[{"title":{"rendered":"Higlander Season 19 &#8211; Highlander Season 19: Awards Show"},"content":{"rendered":"<img src=\"https://etf2l.org/wp-content/uploads/2020/05/Twitter.png\"><img src=\"https://etf2l.org/wp-content/uploads/2020/05/2018_etf2l_long_png.png\"><img src=\"https://etf2l.org/wp-content/uploads/2020/05/ETF2L-HLs19-Banner.png\">"}}]"#;
+        assert_eq!(banner_in(s19, Some(19), "Season 19").map(|b| b.1).as_deref(), Some("https://etf2l.org/wp-content/uploads/2020/05/ETF2L-HLs19-Banner.png"));
+        // A banner naming the season beats a picture before it; the social
+        // icons and the logo are none (S20, S16 found on 31 Oct 2026).
+        let s20 = r#"[{"title":{"rendered":"Highlander Season 20: Provisional Tiers"},"content":{"rendered":"<img src=\"https://etf2l.org/wp-content/uploads/2020/05/facebook-icon-basic-round.png\"><img src=\"https://etf2l.org/wp-content/uploads/2016/03/etf2l-logo-banner_small.png\"><img src=\"https://etf2l.org/wp-content/uploads/2023/11/image-1.png\"><img src=\"https://etf2l.org/wp-content/uploads/2020/05/ETF2L-HL-s20-Banner.png\">"}}]"#;
+        assert_eq!(banner_in(s20, Some(20), "Season 20"), Some((NAMES_SEASON, "https://etf2l.org/wp-content/uploads/2020/05/ETF2L-HL-s20-Banner.png".into())));
+        assert_eq!(banner_score("https://x/HL_S_12-1024x576.png", Some(12), "season 12"), NAMES_SEASON);
+        assert_eq!(banner_score("https://x/ETF2L_Banner_HLs251.jpg", Some(25), "season 25"), 2, "s251 is not s25");
+        assert_eq!(banner_score("https://x/etf2l_hl_winter_24-1024x576.png", None, "winter 2024"), NAMES_SEASON);
+        assert_eq!(banner_score("https://x/assets12.png", Some(12), "season 12"), 1);
+    }
+
+    #[test]
+    fn text_with_an_ampersand_before_a_curly_quote_reads() {
+        assert_eq!(html_text("Q&amp;A & Dickmann\u{2019}s"), "Q&A & Dickmann\u{2019}s");
+        assert_eq!(html_text("A & B\u{2019}\u{2019}\u{2019}x;"), "A & B\u{2019}\u{2019}\u{2019}x;");
+    }
+
+    #[test]
+    fn a_post_title_names_its_season_and_no_other() {
+        assert!(title_names_season("announcing highlander autumn season 2023 & preseason cup", Some(30), "autumn 2023"));
+        assert!(title_names_season("highlander season 13 \u{2013} wrap up", Some(13), "season 13"));
+        assert!(!title_names_season("highlander season 19 \u{2013} wrap-up", Some(20), "season 20"));
+        assert!(!title_names_season("rule changes ahead of season 53 (autumn 2026)", Some(36), "autumn 2026"));
+        assert!(!title_names_season("highlander spring 2023 & 6v6 winter showdown 2023 award polls", Some(28), "winter 2023"));
     }
 
     #[test]
@@ -3376,6 +3523,22 @@ mod tests {
         ]);
         let bronze: Vec<i64> = c.medals()[&(34, "Mid".to_string())].iter().filter(|x| x.0 == 3).map(|x| x.1).collect();
         assert_eq!(bronze, vec![10]);
+    }
+
+    #[test]
+    fn a_place_etf2l_left_out_is_filled_from_the_results() {
+        // S22 Premiership: ETF2L names second and third and no winner; S18
+        // Mid had one team both second and third.
+        let mut c = cat(vec![
+            m(1, 22, "Playoffs", None, "Mid", Some("Semi-finals"), 10, 13, 6, 0),
+            m(2, 22, "Playoffs", None, "Mid", Some("Semi-finals"), 11, 12, 6, 0),
+            m(3, 22, "Playoffs", None, "Mid", Some("Grand Final"), 10, 11, 6, 0),
+        ]);
+        c.official_places.insert((22, "Mid".into()), vec![(2, 11), (3, 12), (3, 11)]);
+        let prem = &c.medals()[&(22, "Mid".to_string())];
+        let places: Vec<(u8, i64)> = prem.iter().map(|x| (x.0, x.1)).collect();
+        assert_eq!(places, vec![(1, 10), (2, 11), (3, 12)], "the winner from the final, team 11 once, 13 not added to ETF2L's third");
+        assert!(prem.contains(&(1, 10, "Grand Final 6-0".into())));
     }
 
     #[test]

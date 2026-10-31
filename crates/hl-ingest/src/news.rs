@@ -135,6 +135,47 @@ pub async fn latest(db: &Db, sources: &Sources) -> Result<Vec<NewsItem>> {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct SeasonHeld {
+    at: i64,
+    items: Vec<NewsItem>,
+}
+
+/// A season's own posts, oldest first: its announcement, tiers, playoffs,
+/// Grand Final, awards and wrap-up (Flashy: "linking the seasons to the news
+/// posts"). The Highlander posts of its weeks whose title names it. Kept: a
+/// season over for a month for good, the one being played for six hours.
+/// Best effort, like the news: a failed read keeps the last list.
+pub async fn season(db: &Db, sources: &Sources, season: i64, season_name: &str) -> Result<Vec<NewsItem>> {
+    let key = format!("season_news:{season}");
+    let held: Option<SeasonHeld> = db.get_setting(&key).await?.and_then(|v| serde_json::from_str(&v).ok());
+    let Some(span) = db.season_span(season).await? else { return Ok(held.map(|h| h.items).unwrap_or_default()) };
+    if let Some(h) = &held {
+        let over = now() - span.1 > 30 * 86_400;
+        if (over && h.at > span.1 + 30 * 86_400) || now() - h.at < 6 * 3600 {
+            return Ok(h.items.clone());
+        }
+    }
+    let url = crate::catalogue::season_posts_url(span, "id,date_gmt,title,link,excerpt,content");
+    match sources.fetch_text_interactive(&url).await.map(|b| b.as_deref().and_then(parse)) {
+        Ok(Some(posts)) => {
+            let number = crate::catalogue::title_number(season);
+            let name = season_name.to_ascii_lowercase();
+            let mut items: Vec<NewsItem> =
+                posts.into_iter().map(|(n, _)| n).filter(|n| crate::catalogue::title_names_season(&n.title.to_ascii_lowercase(), number, &name)).collect();
+            items.sort_by_key(|n| n.time);
+            db.set_setting(&key, &serde_json::to_string(&SeasonHeld { at: now(), items: items.clone() })?).await?;
+            Ok(items)
+        }
+        other => {
+            if let Err(e) = other {
+                tracing::warn!(error = %format!("{e:#}"), "reading season {season}'s news failed");
+            }
+            Ok(held.map(|h| h.items).unwrap_or_default())
+        }
+    }
+}
+
 /// One post, from the kept list when it is there, else asked for alone
 /// (an older post linked from somewhere).
 pub async fn post(db: &Db, sources: &Sources, id: i64) -> Result<Option<NewsPost>> {

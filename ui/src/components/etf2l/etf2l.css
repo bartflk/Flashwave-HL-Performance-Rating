@@ -1427,3 +1427,22 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
   background: var(--panel);
 }
 .tm-wait { margin-top: 18px; }
+
+/* A season's own posts on its page (News.tsx SeasonNews): one line each,
+   date then title, in the order they came out; two columns when wide. */
+.np-season { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 10px 14px; }
+.np-season button {
+  width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 16px;
+  padding: 14px 18px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel-2);
+  color: var(--text); text-align: left; cursor: pointer; transition: border-color 0.12s, background 0.12s;
+}
+.np-season button:hover { border-color: var(--line-2); background: var(--panel); }
+.np-season-title { font-size: var(--fs-ui); line-height: var(--lh-snug); color: var(--text-hi); }
+.np-season .np-date { white-space: nowrap; min-width: 6.5em; }
+.np-season-go { color: var(--muted); font-size: var(--fs-section); line-height: 1; }
+.np-season button:hover .np-season-go { color: var(--accent); }
+@media (max-width: 560px) {
+  .np-season { grid-template-columns: 1fr; }
+  .np-season button { grid-template-columns: 1fr auto; }
+  .np-season .np-date { grid-column: 1 / -1; }
+}

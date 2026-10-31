@@ -80,6 +80,8 @@ import type {
   Backup,
   Backups,
   StorageOverview,
+  OldSeasonsStatus,
+  OldSeasonAdded,
   StoragePart,
   PathRow,
   BuildingRow,
@@ -272,6 +274,7 @@ const realApi = {
   getFixtures: () => invoke<Fixture[]>("get_fixtures"),
   getNews: () => invoke<NewsItem[]>("get_news"),
   getNewsPost: (id: number) => invoke<NewsPost | null>("get_news_post", { id }),
+  getSeasonNews: (season: number, seasonName: string) => invoke<NewsItem[]>("get_season_news", { season, seasonName }),
   getRecentResults: (limit?: number) => invoke<ResultRow[]>("get_recent_results", { limit }),
   searchTeams: (query: string) => invoke<TeamHit[]>("search_teams", { query }),
   getLeagueMatch: (matchId: number) => invoke<LeagueMatch | null>("get_league_match", { matchId }),
@@ -362,6 +365,11 @@ const realApi = {
   etf2lDailyCheck: (force = false) => invoke<DailyCheck>("etf2l_daily_check", { force }),
   leagueFreshness: () => invoke<LeagueFreshness>("league_freshness"),
   updateLeague: () => invoke<LeagueCatchUp>("update_league"),
+  oldSeasonsStatus: () => invoke<OldSeasonsStatus>("old_seasons_status"),
+  setLogsDumpIndex: (path: string) => invoke<OldSeasonsStatus>("set_logs_dump_index", { path }),
+  importOldSeason: (season: number) => invoke<OldSeasonAdded>("import_old_season", { season }),
+  onOldSeasonProgress: (cb: (p: { what: string; logs?: number }) => void): Promise<UnlistenFn> =>
+    listen<{ what: string; logs?: number }>("oldseason://progress", (e) => cb(e.payload)),
   onLeagueProgress: (cb: (p: { what: string; logs: number; raw: number; rosters: number }) => void): Promise<UnlistenFn> =>
     listen<{ what: string; logs: number; raw: number; rosters: number }>("league://progress", (e) => cb(e.payload)),
   refreshEtf2l: () => invoke<Etf2lRefreshed>("refresh_etf2l"),
