@@ -11,6 +11,7 @@ import { Loading } from "../Spinner";
 import { CtlGroup, Icon, Seg } from "../analysis/MapChrome";
 import { ReadAgain } from "../match/DemoPanel";
 import { StvPartsNotice } from "../match/StvParts";
+import { useCallouts } from "../analysis/Callouts";
 
 /**
  * A player's lives on one map (Q57, Emiel): pick a map and a class, and
@@ -53,8 +54,41 @@ const OUT_OF_SPAWN_S = 8;
  *  room and its doors. */
 const SPAWN_RADIUS = 900;
 
-/** How many tiles around where each route begins are left undrawn. */
-const SPAWN_TILES = 2;
+/** A callout zone counts as a spawn room by its name. */
+const SPAWN_NAME = /spawn/i;
+
+/** A map's spawn rooms from its callouts, in game units. */
+function useSpawnZones(map: string | null): Array<Array<[number, number]>> {
+  const q = useCallouts(map);
+  return useMemo(() => (q.data?.zones ?? []).filter((z) => SPAWN_NAME.test(z.name) && !/exit/i.test(z.name)).map((z) => z.points), [q.data]);
+}
+
+/** Whether a point lies inside a polygon (even-odd). */
+function inPolygon([x, y]: [number, number], poly: Array<[number, number]>): boolean {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [x1, y1] = poly[i];
+    const [x2, y2] = poly[j];
+    if (y1 > y !== y2 > y && x < ((x2 - x1) * (y - y1)) / (y2 - y1) + x1) c = !c;
+  }
+  return c;
+}
+
+/** How far (map units) around where each route begins is left undrawn. */
+const SPAWN_HIDE = 650;
+
+/** Where a route begins: after any teleport in its first seconds. A life
+ *  alive across a round restart carries its old place for a moment before
+ *  the respawn puts it in the spawn room. */
+function beginOf(l: LifeOnMap): [number, number] | undefined {
+  let at = 0;
+  for (let j = 1; j < l.points.length; j++) {
+    if ((l.openingT[j] ?? Infinity) > OUT_OF_SPAWN_S) break;
+    const [a, b] = [l.points[j - 1], l.points[j]];
+    if (Math.hypot(b[0] - a[0], b[1] - a[1]) > JUMP) at = j;
+  }
+  return l.points[at];
+}
 
 /** A hex both use at least this much (of each one's busiest) is outlined. */
 const OVERLAP = 0.25;
@@ -73,7 +107,12 @@ function cut(l: LifeOnMap, window: number, toKill: boolean): LifeOnMap | null {
   const end = toKill && l.firstKill !== null ? Math.min(window, l.firstKill) : window;
   let n = 0;
   while (n < l.openingT.length && l.openingT[n] <= end) n++;
-  return n > 1 ? { ...l, points: l.points.slice(l.openingSkip, l.openingSkip + n) } : null;
+  if (n < 2) return null;
+  // From the respawn on: a life alive across the round restart carries its
+  // old place for a moment first.
+  const w = { ...l, points: l.points.slice(l.openingSkip, l.openingSkip + n), openingT: l.openingT.slice(0, n) };
+  const from = w.points.indexOf(beginOf(w) ?? w.points[0]);
+  return from > 0 ? { ...w, points: w.points.slice(from), openingT: w.openingT.slice(from) } : w;
 }
 
 /** A step longer than this went through a teleporter or a respawn: the line
@@ -94,6 +133,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
     enabled: map !== null,
     staleTime: 5 * 60_000,
   });
+  const spawnZones = useSpawnZones(fullName);
   const overviewQ = useQuery({
     queryKey: ["overview", fullName],
     queryFn: () => api.getMapOverview(fullName ?? ""),
@@ -432,6 +472,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
         <Drawing
           lives={mode === "opening" ? groups.flatMap((g) => g.lives) : shown}
           groups={groups}
+          spawnZones={spawnZones}
           window={rollout}
           toKill={toKill}
           overview={overviewQ.data ?? null}
@@ -481,6 +522,7 @@ export function MatchOpenings({
   teams: Map<number, "Red" | "Blue">;
 }) {
   const q = useQuery({ queryKey: ["match_openings", logId], queryFn: () => api.matchOpenings(logId), staleTime: 5 * 60_000 });
+  const spawnZones = useSpawnZones(mapName);
   const overviewQ = useQuery({
     queryKey: ["overview", mapName],
     queryFn: () => api.getMapOverview(mapName ?? ""),
@@ -560,6 +602,7 @@ export function MatchOpenings({
       <Drawing
         lives={groups.flatMap((g) => g.lives)}
         groups={groups}
+        spawnZones={spawnZones}
         window={rollout}
         toKill={toKill}
         overview={overviewQ.data ?? null}
@@ -578,6 +621,7 @@ const CLASS_ORDER = ["scout", "soldier", "pyro", "demoman", "heavyweapons", "hea
 function Drawing({
   lives,
   groups,
+  spawnZones,
   window: seconds,
   toKill,
   overview,
@@ -587,6 +631,8 @@ function Drawing({
 }: {
   lives: LifeOnMap[];
   groups: Group[];
+  /** The map's spawn rooms from its callouts, in game units. */
+  spawnZones: Array<Array<[number, number]>>;
   window: number;
   toKill: boolean;
   overview: { minX: number; maxY: number; size: number; aspect: number; image: string } | null;
@@ -665,7 +711,7 @@ function Drawing({
   const density = useMemo(() => (frame && mode === "density" ? densityOf(lives, frame) : null), [lives, frame, mode]);
 
   // The round openings, in hexes.
-  const hexes = useMemo(() => (frame && mode === "opening" ? hexesOf(groups.map((g) => g.lives), frame) : null), [groups, frame, mode]);
+  const hexes = useMemo(() => (frame && mode === "opening" ? hexesOf(groups.map((g) => g.lives), frame, spawnZones) : null), [groups, frame, mode, spawnZones]);
 
   // Each hex its group's colour (a side's, or a player's), stronger the more
   // rounds went through it; where both went, outlined in white. Each one's
@@ -1022,7 +1068,7 @@ type Hexes = ReturnType<typeof hexesOf>;
  *  neighbourhood (it and the six around it) the most rounds went through, so
  *  a spot rather than one tile of it. Not the spawn room, which every round
  *  starts in. */
-function hexesOf(groups: LifeOnMap[][], frame: { minX: number; maxY: number; w: number; h: number }) {
+function hexesOf(groups: LifeOnMap[][], frame: { minX: number; maxY: number; w: number; h: number }, spawnZones: Array<Array<[number, number]>> = []) {
   const size = Math.max(frame.w, frame.h) / HEXES / Math.sqrt(3);
   const cells = new Map<string, number[]>();
   const near = groups.map(() => new Map<string, number>());
@@ -1043,12 +1089,12 @@ function hexesOf(groups: LifeOnMap[][], frame: { minX: number; maxY: number; w: 
     seenOut.clear();
     around.clear();
     let prev: [number, number] | null = null;
-    const begin = l.points[0];
+    const begin = beginOf(l);
     l.points.forEach((p, j) => {
       // Out of spawn: past its first seconds, and well away from where the
       // route began (a koth round starts in the pre-round freeze, so at 8 s
       // everyone still stood at the door: both rings sat there).
-      const out = (l.openingT[j] ?? Infinity) >= OUT_OF_SPAWN_S && Math.hypot(p[0] - begin[0], p[1] - begin[1]) >= SPAWN_RADIUS;
+      const out = (l.openingT[j] ?? Infinity) >= OUT_OF_SPAWN_S && (!begin || Math.hypot(p[0] - begin[0], p[1] - begin[1]) >= SPAWN_RADIUS);
       const [pq, pr] = hexAt(p[0] - frame.minX, frame.maxY - p[1], size);
       const tk = `${pq},${pr}`;
       const tc = time.get(tk) ?? groups.map(() => 0);
@@ -1070,9 +1116,8 @@ function hexesOf(groups: LifeOnMap[][], frame: { minX: number; maxY: number; w: 
       }
       prev = p;
     });
-    const first = l.points[0];
-    if (first) {
-      const [q, r] = hexAt(first[0] - frame.minX, frame.maxY - first[1], size);
+    if (begin) {
+      const [q, r] = hexAt(begin[0] - frame.minX, frame.maxY - begin[1], size);
       for (let dq = -2; dq <= 2; dq++) for (let dr = -2; dr <= 2; dr++) spawn[g].add(`${q + dq},${r + dr}`);
     }
     for (const key of seen) {
@@ -1095,10 +1140,46 @@ function hexesOf(groups: LifeOnMap[][], frame: { minX: number; maxY: number; w: 
     for (const [dq, dr] of AROUND) s += timeOut.get(`${q + dq},${r + dr}`)?.[g] ?? 0;
     return s;
   };
+  // The tiles where the routes begin (Flashy: "remove the first 3/5 tiles
+  // from spawn since they dont do anything"): every round starts there, so
+  // they were the hottest on the map and dulled the rest. Not drawn, and not
+  // the scale either.
+  // Every tile within SPAWN_HIDE of where any route began, after the
+  // respawn (Flashy: "remove a bit more, it shows me being in spawn the
+  // most"): a spawn room and its doors, whatever its shape.
+  const begins = new Map<string, [number, number]>();
+  for (const lives of groups)
+    for (const l of lives) {
+      const b = beginOf(l);
+      if (!b) continue;
+      const [q, r] = hexAt(b[0] - frame.minX, frame.maxY - b[1], size);
+      begins.set(`${q},${r}`, [b[0] - frame.minX, frame.maxY - b[1]]);
+    }
+  const start = new Set<string>();
+  // And the map's own spawn rooms, from its callouts (Flashy: "a preset
+  // hammer units area ... where it doesnt track those start positions"):
+  // every zone named a spawn that a route begins in. A payload map's forward
+  // spawns hold no round's start, so the rollout through them still shows.
+  const used = spawnZones.filter((z) => [...begins.values()].some(([bx, by]) => inPolygon([bx + frame.minX, frame.maxY - by], z)));
+  if (used.length > 0)
+    for (const key of new Set([...cells.keys(), ...time.keys()])) {
+      const [q, r] = key.split(",").map(Number);
+      const [cx, cy] = hexCentre(q, r, size);
+      if (used.some((z) => inPolygon([cx + frame.minX, frame.maxY - cy], z))) start.add(key);
+    }
+  const reach = Math.ceil(SPAWN_HIDE / (size * 1.5)) + 1;
+  for (const [key, [bx, by]] of begins) {
+    const [q, r] = key.split(",").map(Number);
+    for (let dq = -reach; dq <= reach; dq++)
+      for (let dr = -reach; dr <= reach; dr++) {
+        const [cx, cy] = hexCentre(q + dq, r + dr, size);
+        if (Math.hypot(cx - bx, cy - by) <= SPAWN_HIDE) start.add(`${q + dq},${r + dr}`);
+      }
+  }
   const main = groups.map((_, g) => {
     let best: { q: number; r: number; rounds: number; stay: number } | null = null;
     for (const [key, n] of near[g]) {
-      if (spawn[g].has(key) || !cells.get(key)?.[g]) continue;
+      if (spawn[g].has(key) || start.has(key) || !cells.get(key)?.[g]) continue;
       if (best && n < best.rounds) continue;
       const s = stay(key, g);
       if (!best || n > best.rounds || s > best.stay) {
@@ -1108,19 +1189,6 @@ function hexesOf(groups: LifeOnMap[][], frame: { minX: number; maxY: number; w: 
     }
     return best;
   });
-  // The tiles where the routes begin (Flashy: "remove the first 3/5 tiles
-  // from spawn since they dont do anything"): every round starts there, so
-  // they were the hottest on the map and dulled the rest. Not drawn, and not
-  // the scale either.
-  const start = new Set<string>();
-  for (const lives of groups)
-    for (const l of lives) {
-      const first = l.points[0];
-      if (!first) continue;
-      const [q, r] = hexAt(first[0] - frame.minX, frame.maxY - first[1], size);
-      for (let dq = -SPAWN_TILES; dq <= SPAWN_TILES; dq++)
-        for (let dr = Math.max(-SPAWN_TILES, -dq - SPAWN_TILES); dr <= Math.min(SPAWN_TILES, -dq + SPAWN_TILES); dr++) start.add(`${q + dq},${r + dr}`);
-    }
   const kept = (m: Map<string, number[]>) => [...m.entries()].filter(([k]) => !start.has(k)).map(([, c]) => c);
   const maxTime = groups.map((_, g) => Math.max(1, ...kept(time).map((c) => c[g])));
   const max = groups.map((_, g) => Math.max(1, ...kept(cells).map((c) => c[g])));
