@@ -307,15 +307,33 @@ pub async fn fetch_stv(
             .await
             .context("demos.tf has no demo for this match, and ETF2L's could not be used");
     }
+    // The other parts of its recording too (Flashy: "make it fetch the
+    // missing STV parts automatically"): found before when the match is on
+    // the real clock already, and again after the first download puts it
+    // there. A part already on this machine is not downloaded again.
+    let me = db.get_me().await?;
     let mut out: Option<StvFetched> = None;
-    for id in ids {
-        let got = fetch_demostf(db, sources, tf, log_id, id, &mut progress).await?;
-        out = Some(match out {
-            None => got,
-            Some(o) => StvFetched { bytes: o.bytes + got.bytes, log_share: ((o.log_share + got.log_share) * 100.0).round().min(100.0) / 100.0, ..o },
-        });
+    let mut tried: std::collections::HashSet<i64> = db.demos_tf_ids_here(log_id).await?.into_iter().collect();
+    for pass in 0..2 {
+        if let Some(me) = me {
+            if let Err(e) = crate::stv_parts::find(db, sources, me, log_id).await {
+                tracing::warn!(log_id, pass, error = %format!("{e:#}"), "looking for the other parts of the STV failed");
+            }
+        }
+        let ids: Vec<i64> = db.stv_ids(log_id).await?.into_iter().filter(|id| !tried.contains(id)).collect();
+        if ids.is_empty() {
+            break;
+        }
+        for id in ids {
+            tried.insert(id);
+            let got = fetch_demostf(db, sources, tf, log_id, id, &mut progress).await?;
+            out = Some(match out {
+                None => got,
+                Some(o) => StvFetched { bytes: o.bytes + got.bytes, log_share: ((o.log_share + got.log_share) * 100.0).round().min(100.0) / 100.0, ..o },
+            });
+        }
     }
-    Ok(out.expect("at least one id"))
+    out.context("every part of this match's SourceTV demos.tf has is already on this machine")
 }
 
 /// One demos.tf demo, downloaded, indexed and linked to `log_id`.

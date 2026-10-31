@@ -787,6 +787,34 @@ export interface LifeOnMap {
   firstKill: number | null;
 }
 
+/** Which of a match's rounds the SourceTV on this machine covers. */
+export interface StvCoverage {
+  rounds: number[];
+  covered: number[];
+}
+
+/** A part of a match's SourceTV on demos.tf. */
+export interface StvPart {
+  demosTfId: number;
+  name: string;
+  time: number | null;
+  duration: number | null;
+  /** The match's rounds it covers. */
+  rounds: number[];
+  /** Its file is already on this machine. */
+  here: boolean;
+}
+
+/** A match whose SourceTV on this machine leaves rounds out. */
+export interface GappyMatch {
+  logId: number;
+  map: string | null;
+  playedAt: number | null;
+  rounds: number;
+  covered: number[];
+  missing: number[];
+}
+
 /** Someone else with routes on a map, to compare round openings with. */
 export interface MapPlayer {
   accountId: number;

@@ -182,13 +182,7 @@ pub async fn for_log_with(db: &Db, log_id: i64, me: SteamId, progress: &mut (dyn
     // its rounds to the owner's own recording (Flashy: "why does it say 3/9
     // rounds"; a koth match whose one STV part held rounds 4 to 6).
     let stv_rounds: HashSet<i64> = match offset {
-        Some(o) => rounds
-            .iter()
-            .filter(|(_, f, _)| {
-                stvs.iter().any(|s| s.start_utc.is_some_and(|st| *f >= st - o as f64 - 5.0 && *f <= st + s.playback_s - o as f64))
-            })
-            .map(|(n, ..)| *n)
-            .collect(),
+        Some(o) => crate::stv_parts::covered_rounds(&rounds, &stvs.iter().filter_map(|s| Some((s.start_utc? - o as f64, s.playback_s))).collect::<Vec<_>>()),
         None => HashSet::new(),
     };
     match (pov, stv) {

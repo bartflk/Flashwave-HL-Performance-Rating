@@ -2055,3 +2055,37 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
 .match-page .panel.box .scoreboard :is(td, th):first-child { padding-left: var(--sec-pad-x); }
 .match-page .panel.box .scoreboard :is(td, th):last-child { padding-right: var(--sec-pad-x); }
 
+/* The other parts of a match's SourceTV: which rounds this machine has, and
+   fetching the rest (on the Demo panel and the round openings). */
+.stv-parts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+.stv-parts p { margin: 0; line-height: var(--lh-body); }
+.stv-parts-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.stv-parts-actions .spinner, .stv-gappy .spinner { width: 14px; height: 14px; }
+.stv-gappy { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 6px; }
+.stv-gappy li {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.2fr) minmax(90px, auto) minmax(110px, 1fr) auto;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+.stv-gappy-name { justify-self: start; font-weight: 700; }
+.stv-gappy-act { justify-self: end; display: flex; align-items: center; gap: 8px; }
+@media (max-width: 640px) {
+  .stv-gappy li { grid-template-columns: 1fr auto; }
+}

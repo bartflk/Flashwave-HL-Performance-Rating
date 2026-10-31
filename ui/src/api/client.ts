@@ -95,8 +95,11 @@ import type {
   MassSearchStep,
   MassSummary,
   MapWithLives,
+  GappyMatch,
   LifeOnMap,
   LivesOnMap,
+  StvCoverage,
+  StvPart,
   MapPlayer,
   StvQueued,
   FailedLog,
@@ -383,6 +386,9 @@ const realApi = {
   livesPlayers: (accountId: number, map: string) => invoke<MapPlayer[]>("lives_players", { accountId, map }),
   livesOpposite: (accountId: number, map: string, cls: string | null) => invoke<LivesOnMap>("lives_opposite", { accountId, map, class: cls }),
   matchOpenings: (logId: number) => invoke<LifeOnMap[]>("match_openings", { logId }),
+  stvCoverage: (logId: number) => invoke<StvCoverage | null>("stv_coverage", { logId }),
+  findStvParts: (logId: number) => invoke<StvPart[]>("find_stv_parts", { logId }),
+  missingStvParts: () => invoke<GappyMatch[]>("missing_stv_parts"),
   /** Q69: mass import of a player's demos on one map. */
   massSearch: (accountId: number, map: string, cls: string | null, want: number) =>
     invoke<MassCandidate[]>("mass_search", { accountId, map, class: cls, want }),

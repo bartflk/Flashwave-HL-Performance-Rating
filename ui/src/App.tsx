@@ -218,6 +218,7 @@ export default function App() {
             setForceSetup(true);
             go("matches");
           }}
+          onOpenMatch={setOpenLog}
         /></ErrorBoundary>
       )}
       {/* "Back" returns to whichever tab the match was opened from. */}

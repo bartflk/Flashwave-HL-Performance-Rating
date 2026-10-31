@@ -54,6 +54,7 @@ pub mod etf2l;
 pub mod teammates;
 pub mod demos;
 pub mod demostf;
+pub mod stv_parts;
 pub mod spy;
 pub mod demostats;
 pub mod spawns;

@@ -1,3 +1,4 @@
+import { MissingDemosPanel } from "./match/StvParts";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { friendlyText } from "../lib/apierror";
 import { setTournamentDividers, useTournamentDividers } from "../lib/tourneys";
@@ -36,9 +37,11 @@ type Group = { id: string; title: string; sections: { id: string; title: string;
 export function Settings({
   status,
   onReconfigure,
+  onOpenMatch,
 }: {
   status: AppStatus;
   onReconfigure: () => void;
+  onOpenMatch: (logId: number) => void;
 }) {
   // Rebuilding reports from the corner like a sync, because it is one: the
   // same events, the same minutes of work.
@@ -100,6 +103,7 @@ export function Settings({
       sections: [
         { id: "demos", title: t("Demos"), icon: "film" },
         { id: "downloaded", title: t("Downloaded demos"), icon: "drive" },
+        { id: "missing-parts", title: t("Missing demo parts"), icon: "film" },
       ],
     },
     {
@@ -239,6 +243,11 @@ export function Settings({
               summary={t("SourceTV demos the app fetched, and clearing them")} hideIntro
               info={t("Each is read once; after that it only takes space and can be downloaded again any time. Your own recordings are never touched.")}>
               <DownloadedDemosPanel />
+            </SettingsSection>
+            <SettingsSection id="missing-parts" icon="film" title={t("Missing demo parts")} keywords="missing parts stv demos.tf rounds split check"
+              summary={t("Matches whose SourceTV leaves rounds out, and fetching the rest")} hideIntro
+              info={t("A server splits its SourceTV into parts of about eighteen minutes. A match with only some of them has no routes or round openings for the rounds the others hold.")}>
+              <MissingDemosPanel onOpenMatch={onOpenMatch} />
             </SettingsSection>
 
             {shows("storage") && <h2 className="settings-group">{t("Your data")}</h2>}

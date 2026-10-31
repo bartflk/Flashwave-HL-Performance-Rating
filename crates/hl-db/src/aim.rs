@@ -381,6 +381,12 @@ impl Db {
             .collect())
     }
 
+    /// The map logs.tf gave a match: free text the uploader typed.
+    pub async fn match_map(&self, log_id: i64) -> Result<Option<String>> {
+        let map: Option<Option<String>> = sqlx::query_scalar("SELECT map FROM match WHERE log_id = ?1").bind(log_id).fetch_optional(self.pool()).await?;
+        Ok(map.flatten())
+    }
+
     /// When a match was played, unix seconds.
     pub async fn match_played_at(&self, log_id: i64) -> Result<Option<i64>> {
         let at: Option<Option<i64>> = sqlx::query_scalar("SELECT played_at FROM match WHERE log_id = ?1").bind(log_id).fetch_optional(self.pool()).await?;

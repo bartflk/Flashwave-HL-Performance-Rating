@@ -10,6 +10,7 @@ import { beforeDemosTf } from "../../lib/stv";
 import { locale, t, tx } from "../../lib/i18n";
 import { Spinner } from "../Spinner";
 import { capitalize, splitMap } from "../../lib/format";
+import { StvPartsNotice } from "./StvParts";
 
 /**
  * Demo linking: the demos behind this match, and two ways to add one --
@@ -76,6 +77,7 @@ export function DemoPanel({ d }: { d: MatchDetail }) {
         <DemoRow key={demo.demoId} demo={demo} />
       ))}
 
+      <StvPartsNotice logId={d.logId} label={`${d.map ?? "this match"}, log ${d.logId}`} />
       <PartDemos d={d} />
 
       <div className="demo-sources">

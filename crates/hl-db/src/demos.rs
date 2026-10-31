@@ -196,6 +196,8 @@ impl Db {
                  SELECT demos_tf_id, 0 AS k, 0 AS at, log_id FROM log_index WHERE log_id = ?1
                  UNION ALL
                  SELECT demos_tf_id, 1, COALESCE(played_at, 0), log_id FROM log_index WHERE superseded_by = ?1
+                 UNION ALL
+                 SELECT demos_tf_id, 2, demos_tf_id, log_id FROM stv_part WHERE log_id = ?1
              ) WHERE demos_tf_id IS NOT NULL ORDER BY k, at, log_id",
         )
         .bind(log_id)
@@ -203,6 +205,43 @@ impl Db {
         .await?;
         let mut seen = std::collections::HashSet::new();
         Ok(ids.into_iter().filter(|i| seen.insert(*i)).collect())
+    }
+
+    /// The other parts of a log's SourceTV found on demos.tf (see the
+    /// `stv_part` migration), kept so a fetch takes them all.
+    pub async fn add_stv_parts(&self, log_id: i64, demos_tf_ids: &[i64]) -> Result<()> {
+        for id in demos_tf_ids {
+            sqlx::query("INSERT OR IGNORE INTO stv_part (log_id, demos_tf_id) VALUES (?1, ?2)")
+                .bind(log_id)
+                .bind(id)
+                .execute(self.pool())
+                .await?;
+        }
+        Ok(())
+    }
+
+    /// The demos.tf ids of the demos linked to a log whose file is still on
+    /// this machine: what a fetch need not download again.
+    pub async fn demos_tf_ids_here(&self, log_id: i64) -> Result<Vec<i64>> {
+        Ok(sqlx::query_scalar(
+            "SELECT d.demos_tf_id FROM demo_link l JOIN demo d ON d.demo_id = l.demo_id
+             WHERE l.log_id = ?1 AND d.demos_tf_id IS NOT NULL AND d.deleted_at IS NULL",
+        )
+        .bind(log_id)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    /// Every match with a SourceTV demo linked, newest first:
+    /// `(log_id, map, played_at)`.
+    pub async fn logs_with_stv(&self) -> Result<Vec<(i64, Option<String>, Option<i64>)>> {
+        Ok(sqlx::query_as(
+            "SELECT DISTINCT m.log_id, m.map, m.played_at
+             FROM demo_link l JOIN demo d ON d.demo_id = l.demo_id JOIN match m ON m.log_id = l.log_id
+             WHERE d.kind = 'stv' ORDER BY m.played_at DESC",
+        )
+        .fetch_all(self.pool())
+        .await?)
     }
 
     /// Record the demos.tf demo each log was matched to, and the map demos.tf

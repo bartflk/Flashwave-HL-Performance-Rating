@@ -17,6 +17,7 @@ import { PositionsPanel } from "./PositionsPanel";
 import { Spychecks } from "./Spychecks";
 import { StvBanner, StvLocked } from "./StvGate";
 import { StvPrompt } from "./StvPrompt";
+import { StvPartsPrompt } from "./StvParts";
 import { AnalysisPanel } from "../analysis/AnalysisPanel";
 import { Matchups } from "./Matchups";
 import { RoundTimeline } from "./RoundTimeline";
@@ -135,6 +136,7 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
           <Fold id="demos">
             <DemoPanel d={q.data} />
             <StvPrompt d={q.data} />
+            <StvPartsPrompt logId={q.data.logId} label={`${q.data.map ?? "this match"}, log ${q.data.logId}`} />
           </Fold>
           {/* The STV-only panels: blurred, with the reason and the download,
               where there is no STV rather than missing without a word. */}

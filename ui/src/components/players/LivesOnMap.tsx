@@ -10,6 +10,7 @@ import { MassImportButton } from "./MassImport";
 import { Loading } from "../Spinner";
 import { CtlGroup, Icon, Seg } from "../analysis/MapChrome";
 import { ReadAgain } from "../match/DemoPanel";
+import { StvPartsNotice } from "../match/StvParts";
 
 /**
  * A player's lives on one map (Q57, Emiel): pick a map and a class, and
@@ -47,6 +48,9 @@ const HEXES = 70;
 /** The main position leaves out each round's first seconds: the spawn
  *  room and the way out of it, which every rollout shares. */
 const OUT_OF_SPAWN_S = 8;
+
+/** How many tiles around where each route begins are left undrawn. */
+const SPAWN_TILES = 2;
 
 /** A hex both use at least this much (of each one's busiest) is outlined. */
 const OVERLAP = 0.25;
@@ -548,6 +552,7 @@ export function MatchOpenings({
           <ReadAgain logId={logId} />
         </span>
       </div>
+      <StvPartsNotice logId={logId} label={`${mapName ?? "this match"}, log ${logId}`} />
       <Drawing
         lives={groups.flatMap((g) => g.lives)}
         groups={groups}
@@ -685,6 +690,7 @@ function Drawing({
       ctx.closePath();
     };
     for (const [key, n] of hexes.cells) {
+      if (hexes.start.has(key)) continue;
       const [q, rr] = key.split(",").map(Number);
       const [cx, cy] = at(q, rr);
       // The hex goes to whichever spent longer there, each against its own
@@ -1094,9 +1100,23 @@ function hexesOf(groups: LifeOnMap[][], frame: { minX: number; maxY: number; w: 
     }
     return best;
   });
-  const maxTime = groups.map((_, g) => Math.max(1, ...[...time.values()].map((c) => c[g])));
-  const max = groups.map((_, g) => Math.max(1, ...[...cells.values()].map((c) => c[g])));
-  return { size, cells, rounds, max, main, time, maxTime };
+  // The tiles where the routes begin (Flashy: "remove the first 3/5 tiles
+  // from spawn since they dont do anything"): every round starts there, so
+  // they were the hottest on the map and dulled the rest. Not drawn, and not
+  // the scale either.
+  const start = new Set<string>();
+  for (const lives of groups)
+    for (const l of lives) {
+      const first = l.points[0];
+      if (!first) continue;
+      const [q, r] = hexAt(first[0] - frame.minX, frame.maxY - first[1], size);
+      for (let dq = -SPAWN_TILES; dq <= SPAWN_TILES; dq++)
+        for (let dr = Math.max(-SPAWN_TILES, -dq - SPAWN_TILES); dr <= Math.min(SPAWN_TILES, -dq + SPAWN_TILES); dr++) start.add(`${q + dq},${r + dr}`);
+    }
+  const kept = (m: Map<string, number[]>) => [...m.entries()].filter(([k]) => !start.has(k)).map(([, c]) => c);
+  const maxTime = groups.map((_, g) => Math.max(1, ...kept(time).map((c) => c[g])));
+  const max = groups.map((_, g) => Math.max(1, ...kept(cells).map((c) => c[g])));
+  return { size, cells, rounds, max, main, time, maxTime, start };
 }
 
 /** A player in the compare list: their name, usual class here, and matches. */

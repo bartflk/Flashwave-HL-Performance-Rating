@@ -65,6 +65,9 @@ import type {
   LifeOnMap,
   LivesOnMap as LivesOnMapView,
   MapPlayer,
+  GappyMatch,
+  StvCoverage,
+  StvPart,
   MapWithLives,
   DemoIndexSummary,
   ReRead,
@@ -1046,6 +1049,23 @@ export const mockApi: Api = {
       { accountId: 900_001, name: "kawaii", classes: [["sniper", 7], ["scout", 1]], matches: 8, shared: 6 },
       { accountId: 900_002, name: "b4nny", classes: [["scout", 5]], matches: 5, shared: 0 },
     ]),
+  stvCoverage: (_logId: number) => delay<StvCoverage | null>({ rounds: [1, 2, 3, 4, 5, 6, 7, 8, 9], covered: [4, 5, 6] }),
+  findStvParts: (_logId: number) =>
+    delay<StvPart[]>(
+      [
+        { demosTfId: 1499987, name: "match-20260830-2015-koth_product_final.dem", time: 1788115000, duration: 1080, rounds: [1, 2, 3], here: false },
+        { demosTfId: 1500000, name: "match-20260830-2034-koth_product_final.dem", time: 1788116000, duration: 1070, rounds: [4, 5, 6], here: true },
+      ],
+      600,
+    ),
+  missingStvParts: () =>
+    delay<GappyMatch[]>(
+      [
+        { logId: 4112795, map: "koth_product_final", playedAt: 1788113751, rounds: 9, covered: [4, 5, 6], missing: [1, 2, 3, 7, 8, 9] },
+        { logId: 4109131, map: "pl_upward_f12", playedAt: 1787900000, rounds: 6, covered: [5, 6], missing: [1, 2, 3, 4] },
+      ],
+      400,
+    ),
   livesOpposite: async (_accountId: number, map: string, _cls: string | null) => {
     // The other side of the same lives, so the preview has an opposite.
     const v = await mockApi.livesOnMap(900_003, map);

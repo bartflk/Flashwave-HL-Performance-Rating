@@ -1601,6 +1601,27 @@ async fn run() -> Result<()> {
             Ok(())
         }
 
+        ["stv-parts", rest @ ..] => {
+            // The parts of a match's SourceTV: which rounds this machine has,
+            // and (with a log id) what demos.tf has of the rest.
+            let db = Db::connect(&db_path).await?;
+            if let [log] = rest {
+                let log_id: i64 = log.parse()?;
+                if let Some(c) = hl_ingest::stv_parts::coverage(&db, log_id).await? {
+                    println!("here: rounds {:?} of {:?}", c.covered, c.rounds);
+                }
+                let me = db.get_me().await?.context("no owner set")?;
+                for p in hl_ingest::stv_parts::find(&db, &Sources::new()?, me, log_id).await? {
+                    println!("demos.tf {:>7}  {}  rounds {:?}{}", p.demos_tf_id, p.name, p.rounds, if p.here { "  (here)" } else { "" });
+                }
+            } else {
+                for g in hl_ingest::stv_parts::gappy(&db).await? {
+                    println!("{}  {:<24} {} of {} rounds; missing {:?}", g.log_id, g.map.as_deref().unwrap_or("?"), g.covered.len(), g.rounds, g.missing);
+                }
+            }
+            Ok(())
+        }
+
         ["openings", log] => {
             // A match's round openings: each round's start, and every life
             // there then or begun near it, by class and side.
