@@ -1868,6 +1868,18 @@ pub async fn get_fixtures(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest
     Ok(hl_ingest::fixtures::upcoming(&state.db, &state.sources).await?)
 }
 
+/// RGL's NA Highlander seasons, for the RGL tab (PLAN §30).
+#[tauri::command]
+pub async fn get_rgl_seasons(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::rgl::RglSeasonItem>> {
+    Ok(hl_ingest::rgl::seasons(&state.sources).await?)
+}
+
+/// One RGL season: its maps and each division's teams.
+#[tauri::command]
+pub async fn get_rgl_season(state: State<'_, AppState>, id: i64) -> CmdResult<hl_ingest::rgl::RglSeason> {
+    Ok(hl_ingest::rgl::season(&state.sources, id).await?)
+}
+
 /// ETF2L's latest Highlander news (Q74), read at most every half hour.
 #[tauri::command]
 pub async fn get_news(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::news::NewsItem>> {

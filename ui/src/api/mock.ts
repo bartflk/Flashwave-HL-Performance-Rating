@@ -70,6 +70,8 @@ import type {
   Fixture,
   NewsItem,
   NewsPost,
+  RglSeason,
+  RglSeasonItem,
   ResultRow,
   TeamHit,
   LeagueMatch,
@@ -1310,6 +1312,25 @@ export const mockApi: Api = {
         return i === 0 ? { ...f, time, clan1: { id: 37805, name: "DD14", avatar: null } } : { ...f, time };
       }),
     ),
+  // RGL's NA Highlander, as its API answered on 31 October 2026 (cut down).
+  getRglSeasons: () => delay<RglSeasonItem[]>([{ id: 198, name: "HL Season 25" }, { id: 193, name: "HL Season 24" }, { id: 183, name: "HL Season 23" }]),
+  getRglSeason: (id: number) =>
+    delay<RglSeason>({
+      id,
+      name: id === 198 ? "HL Season 25" : "HL Season 24",
+      maps: ["pl_vigil_rc10", "koth_product_final", "pl_upward_f12", "koth_lakeside_f5", "cp_steel_f12", "koth_ashville_final2"],
+      divisions: id === 198 ? [{ name: "Invite", tier: "Premiership", teams: [{ id: 15215, name: "BigBrainComp?", tag: "BBC", finalRank: null, seeding: 8, teamStatus: "Ready" }] }] : [
+        { name: "Invite", tier: "Premiership", teams: [
+          { id: 14908, name: "The Amiable Duds", tag: "AD.", finalRank: 1, seeding: null, teamStatus: "Ready" },
+          { id: 14954, name: "Witness Gaming", tag: "wG", finalRank: 2, seeding: null, teamStatus: "Ready" },
+          { id: 14839, name: "The Family", tag: "folk", finalRank: 3, seeding: null, teamStatus: "Ready" },
+          { id: 14820, name: "mandem", tag: "mndm", finalRank: 4, seeding: null, teamStatus: "Ready" },
+        ] },
+        { name: "Advanced", tier: "High", teams: [
+          { id: 14895, name: "Never Knows Best", tag: "NKB", finalRank: 99, seeding: null, teamStatus: "Dead" },
+        ] },
+      ],
+    }),
   // ETF2L's Highlander posts, 16 October 2026.
   getNews: () => delay(newsPosts as unknown as NewsItem[]),
   getNewsPost: (id: number) => {

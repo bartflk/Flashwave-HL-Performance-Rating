@@ -51,6 +51,7 @@ pub mod mapres;
 pub mod maps;
 pub mod combined;
 pub mod etf2l;
+pub mod rgl;
 pub mod teammates;
 pub mod demos;
 pub mod demostf;

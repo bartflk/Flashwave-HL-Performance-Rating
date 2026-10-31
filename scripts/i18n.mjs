@@ -29,7 +29,9 @@ const write = process.argv.includes("--write");
 // Labels that reach t() through a variable rather than a literal.
 const LITERALS = [
   // App.tsx nav
-  "Matches", "Profile", "Teammates", "Teams", "Players",
+  "Matches", "Profile", "Teammates", "Teams", "Players", "RGL",
+  // RglPage.tsx: RGL divisions on the ETF2L ladder (rgl.rs)
+  "Premiership", "High", "Mid", "Low", "Open",
   // StvGate.tsx: what each STV-only panel would show
   "Whether a Spy was cloaked is only in a demo: every hit on an invisible Spy, who found them, and when.",
   "Where the cart was is only in a demo: every second BLU was up players and the cart stood still, and how far it moved after each won fight.",

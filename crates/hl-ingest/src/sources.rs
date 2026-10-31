@@ -56,6 +56,8 @@ pub struct Sources {
     moretf: Throttled,
     demostf: Throttled,
     etf2l: Throttled,
+    /// RGL's API: 5 requests a second published; we keep to 4.
+    rgl: Throttled,
     /// Steam profiles and avatar images, for the owner's picture.
     web: Throttled,
     downloads: reqwest::Client,
@@ -107,6 +109,7 @@ impl Sources {
             demostf: Throttled::new(Duration::from_millis(1000))?,
             // ETF2L does publish a limit: 60 requests a minute. Stay under it.
             etf2l: Throttled::new(Duration::from_millis(1500))?,
+            rgl: Throttled::new(Duration::from_millis(250))?,
             web: Throttled::new(Duration::from_millis(1000))?,
             downloads: download_client()?,
         })
@@ -437,6 +440,12 @@ impl Sources {
     /// A small file (an avatar image); `None` when it does not exist.
     pub async fn fetch_bytes(&self, url: &str) -> Result<Option<Vec<u8>>> {
         self.web.get_bytes_opt(url).await
+    }
+
+    /// A path of RGL's API (`/seasons?regionId=24`); `None` on a 404. For a
+    /// screen waiting on it.
+    pub async fn rgl_get(&self, path: &str) -> Result<Option<String>> {
+        self.rgl.get_text_opt_interactive(&format!("https://api.rgl.gg/v0{path}")).await
     }
 
     pub async fn etf2l_get(&self, path: &str) -> Result<Option<String>> {

@@ -13,6 +13,7 @@ import { SyncSummary } from "./components/SyncSummary";
 import { MatchPage } from "./components/match/MatchPage";
 import { ProfilePage } from "./components/profile/ProfilePage";
 import { Etf2lPage } from "./components/etf2l/Etf2lPage";
+import { RglPage } from "./components/rgl/RglPage";
 import { ToastHost } from "./lib/toast";
 import { CalloutDrop } from "./components/CalloutPresets";
 import { Notifications } from "./components/Notifications";
@@ -32,7 +33,7 @@ import "./components/match/match.css";
 import { Etf2lMark } from "./components/Etf2lMark";
 import { Logo } from "./components/Logo";
 
-type Tab = "matches" | "profile" | "etf2l" | "settings" | "rating";
+type Tab = "matches" | "profile" | "etf2l" | "rgl" | "settings" | "rating";
 
 // Settings is not one of these: it is the cog on the far right, where a
 // setting belongs, rather than a fourth thing to read.
@@ -41,6 +42,8 @@ const TABS: Array<[Tab, string]> = [
   ["profile", "Profile"],
   // Teams and Players, as one tab laid out like etf2l.org (Q74).
   ["etf2l", "ETF2L"],
+  // NA Highlander, a first page so far (PLAN §30).
+  ["rgl", "RGL"],
 ];
 
 export default function App() {
@@ -206,6 +209,11 @@ export default function App() {
       {visited.has("etf2l") && (
         <div hidden={tab !== "etf2l" || openLog !== null}>
           <ErrorBoundary what="ETF2L"><Etf2lPage active={tab === "etf2l" && openLog === null} onOpenMatch={setOpenLog} /></ErrorBoundary>
+        </div>
+      )}
+      {visited.has("rgl") && (
+        <div hidden={tab !== "rgl" || openLog !== null}>
+          <ErrorBoundary what="RGL"><RglPage /></ErrorBoundary>
         </div>
       )}
       {tab === "rating" && openLog === null && (

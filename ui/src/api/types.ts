@@ -345,6 +345,31 @@ export interface NewsPost extends NewsItem {
   html: string;
 }
 
+/** One of RGL's NA Highlander seasons (PLAN §30). */
+export interface RglSeasonItem {
+  id: number;
+  name: string;
+}
+
+export interface RglTeam {
+  id: number;
+  name: string;
+  tag: string | null;
+  /** RGL's final placing; 99 for a team that dropped out. */
+  finalRank: number | null;
+  /** Where the team was seeded, in a season still running. */
+  seeding: number | null;
+  teamStatus: string | null;
+}
+
+/** An RGL season: its map pool and each division's teams, best first. */
+export interface RglSeason {
+  id: number;
+  name: string;
+  maps: string[];
+  divisions: { name: string; tier: string | null; teams: RglTeam[] }[];
+}
+
 /** A played official, any team's (Q74). */
 export interface ResultRow {
   matchId: number;

@@ -283,6 +283,8 @@ pub fn run() {
             sync_commands::get_team_info,
             sync_commands::get_fixtures,
             sync_commands::get_news,
+            sync_commands::get_rgl_seasons,
+            sync_commands::get_rgl_season,
             sync_commands::get_news_post,
             sync_commands::get_season_news,
             sync_commands::get_recent_results,
