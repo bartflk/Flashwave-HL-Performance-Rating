@@ -104,7 +104,8 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
   const [toKill, setToKill] = useState(true);
   // Someone to compare with, and their class (Flashy: "where both snipers
   // rollout").
-  const [vs, setVs] = useState<number | null>(null);
+  // "opp": whoever played their class on the other team in the same rounds.
+  const [vs, setVs] = useState<number | "opp" | null>(null);
   const [vsCls, setVsCls] = useState<string | null>(null);
 
   const all = useMemo(() => livesQ.data?.lives ?? [], [livesQ.data]);
@@ -147,12 +148,14 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
     staleTime: 5 * 60_000,
   });
   const vsQ = useQuery({
-    queryKey: ["lives_on_map", vs, map],
-    queryFn: () => api.livesOnMap(vs!, map!),
+    queryKey: vs === "opp" ? ["lives_opposite", accountId, map, cls] : ["lives_on_map", vs, map],
+    queryFn: () => (vs === "opp" ? api.livesOpposite(accountId, map!, cls) : api.livesOnMap(vs!, map!)),
     enabled: opening && vs !== null && map !== null,
     staleTime: 5 * 60_000,
   });
+  const opp = vs === "opp";
   const vsPlayer = (playersQ.data ?? []).find((p) => p.accountId === vs) ?? null;
+  const vsName = opp ? (cls ? t("Opposite {0}", { "0": capitalize(cls) }) : t("Their opposite")) : (vsPlayer?.name ?? "?");
   const vsAll = useMemo(() => (vs === null ? [] : (vsQ.data?.lives ?? [])), [vs, vsQ.data]);
   // Their classes here among the lives that began a round, the side filter applied.
   const vsClasses = useMemo(() => {
@@ -160,23 +163,28 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
     for (const l of vsAll) if (l.class && l.openingT.length > 0 && (side === "both" || l.team === side)) n.set(l.class, (n.get(l.class) ?? 0) + 1);
     return [...n.entries()].sort((a, b) => b[1] - a[1]);
   }, [vsAll, side]);
-  const vsOpenings = useMemo(
-    () => vsAll.filter((l) => (vsCls === null || l.class === vsCls) && (side === "both" || l.team === side)).flatMap((l) => cut(l, rollout, toKill) ?? []),
-    [vsAll, vsCls, side, rollout, toKill],
-  );
+  // The opposite number plays the other side, in the same matches as the
+  // ones shown (the Last N filter too).
+  const vsOpenings = useMemo(() => {
+    const logs = new Set(recent.lives.map((l) => l.logId));
+    const keep = opp
+      ? (l: LifeOnMap) => logs.has(l.logId) && (side === "both" || (l.team !== null && l.team !== side))
+      : (l: LifeOnMap) => (vsCls === null || l.class === vsCls) && (side === "both" || l.team === side);
+    return vsAll.filter(keep).flatMap((l) => cut(l, rollout, toKill) ?? []);
+  }, [vsAll, vsCls, side, rollout, toKill, opp, recent]);
   // Side by side: theirs and the other player's, each in its own colour;
   // alone, RED's and BLU's.
   const groups: Group[] =
     vs !== null
       ? [
           { key: "a", label: name, cls, colour: "--cmp-a", lives: openings },
-          { key: "b", label: vsPlayer?.name ?? "?", cls: vsCls, colour: "--cmp-b", lives: vsOpenings },
+          { key: "b", label: vsName, cls: opp ? cls : vsCls, colour: "--cmp-b", lives: vsOpenings },
         ]
       : [
           { key: "Red", label: t("RED side"), cls, colour: "--red", lives: openings.filter((l) => l.team === "Red") },
           { key: "Blue", label: t("BLU side"), cls, colour: "--blu", lives: openings.filter((l) => l.team === "Blue") },
         ];
-  const pickVs = (id: number | null) => {
+  const pickVs = (id: number | "opp" | null) => {
     setVs(id);
     // Their class: the one picked for this player when they played it here,
     // else their usual one.
@@ -354,10 +362,11 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
             <select
               className="lm-select"
               value={vs ?? ""}
-              onChange={(e) => pickVs(e.target.value === "" ? null : Number(e.target.value))}
+              onChange={(e) => pickVs(e.target.value === "" ? null : e.target.value === "opp" ? "opp" : Number(e.target.value))}
               title={t("Someone else a demo on this machine followed on this map")}
             >
               <option value="">{t("Nobody: RED and BLU")}</option>
+              <option value="opp">{cls ? t("Their opposite {0}: the other team's, same rounds", { "0": capitalize(cls) }) : t("Their opposite number: the other team's same class, same rounds")}</option>
               {(playersQ.data ?? []).map((p) => (
                 <option key={p.accountId} value={p.accountId}>
                   {playerOption(p)}
@@ -366,7 +375,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
             </select>
           </CtlGroup>
         )}
-        {mode === "opening" && vs !== null && vsClasses.length > 0 && (
+        {mode === "opening" && vs !== null && !opp && vsClasses.length > 0 && (
           <CtlGroup label={vsPlayer?.name ?? t("Class")}>
             <div className="class-filter" role="tablist" aria-label={t("Class")}>
               <button role="tab" aria-selected={vsCls === null} className={vsCls === null ? "cf active" : "cf"} onClick={() => setVsCls(null)}>
@@ -382,10 +391,13 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
           </CtlGroup>
         )}
       </div>
-      {mode === "opening" && vs !== null && side === "both" && (
+      {mode === "opening" && vs !== null && !opp && side === "both" && (
         <p className="hint lm-count">{t("Pick a side to compare like for like: RED's rollouts and BLU's go different ways.")}</p>
       )}
       {mode === "opening" && vs !== null && vsQ.isPending && <Loading>{t("Reading the routes…")}</Loading>}
+      {mode === "opening" && opp && vsQ.data && vsOpenings.length === 0 && (
+        <p className="hint lm-count">{t("No opposite number in these rounds: the demos here did not follow anyone on that class on the other team.")}</p>
+      )}
 
       {v && (
         <p className="hint lm-count">
@@ -427,6 +439,105 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
     </div>
   );
 }
+
+/**
+ * One match's round openings (Flashy: "i want to see this per match on the
+ * match page too"): RED's and BLU's players of one class, their first
+ * seconds of each round, from the match's demos. The class follows the
+ * player picked above, and the rounds the round picker.
+ */
+export function MatchOpenings({
+  logId,
+  mapName,
+  rounds,
+  playerClass,
+  names,
+}: {
+  logId: number;
+  /** The full map name, for its picture; null across several maps. */
+  mapName: string | null;
+  rounds: Set<number> | null;
+  playerClass: string | null;
+  names: Map<number, string>;
+}) {
+  const q = useQuery({ queryKey: ["match_openings", logId], queryFn: () => api.matchOpenings(logId), staleTime: 5 * 60_000 });
+  const overviewQ = useQuery({
+    queryKey: ["overview", mapName],
+    queryFn: () => api.getMapOverview(mapName ?? ""),
+    enabled: mapName !== null,
+    staleTime: Infinity,
+  });
+  const [picked, setPicked] = useState<string | null>(null);
+  const [rollout, setRollout] = useState<Window>(20);
+  const [toKill, setToKill] = useState(true);
+  const all = useMemo(() => (q.data ?? []).filter((l) => rounds === null || (l.roundNum !== null && rounds.has(l.roundNum))), [q.data, rounds]);
+  const classes = useMemo(() => {
+    const n = new Map<string, number>();
+    for (const l of all) if (l.class) n.set(l.class, (n.get(l.class) ?? 0) + 1);
+    return [...n.entries()].sort((a, b) => CLASS_ORDER.indexOf(a[0]) - CLASS_ORDER.indexOf(b[0]));
+  }, [all]);
+  const cls = picked ?? (playerClass && classes.some(([c]) => c === playerClass) ? playerClass : (classes[0]?.[0] ?? null));
+  const groups: Group[] = useMemo(() => {
+    const side = (team: "Red" | "Blue"): Group => {
+      const lives = all.filter((l) => l.team === team && l.class === cls).flatMap((l) => cut(l, rollout, toKill) ?? []);
+      const who = [...new Set(lives.map((l) => names.get(l.accountId) ?? "?"))];
+      return { key: team, label: `${team === "Red" ? "RED" : "BLU"}${who.length > 0 ? ` · ${who.join(", ")}` : ""}`, cls, colour: team === "Red" ? "--red" : "--blu", lives };
+    };
+    return [side("Red"), side("Blue")];
+  }, [all, cls, rollout, toKill, names]);
+  const [hover, setHover] = useState<LifeOnMap | null>(null);
+
+  if (q.isPending) return <Loading>{t("Reading the routes…")}</Loading>;
+  if (q.isError) return <ApiError error={q.error} />;
+  if ((q.data ?? []).length === 0) {
+    return <p className="hint">{t("No demo of this match has routes yet. Round openings come from its SourceTV demo, or from a player's own recording.")}</p>;
+  }
+  if (mapName === null) return <p className="hint">{t("Pick one map above: the openings of different maps do not share a picture.")}</p>;
+  return (
+    <div className="lm">
+      <div className="ctl-bar">
+        <CtlGroup label={t("Class")}>
+          <div className="class-filter" role="tablist" aria-label={t("Class")}>
+            {classes.map(([c, n]) => (
+              <button key={c} role="tab" aria-selected={cls === c} className={cls === c ? "cf active" : "cf"} onClick={() => setPicked(c)} title={`${capitalize(c)}: ${n}`}>
+                <ClassIcon cls={c} size={20} />
+                <span className="cf-n">{n}</span>
+              </button>
+            ))}
+          </div>
+        </CtlGroup>
+        <CtlGroup label={t("Rollout")}>
+          <Seg
+            label={t("Rollout")}
+            value={String(rollout)}
+            onChange={(v) => setRollout(Number(v) as Window)}
+            options={WINDOWS.map((w) => ({ v: String(w), label: tx("First {0} s", { "0": w }) }))}
+          />
+          <button className={toKill ? "lm-toggle on" : "lm-toggle"} aria-pressed={toKill} onClick={() => setToKill(!toKill)} title={t("Stop each round at its first kill, whoever got it")}>
+            <Icon name="skull" size={14} />
+            {t("Until the first kill")}
+            <span className="lm-check" aria-hidden>
+              {toKill && <Icon name="check" size={12} />}
+            </span>
+          </button>
+        </CtlGroup>
+      </div>
+      <Drawing
+        lives={groups.flatMap((g) => g.lives)}
+        groups={groups}
+        window={rollout}
+        toKill={toKill}
+        overview={overviewQ.data ?? null}
+        hover={hover}
+        onHover={setHover}
+        mode="opening"
+      />
+    </div>
+  );
+}
+
+/** Classes in the scoreboard's order. */
+const CLASS_ORDER = ["scout", "soldier", "pyro", "demoman", "heavyweapons", "heavy", "engineer", "medic", "sniper", "spy"];
 
 /** The routes over the map's top-down picture, or over their own extent. */
 function Drawing({

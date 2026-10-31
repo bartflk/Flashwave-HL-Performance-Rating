@@ -761,6 +761,8 @@ export interface LifeOnMap {
   playedAt: number | null;
   demoId: number;
   stv: boolean;
+  /** Whose life it is. */
+  accountId: number;
   class: string | null;
   team: "Red" | "Blue" | null;
   roundNum: number | null;

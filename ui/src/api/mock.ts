@@ -1046,6 +1046,15 @@ export const mockApi: Api = {
       { accountId: 900_001, name: "kawaii", classes: [["sniper", 7], ["scout", 1]], matches: 8, shared: 6 },
       { accountId: 900_002, name: "b4nny", classes: [["scout", 5]], matches: 5, shared: 0 },
     ]),
+  livesOpposite: async (_accountId: number, map: string, _cls: string | null) => {
+    // The other side of the same lives, so the preview has an opposite.
+    const v = await mockApi.livesOnMap(900_003, map);
+    return { ...v, lives: v.lives.map((l) => ({ ...l, team: l.team === "Red" ? ("Blue" as const) : ("Red" as const) })) };
+  },
+  matchOpenings: async (logId: number) => {
+    const all = await mockApi.livesOnMap(logId % 1000, "product");
+    return all.lives.filter((l) => l.openingT.length > 0).slice(0, 120).map((l, i) => ({ ...l, logId, accountId: 900_100 + (i % 18) }));
+  },
   livesOnMap: (accountId: number, map: string) => {
     // Wandering routes from each side's half, so the view has a pattern.
     const r = rng(map.length * 7 + (accountId % 97));
@@ -1060,7 +1069,7 @@ export const mockApi: Api = {
         y += (r() - 0.5) * 120;
         points.push([Math.round(x), Math.round(y)]);
       }
-      return { logId: 4_100_000 + (i % 10), playedAt: 1_790_000_000 - (i % 10) * 86_400 * 9, demoId: i % 10, stv: i % 10 === 0, class: classes[i % classes.length], team, roundNum: 1 + (i % 5), died: r() < 0.7, seconds: points.length / 4, points, capped: i % 4 === 0, afterEnemyCap: i % 6 === 1, midFight: i % 2 === 0, openingT: i % 5 === 0 ? points.map((_, j) => j * 0.5) : [], firstKill: i % 5 === 0 ? 12 + (i % 7) * 4 : null };
+      return { logId: 4_100_000 + (i % 10), playedAt: 1_790_000_000 - (i % 10) * 86_400 * 9, demoId: i % 10, stv: i % 10 === 0, accountId, class: classes[i % classes.length], team, roundNum: 1 + (i % 5), died: r() < 0.7, seconds: points.length / 4, points, capped: i % 4 === 0, afterEnemyCap: i % 6 === 1, midFight: i % 2 === 0, openingT: i % 5 === 0 ? points.map((_, j) => j * 0.5) : [], firstKill: i % 5 === 0 ? 12 + (i % 7) * 4 : null };
     });
     return delay<LivesOnMapView>({ map, matches: 10, stvMatches: 1, lives }, 300);
   },

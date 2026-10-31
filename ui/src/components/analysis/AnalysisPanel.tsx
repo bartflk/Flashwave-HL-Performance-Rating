@@ -17,13 +17,15 @@ import { t, k } from "../../lib/i18n";
 import { classLabel } from "./common";
 import { Loading } from "../Spinner";
 import { CtlGroup, Icon, Seg, type IconName } from "./MapChrome";
+import { MatchOpenings } from "../players/LivesOnMap";
 
-type Tab = "map" | "feed" | "fights" | "spread" | "aim" | "timeline";
+type Tab = "map" | "openings" | "feed" | "fights" | "spread" | "aim" | "timeline";
 
 /** The views, each with its icon (Flashy: "do the same for the round picker
  *  and tabs"). */
 const TABS: Array<[Tab, string, IconName]> = [
   ["map", k("Kill map"), "map"],
+  ["openings", k("Round openings"), "hex"],
   ["feed", k("Play-by-play"), "list"],
   ["fights", k("Fights"), "swords"],
   ["spread", k("Damage and kills by class"), "spread"],
@@ -216,6 +218,15 @@ function Body({ a, stv, onlyRounds, winners }: { a: Analysis; stv: StvInfo; only
       </nav>
 
       {tab === "map" && <KillMap a={a} player={player} slice={slice} stv={stv} />}
+      {tab === "openings" && (
+        <MatchOpenings
+          logId={a.logId}
+          mapName={slice.map}
+          rounds={slice.rounds}
+          playerClass={a.players.find((p) => p.accountId === player)?.mainClass ?? null}
+          names={new Map(a.players.map((p) => [p.accountId, p.name]))}
+        />
+      )}
       {tab === "feed" && <PlayByPlay a={a} player={player} slice={slice} />}
       {tab === "fights" && (
         <>

@@ -372,6 +372,8 @@ pub fn run() {
             sync_commands::lives_maps,
             sync_commands::lives_on_map,
             sync_commands::lives_players,
+            sync_commands::lives_opposite,
+            sync_commands::match_openings,
             sync_commands::get_bookmarks,
             sync_commands::set_bookmark,
             sync_commands::reread_match,

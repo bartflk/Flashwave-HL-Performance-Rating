@@ -102,6 +102,8 @@ pub struct LifeOnMap {
     pub demo_id: i64,
     /// The recording was SourceTV's rather than the player's own.
     pub stv: bool,
+    /// Whose life it is.
+    pub account_id: u32,
     /// `scout` ... `spy`, as it was when the life began; `None` where the
     /// demo has no timeline.
     pub class: Option<String>,
@@ -250,87 +252,164 @@ pub async fn on_map(db: &Db, account_id: u32, map: &str) -> Result<LivesOnMap> {
         if demos.values().any(|(stv, _)| *stv) {
             out.stv_matches += 1;
         }
-        let paths = db.paths_for_log(log_id).await?;
-        // For the situation filters (Q67): the log's caps, rounds and kills,
-        // and where each demo starts on the log's clock.
-        let offset = db.log_clock_offset(log_id).await?;
-        let caps = db.cap_events(log_id).await?;
-        let rounds: Vec<(i64, f64, f64)> = db.round_spans(log_id).await?.into_iter().map(|(n, s, len)| (n, s as f64, (s + len) as f64)).collect();
-        let kills: Vec<(i64, u32, u32)> = db.kills_for_log(log_id).await?.into_iter().filter(|k| k.live).map(|k| (k.at_raw, k.killer, k.victim)).collect();
-        let linked = db.demos_for_log(log_id).await?;
-        for (demo_id, (stv, seqs)) in demos {
-            let clock = linked.iter().find(|d| d.demo_id == demo_id).and_then(|d| Some((d.start_utc?, d.tick_rate?)));
-            let lives: Vec<&hl_db::PathRow> = paths.iter().filter(|p| p.demo_id == demo_id && p.account_id == account_id && seqs.contains(&p.seq)).collect();
-            if lives.is_empty() {
-                continue;
+        let which: Vec<(i64, bool)> = demos.iter().map(|(&d, &(stv, _))| (d, stv)).collect();
+        let keep = |p: &hl_db::PathRow| p.account_id == account_id && demos.get(&p.demo_id).is_some_and(|(_, seqs)| seqs.contains(&p.seq));
+        out.lives.extend(lives_in_log(db, log_id, played_at, &which, &keep).await?);
+    }
+    Ok(out)
+}
+
+/// The lives of whoever played `class` on the other team in the rounds
+/// `account_id` played it on `map` (Flashy: "where both snipers rollout"):
+/// their opposite number, match by match. `None` mirrors whatever class they
+/// were on in each round.
+pub async fn opposite(db: &Db, account_id: u32, map: &str, class: Option<&str>) -> Result<LivesOnMap> {
+    let mine = on_map(db, account_id, map).await?;
+    // Their class and side in each round, by match.
+    let mut rounds: BTreeMap<i64, (Option<i64>, HashMap<i64, Vec<(String, String)>>, HashMap<i64, bool>)> = BTreeMap::new();
+    for l in &mine.lives {
+        let (Some(c), Some(team), Some(round)) = (&l.class, &l.team, l.round_num) else { continue };
+        if class.is_some_and(|want| want != c) {
+            continue;
+        }
+        let e = rounds.entry(l.log_id).or_insert_with(|| (l.played_at, HashMap::new(), HashMap::new()));
+        let in_round = e.1.entry(round).or_default();
+        if !in_round.iter().any(|(cc, tt)| cc == c && tt == team) {
+            in_round.push((c.clone(), team.clone()));
+        }
+        e.2.insert(l.demo_id, l.stv);
+    }
+    let mut out = LivesOnMap { map: mine.map, ..Default::default() };
+    for (log_id, (played_at, by_round, demos)) in rounds {
+        let which = one_view(demos.into_iter().collect());
+        let keep = |p: &hl_db::PathRow| p.account_id != account_id && p.round_num.is_some_and(|r| by_round.contains_key(&r));
+        let theirs: Vec<LifeOnMap> = lives_in_log(db, log_id, played_at, &which, &keep)
+            .await?
+            .into_iter()
+            .filter(|l| {
+                let (Some(c), Some(team), Some(round)) = (&l.class, &l.team, l.round_num) else { return false };
+                by_round.get(&round).is_some_and(|mine| mine.iter().any(|(mc, mt)| mc == c && mt != team))
+            })
+            .collect();
+        if theirs.is_empty() {
+            continue;
+        }
+        out.matches += 1;
+        if theirs.iter().any(|l| l.stv) {
+            out.stv_matches += 1;
+        }
+        out.lives.extend(theirs);
+    }
+    Ok(out)
+}
+
+/// Every life in one match that began with its round, everyone's: the match
+/// page's round openings (Flashy: "i want to see this per match on the match
+/// page too").
+pub async fn match_openings(db: &Db, log_id: i64) -> Result<Vec<LifeOnMap>> {
+    let linked = db.demos_for_log(log_id).await?;
+    let which = one_view(linked.iter().map(|d| (d.demo_id, d.kind == "stv")).collect());
+    let played_at = db.match_played_at(log_id).await?;
+    let keep = |_: &hl_db::PathRow| true;
+    Ok(lives_in_log(db, log_id, played_at, &which, &keep).await?.into_iter().filter(|l| !l.opening_t.is_empty()).collect())
+}
+
+/// SourceTV's demos when there are any, as they see everyone; a player's own
+/// recording besides one would draw the same lives twice.
+fn one_view(demos: Vec<(i64, bool)>) -> Vec<(i64, bool)> {
+    if demos.iter().any(|&(_, stv)| stv) {
+        demos.into_iter().filter(|&(_, stv)| stv).collect()
+    } else {
+        demos
+    }
+}
+
+/// The lives `keep` picks in one match's `demos` (`(id, SourceTV's)`), each
+/// with its class and side from the demo's timeline, its situations and its
+/// opening.
+async fn lives_in_log(db: &Db, log_id: i64, played_at: Option<i64>, demos: &[(i64, bool)], keep: &(dyn Fn(&hl_db::PathRow) -> bool + Sync)) -> Result<Vec<LifeOnMap>> {
+    let mut out = Vec::new();
+    let paths = db.paths_for_log(log_id).await?;
+    // For the situation filters (Q67): the log's caps, rounds and kills,
+    // and where each demo starts on the log's clock.
+    let offset = db.log_clock_offset(log_id).await?;
+    let caps = db.cap_events(log_id).await?;
+    let rounds: Vec<(i64, f64, f64)> = db.round_spans(log_id).await?.into_iter().map(|(n, s, len)| (n, s as f64, (s + len) as f64)).collect();
+    let kills: Vec<(i64, u32, u32)> = db.kills_for_log(log_id).await?.into_iter().filter(|k| k.live).map(|k| (k.at_raw, k.killer, k.victim)).collect();
+    let linked = db.demos_for_log(log_id).await?;
+    for &(demo_id, stv) in demos {
+        let clock = linked.iter().find(|d| d.demo_id == demo_id).and_then(|d| Some((d.start_utc?, d.tick_rate?)));
+        let lives: Vec<&hl_db::PathRow> = paths.iter().filter(|p| p.demo_id == demo_id && keep(p)).collect();
+        if lives.is_empty() {
+            continue;
+        }
+        let rate = 66.67;
+        // Class and side from the timeline, at each life's middle.
+        let who = match db.timeline(demo_id).await? {
+            Some(row) => {
+                let s = stored(row);
+                let asks: Vec<(u32, u32)> = lives.iter().map(|l| (l.account_id, ((l.from_tick + l.to_tick) / 2).max(0) as u32)).collect();
+                tokio::task::spawn_blocking(move || -> Result<Vec<(Option<u8>, Option<u8>)>> {
+                    let tl = Timeline::decode(&s)?;
+                    let slots: HashMap<u32, usize> = tl.people.iter().enumerate().filter_map(|(i, p)| Some((account_of(&p.steamid)?, i))).collect();
+                    Ok(asks
+                        .iter()
+                        .map(|&(account, tick)| {
+                            let (Some(&slot), Some(t)) = (slots.get(&account), tl.t_of(tick)) else { return (None, None) };
+                            let class = match tl.at(slot, t, |f| matches!(f, Field::Class(_))) {
+                                Some(Field::Class(c)) => Some(c),
+                                _ => None,
+                            };
+                            let team = match tl.at(slot, t, |f| matches!(f, Field::Team(_))) {
+                                Some(Field::Team(c)) => Some(c),
+                                _ => None,
+                            };
+                            (class, team)
+                        })
+                        .collect())
+                })
+                .await??
             }
-            let rate = 66.67;
-            // Class and side from the timeline, at each life's middle.
-            let who = match db.timeline(demo_id).await? {
-                Some(row) => {
-                    let s = stored(row);
-                    let ticks: Vec<u32> = lives.iter().map(|l| ((l.from_tick + l.to_tick) / 2).max(0) as u32).collect();
-                    tokio::task::spawn_blocking(move || -> Result<Vec<(Option<u8>, Option<u8>)>> {
-                        let tl = Timeline::decode(&s)?;
-                        let slot = tl.people.iter().position(|p| account_of(&p.steamid) == Some(account_id));
-                        Ok(ticks
-                            .iter()
-                            .map(|&tick| {
-                                let (Some(slot), Some(t)) = (slot, tl.t_of(tick)) else { return (None, None) };
-                                let class = match tl.at(slot, t, |f| matches!(f, Field::Class(_))) {
-                                    Some(Field::Class(c)) => Some(c),
-                                    _ => None,
-                                };
-                                let team = match tl.at(slot, t, |f| matches!(f, Field::Team(_))) {
-                                    Some(Field::Team(c)) => Some(c),
-                                    _ => None,
-                                };
-                                (class, team)
-                            })
-                            .collect())
-                    })
-                    .await??
-                }
-                None => vec![(None, None); lives.len()],
+            None => vec![(None, None); lives.len()],
+        };
+        for (l, (class, team)) in lives.into_iter().zip(who) {
+            let team = team.and_then(team_name);
+            // The life's start on the log's clock, as the routes pass places it.
+            let start = match (clock, offset) {
+                (Some((s, r)), Some(o)) => Some(s + l.from_tick as f64 / r - o as f64),
+                _ => None,
             };
-            for (l, (class, team)) in lives.into_iter().zip(who) {
-                let team = team.and_then(team_name);
-                // The life's start on the log's clock, as the routes pass places it.
-                let start = match (clock, offset) {
-                    (Some((s, r)), Some(o)) => Some(s + l.from_tick as f64 / r - o as f64),
-                    _ => None,
-                };
-                let (after_enemy_cap, mid_fight) = situation(start, team, l.round_num, account_id, &caps, &rounds, &kills);
-                let (opening_t, first_kill) = match opening(start, l.round_num, &rounds, &kills) {
-                    Some((offset, first_kill)) => (
-                        l.points
-                            .iter()
-                            .map(|&(tick, ..)| offset + (tick - l.from_tick) as f64 / rate)
-                            .take_while(|&t| t <= OPENING_S)
-                            .map(|t| ((t * 10.0).round() / 10.0) as f32)
-                            .collect(),
-                        first_kill.map(|k| ((k * 10.0).round() / 10.0) as f32),
-                    ),
-                    None => (Vec::new(), None),
-                };
-                out.lives.push(LifeOnMap {
-                    log_id,
-                    played_at,
-                    demo_id,
-                    stv,
-                    class: class.and_then(class_name).map(str::to_string),
-                    team: team.map(str::to_string),
-                    round_num: l.round_num,
-                    died: l.died,
-                    seconds: ((l.to_tick - l.from_tick).max(0) as f64 / rate * 10.0).round() / 10.0,
-                    points: l.points.iter().map(|&(_, x, y, _)| (x, y)).collect(),
-                    capped: !l.caps.is_empty(),
-                    after_enemy_cap,
-                    mid_fight,
-                    opening_t,
-                    first_kill,
-                });
-            }
+            let (after_enemy_cap, mid_fight) = situation(start, team, l.round_num, l.account_id, &caps, &rounds, &kills);
+            let (opening_t, first_kill) = match opening(start, l.round_num, &rounds, &kills) {
+                Some((offset, first_kill)) => (
+                    l.points
+                        .iter()
+                        .map(|&(tick, ..)| offset + (tick - l.from_tick) as f64 / rate)
+                        .take_while(|&t| t <= OPENING_S)
+                        .map(|t| ((t * 10.0).round() / 10.0) as f32)
+                        .collect(),
+                    first_kill.map(|k| ((k * 10.0).round() / 10.0) as f32),
+                ),
+                None => (Vec::new(), None),
+            };
+            out.push(LifeOnMap {
+                log_id,
+                played_at,
+                demo_id,
+                stv,
+                account_id: l.account_id,
+                class: class.and_then(class_name).map(str::to_string),
+                team: team.map(str::to_string),
+                round_num: l.round_num,
+                died: l.died,
+                seconds: ((l.to_tick - l.from_tick).max(0) as f64 / rate * 10.0).round() / 10.0,
+                points: l.points.iter().map(|&(_, x, y, _)| (x, y)).collect(),
+                capped: !l.caps.is_empty(),
+                after_enemy_cap,
+                mid_fight,
+                opening_t,
+                first_kill,
+            });
         }
     }
     Ok(out)

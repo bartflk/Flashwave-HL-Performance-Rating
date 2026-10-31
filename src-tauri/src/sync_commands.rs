@@ -1646,6 +1646,21 @@ pub async fn lives_players(state: State<'_, AppState>, account_id: u32, map: Str
     Ok(hl_ingest::lives::players_on_map(&state.db, &map, account_id).await?)
 }
 
+/// Whoever played `class` (or the player's class, round by round, when
+/// `None`) on the other team in the player's rounds on a map: their opposite
+/// number's round openings.
+#[tauri::command]
+pub async fn lives_opposite(state: State<'_, AppState>, account_id: u32, map: String, class: Option<String>) -> CmdResult<hl_ingest::lives::LivesOnMap> {
+    Ok(hl_ingest::lives::opposite(&state.db, account_id, &map, class.as_deref()).await?)
+}
+
+/// Every life in one match that began with its round: the match page's
+/// round openings.
+#[tauri::command]
+pub async fn match_openings(state: State<'_, AppState>, log_id: i64) -> CmdResult<Vec<hl_ingest::lives::LifeOnMap>> {
+    Ok(hl_ingest::lives::match_openings(&state.db, log_id).await?)
+}
+
 /// Q60 (Clark): a page kept to come back to. `kind` is `match`, `player`,
 /// `team` or `season`; `id` is the log, account, team or season number.
 /// `label` and `sub` are what the page was called when it was kept, so the
