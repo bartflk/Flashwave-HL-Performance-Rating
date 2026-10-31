@@ -1601,6 +1601,38 @@ async fn run() -> Result<()> {
             Ok(())
         }
 
+        ["openings", log] => {
+            // A match's round openings: each round's start, and every life
+            // there then or begun near it, by class and side.
+            let db = Db::connect(&db_path).await?;
+            let log_id: i64 = log.parse()?;
+            let rounds = db.round_spans(log_id).await?;
+            let lives = hl_ingest::lives::match_lives(&db, log_id).await?;
+            println!("{} lives; rounds: {:?}", lives.len(), rounds);
+            for (n, start, len) in rounds {
+                let from = start as f64;
+                println!("R{n} at {start} ({len} s):");
+                let mut near: Vec<_> = lives.iter().filter(|l| l.span.is_some_and(|(s, e)| s <= from + 30.0 && e >= from - 30.0)).collect();
+                near.sort_by(|a, b| (&a.team, &a.class).cmp(&(&b.team, &b.class)));
+                for l in near {
+                    let (s, e) = l.span.unwrap();
+                    println!(
+                        "  {:<5} {:<9} {:>10}  life {:+7.1} .. {:+7.1}  round {:?}  opening {:?} pts {} skip {}",
+                        l.team.as_deref().unwrap_or("?"),
+                        l.class.as_deref().unwrap_or("?"),
+                        l.account_id,
+                        s - from,
+                        e - from,
+                        l.round_num,
+                        l.opening_round,
+                        l.opening_t.len(),
+                        l.opening_skip
+                    );
+                }
+            }
+            Ok(())
+        }
+
         ["season-news", n] => {
             // A season's own ETF2L posts, as its page lists them.
             let db = Db::connect(&db_path).await?;

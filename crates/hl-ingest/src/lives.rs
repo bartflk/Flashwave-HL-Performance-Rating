@@ -137,6 +137,9 @@ pub struct LifeOnMap {
     /// Seconds since the round began of its first kill, for a life that
     /// began with it (the view can stop there).
     pub first_kill: Option<f32>,
+    /// The life's start and end on the log's clock, for `hl openings`.
+    #[serde(skip)]
+    pub span: Option<(f64, f64)>,
 }
 
 /// How long a round's opening lasts at most.
@@ -321,6 +324,15 @@ pub async fn match_openings(db: &Db, log_id: i64) -> Result<Vec<LifeOnMap>> {
     Ok(lives_in_log(db, log_id, played_at, &which, &keep).await?.into_iter().filter(|l| !l.opening_t.is_empty()).collect())
 }
 
+/// Every life in one match, from SourceTV's demo when there is one, for
+/// `hl openings` to show which began a round and which did not.
+pub async fn match_lives(db: &Db, log_id: i64) -> Result<Vec<LifeOnMap>> {
+    let linked = db.demos_for_log(log_id).await?;
+    let which = one_view(linked.iter().map(|d| (d.demo_id, d.kind == "stv")).collect());
+    let keep = |_: &hl_db::PathRow| true;
+    lives_in_log(db, log_id, None, &which, &keep).await
+}
+
 /// SourceTV's demos when there are any, as they see everyone; a player's own
 /// recording besides one would draw the same lives twice.
 fn one_view(demos: Vec<(i64, bool)>) -> Vec<(i64, bool)> {
@@ -416,6 +428,7 @@ async fn lives_in_log(db: &Db, log_id: i64, played_at: Option<i64>, demos: &[(i6
                 opening_skip,
                 opening_round,
                 first_kill,
+                span: start.zip(end),
             });
         }
     }

@@ -1052,8 +1052,27 @@ export const mockApi: Api = {
     return { ...v, lives: v.lives.map((l) => ({ ...l, team: l.team === "Red" ? ("Blue" as const) : ("Red" as const) })) };
   },
   matchOpenings: async (logId: number) => {
-    const all = await mockApi.livesOnMap(logId % 1000, "product");
-    return all.lives.filter((l) => l.openingT.length > 0).slice(0, 120).map((l, i) => ({ ...l, logId, accountId: 900_100 + (i % 18) }));
+    // Six rounds, nine a side, each running out from spawn to a spot and
+    // holding it, so the heat has somewhere to build.
+    const r = rng(logId % 997);
+    const classes = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
+    const lives: LifeOnMap[] = [];
+    for (let round = 1; round <= 6; round++)
+      for (const team of ["Red", "Blue"] as const)
+        classes.forEach((cls, k) => {
+          const dir = team === "Red" ? 1 : -1;
+          let [x, y] = [team === "Red" ? -2_100 : 2_100, -400 + k * 100];
+          const [hx, hy] = [dir * (-1_300 + k * 140 + r() * 200), -700 + k * 160 + r() * 200];
+          const points: Array<[number, number]> = [];
+          for (let j = 0; j < 160; j++) {
+            const run = j < 60;
+            x += run ? (hx - x) / (60 - j) + (r() - 0.5) * 40 : (r() - 0.5) * 50;
+            y += run ? (hy - y) / (60 - j) + (r() - 0.5) * 40 : (r() - 0.5) * 50;
+            points.push([Math.round(x), Math.round(y)]);
+          }
+          lives.push({ logId, playedAt: 1_790_000_000, demoId: 1, stv: true, accountId: 900_100 + (team === "Red" ? 0 : 9) + k, class: cls, team, roundNum: round, died: true, seconds: 40, points, capped: false, afterEnemyCap: false, midFight: false, openingT: points.map((_, j) => j * 0.25), openingSkip: 0, openingRound: round, firstKill: 18 + r() * 15 });
+        });
+    return delay(lives, 200);
   },
   livesOnMap: (accountId: number, map: string) => {
     // Wandering routes from each side's half, so the view has a pattern.

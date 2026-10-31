@@ -223,8 +223,10 @@ function Body({ a, stv, onlyRounds, winners }: { a: Analysis; stv: StvInfo; only
           logId={a.logId}
           mapName={slice.map}
           rounds={slice.rounds}
+          roundCount={slice.rounds ? slice.rounds.size : a.rounds.length}
           playerClass={a.players.find((p) => p.accountId === player)?.mainClass ?? null}
           names={new Map(a.players.map((p) => [p.accountId, p.name]))}
+          teams={new Map(a.players.flatMap((p) => (p.team === "Red" || p.team === "Blue" ? [[p.accountId, p.team] as [number, "Red" | "Blue"]] : [])))}
         />
       )}
       {tab === "feed" && <PlayByPlay a={a} player={player} slice={slice} />}

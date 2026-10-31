@@ -52,7 +52,7 @@ const WINDOWS = [10, 20, 30, 40] as const;
 type Window = (typeof WINDOWS)[number];
 
 /** One player's (or one side's) openings in the view, and how to draw them. */
-type Group = { key: string; label: string; cls: string | null; colour: string; lives: LifeOnMap[] };
+type Group = { key: string; label: string; cls: string | null; colour: string; lives: LifeOnMap[]; of?: number };
 
 /** A life cut to the round's first `window` seconds, and at the round's
  *  first kill when `toKill`: `null` when nothing is left to draw. */
@@ -450,15 +450,22 @@ export function MatchOpenings({
   logId,
   mapName,
   rounds,
+  roundCount,
   playerClass,
   names,
+  teams,
 }: {
   logId: number;
   /** The full map name, for its picture; null across several maps. */
   mapName: string | null;
   rounds: Set<number> | null;
+  /** How many rounds are shown, for "found in 4 of 9". */
+  roundCount: number;
   playerClass: string | null;
   names: Map<number, string>;
+  /** Each player's team in the match: a stopwatch map swaps sides at half
+   *  time, and a team's player is still theirs on the other side. */
+  teams: Map<number, "Red" | "Blue">;
 }) {
   const q = useQuery({ queryKey: ["match_openings", logId], queryFn: () => api.matchOpenings(logId), staleTime: 5 * 60_000 });
   const overviewQ = useQuery({
@@ -471,20 +478,24 @@ export function MatchOpenings({
   const [rollout, setRollout] = useState<Window>(20);
   const [toKill, setToKill] = useState(true);
   const all = useMemo(() => (q.data ?? []).filter((l) => rounds === null || (l.openingRound !== null && rounds.has(l.openingRound))), [q.data, rounds]);
+  // Each class with how many played it (Flashy: "the game has 2 snipers,
+  // not 4"): players, not lives.
   const classes = useMemo(() => {
-    const n = new Map<string, number>();
-    for (const l of all) if (l.class) n.set(l.class, (n.get(l.class) ?? 0) + 1);
-    return [...n.entries()].sort((a, b) => CLASS_ORDER.indexOf(a[0]) - CLASS_ORDER.indexOf(b[0]));
+    const n = new Map<string, Set<number>>();
+    for (const l of all) if (l.class) n.set(l.class, (n.get(l.class) ?? new Set()).add(l.accountId));
+    return [...n.entries()].map(([c, who]) => [c, who.size] as [string, number]).sort((a, b) => CLASS_ORDER.indexOf(a[0]) - CLASS_ORDER.indexOf(b[0]));
   }, [all]);
   const cls = picked ?? (playerClass && classes.some(([c]) => c === playerClass) ? playerClass : (classes[0]?.[0] ?? null));
+  // One card a team, by the team each player is on in the match, whichever
+  // side they had that round.
   const groups: Group[] = useMemo(() => {
     const side = (team: "Red" | "Blue"): Group => {
-      const lives = all.filter((l) => l.team === team && l.class === cls).flatMap((l) => cut(l, rollout, toKill) ?? []);
+      const lives = all.filter((l) => (teams.get(l.accountId) ?? l.team) === team && l.class === cls).flatMap((l) => cut(l, rollout, toKill) ?? []);
       const who = [...new Set(lives.map((l) => names.get(l.accountId) ?? "?"))];
-      return { key: team, label: `${team === "Red" ? "RED" : "BLU"}${who.length > 0 ? ` · ${who.join(", ")}` : ""}`, cls, colour: team === "Red" ? "--red" : "--blu", lives };
+      return { key: team, label: `${team === "Red" ? "RED" : "BLU"}${who.length > 0 ? ` · ${who.join(", ")}` : ""}`, cls, colour: team === "Red" ? "--red" : "--blu", lives, of: roundCount };
     };
     return [side("Red"), side("Blue")];
-  }, [all, cls, rollout, toKill, names]);
+  }, [all, cls, rollout, toKill, names, teams, roundCount]);
   const [hover, setHover] = useState<LifeOnMap | null>(null);
 
   if (q.isPending) return <Loading>{t("Reading the routes…")}</Loading>;
@@ -499,7 +510,7 @@ export function MatchOpenings({
         <CtlGroup label={t("Class")}>
           <div className="class-filter" role="tablist" aria-label={t("Class")}>
             {classes.map(([c, n]) => (
-              <button key={c} role="tab" aria-selected={cls === c} className={cls === c ? "cf active" : "cf"} onClick={() => setPicked(c)} title={`${capitalize(c)}: ${n}`}>
+              <button key={c} role="tab" aria-selected={cls === c} className={cls === c ? "cf active" : "cf"} onClick={() => setPicked(c)} title={t("{0}: {1} played it", { "0": capitalize(c), "1": n })}>
                 <ClassIcon cls={c} size={20} />
                 <span className="cf-n">{n}</span>
               </button>
@@ -641,6 +652,7 @@ function Drawing({
     if (!ctx || !proj || !hexes || !frame) return;
     const cs = getComputedStyle(document.documentElement);
     const col = groups.map((g) => cs.getPropertyValue(g.colour).trim() || "#999");
+    const rgb = col.map((c) => toRgb(ctx, c));
     const r = hexes.size * proj.scale;
     const at = (q: number, rr: number): [number, number] => {
       const [x, y] = hexCentre(q, rr, hexes.size);
@@ -660,15 +672,25 @@ function Drawing({
     for (const [key, n] of hexes.cells) {
       const [q, rr] = key.split(",").map(Number);
       const [cx, cy] = at(q, rr);
-      // The hex goes to whichever uses it more, each against its own
-      // busiest; only a spot both use often is outlined, so a shared lane
-      // does not turn the whole map white.
+      // The hex goes to whichever spent longer there, each against its own
+      // longest; its colour runs from deep through the group's own to near
+      // white the longer it was (Flashy: "need more gradients"), as PGL's
+      // "less time, more time". Only a spot both use often is outlined, so a
+      // shared lane does not turn the whole map white.
       const share = n.map((count, g) => count / hexes.max[g]);
-      const top = share[0] >= share[1] ? 0 : 1;
-      ctx.globalAlpha = 0.2 + 0.75 * Math.sqrt(share[top]);
-      ctx.fillStyle = col[top];
+      const heat = hexes.time.get(key) ?? groups.map(() => 0);
+      const warm = heat.map((s, g) => Math.sqrt(s / hexes.maxTime[g]));
+      const top = warm[0] > warm[1] || (warm[0] === warm[1] && share[0] >= share[1]) ? 0 : 1;
+      const v = Math.max(0.06, warm[top]);
+      ctx.globalAlpha = 0.5 + 0.5 * v;
+      ctx.fillStyle = ramp(rgb[top], v);
+      if (v > 0.6) {
+        ctx.shadowColor = col[top];
+        ctx.shadowBlur = 10 * v;
+      }
       hexPath(cx, cy, r * 0.9);
       ctx.fill();
+      ctx.shadowBlur = 0;
       if (Math.min(share[0], share[1]) >= OVERLAP) {
         ctx.globalAlpha = 0.85;
         ctx.strokeStyle = "#fff";
@@ -864,6 +886,8 @@ function OpeningCards({ hexes, groups, window, toKill }: { hexes: Hexes; groups:
   const card = (g: number) => {
     const group = groups[g];
     const rounds = hexes.rounds[g];
+    // Rounds, not lives: two of a class in one round are one round.
+    const played = new Set(group.lives.map((l) => `${l.logId}:${l.openingRound ?? l.roundNum}`)).size;
     const main = hexes.main[g];
     const pct = main && rounds > 0 ? Math.round((main.rounds / rounds) * 100) : null;
     return (
@@ -874,7 +898,13 @@ function OpeningCards({ hexes, groups, window, toKill }: { hexes: Hexes; groups:
             {group.label}
           </span>
           <span className="lm-op-rounds">
-            <strong>{rounds}</strong> {t("rounds")}
+            {group.of ? (
+              tx("{0} of {1} rounds", { "0": <strong>{played}</strong>, "1": group.of })
+            ) : (
+              <>
+                <strong>{rounds}</strong> {t("rounds")}
+              </>
+            )}
           </span>
         </div>
         <div className="lm-op-main">
@@ -892,11 +922,11 @@ function OpeningCards({ hexes, groups, window, toKill }: { hexes: Hexes; groups:
       {card(0)}
       <div className="lm-op-mid">
         <div className="lm-op-scale">
-          <span>{t("Rare")}</span>
-          {[0.25, 0.45, 0.65, 0.85, 1].map((a) => (
-            <i key={a} style={{ opacity: a }} />
+          <span>{t("Less time")}</span>
+          {[0.15, 0.35, 0.55, 0.75, 1].map((v) => (
+            <i key={v} style={{ background: `color-mix(in srgb, var(${groups[0].colour}) ${Math.round(100 - Math.max(0, v - 0.5) * 120)}%, ${v < 0.5 ? "#000" : "#fff"})`, opacity: 0.5 + 0.5 * v }} />
           ))}
-          <span>{t("Often")}</span>
+          <span>{t("More time")}</span>
         </div>
         <div className="lm-op-scale">
           <i className="both" style={{ background: `linear-gradient(90deg, var(${groups[0].colour}) 50%, var(${groups[1].colour}) 50%)` }} />
@@ -935,6 +965,28 @@ function hexCentre(q: number, r: number, size: number): [number, number] {
   return [size * Math.sqrt(3) * (q + r / 2), size * 1.5 * r];
 }
 
+/** A colour as `[r, g, b]`, whatever form the theme gives it in. */
+function toRgb(ctx: CanvasRenderingContext2D, colour: string): [number, number, number] {
+  ctx.fillStyle = "#000";
+  ctx.fillStyle = colour;
+  const c = String(ctx.fillStyle);
+  if (c.startsWith("#")) return [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
+  const m = c.match(/\d+(\.\d+)?/g)?.map(Number) ?? [153, 153, 153];
+  return [m[0], m[1], m[2]];
+}
+
+/** The heat ramp from 0 to 1: deep (the colour at half its brightness),
+ *  the colour itself at the middle, near white at the top. */
+function ramp([r, g, b]: [number, number, number], v: number): string {
+  const mix = (a: number, z: number, f: number) => Math.round(a + (z - a) * f);
+  if (v < 0.5) {
+    const f = 0.45 + v * 1.1;
+    return `rgb(${mix(0, r, f)}, ${mix(0, g, f)}, ${mix(0, b, f)})`;
+  }
+  const f = (v - 0.5) * 1.3;
+  return `rgb(${mix(r, 255, f)}, ${mix(g, 255, f)}, ${mix(b, 255, f)})`;
+}
+
 /** The six neighbours' offsets. */
 const AROUND: Array<[number, number]> = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, -1], [-1, 1]];
 
@@ -952,6 +1004,8 @@ function hexesOf(groups: LifeOnMap[][], frame: { minX: number; maxY: number; w: 
   // Where each round began, so the spawn room is not taken for a position.
   const spawn = groups.map(() => new Set<string>());
   const rounds = groups.map((g) => g.length);
+  // Time spent in each hex, a point being about a quarter of a second.
+  const time = new Map<string, number[]>();
   const seen = new Set<string>();
   const around = new Set<string>();
   groups.forEach((lives, g) => lives.forEach((l) => {
@@ -959,6 +1013,11 @@ function hexesOf(groups: LifeOnMap[][], frame: { minX: number; maxY: number; w: 
     around.clear();
     let prev: [number, number] | null = null;
     for (const p of l.points) {
+      const [pq, pr] = hexAt(p[0] - frame.minX, frame.maxY - p[1], size);
+      const tk = `${pq},${pr}`;
+      const tc = time.get(tk) ?? groups.map(() => 0);
+      tc[g] += 1;
+      time.set(tk, tc);
       const from: [number, number] = prev !== null && Math.hypot(p[0] - prev[0], p[1] - prev[1]) <= JUMP ? prev : p;
       const steps = Math.max(1, Math.ceil(Math.hypot(p[0] - from[0], p[1] - from[1]) / (size / 2)));
       for (let s = 0; s <= steps; s++) {
@@ -984,19 +1043,30 @@ function hexesOf(groups: LifeOnMap[][], frame: { minX: number; maxY: number; w: 
     }
     for (const key of around) near[g].set(key, (near[g].get(key) ?? 0) + 1);
   }));
+  // The time spent around a hex (it and its six), to choose between spots
+  // as many rounds went through: where they stood, not where they ran.
+  const stay = (key: string, g: number) => {
+    const [q, r] = key.split(",").map(Number);
+    let s = time.get(key)?.[g] ?? 0;
+    for (const [dq, dr] of AROUND) s += time.get(`${q + dq},${r + dr}`)?.[g] ?? 0;
+    return s;
+  };
   const main = groups.map((_, g) => {
-    let best: { q: number; r: number; rounds: number } | null = null;
+    let best: { q: number; r: number; rounds: number; stay: number } | null = null;
     for (const [key, n] of near[g]) {
       if (spawn[g].has(key) || !cells.get(key)?.[g]) continue;
-      if (!best || n > best.rounds) {
+      if (best && n < best.rounds) continue;
+      const s = stay(key, g);
+      if (!best || n > best.rounds || s > best.stay) {
         const [q, r] = key.split(",").map(Number);
-        best = { q, r, rounds: n };
+        best = { q, r, rounds: n, stay: s };
       }
     }
     return best;
   });
+  const maxTime = groups.map((_, g) => Math.max(1, ...[...time.values()].map((c) => c[g])));
   const max = groups.map((_, g) => Math.max(1, ...[...cells.values()].map((c) => c[g])));
-  return { size, cells, rounds, max, main };
+  return { size, cells, rounds, max, main, time, maxTime };
 }
 
 /** A player in the compare list: their name, usual class here, and matches. */
