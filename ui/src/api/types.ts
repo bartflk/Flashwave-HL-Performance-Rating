@@ -774,9 +774,22 @@ export interface LifeOnMap {
   afterEnemyCap: boolean;
   /** Q67: others were killing each other just before and just after it began. */
   midFight: boolean;
-  /** How many of `points` fall in the round's opening: its first 40 s, or
-   *  until its first kill. 0 when the life did not begin with the round. */
-  opening: number;
+  /** For a life begun with its round: the seconds since the round began of
+   *  each of its first `points`, up to 40 s. Empty otherwise. */
+  openingT: number[];
+  /** Seconds since the round began of its first kill, for such a life. */
+  firstKill: number | null;
+}
+
+/** Someone else with routes on a map, to compare round openings with. */
+export interface MapPlayer {
+  accountId: number;
+  name: string;
+  /** The classes they mainly played there, most matches first. */
+  classes: Array<[string, number]>;
+  matches: number;
+  /** Of those, matches the profile's player played too. */
+  shared: number;
 }
 
 export interface LivesOnMap {

@@ -371,6 +371,7 @@ pub fn run() {
             mass::mass_forget,
             sync_commands::lives_maps,
             sync_commands::lives_on_map,
+            sync_commands::lives_players,
             sync_commands::get_bookmarks,
             sync_commands::set_bookmark,
             sync_commands::reread_match,

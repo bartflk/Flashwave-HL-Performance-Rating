@@ -1639,6 +1639,13 @@ pub async fn lives_on_map(state: State<'_, AppState>, account_id: u32, map: Stri
     Ok(hl_ingest::lives::on_map(&state.db, account_id, &map).await?)
 }
 
+/// Who else has routes on a map, to compare a player's round openings with
+/// (Flashy: "where both snipers rollout").
+#[tauri::command]
+pub async fn lives_players(state: State<'_, AppState>, account_id: u32, map: String) -> CmdResult<Vec<hl_ingest::lives::MapPlayer>> {
+    Ok(hl_ingest::lives::players_on_map(&state.db, &map, account_id).await?)
+}
+
 /// Q60 (Clark): a page kept to come back to. `kind` is `match`, `player`,
 /// `team` or `season`; `id` is the log, account, team or season number.
 /// `label` and `sub` are what the page was called when it was kept, so the

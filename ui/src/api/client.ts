@@ -96,6 +96,7 @@ import type {
   MassSummary,
   MapWithLives,
   LivesOnMap,
+  MapPlayer,
   StvQueued,
   FailedLog,
   Imported,
@@ -378,6 +379,7 @@ const realApi = {
   setMatchKind: (logId: number, kind: ContextKind | null) => invoke<boolean>("set_match_kind", { logId, kind }),
   livesMaps: (accountId: number) => invoke<MapWithLives[]>("lives_maps", { accountId }),
   livesOnMap: (accountId: number, map: string) => invoke<LivesOnMap>("lives_on_map", { accountId, map }),
+  livesPlayers: (accountId: number, map: string) => invoke<MapPlayer[]>("lives_players", { accountId, map }),
   /** Q69: mass import of a player's demos on one map. */
   massSearch: (accountId: number, map: string, cls: string | null, want: number) =>
     invoke<MassCandidate[]>("mass_search", { accountId, map, class: cls, want }),

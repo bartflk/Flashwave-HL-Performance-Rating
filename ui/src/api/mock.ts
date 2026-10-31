@@ -64,6 +64,7 @@ import type {
   MassSummary,
   LifeOnMap,
   LivesOnMap as LivesOnMapView,
+  MapPlayer,
   MapWithLives,
   DemoIndexSummary,
   ReRead,
@@ -1040,9 +1041,14 @@ export const mockApi: Api = {
       { map: "product", name: "koth_product_final", matches: 10, lives: 143 },
       { map: "upward", name: "pl_upward_f12", matches: 4, lives: 57 },
     ]),
-  livesOnMap: (_accountId: number, map: string) => {
+  livesPlayers: (_accountId: number, _map: string) =>
+    delay<MapPlayer[]>([
+      { accountId: 900_001, name: "kawaii", classes: [["sniper", 7], ["scout", 1]], matches: 8, shared: 6 },
+      { accountId: 900_002, name: "b4nny", classes: [["scout", 5]], matches: 5, shared: 0 },
+    ]),
+  livesOnMap: (accountId: number, map: string) => {
     // Wandering routes from each side's half, so the view has a pattern.
-    const r = rng(map.length * 7);
+    const r = rng(map.length * 7 + (accountId % 97));
     const classes = ["sniper", "sniper", "engineer", "scout", "spy"];
     // Product at Emiel's scale (Q64: about 3,000 lives), Upward small.
     const lives: LifeOnMap[] = Array.from({ length: map === "product" ? 3000 : 60 }, (_, i) => {
@@ -1054,7 +1060,7 @@ export const mockApi: Api = {
         y += (r() - 0.5) * 120;
         points.push([Math.round(x), Math.round(y)]);
       }
-      return { logId: 4_100_000 + (i % 10), playedAt: 1_790_000_000 - (i % 10) * 86_400 * 9, demoId: i % 10, stv: i % 10 === 0, class: classes[i % classes.length], team, roundNum: 1 + (i % 5), died: r() < 0.7, seconds: points.length / 4, points, capped: i % 4 === 0, afterEnemyCap: i % 6 === 1, midFight: i % 2 === 0, opening: i % 5 === 0 ? Math.min(points.length, 160) : 0 };
+      return { logId: 4_100_000 + (i % 10), playedAt: 1_790_000_000 - (i % 10) * 86_400 * 9, demoId: i % 10, stv: i % 10 === 0, class: classes[i % classes.length], team, roundNum: 1 + (i % 5), died: r() < 0.7, seconds: points.length / 4, points, capped: i % 4 === 0, afterEnemyCap: i % 6 === 1, midFight: i % 2 === 0, openingT: i % 5 === 0 ? points.map((_, j) => j * 0.5) : [], firstKill: i % 5 === 0 ? 12 + (i % 7) * 4 : null };
     });
     return delay<LivesOnMapView>({ map, matches: 10, stvMatches: 1, lives }, 300);
   },

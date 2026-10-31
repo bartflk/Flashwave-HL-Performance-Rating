@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "../ApiError";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { type LifeOnMap } from "../../api/types";
+import { type LifeOnMap, type MapPlayer } from "../../api/types";
 import { capitalize, formatDate } from "../../lib/format";
 import { k, t, tx } from "../../lib/i18n";
 import { ClassIcon } from "../ClassIcon";
@@ -43,6 +43,26 @@ const CELLS = 140;
 /** The round-openings view's hexes across the frame. */
 const HEXES = 70;
 
+/** A hex both use at least this much (of each one's busiest) is outlined. */
+const OVERLAP = 0.25;
+
+/** How much of each round's start the openings view takes (Flashy: "the
+ *  rollout heatmap first 20 seconds or something"). */
+const WINDOWS = [10, 20, 30, 40] as const;
+type Window = (typeof WINDOWS)[number];
+
+/** One player's (or one side's) openings in the view, and how to draw them. */
+type Group = { key: string; label: string; cls: string | null; colour: string; lives: LifeOnMap[] };
+
+/** A life cut to the round's first `window` seconds, and at the round's
+ *  first kill when `toKill`: `null` when nothing is left to draw. */
+function cut(l: LifeOnMap, window: number, toKill: boolean): LifeOnMap | null {
+  const end = toKill && l.firstKill !== null ? Math.min(window, l.firstKill) : window;
+  let n = 0;
+  while (n < l.openingT.length && l.openingT[n] <= end) n++;
+  return n > 1 ? { ...l, points: l.points.slice(0, n) } : null;
+}
+
 /** A step longer than this went through a teleporter or a respawn: the line
  *  breaks rather than crossing the map. Points are about four a second, so
  *  this is well past running speed. */
@@ -78,6 +98,14 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
   // Q65: every route, or where they usually go; "auto" picks by how many.
   const [view, setView] = useState<View>("auto");
   const [hover, setHover] = useState<LifeOnMap | null>(null);
+  // The openings view's rollout window, and whether it stops at the round's
+  // first kill.
+  const [rollout, setRollout] = useState<Window>(20);
+  const [toKill, setToKill] = useState(true);
+  // Someone to compare with, and their class (Flashy: "where both snipers
+  // rollout").
+  const [vs, setVs] = useState<number | null>(null);
+  const [vsCls, setVsCls] = useState<string | null>(null);
 
   const all = useMemo(() => livesQ.data?.lives ?? [], [livesQ.data]);
   // The classes they played here, most lives first; the side filter applies.
@@ -108,12 +136,53 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
     [recent, ending, situations],
   );
   // The round openings (PGL's heatmaps): only the lives that began with a
-  // round, cut at its first kill or 40 s in. The end and situation filters
-  // are about the rest of the life, so they do not apply.
-  const openings = useMemo(
-    () => recent.lives.filter((l) => l.opening > 0).map((l) => ({ ...l, points: l.points.slice(0, l.opening) })),
-    [recent],
+  // round, cut to its first seconds. The end and situation filters are about
+  // the rest of the life, so they do not apply.
+  const openings = useMemo(() => recent.lives.flatMap((l) => cut(l, rollout, toKill) ?? []), [recent, rollout, toKill]);
+  const opening = view === "opening";
+  const playersQ = useQuery({
+    queryKey: ["lives_players", accountId, map],
+    queryFn: () => api.livesPlayers(accountId, map!),
+    enabled: opening && map !== null,
+    staleTime: 5 * 60_000,
+  });
+  const vsQ = useQuery({
+    queryKey: ["lives_on_map", vs, map],
+    queryFn: () => api.livesOnMap(vs!, map!),
+    enabled: opening && vs !== null && map !== null,
+    staleTime: 5 * 60_000,
+  });
+  const vsPlayer = (playersQ.data ?? []).find((p) => p.accountId === vs) ?? null;
+  const vsAll = useMemo(() => (vs === null ? [] : (vsQ.data?.lives ?? [])), [vs, vsQ.data]);
+  // Their classes here among the lives that began a round, the side filter applied.
+  const vsClasses = useMemo(() => {
+    const n = new Map<string, number>();
+    for (const l of vsAll) if (l.class && l.openingT.length > 0 && (side === "both" || l.team === side)) n.set(l.class, (n.get(l.class) ?? 0) + 1);
+    return [...n.entries()].sort((a, b) => b[1] - a[1]);
+  }, [vsAll, side]);
+  const vsOpenings = useMemo(
+    () => vsAll.filter((l) => (vsCls === null || l.class === vsCls) && (side === "both" || l.team === side)).flatMap((l) => cut(l, rollout, toKill) ?? []),
+    [vsAll, vsCls, side, rollout, toKill],
   );
+  // Side by side: theirs and the other player's, each in its own colour;
+  // alone, RED's and BLU's.
+  const groups: Group[] =
+    vs !== null
+      ? [
+          { key: "a", label: name, cls, colour: "--cmp-a", lives: openings },
+          { key: "b", label: vsPlayer?.name ?? "?", cls: vsCls, colour: "--cmp-b", lives: vsOpenings },
+        ]
+      : [
+          { key: "Red", label: t("RED side"), cls, colour: "--red", lives: openings.filter((l) => l.team === "Red") },
+          { key: "Blue", label: t("BLU side"), cls, colour: "--blu", lives: openings.filter((l) => l.team === "Blue") },
+        ];
+  const pickVs = (id: number | null) => {
+    setVs(id);
+    // Their class: the one picked for this player when they played it here,
+    // else their usual one.
+    const p = (playersQ.data ?? []).find((x) => x.accountId === id);
+    setVsCls(p ? (cls !== null && p.classes.some(([c]) => c === cls) ? cls : (p.classes[0]?.[0] ?? null)) : null);
+  };
   const sides = { Red: all.filter((l) => (cls === null || l.class === cls) && l.team === "Red").length, Blue: all.filter((l) => (cls === null || l.class === cls) && l.team === "Blue").length };
   const mode: Mode = view === "auto" ? (shown.length > DENSITY_FROM ? "density" : "routes") : view;
   const toggle = (s: Situation) =>
@@ -151,6 +220,8 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
               setPicked(e.target.value);
               setCls(null);
               setHover(null);
+              setVs(null);
+              setVsCls(null);
             }}
           >
             {maps.map((m) => (
@@ -206,7 +277,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
               { v: "auto", label: <><Icon name="auto" size={14} /> {t("Auto")}</>, title: t("Most used from {0} lives, every route below that", { "0": DENSITY_FROM }) },
               { v: "routes", label: <><Icon name="routes" size={14} /> {t("Every route")}</>, title: t("One line per life") },
               { v: "density", label: <><Icon name="grid" size={14} /> {t("Most used")}</>, title: t("How many lives passed each spot: the busier, the stronger") },
-              { v: "opening", label: <><Icon name="hex" size={14} /> {t("Round openings")}</>, title: t("Where they go in the first 40 seconds of each round, or until its first kill") },
+              { v: "opening", label: <><Icon name="hex" size={14} /> {t("Round openings")}</>, title: t("Where they go at the start of each round, and where someone else does") },
             ]}
           />
         </CtlGroup>
@@ -246,8 +317,25 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
             </CtlGroup>
           </>
         )}
+        {mode === "opening" && (
+          <CtlGroup label={t("Rollout")}>
+            <Seg
+              label={t("Rollout")}
+              value={String(rollout)}
+              onChange={(v) => setRollout(Number(v) as Window)}
+              options={WINDOWS.map((w) => ({ v: String(w), label: tx("First {0} s", { "0": w }) }))}
+            />
+            <button className={toKill ? "lm-toggle on" : "lm-toggle"} aria-pressed={toKill} onClick={() => setToKill(!toKill)} title={t("Stop each round at its first kill, whoever got it")}>
+              <Icon name="skull" size={14} />
+              {t("Until the first kill")}
+              <span className="lm-check" aria-hidden>
+                {toKill && <Icon name="check" size={12} />}
+              </span>
+            </button>
+          </CtlGroup>
+        )}
         {classes.length > 0 && (
-          <CtlGroup label={t("Class")}>
+          <CtlGroup label={vs !== null ? name : t("Class")}>
             <div className="class-filter" role="tablist" aria-label={t("Class")}>
               <button role="tab" aria-selected={cls === null} className={cls === null ? "cf active" : "cf"} onClick={() => setCls(null)}>
                 {t("All")}
@@ -261,7 +349,43 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
             </div>
           </CtlGroup>
         )}
+        {mode === "opening" && (
+          <CtlGroup label={t("Compare with")}>
+            <select
+              className="lm-select"
+              value={vs ?? ""}
+              onChange={(e) => pickVs(e.target.value === "" ? null : Number(e.target.value))}
+              title={t("Someone else a demo on this machine followed on this map")}
+            >
+              <option value="">{t("Nobody: RED and BLU")}</option>
+              {(playersQ.data ?? []).map((p) => (
+                <option key={p.accountId} value={p.accountId}>
+                  {playerOption(p)}
+                </option>
+              ))}
+            </select>
+          </CtlGroup>
+        )}
+        {mode === "opening" && vs !== null && vsClasses.length > 0 && (
+          <CtlGroup label={vsPlayer?.name ?? t("Class")}>
+            <div className="class-filter" role="tablist" aria-label={t("Class")}>
+              <button role="tab" aria-selected={vsCls === null} className={vsCls === null ? "cf active" : "cf"} onClick={() => setVsCls(null)}>
+                {t("All")}
+              </button>
+              {vsClasses.map(([c, n]) => (
+                <button key={c} role="tab" aria-selected={vsCls === c} className={vsCls === c ? "cf active" : "cf"} onClick={() => setVsCls(vsCls === c ? null : c)} title={`${capitalize(c)}: ${n}`}>
+                  <ClassIcon cls={c} size={20} />
+                  <span className="cf-n">{n}</span>
+                </button>
+              ))}
+            </div>
+          </CtlGroup>
+        )}
       </div>
+      {mode === "opening" && vs !== null && side === "both" && (
+        <p className="hint lm-count">{t("Pick a side to compare like for like: RED's rollouts and BLU's go different ways.")}</p>
+      )}
+      {mode === "opening" && vs !== null && vsQ.isPending && <Loading>{t("Reading the routes…")}</Loading>}
 
       {v && (
         <p className="hint lm-count">
@@ -279,7 +403,18 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
       {livesQ.isPending && <Loading>{t("Reading the routes…")}</Loading>}
       {livesQ.isError && <ApiError error={livesQ.error} />}
 
-      {v && <Drawing lives={mode === "opening" ? openings : shown} overview={overviewQ.data ?? null} hover={hover} onHover={setHover} mode={mode} />}
+      {v && (
+        <Drawing
+          lives={mode === "opening" ? groups.flatMap((g) => g.lives) : shown}
+          groups={groups}
+          window={rollout}
+          toKill={toKill}
+          overview={overviewQ.data ?? null}
+          hover={hover}
+          onHover={setHover}
+          mode={mode}
+        />
+      )}
 
       {hover && mode === "routes" && (
         <p className="lm-hover">
@@ -296,12 +431,18 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
 /** The routes over the map's top-down picture, or over their own extent. */
 function Drawing({
   lives,
+  groups,
+  window: seconds,
+  toKill,
   overview,
   hover,
   onHover,
   mode,
 }: {
   lives: LifeOnMap[];
+  groups: Group[];
+  window: number;
+  toKill: boolean;
   overview: { minX: number; maxY: number; size: number; aspect: number; image: string } | null;
   hover: LifeOnMap | null;
   onHover: (l: LifeOnMap | null) => void;
@@ -310,7 +451,7 @@ function Drawing({
   // Q65: the cell under the mouse in the density view, and its counts.
   const [cellHover, setCellHover] = useState<{ red: number; blue: number; other: number } | null>(null);
   // The round-openings view's hex under the mouse.
-  const [hexHover, setHexHover] = useState<{ red: number; blue: number } | null>(null);
+  const [hexHover, setHexHover] = useState<number[] | null>(null);
   // The frame in game units: the picture's, else the routes' own bounds.
   const frame = useMemo(() => {
     if (overview) return { minX: overview.minX, maxY: overview.maxY, w: overview.size, h: overview.size * overview.aspect };
@@ -378,16 +519,17 @@ function Drawing({
   const density = useMemo(() => (frame && mode === "density" ? densityOf(lives, frame) : null), [lives, frame, mode]);
 
   // The round openings, in hexes.
-  const hexes = useMemo(() => (frame && mode === "opening" ? hexesOf(lives, frame) : null), [lives, frame, mode]);
+  const hexes = useMemo(() => (frame && mode === "opening" ? hexesOf(groups.map((g) => g.lives), frame) : null), [groups, frame, mode]);
 
-  // Each hex its side's colour, stronger the more rounds went through it;
-  // where both sides went, outlined in white. Each side's main position is
-  // ringed.
+  // Each hex its group's colour (a side's, or a player's), stronger the more
+  // rounds went through it; where both went, outlined in white. Each one's
+  // main position is ringed.
   useEffect(() => {
     if (mode !== "opening") return;
     const ctx = prepare(base.current, width, height);
     if (!ctx || !proj || !hexes || !frame) return;
-    const col = colours();
+    const cs = getComputedStyle(document.documentElement);
+    const col = groups.map((g) => cs.getPropertyValue(g.colour).trim() || "#999");
     const r = hexes.size * proj.scale;
     const at = (q: number, rr: number): [number, number] => {
       const [x, y] = hexCentre(q, rr, hexes.size);
@@ -407,14 +549,16 @@ function Drawing({
     for (const [key, n] of hexes.cells) {
       const [q, rr] = key.split(",").map(Number);
       const [cx, cy] = at(q, rr);
-      for (const [team, count, max] of [["Red", n.red, hexes.maxRed], ["Blue", n.blue, hexes.maxBlue]] as const) {
-        if (count === 0) continue;
-        ctx.globalAlpha = (0.2 + 0.75 * Math.sqrt(count / max)) * (n.red > 0 && n.blue > 0 ? 0.7 : 1);
-        ctx.fillStyle = col[team];
-        hexPath(cx, cy, r * 0.9);
-        ctx.fill();
-      }
-      if (n.red > 0 && n.blue > 0) {
+      // The hex goes to whichever uses it more, each against its own
+      // busiest; only a spot both use often is outlined, so a shared lane
+      // does not turn the whole map white.
+      const share = n.map((count, g) => count / hexes.max[g]);
+      const top = share[0] >= share[1] ? 0 : 1;
+      ctx.globalAlpha = 0.2 + 0.75 * Math.sqrt(share[top]);
+      ctx.fillStyle = col[top];
+      hexPath(cx, cy, r * 0.9);
+      ctx.fill();
+      if (Math.min(share[0], share[1]) >= OVERLAP) {
         ctx.globalAlpha = 0.85;
         ctx.strokeStyle = "#fff";
         ctx.lineWidth = 1.2;
@@ -423,19 +567,19 @@ function Drawing({
       }
     }
     ctx.globalAlpha = 1;
-    for (const [team, main] of [["Red", hexes.mainRed], ["Blue", hexes.mainBlue]] as const) {
-      if (!main) continue;
+    hexes.main.forEach((main, g) => {
+      if (!main) return;
       const [cx, cy] = at(main.q, main.r);
       ctx.lineWidth = 2.5;
       ctx.strokeStyle = "#fff";
       hexPath(cx, cy, r * 1.15);
       ctx.stroke();
-      ctx.strokeStyle = col[team];
+      ctx.strokeStyle = col[g];
       ctx.lineWidth = 1.5;
       hexPath(cx, cy, r * 1.45);
       ctx.stroke();
-    }
-  }, [mode, hexes, proj, frame, width, height]);
+    });
+  }, [mode, hexes, groups, proj, frame, width, height]);
 
   // The density view: each cell its side's colour, stronger the more lives
   // passed through it. Square root, so the quieter lanes still show.
@@ -524,8 +668,7 @@ function Drawing({
     if (mode === "opening") {
       if (!hexes) return;
       const [q, r] = hexAt(gx - frame.minX, frame.maxY - gy, hexes.size);
-      const n = hexes.cells.get(`${q},${r}`);
-      setHexHover(n ? { red: n.red, blue: n.blue } : null);
+      setHexHover(hexes.cells.get(`${q},${r}`) ?? null);
       return;
     }
     if (mode === "density") {
@@ -589,28 +732,36 @@ function Drawing({
         )}
         {mode === "opening" && hexHover && hexes && (
           <p className="lm-cell">
-            {hexHover.red > 0 && <span className="team-red">{tx("RED: {0} of {1} rounds", { "0": hexHover.red, "1": hexes.rounds.Red })}</span>}
-            {hexHover.red > 0 && hexHover.blue > 0 && " · "}
-            {hexHover.blue > 0 && <span className="team-blue">{tx("BLU: {0} of {1} rounds", { "0": hexHover.blue, "1": hexes.rounds.Blue })}</span>}
+            {groups.map((g, i) =>
+              hexHover[i] > 0 ? (
+                <span key={g.key} className="lm-cell-group" style={{ color: `var(${g.colour})` }}>
+                  {tx("{0}: {1} of {2} rounds", { "0": g.label, "1": hexHover[i], "2": hexes.rounds[i] })}
+                </span>
+              ) : null,
+            )}
           </p>
         )}
       </div>
-      {mode === "opening" && hexes && <OpeningCards hexes={hexes} />}
+      {mode === "opening" && hexes && <OpeningCards hexes={hexes} groups={groups} window={seconds} toKill={toKill} />}
     </>
   );
 }
 
-/** Under the round-openings view: each side's rounds and main position, the
- *  scale, and what the view counts (as PGL's heatmaps put it). */
-function OpeningCards({ hexes }: { hexes: Hexes }) {
-  const card = (team: "Red" | "Blue") => {
-    const rounds = hexes.rounds[team];
-    const main = team === "Red" ? hexes.mainRed : hexes.mainBlue;
+/** Under the round-openings view: each side's (or player's) rounds and main
+ *  position, the scale, and what the view counts (as PGL's heatmaps put it). */
+function OpeningCards({ hexes, groups, window, toKill }: { hexes: Hexes; groups: Group[]; window: number; toKill: boolean }) {
+  const card = (g: number) => {
+    const group = groups[g];
+    const rounds = hexes.rounds[g];
+    const main = hexes.main[g];
     const pct = main && rounds > 0 ? Math.round((main.rounds / rounds) * 100) : null;
     return (
-      <div className={`lm-op-card ${team === "Red" ? "red" : "blu"}`}>
+      <div className="lm-op-card" style={{ "--op": `var(${group.colour})` } as React.CSSProperties}>
         <div className="lm-op-head">
-          <span className="lm-op-side">{team === "Red" ? t("RED side") : t("BLU side")}</span>
+          <span className="lm-op-side">
+            {group.cls && <ClassIcon cls={group.cls} size={16} />}
+            {group.label}
+          </span>
           <span className="lm-op-rounds">
             <strong>{rounds}</strong> {t("rounds")}
           </span>
@@ -627,7 +778,7 @@ function OpeningCards({ hexes }: { hexes: Hexes }) {
   };
   return (
     <div className="lm-op">
-      {card("Red")}
+      {card(0)}
       <div className="lm-op-mid">
         <div className="lm-op-scale">
           <span>{t("Rare")}</span>
@@ -637,12 +788,16 @@ function OpeningCards({ hexes }: { hexes: Hexes }) {
           <span>{t("Often")}</span>
         </div>
         <div className="lm-op-scale">
-          <i className="both" />
-          <span>{t("Both sides")}</span>
+          <i className="both" style={{ background: `linear-gradient(90deg, var(${groups[0].colour}) 50%, var(${groups[1].colour}) 50%)` }} />
+          <span>{groups[0].key === "Red" ? t("Both sides") : t("Both players")}</span>
         </div>
-        <p className="lm-op-note">{t("First 40 seconds of each round, or until the round's first kill")}</p>
+        <p className="lm-op-note">
+          {toKill
+            ? tx("First {0} seconds of each round, or until the round's first kill", { "0": window })
+            : tx("First {0} seconds of each round", { "0": window })}
+        </p>
       </div>
-      {card("Blue")}
+      {card(1)}
     </div>
   );
 }
@@ -674,22 +829,21 @@ const AROUND: Array<[number, number]> = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, -
 
 type Hexes = ReturnType<typeof hexesOf>;
 
-/** Rounds through each hex, per side, each counted once per hex it crossed;
- *  and each side's main position: the hex whose neighbourhood (it and the
- *  six around it) the most rounds went through, so a spot rather than one
- *  tile of it. Not the spawn room, which every round starts in. */
-function hexesOf(lives: LifeOnMap[], frame: { minX: number; maxY: number; w: number; h: number }) {
+/** Rounds through each hex, per group (a side, or a player), each counted
+ *  once per hex it crossed; and each group's main position: the hex whose
+ *  neighbourhood (it and the six around it) the most rounds went through, so
+ *  a spot rather than one tile of it. Not the spawn room, which every round
+ *  starts in. */
+function hexesOf(groups: LifeOnMap[][], frame: { minX: number; maxY: number; w: number; h: number }) {
   const size = Math.max(frame.w, frame.h) / HEXES / Math.sqrt(3);
-  const cells = new Map<string, { red: number; blue: number }>();
-  const near: Record<"Red" | "Blue", Map<string, number>> = { Red: new Map(), Blue: new Map() };
+  const cells = new Map<string, number[]>();
+  const near = groups.map(() => new Map<string, number>());
   // Where each round began, so the spawn room is not taken for a position.
-  const spawn: Record<"Red" | "Blue", Set<string>> = { Red: new Set(), Blue: new Set() };
-  const rounds = { Red: 0, Blue: 0 };
+  const spawn = groups.map(() => new Set<string>());
+  const rounds = groups.map((g) => g.length);
   const seen = new Set<string>();
   const around = new Set<string>();
-  for (const l of lives) {
-    if (l.team !== "Red" && l.team !== "Blue") continue;
-    rounds[l.team] += 1;
+  groups.forEach((lives, g) => lives.forEach((l) => {
     seen.clear();
     around.clear();
     let prev: [number, number] | null = null;
@@ -707,39 +861,39 @@ function hexesOf(lives: LifeOnMap[], frame: { minX: number; maxY: number; w: num
     const first = l.points[0];
     if (first) {
       const [q, r] = hexAt(first[0] - frame.minX, frame.maxY - first[1], size);
-      for (let dq = -2; dq <= 2; dq++) for (let dr = -2; dr <= 2; dr++) spawn[l.team].add(`${q + dq},${r + dr}`);
+      for (let dq = -2; dq <= 2; dq++) for (let dr = -2; dr <= 2; dr++) spawn[g].add(`${q + dq},${r + dr}`);
     }
     for (const key of seen) {
-      const c = cells.get(key) ?? { red: 0, blue: 0 };
-      if (l.team === "Red") c.red += 1;
-      else c.blue += 1;
+      const c = cells.get(key) ?? groups.map(() => 0);
+      c[g] += 1;
       cells.set(key, c);
       const [q, r] = key.split(",").map(Number);
       around.add(key);
       for (const [dq, dr] of AROUND) around.add(`${q + dq},${r + dr}`);
     }
-    for (const key of around) near[l.team].set(key, (near[l.team].get(key) ?? 0) + 1);
-  }
-  const main = (team: "Red" | "Blue") => {
+    for (const key of around) near[g].set(key, (near[g].get(key) ?? 0) + 1);
+  }));
+  const main = groups.map((_, g) => {
     let best: { q: number; r: number; rounds: number } | null = null;
-    for (const [key, n] of near[team]) {
-      if (spawn[team].has(key)) continue;
-      const own = cells.get(key);
-      if (!own || (team === "Red" ? own.red : own.blue) === 0) continue;
+    for (const [key, n] of near[g]) {
+      if (spawn[g].has(key) || !cells.get(key)?.[g]) continue;
       if (!best || n > best.rounds) {
         const [q, r] = key.split(",").map(Number);
         best = { q, r, rounds: n };
       }
     }
     return best;
-  };
-  let maxRed = 0;
-  let maxBlue = 0;
-  for (const c of cells.values()) {
-    maxRed = Math.max(maxRed, c.red);
-    maxBlue = Math.max(maxBlue, c.blue);
-  }
-  return { size, cells, rounds, maxRed, maxBlue, mainRed: main("Red"), mainBlue: main("Blue") };
+  });
+  const max = groups.map((_, g) => Math.max(1, ...[...cells.values()].map((c) => c[g])));
+  return { size, cells, rounds, max, main };
+}
+
+/** A player in the compare list: their name, usual class here, and matches. */
+function playerOption(p: MapPlayer): string {
+  const cls = p.classes[0]?.[0];
+  const matches = t("{0} match{1}", { "0": p.matches, "1": p.matches === 1 ? "" : "es" });
+  const shared = p.shared > 0 ? ` · ${t("{0} together", { "0": p.shared })}` : "";
+  return `${p.name}${cls ? ` · ${capitalize(cls)}` : ""} · ${matches}${shared}`;
 }
 
 /** Lives through each cell of a `CELLS`-wide grid over the frame, per side:

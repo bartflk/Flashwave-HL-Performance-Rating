@@ -705,26 +705,25 @@ button.pp-alias-more:hover { border-color: var(--accent-dim); background: rgba(v
 /* The round-openings view's cards (PGL's heatmaps): RED's left, BLU's right,
    the scale and what is counted between them. */
 .lm-op { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; margin-top: 12px; align-items: stretch; }
-.lm-op-card { border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; border-top: 3px solid var(--muted); }
-.lm-op-card.red { border-top-color: var(--red); }
-.lm-op-card.blu { border-top-color: var(--blu); }
+.lm-op-card { --op: var(--muted); border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; border-top: 3px solid var(--op); }
 .lm-op-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-.lm-op-side { font-weight: 700; font-size: var(--fs-ui); padding: 2px 8px; border-radius: 4px; color: #fff; background: var(--muted); }
-.lm-op-card.red .lm-op-side { background: var(--red); }
-.lm-op-card.blu .lm-op-side { background: var(--blu); }
+.lm-op-side { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-weight: 700; font-size: var(--fs-ui); padding: 2px 8px; border-radius: 4px; color: #fff; background: var(--op); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lm-op-rounds { color: var(--muted); font-size: var(--fs-ui); }
 .lm-op-rounds strong { color: var(--text); font-size: var(--fs-num-s); }
 .lm-op-main { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: var(--ls-caps); font-family: var(--font-display); }
 .lm-op-pct { display: flex; flex-direction: column; align-items: flex-end; line-height: var(--lh-tight); }
 .lm-op-pct strong { font-size: var(--fs-num-l); }
-.lm-op-card.red .lm-op-pct { color: var(--red); }
-.lm-op-card.blu .lm-op-pct { color: var(--blu); }
+.lm-op-pct { color: var(--op); }
 .lm-op-pct small { font-size: var(--fs-xs); color: var(--muted); letter-spacing: 0; }
 .lm-op-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 0 4px; }
 .lm-op-scale { display: flex; align-items: center; gap: 4px; font-size: var(--fs-small); color: var(--muted); text-transform: uppercase; font-family: var(--font-display); }
 .lm-op-scale span { margin: 0 4px; }
 .lm-op-scale i { width: 12px; height: 13px; background: var(--text); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
-.lm-op-scale i.both { background: linear-gradient(90deg, var(--red) 50%, var(--blu) 50%); outline: none; box-shadow: none; }
+.lm-op-scale i.both { outline: none; box-shadow: none; }
+.lm-cell .lm-cell-group { font-weight: 700; }
+.lm-cell .lm-cell-group + .lm-cell-group::before { content: " · "; color: var(--muted); font-weight: 400; }
+/* Two players compared: neither team's colour, as both may be on either. */
+:root { --cmp-a: #e9b52f; --cmp-b: #2ec4cf; }
 .lm-op-note { margin: 0; font-size: var(--fs-small); color: var(--muted); text-align: center; max-width: 220px; }
 @media (max-width: 720px) {
   .lm-op { grid-template-columns: 1fr; }

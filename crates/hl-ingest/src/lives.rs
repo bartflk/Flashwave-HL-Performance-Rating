@@ -46,6 +46,53 @@ pub async fn maps(db: &Db, account_id: u32) -> Result<Vec<MapWithLives>> {
     Ok(out)
 }
 
+/// Someone else with routes on a map, to compare with (Flashy: "where both
+/// snipers rollout").
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MapPlayer {
+    pub account_id: u32,
+    pub name: String,
+    /// The classes they mainly played in those matches, most matches first.
+    pub classes: Vec<(String, usize)>,
+    pub matches: usize,
+    /// Of those, matches `me` played too.
+    pub shared: usize,
+}
+
+/// Everyone a demo on this machine followed on `map`, but `me`: those who
+/// shared the most matches with `me` first, then those with the most.
+pub async fn players_on_map(db: &Db, map: &str, me: u32) -> Result<Vec<MapPlayer>> {
+    let want = map_base(map);
+    let rows: Vec<_> = db.map_players(&want).await?.into_iter().filter(|r| map_base(&r.map) == want).collect();
+    let mine: HashSet<i64> = rows.iter().filter(|r| r.account_id == me).map(|r| r.log_id).collect();
+    let mut by: HashMap<u32, (String, Option<i64>, HashMap<String, usize>, usize, usize)> = HashMap::new();
+    for r in rows.iter().filter(|r| r.account_id != me) {
+        let e = by.entry(r.account_id).or_insert_with(|| (String::new(), None, HashMap::new(), 0, 0));
+        if let Some(name) = r.name.as_ref().filter(|_| r.played_at >= e.1 || e.0.is_empty()) {
+            e.0 = name.clone();
+            e.1 = r.played_at;
+        }
+        if let Some(c) = &r.main_class {
+            *e.2.entry(c.clone()).or_default() += 1;
+        }
+        e.3 += 1;
+        if mine.contains(&r.log_id) {
+            e.4 += 1;
+        }
+    }
+    let mut out: Vec<MapPlayer> = by
+        .into_iter()
+        .map(|(account_id, (name, _, classes, matches, shared))| {
+            let mut classes: Vec<(String, usize)> = classes.into_iter().collect();
+            classes.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+            MapPlayer { account_id, name, classes, matches, shared }
+        })
+        .collect();
+    out.sort_by(|a, b| b.shared.cmp(&a.shared).then(b.matches.cmp(&a.matches)).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase())));
+    Ok(out)
+}
+
 /// One life on the map.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -74,10 +121,13 @@ pub struct LifeOnMap {
     /// before the life began and the [`FIGHT_AFTER_S`] after: spawned into a
     /// fight in progress.
     pub mid_fight: bool,
-    /// The round's opening (PGL's heatmaps): how many of `points` fall in
-    /// the first [`OPENING_S`] of the round, or before its first kill if that
-    /// came sooner. 0 for a life that did not begin with the round.
-    pub opening: usize,
+    /// The round's opening (PGL's heatmaps): for the first of `points` that
+    /// fall in the round's first [`OPENING_S`], each one's seconds since the
+    /// round began. Empty for a life that did not begin with the round.
+    pub opening_t: Vec<f32>,
+    /// Seconds since the round began of its first kill, for a life that
+    /// began with it (the view can stop there).
+    pub first_kill: Option<f32>,
 }
 
 /// How long a round's opening lasts at most.
@@ -85,19 +135,23 @@ pub const OPENING_S: f64 = 40.0;
 /// A life that began this soon after the round did is its first one.
 pub const OPENING_GRACE_S: f64 = 10.0;
 
-/// How many seconds of a life beginning at `start` fall in its round's
-/// opening: `None` when it did not begin with the round. Pure, for testing:
-/// `rounds` are `(number, start, end)` and `kills` `(at, killer, victim)` on
-/// the log's clock.
-pub fn opening(start: Option<f64>, round: Option<i64>, rounds: &[(i64, f64, f64)], kills: &[(i64, u32, u32)]) -> Option<f64> {
+/// For a life beginning at `start` with its round: how long after the round
+/// began it did (a little before counts as 0), and when the round's first
+/// kill came, both in seconds since the round began. `None` when the life
+/// did not begin with the round. Pure, for testing: `rounds` are `(number,
+/// start, end)` and `kills` `(at, killer, victim)` on the log's clock.
+pub fn opening(start: Option<f64>, round: Option<i64>, rounds: &[(i64, f64, f64)], kills: &[(i64, u32, u32)]) -> Option<(f64, Option<f64>)> {
     let start = start?;
     let &(_, from, to) = rounds.iter().find(|(n, ..)| Some(*n) == round)?;
     if start < from - 2.0 || start > from + OPENING_GRACE_S {
         return None;
     }
     let first_kill = kills.iter().map(|&(at, ..)| at as f64).filter(|&at| at >= from && at <= to).fold(f64::INFINITY, f64::min);
-    let end = (from + OPENING_S).min(first_kill);
-    (end > start).then_some(end - start)
+    // A kill before the life began: it spawned into the fight, not the opening.
+    if first_kill < start {
+        return None;
+    }
+    Some(((start - from).max(0.0), first_kill.is_finite().then_some(first_kill - from)))
 }
 
 /// How soon after the other team's cap a life counts as the one after it.
@@ -247,9 +301,18 @@ pub async fn on_map(db: &Db, account_id: u32, map: &str) -> Result<LivesOnMap> {
                     _ => None,
                 };
                 let (after_enemy_cap, mid_fight) = situation(start, team, l.round_num, account_id, &caps, &rounds, &kills);
-                let opening = opening(start, l.round_num, &rounds, &kills)
-                    .map(|s| l.points.iter().take_while(|&&(tick, ..)| (tick - l.from_tick) as f64 / rate <= s).count())
-                    .unwrap_or(0);
+                let (opening_t, first_kill) = match opening(start, l.round_num, &rounds, &kills) {
+                    Some((offset, first_kill)) => (
+                        l.points
+                            .iter()
+                            .map(|&(tick, ..)| offset + (tick - l.from_tick) as f64 / rate)
+                            .take_while(|&t| t <= OPENING_S)
+                            .map(|t| ((t * 10.0).round() / 10.0) as f32)
+                            .collect(),
+                        first_kill.map(|k| ((k * 10.0).round() / 10.0) as f32),
+                    ),
+                    None => (Vec::new(), None),
+                };
                 out.lives.push(LifeOnMap {
                     log_id,
                     played_at,
@@ -264,7 +327,8 @@ pub async fn on_map(db: &Db, account_id: u32, map: &str) -> Result<LivesOnMap> {
                     capped: !l.caps.is_empty(),
                     after_enemy_cap,
                     mid_fight,
-                    opening,
+                    opening_t,
+                    first_kill,
                 });
             }
         }
@@ -313,13 +377,15 @@ mod tests {
     }
 
     #[test]
-    fn the_opening_is_forty_seconds_or_until_the_first_kill() {
+    fn a_life_begun_with_its_round_and_the_rounds_first_kill() {
         let rounds = [(1, 100.0, 400.0), (2, 400.0, 700.0)];
-        // No kill in the first 40 s: the whole 40, less the late spawn.
-        assert_eq!(opening(Some(100.0), Some(1), &rounds, &[(200, 1, 2)]), Some(40.0));
-        assert_eq!(opening(Some(103.0), Some(1), &rounds, &[]), Some(37.0));
-        // A kill 25 s in ends it; one in the round before does not.
-        assert_eq!(opening(Some(400.0), Some(2), &rounds, &[(390, 1, 2), (425, 3, 4)]), Some(25.0));
+        // Begun with the round, or 3 s late; the first kill 100 s in, or none.
+        assert_eq!(opening(Some(100.0), Some(1), &rounds, &[(200, 1, 2)]), Some((0.0, Some(100.0))));
+        assert_eq!(opening(Some(103.0), Some(1), &rounds, &[]), Some((3.0, None)));
+        // A moment early counts as the round's start.
+        assert_eq!(opening(Some(99.0), Some(1), &rounds, &[]), Some((0.0, None)));
+        // A kill in the round before does not count.
+        assert_eq!(opening(Some(400.0), Some(2), &rounds, &[(390, 1, 2), (425, 3, 4)]), Some((0.0, Some(25.0))));
         // A life begun mid-round, a kill before it began, no round: none.
         assert_eq!(opening(Some(150.0), Some(1), &rounds, &[]), None);
         assert_eq!(opening(Some(105.0), Some(1), &rounds, &[(102, 1, 2)]), None);
