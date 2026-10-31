@@ -601,7 +601,9 @@ html[data-backdrop="sides"] body {
 .bm-pop .bm-go:hover { border-color: var(--line-2); box-shadow: var(--ctl-shadow-hover); background: linear-gradient(color-mix(in srgb, var(--raised) 80%, var(--text) 8%), var(--raised)); }
 .bm-pop .bm-x { height: 30px; width: 30px; padding: 0; border-radius: 6px; }
 .bm-pop .bm-x:hover { background: var(--panel-2); }
-button:not([class]),
+/* Unclassed buttons only as strong as `button`, so a component's own
+   `.x > button` (the map's zoom stack, the switches) still wins. */
+button:where(:not([class])),
 button.primary,
 button.km-chip,
 button.secondary {
