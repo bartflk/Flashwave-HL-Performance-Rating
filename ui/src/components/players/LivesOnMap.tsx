@@ -20,7 +20,7 @@ import { CtlGroup, Icon, Seg } from "../analysis/MapChrome";
 
 type Side = "both" | "Red" | "Blue";
 type Ending = "any" | "died" | "survived";
-type View = "auto" | "routes" | "density";
+type View = "auto" | "routes" | "density" | "opening";
 type Situation = "capped" | "afterCap" | "midFight";
 
 /** The situation filters (Q67): `[key, label, what it means]`. */
@@ -39,6 +39,9 @@ const DENSITY_FROM = 300;
 
 /** The density grid's cells across the frame. */
 const CELLS = 140;
+
+/** The round-openings view's hexes across the frame. */
+const HEXES = 70;
 
 /** A step longer than this went through a teleporter or a respawn: the line
  *  breaks rather than crossing the map. Points are about four a second, so
@@ -104,8 +107,15 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
       ),
     [recent, ending, situations],
   );
+  // The round openings (PGL's heatmaps): only the lives that began with a
+  // round, cut at its first kill or 40 s in. The end and situation filters
+  // are about the rest of the life, so they do not apply.
+  const openings = useMemo(
+    () => recent.lives.filter((l) => l.opening > 0).map((l) => ({ ...l, points: l.points.slice(0, l.opening) })),
+    [recent],
+  );
   const sides = { Red: all.filter((l) => (cls === null || l.class === cls) && l.team === "Red").length, Blue: all.filter((l) => (cls === null || l.class === cls) && l.team === "Blue").length };
-  const mode: "routes" | "density" = view === "auto" ? (shown.length > DENSITY_FROM ? "density" : "routes") : view;
+  const mode: Mode = view === "auto" ? (shown.length > DENSITY_FROM ? "density" : "routes") : view;
   const toggle = (s: Situation) =>
     setSituations((was) => {
       const next = new Set(was);
@@ -196,6 +206,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
               { v: "auto", label: <><Icon name="auto" size={14} /> {t("Auto")}</>, title: t("Most used from {0} lives, every route below that", { "0": DENSITY_FROM }) },
               { v: "routes", label: <><Icon name="routes" size={14} /> {t("Every route")}</>, title: t("One line per life") },
               { v: "density", label: <><Icon name="grid" size={14} /> {t("Most used")}</>, title: t("How many lives passed each spot: the busier, the stronger") },
+              { v: "opening", label: <><Icon name="hex" size={14} /> {t("Round openings")}</>, title: t("Where they go in the first 40 seconds of each round, or until its first kill") },
             ]}
           />
         </CtlGroup>
@@ -206,31 +217,35 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
       </div>
 
       <div className="ctl-bar">
-        <CtlGroup label={t("How the life ended")}>
-          <Seg
-            label={t("How the life ended")}
-            value={ending}
-            onChange={setEnding}
-            options={[
-              { v: "any", label: <><Icon name="any" size={14} /> {t("Any end")}</> },
-              { v: "died", label: <><Icon name="skull" size={14} /> {t("Ended in a death")}</> },
-              { v: "survived", label: <><Icon name="flag" size={14} /> {t("Lived to the round's end")}</> },
-            ]}
-          />
-        </CtlGroup>
-        <CtlGroup label={t("Situation")}>
-          <div className="lm-toggles" role="group" aria-label={t("Situation")}>
-            {SITUATIONS.map(([s, label, hint]) => (
-              <button key={s} className={situations.has(s) ? "lm-toggle on" : "lm-toggle"} aria-pressed={situations.has(s)} onClick={() => toggle(s)} title={t(hint)}>
-                <Icon name={SITUATION_ICON[s]} size={14} />
-                {t(label)}
-                <span className="lm-check" aria-hidden>
-                  {situations.has(s) && <Icon name="check" size={12} />}
-                </span>
-              </button>
-            ))}
-          </div>
-        </CtlGroup>
+        {mode !== "opening" && (
+          <>
+            <CtlGroup label={t("How the life ended")}>
+              <Seg
+                label={t("How the life ended")}
+                value={ending}
+                onChange={setEnding}
+                options={[
+                  { v: "any", label: <><Icon name="any" size={14} /> {t("Any end")}</> },
+                  { v: "died", label: <><Icon name="skull" size={14} /> {t("Ended in a death")}</> },
+                  { v: "survived", label: <><Icon name="flag" size={14} /> {t("Lived to the round's end")}</> },
+                ]}
+              />
+            </CtlGroup>
+            <CtlGroup label={t("Situation")}>
+              <div className="lm-toggles" role="group" aria-label={t("Situation")}>
+                {SITUATIONS.map(([s, label, hint]) => (
+                  <button key={s} className={situations.has(s) ? "lm-toggle on" : "lm-toggle"} aria-pressed={situations.has(s)} onClick={() => toggle(s)} title={t(hint)}>
+                    <Icon name={SITUATION_ICON[s]} size={14} />
+                    {t(label)}
+                    <span className="lm-check" aria-hidden>
+                      {situations.has(s) && <Icon name="check" size={12} />}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </CtlGroup>
+          </>
+        )}
         {classes.length > 0 && (
           <CtlGroup label={t("Class")}>
             <div className="class-filter" role="tablist" aria-label={t("Class")}>
@@ -264,7 +279,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
       {livesQ.isPending && <Loading>{t("Reading the routes…")}</Loading>}
       {livesQ.isError && <ApiError error={livesQ.error} />}
 
-      {v && <Drawing lives={shown} overview={overviewQ.data ?? null} hover={hover} onHover={setHover} mode={mode} />}
+      {v && <Drawing lives={mode === "opening" ? openings : shown} overview={overviewQ.data ?? null} hover={hover} onHover={setHover} mode={mode} />}
 
       {hover && mode === "routes" && (
         <p className="lm-hover">
@@ -290,10 +305,12 @@ function Drawing({
   overview: { minX: number; maxY: number; size: number; aspect: number; image: string } | null;
   hover: LifeOnMap | null;
   onHover: (l: LifeOnMap | null) => void;
-  mode: "routes" | "density";
+  mode: Mode;
 }) {
   // Q65: the cell under the mouse in the density view, and its counts.
   const [cellHover, setCellHover] = useState<{ red: number; blue: number; other: number } | null>(null);
+  // The round-openings view's hex under the mouse.
+  const [hexHover, setHexHover] = useState<{ red: number; blue: number } | null>(null);
   // The frame in game units: the picture's, else the routes' own bounds.
   const frame = useMemo(() => {
     if (overview) return { minX: overview.minX, maxY: overview.maxY, w: overview.size, h: overview.size * overview.aspect };
@@ -359,6 +376,66 @@ function Drawing({
   // Q65: how many lives passed through each cell, per side. Each life counts
   // once per cell, so a camper does not outweigh a hundred passers-by.
   const density = useMemo(() => (frame && mode === "density" ? densityOf(lives, frame) : null), [lives, frame, mode]);
+
+  // The round openings, in hexes.
+  const hexes = useMemo(() => (frame && mode === "opening" ? hexesOf(lives, frame) : null), [lives, frame, mode]);
+
+  // Each hex its side's colour, stronger the more rounds went through it;
+  // where both sides went, outlined in white. Each side's main position is
+  // ringed.
+  useEffect(() => {
+    if (mode !== "opening") return;
+    const ctx = prepare(base.current, width, height);
+    if (!ctx || !proj || !hexes || !frame) return;
+    const col = colours();
+    const r = hexes.size * proj.scale;
+    const at = (q: number, rr: number): [number, number] => {
+      const [x, y] = hexCentre(q, rr, hexes.size);
+      return [proj.ox + x * proj.scale, proj.oy + y * proj.scale];
+    };
+    const hexPath = (cx: number, cy: number, radius: number) => {
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI / 3) * i + Math.PI / 6;
+        const x = cx + radius * Math.cos(a);
+        const y = cy + radius * Math.sin(a);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+    };
+    for (const [key, n] of hexes.cells) {
+      const [q, rr] = key.split(",").map(Number);
+      const [cx, cy] = at(q, rr);
+      for (const [team, count, max] of [["Red", n.red, hexes.maxRed], ["Blue", n.blue, hexes.maxBlue]] as const) {
+        if (count === 0) continue;
+        ctx.globalAlpha = (0.2 + 0.75 * Math.sqrt(count / max)) * (n.red > 0 && n.blue > 0 ? 0.7 : 1);
+        ctx.fillStyle = col[team];
+        hexPath(cx, cy, r * 0.9);
+        ctx.fill();
+      }
+      if (n.red > 0 && n.blue > 0) {
+        ctx.globalAlpha = 0.85;
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 1.2;
+        hexPath(cx, cy, r * 0.82);
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+    for (const [team, main] of [["Red", hexes.mainRed], ["Blue", hexes.mainBlue]] as const) {
+      if (!main) continue;
+      const [cx, cy] = at(main.q, main.r);
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = "#fff";
+      hexPath(cx, cy, r * 1.15);
+      ctx.stroke();
+      ctx.strokeStyle = col[team];
+      ctx.lineWidth = 1.5;
+      hexPath(cx, cy, r * 1.45);
+      ctx.stroke();
+    }
+  }, [mode, hexes, proj, frame, width, height]);
 
   // The density view: each cell its side's colour, stronger the more lives
   // passed through it. Square root, so the quieter lanes still show.
@@ -444,6 +521,13 @@ function Drawing({
     const r = e.currentTarget.getBoundingClientRect();
     const gx = frame.minX + (e.clientX - r.left - proj.ox) / proj.scale;
     const gy = frame.maxY - (e.clientY - r.top - proj.oy) / proj.scale;
+    if (mode === "opening") {
+      if (!hexes) return;
+      const [q, r] = hexAt(gx - frame.minX, frame.maxY - gy, hexes.size);
+      const n = hexes.cells.get(`${q},${r}`);
+      setHexHover(n ? { red: n.red, blue: n.blue } : null);
+      return;
+    }
     if (mode === "density") {
       if (!density) return;
       const cx = Math.floor((gx - frame.minX) / density.cell);
@@ -469,40 +553,193 @@ function Drawing({
   }
 
   return (
-    <div className="lm-stage" ref={box} style={{ height: height || undefined }}>
-      {overview && proj && (
-        <img
-          className="lm-picture"
-          src={overview.image}
-          alt=""
-          style={{ left: proj.ox, top: proj.oy, width: frame.w * proj.scale, height: frame.h * proj.scale }}
+    <>
+      <div className="lm-stage" ref={box} style={{ height: height || undefined }}>
+        {overview && proj && (
+          <img
+            className="lm-picture"
+            src={overview.image}
+            alt=""
+            style={{ left: proj.ox, top: proj.oy, width: frame.w * proj.scale, height: frame.h * proj.scale }}
+          />
+        )}
+        <canvas ref={base} className="lm-canvas" style={{ width, height }} aria-hidden />
+        <canvas
+          ref={top}
+          className="lm-canvas lm-canvas-top"
+          style={{ width, height }}
+          role="img"
+          aria-label={t("Routes on the map")}
+          onMouseMove={onMove}
+          onMouseLeave={() => {
+            onHover(null);
+            setCellHover(null);
+            setHexHover(null);
+          }}
         />
-      )}
-      <canvas ref={base} className="lm-canvas" style={{ width, height }} aria-hidden />
-      <canvas
-        ref={top}
-        className="lm-canvas lm-canvas-top"
-        style={{ width, height }}
-        role="img"
-        aria-label={t("Routes on the map")}
-        onMouseMove={onMove}
-        onMouseLeave={() => {
-          onHover(null);
-          setCellHover(null);
-        }}
-      />
-      {mode === "density" && cellHover && density && (
-        <p className="lm-cell">
-          {tx("{0} of the {1} lives passed here ({2}%)", {
-            "0": cellHover.red + cellHover.blue + cellHover.other,
-            "1": lives.length,
-            "2": Math.round(((cellHover.red + cellHover.blue + cellHover.other) / Math.max(1, lives.length)) * 100),
-          })}
-          {cellHover.red > 0 && cellHover.blue > 0 && <> · <span className="team-red">RED {cellHover.red}</span> · <span className="team-blue">BLU {cellHover.blue}</span></>}
-        </p>
-      )}
+        {mode === "density" && cellHover && density && (
+          <p className="lm-cell">
+            {tx("{0} of the {1} lives passed here ({2}%)", {
+              "0": cellHover.red + cellHover.blue + cellHover.other,
+              "1": lives.length,
+              "2": Math.round(((cellHover.red + cellHover.blue + cellHover.other) / Math.max(1, lives.length)) * 100),
+            })}
+            {cellHover.red > 0 && cellHover.blue > 0 && <> · <span className="team-red">RED {cellHover.red}</span> · <span className="team-blue">BLU {cellHover.blue}</span></>}
+          </p>
+        )}
+        {mode === "opening" && hexHover && hexes && (
+          <p className="lm-cell">
+            {hexHover.red > 0 && <span className="team-red">{tx("RED: {0} of {1} rounds", { "0": hexHover.red, "1": hexes.rounds.Red })}</span>}
+            {hexHover.red > 0 && hexHover.blue > 0 && " · "}
+            {hexHover.blue > 0 && <span className="team-blue">{tx("BLU: {0} of {1} rounds", { "0": hexHover.blue, "1": hexes.rounds.Blue })}</span>}
+          </p>
+        )}
+      </div>
+      {mode === "opening" && hexes && <OpeningCards hexes={hexes} />}
+    </>
+  );
+}
+
+/** Under the round-openings view: each side's rounds and main position, the
+ *  scale, and what the view counts (as PGL's heatmaps put it). */
+function OpeningCards({ hexes }: { hexes: Hexes }) {
+  const card = (team: "Red" | "Blue") => {
+    const rounds = hexes.rounds[team];
+    const main = team === "Red" ? hexes.mainRed : hexes.mainBlue;
+    const pct = main && rounds > 0 ? Math.round((main.rounds / rounds) * 100) : null;
+    return (
+      <div className={`lm-op-card ${team === "Red" ? "red" : "blu"}`}>
+        <div className="lm-op-head">
+          <span className="lm-op-side">{team === "Red" ? t("RED side") : t("BLU side")}</span>
+          <span className="lm-op-rounds">
+            <strong>{rounds}</strong> {t("rounds")}
+          </span>
+        </div>
+        <div className="lm-op-main">
+          <span>{t("Main position")}</span>
+          <span className="lm-op-pct">
+            <span>{pct === null ? "–" : <><strong>{pct}</strong>%</>}</span>
+            <small>{t("of rounds")}</small>
+          </span>
+        </div>
+      </div>
+    );
+  };
+  return (
+    <div className="lm-op">
+      {card("Red")}
+      <div className="lm-op-mid">
+        <div className="lm-op-scale">
+          <span>{t("Rare")}</span>
+          {[0.25, 0.45, 0.65, 0.85, 1].map((a) => (
+            <i key={a} style={{ opacity: a }} />
+          ))}
+          <span>{t("Often")}</span>
+        </div>
+        <div className="lm-op-scale">
+          <i className="both" />
+          <span>{t("Both sides")}</span>
+        </div>
+        <p className="lm-op-note">{t("First 40 seconds of each round, or until the round's first kill")}</p>
+      </div>
+      {card("Blue")}
     </div>
   );
+}
+
+type Mode = "routes" | "density" | "opening";
+
+/** The hex a point falls in (pointy-top, `size` the corner radius), from
+ *  the frame's top-left in game units, y down. */
+function hexAt(x: number, y: number, size: number): [number, number] {
+  const fq = ((Math.sqrt(3) / 3) * x - y / 3) / size;
+  const fr = ((2 / 3) * y) / size;
+  const fs = -fq - fr;
+  let q = Math.round(fq);
+  let r = Math.round(fr);
+  const s = Math.round(fs);
+  const [dq, dr, ds] = [Math.abs(q - fq), Math.abs(r - fr), Math.abs(s - fs)];
+  if (dq > dr && dq > ds) q = -r - s;
+  else if (dr > ds) r = -q - s;
+  return [q, r];
+}
+
+/** A hex's centre, from the frame's top-left in game units, y down. */
+function hexCentre(q: number, r: number, size: number): [number, number] {
+  return [size * Math.sqrt(3) * (q + r / 2), size * 1.5 * r];
+}
+
+/** The six neighbours' offsets. */
+const AROUND: Array<[number, number]> = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, -1], [-1, 1]];
+
+type Hexes = ReturnType<typeof hexesOf>;
+
+/** Rounds through each hex, per side, each counted once per hex it crossed;
+ *  and each side's main position: the hex whose neighbourhood (it and the
+ *  six around it) the most rounds went through, so a spot rather than one
+ *  tile of it. Not the spawn room, which every round starts in. */
+function hexesOf(lives: LifeOnMap[], frame: { minX: number; maxY: number; w: number; h: number }) {
+  const size = Math.max(frame.w, frame.h) / HEXES / Math.sqrt(3);
+  const cells = new Map<string, { red: number; blue: number }>();
+  const near: Record<"Red" | "Blue", Map<string, number>> = { Red: new Map(), Blue: new Map() };
+  // Where each round began, so the spawn room is not taken for a position.
+  const spawn: Record<"Red" | "Blue", Set<string>> = { Red: new Set(), Blue: new Set() };
+  const rounds = { Red: 0, Blue: 0 };
+  const seen = new Set<string>();
+  const around = new Set<string>();
+  for (const l of lives) {
+    if (l.team !== "Red" && l.team !== "Blue") continue;
+    rounds[l.team] += 1;
+    seen.clear();
+    around.clear();
+    let prev: [number, number] | null = null;
+    for (const p of l.points) {
+      const from: [number, number] = prev !== null && Math.hypot(p[0] - prev[0], p[1] - prev[1]) <= JUMP ? prev : p;
+      const steps = Math.max(1, Math.ceil(Math.hypot(p[0] - from[0], p[1] - from[1]) / (size / 2)));
+      for (let s = 0; s <= steps; s++) {
+        const x = from[0] + ((p[0] - from[0]) * s) / steps;
+        const y = from[1] + ((p[1] - from[1]) * s) / steps;
+        const [q, r] = hexAt(x - frame.minX, frame.maxY - y, size);
+        seen.add(`${q},${r}`);
+      }
+      prev = p;
+    }
+    const first = l.points[0];
+    if (first) {
+      const [q, r] = hexAt(first[0] - frame.minX, frame.maxY - first[1], size);
+      for (let dq = -2; dq <= 2; dq++) for (let dr = -2; dr <= 2; dr++) spawn[l.team].add(`${q + dq},${r + dr}`);
+    }
+    for (const key of seen) {
+      const c = cells.get(key) ?? { red: 0, blue: 0 };
+      if (l.team === "Red") c.red += 1;
+      else c.blue += 1;
+      cells.set(key, c);
+      const [q, r] = key.split(",").map(Number);
+      around.add(key);
+      for (const [dq, dr] of AROUND) around.add(`${q + dq},${r + dr}`);
+    }
+    for (const key of around) near[l.team].set(key, (near[l.team].get(key) ?? 0) + 1);
+  }
+  const main = (team: "Red" | "Blue") => {
+    let best: { q: number; r: number; rounds: number } | null = null;
+    for (const [key, n] of near[team]) {
+      if (spawn[team].has(key)) continue;
+      const own = cells.get(key);
+      if (!own || (team === "Red" ? own.red : own.blue) === 0) continue;
+      if (!best || n > best.rounds) {
+        const [q, r] = key.split(",").map(Number);
+        best = { q, r, rounds: n };
+      }
+    }
+    return best;
+  };
+  let maxRed = 0;
+  let maxBlue = 0;
+  for (const c of cells.values()) {
+    maxRed = Math.max(maxRed, c.red);
+    maxBlue = Math.max(maxBlue, c.blue);
+  }
+  return { size, cells, rounds, maxRed, maxBlue, mainRed: main("Red"), mainBlue: main("Blue") };
 }
 
 /** Lives through each cell of a `CELLS`-wide grid over the frame, per side:

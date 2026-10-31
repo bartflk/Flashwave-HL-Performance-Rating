@@ -774,6 +774,9 @@ export interface LifeOnMap {
   afterEnemyCap: boolean;
   /** Q67: others were killing each other just before and just after it began. */
   midFight: boolean;
+  /** How many of `points` fall in the round's opening: its first 40 s, or
+   *  until its first kill. 0 when the life did not begin with the round. */
+  opening: number;
 }
 
 export interface LivesOnMap {

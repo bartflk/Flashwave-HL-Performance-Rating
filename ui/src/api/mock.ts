@@ -1054,7 +1054,7 @@ export const mockApi: Api = {
         y += (r() - 0.5) * 120;
         points.push([Math.round(x), Math.round(y)]);
       }
-      return { logId: 4_100_000 + (i % 10), playedAt: 1_790_000_000 - (i % 10) * 86_400 * 9, demoId: i % 10, stv: i % 10 === 0, class: classes[i % classes.length], team, roundNum: 1 + (i % 5), died: r() < 0.7, seconds: points.length / 4, points, capped: i % 4 === 0, afterEnemyCap: i % 6 === 1, midFight: i % 2 === 0 };
+      return { logId: 4_100_000 + (i % 10), playedAt: 1_790_000_000 - (i % 10) * 86_400 * 9, demoId: i % 10, stv: i % 10 === 0, class: classes[i % classes.length], team, roundNum: 1 + (i % 5), died: r() < 0.7, seconds: points.length / 4, points, capped: i % 4 === 0, afterEnemyCap: i % 6 === 1, midFight: i % 2 === 0, opening: i % 5 === 0 ? Math.min(points.length, 160) : 0 };
     });
     return delay<LivesOnMapView>({ map, matches: 10, stvMatches: 1, lives }, 300);
   },

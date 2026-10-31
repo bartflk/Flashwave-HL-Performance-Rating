@@ -74,6 +74,30 @@ pub struct LifeOnMap {
     /// before the life began and the [`FIGHT_AFTER_S`] after: spawned into a
     /// fight in progress.
     pub mid_fight: bool,
+    /// The round's opening (PGL's heatmaps): how many of `points` fall in
+    /// the first [`OPENING_S`] of the round, or before its first kill if that
+    /// came sooner. 0 for a life that did not begin with the round.
+    pub opening: usize,
+}
+
+/// How long a round's opening lasts at most.
+pub const OPENING_S: f64 = 40.0;
+/// A life that began this soon after the round did is its first one.
+pub const OPENING_GRACE_S: f64 = 10.0;
+
+/// How many seconds of a life beginning at `start` fall in its round's
+/// opening: `None` when it did not begin with the round. Pure, for testing:
+/// `rounds` are `(number, start, end)` and `kills` `(at, killer, victim)` on
+/// the log's clock.
+pub fn opening(start: Option<f64>, round: Option<i64>, rounds: &[(i64, f64, f64)], kills: &[(i64, u32, u32)]) -> Option<f64> {
+    let start = start?;
+    let &(_, from, to) = rounds.iter().find(|(n, ..)| Some(*n) == round)?;
+    if start < from - 2.0 || start > from + OPENING_GRACE_S {
+        return None;
+    }
+    let first_kill = kills.iter().map(|&(at, ..)| at as f64).filter(|&at| at >= from && at <= to).fold(f64::INFINITY, f64::min);
+    let end = (from + OPENING_S).min(first_kill);
+    (end > start).then_some(end - start)
 }
 
 /// How soon after the other team's cap a life counts as the one after it.
@@ -223,6 +247,9 @@ pub async fn on_map(db: &Db, account_id: u32, map: &str) -> Result<LivesOnMap> {
                     _ => None,
                 };
                 let (after_enemy_cap, mid_fight) = situation(start, team, l.round_num, account_id, &caps, &rounds, &kills);
+                let opening = opening(start, l.round_num, &rounds, &kills)
+                    .map(|s| l.points.iter().take_while(|&&(tick, ..)| (tick - l.from_tick) as f64 / rate <= s).count())
+                    .unwrap_or(0);
                 out.lives.push(LifeOnMap {
                     log_id,
                     played_at,
@@ -237,6 +264,7 @@ pub async fn on_map(db: &Db, account_id: u32, map: &str) -> Result<LivesOnMap> {
                     capped: !l.caps.is_empty(),
                     after_enemy_cap,
                     mid_fight,
+                    opening,
                 });
             }
         }
@@ -282,6 +310,20 @@ mod tests {
         assert!(!situation(Some(250.0), Some("Red"), Some(1), 1, &caps, &rounds, &kills).1);
         // No clock, no answer.
         assert_eq!(situation(None, Some("Red"), Some(1), 1, &caps, &rounds, &kills), (false, false));
+    }
+
+    #[test]
+    fn the_opening_is_forty_seconds_or_until_the_first_kill() {
+        let rounds = [(1, 100.0, 400.0), (2, 400.0, 700.0)];
+        // No kill in the first 40 s: the whole 40, less the late spawn.
+        assert_eq!(opening(Some(100.0), Some(1), &rounds, &[(200, 1, 2)]), Some(40.0));
+        assert_eq!(opening(Some(103.0), Some(1), &rounds, &[]), Some(37.0));
+        // A kill 25 s in ends it; one in the round before does not.
+        assert_eq!(opening(Some(400.0), Some(2), &rounds, &[(390, 1, 2), (425, 3, 4)]), Some(25.0));
+        // A life begun mid-round, a kill before it began, no round: none.
+        assert_eq!(opening(Some(150.0), Some(1), &rounds, &[]), None);
+        assert_eq!(opening(Some(105.0), Some(1), &rounds, &[(102, 1, 2)]), None);
+        assert_eq!(opening(Some(100.0), None, &rounds, &[]), None);
     }
 
     #[test]
