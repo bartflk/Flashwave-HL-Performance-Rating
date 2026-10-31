@@ -123,10 +123,17 @@ pub struct LifeOnMap {
     /// before the life began and the [`FIGHT_AFTER_S`] after: spawned into a
     /// fight in progress.
     pub mid_fight: bool,
-    /// The round's opening (PGL's heatmaps): for the first of `points` that
-    /// fall in the round's first [`OPENING_S`], each one's seconds since the
-    /// round began. Empty for a life that did not begin with the round.
+    /// The round's opening (PGL's heatmaps): for the `points` from
+    /// `opening_skip` on that fall in the round's first [`OPENING_S`], each
+    /// one's seconds since the round began. Empty for a life that was not
+    /// there when a round began.
     pub opening_t: Vec<f32>,
+    /// The points before the round began: the pre-round freeze, or the
+    /// pregame for round 1's.
+    pub opening_skip: usize,
+    /// The round whose opening it is: a life alive across a round's start
+    /// (the pregame's) may have been counted to none.
+    pub opening_round: Option<i64>,
     /// Seconds since the round began of its first kill, for a life that
     /// began with it (the view can stop there).
     pub first_kill: Option<f32>,
@@ -137,23 +144,23 @@ pub const OPENING_S: f64 = 40.0;
 /// A life that began this soon after the round did is its first one.
 pub const OPENING_GRACE_S: f64 = 10.0;
 
-/// For a life beginning at `start` with its round: how long after the round
-/// began it did (a little before counts as 0), and when the round's first
-/// kill came, both in seconds since the round began. `None` when the life
-/// did not begin with the round. Pure, for testing: `rounds` are `(number,
-/// start, end)` and `kills` `(at, killer, victim)` on the log's clock.
-pub fn opening(start: Option<f64>, round: Option<i64>, rounds: &[(i64, f64, f64)], kills: &[(i64, u32, u32)]) -> Option<(f64, Option<f64>)> {
-    let start = start?;
-    let &(_, from, to) = rounds.iter().find(|(n, ..)| Some(*n) == round)?;
-    if start < from - 2.0 || start > from + OPENING_GRACE_S {
-        return None;
-    }
+/// For a life from `start` to `end` that was there when a round began (alive
+/// at its start, as players respawn in the pre-round freeze before the log's
+/// Round_Start and round 1's are alive from the pregame, or spawned within
+/// [`OPENING_GRACE_S`] of it): the round, the life's start in seconds since
+/// the round began (negative when before it), and when the round's first
+/// kill came. `None` for any other life. Pure, for testing: `rounds` are
+/// `(number, start, end)` and `kills` `(at, killer, victim)` on the log's
+/// clock.
+pub fn opening(start: Option<f64>, end: Option<f64>, rounds: &[(i64, f64, f64)], kills: &[(i64, u32, u32)]) -> Option<(i64, f64, Option<f64>)> {
+    let (start, end) = (start?, end?);
+    let &(round, from, to) = rounds.iter().find(|&&(_, from, _)| start <= from + OPENING_GRACE_S && end > from)?;
     let first_kill = kills.iter().map(|&(at, ..)| at as f64).filter(|&at| at >= from && at <= to).fold(f64::INFINITY, f64::min);
     // A kill before the life began: it spawned into the fight, not the opening.
     if first_kill < start {
         return None;
     }
-    Some(((start - from).max(0.0), first_kill.is_finite().then_some(first_kill - from)))
+    Some((round, start - from, first_kill.is_finite().then_some(first_kill - from)))
 }
 
 /// How soon after the other team's cap a life counts as the one after it.
@@ -268,7 +275,7 @@ pub async fn opposite(db: &Db, account_id: u32, map: &str, class: Option<&str>) 
     // Their class and side in each round, by match.
     let mut rounds: BTreeMap<i64, (Option<i64>, HashMap<i64, Vec<(String, String)>>, HashMap<i64, bool>)> = BTreeMap::new();
     for l in &mine.lives {
-        let (Some(c), Some(team), Some(round)) = (&l.class, &l.team, l.round_num) else { continue };
+        let (Some(c), Some(team), Some(round)) = (&l.class, &l.team, l.opening_round.or(l.round_num)) else { continue };
         if class.is_some_and(|want| want != c) {
             continue;
         }
@@ -282,12 +289,12 @@ pub async fn opposite(db: &Db, account_id: u32, map: &str, class: Option<&str>) 
     let mut out = LivesOnMap { map: mine.map, ..Default::default() };
     for (log_id, (played_at, by_round, demos)) in rounds {
         let which = one_view(demos.into_iter().collect());
-        let keep = |p: &hl_db::PathRow| p.account_id != account_id && p.round_num.is_some_and(|r| by_round.contains_key(&r));
+        let keep = |p: &hl_db::PathRow| p.account_id != account_id;
         let theirs: Vec<LifeOnMap> = lives_in_log(db, log_id, played_at, &which, &keep)
             .await?
             .into_iter()
             .filter(|l| {
-                let (Some(c), Some(team), Some(round)) = (&l.class, &l.team, l.round_num) else { return false };
+                let (Some(c), Some(team), Some(round)) = (&l.class, &l.team, l.opening_round.or(l.round_num)) else { return false };
                 by_round.get(&round).is_some_and(|mine| mine.iter().any(|(mc, mt)| mc == c && mt != team))
             })
             .collect();
@@ -380,17 +387,15 @@ async fn lives_in_log(db: &Db, log_id: i64, played_at: Option<i64>, demos: &[(i6
                 _ => None,
             };
             let (after_enemy_cap, mid_fight) = situation(start, team, l.round_num, l.account_id, &caps, &rounds, &kills);
-            let (opening_t, first_kill) = match opening(start, l.round_num, &rounds, &kills) {
-                Some((offset, first_kill)) => (
-                    l.points
-                        .iter()
-                        .map(|&(tick, ..)| offset + (tick - l.from_tick) as f64 / rate)
-                        .take_while(|&t| t <= OPENING_S)
-                        .map(|t| ((t * 10.0).round() / 10.0) as f32)
-                        .collect(),
-                    first_kill.map(|k| ((k * 10.0).round() / 10.0) as f32),
-                ),
-                None => (Vec::new(), None),
+            let end = start.map(|s| s + (l.to_tick - l.from_tick) as f64 / rate);
+            let (opening_t, opening_skip, opening_round, first_kill) = match opening(start, end, &rounds, &kills) {
+                Some((round, offset, first_kill)) => {
+                    let t: Vec<f64> = l.points.iter().map(|&(tick, ..)| offset + (tick - l.from_tick) as f64 / rate).collect();
+                    let skip = t.iter().take_while(|&&t| t < 0.0).count();
+                    let opening_t: Vec<f32> = t[skip..].iter().take_while(|&&t| t <= OPENING_S).map(|t| ((t * 10.0).round() / 10.0) as f32).collect();
+                    (opening_t, skip, Some(round), first_kill.map(|k| ((k * 10.0).round() / 10.0) as f32))
+                }
+                None => (Vec::new(), 0, None, None),
             };
             out.push(LifeOnMap {
                 log_id,
@@ -408,6 +413,8 @@ async fn lives_in_log(db: &Db, log_id: i64, played_at: Option<i64>, demos: &[(i6
                 after_enemy_cap,
                 mid_fight,
                 opening_t,
+                opening_skip,
+                opening_round,
                 first_kill,
             });
         }
@@ -456,19 +463,21 @@ mod tests {
     }
 
     #[test]
-    fn a_life_begun_with_its_round_and_the_rounds_first_kill() {
+    fn a_life_there_when_its_round_began_and_the_rounds_first_kill() {
         let rounds = [(1, 100.0, 400.0), (2, 400.0, 700.0)];
         // Begun with the round, or 3 s late; the first kill 100 s in, or none.
-        assert_eq!(opening(Some(100.0), Some(1), &rounds, &[(200, 1, 2)]), Some((0.0, Some(100.0))));
-        assert_eq!(opening(Some(103.0), Some(1), &rounds, &[]), Some((3.0, None)));
-        // A moment early counts as the round's start.
-        assert_eq!(opening(Some(99.0), Some(1), &rounds, &[]), Some((0.0, None)));
-        // A kill in the round before does not count.
-        assert_eq!(opening(Some(400.0), Some(2), &rounds, &[(390, 1, 2), (425, 3, 4)]), Some((0.0, Some(25.0))));
-        // A life begun mid-round, a kill before it began, no round: none.
-        assert_eq!(opening(Some(150.0), Some(1), &rounds, &[]), None);
-        assert_eq!(opening(Some(105.0), Some(1), &rounds, &[(102, 1, 2)]), None);
-        assert_eq!(opening(Some(100.0), None, &rounds, &[]), None);
+        assert_eq!(opening(Some(100.0), Some(150.0), &rounds, &[(200, 1, 2)]), Some((1, 0.0, Some(100.0))));
+        assert_eq!(opening(Some(103.0), Some(150.0), &rounds, &[]), Some((1, 3.0, None)));
+        // Respawned in the pre-round freeze, 5 s before the log's start; alive
+        // from the pregame: both the round's.
+        assert_eq!(opening(Some(395.0), Some(450.0), &rounds, &[(390, 1, 2), (425, 3, 4)]), Some((2, -5.0, Some(25.0))));
+        assert_eq!(opening(Some(20.0), Some(130.0), &rounds, &[]), Some((1, -80.0, None)));
+        // A life begun mid-round, one over before the round began, a kill
+        // before it began, no clock: none.
+        assert_eq!(opening(Some(150.0), Some(200.0), &rounds, &[]), None);
+        assert_eq!(opening(Some(20.0), Some(90.0), &rounds, &[]), None);
+        assert_eq!(opening(Some(105.0), Some(150.0), &rounds, &[(102, 1, 2)]), None);
+        assert_eq!(opening(None, None, &rounds, &[]), None);
     }
 
     #[test]

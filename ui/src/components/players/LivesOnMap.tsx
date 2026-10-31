@@ -60,7 +60,7 @@ function cut(l: LifeOnMap, window: number, toKill: boolean): LifeOnMap | null {
   const end = toKill && l.firstKill !== null ? Math.min(window, l.firstKill) : window;
   let n = 0;
   while (n < l.openingT.length && l.openingT[n] <= end) n++;
-  return n > 1 ? { ...l, points: l.points.slice(0, n) } : null;
+  return n > 1 ? { ...l, points: l.points.slice(l.openingSkip, l.openingSkip + n) } : null;
 }
 
 /** A step longer than this went through a teleporter or a respawn: the line
@@ -470,7 +470,7 @@ export function MatchOpenings({
   const [picked, setPicked] = useState<string | null>(null);
   const [rollout, setRollout] = useState<Window>(20);
   const [toKill, setToKill] = useState(true);
-  const all = useMemo(() => (q.data ?? []).filter((l) => rounds === null || (l.roundNum !== null && rounds.has(l.roundNum))), [q.data, rounds]);
+  const all = useMemo(() => (q.data ?? []).filter((l) => rounds === null || (l.openingRound !== null && rounds.has(l.openingRound))), [q.data, rounds]);
   const classes = useMemo(() => {
     const n = new Map<string, number>();
     for (const l of all) if (l.class) n.set(l.class, (n.get(l.class) ?? 0) + 1);

@@ -779,6 +779,10 @@ export interface LifeOnMap {
   /** For a life begun with its round: the seconds since the round began of
    *  each of its first `points`, up to 40 s. Empty otherwise. */
   openingT: number[];
+  /** The points before the round began, which `openingT` starts after. */
+  openingSkip: number;
+  /** The round whose opening it is. */
+  openingRound: number | null;
   /** Seconds since the round began of its first kill, for such a life. */
   firstKill: number | null;
 }
