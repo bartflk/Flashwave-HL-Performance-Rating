@@ -284,6 +284,7 @@ pub fn run() {
             sync_commands::get_fixtures,
             sync_commands::get_news,
             sync_commands::get_news_post,
+            sync_commands::get_season_news,
             sync_commands::get_recent_results,
             sync_commands::search_teams,
             sync_commands::get_league_match,

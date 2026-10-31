@@ -1601,6 +1601,18 @@ async fn run() -> Result<()> {
             Ok(())
         }
 
+        ["season-news", n] => {
+            // A season's own ETF2L posts, as its page lists them.
+            let db = Db::connect(&db_path).await?;
+            let sources = Sources::new()?;
+            let season: i64 = n.parse()?;
+            let name = hl_ingest::catalogue::seasons_overview(&db).await?.into_iter().find(|s| s.season == season).map(|s| s.season_name).unwrap_or_default();
+            for p in hl_ingest::news::season(&db, &sources, season, &name).await? {
+                println!("{}  {}{}", p.time, p.title, if p.image.is_some() { "  [picture]" } else { "" });
+            }
+            Ok(())
+        }
+
         ["season-tiles", rest @ ..] => {
             // The Teams tab's season tiles; --banners looks for each banner.
             let db = Db::connect(&db_path).await?;

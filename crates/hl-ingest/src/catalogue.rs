@@ -2650,7 +2650,8 @@ pub async fn season_banner(db: &Db, sources: &Sources, season: i64, season_name:
     }
     // By number first ("Highlander Season 34"), then by name ("Winter
     // 2024", "AFA 2025") for the seasons without one.
-    let numbered = season < crate::leagues::OFF_SEASON && !(28..=31).contains(&season);
+    // The search by number only where the posts used one.
+    let numbered = title_number(season).is_some() && !(28..=31).contains(&season);
     let mut queries: Vec<String> = Vec::new();
     if numbered {
         queries.push(format!("Highlander Season {season}"));
@@ -2665,22 +2666,10 @@ pub async fn season_banner(db: &Db, sources: &Sources, season: i64, season_name:
     // posts of S36 and S24 to S27 had none (Flashy, 31 Oct 2026). The search
     // after, unless those weeks gave a picture naming the season; the better
     // picture kept.
-    if let Some((first, last)) = db.season_span(season).await? {
-        let day = |t: i64| chrono::DateTime::from_timestamp(t, 0).map(|d| d.format("%Y-%m-%dT00:00:00").to_string()).unwrap_or_default();
-        let (after, before) = (day(first - 45 * 86_400), day(last + 30 * 86_400));
-        let url = crate::http::url(
-            "https://etf2l.org/wp-json/wp/v2/posts",
-            [
-                ("categories", "18"),
-                ("after", after.as_str()),
-                ("before", before.as_str()),
-                ("order", "asc"),
-                ("per_page", "100"),
-                ("_fields", "title,content"),
-            ],
-        );
+    if let Some(span) = db.season_span(season).await? {
+        let url = season_posts_url(span, "title,content");
         if let Ok(Some(body)) = sources.fetch_text_interactive(&url).await {
-            found = banner_in(&body, numbered.then_some(season), season_name);
+            found = banner_in(&body, title_number(season), season_name);
         }
     }
     for q in queries {
@@ -2692,7 +2681,7 @@ pub async fn season_banner(db: &Db, sources: &Sources, season: i64, season_name:
             [("search", q.as_str()), ("per_page", "50"), ("_fields", "title,content")],
         );
         if let Ok(Some(body)) = sources.fetch_text_interactive(&url).await {
-            if let Some(b) = banner_in(&body, numbered.then_some(season), season_name) {
+            if let Some(b) = banner_in(&body, title_number(season), season_name) {
                 if found.as_ref().is_none_or(|f| b.0 > f.0) {
                     found = Some(b);
                 }
@@ -2773,6 +2762,53 @@ fn banner_score(src: &str, number: Option<i64>, name: &str) -> u8 {
     }
 }
 
+/// ETF2L's Highlander posts of a season's weeks, oldest first: from six
+/// weeks before its first match (the announcement, the preseason cup) to a
+/// month after its last (the awards show, the wrap-up).
+pub(crate) fn season_posts_url((first, last): (i64, i64), fields: &str) -> String {
+    let day = |t: i64| chrono::DateTime::from_timestamp(t, 0).map(|d| d.format("%Y-%m-%dT00:00:00").to_string()).unwrap_or_default();
+    let (after, before) = (day(first - 45 * 86_400), day(last + 30 * 86_400));
+    crate::http::url(
+        "https://etf2l.org/wp-json/wp/v2/posts",
+        [
+            ("categories", "18"),
+            ("after", after.as_str()),
+            ("before", before.as_str()),
+            ("order", "asc"),
+            ("per_page", "100"),
+            ("_fields", fields),
+        ],
+    )
+}
+
+/// A league season's number, as its posts may call it: "Highlander Season
+/// 34". Seasons 28 to 31 mostly went by their names ("Winter 2023"); the
+/// off-season tournaments have none.
+pub(crate) fn title_number(season: i64) -> Option<i64> {
+    (season < crate::leagues::OFF_SEASON).then_some(season)
+}
+
+/// Whether a post's title (lower case) is about this season: "Season 34"
+/// (not 340), or each word of its name ("autumn 2023", lower case too: S30's
+/// posts say "Highlander Autumn Season 2023"). Not a 6v6 post naming the
+/// same months ("Season 53 (Autumn 2026)").
+pub(crate) fn title_names_season(title: &str, number: Option<i64>, name: &str) -> bool {
+    // Another season's number ("ahead of Season 53"), a year not one ("Spring
+    // Season 2023").
+    let others = title.match_indices("season ").filter_map(|(i, w)| {
+        let digits: String = title[i + w.len()..].chars().take_while(char::is_ascii_digit).collect();
+        digits.parse::<i64>().ok().filter(|n| *n < 1000)
+    });
+    if title.contains("6v6") || others.into_iter().any(|n| Some(n) != number) {
+        return false;
+    }
+    let by_number = number.is_some_and(|n| {
+        let w = format!("season {n}");
+        title.match_indices(&w).any(|(i, _)| !title[i + w.len()..].starts_with(|c: char| c.is_ascii_digit()))
+    });
+    by_number || (!name.is_empty() && !name.starts_with("season") && name.split_whitespace().all(|w| title.contains(w)))
+}
+
 /// The best picture in the posts about this Highlander season, the first of
 /// the best: a post's title says "Highlander" and "Season 34" (not 340) or
 /// the season's name. With its [`banner_score`].
@@ -2785,12 +2821,7 @@ fn banner_in(body: &str, number: Option<i64>, name: &str) -> Option<(u8, String)
         if !title.contains("highlander") {
             continue;
         }
-        let by_number = number.is_some_and(|n| {
-            let w = format!("season {n}");
-            title.match_indices(&w).any(|(i, _)| !title[i + w.len()..].starts_with(|c: char| c.is_ascii_digit()))
-        });
-        let by_name = !name.is_empty() && !name.starts_with("season") && title.contains(&name);
-        if !by_number && !by_name {
+        if !title_names_season(&title, number, &name) {
             continue;
         }
         let content = p.pointer("/content/rendered").and_then(Value::as_str).unwrap_or("");
@@ -2899,7 +2930,9 @@ pub(crate) fn html_text(fragment: &str) -> String {
     while let Some(i) = rest.find('&') {
         text.push_str(&rest[..i]);
         let tail = &rest[i..];
-        let Some(semi) = tail[..tail.len().min(10)].find(';') else {
+        // Within ten bytes, by character: S30's "&" before a "’" cut it in
+        // two and panicked (31 Oct 2026).
+        let Some(semi) = tail.char_indices().take_while(|(i, _)| *i < 10).find(|(_, c)| *c == ';').map(|(i, _)| i) else {
             text.push('&');
             rest = &tail[1..];
             continue;
@@ -3304,6 +3337,21 @@ mod tests {
         assert_eq!(banner_score("https://x/ETF2L_Banner_HLs251.jpg", Some(25), "season 25"), 2, "s251 is not s25");
         assert_eq!(banner_score("https://x/etf2l_hl_winter_24-1024x576.png", None, "winter 2024"), NAMES_SEASON);
         assert_eq!(banner_score("https://x/assets12.png", Some(12), "season 12"), 1);
+    }
+
+    #[test]
+    fn text_with_an_ampersand_before_a_curly_quote_reads() {
+        assert_eq!(html_text("Q&amp;A & Dickmann\u{2019}s"), "Q&A & Dickmann\u{2019}s");
+        assert_eq!(html_text("A & B\u{2019}\u{2019}\u{2019}x;"), "A & B\u{2019}\u{2019}\u{2019}x;");
+    }
+
+    #[test]
+    fn a_post_title_names_its_season_and_no_other() {
+        assert!(title_names_season("announcing highlander autumn season 2023 & preseason cup", Some(30), "autumn 2023"));
+        assert!(title_names_season("highlander season 13 \u{2013} wrap up", Some(13), "season 13"));
+        assert!(!title_names_season("highlander season 19 \u{2013} wrap-up", Some(20), "season 20"));
+        assert!(!title_names_season("rule changes ahead of season 53 (autumn 2026)", Some(36), "autumn 2026"));
+        assert!(!title_names_season("highlander spring 2023 & 6v6 winter showdown 2023 award polls", Some(28), "winter 2023"));
     }
 
     #[test]
