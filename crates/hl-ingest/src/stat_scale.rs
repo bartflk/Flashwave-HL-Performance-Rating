@@ -12,7 +12,7 @@
 
 use anyhow::Result;
 use hl_db::Db;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashSet};
 
 /// Games a class needs on a map before the map has a scale of its own.
@@ -21,7 +21,7 @@ pub const MIN_MAP_GAMES: usize = 200;
 /// The percentiles each class's values are given at.
 pub const PERCENTILES: [f64; 10] = [0.0, 10.0, 25.0, 40.0, 55.0, 70.0, 80.0, 90.0, 95.0, 99.0];
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ClassScale {
     /// Damage per minute at each of [`PERCENTILES`].
@@ -37,6 +37,25 @@ pub struct ClassScale {
     pub accuracy_officials: usize,
     pub dpm_players: usize,
     pub accuracy_players: usize,
+    /// Made from the logs.tf archive rather than the games held here.
+    #[serde(default)]
+    pub archive: bool,
+}
+
+/// The scales `hl logsdump-scales` made from the whole logs.tf database,
+/// as the app ships them (`league/logstf-scales.json`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArchiveScales {
+    pub source: String,
+    /// Unix seconds: the games' first and last day.
+    pub from: i64,
+    pub to: i64,
+    pub logs: usize,
+    pub games: usize,
+    pub percentiles: Vec<f64>,
+    pub classes: BTreeMap<String, ClassScale>,
+    pub maps: BTreeMap<String, BTreeMap<String, ClassScale>>,
 }
 
 /// One scale's games while they are gathered.
@@ -81,6 +100,27 @@ pub struct StatScales {
     /// Class, then map (as [`hl_core::maps::map_base`] names it): the same
     /// scales on one map. A stat with too few games there is left empty.
     pub maps: BTreeMap<String, BTreeMap<String, ClassScale>>,
+    /// The logs.tf archive the shipped scales came from, where they did.
+    pub archive: Option<ArchiveInfo>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArchiveInfo {
+    pub source: String,
+    pub from: i64,
+    pub to: i64,
+    pub logs: usize,
+    pub games: usize,
+}
+
+/// The scales this build ships (`hl logsdump-scales` writes them).
+const BUILT_IN: &str = include_str!("../../../league/logstf-scales.json");
+
+/// The shipped scales, where they read and are on the app's percentiles.
+pub fn archive() -> Option<ArchiveScales> {
+    let a: ArchiveScales = serde_json::from_str(BUILT_IN).ok()?;
+    (a.percentiles == PERCENTILES && !a.classes.is_empty()).then_some(a)
 }
 
 /// The value at each percentile of `(value, weight)`s.
@@ -145,7 +185,26 @@ pub async fn stat_scales(db: &Db) -> Result<StatScales> {
     for (c, v) in acc {
         classes.entry(c).or_default().set_accuracy(v);
     }
-    Ok(StatScales { percentiles: PERCENTILES.to_vec(), classes, maps })
+    // The logs.tf archive's scales where it has them (Flashy: "compare to
+    // more than just the games we have right now"): millions of games
+    // against the thousands held here. A map only the games here have
+    // enough of keeps their scale.
+    let mut info = None;
+    if let Some(a) = archive() {
+        info = Some(ArchiveInfo { source: a.source, from: a.from, to: a.to, logs: a.logs, games: a.games });
+        for (c, mut v) in a.classes {
+            v.archive = true;
+            classes.insert(c, v);
+        }
+        for (c, ms) in a.maps {
+            let here = maps.entry(c).or_default();
+            for (m, mut v) in ms {
+                v.archive = true;
+                here.insert(m, v);
+            }
+        }
+    }
+    Ok(StatScales { percentiles: PERCENTILES.to_vec(), classes, maps, archive: info })
 }
 
 /// Which stat a percentile is of.
@@ -225,5 +284,16 @@ mod tests {
         let p = weighted_percentiles(v);
         assert_eq!(p[4], 200.0, "55th");
         assert_eq!(p[9], 400.0, "the top 1% is the pugs'");
+    }
+}
+
+#[cfg(test)]
+mod archive_tests {
+    #[test]
+    fn the_shipped_scales_read() {
+        let a = super::archive().expect("league/logstf-scales.json reads, on the app's percentiles");
+        assert_eq!(a.classes.len(), 9);
+        assert!(a.classes.values().all(|c| c.archive && c.dpm_games > 0));
+        assert!(a.maps.values().flat_map(|m| m.keys()).all(|m| !m.contains('+')));
     }
 }

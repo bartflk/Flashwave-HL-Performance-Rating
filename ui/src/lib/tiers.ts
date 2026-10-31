@@ -151,5 +151,7 @@ export function tierOf(scales: StatScales | undefined, cls: string | null | unde
     players: stat === "dpm" ? c?.dpmPlayers : c?.accuracyPlayers,
     // A map asked for that has too few games for a scale of its own.
     missedMap: !byMap && map ? map : null,
+    // Made from the logs.tf archive: its span, for the card's note.
+    archive: c?.archive && scales.archive ? scales.archive : null,
   };
 }

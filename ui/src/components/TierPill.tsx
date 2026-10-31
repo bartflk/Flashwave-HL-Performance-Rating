@@ -104,7 +104,12 @@ function TierCard({ tier, cls, fmt }: { tier: Tier; cls?: string | null; fmt?: (
       </span>
       {tier.missedMap && <span className="tc-note">{t("{0} has too few {1} games for a scale of its own, so this is among every {1} game.", { "0": tier.missedMap, "1": c })}</span>}
       <span className="tc-note">
-        {t("Main-class games of 5 minutes or more that this app has read: the league's officials and your own games. An official counts fully, a scrim half and a pug a quarter.")}
+        {tier.archive
+          ? t("Every Highlander game on logs.tf from {0} to {1}, each upload counted once: main-class games of 5 minutes or more. An official counts fully, a scrim half and a pug or lobby a quarter.", {
+              "0": new Date(tier.archive.from * 1000).getFullYear(),
+              "1": new Date(tier.archive.to * 1000).getFullYear(),
+            })
+          : t("Main-class games of 5 minutes or more that this app has read: the league's officials and your own games. An official counts fully, a scrim half and a pug a quarter.")}
       </span>
     </span>
   );

@@ -2779,6 +2779,8 @@ export interface StatScales {
   classes: Record<string, ClassScale>;
   /** Class, then map: the same scales on one map, where it has enough games. */
   maps?: Record<string, Record<string, ClassScale>>;
+  /** The logs.tf archive the shipped scales came from (logsdump_scales.rs). */
+  archive?: { source: string; from: number; to: number; logs: number; games: number } | null;
 }
 
 /** One class's (or one class-on-a-map's) scales, and what they were
@@ -2793,6 +2795,8 @@ export interface ClassScale {
   accuracyOfficials?: number;
   dpmPlayers?: number;
   accuracyPlayers?: number;
+  /** Made from the logs.tf archive rather than the games held here. */
+  archive?: boolean;
 }
 
 /** Why a player's season rating is what it is (season_stats.rs). */
