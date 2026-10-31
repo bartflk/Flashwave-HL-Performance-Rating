@@ -1317,6 +1317,13 @@ export const mockApi: Api = {
     const html = (newsHtml as Record<string, string>)[String(id)];
     return delay<NewsPost | null>(item && html ? { ...item, html } : null);
   },
+  // A season's own posts, oldest first: the held posts naming it.
+  getSeasonNews: (season: number) =>
+    delay(
+      (newsPosts as unknown as NewsItem[])
+        .filter((n) => new RegExp(`season ${season}(?!\\d)`, "i").test(n.title))
+        .sort((a, b) => a.time - b.time),
+    ),
   // DD14's season so far, read as everyone's results.
   getRecentResults: (limit = 10) =>
     delay<ResultRow[]>(

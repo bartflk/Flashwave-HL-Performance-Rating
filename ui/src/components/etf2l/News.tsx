@@ -226,3 +226,46 @@ function node(n: Node, key: string): ReactNode {
   // div, span, section and the rest: their contents only.
   return <Fragment key={key}>{children(el, key)}</Fragment>;
 }
+
+// ---- A season's posts ------------------------------------------------------
+
+/**
+ * A season's own posts on its page, in the order they came out: the
+ * announcement, tiers, playoffs, Grand Final, awards and wrap-up (Flashy:
+ * "linking the seasons to the news posts"). Each opens in the app. Nothing
+ * when ETF2L has none for it.
+ */
+export function SeasonNews({ season, onPost }: { season: number; onPost: (id: number) => void }) {
+  const tiles = useQuery({ queryKey: ["seasons_overview"], queryFn: api.getSeasonsOverview, staleTime: 5 * 60_000 }).data;
+  const name = tiles?.find((s) => s.season === season)?.seasonName;
+  const q = useQuery({
+    queryKey: ["season_news", season],
+    queryFn: () => api.getSeasonNews(season, name ?? ""),
+    enabled: name !== undefined,
+    staleTime: 30 * 60_000,
+  });
+  if (q.isPending && name !== undefined) return <Loading>{t("Reading this season's news from ETF2L…")}</Loading>;
+  const items = q.data ?? [];
+  if (items.length === 0) return null;
+  return (
+    <section className="e2-block">
+      <div className="e2-block-head">
+        <h2 className="ts-section">{t("News of this season")}</h2>
+        <span className="muted">{t("{0} posts on ETF2L", { "0": items.length })}</span>
+      </div>
+      <ol className="np-season">
+        {items.map((n) => (
+          <li key={n.id}>
+            <button onClick={() => onPost(n.id)}>
+              <span className="np-date">{formatDate(n.time, true)}</span>
+              <span className="np-season-title">{n.title}</span>
+              <span className="np-season-go" aria-hidden>
+                ›
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}

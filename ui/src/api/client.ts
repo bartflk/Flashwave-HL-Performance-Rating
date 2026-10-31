@@ -274,6 +274,7 @@ const realApi = {
   getFixtures: () => invoke<Fixture[]>("get_fixtures"),
   getNews: () => invoke<NewsItem[]>("get_news"),
   getNewsPost: (id: number) => invoke<NewsPost | null>("get_news_post", { id }),
+  getSeasonNews: (season: number, seasonName: string) => invoke<NewsItem[]>("get_season_news", { season, seasonName }),
   getRecentResults: (limit?: number) => invoke<ResultRow[]>("get_recent_results", { limit }),
   searchTeams: (query: string) => invoke<TeamHit[]>("search_teams", { query }),
   getLeagueMatch: (matchId: number) => invoke<LeagueMatch | null>("get_league_match", { matchId }),
