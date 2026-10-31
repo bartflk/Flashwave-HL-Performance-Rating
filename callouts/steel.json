@@ -1,11 +1,52 @@
 {
  "map": "steel",
  "draft": true,
- "source": "Names: the Official TF2 Wiki, Steel, locations by control point. Not drawn yet: place them in the editor.",
- "zones": [],
+ "source": "Names: the Official TF2 Wiki, Steel, locations by control point. The two spawn rooms placed where rounds start in recorded demos; the rest not drawn yet: place them in the editor.",
+ "zones": [
+  {
+   "name": "BLU Spawn",
+   "points": [
+    [
+     -170,
+     -1980
+    ],
+    [
+     430,
+     -1980
+    ],
+    [
+     430,
+     -1630
+    ],
+    [
+     -170,
+     -1630
+    ]
+   ]
+  },
+  {
+   "name": "RED Initial Spawn",
+   "points": [
+    [
+     -50,
+     -2560
+    ],
+    [
+     710,
+     -2560
+    ],
+    [
+     710,
+     -2250
+    ],
+    [
+     -50,
+     -2250
+    ]
+   ]
+  }
+ ],
  "names": [
-  "BLU Spawn",
-  "RED Initial Spawn",
   "RED Second Spawn",
   "Shipping Dock",
   "Health Pack Shack",
