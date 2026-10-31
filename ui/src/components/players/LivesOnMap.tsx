@@ -44,6 +44,10 @@ const CELLS = 140;
 /** The round-openings view's hexes across the frame. */
 const HEXES = 70;
 
+/** The main position leaves out each round's first seconds: the spawn
+ *  room and the way out of it, which every rollout shares. */
+const OUT_OF_SPAWN_S = 8;
+
 /** A hex both use at least this much (of each one's busiest) is outlined. */
 const OVERLAP = 0.25;
 
@@ -1017,18 +1021,30 @@ function hexesOf(groups: LifeOnMap[][], frame: { minX: number; maxY: number; w: 
   const rounds = groups.map((g) => g.length);
   // Time spent in each hex, a point being about a quarter of a second.
   const time = new Map<string, number[]>();
+  // The same past the first seconds out of spawn, for the main position
+  // (Flashy: "exclude the first few seconds out of spawn"): every rollout
+  // passes the spawn door, which is no one's position.
+  const timeOut = new Map<string, number[]>();
   const seen = new Set<string>();
+  const seenOut = new Set<string>();
   const around = new Set<string>();
   groups.forEach((lives, g) => lives.forEach((l) => {
     seen.clear();
+    seenOut.clear();
     around.clear();
     let prev: [number, number] | null = null;
-    for (const p of l.points) {
+    l.points.forEach((p, j) => {
+      const out = (l.openingT[j] ?? Infinity) >= OUT_OF_SPAWN_S;
       const [pq, pr] = hexAt(p[0] - frame.minX, frame.maxY - p[1], size);
       const tk = `${pq},${pr}`;
       const tc = time.get(tk) ?? groups.map(() => 0);
       tc[g] += 1;
       time.set(tk, tc);
+      if (out) {
+        const to = timeOut.get(tk) ?? groups.map(() => 0);
+        to[g] += 1;
+        timeOut.set(tk, to);
+      }
       const from: [number, number] = prev !== null && Math.hypot(p[0] - prev[0], p[1] - prev[1]) <= JUMP ? prev : p;
       const steps = Math.max(1, Math.ceil(Math.hypot(p[0] - from[0], p[1] - from[1]) / (size / 2)));
       for (let s = 0; s <= steps; s++) {
@@ -1036,9 +1052,10 @@ function hexesOf(groups: LifeOnMap[][], frame: { minX: number; maxY: number; w: 
         const y = from[1] + ((p[1] - from[1]) * s) / steps;
         const [q, r] = hexAt(x - frame.minX, frame.maxY - y, size);
         seen.add(`${q},${r}`);
+        if (out) seenOut.add(`${q},${r}`);
       }
       prev = p;
-    }
+    });
     const first = l.points[0];
     if (first) {
       const [q, r] = hexAt(first[0] - frame.minX, frame.maxY - first[1], size);
@@ -1048,6 +1065,8 @@ function hexesOf(groups: LifeOnMap[][], frame: { minX: number; maxY: number; w: 
       const c = cells.get(key) ?? groups.map(() => 0);
       c[g] += 1;
       cells.set(key, c);
+    }
+    for (const key of seenOut) {
       const [q, r] = key.split(",").map(Number);
       around.add(key);
       for (const [dq, dr] of AROUND) around.add(`${q + dq},${r + dr}`);
@@ -1058,8 +1077,8 @@ function hexesOf(groups: LifeOnMap[][], frame: { minX: number; maxY: number; w: 
   // as many rounds went through: where they stood, not where they ran.
   const stay = (key: string, g: number) => {
     const [q, r] = key.split(",").map(Number);
-    let s = time.get(key)?.[g] ?? 0;
-    for (const [dq, dr] of AROUND) s += time.get(`${q + dq},${r + dr}`)?.[g] ?? 0;
+    let s = timeOut.get(key)?.[g] ?? 0;
+    for (const [dq, dr] of AROUND) s += timeOut.get(`${q + dq},${r + dr}`)?.[g] ?? 0;
     return s;
   };
   const main = groups.map((_, g) => {
