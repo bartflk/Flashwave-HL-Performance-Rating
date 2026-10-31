@@ -349,7 +349,7 @@ function SourcesPanel() {
     ["logs.tf", "https://logs.tf", t("Every log, and the raw server log behind it, for what drops.tf has not got yet: a game just played, or a log it lost.")],
     ["logs.tf history", "https://logs.tf", t("The logs.tf career on every profile and the search over all of logs.tf: a summary of every Highlander log since 2012, built into the app from a logs.tf database.")],
     ["trends.tf", "https://trends.tf", t("Which matches you played, which logs belong together, and each player's ETF2L career.")],
-    ["ETF2L", "https://etf2l.org", t("Officials, divisions, rosters, transfers, seasons and fixtures.")],
+    ["ETF2L", "https://etf2l.org", t("Officials, divisions, rosters, transfers, seasons and fixtures, and its news: each season's posts and banner.")],
     ["demos.tf", "https://demos.tf", t("SourceTV demos, downloaded only when you ask. Its files go back to 14 October 2019; older demos are listed but gone.")],
     ["more.tf", "https://more.tf", t("The top-down map images under the kill map, and logs while logs.tf is resting.")],
   ];
