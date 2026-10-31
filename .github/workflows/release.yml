@@ -76,6 +76,35 @@ jobs:
             npx tauri build --bundles appimage,deb --config '{"bundle":{"createUpdaterArtifacts":false}}'
           fi
 
+      # The AppImage carries this runner's Wayland, xcb and xkbcommon
+      # libraries. On a newer desktop (NixOS, Arch, Fedora) they are older than
+      # the system's graphics stack and the window opens with a blank webview.
+      # Taking them out makes the app use the system's own, which every GTK
+      # desktop has. The build signed the original, so it is signed again.
+      - name: Use the system display libraries in the AppImage
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          root=$PWD
+          cd target/release/bundle/appimage
+          appimage=$(ls *.AppImage | head -n 1)
+          chmod +x "$appimage"
+          "./$appimage" --appimage-extract >/dev/null
+          for lib in libwayland-client.so.0 libwayland-cursor.so.0 libwayland-egl.so.1 \
+                     libwayland-server.so.0 libXau.so.6 libXdmcp.so.6 libxkbcommon.so.0 \
+                     libxcb-randr.so.0 libxcb-render.so.0 libxcb-shm.so.0; do
+            find squashfs-root -name "$lib" -print -delete
+          done
+          curl -fsSL -o appimagetool \
+            https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run squashfs-root "$appimage"
+          rm -rf squashfs-root appimagetool
+          cd "$root"
+          if [ "$HAS_KEY" = "true" ]; then
+            npx tauri signer sign --private-key "$TAURI_SIGNING_PRIVATE_KEY" --password "" "target/release/bundle/appimage/$appimage"
+          fi
+
       # The tag can arrive a moment before the release it belongs to.
       - name: Wait for the release
         run: |
