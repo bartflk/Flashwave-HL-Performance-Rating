@@ -1,7 +1,5 @@
-/* The RGL tab's first page: the ETF2L tab's frame, with a season's teams. */
-
-.rgl-pick { display: inline-flex; align-items: center; gap: 10px; font-size: var(--fs-small); }
-.rgl-pick select { min-width: 160px; }
+/* The RGL tab (PLAN §30): the ETF2L tab's frame, with RGL's seasons, teams
+   and players. */
 
 .rgl-maps { display: flex; flex-wrap: wrap; gap: 6px; }
 .rgl-map {
@@ -13,6 +11,7 @@
   color: var(--muted);
 }
 
+/* ---- A season's divisions ---------------------------------------------- */
 .rgl-divs { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
 .rgl-div {
   display: flex;
@@ -32,13 +31,66 @@
 }
 .rgl-div-head .muted { font-size: var(--fs-small); }
 
-.rgl-teams { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.rgl-team { display: flex; align-items: center; gap: 10px; padding: 4px 0; min-width: 0; }
+.rgl-teams { list-style: none; margin: 0 -8px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.rgl-team {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  box-shadow: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rgl-team:hover { background: rgba(var(--text-rgb), 0.05); }
+.rgl-team:hover .rgl-name { color: var(--tf2-tan); }
 .rgl-team.out { opacity: 0.55; }
 .rgl-rank { flex: 0 0 52px; color: var(--muted); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
 .rgl-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rgl-tag { color: var(--faint); font-size: var(--fs-small); white-space: nowrap; }
 .rgl-out { color: var(--faint); font-size: var(--fs-small); font-style: italic; white-space: nowrap; }
+
+/* ---- Seasons ------------------------------------------------------------ */
+.rgl-season-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.rgl-season-tile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  box-shadow: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rgl-season-tile:hover { border-color: var(--tf2-tan); }
+
+/* ---- A team and a player ---------------------------------------------- */
+.rgl-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 20px; align-items: start; }
+@media (max-width: 900px) {
+  .rgl-cols { grid-template-columns: minmax(0, 1fr); }
+}
+.rgl-roster { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.rgl-roster li { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.rgl-roster-left { opacity: 0.7; }
+.rgl-when { margin-left: auto; font-size: var(--fs-small); white-space: nowrap; }
+.rgl-banned { color: var(--bad); }
+
+.rgl-you { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.rgl-you .muted { font-size: var(--fs-small); }
+
+.rgl-lookup { display: flex; flex-wrap: wrap; gap: 8px; }
+.rgl-lookup input { flex: 1 1 320px; min-width: 0; }
 
 .rgl-coming { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .rgl-coming li { display: flex; flex-direction: column; gap: 2px; }

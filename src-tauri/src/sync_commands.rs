@@ -1924,6 +1924,24 @@ pub async fn get_rgl_season(state: State<'_, AppState>, id: i64) -> CmdResult<hl
     Ok(hl_ingest::rgl::season(&state.sources, id).await?)
 }
 
+/// An RGL team: roster, results and its other seasons' ids.
+#[tauri::command]
+pub async fn get_rgl_team(state: State<'_, AppState>, id: i64) -> CmdResult<Option<hl_ingest::rgl::RglTeamPage>> {
+    Ok(hl_ingest::rgl::team(&state.sources, id).await?)
+}
+
+/// An RGL team's other Highlander seasons.
+#[tauri::command]
+pub async fn get_rgl_team_seasons(state: State<'_, AppState>, ids: Vec<i64>) -> CmdResult<Vec<hl_ingest::rgl::RglTeamSeason>> {
+    Ok(hl_ingest::rgl::team_seasons(&state.sources, ids).await?)
+}
+
+/// An RGL player by SteamID or profile link; `None` when not on RGL.
+#[tauri::command]
+pub async fn get_rgl_player(state: State<'_, AppState>, input: String) -> CmdResult<Option<hl_ingest::rgl::RglPlayer>> {
+    Ok(hl_ingest::rgl::player(&state.sources, &input).await?)
+}
+
 /// ETF2L's latest Highlander news (Q74), read at most every half hour.
 #[tauri::command]
 pub async fn get_news(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::news::NewsItem>> {

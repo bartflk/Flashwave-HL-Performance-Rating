@@ -74,8 +74,11 @@ import type {
   Fixture,
   NewsItem,
   NewsPost,
+  RglPlayer,
   RglSeason,
   RglSeasonItem,
+  RglTeamPage,
+  RglTeamSeason,
   ResultRow,
   TeamHit,
   LeagueMatch,
@@ -1385,6 +1388,67 @@ export const mockApi: Api = {
         ] },
       ],
     }),
+  getRglTeam: (id: number) =>
+    delay<RglTeamPage | null>({
+      id,
+      name: "The Amiable Duds",
+      tag: "AD.",
+      seasonId: 193,
+      seasonName: "HL Season 24",
+      division: "Invite",
+      tier: "Premiership",
+      finalRank: 1,
+      status: "Ready",
+      players: [
+        { name: "nyxi", steamId: "76561198072302537", isLeader: true, joinedAt: "2026-05-03T03:14:05.557Z", leftAt: null },
+        { name: "Joey Lemons", steamId: "76561198068104187", isLeader: true, joinedAt: "2026-05-03T03:16:37.100Z", leftAt: null },
+        { name: "civ.", steamId: "76561197981617925", isLeader: false, joinedAt: "2026-05-08T01:27:04.797Z", leftAt: "2026-06-17T20:00:33.587Z" },
+      ],
+      linked: [12734],
+      matches: [
+        {
+          matchId: 34332,
+          matchDate: "2026-06-02T01:30:00.000Z",
+          matchName: "Week 1 - Vigil",
+          isForfeit: false,
+          winner: id,
+          teams: [
+            { teamId: 14956, teamName: "Run It Back", teamTag: "Rib.", isHome: false },
+            { teamId: id, teamName: "The Amiable Duds", teamTag: "AD.", isHome: true },
+          ],
+          maps: [{ mapName: "pl_vigil_rc10", homeScore: 2, awayScore: 0 }],
+        },
+        {
+          matchId: 34434,
+          matchDate: "2026-06-09T01:30:00.000Z",
+          matchName: "Week 2 - Product",
+          isForfeit: false,
+          winner: 14954,
+          teams: [
+            { teamId: id, teamName: "The Amiable Duds", teamTag: "AD.", isHome: true },
+            { teamId: 14954, teamName: "Witness Gaming", teamTag: "wG", isHome: false },
+          ],
+          maps: [{ mapName: "koth_product_final", homeScore: 1, awayScore: 3 }],
+        },
+      ],
+    }),
+  getRglTeamSeasons: () => delay<RglTeamSeason[]>([{ id: 12734, name: "The Amiable Duds", tag: "AD.", seasonId: 183, seasonName: "HL Season 23", division: "Advanced", finalRank: 2 }]),
+  getRglPlayer: (input: string) =>
+    delay<RglPlayer | null>(
+      input.includes("7656119") || /^\d+$/.test(input.trim())
+        ? {
+            steamId: "76561198072302537",
+            name: "nyxi",
+            avatar: null,
+            banned: false,
+            probation: false,
+            seasons: [
+              { seasonId: 193, seasonName: "HL Season 24", division: "Invite", tier: "Premiership", teamId: 14908, teamName: "The Amiable Duds", teamTag: "AD.", startedAt: "2026-05-03T03:14:05.557Z", leftAt: null, wins: 9, losses: 1 },
+              { seasonId: 183, seasonName: "HL Season 23", division: "Advanced", tier: "High", teamId: 12734, teamName: "The Amiable Duds", teamTag: "AD.", startedAt: "2025-10-03T03:14:05.557Z", leftAt: "2026-01-20T03:14:05.557Z", wins: 7, losses: 4 },
+            ],
+          }
+        : null,
+    ),
   // ETF2L's Highlander posts, 16 October 2026.
   getNews: () => delay(newsPosts as unknown as NewsItem[]),
   getNewsPost: (id: number) => {

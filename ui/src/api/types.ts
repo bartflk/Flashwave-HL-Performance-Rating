@@ -370,6 +370,75 @@ export interface RglSeason {
   divisions: { name: string; tier: string | null; teams: RglTeam[] }[];
 }
 
+export interface RglMember {
+  name: string;
+  steamId: string;
+  isLeader: boolean;
+  joinedAt: string | null;
+  leftAt: string | null;
+}
+
+export interface RglMatch {
+  matchId: number;
+  matchDate: string | null;
+  /** "Week 1 - Vigil". */
+  matchName: string | null;
+  isForfeit: boolean;
+  winner: number | null;
+  teams: { teamId: number; teamName: string; teamTag: string | null; isHome: boolean }[];
+  maps: { mapName: string; homeScore: number | null; awayScore: number | null }[];
+}
+
+/** An RGL team's page: roster, results, and its other seasons' ids. */
+export interface RglTeamPage {
+  id: number;
+  name: string;
+  tag: string | null;
+  seasonId: number;
+  seasonName: string | null;
+  division: string | null;
+  tier: string | null;
+  finalRank: number | null;
+  status: string | null;
+  players: RglMember[];
+  linked: number[];
+  matches: RglMatch[];
+}
+
+export interface RglTeamSeason {
+  id: number;
+  name: string;
+  tag: string | null;
+  seasonId: number;
+  seasonName: string;
+  division: string | null;
+  finalRank: number | null;
+}
+
+export interface RglPlayerSeason {
+  seasonId: number;
+  seasonName: string;
+  division: string | null;
+  tier: string | null;
+  teamId: number;
+  teamName: string;
+  teamTag: string | null;
+  startedAt: string | null;
+  leftAt: string | null;
+  wins: number;
+  losses: number;
+}
+
+/** An RGL player, NA Highlander's seasons newest first. */
+export interface RglPlayer {
+  steamId: string;
+  name: string;
+  avatar: string | null;
+  banned: boolean;
+  probation: boolean;
+  seasons: RglPlayerSeason[];
+}
+
 /** A played official, any team's (Q74). */
 export interface ResultRow {
   matchId: number;

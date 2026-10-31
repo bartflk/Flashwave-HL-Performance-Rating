@@ -213,7 +213,7 @@ export default function App() {
       )}
       {visited.has("rgl") && (
         <div hidden={tab !== "rgl" || openLog !== null}>
-          <ErrorBoundary what="RGL"><RglPage /></ErrorBoundary>
+          <ErrorBoundary what="RGL"><RglPage active={tab === "rgl" && openLog === null} steamid={data.config.steamid} /></ErrorBoundary>
         </div>
       )}
       {tab === "rating" && openLog === null && (
