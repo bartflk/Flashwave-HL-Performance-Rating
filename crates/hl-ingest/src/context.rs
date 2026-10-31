@@ -17,6 +17,11 @@
 //! owner's side; the opponent likewise, from any official roster. A roster
 //! also catches what the regulars rule cannot: the first scrims with a newly
 //! joined team, before anyone has played enough games to count as a regular.
+//!
+//! **Pug servers.** A log whose title names a pug server is a pug, whoever
+//! played it: friends who pug together are each other's regulars, so their
+//! protfx games read as scrims (Flashy: "when its a protfx log, its always a
+//! pug"). A kind set by hand still wins over it.
 
 use serde::Serialize;
 use std::collections::HashMap;
@@ -46,6 +51,18 @@ const TEAM_NAME_MIN: usize = 4;
 /// regulars: a newly joined team has no history yet, but it has a roster.
 const TEAM_GAME_ROSTER_MIN: usize = 5;
 
+/// What a pug server writes in its logs' titles ("protfx.com | HL pug #n",
+/// "hl.tf2pickup.eu #n", "hlpugs.tf eu #n"), lowercase.
+const PUG_SERVERS: [&str; 3] = ["protfx", "tf2pickup", "hlpugs"];
+
+/// Whether a log's title names a pug server.
+pub fn pug_server(title: Option<&str>) -> bool {
+    title.is_some_and(|t| {
+        let t = t.to_lowercase();
+        PUG_SERVERS.iter().any(|s| t.contains(s))
+    })
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Kind {
@@ -71,6 +88,7 @@ pub struct Game {
     pub played_at: i64,
     /// The ETF2L match trends.tf linked, if any.
     pub trends_match: Option<i64>,
+    pub title: Option<String>,
     /// The owner's teammates, owner excluded.
     pub mates: Vec<u32>,
     pub opponents: Vec<u32>,
@@ -108,6 +126,17 @@ pub fn classify(games: &[Game], officials: &[Official]) -> Vec<Context> {
         .iter()
         .zip(&regulars)
         .map(|(g, &regulars)| {
+            if pug_server(g.title.as_deref()) {
+                return Context {
+                    log_id: g.log_id,
+                    kind: Kind::Pug,
+                    etf2l_match_id: None,
+                    link_method: None,
+                    team: None,
+                    opponent: None,
+                    regulars,
+                };
+            }
             let linked = g
                 .trends_match
                 .map(|id| (id, "trends"))
@@ -152,7 +181,7 @@ pub fn classify(games: &[Game], officials: &[Official]) -> Vec<Context> {
 
     // Pass 2: name the teams in scrims, and promote pugs played with a roster.
     for (c, g) in out.iter_mut().zip(games) {
-        if c.kind == Kind::Official {
+        if c.kind == Kind::Official || pug_server(g.title.as_deref()) {
             continue;
         }
         let team = best_team(&g.mates, g.played_at, own.iter().map(|(t, clan, o)| (*t, clan, *o)));
@@ -263,7 +292,7 @@ mod tests {
     }
 
     fn game(id: i64, at: i64, mates: &[u32], opps: &[u32]) -> Game {
-        Game { log_id: id, played_at: at, trends_match: None, mates: mates.to_vec(), opponents: opps.to_vec() }
+        Game { log_id: id, played_at: at, trends_match: None, title: None, mates: mates.to_vec(), opponents: opps.to_vec() }
     }
 
     const US: [u32; 8] = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -320,6 +349,22 @@ mod tests {
         let ctx = classify(&[g], &[o]);
         assert_eq!(ctx[0].team.as_ref().unwrap().0, 2);
         assert_eq!(ctx[0].opponent.as_ref().unwrap().0, 1);
+    }
+
+    #[test]
+    fn a_pug_servers_game_is_a_pug_with_regulars_and_a_roster() {
+        let o = official(9, T0 + 5 * DAY, &US, &THEM);
+        let mut games = season();
+        let mut pug = game(1, T0 + 6 * DAY, &US, &THEM);
+        pug.title = Some("ProTFX.com | HL Pug #1234".into());
+        games.push(pug);
+        let ctx = classify(&games, &[o]);
+        let c = ctx.iter().find(|c| c.log_id == 1).unwrap();
+        assert!(c.regulars >= SCRIM_MIN_REGULARS);
+        assert_eq!(c.kind, Kind::Pug);
+        assert_eq!(c.team, None);
+        assert!(pug_server(Some("hl.tf2pickup.eu #88")) && pug_server(Some("hlpugs.tf eu #3")));
+        assert!(!pug_server(Some("Ours vs Theirs")) && !pug_server(None));
     }
 
     #[test]
