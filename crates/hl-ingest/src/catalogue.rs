@@ -2638,7 +2638,9 @@ pub async fn team_honours(db: &Db, team: i64) -> Result<TeamHonours> {
 /// looked for once and kept ("-" when there is none, asked again after a
 /// week). Season tiles show it.
 pub async fn season_banner(db: &Db, sources: &Sources, season: i64, season_name: &str) -> Result<Option<String>> {
-    let key = format!("season_banner2:{season}");
+    // v3: looked for by the season's dates; v2's "none" was a search that
+    // never reached posts older than a year or two.
+    let key = format!("season_banner3:{season}");
     if let Some(v) = db.get_setting(&key).await? {
         let (url, at) = v.split_once('|').unwrap_or((v.as_str(), "0"));
         let fresh = now() - at.parse::<i64>().unwrap_or(0) < 7 * 24 * 3600;
@@ -2656,19 +2658,48 @@ pub async fn season_banner(db: &Db, sources: &Sources, season: i64, season_name:
     if !season_name.is_empty() && !season_name.starts_with("Season") {
         queries.push(format!("Highlander {season_name}"));
     }
-    let mut found = None;
+    let mut found: Option<(u8, String)> = None;
+    // First the Highlander posts of the season's own weeks, oldest first, so
+    // the announcement's banner: ETF2L's search matches any of its words and
+    // gives the newest first, so "Highlander Season 26" brought back fifty
+    // posts of S36 and S24 to S27 had none (Flashy, 31 Oct 2026). The search
+    // after, unless those weeks gave a picture naming the season; the better
+    // picture kept.
+    if let Some((first, last)) = db.season_span(season).await? {
+        let day = |t: i64| chrono::DateTime::from_timestamp(t, 0).map(|d| d.format("%Y-%m-%dT00:00:00").to_string()).unwrap_or_default();
+        let (after, before) = (day(first - 45 * 86_400), day(last + 30 * 86_400));
+        let url = crate::http::url(
+            "https://etf2l.org/wp-json/wp/v2/posts",
+            [
+                ("categories", "18"),
+                ("after", after.as_str()),
+                ("before", before.as_str()),
+                ("order", "asc"),
+                ("per_page", "100"),
+                ("_fields", "title,content"),
+            ],
+        );
+        if let Ok(Some(body)) = sources.fetch_text_interactive(&url).await {
+            found = banner_in(&body, numbered.then_some(season), season_name);
+        }
+    }
     for q in queries {
+        if found.as_ref().is_some_and(|(score, _)| *score >= NAMES_SEASON) {
+            break;
+        }
         let url = crate::http::url(
             "https://etf2l.org/wp-json/wp/v2/posts",
             [("search", q.as_str()), ("per_page", "50"), ("_fields", "title,content")],
         );
         if let Ok(Some(body)) = sources.fetch_text_interactive(&url).await {
-            found = banner_in(&body, numbered.then_some(season), season_name);
-        }
-        if found.is_some() {
-            break;
+            if let Some(b) = banner_in(&body, numbered.then_some(season), season_name) {
+                if found.as_ref().is_none_or(|f| b.0 > f.0) {
+                    found = Some(b);
+                }
+            }
         }
     }
+    let found = found.map(|(_, url)| url);
     db.set_setting(&key, &format!("{}|{}", found.as_deref().unwrap_or("-"), now())).await?;
     Ok(found)
 }
@@ -2708,11 +2739,47 @@ fn shrink_to_jpeg(bytes: &[u8], width: u32) -> Result<Vec<u8>> {
     Ok(out)
 }
 
-/// The first picture in a post about this Highlander season: its title says
-/// "Highlander" and "Season 34" (not 340) or the season's name.
-fn banner_in(body: &str, number: Option<i64>, name: &str) -> Option<String> {
+/// A banner whose file names the season (`ETF2L-Banner-HLs21`, `HL_S_12`,
+/// `etf2l_hl_winter_24`).
+const NAMES_SEASON: u8 = 3;
+
+/// How much a picture's file looks like this season's banner: it names the
+/// season ([`NAMES_SEASON`]), it is a banner or Highlander's (2), or it is
+/// some picture (1).
+fn banner_score(src: &str, number: Option<i64>, name: &str) -> u8 {
+    let file = src.rsplit('/').next().unwrap_or(src).split('?').next().unwrap_or("").to_ascii_lowercase();
+    let names_number = number.is_some_and(|n| {
+        ["s", "s_", "season", "season_", "season-"].iter().any(|p| {
+            let w = format!("{p}{n}");
+            file.match_indices(&w).any(|(i, _)| {
+                let after = !file[i + w.len()..].starts_with(|c: char| c.is_ascii_digit());
+                let before = i == 0 || !file[..i].ends_with(|c: char| c.is_ascii_alphabetic()) || file[..i].ends_with("hl");
+                after && before
+            })
+        })
+    });
+    // "Winter 2024": winter, and 2024 or 24.
+    let mut words = name.split_whitespace();
+    let names_name = match (words.next(), words.next()) {
+        (Some(part), Some(year)) if !part.starts_with("season") && year.len() == 4 => file.contains(part) && (file.contains(year) || file.contains(&year[2..])),
+        _ => false,
+    };
+    if names_number || names_name {
+        NAMES_SEASON
+    } else if file.contains("banner") || file.contains("hl") {
+        2
+    } else {
+        1
+    }
+}
+
+/// The best picture in the posts about this Highlander season, the first of
+/// the best: a post's title says "Highlander" and "Season 34" (not 340) or
+/// the season's name. With its [`banner_score`].
+fn banner_in(body: &str, number: Option<i64>, name: &str) -> Option<(u8, String)> {
     let posts: Vec<Value> = serde_json::from_str(body).ok()?;
     let name = name.to_ascii_lowercase();
+    let mut best: Option<(u8, String)> = None;
     for p in posts {
         let title = p.pointer("/title/rendered").and_then(Value::as_str).unwrap_or("").to_ascii_lowercase();
         if !title.contains("highlander") {
@@ -2732,13 +2799,20 @@ fn banner_in(body: &str, number: Option<i64>, name: &str) -> Option<String> {
             let lower = src.to_ascii_lowercase();
             let path = lower.split('?').next().unwrap_or(&lower);
             let picture = path.ends_with(".jpg") || path.ends_with(".jpeg") || path.ends_with(".png") || path.ends_with(".webp");
-            let chrome = ["/flags/", "/achs/", "emoji", "placeholder", "avatar"].iter().any(|x| lower.contains(x));
+            // Not a season's: the site's pictures, and the ETF2L logo and
+            // the social marks old posts open with (S19's awards show).
+            let chrome = ["/flags/", "/achs/", "emoji", "placeholder", "avatar", "twitter", "discord", "facebook", "icon", "logo", "etf2l_long", "150x150"]
+                .iter()
+                .any(|x| lower.contains(x));
             if picture && !chrome && src.starts_with("http") {
-                return Some(src.replace("&amp;", "&"));
+                let score = banner_score(src, number, &name);
+                if best.as_ref().is_none_or(|(s, _)| score > *s) {
+                    best = Some((score, src.replace("&amp;", "&")));
+                }
             }
         }
     }
-    None
+    best
 }
 
 /// What ETF2L's own page says about a team: its description, and its
@@ -3215,10 +3289,21 @@ mod tests {
             {"title":{"rendered":"6v6 Season 34"},"content":{"rendered":"<img src=\"https://etf2l.org/wp-content/uploads/6v6.jpg\">"}},
             {"title":{"rendered":"Highlander Winter 2024: Playoffs"},"content":{"rendered":"<img src=\"https://etf2l.org/wp-content/uploads/w24.png\">"}}
         ]"#;
-        assert_eq!(banner_in(body, Some(3), "Season 3").as_deref(), Some("https://i.imgur.com/HL3.jpg?x=1"), "not Season 34's, not the placeholder, not a flag");
-        assert_eq!(banner_in(body, Some(34), "Summer 2025").as_deref(), Some("https://etf2l.org/wp-content/uploads/2025/HL34.png"), "not the 6v6 post");
-        assert_eq!(banner_in(body, None, "Winter 2024").as_deref(), Some("https://etf2l.org/wp-content/uploads/w24.png"), "by name");
+        assert_eq!(banner_in(body, Some(3), "Season 3").map(|b| b.1).as_deref(), Some("https://i.imgur.com/HL3.jpg?x=1"), "not Season 34's, not the placeholder, not a flag");
+        assert_eq!(banner_in(body, Some(34), "Summer 2025").map(|b| b.1).as_deref(), Some("https://etf2l.org/wp-content/uploads/2025/HL34.png"), "not the 6v6 post");
+        assert_eq!(banner_in(body, None, "Winter 2024").map(|b| b.1).as_deref(), Some("https://etf2l.org/wp-content/uploads/w24.png"), "by name");
         assert_eq!(banner_in(body, Some(35), "Spring 2026"), None);
+        // S19's awards show opens with the Twitter mark, then its banner.
+        let s19 = r#"[{"title":{"rendered":"Higlander Season 19 &#8211; Highlander Season 19: Awards Show"},"content":{"rendered":"<img src=\"https://etf2l.org/wp-content/uploads/2020/05/Twitter.png\"><img src=\"https://etf2l.org/wp-content/uploads/2020/05/2018_etf2l_long_png.png\"><img src=\"https://etf2l.org/wp-content/uploads/2020/05/ETF2L-HLs19-Banner.png\">"}}]"#;
+        assert_eq!(banner_in(s19, Some(19), "Season 19").map(|b| b.1).as_deref(), Some("https://etf2l.org/wp-content/uploads/2020/05/ETF2L-HLs19-Banner.png"));
+        // A banner naming the season beats a picture before it; the social
+        // icons and the logo are none (S20, S16 found on 31 Oct 2026).
+        let s20 = r#"[{"title":{"rendered":"Highlander Season 20: Provisional Tiers"},"content":{"rendered":"<img src=\"https://etf2l.org/wp-content/uploads/2020/05/facebook-icon-basic-round.png\"><img src=\"https://etf2l.org/wp-content/uploads/2016/03/etf2l-logo-banner_small.png\"><img src=\"https://etf2l.org/wp-content/uploads/2023/11/image-1.png\"><img src=\"https://etf2l.org/wp-content/uploads/2020/05/ETF2L-HL-s20-Banner.png\">"}}]"#;
+        assert_eq!(banner_in(s20, Some(20), "Season 20"), Some((NAMES_SEASON, "https://etf2l.org/wp-content/uploads/2020/05/ETF2L-HL-s20-Banner.png".into())));
+        assert_eq!(banner_score("https://x/HL_S_12-1024x576.png", Some(12), "season 12"), NAMES_SEASON);
+        assert_eq!(banner_score("https://x/ETF2L_Banner_HLs251.jpg", Some(25), "season 25"), 2, "s251 is not s25");
+        assert_eq!(banner_score("https://x/etf2l_hl_winter_24-1024x576.png", None, "winter 2024"), NAMES_SEASON);
+        assert_eq!(banner_score("https://x/assets12.png", Some(12), "season 12"), 1);
     }
 
     #[test]

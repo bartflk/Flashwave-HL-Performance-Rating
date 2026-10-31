@@ -297,6 +297,20 @@ impl Db {
         .await?)
     }
 
+    /// A season's first and last match times, its cups and qualifiers in it
+    /// (they open it): where ETF2L's news of it is found.
+    pub async fn season_span(&self, season: i64) -> Result<Option<(i64, i64)>> {
+        let row: (Option<i64>, Option<i64>) = sqlx::query_as(
+            "SELECT MIN(m.time), MAX(m.time) FROM etf2l_season_match m
+             JOIN etf2l_competition c ON c.competition_id = m.competition_id
+             WHERE c.season = ?1 AND m.time > 0",
+        )
+        .bind(season)
+        .fetch_one(self.pool())
+        .await?;
+        Ok(row.0.zip(row.1))
+    }
+
     /// Who played a match, added beside what its page gave (its map scores
     /// kept): for a match whose page lists nobody, the players found in its
     /// logs.
