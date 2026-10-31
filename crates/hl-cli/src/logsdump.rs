@@ -66,7 +66,7 @@ const DUP_LENGTH_S: i64 = 60;
 
 /// What kind of game a log was, from its title.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum Kind {
+pub(crate) enum Kind {
     Lobby,
     Pug,
     Official,
@@ -113,7 +113,7 @@ impl Pool {
 /// are ("UGC Highlander Match", "RGL.gg Match Server", "ozfortress.com"); the
 /// rest are rented servers -- serveme.tf, Qixalite, Matcha -- that teams book
 /// for scrims and officials.
-fn kind_of(title: Option<&str>) -> Kind {
+pub(crate) fn kind_of(title: Option<&str>) -> Kind {
     let t = title.unwrap_or("").to_lowercase();
     let has = |words: &[&str]| words.iter().any(|w| t.contains(w));
     if has(&["tf2center", "tf2lobby", "lobby #"]) {
@@ -244,7 +244,7 @@ fn unescape(field: &[u8]) -> Vec<u8> {
 
 /// One `id \t json \t time` row to its id and normalized log, or `None` for
 /// one logs.tf could not parse (`"success": false`) or with no players.
-fn parse_row(line: &[u8]) -> Option<(i64, NormalizedLog)> {
+pub(crate) fn parse_row(line: &[u8]) -> Option<(i64, NormalizedLog)> {
     let mut parts = line.splitn(3, |b| *b == b'\t');
     let id: i64 = std::str::from_utf8(parts.next()?).ok()?.parse().ok()?;
     let json = unescape(parts.next()?);
@@ -322,7 +322,7 @@ fn read_row(line: &[u8], w: &Weights, skip: &HashSet<i64>) -> Option<LogOut> {
 
 /// Read the dump's rows on every core: `work` turns a row into whatever the
 /// pass needs, `gather` takes the results in batches as they come.
-fn stream<T: Send + 'static>(
+pub(crate) fn stream<T: Send + 'static>(
     dump: &Path,
     limit: Option<usize>,
     work: impl Fn(&[u8]) -> Option<T> + Send + Sync + 'static,

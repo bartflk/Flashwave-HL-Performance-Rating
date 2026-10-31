@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { ApiError } from "./ApiError";
+import { friendlyText } from "../lib/apierror";
 import { Help } from "./StatTip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { errorMessage, type MapRow } from "../api/types";
+import { type MapRow } from "../api/types";
 import { capitalize, splitMap } from "../lib/format";
 import { t, tx } from "../lib/i18n";
 import { MapAligner } from "./MapAligner";
@@ -38,7 +40,7 @@ export function MapsPanel() {
       setNote(await what());
       changed();
     } catch (e) {
-      setNote(errorMessage(e));
+      setNote(friendlyText(e));
     } finally {
       setBusy(null);
     }
@@ -52,7 +54,7 @@ export function MapsPanel() {
     callouts: (m) => m.callouts,
   });
   if (q.isPending) return <div className="panel"><h2>{t("Maps")}</h2><Loading>{t("Loading…")}</Loading></div>;
-  if (q.isError) return <div className="panel"><h2>{t("Maps")}</h2><p className="error">{errorMessage(q.error)}</p></div>;
+  if (q.isError) return <div className="panel"><h2>{t("Maps")}</h2><ApiError error={q.error} /></div>;
 
   // Maps you played, and any map with something of yours; the rest on ask.
   const shown = sort.sorted;

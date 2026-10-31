@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { friendlyText } from "../lib/apierror";
 import { setTournamentDividers, useTournamentDividers } from "../lib/tourneys";
 import { onOpenSettingsSection, takePendingSettingsSection } from "../lib/goto";
 import { Help } from "./StatTip";
@@ -8,7 +9,7 @@ import { OlderSeasonsPanel } from "./settings/OlderSeasonsPanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../api/client";
-import { errorMessage, type AppStatus, type Cleaned, type DemoIndexSummary, type LeagueCatchUp } from "../api/types";
+import { type AppStatus, type Cleaned, type DemoIndexSummary, type LeagueCatchUp } from "../api/types";
 import { formatDate } from "../lib/format";
 import { HistoryPanel } from "./HistoryPanel";
 import { SettingsContext, SettingsSection } from "./settings/SettingsSection";
@@ -438,7 +439,7 @@ function LeagueDataPanel() {
       setResult(r);
       void qc.invalidateQueries();
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       off();
       setStep(null);
@@ -588,7 +589,7 @@ function LanguagePanel() {
     try {
       await what();
     } catch (e) {
-      setNote(errorMessage(e));
+      setNote(friendlyText(e));
     } finally {
       setBusy(false);
     }
@@ -992,7 +993,7 @@ function DemosPanel() {
       void qc.invalidateQueries({ queryKey: ["matches"] });
       void qc.invalidateQueries({ queryKey: ["match"] });
     } catch (e) {
-      setScan({ busy: false, result: null, error: errorMessage(e) });
+      setScan({ busy: false, result: null, error: friendlyText(e) });
     }
   }
 
@@ -1056,7 +1057,7 @@ function DemoFolders({ onScanned }: { onScanned: (s: DemoIndexSummary) => void }
       onScanned(result);
       for (const key of [["demo_folders"], ["demo_stats"], ["matches"], ["match"]]) void qc.invalidateQueries({ queryKey: key });
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }
@@ -1130,7 +1131,7 @@ function DownloadedDemosPanel() {
       await qc.invalidateQueries({ queryKey: ["downloaded_demos"] });
       await qc.invalidateQueries({ queryKey: ["demo_stats"] });
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
       setConfirming(false);
@@ -1245,7 +1246,7 @@ function AutoDelete() {
       await api.setAutoDeleteDemos(on);
       await qc.invalidateQueries({ queryKey: ["auto_delete_demos"] });
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     }
   }
 

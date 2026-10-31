@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { friendlyText } from "../lib/apierror";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { errorMessage, type ContextKind, type MatchContext } from "../api/types";
+import { type ContextKind, type MatchContext } from "../api/types";
 import { t } from "../lib/i18n";
 import { Etf2lMark } from "./Etf2lMark";
 
@@ -105,7 +106,7 @@ export function KindPicker({ logId, c, children }: { logId: number; c: MatchCont
       // every split by kind on the profiles: refresh the lot.
       void qc.invalidateQueries();
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     }
   }
 

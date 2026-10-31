@@ -717,3 +717,21 @@ input:where(:not([type])) {
 .rt-pos { color: var(--rt-pos); }
 .rt-neg { color: var(--rt-neg); }
 .rt-even { color: var(--rt-even); }
+
+/* A stat's own hover card (TierPill): where it stands on its class, the
+   scale's marks and what the scale was measured on. */
+.stip.bare { gap: 0; }
+.tc { display: flex; flex-direction: column; gap: 8px; min-width: 250px; }
+.tc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.tc-sub { color: var(--muted); }
+.tc-where { font-size: var(--fs-body); font-weight: 700; color: var(--text-hi); }
+.tc-scale { position: relative; display: flex; gap: 2px; height: 8px; margin: 2px 0 4px; }
+.tc-seg { border-radius: 2px; }
+.tc-marker { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--text-hi); box-shadow: 0 0 0 2px var(--panel-2); }
+.tc-marks { display: grid; grid-template-columns: repeat(4, auto); gap: 2px 12px; }
+.tc-mark { display: flex; flex-direction: column; }
+.tc-mark-label { color: var(--muted); font-size: var(--fs-xs); }
+.tc-mark-value { font-variant-numeric: tabular-nums; color: var(--text); }
+.tc-facts { display: flex; flex-wrap: wrap; gap: 4px 14px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--muted); }
+.tc-facts b { color: var(--text-hi); font-weight: 700; font-variant-numeric: tabular-nums; }
+.tc-note { color: var(--muted); font-size: var(--fs-xs); line-height: var(--lh-snug); }

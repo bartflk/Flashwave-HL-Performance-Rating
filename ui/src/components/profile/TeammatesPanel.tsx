@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
+import { ApiError } from "../ApiError";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type Teammate } from "../../api/types";
+import { type Teammate } from "../../api/types";
 import { formatDate, rating, signed } from "../../lib/format";
 import { openPlayer } from "../../lib/goto";
 import { ClassIcon } from "../ClassIcon";
@@ -57,7 +58,7 @@ export function TeammatesPanel() {
   }, [q.data, currentOnly, sort]);
 
   if (q.isPending) return <Loading>{tr("Loading teammates…")}</Loading>;
-  if (q.isError) return <p className="error">{errorMessage(q.error)}</p>;
+  if (q.isError) return <ApiError error={q.error} />;
   const d = q.data;
   const shown = open ? rows : rows.slice(0, FIRST);
 

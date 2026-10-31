@@ -3009,3 +3009,89 @@ holds the moment. Not done: Kill by kill, lives and positions on a combined
 log read a raw server log, which a logs.tf combine has none of and its parts'
 are not downloaded (they are folded in). Next: fetch the parts' raw logs and
 let the analysis read a combined log as its parts' raw logs in round order.
+
+## 30. The RGL tab (Q88, Flashy, 31 Oct 2026)
+
+Flashy: "can you re-search and design the RGL section" -- then "highlander
+only, use your ladder". RGL's North American Highlander league (and its
+Highlander cups) as a tab beside ETF2L, in the same shape. Prolander and
+Sixes are left out.
+
+**The source (read 31 Oct 2026).** RGL has an official public API,
+`https://api.rgl.gg/v0`, documented at `https://api.rgl.gg/docs` (OpenAPI
+3, "RGL Public API" 0.1.0), no key. NA Highlander is region 24 (HL Season 25
+is season 198); the Highlander cups are regions of format 2 (Newcomer,
+Experimental, Map Development, Region Wars, Retro, Newbies).
+
+| Endpoint | Holds |
+|---|---|
+| `GET /seasons?regionId=` | a region's seasons |
+| `GET /seasons/{id}` | map pool, every team id, every match id (S24: 95 teams, 201 matches) |
+| `GET /seasons/{id}/groups`, `/groups/{id}/teams` | divisions and their teams, with final rank |
+| `GET /matches/{id}` | date, round name, both teams, each map's score, winner, forfeit |
+| `GET /teams/{id}` | roster with join and leave dates, the same team's other seasons (`linkedTeams`) |
+| `GET /profile/{steamId}`, `/profile/{steamId}/teams`, `POST /profile/getmany` | name, avatar, ban and probation; teams by season with W-L; 100 profiles a request |
+| `POST /search/players`, `/search/teams` | by name |
+| `GET /bans/paged` | the league's bans |
+
+What it does not give, and how around it:
+- **Rate limit** 5 requests a second (`ratelimit-*` headers; a 429 says
+  retry in 1 s). The client keeps to 4 and honours `retry-after`.
+- **`POST /matches/paged` is broken** (a 500: the server hands `take` and
+  `skip` to Prisma as strings). Matches are read one by one from a season's
+  match list, ~40 s a Highlander season; ask RGL whether it will be fixed.
+- **No lineups and no logs** on a match. Who played comes from the rosters'
+  dates; the log from trends.tf's RGL-tagged logs, else both rosters on the
+  match's date, as unlinked ETF2L officials are found now.
+
+**The ladder** (Flashy chose it): RGL's divisions on the app's ETF2L ladder,
+for division tags, opponent strength and In depth's "Against each division".
+The tag keeps RGL's own name; the tier is for comparing.
+
+| RGL | Tier |
+|---|---|
+| Invite | Premiership |
+| Advanced | High |
+| Main | Mid |
+| Intermediate, Amateur | Low |
+| Newcomer | Open |
+
+Admin Placement, Dead Teams and Unassigned are not divisions and are left
+out.
+
+**Phase 1: data.**
+- `rgl.rs` beside `etf2l.rs`: the throttled client, the plain errors
+  (`friendlyError` already names RGL).
+- A new migration (shipped ones stay frozen): `rgl_season`, `rgl_group`,
+  `rgl_team`, `rgl_roster (team, account, joined, left)`, `rgl_match`,
+  `rgl_match_map`, `rgl_profile`.
+- Sync as ETF2L's: the live season and the two before it; a live season's
+  new matches each sync; a finished season read once; profiles 100 at a
+  time.
+- Logs linked to their match (trends.tf first, then rosters and date); a
+  linked log is an official in the match list and in the league sample.
+
+**Phase 2: the tab.** Home · Matches · Seasons · Teams · Players · Bans,
+breadcrumbs and search as in the ETF2L tab, its components reused.
+- **Home:** the live season, the next match day's countdown, latest
+  results, your RGL team if you have one.
+- **Matches:** results and schedule by week and division; a linked log
+  opens the match page.
+- **Seasons:** divisions with standings worked out from the results (the
+  API gives only the final rank), the map pool, playoffs.
+- **Teams:** roster history, results, win rate per map, best-rated players,
+  the team across seasons through `linkedTeams`.
+- **Players:** RGL career by season with W-L, ban and probation, current
+  team.
+- **Bans:** the league's list.
+
+**Phase 3: through the app.** An RGL card on profiles under ETF2L's;
+division tags for RGL players on the scoreboard; RGL officials marked
+official, with tournament dividers for RGL seasons; opponent strength and
+In depth on the ladder above. RGL credited in the README and in the app's
+source notes.
+
+**Open.** Whether the tab is always shown or only (or first) for users whose
+own games are RGL: RGL Highlander is North American, and Flashy, in Europe,
+has no RGL history. Size: about a session for phase 1, one or two for phase
+2, one for phase 3; the feature of 0.14.0.

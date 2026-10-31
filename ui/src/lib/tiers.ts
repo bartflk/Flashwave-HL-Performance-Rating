@@ -6,19 +6,37 @@ import type { StatScales } from "../api/types";
 /**
  * Colours for how a number stands on its class (Flashy: "a colour-coded
  * damage per minute, kind of like osu has colours for difficulties"): osu!'s
- * difficulty order, muted slate and teal at the bottom through olive,
- * amber, red and magenta to violet, then black, laid over the percentiles of the class's games -- the deepest for
- * the top 1%. The scale comes from the games held, officials counting fully
+ * difficulty spectrum, blue through yellow and red to navy, then black,
+ * laid over the percentiles of the class's games -- black for the top 1%.
+ * Red to green is the default. The scale comes from the games held, officials counting fully
  * and scrims and pugs less (stat_scale.rs).
  */
 
-/** One colour per percentile the scale is given at: osu!'s order, blue,
- *  green, yellow, red, purple, but quiet at the bottom and loud at the top
- *  (Flashy: "the lower DPM colours are very bright, they should use muted
- *  colours"). An ordinary game sits back; only a standout one catches the eye. */
-const STOPS = ["#323a46", "#36414f", "#34505e", "#365e55", "#58663a", "#8f7a2c", "#bf6a2a", "#d8484e", "#c23ba6", "#7a4cf0"];
+/** osu!'s difficulty spectrum as its site draws it now, by star rating
+ *  (Flashy, 31 Oct 2026: "the osu colours are more like this", over the
+ *  muted ones of before): blue, cyan, green, yellow, orange, red, pink,
+ *  purple, indigo, navy, black. */
+const OSU: [number, string][] = [
+  [0.1, "#4290fb"],
+  [1.25, "#4fc0ff"],
+  [2, "#4fffd5"],
+  [2.5, "#7cff4f"],
+  [3.3, "#f6f05c"],
+  [4.2, "#ff8068"],
+  [4.9, "#ff4e6f"],
+  [5.8, "#c645b8"],
+  [6.7, "#6563de"],
+  [7.7, "#18158e"],
+  [9, "#000000"],
+];
 /** Past the top 1%: osu!'s black, with gold text. */
 const TOP = "#000000";
+
+/** A percentile as a star rating: the average game near yellow (3.3), the
+ *  top tenth in the purples and navy, the top 1% at the edge of black. */
+function starsOf(pct: number): number {
+  return 0.1 + 7.6 * Math.pow(Math.min(Math.max(pct, 0), 100) / 100, 1.4);
+}
 
 /**
  * Which colours the numbers wear (Flashy: "an option to have a red to green
@@ -31,9 +49,11 @@ const PALETTE_KEY = "hl.statColours";
 let palette: Palette = (() => {
   try {
     const v = localStorage.getItem(PALETTE_KEY);
-    return v === "redgreen" || v === "off" ? v : "osu";
+    // Red to green unless osu!'s were chosen (Flashy: "make the red to
+    // green the default").
+    return v === "osu" || v === "off" ? v : "redgreen";
   } catch {
-    return "osu";
+    return "redgreen";
   }
 })();
 const paletteListeners = new Set<() => void>();
@@ -98,20 +118,23 @@ function mix(a: string, b: string, t: number): string {
   return `#${x.map((c, i) => Math.round(c + (y[i] - c) * t).toString(16).padStart(2, "0")).join("")}`;
 }
 
-/** The colour at a percentile, blended between the stops around it. */
-export function tierColour(pct: number, pcts: number[]): string {
+/** The colour at a percentile: its star rating on osu!'s spectrum. `_pcts`,
+ *  the percentiles the scale is given at, is kept for the callers. */
+export function tierColour(pct: number, _pcts: number[]): string {
   if (pct >= 100) return TOP;
-  for (let i = 1; i < pcts.length; i++) {
-    if (pct < pcts[i]) return mix(STOPS[i - 1], STOPS[i], (pct - pcts[i - 1]) / (pcts[i] - pcts[i - 1]));
+  const s = starsOf(pct);
+  if (s <= OSU[0][0]) return OSU[0][1];
+  for (let i = 1; i < OSU.length; i++) {
+    if (s < OSU[i][0]) return mix(OSU[i - 1][1], OSU[i][1], (s - OSU[i - 1][0]) / (OSU[i][0] - OSU[i - 1][0]));
   }
-  return STOPS[STOPS.length - 1];
+  return OSU[OSU.length - 1][1];
 }
 
-/** Gold on black at the top; white on the loud colours; a soft grey on the
- *  quiet ones, so the bottom of the scale reads as quiet too. */
+/** As osu! writes on its pills: dark on the light colours, its yellow from
+ *  6.5 stars on, gold on the black at the top. */
 export function tierText(bg: string, pct: number): string {
   if (bg === TOP) return "#f6d05c";
-  return pct < 55 ? "#c4c9d2" : "#fff";
+  return starsOf(pct) >= 6.5 ? "#f6f05c" : "rgba(0, 0, 0, 0.78)";
 }
 
 /**
@@ -120,6 +143,8 @@ export function tierText(bg: string, pct: number): string {
  * its own (Flashy: "300 dpm on steel on sniper is crazy vs 300 dpm on
  * koth_product"), else among all the class's games.
  */
+export type Tier = NonNullable<ReturnType<typeof tierOf>>;
+
 export function tierOf(scales: StatScales | undefined, cls: string | null | undefined, stat: "dpm" | "accuracy", v: number | null, map?: string | null) {
   if (!scales || !cls || v === null) return null;
   const onMap = map ? scales.maps?.[cls]?.[map] : undefined;
@@ -134,5 +159,22 @@ export function tierOf(scales: StatScales | undefined, cls: string | null | unde
   const pct = percentileOf(v, cuts, scales.percentiles);
   if (pct === null) return null;
   const bg = tierColour(pct, scales.percentiles);
-  return { pct, bg, fg: tierText(bg, pct), map: byMap ? map! : null };
+  return {
+    pct,
+    bg,
+    fg: tierText(bg, pct),
+    map: byMap ? map! : null,
+    // What the scale was measured on, for the hover card (Flashy: "out of
+    // how many games, how many players").
+    stat,
+    cuts,
+    pcts: scales.percentiles,
+    games: games ?? 0,
+    officials: stat === "dpm" ? c?.dpmOfficials : c?.accuracyOfficials,
+    players: stat === "dpm" ? c?.dpmPlayers : c?.accuracyPlayers,
+    // A map asked for that has too few games for a scale of its own.
+    missedMap: !byMap && map ? map : null,
+    // Made from the logs.tf archive: its span, for the card's note.
+    archive: c?.archive && scales.archive ? scales.archive : null,
+  };
 }

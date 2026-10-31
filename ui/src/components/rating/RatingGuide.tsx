@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { ApiError } from "../ApiError";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type ClassGuide, type ComponentGuide, type RatingGuide } from "../../api/types";
+import { type ClassGuide, type ComponentGuide, type RatingGuide } from "../../api/types";
 import { ClassIcon } from "../ClassIcon";
 import { classLabel } from "../analysis/common";
 import { t, tx } from "../../lib/i18n";
@@ -53,7 +54,7 @@ export function RatingGuidePage({ onBack }: { onBack: () => void }) {
       </header>
 
       {q.isPending && <Loading>{t("Loading…")}</Loading>}
-      {q.isError && <p className="error">{errorMessage(q.error)}</p>}
+      {q.isError && <ApiError error={q.error} />}
       {q.data && (
         <>
           <Pipeline g={q.data} />

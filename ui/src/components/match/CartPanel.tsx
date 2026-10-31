@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { ApiError } from "../ApiError";
 import { Help } from "../StatTip";
 import { api } from "../../api/client";
-import { errorMessage, type CartFight, type CartHold, type CartRound, type MatchDetail, type RoundFight } from "../../api/types";
+import { type CartFight, type CartHold, type CartRound, type MatchDetail, type RoundFight } from "../../api/types";
 import { clock } from "../../lib/format";
 import { copy } from "../../lib/toast";
 import { t, tx } from "../../lib/i18n";
@@ -26,7 +27,7 @@ export function CartPanel({ d }: { d: MatchDetail }) {
     return (
       <section className="panel cart-panel">
         <h2>{t("The cart")}</h2>
-        <p className="error">{errorMessage(q.error)}</p>
+        <ApiError error={q.error} />
       </section>
     );
   }

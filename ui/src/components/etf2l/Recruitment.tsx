@@ -1,8 +1,8 @@
 import { useState } from "react";
+import { ApiError } from "../ApiError";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { EtfComment, RecruitPost } from "../../api/types";
-import { errorMessage } from "../../api/types";
 import { formatDate } from "../../lib/format";
 import { openPlayer } from "../../lib/goto";
 import { t, tx } from "../../lib/i18n";
@@ -94,7 +94,7 @@ export function RecruitmentPage({ onOpen }: { onOpen: (p: RecruitPost, kind: Kin
         )}
       </div>
       {q.isPending && <Loading>{t("Loading recruitment…")}</Loading>}
-      {q.isError && <p className="error">{errorMessage(q.error)}</p>}
+      {q.isError && <ApiError error={q.error} />}
       {q.data && shown.length === 0 && (
         <section className="panel e2-panel">
           <p className="hint">{all.length === 0 ? t("No recruitment posts could be read from ETF2L just now.") : t("No posts match these filters.")}</p>
@@ -210,7 +210,7 @@ export function RecruitPostPage({ p, kind, onTeam }: { p: RecruitPost; kind: Kin
           <section className="panel e2-panel">
             <ClassRow p={p} kind={kind} />
             {q.isPending && <Loading>{t("Loading the post…")}</Loading>}
-            {q.isError && <p className="error">{errorMessage(q.error)}</p>}
+            {q.isError && <ApiError error={q.error} />}
             {q.data === null && <p className="hint">{t("The post could not be read from ETF2L; it may have been removed.")}</p>}
             {d && (d.html.trim() ? <HtmlBody html={d.html} /> : <p className="hint">{t("No message.")}</p>)}
           </section>

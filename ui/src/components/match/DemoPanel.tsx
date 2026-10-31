@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { friendlyText } from "../../lib/apierror";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../../api/client";
-import { errorMessage, type DemosTfFound, type DemoLinked, type DemoView, type MatchDetail, type ReRead } from "../../api/types";
+import { type DemosTfFound, type DemoLinked, type DemoView, type MatchDetail, type ReRead } from "../../api/types";
 import { copy } from "../../lib/toast";
 import { beginDownload, failDownload, useDownload } from "../../lib/downloads";
 import { beforeDemosTf } from "../../lib/stv";
@@ -44,8 +45,8 @@ export function DemoPanel({ d }: { d: MatchDetail }) {
     try {
       await api.fetchStv(d.logId);
     } catch (e) {
-      setError(errorMessage(e));
-      failDownload(d.logId, errorMessage(e));
+      setError(friendlyText(e));
+      failDownload(d.logId, friendlyText(e));
     }
   }
 
@@ -177,7 +178,7 @@ export function LookAgain({ d }: { d: MatchDetail }) {
       setGot(r);
       if (r.matched > 0) void qc.invalidateQueries({ queryKey: ["match", d.logId] });
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }
@@ -224,7 +225,7 @@ function ByLink({ d }: { d: MatchDetail }) {
         void qc.invalidateQueries({ queryKey: key });
       }
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }
@@ -299,7 +300,7 @@ function ReadAgain({ d }: { d: MatchDetail }) {
         void qc.invalidateQueries({ queryKey: [key] });
       }
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setStep(null);
     }
@@ -354,7 +355,7 @@ function DropZone({ d }: { d: MatchDetail }) {
         void qc.invalidateQueries({ queryKey: key });
       }
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }

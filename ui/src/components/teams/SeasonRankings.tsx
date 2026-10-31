@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ApiError } from "../ApiError";
 import { RatingValue } from "../RatingValue";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type SeasonRow, type StatTotals } from "../../api/types";
+import { type SeasonRow, type StatTotals } from "../../api/types";
 import { rating } from "../../lib/format";
 import { openPlayer } from "../../lib/goto";
 import { t, tx } from "../../lib/i18n";
@@ -204,7 +205,7 @@ export function SeasonRankings({ season, onTeam }: { season: number; onTeam: (id
         <ColumnPicker cols={pickable} state={picker} />
       </div>
       {q.isPending && <Loading>{t("Reading the season…")}</Loading>}
-      {q.isError && <p className="error">{errorMessage(q.error)}</p>}
+      {q.isError && <ApiError error={q.error} />}
       {v && (
         <>
           <p className="hint sr-caption">

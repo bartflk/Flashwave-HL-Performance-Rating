@@ -14,16 +14,25 @@ const SITES = ["trends.tf", "logs.tf", "drops.tf", "more.tf", "demos.tf", "ETF2L
 export function friendlyError(e: unknown): { text: string; detail: string } {
   const detail = typeof e === "string" ? e : errorMessage(e);
   const lower = detail.toLowerCase();
-  const site = SITES.find((s) => lower.includes(s.toLowerCase())) ?? t("The site");
+  const named = SITES.find((s) => lower.includes(s.toLowerCase()));
+  // Only a request to a site: a file or the database keeps its own words
+  // ("os error 2" on a missing file is not a site down).
+  if (!named && !/https?:\/\//.test(lower)) return { text: detail, detail };
+  const site = named ?? t("The site");
   let text: string | null = null;
   if (/\b429\b|too many requests|rate.?limit/.test(lower)) {
     text = t("{0} is busy right now; try again in a few minutes.", { "0": site });
-  } else if (/error sending request|connect|timed? ?out|dns|os error|tls|certificate|unreachable|network/.test(lower)) {
+  } else if (/error sending request|tcp connect|connection (refused|reset|closed)|timed? ?out|dns error|failed to lookup|tls|certificate|unreachable/.test(lower)) {
     text = t("{0} isn't answering right now; try again later.", { "0": site });
-  } else if (/\b5\d\d\b|server error|bad gateway|unavailable/.test(lower)) {
+  } else if (/\b5\d\d\b|server error|bad gateway|service unavailable/.test(lower)) {
     text = t("{0} is having trouble right now; try again later.", { "0": site });
-  } else if (/https?:\/\/|\bhttp\b|status \d{3}|decoding|expected .* at line/.test(lower)) {
+  } else if (/https?:\/\/|status \d{3}|error decoding|expected .* at line/.test(lower)) {
     text = t("{0} could not be read right now.", { "0": site });
   }
   return { text: text ?? detail, detail };
+}
+
+/** Just the words of `friendlyError`. */
+export function friendlyText(e: unknown): string {
+  return friendlyError(e).text;
 }

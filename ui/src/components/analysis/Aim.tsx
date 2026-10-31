@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { ApiError } from "../ApiError";
 import { HowCounted } from "../StatTip";
 import { api } from "../../api/client";
-import { errorMessage, type Analysis, type AimRow, type AimTotals, type DeathRow, type LifeTotals } from "../../api/types";
+import { type Analysis, type AimRow, type AimTotals, type DeathRow, type LifeTotals } from "../../api/types";
 import { AimCharts } from "./AimCharts";
 import { classLabel, playerMap, sliceLabel, sliceScope, type Slice } from "./common";
 import { t, t as tr, tx, k } from "../../lib/i18n";
@@ -54,7 +55,7 @@ export function Aim(props: {
   const cls = a.players.find((p) => p.accountId === player)?.mainClass ?? null;
 
   if (q.isPending) return <Loading className="an-empty">{t("Reading the demo…")}</Loading>;
-  if (q.isError) return <p className="error">{errorMessage(q.error)}</p>;
+  if (q.isError) return <ApiError error={q.error} />;
   const d = q.data;
   if (!d || (d.kills.length === 0 && d.deaths.length === 0)) {
     // Nothing for someone else, on a match with no STV, has one cause and

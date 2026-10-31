@@ -1,7 +1,7 @@
 import { useState } from "react";
+import { friendlyText } from "../lib/apierror";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { errorMessage } from "../api/types";
 import { t, tx } from "../lib/i18n";
 
 /**
@@ -37,7 +37,7 @@ export function HistoryPanel() {
       await qc.invalidateQueries({ queryKey: ["index_stats"] });
       setAsking(false);
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }

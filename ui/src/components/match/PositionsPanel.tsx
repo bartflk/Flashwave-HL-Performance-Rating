@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { ApiError } from "../ApiError";
 import { Help } from "../StatTip";
 import { api } from "../../api/client";
-import { errorMessage, type MatchDetail, type PositionsView } from "../../api/types";
+import { type MatchDetail, type PositionsView } from "../../api/types";
 import { t } from "../../lib/i18n";
 import { ClassIcon } from "../ClassIcon";
 import { useMeasuredWidth } from "../../lib/measure";
@@ -46,7 +47,7 @@ export function PositionsPanel({ d }: { d: MatchDetail }) {
     return (
       <section className="panel">
         <h2>{t("Positions")}</h2>
-        <p className="error">{errorMessage(q.error)}</p>
+        <ApiError error={q.error} />
       </section>
     );
   }

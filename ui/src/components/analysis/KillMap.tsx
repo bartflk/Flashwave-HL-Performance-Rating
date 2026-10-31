@@ -1,7 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { friendlyText } from "../../lib/apierror";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type Analysis, type KillView, type MapView, type Overview, type BuildingRow, type PathRow, type Vec3 } from "../../api/types";
+import { type Analysis, type KillView, type MapView, type Overview, type BuildingRow, type PathRow, type Vec3 } from "../../api/types";
 import { capitalize, splitMap, teamLabel } from "../../lib/format";
 import { DEATH, KILL, inSlice, jumpTo, playerMap, roundClock, themeColour, type Slice, classLabel } from "./common";
 import { LifeList } from "./LifeList";
@@ -178,7 +179,7 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
     beginDownload(a.logId, `${capitalize(splitMap(a.map).name ?? "this match")}, log ${a.logId}`);
     // A refused command must reach the card, or it sits there claiming to
     // be downloading something nobody ever started.
-    await api.fetchStv(a.logId).catch((e) => failDownload(a.logId, errorMessage(e)));
+    await api.fetchStv(a.logId).catch((e) => failDownload(a.logId, friendlyText(e)));
   };
 
   const [heatOf, setHeatOf] = useState<HeatOf>("deaths");

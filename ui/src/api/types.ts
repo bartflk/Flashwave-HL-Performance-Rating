@@ -2787,9 +2787,27 @@ export interface H2hSide {
 /** Each class's DPM and accuracy at fixed percentiles (stat_scale.rs). */
 export interface StatScales {
   percentiles: number[];
-  classes: Record<string, { dpm: number[]; accuracy: number[]; dpmGames: number; accuracyGames: number }>;
+  classes: Record<string, ClassScale>;
   /** Class, then map: the same scales on one map, where it has enough games. */
-  maps?: Record<string, Record<string, { dpm: number[]; accuracy: number[]; dpmGames: number; accuracyGames: number }>>;
+  maps?: Record<string, Record<string, ClassScale>>;
+  /** The logs.tf archive the shipped scales came from (logsdump_scales.rs). */
+  archive?: { source: string; from: number; to: number; logs: number; games: number } | null;
+}
+
+/** One class's (or one class-on-a-map's) scales, and what they were
+ *  measured on: games, the officials among them, and their players (an
+ *  older backend leaves the last two out). */
+export interface ClassScale {
+  dpm: number[];
+  accuracy: number[];
+  dpmGames: number;
+  accuracyGames: number;
+  dpmOfficials?: number;
+  accuracyOfficials?: number;
+  dpmPlayers?: number;
+  accuracyPlayers?: number;
+  /** Made from the logs.tf archive rather than the games held here. */
+  archive?: boolean;
 }
 
 /** Why a player's season rating is what it is (season_stats.rs). */

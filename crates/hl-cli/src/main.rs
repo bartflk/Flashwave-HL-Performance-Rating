@@ -10,6 +10,7 @@ use hl_ingest::{Progress, Sources, SyncOptions};
 use std::path::PathBuf;
 
 mod logsdump;
+mod logsdump_scales;
 mod logstf_summary;
 
 const USAGE: &str = "\
@@ -193,6 +194,16 @@ async fn run() -> Result<()> {
                 _ => bail!("usage: hl logsdump <logs.sql> <out.sqlite3> [--limit <rows>]"),
             };
             logsdump::run(std::path::Path::new(dump), std::path::Path::new(out), limit).await
+        }
+
+        // The DPM and accuracy scales from the dump, for the app to ship.
+        ["logsdump-scales", dump, index, out, rest @ ..] => {
+            let limit = match rest {
+                ["--limit", n] => Some(n.parse().context("--limit needs a number of rows")?),
+                [] => None,
+                _ => bail!("usage: hl logsdump-scales <logs.sql> <index.sqlite3> <out.json> [--limit <rows>]"),
+            };
+            logsdump_scales::run(std::path::Path::new(dump), std::path::Path::new(index), std::path::Path::new(out), limit).await
         }
 
         // The part of that index the app ships: names, careers, years.

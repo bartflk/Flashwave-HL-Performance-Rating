@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
+import { ApiError } from "../ApiError";
 import { api } from "../../api/client";
-import { errorMessage } from "../../api/types";
 import { rating } from "../../lib/format";
 import { openLeagueMatch } from "../../lib/goto";
 import { t, tx } from "../../lib/i18n";
@@ -19,7 +19,7 @@ export function SeasonBreakdown({ season, tier, cls, accountId }: { season: numb
     staleTime: 5 * 60_000,
   });
   if (q.isPending) return <Loading>{t("Rating the season's logs again…")}</Loading>;
-  if (q.isError) return <p className="error">{errorMessage(q.error)}</p>;
+  if (q.isError) return <ApiError error={q.error} />;
   const b = q.data;
   const signed = (x: number) => `${x >= 0 ? "+" : "−"}${Math.abs(x).toFixed(2)}`;
   return (

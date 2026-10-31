@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { ApiError } from "../ApiError";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type DataIssue } from "../../api/types";
+import { type DataIssue } from "../../api/types";
 import { openLeagueMatch } from "../../lib/goto";
 import { t, tx } from "../../lib/i18n";
 import { Loading } from "../Spinner";
@@ -52,7 +53,7 @@ export function DataCheck({ season }: { season: number }) {
           {open ? "▴" : "▾"}
         </span>
       </button>
-      {q.isError && <p className="error">{errorMessage(q.error)}</p>}
+      {q.isError && <ApiError error={q.error} />}
       {open && r && (
         <>
           <p className="hint">

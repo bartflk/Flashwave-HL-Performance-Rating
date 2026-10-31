@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { friendlyText } from "../../lib/apierror";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type CatTeam, type Fixture, type LeagueTableRow, type RecruitPost, type ResultRow, type SeasonTile } from "../../api/types";
+import { type CatTeam, type Fixture, type LeagueTableRow, type RecruitPost, type ResultRow, type SeasonTile } from "../../api/types";
 import { formatDate } from "../../lib/format";
 import { hasPendingPlayer, onOpenLeagueMatch, onOpenSeason, onOpenTeam, onPlayerAsked, openPlayer, takePendingLeagueMatch, takePendingSeason, takePendingTeam } from "../../lib/goto";
 import { t, tx } from "../../lib/i18n";
@@ -85,7 +86,7 @@ function RefreshEtf2l() {
       void qc.invalidateQueries();
       window.setTimeout(() => setMsg(null), 5000);
     } catch (e) {
-      setMsg(errorMessage(e));
+      setMsg(friendlyText(e));
     } finally {
       setBusy(false);
     }

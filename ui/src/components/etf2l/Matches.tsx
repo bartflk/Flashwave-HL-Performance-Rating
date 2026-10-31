@@ -1,8 +1,9 @@
 import { useMemo, useState, type KeyboardEvent } from "react";
+import { ApiError } from "../ApiError";
+import { friendlyText } from "../../lib/apierror";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { Etf2lMatchPage, Fixture, LeagueMatch, LineupPlayer, ResultRow, TeamRosterRow } from "../../api/types";
-import { errorMessage } from "../../api/types";
 import { formatDate, rating } from "../../lib/format";
 import { openPlayer, openTeam } from "../../lib/goto";
 import { t, tx } from "../../lib/i18n";
@@ -215,7 +216,7 @@ export function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void;
       {mode === "results" && (
         <>
           {results.isPending && <Loading>{t("Loading results…")}</Loading>}
-          {results.isError && <p className="error">{errorMessage(results.error)}</p>}
+          {results.isError && <ApiError error={results.error} />}
           {results.data && played.length === 0 && (
             <section className="panel e2-panel">
               <p className="hint">{t("No results match these filters.")}</p>
@@ -260,7 +261,7 @@ export function LeagueMatchPage({ matchId, fixture, onTeam, onOpenLog }: { match
   const fromList = useFixtures().find((f) => f.matchId === matchId);
   const fx = fixture ?? fromList;
   if (q.isPending) return <Loading>{t("Loading the match…")}</Loading>;
-  if (q.isError) return <p className="error">{errorMessage(q.error)}</p>;
+  if (q.isError) return <ApiError error={q.error} />;
   const m = q.data;
   // Known to the database (played or listed in its season), to ETF2L's list
   // of scheduled matches, or only to its own page on etf2l.org: a player's
@@ -756,7 +757,7 @@ function LogButton({ logId, label, stored, matchId, onOpenLog }: { logId: number
       void qc.invalidateQueries({ queryKey: ["league_match", matchId] });
       onOpenLog(logId);
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }

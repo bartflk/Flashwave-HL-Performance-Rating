@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
+import { ApiError } from "./ApiError";
 import { Help } from "./StatTip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { errorMessage } from "../api/types";
 import { locale, t } from "../lib/i18n";
 import { Spinner } from "./Spinner";
 import { SortTh, useSort } from "../lib/sort";
@@ -54,7 +54,7 @@ export function LeagueSamplePanel() {
   return (
     <div className="panel league-panel">
       <h2>{t("League sample")}<Help>{t("Every ETF2L Highlander official of the last six years, playoffs and preseason cups included, downloaded slowly in the background while the app is open. Kept apart from your own matches: it lets ratings be read against the whole league, and tells you which division the players you face come from.")}</Help></h2>
-      {q.isError && <p className="error">{errorMessage(q.error)}</p>}
+      {q.isError && <ApiError error={q.error} />}
       {s && (
         <>
           <div className="row" style={{ marginTop: 12, gap: 10, alignItems: "center", flexWrap: "wrap" }}>

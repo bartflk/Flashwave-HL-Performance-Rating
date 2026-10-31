@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
+import { ApiError } from "../ApiError";
 import { RatingValue } from "../RatingValue";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { errorMessage, type H2hSide, type MatchDetail } from "../../api/types";
+import { type H2hSide, type MatchDetail } from "../../api/types";
 import { rating } from "../../lib/format";
 import { t, tx } from "../../lib/i18n";
 import { ClassIcon } from "../ClassIcon";
@@ -83,7 +84,7 @@ export function HeadToHead({ d }: { d: MatchDetail }) {
       </header>
       {a === b && <p className="hint">{t("Pick two different players.")}</p>}
       {q.isPending && a !== b && <Loading>{t("Rating every log again…")}</Loading>}
-      {q.isError && <p className="error">{errorMessage(q.error)}</p>}
+      {q.isError && <ApiError error={q.error} />}
       {h && totals && (
         <>
           <div className="hh-totals">

@@ -1,8 +1,10 @@
 import { Fragment, useState } from "react";
+import { ApiError } from "./ApiError";
+import { friendlyText } from "../lib/apierror";
 import { RatingValue } from "./RatingValue";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { errorMessage, type ContextKind, type MatchSummary, type MyLine, type StatScales, type Tournament } from "../api/types";
+import { type ContextKind, type MatchSummary, type MyLine, type StatScales, type Tournament } from "../api/types";
 import { useTournamentDividers } from "../lib/tourneys";
 import { DivisionBadge } from "./players/PlayerProfile";
 import { tierOf as divisionTier } from "./etf2l/Brackets";
@@ -268,7 +270,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
       )}
       </div>
 
-      {matches.isError && <p className="error">{errorMessage(matches.error)}</p>}
+      {matches.isError && <ApiError error={matches.error} />}
 
       {!matches.isPending && items.length === 0 && !matches.isError && (
         <div className="empty">
@@ -465,7 +467,7 @@ function ImportLog({ onOpen }: { onOpen: (logId: number) => void }) {
         setNote(t("Added. You are not in this one, so it joins the pool everyone is rated against rather than your match list."));
       }
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
     } finally {
       setBusy(false);
     }
@@ -579,7 +581,7 @@ function MatchRow({ m, onOpen, classCol, cols, scales }: { m: MatchSummary; onOp
         if ((c.key === "dpm" || c.key === "acc") && me && v !== null && v !== undefined)
           return (
             <td key={c.key} className="num">
-              <TierPill text={c.fmt ? c.fmt(v) : String(v)} tier={tierOf(scales, me.mainClass, c.key === "dpm" ? "dpm" : "accuracy", v, m.mapKey)} cls={me.mainClass} />
+              <TierPill text={c.fmt ? c.fmt(v) : String(v)} tier={tierOf(scales, me.mainClass, c.key === "dpm" ? "dpm" : "accuracy", v, m.mapKey)} cls={me.mainClass} fmt={c.fmt} />
             </td>
           );
         return (

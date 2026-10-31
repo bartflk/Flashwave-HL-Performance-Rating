@@ -1823,12 +1823,22 @@ button.mini {
 .set-body > .panel > h2:first-child { display: none; }
 .set-section.hide-intro .set-body > .panel > h2:first-child + p.hint { display: none; }
 .set-body > .panel > :nth-child(2) { margin-top: 0 !important; }
+/* A section of several (Interface size: the size, stat colours, tournament
+   dividers): each after the first under its own name, a rule and room above,
+   not run together unlabelled (Flashy: "a bit cramped"). */
+.set-body > .panel + .panel { margin-top: 20px; padding-top: 18px; border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+.set-body > .panel + .panel > h2:first-child {
+  display: flex; align-items: center; gap: 6px; margin: 0 0 12px;
+  font-family: var(--font-display); font-weight: 700; font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted);
+}
+.set-body > .panel + .panel > h2:first-child + * { margin-top: 0 !important; }
+.set-body > .panel > .scale-row:first-of-type { margin-top: 14px; }
 @media (max-width: 700px) {
   .set-summary { white-space: normal; }
 }
 
 /* Settings › Interface size (2K and 4K screens). */
-.scale-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.scale-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-top: 12px; }
 .scale-seg { flex-wrap: wrap; }
 .scale-step { width: 34px; justify-content: center; font-size: var(--fs-section); padding: 4px 0; }
 
@@ -1855,7 +1865,8 @@ button.mini {
 .dl-report { margin: 6px 0 0; padding-left: 16px; font-size: var(--fs-small); line-height: var(--lh-body); color: var(--text); }
 .dl-report li::marker { color: var(--accent); }
 .dl-took { color: var(--muted); }
-.stat-colours-sample { display: inline-flex; gap: 6px; margin-left: 8px; }
+.stat-colours-sample { display: inline-flex; flex-wrap: wrap; gap: 8px; margin-left: 12px; }
+.stat-colours-sample > * { padding: 3px 8px; }
 
 /* Backups (settings/BackupsPanel.tsx): what the app keeps on disk, its
    copies, what an interrupted copy left behind, and what the database holds. */

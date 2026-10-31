@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { friendlyText } from "../lib/apierror";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { api, inTauri } from "../api/client";
-import { errorMessage, type PresetCheck } from "../api/types";
+import { type PresetCheck } from "../api/types";
 import { capitalize } from "../lib/format";
 import { t, tx } from "../lib/i18n";
 import { toast } from "../lib/toast";
@@ -30,7 +31,7 @@ export function CalloutPresetButtons({ map, canExport, canUndo }: { map: string;
       const path = await api.exportCallouts(map);
       if (path) setNote(t("Saved {0}.", { "0": path }));
     } catch (e) {
-      setNote(errorMessage(e));
+      setNote(friendlyText(e));
     }
   };
   const importIt = async () => {
@@ -39,7 +40,7 @@ export function CalloutPresetButtons({ map, canExport, canUndo }: { map: string;
       const path = await api.pickCalloutFile();
       if (path) setPicked(path);
     } catch (e) {
-      setNote(errorMessage(e));
+      setNote(friendlyText(e));
     }
   };
   const undo = async () => {
@@ -49,7 +50,7 @@ export function CalloutPresetButtons({ map, canExport, canUndo }: { map: string;
       calloutsChanged(qc);
       setNote(t("Import taken back."));
     } catch (e) {
-      setNote(errorMessage(e));
+      setNote(friendlyText(e));
     }
   };
 
@@ -85,7 +86,7 @@ export function CalloutImportDialog({ path, map, onClose, onDone }: { path: stri
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api.inspectCallouts(map, path).then(setCheck, (e) => setError(errorMessage(e)));
+    api.inspectCallouts(map, path).then(setCheck, (e) => setError(friendlyText(e)));
   }, [map, path]);
 
   const other = check !== null && check.map !== check.target;
@@ -98,7 +99,7 @@ export function CalloutImportDialog({ path, map, onClose, onDone }: { path: stri
       calloutsChanged(qc);
       onDone(t("{map} now has these {n} zones. Undo import puts back what was there.", { map: capitalize(check.target), n: got.zones.length }));
     } catch (e) {
-      setError(errorMessage(e));
+      setError(friendlyText(e));
       setBusy(false);
     }
   };
