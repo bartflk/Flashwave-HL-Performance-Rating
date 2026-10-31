@@ -30,6 +30,7 @@ use hl_core::{SteamId, TfClass};
 use hl_db::Db;
 use hl_demos::aim::Shot;
 use serde::Serialize;
+use std::collections::HashSet;
 use std::path::Path;
 
 /// How far apart the demo's clock and the log's clock may be for two kills of
@@ -176,9 +177,24 @@ pub async fn for_log_with(db: &Db, log_id: i64, me: SteamId, progress: &mut (dyn
     // first, which had left five of the six maps' halves without movement.
     let stvs: Vec<&hl_db::LinkedDemo> = demos.iter().filter(usable).filter(|d| d.kind == "stv").collect();
     let mut jobs: Vec<(&hl_db::LinkedDemo, Scope, bool)> = Vec::new();
+    // The rounds an STV covers, by where each round began: the server splits
+    // its recording into parts, and a part that is not on this machine leaves
+    // its rounds to the owner's own recording (Flashy: "why does it say 3/9
+    // rounds"; a koth match whose one STV part held rounds 4 to 6).
+    let stv_rounds: HashSet<i64> = match offset {
+        Some(o) => rounds
+            .iter()
+            .filter(|(_, f, _)| {
+                stvs.iter().any(|s| s.start_utc.is_some_and(|st| *f >= st - o as f64 - 5.0 && *f <= st + s.playback_s - o as f64))
+            })
+            .map(|(n, ..)| *n)
+            .collect(),
+        None => HashSet::new(),
+    };
     match (pov, stv) {
         (Some(p), Some(_)) => {
-            jobs.push((p, Scope::Owner, false));
+            // The owner's routes from it too, in the rounds no STV covers.
+            jobs.push((p, Scope::Owner, true));
             jobs.extend(stvs.iter().map(|s| (*s, Scope::Others, true)));
         }
         (Some(p), None) => jobs.push((p, Scope::Owner, true)),
@@ -290,6 +306,11 @@ pub async fn for_log_with(db: &Db, log_id: i64, me: SteamId, progress: &mut (dyn
             // A life outside every round of this log belongs to another match
             // in the same recording.
             if round.is_none() && offset.is_some() {
+                continue;
+            }
+            // The owner's own recording beside an STV: only the rounds the
+            // STV does not cover, so no life is drawn twice.
+            if !everyone && round.is_some_and(|r| stv_rounds.contains(&r)) {
                 continue;
             }
             let account_id = account_of(&l.steamid).unwrap_or(0);
@@ -421,6 +442,8 @@ fn nearest<'a>(
 /// 9: routes for other players only from an STV demo.
 /// 10: the points captured during each life.
 /// 11: every player's aim and deaths from an STV demo, not only the owner's.
+/// 14: the owner's routes from their own recording in the rounds no STV on
+///     this machine covers (the server splits its recording into parts).
 /// 13: a life begun before its round (spawned in the pre-round freeze, a
 ///     moment before the log's Round_Start, or alive from the pregame) is
 ///     the round's, from its start, where it was left out as another
@@ -430,7 +453,7 @@ fn nearest<'a>(
 ///     before" and the flick measured in ticks rather than frames (a POV
 ///     demo skips ticks), and the demo kept as a timeline in the same walk
 ///     (Q3).
-pub const VERSION: i64 = 13;
+pub const VERSION: i64 = 14;
 
 /// The round a life from `at` to `until` (the log's clock) belongs to, and
 /// the tick it starts at in it: the round it began in, else the first one

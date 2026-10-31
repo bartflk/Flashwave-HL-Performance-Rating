@@ -1617,10 +1617,11 @@ async fn run() -> Result<()> {
                 for l in near {
                     let (s, e) = l.span.unwrap();
                     println!(
-                        "  {:<5} {:<9} {:>10}  life {:+7.1} .. {:+7.1}  round {:?}  opening {:?} pts {} skip {}",
+                        "  {:<5} {:<9} {:>10}  demo {:<4} life {:+7.1} .. {:+7.1}  round {:?}  opening {:?} pts {} skip {}",
                         l.team.as_deref().unwrap_or("?"),
                         l.class.as_deref().unwrap_or("?"),
                         l.account_id,
+                        l.demo_id,
                         s - from,
                         e - from,
                         l.round_num,

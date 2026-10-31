@@ -291,7 +291,7 @@ pub async fn opposite(db: &Db, account_id: u32, map: &str, class: Option<&str>) 
     }
     let mut out = LivesOnMap { map: mine.map, ..Default::default() };
     for (log_id, (played_at, by_round, demos)) in rounds {
-        let which = one_view(demos.into_iter().collect());
+        let which: Vec<(i64, bool)> = demos.into_iter().collect();
         let keep = |p: &hl_db::PathRow| p.account_id != account_id;
         let theirs: Vec<LifeOnMap> = lives_in_log(db, log_id, played_at, &which, &keep)
             .await?
@@ -318,7 +318,10 @@ pub async fn opposite(db: &Db, account_id: u32, map: &str, class: Option<&str>) 
 /// page too").
 pub async fn match_openings(db: &Db, log_id: i64) -> Result<Vec<LifeOnMap>> {
     let linked = db.demos_for_log(log_id).await?;
-    let which = one_view(linked.iter().map(|d| (d.demo_id, d.kind == "stv")).collect());
+    // Every demo: beside an STV, the owner's own recording holds only the
+    // rounds no STV part covers (demo reading version 14), so no life is
+    // drawn twice.
+    let which: Vec<(i64, bool)> = linked.iter().map(|d| (d.demo_id, d.kind == "stv")).collect();
     let played_at = db.match_played_at(log_id).await?;
     let keep = |_: &hl_db::PathRow| true;
     Ok(lives_in_log(db, log_id, played_at, &which, &keep).await?.into_iter().filter(|l| !l.opening_t.is_empty()).collect())
@@ -328,19 +331,12 @@ pub async fn match_openings(db: &Db, log_id: i64) -> Result<Vec<LifeOnMap>> {
 /// `hl openings` to show which began a round and which did not.
 pub async fn match_lives(db: &Db, log_id: i64) -> Result<Vec<LifeOnMap>> {
     let linked = db.demos_for_log(log_id).await?;
-    let which = one_view(linked.iter().map(|d| (d.demo_id, d.kind == "stv")).collect());
+    // Every demo: beside an STV, the owner's own recording holds only the
+    // rounds no STV part covers (demo reading version 14), so no life is
+    // drawn twice.
+    let which: Vec<(i64, bool)> = linked.iter().map(|d| (d.demo_id, d.kind == "stv")).collect();
     let keep = |_: &hl_db::PathRow| true;
     lives_in_log(db, log_id, None, &which, &keep).await
-}
-
-/// SourceTV's demos when there are any, as they see everyone; a player's own
-/// recording besides one would draw the same lives twice.
-fn one_view(demos: Vec<(i64, bool)>) -> Vec<(i64, bool)> {
-    if demos.iter().any(|&(_, stv)| stv) {
-        demos.into_iter().filter(|&(_, stv)| stv).collect()
-    } else {
-        demos
-    }
 }
 
 /// The lives `keep` picks in one match's `demos` (`(id, SourceTV's)`), each
