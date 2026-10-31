@@ -3,6 +3,7 @@
 //! The pure parts — [`normalize`], [`classify`] and [`dedupe`] — have no I/O
 //! and carry the correctness burden. [`sync`] is the orchestration around them.
 
+pub mod backoff;
 pub mod classify;
 pub mod dedupe;
 mod http;

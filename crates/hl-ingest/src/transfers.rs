@@ -23,6 +23,9 @@ use serde_json::Value;
 const STALE: i64 = 24 * 3600;
 /// "Active": played an official in the last four months.
 const ACTIVE: i64 = 120 * 24 * 3600;
+/// A player with no official in those four months has their list read again
+/// after a month: it rarely changes.
+const STALE_INACTIVE: i64 = 30 * 24 * 3600;
 
 fn now() -> i64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64)
@@ -101,16 +104,10 @@ pub async fn fetch_player(db: &Db, sources: &Sources, account: u32) -> Result<us
     let steam = SteamId::from_account_id(account).to_steamid64();
     // A player's list names the teams but not the player: who they are
     // comes from their ETF2L profile, stored or read now.
-    let known = db.etf2l_player(account).await?.and_then(|p| Some((p.etf2l_id?, p.name.unwrap_or_default())));
-    let (id, name) = match known {
-        Some(k) => k,
-        None => {
-            let Some(body) = sources.etf2l_get(&format!("/player/{steam}")).await? else { return Ok(0) };
-            let v: Value = serde_json::from_str(&body).unwrap_or(Value::Null);
-            let p = v.get("player").unwrap_or(&v);
-            let Some(id) = p["id"].as_i64() else { return Ok(0) };
-            (id, p["name"].as_str().unwrap_or("").to_string())
-        }
+    // The same lookup the profile's header makes, shared: never a second
+    // request for it.
+    let Some((id, name)) = crate::catalogue::etf2l_player(db, sources, account).await?.and_then(|p| Some((p.etf2l_id?, p.name.unwrap_or_default()))) else {
+        return Ok(0);
     };
     let read_before = db.transfers_fetched("player", i64::from(account)).await?.is_some();
     let added = read_list(db, sources, &format!("/player/{steam}/transfers"), Some((id, Some(account), &name)), read_before).await?;
@@ -132,12 +129,20 @@ pub async fn refresh_team(db: &Db, sources: &Sources, team: i64) -> Result<()> {
     Ok(())
 }
 
-/// Read a player's list when it is a day old. Best effort.
+/// Read a player's list when it is a day old, or a month for a player with
+/// no official in four months. Best effort; a failure waits a while.
 pub async fn refresh_player(db: &Db, sources: &Sources, account: u32) -> Result<()> {
     let fetched = db.transfers_fetched("player", i64::from(account)).await?;
-    if now() - fetched.unwrap_or(0) > STALE {
-        if let Err(e) = fetch_player(db, sources, account).await {
-            tracing::warn!(account, error = %format!("{e:#}"), "reading a player's transfers failed");
+    let active = db.player_last_official(account).await?.is_some_and(|t| now() - t < ACTIVE);
+    let stale = if active { STALE } else { STALE_INACTIVE };
+    let key = format!("etf2l-transfers:{account}");
+    if (fetched.is_none() || now() - fetched.unwrap_or(0) > stale) && !crate::backoff::waiting(&key) {
+        match fetch_player(db, sources, account).await {
+            Ok(_) => crate::backoff::worked(&key),
+            Err(e) => {
+                crate::backoff::failed(&key);
+                tracing::warn!(account, error = %format!("{e:#}"), "reading a player's transfers failed");
+            }
         }
     }
     Ok(())

@@ -1,4 +1,5 @@
 import { DeepPanels } from "./DeepPanels";
+import { PROFILE_KEEP_MS } from "../../lib/cachetimes";
 import { ApiError } from "../ApiError";
 import { friendlyError } from "../../lib/apierror";
 import { useState } from "react";
@@ -36,7 +37,7 @@ type Tab = "overview" | "depth" | "teams" | "achievements" | "yours" | "lives";
 const PLACE = ["gold", "silver", "bronze"] as const;
 
 export function PlayerProfile({ accountId, yours }: { accountId: number; yours: React.ReactNode }) {
-  const q = useQuery({ queryKey: ["player_profile", accountId], queryFn: () => api.getPlayerProfile(accountId) });
+  const q = useQuery({ queryKey: ["player_profile", accountId], queryFn: () => api.getPlayerProfile(accountId), staleTime: PROFILE_KEEP_MS });
   const [tab, setTab] = useState<Tab>("overview");
   if (q.isPending) return <div className="panel"><Loading>{t("Loading…")}</Loading></div>;
   if (q.isError) return <div className="panel"><ApiError error={q.error} /></div>;

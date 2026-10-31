@@ -1701,28 +1701,8 @@ pub async fn profile(db: &Db, sources: &Sources, account: u32) -> Result<Profile
     let rated = rated_officials(db, None).await?;
     let mvps: Vec<Mvp> = cat.mvps(&rated).into_iter().filter(|m| m.account_id == account).collect();
     let steamid = SteamId::from_account_id(account);
-    let raw_of = |id: Option<i64>, raws: &[(i64, i64, String)]| id.and_then(|id| raws.iter().find(|(i, ..)| *i == id).map(|(.., json)| json.clone()));
+    let etf2l = etf2l_player(db, sources, account).await?;
     let raws = db.etf2l_raw("player").await?;
-    let etf2l = match db.etf2l_player(account).await? {
-        // Kept a week; a row from before the raw page was kept is read again.
-        Some(p) if now() - p.fetched_at < ETF2L_PLAYER_KEEP_S && raw_of(p.etf2l_id, &raws).is_some() => Some(p),
-        held => match fetch_etf2l_player(sources, &steamid.to_steamid64()).await {
-            Ok(Some((p, body))) => {
-                db.put_etf2l_player(account, &p).await?;
-                // The whole answer too, for what the row has no column for:
-                // their teams, title and bans.
-                if let Some(id) = p.etf2l_id {
-                    db.store_etf2l_raw("player", id, &body).await?;
-                }
-                Some(p)
-            }
-            Ok(None) => held,
-            Err(e) => {
-                tracing::warn!(account, error = %format!("{e:#}"), "ETF2L player page");
-                held
-            }
-        },
-    };
     let classes = db.main_class_games().await?;
     let (played_classes, main_class) = main_of(classes.get(&account));
     let mut aliases: Vec<String> = Vec::new();
@@ -1749,11 +1729,8 @@ pub async fn profile(db: &Db, sources: &Sources, account: u32) -> Result<Profile
     }
     let name = etf2l.as_ref().and_then(|p| p.name.clone()).or_else(|| aliases.first().cloned()).unwrap_or_else(|| steamid.to_steamid64());
     aliases.retain(|a| *a != name);
-    let raw = match raw_of(etf2l.as_ref().and_then(|p| p.etf2l_id), &raws) {
-        Some(json) => Some(json),
-        // Just fetched: read it again, with what was stored since.
-        None => raw_of(etf2l.as_ref().and_then(|p| p.etf2l_id), &db.etf2l_raw("player").await?),
-    };
+    // ETF2L's whole answer, as the lookup above kept it.
+    let raw = etf2l.as_ref().and_then(|p| p.etf2l_id).and_then(|id| raws.iter().find(|(i, ..)| *i == id).map(|(.., json)| json.clone()));
     let (etf2l_title, etf2l_teams, bans) = raw.as_deref().map(etf2l_extras).unwrap_or_default();
     Ok(Profile {
         account_id: account,
@@ -1812,6 +1789,53 @@ fn etf2l_extras(json: &str) -> (Option<String>, Vec<Etf2lRoster>, Vec<Etf2lBan>)
 
 fn now() -> i64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64)
+}
+
+/// One lookup of ETF2L's player page at a time: a profile's header and its
+/// teams history open together and both need it, and the second waits for
+/// the first's answer instead of asking again.
+static ETF2L_PLAYER_LOOKUP: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+/// A player's ETF2L profile: the one held if under a week old, else ETF2L's
+/// page read now and kept. A failed read is not tried again for a quarter
+/// of an hour ([`crate::backoff`]); what was held is given meanwhile.
+pub async fn etf2l_player(db: &Db, sources: &Sources, account: u32) -> Result<Option<Etf2lPlayer>> {
+    let _one = ETF2L_PLAYER_LOOKUP.lock().await;
+    let raw_of = |id: Option<i64>, raws: &[(i64, i64, String)]| id.and_then(|id| raws.iter().find(|(i, ..)| *i == id).map(|(.., json)| json.clone()));
+    let raws = db.etf2l_raw("player").await?;
+    let held = db.etf2l_player(account).await?;
+    // Kept a week; a row from before the raw page was kept is read again.
+    if let Some(p) = &held {
+        if now() - p.fetched_at < ETF2L_PLAYER_KEEP_S && raw_of(p.etf2l_id, &raws).is_some() {
+            return Ok(held);
+        }
+    }
+    let key = format!("etf2l-player:{account}");
+    if crate::backoff::waiting(&key) {
+        return Ok(held);
+    }
+    let steamid = SteamId::from_account_id(account);
+    Ok(match fetch_etf2l_player(sources, &steamid.to_steamid64()).await {
+        Ok(Some((p, body))) => {
+            crate::backoff::worked(&key);
+            db.put_etf2l_player(account, &p).await?;
+            // The whole answer too, for what the row has no column for:
+            // their teams, title and bans.
+            if let Some(id) = p.etf2l_id {
+                db.store_etf2l_raw("player", id, &body).await?;
+            }
+            Some(p)
+        }
+        Ok(None) => {
+            crate::backoff::worked(&key);
+            held
+        }
+        Err(e) => {
+            crate::backoff::failed(&key);
+            tracing::warn!(account, error = %format!("{e:#}"), "ETF2L player page");
+            held
+        }
+    })
 }
 
 async fn fetch_etf2l_player(sources: &Sources, steamid64: &str) -> Result<Option<(Etf2lPlayer, String)>> {

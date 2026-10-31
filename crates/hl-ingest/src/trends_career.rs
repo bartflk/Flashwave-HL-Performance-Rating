@@ -20,6 +20,8 @@ use serde::{Deserialize, Serialize};
 
 /// How long a page read is kept.
 const KEEP_S: i64 = 24 * 3600;
+/// ...and for a player with no game newer than the copy.
+const KEEP_QUIET_S: i64 = 7 * 24 * 3600;
 
 /// The page read: Highlander, ETF2L only -- trends.tf counts a log as a
 /// league game when it is linked to a league match, so scrims and pugs are
@@ -89,20 +91,35 @@ pub async fn career(db: &Db, sources: &Sources, account: u32) -> Result<CareerVi
     let steamid64 = SteamId::from_account_id(account).to_steamid64();
     let url = page_url(&steamid64);
     let held = db.trends_career(account).await?;
+    // A day, or a week when no game of theirs the app holds is newer than
+    // the copy: trends.tf would show the same.
+    let keep = match &held {
+        Some((_, at)) if db.player_last_game(account).await?.is_none_or(|t| t <= *at) => KEEP_QUIET_S,
+        _ => KEEP_S,
+    };
+    let key = format!("trends-career:{account}");
+    let waiting = crate::backoff::waiting(&key);
     if let Some((json, at)) = &held {
-        if now() - at < KEEP_S {
+        if now() - at < keep || waiting {
             if let Ok(c) = serde_json::from_str::<Career>(json) {
                 return Ok(CareerView { career: Some(c), fetched_at: Some(*at), error: None, url });
             }
         }
     }
+    if waiting {
+        return Ok(CareerView { career: None, fetched_at: None, error: Some("trends.tf could not be read: it failed a moment ago".into()), url });
+    }
     let read = match sources.trends_player_page(&steamid64).await {
         Ok(Some(html)) => Ok(parse(&html)),
         Ok(None) => Err("trends.tf has no page for them".to_string()),
-        Err(e) => Err(format!("trends.tf could not be read: {e:#}")),
+        Err(e) => {
+            crate::backoff::failed(&key);
+            Err(format!("trends.tf could not be read: {e:#}"))
+        }
     };
     match read {
         Ok(c) => {
+            crate::backoff::worked(&key);
             let at = now();
             db.put_trends_career(account, &serde_json::to_string(&c)?, at).await?;
             Ok(CareerView { career: Some(c), fetched_at: Some(at), error: None, url })

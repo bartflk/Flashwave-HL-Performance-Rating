@@ -148,6 +148,31 @@ impl Db {
     }
 
     /// The newest official a team played, if any.
+    /// When a player last played an official the app holds (the league
+    /// sample's logs), for how often their ETF2L lists are read again.
+    pub async fn player_last_official(&self, account: u32) -> Result<Option<i64>> {
+        Ok(sqlx::query_scalar(
+            "SELECT MAX(l.played_at) FROM league_log_player p JOIN league_log l ON l.log_id = p.log_id WHERE p.account_id = ?1",
+        )
+        .bind(i64::from(account))
+        .fetch_one(self.pool())
+        .await?)
+    }
+
+    /// When a player last played any game the app holds: the league
+    /// sample's logs and the owner's.
+    pub async fn player_last_game(&self, account: u32) -> Result<Option<i64>> {
+        Ok(sqlx::query_scalar(
+            "SELECT MAX(t) FROM (
+                SELECT l.played_at AS t FROM league_log_player p JOIN league_log l ON l.log_id = p.log_id WHERE p.account_id = ?1
+                UNION ALL
+                SELECT i.played_at FROM log_stat s JOIN log_index i ON i.log_id = s.log_id WHERE s.account_id = ?1)",
+        )
+        .bind(i64::from(account))
+        .fetch_one(self.pool())
+        .await?)
+    }
+
     pub async fn team_last_official(&self, team: i64) -> Result<Option<i64>> {
         Ok(sqlx::query_scalar("SELECT MAX(time) FROM etf2l_season_match WHERE clan1_id = ?1 OR clan2_id = ?1")
             .bind(team)

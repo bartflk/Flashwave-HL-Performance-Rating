@@ -22,7 +22,7 @@ export function friendlyError(e: unknown): { text: string; detail: string } {
   let text: string | null = null;
   if (/\b429\b|too many requests|rate.?limit/.test(lower)) {
     text = t("{0} is busy right now; try again in a few minutes.", { "0": site });
-  } else if (/error sending request|tcp connect|connection (refused|reset|closed)|timed? ?out|dns error|failed to lookup|tls|certificate|unreachable/.test(lower)) {
+  } else if (/error sending request|tcp connect|connection (refused|reset|closed)|timed? ?out|dns error|failed to lookup|tls|certificate|unreachable|a moment ago/.test(lower)) {
     text = t("{0} isn't answering right now; try again later.", { "0": site });
   } else if (/\b5\d\d\b|server error|bad gateway|service unavailable/.test(lower)) {
     text = t("{0} is having trouble right now; try again later.", { "0": site });

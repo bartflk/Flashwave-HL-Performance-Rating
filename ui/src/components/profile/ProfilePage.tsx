@@ -1,4 +1,5 @@
 import { DeepPanels } from "../players/DeepPanels";
+import { PROFILE_KEEP_MS } from "../../lib/cachetimes";
 import { ApiError } from "../ApiError";
 import { RatingValue } from "../RatingValue";
 import { useRef, useState } from "react";
@@ -230,7 +231,7 @@ function readTab(): PfTab {
 /** Your own player profile: the one anyone could look up, with you in it. */
 function useOwnProfile(steamid: string | null): PlayerProfile | null {
   const id = steamid ? accountOf(steamid) : null;
-  const q = useQuery({ queryKey: ["player_profile", id], queryFn: () => api.getPlayerProfile(id!), enabled: id !== null });
+  const q = useQuery({ queryKey: ["player_profile", id], queryFn: () => api.getPlayerProfile(id!), enabled: id !== null, staleTime: PROFILE_KEEP_MS });
   return q.data ?? null;
 }
 

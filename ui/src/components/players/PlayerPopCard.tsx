@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { PROFILE_KEEP_MS } from "../../lib/cachetimes";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { MatchDivisions } from "../../api/types";
@@ -73,7 +74,7 @@ export function PlayerPopCard({ target, divisions, onClose }: { target: CardTarg
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const { accountId, anchor } = target;
 
-  const profile = useQuery({ queryKey: ["player_profile", accountId], queryFn: () => api.getPlayerProfile(accountId) });
+  const profile = useQuery({ queryKey: ["player_profile", accountId], queryFn: () => api.getPlayerProfile(accountId), staleTime: PROFILE_KEEP_MS });
   const stats = useQuery({ queryKey: ["player_stats", accountId], queryFn: () => api.getPlayerStats(accountId) });
   const together = useQuery({ queryKey: ["player", accountId, null], queryFn: () => api.getPlayer(accountId, null), enabled: !target.isMe });
 
