@@ -1601,6 +1601,60 @@ async fn run() -> Result<()> {
             Ok(())
         }
 
+        ["stv-parts", rest @ ..] => {
+            // The parts of a match's SourceTV: which rounds this machine has,
+            // and (with a log id) what demos.tf has of the rest.
+            let db = Db::connect(&db_path).await?;
+            if let [log] = rest {
+                let log_id: i64 = log.parse()?;
+                if let Some(c) = hl_ingest::stv_parts::coverage(&db, log_id).await? {
+                    println!("here: rounds {:?} of {:?}", c.covered, c.rounds);
+                }
+                let me = db.get_me().await?.context("no owner set")?;
+                for p in hl_ingest::stv_parts::find(&db, &Sources::new()?, me, log_id).await? {
+                    println!("demos.tf {:>7}  {}  rounds {:?}{}", p.demos_tf_id, p.name, p.rounds, if p.here { "  (here)" } else { "" });
+                }
+            } else {
+                for g in hl_ingest::stv_parts::gappy(&db).await? {
+                    println!("{}  {:<24} {} of {} rounds; missing {:?}", g.log_id, g.map.as_deref().unwrap_or("?"), g.covered.len(), g.rounds, g.missing);
+                }
+            }
+            Ok(())
+        }
+
+        ["openings", log] => {
+            // A match's round openings: each round's start, and every life
+            // there then or begun near it, by class and side.
+            let db = Db::connect(&db_path).await?;
+            let log_id: i64 = log.parse()?;
+            let rounds = db.round_spans(log_id).await?;
+            let lives = hl_ingest::lives::match_lives(&db, log_id).await?;
+            println!("{} lives; rounds: {:?}", lives.len(), rounds);
+            for (n, start, len) in rounds {
+                let from = start as f64;
+                println!("R{n} at {start} ({len} s):");
+                let mut near: Vec<_> = lives.iter().filter(|l| l.span.is_some_and(|(s, e)| s <= from + 30.0 && e >= from - 30.0)).collect();
+                near.sort_by(|a, b| (&a.team, &a.class).cmp(&(&b.team, &b.class)));
+                for l in near {
+                    let (s, e) = l.span.unwrap();
+                    println!(
+                        "  {:<5} {:<9} {:>10}  demo {:<4} life {:+7.1} .. {:+7.1}  round {:?}  opening {:?} pts {} skip {}",
+                        l.team.as_deref().unwrap_or("?"),
+                        l.class.as_deref().unwrap_or("?"),
+                        l.account_id,
+                        l.demo_id,
+                        s - from,
+                        e - from,
+                        l.round_num,
+                        l.opening_round,
+                        l.opening_t.len(),
+                        l.opening_skip
+                    );
+                }
+            }
+            Ok(())
+        }
+
         ["season-news", n] => {
             // A season's own ETF2L posts, as its page lists them.
             let db = Db::connect(&db_path).await?;

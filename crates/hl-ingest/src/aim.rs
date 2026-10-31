@@ -30,6 +30,7 @@ use hl_core::{SteamId, TfClass};
 use hl_db::Db;
 use hl_demos::aim::Shot;
 use serde::Serialize;
+use std::collections::HashSet;
 use std::path::Path;
 
 /// How far apart the demo's clock and the log's clock may be for two kills of
@@ -176,9 +177,18 @@ pub async fn for_log_with(db: &Db, log_id: i64, me: SteamId, progress: &mut (dyn
     // first, which had left five of the six maps' halves without movement.
     let stvs: Vec<&hl_db::LinkedDemo> = demos.iter().filter(usable).filter(|d| d.kind == "stv").collect();
     let mut jobs: Vec<(&hl_db::LinkedDemo, Scope, bool)> = Vec::new();
+    // The rounds an STV covers, by where each round began: the server splits
+    // its recording into parts, and a part that is not on this machine leaves
+    // its rounds to the owner's own recording (Flashy: "why does it say 3/9
+    // rounds"; a koth match whose one STV part held rounds 4 to 6).
+    let stv_rounds: HashSet<i64> = match offset {
+        Some(o) => crate::stv_parts::covered_rounds(&rounds, &stvs.iter().filter_map(|s| Some((s.start_utc? - o as f64, s.playback_s))).collect::<Vec<_>>()),
+        None => HashSet::new(),
+    };
     match (pov, stv) {
         (Some(p), Some(_)) => {
-            jobs.push((p, Scope::Owner, false));
+            // The owner's routes from it too, in the rounds no STV covers.
+            jobs.push((p, Scope::Owner, true));
             jobs.extend(stvs.iter().map(|s| (*s, Scope::Others, true)));
         }
         (Some(p), None) => jobs.push((p, Scope::Owner, true)),
@@ -282,17 +292,26 @@ pub async fn for_log_with(db: &Db, log_id: i64, me: SteamId, progress: &mut (dyn
                 continue;
             }
             let at = offset.map(|o| start + f64::from(l.from_tick) / rate - o as f64);
-            let round = at.and_then(|at| rounds.iter().find(|(_, f, t)| at >= *f && at <= *t).map(|(n, ..)| *n));
+            let until = offset.map(|o| start + f64::from(l.to_tick) / rate - o as f64);
+            let (round, from_tick) = match (at, until) {
+                (Some(at), Some(until)) => round_of_life(&rounds, at, until, |s| ((s - at) * rate) as i64 + i64::from(l.from_tick)),
+                _ => (None, i64::from(l.from_tick)),
+            };
             // A life outside every round of this log belongs to another match
             // in the same recording.
             if round.is_none() && offset.is_some() {
+                continue;
+            }
+            // The owner's own recording beside an STV: only the rounds the
+            // STV does not cover, so no life is drawn twice.
+            if !everyone && round.is_some_and(|r| stv_rounds.contains(&r)) {
                 continue;
             }
             let account_id = account_of(&l.steamid).unwrap_or(0);
             // The life on the log's clock, to find the caps inside it.
             let life_caps = match (offset, teams.get(&account_id)) {
                 (Some(o), Some(team)) => {
-                    let from = start + f64::from(l.from_tick) / rate - o as f64;
+                    let from = start + from_tick as f64 / rate - o as f64;
                     let to = start + f64::from(l.to_tick) / rate - o as f64;
                     caps.iter()
                         .filter(|(at, t, _)| t == team && (*at as f64) >= from && (*at as f64) <= to)
@@ -306,11 +325,11 @@ pub async fn for_log_with(db: &Db, log_id: i64, me: SteamId, progress: &mut (dyn
                 seq: seq as i64,
                 account_id,
                 caps: life_caps,
-                from_tick: i64::from(l.from_tick),
+                from_tick,
                 to_tick: i64::from(l.to_tick),
                 round_num: round,
                 died: l.died,
-                points: l.points.iter().map(|&(t, x, y, z)| (i64::from(t), x, y, z)).collect(),
+                points: l.points.iter().filter(|p| i64::from(p.0) >= from_tick).map(|&(t, x, y, z)| (i64::from(t), x, y, z)).collect(),
             });
         }
 
@@ -417,12 +436,34 @@ fn nearest<'a>(
 /// 9: routes for other players only from an STV demo.
 /// 10: the points captured during each life.
 /// 11: every player's aim and deaths from an STV demo, not only the owner's.
+/// 14: the owner's routes from their own recording in the rounds no STV on
+///     this machine covers (the server splits its recording into parts).
+/// 13: a life begun before its round (spawned in the pre-round freeze, a
+///     moment before the log's Round_Start, or alive from the pregame) is
+///     the round's, from its start, where it was left out as another
+///     match's: most players' first life of each round had no route.
 /// 12: conditions read off the wire (the parser's own check missed scoped or
 ///     cloaked whenever a higher condition shared the byte), "a second
 ///     before" and the flick measured in ticks rather than frames (a POV
 ///     demo skips ticks), and the demo kept as a timeline in the same walk
 ///     (Q3).
-pub const VERSION: i64 = 12;
+pub const VERSION: i64 = 14;
+
+/// The round a life from `at` to `until` (the log's clock) belongs to, and
+/// the tick it starts at in it: the round it began in, else the first one
+/// that began while it was alive (players spawn in the pre-round freeze, a
+/// moment before the log's Round_Start; round 1's are alive from the
+/// pregame), from that round's start, the tick `tick_at` gives. `None` for a
+/// life in no round. Pure, for testing: `rounds` are `(number, start, end)`.
+pub fn round_of_life(rounds: &[(i64, f64, f64)], at: f64, until: f64, tick_at: impl Fn(f64) -> i64) -> (Option<i64>, i64) {
+    if let Some(&(n, ..)) = rounds.iter().find(|(_, f, t)| at >= *f && at <= *t) {
+        return (Some(n), tick_at(at));
+    }
+    match rounds.iter().find(|(_, f, _)| at < *f && until >= *f) {
+        Some(&(n, f, _)) => (Some(n), tick_at(f)),
+        None => (None, tick_at(at)),
+    }
+}
 
 /// The timeline format this build records; see `hl_demos::timeline`.
 pub use hl_demos::timeline::TIMELINE_VERSION;
@@ -559,5 +600,26 @@ fn store_row(k: &AimKill) -> hl_db::AimRow {
         victim_seen: k.shot.victim_seen,
         shooter_seen: k.shot.shooter_seen,
         headshot: k.headshot,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_life_begun_before_its_round_is_the_rounds_from_its_start() {
+        let rounds = [(1, 100.0, 400.0), (2, 410.0, 700.0)];
+        // Ticks at 10 a second from 0 on the log's clock.
+        let tick = |s: f64| (s * 10.0) as i64;
+        // Begun inside a round: that round, from where it began.
+        assert_eq!(round_of_life(&rounds, 150.0, 200.0, tick), (Some(1), 1500));
+        // Spawned in the freeze a second before round 2, or alive from the
+        // pregame into round 1: theirs, from the round's start.
+        assert_eq!(round_of_life(&rounds, 409.0, 500.0, tick), (Some(2), 4100));
+        assert_eq!(round_of_life(&rounds, 20.0, 130.0, tick), (Some(1), 1000));
+        // Over before any round began, or after the last: none.
+        assert_eq!(round_of_life(&rounds, 20.0, 90.0, tick).0, None);
+        assert_eq!(round_of_life(&rounds, 800.0, 900.0, tick).0, None);
     }
 }

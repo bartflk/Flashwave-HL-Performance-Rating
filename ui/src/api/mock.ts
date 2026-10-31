@@ -64,6 +64,10 @@ import type {
   MassSummary,
   LifeOnMap,
   LivesOnMap as LivesOnMapView,
+  MapPlayer,
+  GappyMatch,
+  StvCoverage,
+  StvPart,
   MapWithLives,
   DemoIndexSummary,
   ReRead,
@@ -1042,9 +1046,59 @@ export const mockApi: Api = {
       { map: "product", name: "koth_product_final", matches: 10, lives: 143 },
       { map: "upward", name: "pl_upward_f12", matches: 4, lives: 57 },
     ]),
-  livesOnMap: (_accountId: number, map: string) => {
+  livesPlayers: (_accountId: number, _map: string) =>
+    delay<MapPlayer[]>([
+      { accountId: 900_001, name: "kawaii", classes: [["sniper", 7], ["scout", 1]], matches: 8, shared: 6 },
+      { accountId: 900_002, name: "b4nny", classes: [["scout", 5]], matches: 5, shared: 0 },
+    ]),
+  stvCoverage: (_logId: number) => delay<StvCoverage | null>({ rounds: [1, 2, 3, 4, 5, 6, 7, 8, 9], covered: [4, 5, 6] }),
+  findStvParts: (_logId: number) =>
+    delay<StvPart[]>(
+      [
+        { demosTfId: 1499987, name: "match-20260830-2015-koth_product_final.dem", time: 1788115000, duration: 1080, rounds: [1, 2, 3], here: false },
+        { demosTfId: 1500000, name: "match-20260830-2034-koth_product_final.dem", time: 1788116000, duration: 1070, rounds: [4, 5, 6], here: true },
+      ],
+      600,
+    ),
+  missingStvParts: () =>
+    delay<GappyMatch[]>(
+      [
+        { logId: 4112795, map: "koth_product_final", playedAt: 1788113751, rounds: 9, covered: [4, 5, 6], missing: [1, 2, 3, 7, 8, 9] },
+        { logId: 4109131, map: "pl_upward_f12", playedAt: 1787900000, rounds: 6, covered: [5, 6], missing: [1, 2, 3, 4] },
+      ],
+      400,
+    ),
+  livesOpposite: async (_accountId: number, map: string, _cls: string | null) => {
+    // The other side of the same lives, so the preview has an opposite.
+    const v = await mockApi.livesOnMap(900_003, map);
+    return { ...v, lives: v.lives.map((l) => ({ ...l, team: l.team === "Red" ? ("Blue" as const) : ("Red" as const) })) };
+  },
+  matchOpenings: async (logId: number) => {
+    // Six rounds, nine a side, each running out from spawn to a spot and
+    // holding it, so the heat has somewhere to build.
+    const r = rng(logId % 997);
+    const classes = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
+    const lives: LifeOnMap[] = [];
+    for (let round = 1; round <= 6; round++)
+      for (const team of ["Red", "Blue"] as const)
+        classes.forEach((cls, k) => {
+          const dir = team === "Red" ? 1 : -1;
+          let [x, y] = [team === "Red" ? -2_100 : 2_100, -400 + k * 100];
+          const [hx, hy] = [dir * (-1_300 + k * 140 + r() * 200), -700 + k * 160 + r() * 200];
+          const points: Array<[number, number]> = [];
+          for (let j = 0; j < 160; j++) {
+            const run = j < 60;
+            x += run ? (hx - x) / (60 - j) + (r() - 0.5) * 40 : (r() - 0.5) * 50;
+            y += run ? (hy - y) / (60 - j) + (r() - 0.5) * 40 : (r() - 0.5) * 50;
+            points.push([Math.round(x), Math.round(y)]);
+          }
+          lives.push({ logId, playedAt: 1_790_000_000, demoId: 1, stv: true, accountId: 900_100 + (team === "Red" ? 0 : 9) + k, class: cls, team, roundNum: round, died: true, seconds: 40, points, capped: false, afterEnemyCap: false, midFight: false, openingT: points.map((_, j) => j * 0.25), openingSkip: 0, openingRound: round, firstKill: 18 + r() * 15 });
+        });
+    return delay(lives, 200);
+  },
+  livesOnMap: (accountId: number, map: string) => {
     // Wandering routes from each side's half, so the view has a pattern.
-    const r = rng(map.length * 7);
+    const r = rng(map.length * 7 + (accountId % 97));
     const classes = ["sniper", "sniper", "engineer", "scout", "spy"];
     // Product at Emiel's scale (Q64: about 3,000 lives), Upward small.
     const lives: LifeOnMap[] = Array.from({ length: map === "product" ? 3000 : 60 }, (_, i) => {
@@ -1056,7 +1110,7 @@ export const mockApi: Api = {
         y += (r() - 0.5) * 120;
         points.push([Math.round(x), Math.round(y)]);
       }
-      return { logId: 4_100_000 + (i % 10), playedAt: 1_790_000_000 - (i % 10) * 86_400 * 9, demoId: i % 10, stv: i % 10 === 0, class: classes[i % classes.length], team, roundNum: 1 + (i % 5), died: r() < 0.7, seconds: points.length / 4, points, capped: i % 4 === 0, afterEnemyCap: i % 6 === 1, midFight: i % 2 === 0 };
+      return { logId: 4_100_000 + (i % 10), playedAt: 1_790_000_000 - (i % 10) * 86_400 * 9, demoId: i % 10, stv: i % 10 === 0, accountId, class: classes[i % classes.length], team, roundNum: 1 + (i % 5), died: r() < 0.7, seconds: points.length / 4, points, capped: i % 4 === 0, afterEnemyCap: i % 6 === 1, midFight: i % 2 === 0, openingT: i % 5 === 0 ? points.map((_, j) => j * 0.5) : [], openingSkip: 0, openingRound: i % 5 === 0 ? 1 + (i % 5) : null, firstKill: i % 5 === 0 ? 12 + (i % 7) * 4 : null };
     });
     return delay<LivesOnMapView>({ map, matches: 10, stvMatches: 1, lives }, 300);
   },

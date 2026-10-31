@@ -132,6 +132,17 @@ pub struct LifeIndexRow {
     pub played_at: Option<i64>,
 }
 
+/// One player's match on a map in [`Db::map_players`].
+#[derive(Debug, Clone)]
+pub struct MapPlayerRow {
+    pub log_id: i64,
+    pub account_id: u32,
+    pub map: String,
+    pub name: Option<String>,
+    pub main_class: Option<String>,
+    pub played_at: Option<i64>,
+}
+
 /// How the living time was spent, over one match or all of them.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -342,6 +353,44 @@ impl Db {
                 played_at: r.get("played_at"),
             })
             .collect())
+    }
+
+    /// Everyone with a route in a match whose map's name holds `base`, once
+    /// a match each (the caller keeps those whose map is `base` exactly).
+    pub async fn map_players(&self, base: &str) -> Result<Vec<MapPlayerRow>> {
+        let rows = sqlx::query(
+            "SELECT p.log_id, p.account_id, m.map, mp.name, mp.main_class, m.played_at
+             FROM (SELECT DISTINCT log_id, account_id FROM demo_path) p
+             JOIN match m ON m.log_id = p.log_id
+             LEFT JOIN match_player mp ON mp.log_id = p.log_id AND mp.account_id = p.account_id
+             WHERE m.map LIKE '%' || ?1 || '%'",
+        )
+        .bind(base)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| MapPlayerRow {
+                log_id: r.get("log_id"),
+                account_id: r.get::<i64, _>("account_id") as u32,
+                map: r.get::<Option<String>, _>("map").unwrap_or_default(),
+                name: r.get("name"),
+                main_class: r.get("main_class"),
+                played_at: r.get("played_at"),
+            })
+            .collect())
+    }
+
+    /// The map logs.tf gave a match: free text the uploader typed.
+    pub async fn match_map(&self, log_id: i64) -> Result<Option<String>> {
+        let map: Option<Option<String>> = sqlx::query_scalar("SELECT map FROM match WHERE log_id = ?1").bind(log_id).fetch_optional(self.pool()).await?;
+        Ok(map.flatten())
+    }
+
+    /// When a match was played, unix seconds.
+    pub async fn match_played_at(&self, log_id: i64) -> Result<Option<i64>> {
+        let at: Option<Option<i64>> = sqlx::query_scalar("SELECT played_at FROM match WHERE log_id = ?1").bind(log_id).fetch_optional(self.pool()).await?;
+        Ok(at.flatten())
     }
 
     /// One player's deaths in one match.

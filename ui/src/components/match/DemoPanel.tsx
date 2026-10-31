@@ -10,6 +10,7 @@ import { beforeDemosTf } from "../../lib/stv";
 import { locale, t, tx } from "../../lib/i18n";
 import { Spinner } from "../Spinner";
 import { capitalize, splitMap } from "../../lib/format";
+import { StvPartsNotice } from "./StvParts";
 
 /**
  * Demo linking: the demos behind this match, and two ways to add one --
@@ -69,13 +70,14 @@ export function DemoPanel({ d }: { d: MatchDetail }) {
             <p className="hint">{tx("Open the demo once, then click any marker on the round timeline to copy its{0}{1}. Jumps land 5 seconds early, so you see the lead-up.", { "0": " ", "1": <code>{t("demo_gototick")}</code> })}</p>
           )}
         </div>
-        <ReadAgain d={d} />
+        <ReadAgain logId={d.logId} />
       </header>
 
       {d.demos.map((demo) => (
         <DemoRow key={demo.demoId} demo={demo} />
       ))}
 
+      <StvPartsNotice logId={d.logId} label={`${d.map ?? "this match"}, log ${d.logId}`} />
       <PartDemos d={d} />
 
       <div className="demo-sources">
@@ -270,9 +272,11 @@ function ByLink({ d }: { d: MatchDetail }) {
 /**
  * Read this match again with this version of the app: its demos from their
  * files, then aim and the server log's fights. After an update that reads
- * demos better, the match catches up without a whole rebuild.
+ * demos better, the match catches up without a whole rebuild. Also on the
+ * round openings view (Flashy: "add the read again button"), whose routes
+ * come from the reading.
  */
-function ReadAgain({ d }: { d: MatchDetail }) {
+export function ReadAgain({ logId }: { logId: number }) {
   const qc = useQueryClient();
   const [step, setStep] = useState<string | null>(null);
   const [done, setDone] = useState<ReRead | null>(null);
@@ -289,14 +293,14 @@ function ReadAgain({ d }: { d: MatchDetail }) {
     setDone(null);
     setStep(t("Starting"));
     try {
-      const r = await api.rereadMatch(d.logId);
+      const r = await api.rereadMatch(logId);
       setDone(r);
       // Everything on the page that reads the demos or the fights.
-      for (const key of ["match", "spychecks", "demostats", "cart", "analysis", "positions", "parts"]) {
-        void qc.invalidateQueries({ queryKey: [key, d.logId] });
+      for (const key of ["match", "spychecks", "demostats", "cart", "analysis", "positions", "parts", "match_openings"]) {
+        void qc.invalidateQueries({ queryKey: [key, logId] });
       }
       // Keyed by player or map as well, and read across matches too.
-      for (const key of ["aim", "paths", "mapview", "profile"]) {
+      for (const key of ["aim", "paths", "mapview", "profile", "lives_on_map", "lives_opposite", "lives_maps"]) {
         void qc.invalidateQueries({ queryKey: [key] });
       }
     } catch (e) {

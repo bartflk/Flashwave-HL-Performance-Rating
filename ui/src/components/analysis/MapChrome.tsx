@@ -70,6 +70,7 @@ const PATHS = {
   spread: "M8 2.5v11M8 4.5H4M8 7.5H2.5M8 10.5H5M8 4.5h3M8 7.5h5.5M8 10.5h2.5",
   chart: "M2.5 13.5h11M3.5 11l3-4 3 2 4-5",
   close: "M4.5 4.5l7 7M11.5 4.5l-7 7",
+  hex: "M8 2.5l4.8 2.75v5.5L8 13.5l-4.8-2.75v-5.5z",
 };
 
 export type IconName = keyof typeof PATHS;

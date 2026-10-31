@@ -41,7 +41,7 @@ pub use context::{MyCompetition,
     ContextCounts, ContextGameRow, ContextRow, Etf2lMatchRow, MatchContext, MatchSides, MateRow, OfficialInfo,
     OfficialRow, OwnGameRow, SideTeam,
 };
-pub use aim::{AimFilter, AimRow, AimTotals, DeathRow, LifeIndexRow, LifeTotals, PathRow};
+pub use aim::{AimFilter, AimRow, AimTotals, DeathRow, LifeIndexRow, LifeTotals, MapPlayerRow, PathRow};
 pub use fights::{ClassGame, FightFilter, FightRow, FightTotals, FightsWrite, SeasonOfficial, FIGHT_COLUMNS};
 pub use demos::{ClockInput, ClockRow, DemoRow, DemoStats, DownloadedDemo, LinkedDemo};
 pub use rawlog::{ChatRow, KillRow, RawlogStats, StoredKill};
@@ -466,6 +466,7 @@ mod frozen_migrations {
         ("0040_fetch_given_up.sql", 0xc5df499f631c5a5c),
         ("0041_log_stat.sql", 0x8718bcdfb5188432),
         ("0042_log_stat_buildings.sql", 0x7164863990c5a9a2),
+        ("0043_stv_part.sql", 0xd406788791d27e70),
     ];
 
     fn fnv1a(bytes: &[u8]) -> u64 {

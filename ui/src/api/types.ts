@@ -786,6 +786,8 @@ export interface LifeOnMap {
   playedAt: number | null;
   demoId: number;
   stv: boolean;
+  /** Whose life it is. */
+  accountId: number;
   class: string | null;
   team: "Red" | "Blue" | null;
   roundNum: number | null;
@@ -799,6 +801,54 @@ export interface LifeOnMap {
   afterEnemyCap: boolean;
   /** Q67: others were killing each other just before and just after it began. */
   midFight: boolean;
+  /** For a life begun with its round: the seconds since the round began of
+   *  each of its first `points`, up to 40 s. Empty otherwise. */
+  openingT: number[];
+  /** The points before the round began, which `openingT` starts after. */
+  openingSkip: number;
+  /** The round whose opening it is. */
+  openingRound: number | null;
+  /** Seconds since the round began of its first kill, for such a life. */
+  firstKill: number | null;
+}
+
+/** Which of a match's rounds the SourceTV on this machine covers. */
+export interface StvCoverage {
+  rounds: number[];
+  covered: number[];
+}
+
+/** A part of a match's SourceTV on demos.tf. */
+export interface StvPart {
+  demosTfId: number;
+  name: string;
+  time: number | null;
+  duration: number | null;
+  /** The match's rounds it covers. */
+  rounds: number[];
+  /** Its file is already on this machine. */
+  here: boolean;
+}
+
+/** A match whose SourceTV on this machine leaves rounds out. */
+export interface GappyMatch {
+  logId: number;
+  map: string | null;
+  playedAt: number | null;
+  rounds: number;
+  covered: number[];
+  missing: number[];
+}
+
+/** Someone else with routes on a map, to compare round openings with. */
+export interface MapPlayer {
+  accountId: number;
+  name: string;
+  /** The classes they mainly played there, most matches first. */
+  classes: Array<[string, number]>;
+  matches: number;
+  /** Of those, matches the profile's player played too. */
+  shared: number;
 }
 
 export interface LivesOnMap {

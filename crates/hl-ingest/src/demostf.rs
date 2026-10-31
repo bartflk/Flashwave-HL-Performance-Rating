@@ -24,8 +24,8 @@ use serde::Serialize;
 /// first round and its later maps' demos come long after. The map has to
 /// match as well, and where two logs could claim one demo the nearer takes
 /// it, so width costs little.
-const EARLY_S: i64 = 45 * 60;
-const LATE_S: i64 = 3 * 3600;
+pub const EARLY_S: i64 = 45 * 60;
+pub const LATE_S: i64 = 3 * 3600;
 
 /// For a log with no map to match on: how far after the demo's time the log
 /// may begin, beyond the demo's own length. The demo must have been
@@ -230,6 +230,14 @@ pub async fn index_one(db: &Db, sources: &Sources, me: SteamId, log_id: i64) -> 
         }
     }
     Ok(found)
+}
+
+/// One player's demos on demos.tf from `before` down to `floor`.
+pub async fn walk_player(sources: &Sources, steamid64: &str, before: i64, floor: i64) -> Result<Vec<DemosTfMeta>> {
+    let mut all = Vec::new();
+    let mut pages = 0;
+    walk(sources, steamid64, Some(before), floor, &mut pages, &mut all).await?;
+    Ok(all)
 }
 
 /// Walk the list down from `before` until a page reaches `floor` or the
