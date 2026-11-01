@@ -385,6 +385,9 @@ export interface RglMatch {
   matchName: string | null;
   /** RGL's name for the division ("Advanced"). */
   divisionName?: string | null;
+  seasonId?: number | null;
+  /** "HL Season 25". */
+  seasonName?: string | null;
   isForfeit: boolean;
   winner: number | null;
   teams: { teamId: number; teamName: string; teamTag: string | null; isHome: boolean }[];

@@ -189,6 +189,11 @@ pub struct RglMatch {
     #[serde(default)]
     pub division_name: Option<String>,
     #[serde(default)]
+    pub season_id: Option<i64>,
+    /// "HL Season 25".
+    #[serde(default)]
+    pub season_name: Option<String>,
+    #[serde(default)]
     pub is_forfeit: bool,
     pub winner: Option<i64>,
     #[serde(default)]
@@ -321,6 +326,11 @@ async fn read_matches(db: &Db, sources: &Sources, ids: &[i64]) -> Result<Vec<Rgl
         out.push(m);
     }
     Ok(out)
+}
+
+/// One match, for its own page.
+pub async fn one_match(db: &Db, sources: &Sources, id: i64) -> Result<Option<RglMatch>> {
+    Ok(read_matches(db, sources, &[id]).await?.into_iter().next())
 }
 
 /// Every match of a season, oldest first: from disk once decided, else read

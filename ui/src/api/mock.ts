@@ -1435,40 +1435,9 @@ export const mockApi: Api = {
         },
       ],
     }),
-  // A round robin of S24's Invite, and two of the league's bans.
-  getRglSeasonMatches: (id: number) => {
-    const teams = [
-      [14908, "The Amiable Duds", "AD."],
-      [14954, "Witness Gaming", "wG"],
-      [14839, "The Family", "folk"],
-      [14820, "mandem", "mndm"],
-    ] as const;
-    const pairs = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]];
-    const maps = ["pl_vigil_rc10", "koth_product_final", "pl_upward_f12"];
-    let n = 34000;
-    return delay<RglMatch[]>(
-      pairs.flatMap((week, w) =>
-        week.map(([a, b], i) => {
-          const home = (w + i) % 2 === 0;
-          const hs = (a + w) % 3 === 0 ? 1 : 3;
-          const as = 4 - hs;
-          return {
-            matchId: n++,
-            matchDate: new Date(Date.UTC(2026, 5, 2 + 7 * w, 1, 30)).toISOString(),
-            matchName: `Week ${w + 1} - ${maps[w].split("_")[1].replace(/^./, (c) => c.toUpperCase())}`,
-            divisionName: "Invite",
-            isForfeit: id === 193 && w === 2 && i === 1,
-            winner: hs > as ? teams[a][0] : teams[b][0],
-            teams: [
-              { teamId: teams[a][0], teamName: teams[a][1], teamTag: teams[a][2], isHome: home },
-              { teamId: teams[b][0], teamName: teams[b][1], teamTag: teams[b][2], isHome: !home },
-            ],
-            maps: [{ mapName: maps[w], homeScore: home ? hs : as, awayScore: home ? as : hs }],
-          };
-        }),
-      ),
-    );
-  },
+  // A round robin of an Invite, and some of the league's bans.
+  getRglSeasonMatches: (id: number) => delay<RglMatch[]>(mockRglMatches(id)),
+  getRglMatch: (id: number) => delay<RglMatch | null>([...mockRglMatches(198), ...mockRglMatches(193)].find((m) => m.matchId === id) ?? null),
   getRglBans: (skip: number) =>
     delay<RglBan[]>(
       skip > 0
@@ -2303,3 +2272,42 @@ const MOCK_CUPS: LeagueCupPage[] = (() => {
     head(ec, "experimental", ecRows, [{ bracket: "Mid", team: team(7, "Pyro Pals") }]),
   ];
 })();
+
+/** A round robin of four Invite teams over three weeks: Season 24 played
+ *  out, Season 25 (the live one) from two weeks ago, its last week to come. */
+function mockRglMatches(id: number): RglMatch[] {
+  const teams = [
+    [14908, "The Amiable Duds", "AD."],
+    [14954, "Witness Gaming", "wG"],
+    [14839, "The Family", "folk"],
+    [14820, "mandem", "mndm"],
+  ] as const;
+  const pairs = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]];
+  const maps = ["pl_vigil_rc10", "koth_product_final", "pl_upward_f12"];
+  const live = id === 198;
+  const start = live ? Date.now() - 14 * 86_400_000 + 3 * 3_600_000 : Date.UTC(2026, 5, 2, 1, 30);
+  let n = live ? 35000 : 34000;
+  return pairs.flatMap((week, w) =>
+    week.map(([a, b], i) => {
+      const home = (w + i) % 2 === 0;
+      const hs = (a + w) % 3 === 0 ? 1 : 3;
+      const as = 4 - hs;
+      const toCome = live && w === 2;
+      return {
+        matchId: n++,
+        matchDate: new Date(start + 7 * w * 86_400_000 + i * 3_600_000).toISOString(),
+        matchName: `Week ${w + 1} - ${maps[w].split("_")[1].replace(/^./, (c) => c.toUpperCase())}`,
+        divisionName: "Invite",
+        seasonId: id,
+        seasonName: live ? "HL Season 25" : "HL Season 24",
+        isForfeit: !live && w === 2 && i === 1,
+        winner: toCome ? null : hs > as ? teams[a][0] : teams[b][0],
+        teams: [
+          { teamId: teams[a][0], teamName: teams[a][1], teamTag: teams[a][2], isHome: home },
+          { teamId: teams[b][0], teamName: teams[b][1], teamTag: teams[b][2], isHome: !home },
+        ],
+        maps: [{ mapName: maps[w], homeScore: toCome ? null : home ? hs : as, awayScore: toCome ? null : home ? as : hs }],
+      };
+    }),
+  );
+}

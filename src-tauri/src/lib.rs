@@ -287,6 +287,7 @@ pub fn run() {
             sync_commands::get_rgl_season,
             sync_commands::get_rgl_season_matches,
             sync_commands::get_rgl_bans,
+            sync_commands::get_rgl_match,
             sync_commands::get_rgl_team,
             sync_commands::get_rgl_team_seasons,
             sync_commands::get_rgl_player,
