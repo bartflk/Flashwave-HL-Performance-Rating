@@ -197,7 +197,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
             </button>
           ))}
         </div>
-        <PeriodPicker />
+        <PeriodPicker range={false} />
         {mapRows.length > 0 && (
           <label className="an-field fi-map">
             <span className="an-label">{t("Map")}</span>
@@ -333,6 +333,10 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
               </tr>
             </thead>
             <tbody>
+              {/* The season picked as the period, on a divider like a
+                  tournament's: where the date order's own dividers already
+                  name it, they say it. */}
+              {period.kind === "season" && !dividers && <PeriodRow name={period.name} from={period.from} to={period.to} total={total} span={5 + statCols.length + (classSort ? 1 : 0)} />}
               {items.map((m, i) => {
                 // A divider where the list enters a tournament's stretch,
                 // or leaves it (by date only: another order mixes them).
@@ -432,6 +436,22 @@ function TournamentRow({ t: x, span }: { t: Tournament | null; span: number }) {
           {x.division && <DivisionBadge d={{ name: x.division, tier: Math.floor(divisionTier(x.division)) }} />}
           <span className="tourney-meta">
             {stretch(x.first, x.last)} · {x.officials === 1 ? t("1 official") : t("{0} officials", { "0": x.officials })}
+          </span>
+        </span>
+      </td>
+    </tr>
+  );
+}
+
+/** The period's season above the rows, in a tournament divider's look. */
+function PeriodRow({ name, from, to, total, span }: { name: string; from: number; to: number; total: number; span: number }) {
+  return (
+    <tr className="tourney-row tourney-period">
+      <td colSpan={span}>
+        <span className="tourney-head">
+          <strong className="tourney-name">{name}</strong>
+          <span className="tourney-meta">
+            {stretch(from, to)} · {t("{0} match{1}", { "0": total.toLocaleString(), "1": total === 1 ? "" : "es" })}
           </span>
         </span>
       </td>

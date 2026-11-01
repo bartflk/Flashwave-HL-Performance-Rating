@@ -23,8 +23,12 @@ const shortDate = (t: number) =>
  * All time, one season, or two dates of your choosing. Seasons come from
  * your ETF2L officials; each runs from the week before its first official
  * to the day after its last, and counts every game in it.
+ *
+ * `range` off leaves out a season's dates under the select, for a page that
+ * shows them itself: the match list puts them on a divider in its table
+ * (Flashy: "the date appears behind the buttons on the right").
  */
-export function PeriodPicker() {
+export function PeriodPicker({ range = true }: { range?: boolean }) {
   const period = usePeriod();
   const seasons = useQuery({ queryKey: ["seasons"], queryFn: api.listSeasons, staleTime: 60_000 });
   const list = seasons.data ?? [];
@@ -61,7 +65,7 @@ export function PeriodPicker() {
           <option value="custom">{tr("Custom dates…")}</option>
         </select>
       </label>
-      {period.kind === "season" && (
+      {range && period.kind === "season" && (
         <span className="period-range hint">
           {shortDate(period.from)} – {shortDate(period.to)}
         </span>
