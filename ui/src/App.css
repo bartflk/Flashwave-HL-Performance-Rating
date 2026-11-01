@@ -745,6 +745,17 @@ th.num {
   white-space: nowrap;
 }
 
+/* The match list in a window under 1300 px (Flashy: "fix the match table at
+   1024"): it was 83 px wider than its frame there, scrolling sideways, the
+   Match column holding its 340. Now that column takes what the others leave
+   (max-width 0 in an auto table: the rest, and an ellipsis), and the cells
+   sit a little closer. */
+@media (max-width: 1300px) {
+  .match-table th,
+  .match-table td { padding-inline: 9px; }
+  .match-table .title-cell { max-width: 0; width: 100%; }
+}
+
 .badge {
   display: inline-block;
   font-size: var(--fs-micro);
