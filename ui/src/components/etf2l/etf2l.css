@@ -40,6 +40,11 @@
 .e2-head:not(.stacked) { flex-wrap: nowrap; }
 .e2-head:not(.stacked) .e2-brand,
 .e2-head:not(.stacked) .e2-menu { flex-wrap: nowrap; }
+/* On one line only the search gives way, and only to the 300 px the
+   measurement counts it at: the title and the menu had been free to shrink,
+   so the menu slid under the search ("RECRUITME" behind it). */
+.e2-head:not(.stacked) .e2-brand { flex: none; }
+.e2-head:not(.stacked) .e2-head-tools { min-width: 300px; }
 .e2-menu > button { flex: none; white-space: nowrap; }
 .e2-head.stacked { row-gap: 10px; }
 .e2-head.stacked .e2-brand { display: contents; }

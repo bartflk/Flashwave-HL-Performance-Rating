@@ -27,6 +27,10 @@ export function useOneLine(gap: number): [(el: HTMLElement | null) => void, bool
       observer.current = null;
       if (!el) return;
       const parts = () => [...el.querySelectorAll<HTMLElement>("[data-fit]")];
+      // The widest room one line has been seen to overflow in: up to it the
+      // header stays on two lines, so the check below cannot flip it back
+      // and forth.
+      let overflowAt = 0;
       const natural = (p: HTMLElement): number => {
         const fixed = Number(p.dataset.fit);
         if (p.dataset.fit && Number.isFinite(fixed)) return fixed;
@@ -45,7 +49,11 @@ export function useOneLine(gap: number): [(el: HTMLElement | null) => void, bool
         if (room <= 0) return; // not laid out: hidden, or detached
         const ps = parts();
         const need = ps.reduce((n, p) => n + natural(p), 0) + gap * Math.max(0, ps.length - 1);
-        setStacked(need > room + 0.5);
+        // And the layout's own word: on one line, anything running past the
+        // header's edge means it does not fit, whatever the sums said (a
+        // part's width can be off by a font or a rounding).
+        if (!el.classList.contains("stacked") && el.scrollWidth > el.clientWidth + 1) overflowAt = Math.max(overflowAt, room);
+        setStacked(need > room + 0.5 || room <= overflowAt);
       };
       measure();
       const ro = new ResizeObserver(measure);
