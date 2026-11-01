@@ -12,6 +12,7 @@ import { CtlGroup, Icon, Seg } from "../analysis/MapChrome";
 import { ReadAgain } from "../match/DemoPanel";
 import { StvPartsNotice } from "../match/StvParts";
 import { useCallouts } from "../analysis/Callouts";
+import { balanceWrap } from "../../lib/balance";
 
 /**
  * A player's lives on one map (Q57, Emiel): pick a map and a class, and
@@ -271,7 +272,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
     <div className="lm">
       {/* Every control in a labelled group, each option with its icon
           (Flashy: "add some icons to differentiate what buttons do what"). */}
-      <div className="ctl-bar">
+      <div className="ctl-bar" ref={balanceWrap}>
         <CtlGroup label={t("Map")}>
           <select
             className="lm-select"
@@ -342,7 +343,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
         </CtlGroup>
       </div>
 
-      <div className="ctl-bar">
+      <div className="ctl-bar" ref={balanceWrap}>
         {mode !== "opening" && (
           <>
             <CtlGroup label={t("How the life ended")}>
@@ -559,7 +560,7 @@ export function MatchOpenings({
   if (mapName === null) return <p className="hint">{t("Pick one map above: the openings of different maps do not share a picture.")}</p>;
   return (
     <div className="lm">
-      <div className="ctl-bar">
+      <div className="ctl-bar" ref={balanceWrap}>
         <CtlGroup label={t("Class")}>
           <div className="class-filter" role="tablist" aria-label={t("Class")}>
             {classes.map(([c, n]) => (

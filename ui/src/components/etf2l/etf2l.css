@@ -49,6 +49,10 @@
 .e2-head.stacked { row-gap: 10px; }
 .e2-head.stacked .e2-brand { display: contents; }
 .e2-head.stacked .e2-eyebrow { margin-right: 100%; } /* alone on its line, at its own width */
+/* Split: the search up beside the title, the menu on the line under both. */
+.e2-head.split .e2-eyebrow { margin-right: 0; order: 0; }
+.e2-head.split .e2-head-tools { order: 1; margin-left: auto; }
+.e2-head.split .e2-menu { order: 2; flex-basis: 100%; flex-wrap: wrap; }
 .e2-eyebrow {
   font-family: var(--font-display);
   font-size: var(--fs-small);

@@ -22,6 +22,7 @@ import { PeriodPicker } from "./PeriodPicker";
 import { t, k, locale } from "../lib/i18n";
 import { Refreshing, Spinner } from "./Spinner";
 import { useSaved } from "../lib/saved";
+import { balanceWrap } from "../lib/balance";
 
 const PAGE = 50;
 
@@ -253,7 +254,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
         </div>
 
       {classRows.length > 0 && (
-        <div className="class-filter" role="tablist" aria-label={t("Class")}>
+        <div className="class-filter" role="tablist" aria-label={t("Class")} ref={balanceWrap}>
           <button
             role="tab"
             aria-selected={cls === null}

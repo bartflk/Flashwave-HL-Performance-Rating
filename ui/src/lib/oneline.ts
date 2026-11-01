@@ -17,8 +17,8 @@ import { useCallback, useRef, useState } from "react";
  * Measured at once and again on every resize of the header or a part (a
  * language switch, a font arriving), as useMeasuredWidth is.
  */
-export function useOneLine(gap: number): [(el: HTMLElement | null) => void, boolean] {
-  const [stacked, setStacked] = useState(false);
+export function useOneLine(gap: number): [(el: HTMLElement | null) => void, Lines] {
+  const [lines, setLines] = useState<Lines>("one");
   const observer = useRef<ResizeObserver | null>(null);
 
   const ref = useCallback(
@@ -53,7 +53,12 @@ export function useOneLine(gap: number): [(el: HTMLElement | null) => void, bool
         // header's edge means it does not fit, whatever the sums said (a
         // part's width can be off by a font or a rounding).
         if (!el.classList.contains("stacked") && el.scrollWidth > el.clientWidth + 1) overflowAt = Math.max(overflowAt, room);
-        setStacked(need > room + 0.5 || room <= overflowAt);
+        if (need <= room + 0.5 && room > overflowAt) return setLines("one");
+        // On two lines the first part has the first to itself; whether the
+        // rest share the second, or the last moves up beside the first.
+        const rest = ps.slice(1);
+        const second = rest.reduce((n, p) => n + natural(p), 0) + gap * Math.max(0, rest.length - 1);
+        setLines(second <= room + 0.5 ? "two" : "split");
       };
       measure();
       const ro = new ResizeObserver(measure);
@@ -64,5 +69,13 @@ export function useOneLine(gap: number): [(el: HTMLElement | null) => void, bool
     [gap],
   );
 
-  return [ref, stacked];
+  return [ref, lines];
 }
+
+/**
+ * How a header lays out: "one" line; "two", the first part alone above the
+ * rest; or "split", where even the rest do not fit a line: the last part
+ * (a search) moves up beside the first, and the middle (a menu) has the
+ * second line to itself, rather than the search hanging alone on a third.
+ */
+export type Lines = "one" | "two" | "split";

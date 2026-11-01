@@ -17,6 +17,7 @@ import { CalloutEditor, useCallouts, zoneAt, ZoneShapes, type HandleDrag } from 
 import type { CalloutFile, CalloutZone } from "../../api/types";
 import { SortTh, useSort } from "../../lib/sort";
 import { tip } from "../../lib/glossary";
+import { balanceWrap } from "../../lib/balance";
 
 /**
  * Where the player's kills and deaths happened, top-down.
@@ -312,7 +313,7 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
     <div className={full ? "killmap full" : "killmap"} ref={box}>
       {/* Labelled groups, an icon on every option (Flashy: "do the same for
           the kill map controls"). */}
-      <div className="ctl-bar">
+      <div className="ctl-bar" ref={balanceWrap}>
         <CtlGroup label={tr("Layer")}>
           <Seg
             label={tr("Layer")}
