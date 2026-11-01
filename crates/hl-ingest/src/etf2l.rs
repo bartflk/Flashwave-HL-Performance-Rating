@@ -170,6 +170,7 @@ pub async fn derive_context(db: &Db, me: SteamId) -> Result<ContextSummary> {
                 log_id: g.log_id,
                 played_at: g.played_at,
                 trends_match: g.trends_match,
+                title: g.title.clone(),
                 mates: mates.into_iter().map(|(a, _)| *a).collect(),
                 opponents: opponents.into_iter().map(|(a, _)| *a).collect(),
             })
