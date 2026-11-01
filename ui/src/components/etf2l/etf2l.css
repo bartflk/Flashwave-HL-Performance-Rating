@@ -33,6 +33,17 @@
   background: linear-gradient(180deg, var(--panel-2), var(--panel));
 }
 .e2-brand { display: flex; align-items: center; gap: 8px 22px; flex-wrap: wrap; min-width: 0; }
+/* One line, or two as a whole (useOneLine): the title alone on the first,
+   the menu and the search together under it, rather than the search
+   dropping to a line of its own (Flashy). On one line nothing wraps; on two,
+   the search goes under the menu, whole, only if even they do not fit. */
+.e2-head:not(.stacked) { flex-wrap: nowrap; }
+.e2-head:not(.stacked) .e2-brand,
+.e2-head:not(.stacked) .e2-menu { flex-wrap: nowrap; }
+.e2-menu > button { flex: none; white-space: nowrap; }
+.e2-head.stacked { row-gap: 10px; }
+.e2-head.stacked .e2-brand { display: contents; }
+.e2-head.stacked .e2-eyebrow { margin-right: 100%; } /* alone on its line, at its own width */
 .e2-eyebrow {
   font-family: var(--font-display);
   font-size: var(--fs-small);
@@ -1418,7 +1429,7 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
   padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel);
   font-size: var(--fs-small); color: var(--muted); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
-@media (max-width: 900px) { .e2-head-tools { flex-basis: 100%; margin-left: 0; } }
+.e2-head.stacked .e2-head-tools { flex: 1 1 260px; max-width: 420px; min-width: 220px; }
 
 /* Waiting on ETF2L: the season strip's place held by a quiet card, the
    teams page's tables by a line (Flashy: "more loading indicators"). */

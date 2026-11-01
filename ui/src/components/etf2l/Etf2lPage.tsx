@@ -22,6 +22,7 @@ import "../teams/teams.css";
 import "./etf2l.css";
 import { checkEtf2lDaily } from "../../lib/etf2lcheck";
 import { Etf2lMark } from "../Etf2lMark";
+import { LeagueHead } from "../LeagueHead";
 import { Loading, Refreshing, Spinner } from "../Spinner";
 
 /**
@@ -207,12 +208,12 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
 
   return (
     <div className="content e2-page">
-      <header className="e2-head">
+      <LeagueHead>
         <div className="e2-brand">
-          <span className="e2-eyebrow">
+          <span className="e2-eyebrow" data-fit="">
             <Etf2lMark size={16} /> {t("ETF2L Highlander")}
           </span>
-          <nav className="e2-menu" aria-label={t("ETF2L")}>
+          <nav className="e2-menu" data-fit="" aria-label={t("ETF2L")}>
             {menu.map(([id, label]) => (
               <button key={id} className={section === id ? "on" : undefined} aria-current={section === id ? "page" : undefined} onClick={() => go({ at: id })}>
                 {label}
@@ -220,11 +221,11 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
             ))}
           </nav>
         </div>
-        <div className="e2-head-tools">
+        <div className="e2-head-tools" data-fit="300">
           <RefreshEtf2l />
           <LeagueSearch onTeam={openTeam} />
         </div>
-      </header>
+      </LeagueHead>
       <Crumbs loc={loc} go={go} />
 
       {loc.at === "home" && <Home onTeam={openTeam} onMatch={openMatch} go={go} />}
