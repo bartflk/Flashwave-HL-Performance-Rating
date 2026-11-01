@@ -21,6 +21,7 @@ import { ClassIcon } from "./ClassIcon";
 import { PeriodPicker } from "./PeriodPicker";
 import { t, k } from "../lib/i18n";
 import { Refreshing, Spinner } from "./Spinner";
+import { useSaved } from "../lib/saved";
 
 const PAGE = 50;
 
@@ -81,16 +82,23 @@ const STAT_COLS: StatCol[] = [
   { key: "rating", label: k("Rating"), name: k("Your rating"), group: k("Rating"), title: k("Sort by your rating on your main class"), value: (_me, m) => m.rating },
 ];
 
+const isView = (v: unknown): v is View => VIEWS.some((w) => w.id === v);
+const isNameOrNull = (v: unknown): v is string | null => v === null || (typeof v === "string" && v.length > 0);
+const isSort = (v: unknown): v is { key: string; ascending: boolean } =>
+  !!v && typeof v === "object" && typeof (v as { key: unknown }).key === "string" && typeof (v as { ascending: unknown }).ascending === "boolean";
+
 export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
-  const [view, setView] = useState<View>("highlander");
+  // The filters and the order are remembered (useSaved): set once, they hold
+  // across tabs and restarts.
+  const [view, setView] = useSaved<View>("matches.view", "highlander", isView);
   const [pages, setPages] = useState(1);
   // What you played on, and where: both narrow the whole history, not the
   // rows already on screen.
-  const [cls, setCls] = useState<string | null>(null);
-  const [map, setMap] = useState<string | null>(null);
-  const [sort, setSort] = useState<{ key: string; ascending: boolean }>({ key: "date", ascending: false });
+  const [cls, setCls] = useSaved<string | null>("matches.class", null, isNameOrNull);
+  const [map, setMap] = useSaved<string | null>("matches.map", null, isNameOrNull);
+  const [sort, setSort] = useSaved<{ key: string; ascending: boolean }>("matches.sort", { key: "date", ascending: false }, isSort);
   // Q56 (Emiel): straight to the matches with everyone's movement and aim.
-  const [stvOnly, setStvOnly] = useState(false);
+  const [stvOnly, setStvOnly] = useSaved<boolean>("matches.stv", false, (v): v is boolean => typeof v === "boolean");
   const classSort = parseClassSort(sort.key);
   const picker = useColumns("matches", STAT_COLS);
   const statCols = STAT_COLS.filter(picker.shown);
