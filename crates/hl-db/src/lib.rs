@@ -31,6 +31,7 @@ mod matches;
 mod players;
 mod ratings;
 mod rawlog;
+mod rgl;
 mod roundmap;
 mod snapshot;
 mod timeline;
@@ -467,6 +468,7 @@ mod frozen_migrations {
         ("0041_log_stat.sql", 0x8718bcdfb5188432),
         ("0042_log_stat_buildings.sql", 0x7164863990c5a9a2),
         ("0043_stv_part.sql", 0xd406788791d27e70),
+        ("0044_rgl_match.sql", 0xab210f21f3748b38),
     ];
 
     fn fnv1a(bytes: &[u8]) -> u64 {

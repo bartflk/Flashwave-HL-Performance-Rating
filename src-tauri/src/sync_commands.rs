@@ -1921,7 +1921,7 @@ pub async fn get_rgl_seasons(state: State<'_, AppState>) -> CmdResult<Vec<hl_ing
 /// Every match of an RGL season, for its standings and results.
 #[tauri::command]
 pub async fn get_rgl_season_matches(state: State<'_, AppState>, id: i64) -> CmdResult<Vec<hl_ingest::rgl::RglMatch>> {
-    Ok(hl_ingest::rgl::season_matches(&state.sources, id).await?)
+    Ok(hl_ingest::rgl::season_matches(&state.db, &state.sources, id).await?)
 }
 
 /// RGL's bans, a page of 50 from `skip`.
@@ -1939,7 +1939,7 @@ pub async fn get_rgl_season(state: State<'_, AppState>, id: i64) -> CmdResult<hl
 /// An RGL team: roster, results and its other seasons' ids.
 #[tauri::command]
 pub async fn get_rgl_team(state: State<'_, AppState>, id: i64) -> CmdResult<Option<hl_ingest::rgl::RglTeamPage>> {
-    Ok(hl_ingest::rgl::team(&state.sources, id).await?)
+    Ok(hl_ingest::rgl::team(&state.db, &state.sources, id).await?)
 }
 
 /// An RGL team's other Highlander seasons.
