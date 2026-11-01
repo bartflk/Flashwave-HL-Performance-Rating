@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { RglMatch, RglPlayer, RglSeason, RglTeam, RglTeamPage } from "../../api/types";
-import { t } from "../../lib/i18n";
+import type { RglBan, RglMatch, RglPlayer, RglSeason, RglTeam, RglTeamPage } from "../../api/types";
+import { t, tx } from "../../lib/i18n";
 import { ApiError } from "../ApiError";
 import { Loading } from "../Spinner";
 import { RglMark } from "../RglMark";
@@ -22,7 +22,7 @@ import "./rgl.css";
  * on RGL's side, so standings and the rest wait for phase 1.
  */
 
-type Section = "home" | "seasons" | "players";
+type Section = "home" | "seasons" | "players" | "bans";
 
 type Loc =
   | { at: "home" }
@@ -30,6 +30,7 @@ type Loc =
   | { at: "season"; id: number }
   | { at: "team"; id: number; from: Loc }
   | { at: "players" }
+  | { at: "bans" }
   | { at: "player"; steamId: string; from: Loc };
 
 function sectionOf(l: Loc): Section {
@@ -48,9 +49,7 @@ const KEEP = 30 * 60_000;
 
 /** What the full tab will add, shown until it is built. */
 const coming = (): [string, string][] => [
-  [t("Matches"), t("Results and the schedule by week and division, with each match's logs.")],
-  [t("Standings"), t("Division tables worked out from the results, and the playoffs.")],
-  [t("Bans"), t("The league's list.")],
+  [t("Matches"), t("The league's schedule week by week, and each match's logs.")],
   [t("Search by name"), t("RGL's name search is broken on its side for now: players open by SteamID.")],
   [t("Through the app"), t("RGL on profiles and the scoreboard, and RGL officials counted as officials.")],
 ];
@@ -184,6 +183,7 @@ export function RglPage({ active, steamid }: { active: boolean; steamid: string 
     ["home", t("Home")],
     ["seasons", t("Seasons")],
     ["players", t("Players")],
+    ["bans", t("Bans")],
   ];
 
   return (
@@ -210,7 +210,13 @@ export function RglPage({ active, steamid }: { active: boolean; steamid: string 
 
       {loc.at === "home" && <Home steamid={steamid} onTeam={openTeam} onPlayer={openPlayer} go={go} />}
       {loc.at === "seasons" && <SeasonList onSeason={(id) => go({ at: "season", id })} />}
-      {loc.at === "season" && <SeasonView id={loc.id} onTeam={openTeam} />}
+      {loc.at === "season" && (
+        <>
+          <SeasonView id={loc.id} onTeam={openTeam} />
+          <SeasonPlay id={loc.id} onTeam={openTeam} />
+        </>
+      )}
+      {loc.at === "bans" && <BansPage onPlayer={openPlayer} />}
       {loc.at === "team" && <TeamView key={loc.id} id={loc.id} onTeam={openTeam} onPlayer={openPlayer} />}
       {loc.at === "players" && <PlayersLanding steamid={steamid} onPlayer={openPlayer} />}
       {loc.at === "player" && <PlayerView key={loc.steamId} steamId={loc.steamId} onTeam={openTeam} />}
@@ -238,7 +244,7 @@ function Crumbs({ loc, go }: { loc: Loc; go: (l: Loc) => void }) {
       trail.push([t("Seasons"), { at: "seasons" }]);
       trail.push([seasons?.find((s) => s.id === l.id)?.name ?? t("Season"), l]);
     } else if (l.at !== "home") {
-      trail.push([{ seasons: t("Seasons"), players: t("Players") }[l.at], l]);
+      trail.push([{ seasons: t("Seasons"), players: t("Players"), bans: t("Bans") }[l.at], l]);
     }
   };
   add(loc);
@@ -539,6 +545,246 @@ function SeasonView({ id, onTeam, more }: { id: number; onTeam: (id: number) => 
         </>
       )}
     </section>
+  );
+}
+
+// ---- A season's standings and results ----------------------------------------
+
+/** "Week 1 - Vigil" is week "Week 1"; a playoff round keeps its own name. */
+const weekOf = (m: RglMatch) => (m.matchName ?? "").split(" - ")[0].trim() || t("Other");
+
+type Standing = { id: number; name: string; tag: string | null; played: number; won: number; lost: number; for: number; against: number };
+
+/** Each division's table from its matches: wins, then losses, then rounds. */
+function standings(matches: RglMatch[]): Map<string, Standing[]> {
+  const by = new Map<string, Map<number, Standing>>();
+  for (const m of matches) {
+    if (m.winner === null || m.teams.length < 2) continue;
+    const div = m.divisionName ?? "";
+    const rows = by.get(div) ?? new Map<number, Standing>();
+    by.set(div, rows);
+    for (const tm of m.teams) {
+      const r = rows.get(tm.teamId) ?? { id: tm.teamId, name: tm.teamName, tag: tm.teamTag, played: 0, won: 0, lost: 0, for: 0, against: 0 };
+      rows.set(tm.teamId, r);
+      r.played += 1;
+      if (m.winner === tm.teamId) r.won += 1;
+      else r.lost += 1;
+      for (const x of m.maps) {
+        r.for += (tm.isHome ? x.homeScore : x.awayScore) ?? 0;
+        r.against += (tm.isHome ? x.awayScore : x.homeScore) ?? 0;
+      }
+    }
+  }
+  const out = new Map<string, Standing[]>();
+  for (const [div, rows] of by)
+    out.set(
+      div,
+      [...rows.values()].sort((a, b) => b.won - a.won || a.lost - b.lost || b.for - b.against - (a.for - a.against) || a.name.localeCompare(b.name)),
+    );
+  return out;
+}
+
+/**
+ * A season's standings and results (Flashy: "continue work on the RGL
+ * page"). RGL gives only a final rank, so the tables are worked out from
+ * the matches, each read on its own at RGL's pace: about 40 s the first
+ * time, then kept for half an hour.
+ */
+function SeasonPlay({ id, onTeam }: { id: number; onTeam: (id: number) => void }) {
+  const season = useSeason(id).data;
+  const q = useQuery({ queryKey: ["rgl_season_matches", id], queryFn: () => api.getRglSeasonMatches(id), staleTime: KEEP, retry: false });
+  const matches = useMemo(() => q.data ?? [], [q.data]);
+  const tables = useMemo(() => standings(matches), [matches]);
+  const weeks = useMemo(() => [...new Set(matches.map(weekOf))], [matches]);
+  // Open on the week being played: the first with a match not yet decided.
+  const live = weeks.find((w) => matches.some((m) => weekOf(m) === w && m.winner === null));
+  const current = live ?? weeks[weeks.length - 1];
+  const [picked, setPicked] = useState<string | null>(null);
+  const week = picked && weeks.includes(picked) ? picked : current;
+  const order = (season?.divisions ?? []).map((d) => d.name);
+  const divs = [...new Set([...order, ...matches.map((m) => m.divisionName ?? "")])].filter((d) => d && (tables.has(d) || matches.some((m) => m.divisionName === d)));
+  if (q.error) return <ApiError error={q.error} />;
+  if (q.isPending) return <Loading>{t("Reading the season's matches from RGL, one by one: about 40 seconds the first time…")}</Loading>;
+  if (matches.length === 0) return null;
+  const inWeek = matches.filter((m) => weekOf(m) === week);
+  return (
+    <>
+      <h2 className="ts-section">{t("Standings")}</h2>
+      <div className="rgl-standings">
+        {divs
+          .filter((d) => tables.has(d))
+          .map((d) => (
+            <section key={d} className="panel e2-panel">
+              <div className="e2-panel-head">
+                <h2>{d}</h2>
+                <span className="muted">{t("from the results")}</span>
+              </div>
+              <table className="match-table rgl-table">
+                <thead>
+                  <tr>
+                    <th className="num">#</th>
+                    <th>{t("Team")}</th>
+                    <th className="num" title={t("Played")}>
+                      {t("P")}
+                    </th>
+                    <th className="num">{t("W")}</th>
+                    <th className="num">{t("L")}</th>
+                    <th className="num" title={t("Rounds won and lost")}>
+                      {t("Rounds")}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tables.get(d)!.map((r, i) => (
+                    <tr key={r.id}>
+                      <td className="num muted">{i + 1}</td>
+                      <td>
+                        <button className="linkish" onClick={() => onTeam(r.id)}>
+                          {r.name}
+                        </button>
+                      </td>
+                      <td className="num">{r.played}</td>
+                      <td className="num team-won">{r.won}</td>
+                      <td className="num team-lost">{r.lost}</td>
+                      <td className="num muted">
+                        {r.for}:{r.against}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          ))}
+      </div>
+      <h2 className="ts-section">{t("Results")}</h2>
+      <div className="e2-rounds" role="tablist" aria-label={t("Week")}>
+        {weeks.map((w) => (
+          <button key={w} role="tab" aria-selected={w === week} className={w === week ? "on" : undefined} onClick={() => setPicked(w)}>
+            {w}
+            {w === live && <span className="e2-round-now" aria-hidden />}
+          </button>
+        ))}
+      </div>
+      <div className="e2-round-grid">
+        {divs
+          .filter((d) => inWeek.some((m) => m.divisionName === d))
+          .map((d) => {
+            const list = inWeek.filter((m) => m.divisionName === d);
+            return (
+              <section key={d} className="panel e2-panel">
+                <div className="e2-panel-head">
+                  <h2>{d}</h2>
+                  <span className="muted">{list.length === 1 ? t("1 match") : tx("{0} matches", { "0": list.length })}</span>
+                </div>
+                <ol className="rgl-results">
+                  {list.map((m) => (
+                    <WeekLine key={m.matchId} m={m} onTeam={onTeam} />
+                  ))}
+                </ol>
+              </section>
+            );
+          })}
+      </div>
+    </>
+  );
+}
+
+/** One match of a week: home and away, the score between, the map. */
+function WeekLine({ m, onTeam }: { m: RglMatch; onTeam: (id: number) => void }) {
+  const home = m.teams.find((x) => x.isHome) ?? m.teams[0];
+  const away = m.teams.find((x) => x !== home);
+  const hs = m.maps.reduce((n, x) => n + (x.homeScore ?? 0), 0);
+  const as = m.maps.reduce((n, x) => n + (x.awayScore ?? 0), 0);
+  const side = (x: RglMatch["teams"][number] | undefined, cls: string) =>
+    x ? (
+      <span className={`${cls}${m.winner === x.teamId ? " won" : ""}`}>
+        <button className="linkish" onClick={() => onTeam(x.teamId)}>
+          {x.teamName}
+        </button>
+      </span>
+    ) : (
+      <span className={cls}>–</span>
+    );
+  return (
+    <li className="rgl-wl">
+      <span className="muted rgl-wl-day">{day(m.matchDate)}</span>
+      {side(home, "rgl-wl-side l")}
+      <span className="rgl-wl-score">{m.isForfeit ? t("forfeit") : m.winner === null ? t("vs") : `${hs}:${as}`}</span>
+      {side(away, "rgl-wl-side r")}
+      <span className="muted rgl-wl-map">{m.maps.map((x) => x.mapName).join(", ")}</span>
+    </li>
+  );
+}
+
+// ---- The league's bans ---------------------------------------------------------
+
+/** A ban that ends after this year is for good. */
+const forGood = (iso: string | null) => !!iso && new Date(iso).getFullYear() > 2100;
+
+function BansPage({ onPlayer }: { onPlayer: (s: string) => void }) {
+  const q = useInfiniteQuery({
+    queryKey: ["rgl_bans"],
+    queryFn: ({ pageParam }) => api.getRglBans(pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (last, all) => (last.length < 50 ? undefined : all.length * 50),
+    staleTime: KEEP,
+  });
+  const bans: RglBan[] = q.data?.pages.flat() ?? [];
+  const now = Date.now();
+  return (
+    <>
+      <header className="ts-pagehead">
+        <span className="ts-eyebrow">{t("RGL")}</span>
+        <h1>{t("Bans")}</h1>
+        <p className="hint">{t("The league's bans, newest first, every format's: RGL keeps one list.")}</p>
+      </header>
+      <section className="panel e2-panel">
+        {q.error ? (
+          <ApiError error={q.error} />
+        ) : q.isPending ? (
+          <Loading>{t("Loading the bans…")}</Loading>
+        ) : bans.length === 0 ? (
+          <p className="hint">{t("No bans.")}</p>
+        ) : (
+          <div className="table-wrap">
+            <table className="match-table rgl-bans">
+              <thead>
+                <tr>
+                  <th>{t("Player")}</th>
+                  <th>{t("Reason")}</th>
+                  <th>{t("Banned")}</th>
+                  <th>{t("Until")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bans.map((b, i) => {
+                  const over = !!b.expiresAt && !forGood(b.expiresAt) && new Date(b.expiresAt).getTime() < now;
+                  return (
+                    <tr key={`${b.steamId}-${b.createdAt ?? i}`} className={over ? "rgl-ban-over" : undefined}>
+                      <td>
+                        <button className="linkish" onClick={() => onPlayer(b.steamId)}>
+                          {b.alias ?? b.steamId}
+                        </button>
+                      </td>
+                      <td>{b.reason ?? "–"}</td>
+                      <td className="nowrap muted">{day(b.createdAt)}</td>
+                      <td className="nowrap">
+                        {forGood(b.expiresAt) ? <span className="rgl-ban-perm">{t("Permanent")}</span> : over ? <span className="muted">{tx("ended {0}", { "0": day(b.expiresAt) })}</span> : day(b.expiresAt)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {q.hasNextPage && (
+          <button className="e2-more rgl-bans-more" onClick={() => void q.fetchNextPage()} disabled={q.isFetchingNextPage}>
+            {q.isFetchingNextPage ? t("Loading…") : t("Show more")}
+          </button>
+        )}
+      </section>
+    </>
   );
 }
 

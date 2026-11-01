@@ -101,3 +101,25 @@
 .rgl-coming { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .rgl-coming li { display: flex; flex-direction: column; gap: 2px; }
 .rgl-coming .muted { font-size: var(--fs-small); line-height: var(--lh-snug); }
+
+/* ---- A season's standings and results ------------------------------------ */
+.rgl-standings { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; }
+.rgl-table td, .rgl-table th { padding-top: 6px; padding-bottom: 6px; }
+.rgl-results { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rgl-wl {
+  display: grid; grid-template-columns: 64px minmax(0, 1fr) 64px minmax(0, 1fr); gap: 4px 10px; align-items: center;
+  padding: 7px 4px; border-top: 1px solid var(--rule); font-size: var(--fs-ui);
+}
+.rgl-wl:first-child { border-top: 0; }
+.rgl-wl-day { font-size: var(--fs-small); }
+.rgl-wl-side { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rgl-wl-side.l { text-align: right; }
+.rgl-wl-side.won .linkish { font-weight: 700; color: var(--text); }
+.rgl-wl-score { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rgl-wl-map { grid-column: 2 / -1; font-size: var(--fs-small); }
+
+/* ---- The league's bans ---------------------------------------------------- */
+.rgl-bans td { vertical-align: top; }
+.rgl-ban-over td { opacity: 0.6; }
+.rgl-ban-perm { color: var(--bad, #d98a80); font-weight: 700; }
+.rgl-bans-more { margin-top: 12px; align-self: center; }

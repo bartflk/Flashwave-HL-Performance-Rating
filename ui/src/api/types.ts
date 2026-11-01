@@ -383,10 +383,22 @@ export interface RglMatch {
   matchDate: string | null;
   /** "Week 1 - Vigil". */
   matchName: string | null;
+  /** RGL's name for the division ("Advanced"). */
+  divisionName?: string | null;
   isForfeit: boolean;
   winner: number | null;
   teams: { teamId: number; teamName: string; teamTag: string | null; isHome: boolean }[];
   maps: { mapName: string; homeScore: number | null; awayScore: number | null }[];
+}
+
+/** One of RGL's bans. */
+export interface RglBan {
+  steamId: string;
+  alias: string | null;
+  createdAt: string | null;
+  /** Far in the future (3026) for a permanent ban. */
+  expiresAt: string | null;
+  reason: string | null;
 }
 
 /** An RGL team's page: roster, results, and its other seasons' ids. */

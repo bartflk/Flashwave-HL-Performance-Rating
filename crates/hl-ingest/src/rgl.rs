@@ -4,7 +4,9 @@
 //! come from RGL's public API, `https://api.rgl.gg/v0`, and are kept in
 //! memory for half an hour. A team's page (roster, results, its other
 //! seasons) and a player's (by SteamID: RGL's name search is broken on its
-//! side) are read the same way. Standings, bans and the rest are phase 1.
+//! side) are read the same way. A season's matches are read one by one
+//! (RGL's paged match list ignores its filter and carries no scores), for
+//! its standings and results; the league's bans come from its paged list.
 
 use crate::sources::Sources;
 use anyhow::{Context, Result};
@@ -179,6 +181,9 @@ pub struct RglMatch {
     pub match_date: Option<String>,
     /// "Week 1 - Vigil".
     pub match_name: Option<String>,
+    /// "Advanced", as RGL names the division.
+    #[serde(default)]
+    pub division_name: Option<String>,
     #[serde(default)]
     pub is_forfeit: bool,
     pub winner: Option<i64>,
@@ -289,6 +294,52 @@ pub async fn team_seasons(sources: &Sources, ids: Vec<i64>) -> Result<Vec<RglTea
     }
     out.sort_by_key(|t| -t.season_id);
     Ok(out)
+}
+
+// ---- A season's matches, and the league's bans -------------------------------
+
+/// Every match of a season, oldest first: read one by one at RGL's pace
+/// (about 40 s for a Highlander season), then held like the rest.
+pub async fn season_matches(sources: &Sources, id: i64) -> Result<Vec<RglMatch>> {
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Head {
+        #[serde(default)]
+        matches_played_during_season: Vec<i64>,
+    }
+    let head: Head = serde_json::from_str(&get(sources, &format!("/seasons/{id}")).await?).context("reading RGL's season")?;
+    let mut out = Vec::new();
+    for m in head.matches_played_during_season {
+        if let Some(body) = get_opt(sources, &format!("/matches/{m}")).await? {
+            out.push(serde_json::from_str::<RglMatch>(&body).context("reading RGL's match")?);
+        }
+    }
+    out.sort_by(|a, b| a.match_date.cmp(&b.match_date).then(a.match_id.cmp(&b.match_id)));
+    Ok(out)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RglBan {
+    pub steam_id: String,
+    #[serde(default)]
+    pub alias: Option<String>,
+    #[serde(default)]
+    pub created_at: Option<String>,
+    /// Far in the future (3026) for a permanent ban.
+    #[serde(default)]
+    pub expires_at: Option<String>,
+    #[serde(default)]
+    pub reason: Option<String>,
+}
+
+/// How many bans a page of the list holds.
+pub const BANS_PAGE: i64 = 50;
+
+/// The league's bans, newest first, a page at a time from `skip`.
+pub async fn bans(sources: &Sources, skip: i64) -> Result<Vec<RglBan>> {
+    let body = get(sources, &format!("/bans/paged?take={BANS_PAGE}&skip={}", skip.max(0))).await?;
+    serde_json::from_str(&body).context("reading RGL's bans")
 }
 
 // ---- A player's page --------------------------------------------------------
