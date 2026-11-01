@@ -445,9 +445,18 @@ input:where(:not([type]))::placeholder {
   -webkit-mask: url("/icons/etf2l.svg") center / contain no-repeat;
   mask: url("/icons/etf2l.svg") center / contain no-repeat;
 }
-.tab:has(.etf2l-mark) { display: inline-flex; align-items: center; white-space: nowrap; }
-.tab .etf2l-mark { margin-right: 7px; }
-.badge .etf2l-mark { margin-right: 4px; }
+/* RGL's, the same way (RglMark). */
+.rgl-mark {
+  display: inline-block;
+  flex: none;
+  vertical-align: -2px;
+  background-color: currentColor;
+  -webkit-mask: url("/icons/rgl.svg") center / contain no-repeat;
+  mask: url("/icons/rgl.svg") center / contain no-repeat;
+}
+.tab:has(.etf2l-mark, .rgl-mark) { display: inline-flex; align-items: center; white-space: nowrap; }
+.tab .etf2l-mark, .tab .rgl-mark { margin-right: 7px; }
+.badge .etf2l-mark, .badge .rgl-mark { margin-right: 4px; }
 
 /* Q81: the spinner, a ring as tall as the text around it, in its colour;
    slower, not still, when motion is reduced, so waiting still reads. */

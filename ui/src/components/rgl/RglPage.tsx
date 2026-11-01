@@ -5,6 +5,8 @@ import type { RglMatch, RglPlayer, RglSeason, RglTeam, RglTeamPage } from "../..
 import { t } from "../../lib/i18n";
 import { ApiError } from "../ApiError";
 import { Loading } from "../Spinner";
+import { RglMark } from "../RglMark";
+import "../players/players.css";
 import "../teams/teams.css";
 import "../etf2l/etf2l.css";
 import "./rgl.css";
@@ -132,7 +134,9 @@ export function RglPage({ active, steamid }: { active: boolean; steamid: string 
     <div className="content e2-page">
       <header className="e2-head">
         <div className="e2-brand">
-          <span className="e2-eyebrow">{t("RGL Highlander")}</span>
+          <span className="e2-eyebrow">
+            <RglMark size={16} /> {t("RGL Highlander")}
+          </span>
           <nav className="e2-menu" aria-label={t("RGL")}>
             {menu.map(([id, label]) => (
               <button key={id} className={section === id ? "on" : undefined} aria-current={section === id ? "page" : undefined} onClick={() => go({ at: id })}>
@@ -264,7 +268,9 @@ function RglSearch({ onTeam, onPlayer }: { onTeam: (id: number) => void; onPlaye
                 onPlayer(term);
               }}
             >
-              <span className="e2-hit-name">{t("Open this player's RGL profile")}</span>
+              <span className="e2-hit-name">
+                <RglMark size={12} /> {t("Open this player's RGL profile")}
+              </span>
               <span className="e2-hit-meta">↵</span>
             </button>
           ) : (
@@ -333,6 +339,17 @@ function Home({ steamid, onTeam, onPlayer, go }: { steamid: string | null; onTea
   );
 }
 
+/** The page on rgl.gg, in a header's links column as on a profile. */
+function OnRgl({ href }: { href: string }) {
+  return (
+    <nav className="pp-links" aria-label={t("Elsewhere")}>
+      <a href={href} target="_blank" rel="noreferrer">
+        <RglMark size={12} /> {t("Open on RGL")} <span aria-hidden>↗</span>
+      </a>
+    </nav>
+  );
+}
+
 /** You on RGL, from the app's SteamID: your last season and team. */
 function YourRgl({ steamid, onTeam, onPlayer }: { steamid: string; onTeam: (id: number) => void; onPlayer: (s: string) => void }) {
   const q = usePlayer(steamid);
@@ -342,7 +359,9 @@ function YourRgl({ steamid, onTeam, onPlayer }: { steamid: string; onTeam: (id: 
   return (
     <section className="panel e2-panel">
       <div className="e2-panel-head">
-        <h2>{t("You on RGL")}</h2>
+        <h2>
+          <RglMark size={14} /> {t("You on RGL")}
+        </h2>
         {p && (
           <button className="e2-more" onClick={() => onPlayer(steamid)}>
             {t("Profile")} ›
@@ -492,6 +511,7 @@ function TeamView({ id, onTeam, onPlayer }: { id: number; onTeam: (id: number) =
               {[v.seasonName, v.division && (v.tier ? `${v.division} ≈ ${t(v.tier)}` : v.division), placing(v.finalRank), played > 0 && `${won}-${played - won}`].filter(Boolean).join(" · ")}
             </span>
           </div>
+          <OnRgl href={`https://rgl.gg/Public/Team?t=${v.id}`} />
         </div>
       </div>
       <div className="rgl-cols">
@@ -675,6 +695,7 @@ function PlayerView({ steamId, onTeam }: { steamId: string; onTeam: (id: number)
               {t("{0} NA Highlander seasons", { "0": p.seasons.length })} · {wins}-{losses}
             </span>
           </div>
+          <OnRgl href={`https://rgl.gg/Public/PlayerProfile?p=${p.steamId}`} />
         </div>
       </div>
       <section className="panel e2-panel">

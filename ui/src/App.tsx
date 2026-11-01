@@ -31,6 +31,7 @@ import { BookmarksMenu } from "./components/Bookmarks";
 import "./App.css";
 import "./components/match/match.css";
 import { Etf2lMark } from "./components/Etf2lMark";
+import { RglMark } from "./components/RglMark";
 import { Logo } from "./components/Logo";
 
 type Tab = "matches" | "profile" | "etf2l" | "rgl" | "settings" | "rating";
@@ -177,6 +178,7 @@ export default function App() {
             {TABS.map(([id, label]) => (
               <button key={id} className={tab === id ? "tab active" : "tab"} onClick={() => go(id)}>
                 {id === "etf2l" && <Etf2lMark size={15} />}
+                {id === "rgl" && <RglMark size={15} />}
                 {t(label)}
               </button>
             ))}

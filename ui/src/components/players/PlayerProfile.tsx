@@ -17,6 +17,7 @@ import { Country } from "../Country";
 import { BookmarkButton } from "../Bookmarks";
 import { LivesOnMapTab } from "./LivesOnMap";
 import { Etf2lMark } from "../Etf2lMark";
+import { RglMark } from "../RglMark";
 import { LogsTfCareer } from "./LogsTfCareer";
 import { SortTh, useSort } from "../../lib/sort";
 import { Loading } from "../Spinner";
@@ -239,6 +240,7 @@ function ProfileLinks({ p }: { p: Profile }) {
       {links.map(([label, href, etf2l]) => (
         <a key={label} href={href} target="_blank" rel="noreferrer">
           {etf2l && <Etf2lMark size={12} />}
+          {label === "RGL" && <RglMark size={12} />}
           {label} <span aria-hidden>↗</span>
         </a>
       ))}
