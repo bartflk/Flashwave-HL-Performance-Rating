@@ -23,7 +23,7 @@ import { useCallouts } from "../analysis/Callouts";
 
 type Side = "both" | "Red" | "Blue";
 type Ending = "any" | "died" | "survived";
-type View = "auto" | "routes" | "density" | "opening";
+type View = "routes" | "density" | "opening";
 type Situation = "capped" | "afterCap" | "midFight";
 
 /** The situation filters (Q67): `[key, label, what it means]`. */
@@ -36,8 +36,8 @@ const SITUATIONS: Array<[Situation, string, string]> = [
 /** Each situation's icon. */
 const SITUATION_ICON: Record<Situation, "cap" | "afterCap" | "swords"> = { capped: "cap", afterCap: "afterCap", midFight: "swords" };
 
-/** "Auto" shows where they usually go from this many lives up (Q65):
- *  past it, separate lines are a solid smear. */
+/** Until a view is picked, it is Most used from this many lives up and
+ *  Every route below (Q65): past it, separate lines are a solid smear. */
 const DENSITY_FROM = 300;
 
 /** The density grid's cells across the frame. */
@@ -93,10 +93,10 @@ function beginOf(l: LifeOnMap): [number, number] | undefined {
 /** A hex both use at least this much (of each one's busiest) is outlined. */
 const OVERLAP = 0.25;
 
-/** How much of each round's start the openings view takes (Flashy: "the
- *  rollout heatmap first 20 seconds or something"). */
-const WINDOWS = [10, 20, 30, 40] as const;
-type Window = (typeof WINDOWS)[number];
+/** How much of each round's start the openings view takes: the whole of
+ *  what is stored, or less with Until the first kill (Flashy: "remove those
+ *  buttons all together, just have the untill the first kill"). */
+const ROLLOUT_S = 40;
 
 /** One player's (or one side's) openings in the view, and how to draw them. */
 type Group = { key: string; label: string; cls: string | null; colour: string; lives: LifeOnMap[]; of?: number };
@@ -148,12 +148,11 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
   const [situations, setSituations] = useState<Set<Situation>>(new Set());
   // Q66: only the most recent N matches (of this class and side); null is all.
   const [lastN, setLastN] = useState<number | null>(null);
-  // Q65: every route, or where they usually go; "auto" picks by how many.
-  const [view, setView] = useState<View>("auto");
+  // Q65: every route, or where they usually go; until one is picked, by how
+  // many lives there are.
+  const [view, setView] = useState<View | null>(null);
   const [hover, setHover] = useState<LifeOnMap | null>(null);
-  // The openings view's rollout window, and whether it stops at the round's
-  // first kill.
-  const [rollout, setRollout] = useState<Window>(20);
+  // Whether the openings view stops each round at its first kill.
   const [toKill, setToKill] = useState(true);
   // Someone to compare with, and their class (Flashy: "where both snipers
   // rollout").
@@ -192,7 +191,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
   // The round openings (PGL's heatmaps): only the lives that began with a
   // round, cut to its first seconds. The end and situation filters are about
   // the rest of the life, so they do not apply.
-  const openings = useMemo(() => recent.lives.flatMap((l) => cut(l, rollout, toKill) ?? []), [recent, rollout, toKill]);
+  const openings = useMemo(() => recent.lives.flatMap((l) => cut(l, ROLLOUT_S, toKill) ?? []), [recent, toKill]);
   const opening = view === "opening";
   const playersQ = useQuery({
     queryKey: ["lives_players", accountId, map],
@@ -223,8 +222,8 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
     const keep = opp
       ? (l: LifeOnMap) => logs.has(l.logId) && (side === "both" || (l.team !== null && l.team !== side))
       : (l: LifeOnMap) => (vsCls === null || l.class === vsCls) && (side === "both" || l.team === side);
-    return vsAll.filter(keep).flatMap((l) => cut(l, rollout, toKill) ?? []);
-  }, [vsAll, vsCls, side, rollout, toKill, opp, recent]);
+    return vsAll.filter(keep).flatMap((l) => cut(l, ROLLOUT_S, toKill) ?? []);
+  }, [vsAll, vsCls, side, toKill, opp, recent]);
   // Side by side: theirs and the other player's, each in its own colour;
   // alone, RED's and BLU's.
   const groups: Group[] =
@@ -245,7 +244,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
     setVsCls(p ? (cls !== null && p.classes.some(([c]) => c === cls) ? cls : (p.classes[0]?.[0] ?? null)) : null);
   };
   const sides = { Red: all.filter((l) => (cls === null || l.class === cls) && l.team === "Red").length, Blue: all.filter((l) => (cls === null || l.class === cls) && l.team === "Blue").length };
-  const mode: Mode = view === "auto" ? (shown.length > DENSITY_FROM ? "density" : "routes") : view;
+  const mode: Mode = view ?? (shown.length > DENSITY_FROM ? "density" : "routes");
   const toggle = (s: Situation) =>
     setSituations((was) => {
       const next = new Set(was);
@@ -332,10 +331,9 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
         <CtlGroup label={t("View")}>
           <Seg
             label={t("View")}
-            value={view}
+            value={mode}
             onChange={setView}
             options={[
-              { v: "auto", label: <><Icon name="auto" size={14} /> {t("Auto")}</>, title: t("Most used from {0} lives, every route below that", { "0": DENSITY_FROM }) },
               { v: "routes", label: <><Icon name="routes" size={14} /> {t("Every route")}</>, title: t("One line per life") },
               { v: "density", label: <><Icon name="grid" size={14} /> {t("Most used")}</>, title: t("How many lives passed each spot: the busier, the stronger") },
               { v: "opening", label: <><Icon name="hex" size={14} /> {t("Round openings")}</>, title: t("Where they go at the start of each round, and where someone else does") },
@@ -376,13 +374,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
         )}
         {mode === "opening" && (
           <CtlGroup label={t("Rollout")}>
-            <Seg
-              label={t("Rollout")}
-              value={String(rollout)}
-              onChange={(v) => setRollout(Number(v) as Window)}
-              options={WINDOWS.map((w) => ({ v: String(w), label: tx("First {0} s", { "0": w }) }))}
-            />
-            <button className={toKill ? "lm-toggle on" : "lm-toggle"} aria-pressed={toKill} onClick={() => setToKill(!toKill)} title={t("Stop each round at its first kill, whoever got it")}>
+            <button className={toKill ? "lm-toggle on" : "lm-toggle"} aria-pressed={toKill} onClick={() => setToKill(!toKill)} title={t("Stop each round at its first kill, whoever got it; otherwise its first 40 s")}>
               <Icon name="skull" size={14} />
               {t("Until the first kill")}
               <span className="lm-check" aria-hidden>
@@ -475,7 +467,7 @@ export function LivesOnMapTab({ accountId, name }: { accountId: number; name: st
           lives={mode === "opening" ? groups.flatMap((g) => g.lives) : shown}
           groups={groups}
           spawnZones={spawnZones}
-          window={rollout}
+          window={ROLLOUT_S}
           toKill={toKill}
           overview={overviewQ.data ?? null}
           hover={hover}
@@ -532,7 +524,6 @@ export function MatchOpenings({
     staleTime: Infinity,
   });
   const [picked, setPicked] = useState<string | null>(null);
-  const [rollout, setRollout] = useState<Window>(20);
   const [toKill, setToKill] = useState(true);
   const all = useMemo(() => (q.data ?? []).filter((l) => rounds === null || (l.openingRound !== null && rounds.has(l.openingRound))), [q.data, rounds]);
   // Each class with how many played it (Flashy: "the game has 2 snipers,
@@ -547,12 +538,12 @@ export function MatchOpenings({
   // side they had that round.
   const groups: Group[] = useMemo(() => {
     const side = (team: "Red" | "Blue"): Group => {
-      const lives = all.filter((l) => (teams.get(l.accountId) ?? l.team) === team && l.class === cls).flatMap((l) => cut(l, rollout, toKill) ?? []);
+      const lives = all.filter((l) => (teams.get(l.accountId) ?? l.team) === team && l.class === cls).flatMap((l) => cut(l, ROLLOUT_S, toKill) ?? []);
       const who = [...new Set(lives.map((l) => names.get(l.accountId) ?? "?"))];
       return { key: team, label: `${team === "Red" ? "RED" : "BLU"}${who.length > 0 ? ` · ${who.join(", ")}` : ""}`, cls, colour: team === "Red" ? "--red" : "--blu", lives, of: roundCount };
     };
     return [side("Red"), side("Blue")];
-  }, [all, cls, rollout, toKill, names, teams, roundCount]);
+  }, [all, cls, toKill, names, teams, roundCount]);
   const [hover, setHover] = useState<LifeOnMap | null>(null);
 
   if (q.isPending) return <Loading>{t("Reading the routes…")}</Loading>;
@@ -580,13 +571,7 @@ export function MatchOpenings({
           </div>
         </CtlGroup>
         <CtlGroup label={t("Rollout")}>
-          <Seg
-            label={t("Rollout")}
-            value={String(rollout)}
-            onChange={(v) => setRollout(Number(v) as Window)}
-            options={WINDOWS.map((w) => ({ v: String(w), label: tx("First {0} s", { "0": w }) }))}
-          />
-          <button className={toKill ? "lm-toggle on" : "lm-toggle"} aria-pressed={toKill} onClick={() => setToKill(!toKill)} title={t("Stop each round at its first kill, whoever got it")}>
+          <button className={toKill ? "lm-toggle on" : "lm-toggle"} aria-pressed={toKill} onClick={() => setToKill(!toKill)} title={t("Stop each round at its first kill, whoever got it; otherwise its first 40 s")}>
             <Icon name="skull" size={14} />
             {t("Until the first kill")}
             <span className="lm-check" aria-hidden>
@@ -605,7 +590,7 @@ export function MatchOpenings({
         lives={groups.flatMap((g) => g.lives)}
         groups={groups}
         spawnZones={spawnZones}
-        window={rollout}
+        window={ROLLOUT_S}
         toKill={toKill}
         overview={overviewQ.data ?? null}
         hover={hover}
