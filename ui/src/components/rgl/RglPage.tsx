@@ -75,6 +75,61 @@ function placing(rank: number | null, seeding?: number | null): string {
   return seeding != null ? t("seed {0}", { "0": seeding }) : "";
 }
 
+const SEEN_KEY = "rgl-in-development-seen";
+
+function seen(): boolean {
+  try {
+    return localStorage.getItem(SEEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Said once, the first time the tab is opened (Flashy: "put a disclaimer rgl
+ * tab is in development, a modal/dialog when you first click it, transparent
+ * darker background so it focuses you").
+ */
+function InDevelopment() {
+  const [open, setOpen] = useState(() => !seen());
+  const ok = useRef<HTMLButtonElement>(null);
+  const close = () => {
+    try {
+      localStorage.setItem(SEEN_KEY, "1");
+    } catch {
+      // It says so again next time, which is harmless.
+    }
+    setOpen(false);
+  };
+  useEffect(() => {
+    if (!open) return;
+    ok.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+  if (!open) return null;
+  return (
+    <div className="modal-scrim focus" role="dialog" aria-modal="true" aria-labelledby="rgl-dev-title" onClick={(e) => e.target === e.currentTarget && close()}>
+      <div className="modal rgl-dev">
+        <span className="e2-eyebrow">
+          <RglMark size={16} /> {t("RGL Highlander")}
+        </span>
+        <h3 id="rgl-dev-title">{t("The RGL tab is in development")}</h3>
+        <p>{t("This is an early look. Seasons, teams and players are read live from RGL's public API; standings, bans and the name search are not here yet.")}</p>
+        <p className="muted">{t("Things may change, be missing or not work as they should. What is still to come is listed under Coming soon.")}</p>
+        <div className="modal-actions">
+          <button ref={ok} className="primary" onClick={close}>
+            {t("Got it")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function RglPage({ active, steamid }: { active: boolean; steamid: string | null }) {
   const [stack, setStack] = useState<Loc[]>([{ at: "home" }]);
   const loc = stack[stack.length - 1];
@@ -132,6 +187,7 @@ export function RglPage({ active, steamid }: { active: boolean; steamid: string 
 
   return (
     <div className="content e2-page">
+      {active && <InDevelopment />}
       <header className="e2-head">
         <div className="e2-brand">
           <span className="e2-eyebrow">
