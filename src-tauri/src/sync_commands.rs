@@ -1939,7 +1939,7 @@ pub async fn get_rgl_bans(state: State<'_, AppState>, skip: Option<i64>) -> CmdR
 /// One RGL season: its maps and each division's teams.
 #[tauri::command]
 pub async fn get_rgl_season(state: State<'_, AppState>, id: i64) -> CmdResult<hl_ingest::rgl::RglSeason> {
-    Ok(hl_ingest::rgl::season(&state.sources, id).await?)
+    Ok(hl_ingest::rgl::season(&state.db, &state.sources, id).await?)
 }
 
 /// An RGL team: roster, results and its other seasons' ids.
@@ -1951,7 +1951,25 @@ pub async fn get_rgl_team(state: State<'_, AppState>, id: i64) -> CmdResult<Opti
 /// An RGL team's other Highlander seasons.
 #[tauri::command]
 pub async fn get_rgl_team_seasons(state: State<'_, AppState>, ids: Vec<i64>) -> CmdResult<Vec<hl_ingest::rgl::RglTeamSeason>> {
-    Ok(hl_ingest::rgl::team_seasons(&state.sources, ids).await?)
+    Ok(hl_ingest::rgl::team_seasons(&state.db, &state.sources, ids).await?)
+}
+
+/// An RGL season's card: its best division's top three.
+#[tauri::command]
+pub async fn get_rgl_season_card(state: State<'_, AppState>, id: i64) -> CmdResult<hl_ingest::rgl::RglSeasonCard> {
+    Ok(hl_ingest::rgl::season_card(&state.db, &state.sources, id).await?)
+}
+
+/// RGL players whose name holds `q`.
+#[tauri::command]
+pub async fn search_rgl_players(state: State<'_, AppState>, q: String) -> CmdResult<Vec<hl_ingest::rgl::RglPlayerHit>> {
+    Ok(hl_ingest::rgl::search_players(&state.sources, &q).await?)
+}
+
+/// RGL Highlander teams whose name or tag holds `q`.
+#[tauri::command]
+pub async fn search_rgl_teams(state: State<'_, AppState>, q: String) -> CmdResult<Vec<hl_ingest::rgl::RglTeamHit>> {
+    Ok(hl_ingest::rgl::search_teams(&state.db, &state.sources, &q).await?)
 }
 
 /// An RGL player by SteamID or profile link; `None` when not on RGL.

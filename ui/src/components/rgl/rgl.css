@@ -63,23 +63,14 @@
 .rgl-out { color: var(--faint); font-size: var(--fs-small); font-style: italic; white-space: nowrap; }
 
 /* ---- Seasons ------------------------------------------------------------ */
-.rgl-season-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
-.rgl-season-tile {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--panel-2);
-  box-shadow: none;
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.rgl-season-tile:hover { border-color: var(--tf2-tan); }
+/* A season's card, as a tournament's on the ETF2L tab, in RGL's red. */
+.rgl-sc { border-top-color: #d94848; }
+.rgl-sc .ts-art-img { background-image: linear-gradient(135deg, color-mix(in srgb, #d94848 70%, #000), color-mix(in srgb, var(--tf2-tan) 30%, var(--panel-2))); }
+.rgl-sc .ts-row-value strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Players' name search, under the box. */
+.rgl-found { display: flex; flex-direction: column; gap: 2px; margin-top: 12px; max-width: 560px; }
+.rgl-found h4 { margin: 8px 10px 2px; font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+.e2-hit-name .rgl-tag { margin-left: 8px; }
 
 /* ---- A team and a player ---------------------------------------------- */
 .rgl-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 20px; align-items: start; }

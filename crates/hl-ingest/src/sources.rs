@@ -56,7 +56,8 @@ pub struct Sources {
     moretf: Throttled,
     demostf: Throttled,
     etf2l: Throttled,
-    /// RGL's API: 5 requests a second published; we keep to 4.
+    /// RGL's API: 5 requests a second, as its `RateLimit-*` headers say; we
+    /// keep to 4, and wait out the window if they say none are left.
     rgl: Throttled,
     /// Steam profiles and avatar images, for the owner's picture.
     web: Throttled,
@@ -446,6 +447,12 @@ impl Sources {
     /// screen waiting on it.
     pub async fn rgl_get(&self, path: &str) -> Result<Option<String>> {
         self.rgl.get_text_opt_interactive(&format!("https://api.rgl.gg/v0{path}")).await
+    }
+
+    /// A POST to RGL's API with a JSON body: its searches and its paged match
+    /// list. Same pace as [`rgl_get`](Self::rgl_get).
+    pub async fn rgl_post(&self, path: &str, body: &Value) -> Result<Option<String>> {
+        self.rgl.post_json_opt_interactive(&format!("https://api.rgl.gg/v0{path}"), body).await
     }
 
     pub async fn etf2l_get(&self, path: &str) -> Result<Option<String>> {

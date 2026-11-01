@@ -444,6 +444,34 @@ export interface RglPlayerSeason {
   losses: number;
 }
 
+/** An RGL season's card: its best division's top three, best first;
+ *  empty while it is played. */
+export interface RglSeasonCard {
+  id: number;
+  maps: number;
+  /** Teams in its best division. */
+  teams: number;
+  podium: RglTeam[];
+}
+
+/** A player RGL's name search found. */
+export interface RglPlayerHit {
+  steamId: string;
+  name: string;
+  avatar: string | null;
+}
+
+/** An NA Highlander team RGL's name search found. */
+export interface RglTeamHit {
+  id: number;
+  name: string;
+  tag: string | null;
+  seasonId: number;
+  seasonName: string;
+  division: string | null;
+  finalRank: number | null;
+}
+
 /** An RGL player, NA Highlander's seasons newest first. */
 export interface RglPlayer {
   steamId: string;
@@ -1030,7 +1058,7 @@ export interface MassBatch {
 }
 
 /** Q60: a page kept to come back to. */
-export type BookmarkKind = "match" | "player" | "team" | "season";
+export type BookmarkKind = "match" | "player" | "team" | "season" | "rgl_team" | "rgl_season";
 export interface Bookmark {
   kind: BookmarkKind;
   /** The log, account, team or season number. */

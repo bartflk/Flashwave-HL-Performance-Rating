@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { Bookmark, BookmarkKind } from "../api/types";
-import { openPlayer, openSeason, openTeam } from "../lib/goto";
+import { openPlayer, openRgl, openSeason, openTeam } from "../lib/goto";
 import { t, k } from "../lib/i18n";
 
 /**
@@ -54,6 +54,8 @@ const GROUPS: Array<[BookmarkKind, string]> = [
   ["player", k("Players")],
   ["team", k("Teams")],
   ["season", k("Seasons")],
+  ["rgl_team", k("RGL teams")],
+  ["rgl_season", k("RGL seasons")],
 ];
 
 /** The top bar's list of bookmarks, grouped by kind, newest first. */
@@ -83,6 +85,8 @@ export function BookmarksMenu({ onOpenMatch }: { onOpenMatch: (logId: number) =>
     if (b.kind === "match") onOpenMatch(b.id);
     else if (b.kind === "player") openPlayer(b.id);
     else if (b.kind === "team") openTeam(b.id);
+    else if (b.kind === "rgl_team") openRgl({ kind: "team", id: b.id });
+    else if (b.kind === "rgl_season") openRgl({ kind: "season", id: b.id });
     else openSeason(b.id);
   }
 

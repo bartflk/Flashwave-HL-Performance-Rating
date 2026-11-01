@@ -5,7 +5,7 @@
  */
 const EVENT = "hl:goto";
 
-export type Destination = "rating" | "etf2l" | "settings";
+export type Destination = "rating" | "etf2l" | "rgl" | "settings";
 
 const SETTINGS_EVENT = "hl:settings-section";
 let pendingSettingsSection: string | null = null;
@@ -127,6 +127,34 @@ export function onOpenSeason(open: (season: number) => void): () => void {
   };
   window.addEventListener(SEASON_EVENT, handler);
   return () => window.removeEventListener(SEASON_EVENT, handler);
+}
+
+const RGL_EVENT = "hl:rgl";
+export type RglPlace = { kind: "team" | "season"; id: number };
+let pendingRgl: RglPlace | null = null;
+
+/** The RGL tab, on one team's or season's page (from a bookmark). */
+export function openRgl(to: RglPlace) {
+  pendingRgl = to;
+  goTo("rgl");
+  window.dispatchEvent(new CustomEvent<RglPlace>(RGL_EVENT, { detail: to }));
+}
+
+/** For the RGL tab: the page asked for before it was first shown. */
+export function takePendingRgl(): RglPlace | null {
+  const p = pendingRgl;
+  pendingRgl = null;
+  return p;
+}
+
+/** For the RGL tab: a page asked for while it is mounted. */
+export function onOpenRgl(open: (to: RglPlace) => void): () => void {
+  const handler = (e: Event) => {
+    pendingRgl = null;
+    open((e as CustomEvent<RglPlace>).detail);
+  };
+  window.addEventListener(RGL_EVENT, handler);
+  return () => window.removeEventListener(RGL_EVENT, handler);
 }
 
 const TOURNAMENT_EVENT = "hl:tournament";

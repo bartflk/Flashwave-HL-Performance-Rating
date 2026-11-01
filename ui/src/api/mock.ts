@@ -75,6 +75,9 @@ import type {
   NewsItem,
   NewsPost,
   RglPlayer,
+  RglPlayerHit,
+  RglSeasonCard,
+  RglTeamHit,
   RglSeason,
   RglSeasonItem, RglBan, RglMatch,
   RglTeamPage,
@@ -1447,6 +1450,31 @@ export const mockApi: Api = {
             { steamId: "76561199884326268", alias: "freak", createdAt: "2026-10-30T00:21:22.293Z", expiresAt: "3026-03-01T00:00:00.000Z", reason: "Permanently banned due to a VAC ban." },
             { steamId: "76561198000000001", alias: "oldtimer", createdAt: "2026-03-01T00:00:00.000Z", expiresAt: "2026-04-01T00:00:00.000Z", reason: "Toxicity" },
           ],
+    ),
+  getRglSeasonCard: (id: number) =>
+    delay<RglSeasonCard>({
+      id,
+      maps: 6,
+      teams: id === 198 ? 8 : 10,
+      podium: id === 198 ? [] : [
+        { id: 14908 + id, name: id === 193 ? "The Amiable Duds" : "Witness Gaming", tag: id === 193 ? "AD." : "wG", finalRank: 1, seeding: null, teamStatus: "Ready" },
+        { id: 14954 + id, name: id === 193 ? "Witness Gaming" : "The Family", tag: id === 193 ? "wG" : "folk", finalRank: 2, seeding: null, teamStatus: "Ready" },
+        { id: 14839 + id, name: id === 193 ? "The Family" : "mandem", tag: id === 193 ? "folk" : "mndm", finalRank: 3, seeding: null, teamStatus: "Ready" },
+      ],
+    }),
+  searchRglPlayers: (q: string) =>
+    delay<RglPlayerHit[]>(
+      [
+        { steamId: "76561198072302537", name: "nyxi", avatar: null },
+        { steamId: "76561197970669109", name: "b4nny", avatar: null },
+      ].filter((p) => p.name.toLowerCase().includes(q.trim().toLowerCase())),
+    ),
+  searchRglTeams: (q: string) =>
+    delay<RglTeamHit[]>(
+      [
+        { id: 14908, name: "The Amiable Duds", tag: "AD.", seasonId: 193, seasonName: "HL Season 24", division: "Invite", finalRank: 1 },
+        { id: 12734, name: "The Amiable Duds", tag: "AD.", seasonId: 183, seasonName: "HL Season 23", division: "Advanced", finalRank: 2 },
+      ].filter((x) => x.name.toLowerCase().includes(q.trim().toLowerCase()) || x.tag.toLowerCase().includes(q.trim().toLowerCase())),
     ),
   getRglTeamSeasons: () => delay<RglTeamSeason[]>([{ id: 12734, name: "The Amiable Duds", tag: "AD.", seasonId: 183, seasonName: "HL Season 23", division: "Advanced", finalRank: 2 }]),
   getRglPlayer: (input: string) =>

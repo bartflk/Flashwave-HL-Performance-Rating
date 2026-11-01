@@ -114,6 +114,39 @@ impl Throttled {
     /// a screen would sit on a spinner for the 13 s of backoff only to show
     /// its offline state anyway. Other failures retry either way.
     async fn fetch(&self, url: &str, interactive: bool) -> Result<Option<Vec<u8>>> {
+        self.send(url, interactive, true, || self.conditional(url)).await
+    }
+
+    /// POST a JSON body and return the answer as text; a 404 is `None`. Same
+    /// throttle and retries, for a screen waiting on it. RGL's search and
+    /// its paged match list are POSTs.
+    pub async fn post_json_opt_interactive(&self, url: &str, body: &serde_json::Value) -> Result<Option<String>> {
+        let body = serde_json::to_vec(body).context("writing a request body")?;
+        let post = || self.client.post(url).header(reqwest::header::CONTENT_TYPE, "application/json").body(body.clone());
+        text(url, self.send(url, true, false, post).await?)
+    }
+
+    /// A server's own count of what is left (`RateLimit-Remaining`, the IETF
+    /// draft RGL sends, or the older `X-RateLimit-*`): when it says none,
+    /// the next request waits for its window to reset, whatever our pace.
+    async fn heed_limit(&self, headers: &reqwest::header::HeaderMap) {
+        let num = |names: [&str; 2]| names.iter().find_map(|n| headers.get(*n)?.to_str().ok()?.trim().parse::<u64>().ok());
+        if num(["ratelimit-remaining", "x-ratelimit-remaining"]) != Some(0) {
+            return;
+        }
+        // Seconds to the reset; a value past a day is an epoch time, not a delay.
+        let reset = num(["ratelimit-reset", "x-ratelimit-reset"]).unwrap_or(1);
+        let reset = if reset > 86_400 {
+            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+            reset.saturating_sub(now)
+        } else {
+            reset
+        };
+        let mut next = self.next_slot.lock().await;
+        *next = (*next).max(Instant::now() + Duration::from_secs(reset.clamp(1, 90)));
+    }
+
+    async fn send(&self, url: &str, interactive: bool, validate: bool, request: impl Fn() -> reqwest::RequestBuilder) -> Result<Option<Vec<u8>>> {
         let mut last_err = None;
         let mut wait = Duration::ZERO;
         for attempt in 0..=RETRY_DELAYS.len() {
@@ -122,8 +155,9 @@ impl Throttled {
             }
             self.wait_turn().await;
 
-            match self.conditional(url).send().await {
+            match request().send().await {
                 Ok(resp) => {
+                    self.heed_limit(resp.headers()).await;
                     let status = resp.status();
                     if status == reqwest::StatusCode::NOT_MODIFIED {
                         if let Some(body) = self.revalidated(url) {
@@ -136,7 +170,9 @@ impl Throttled {
                         let etag = header(reqwest::header::ETAG).map(|e| closed_etag(&e));
                         let last_modified = header(reqwest::header::LAST_MODIFIED);
                         let body = resp.bytes().await.map(|b| b.to_vec()).with_context(|| format!("reading body of {url}"))?;
-                        self.keep(url, etag, last_modified, &body);
+                        if validate {
+                            self.keep(url, etag, last_modified, &body);
+                        }
                         return Ok(Some(body));
                     }
                     if status.as_u16() == 404 {
@@ -383,6 +419,35 @@ mod tests {
         assert_eq!(closed_etag("W/\"831f\""), "W/\"831f\"");
         assert_eq!(closed_etag("\"abc\""), "\"abc\"");
         assert_eq!(closed_etag("\"abc"), "\"abc\"");
+    }
+
+    /// A server saying no requests are left this window (RGL's
+    /// `RateLimit-*`): the next one waits for the reset, though our own pace
+    /// would let it go at once.
+    #[tokio::test]
+    async fn a_spent_rate_limit_is_waited_out() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = std::thread::spawn(move || {
+            for _ in 0..2 {
+                let (mut conn, _) = listener.accept().unwrap();
+                let mut request = Vec::new();
+                let mut buf = [0u8; 1024];
+                while !request.windows(4).any(|w| w == b"\r\n\r\n") {
+                    let n = conn.read(&mut buf).unwrap();
+                    request.extend_from_slice(&buf[..n]);
+                }
+                let reply = "HTTP/1.1 200 OK\r\nRateLimit-Limit: 5\r\nRateLimit-Remaining: 0\r\nRateLimit-Reset: 1\r\nContent-Length: 2\r\nConnection: close\r\n\r\n[]";
+                conn.write_all(reply.as_bytes()).unwrap();
+            }
+        });
+        let client = Throttled::new(Duration::ZERO).unwrap();
+        let at = format!("http://127.0.0.1:{port}/v0/regions");
+        client.get_text(&at).await.unwrap();
+        let started = std::time::Instant::now();
+        client.get_text(&at).await.unwrap();
+        assert!(started.elapsed() >= Duration::from_millis(900), "{:?}", started.elapsed());
+        server.join().unwrap();
     }
 
     /// A one-off server on localhost: the first request gets a body with an

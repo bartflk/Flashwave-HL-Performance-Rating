@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { RglBan, RglMatch, RglPlayer, RglSeason, RglTeam, RglTeamPage } from "../../api/types";
+import type { RglBan, RglMatch, RglPlayer, RglSeasonItem, RglTeamPage } from "../../api/types";
 import { t, tx } from "../../lib/i18n";
 import { ApiError } from "../ApiError";
 import { Loading } from "../Spinner";
@@ -10,6 +10,8 @@ import { MedalGlyph } from "../players/MedalGlyph";
 import { Seg } from "../analysis/MapChrome";
 import { Countdown, clockTime, fullDate } from "../etf2l/Countdown";
 import { LeagueHead } from "../LeagueHead";
+import { BookmarkButton } from "../Bookmarks";
+import { onOpenRgl, takePendingRgl } from "../../lib/goto";
 import "../players/players.css";
 import "../teams/teams.css";
 import "../etf2l/etf2l.css";
@@ -20,9 +22,9 @@ import "./rgl.css";
  * follow the template of the etf2l page"): a menu, breadcrumbs, a search,
  * and the mouse's back button stepping back within the tab. What RGL's API
  * answers by id is here -- seasons, a team's roster, results and other
- * seasons, a player's career by SteamID, your own RGL card -- read live and
- * kept for half an hour. Its lists (bans, name search, matches) are broken
- * on RGL's side, so standings and the rest wait for phase 1.
+ * seasons, a player's career by SteamID or name, your own RGL card -- read
+ * live, kept for half an hour, and on disk once a season is over
+ * (hl_ingest::rgl says how RGL is asked as little as it can be).
  */
 
 type Section = "home" | "matches" | "seasons" | "players" | "bans";
@@ -55,7 +57,6 @@ const KEEP = 30 * 60_000;
 /** What the full tab will add, shown until it is built. */
 const coming = (): [string, string][] => [
   [t("Logs"), t("Each match's logs, and who played it.")],
-  [t("Search by name"), t("RGL's name search is broken on its side for now: players open by SteamID.")],
   [t("Through the app"), t("RGL on profiles and the scoreboard, and RGL officials counted as officials.")],
 ];
 
@@ -100,6 +101,24 @@ function byDay(rows: RglMatch[]): Array<[string, RglMatch[]]> {
     else out.push([label, [r]]);
   }
   return out;
+}
+/** What was typed, once typing stops: RGL is asked per word, not per key. */
+function useSettled(value: string, ms = 450): string {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const id = window.setTimeout(() => setSettled(value), ms);
+    return () => window.clearTimeout(id);
+  }, [value, ms]);
+  return settled;
+}
+/** RGL's name search: three letters at least, each term asked once. */
+const SEARCH_FROM = 3;
+function useNameSearch(term: string) {
+  const q = useSettled(term.trim());
+  const on = q.length >= SEARCH_FROM && !looksLikeSteamId(q);
+  const players = useQuery({ queryKey: ["rgl_search_players", q.toLowerCase()], queryFn: () => api.searchRglPlayers(q), enabled: on, staleTime: KEEP, retry: false });
+  const teams = useQuery({ queryKey: ["rgl_search_teams", q.toLowerCase()], queryFn: () => api.searchRglTeams(q), enabled: on, staleTime: KEEP, retry: false });
+  return { on, waiting: term.trim() !== q || (on && (players.isFetching || teams.isFetching)), players: players.data ?? [], teams: teams.data ?? [], error: players.error ?? teams.error };
 }
 const usePlayer = (steamId: string | null) =>
   useQuery({ queryKey: ["rgl_player", steamId], queryFn: () => api.getRglPlayer(steamId!), enabled: steamId !== null, staleTime: KEEP, retry: false });
@@ -161,7 +180,7 @@ function InDevelopment() {
           <RglMark size={16} /> {t("RGL Highlander")}
         </span>
         <h3 id="rgl-dev-title">{t("The RGL tab is in development")}</h3>
-        <p>{t("This is an early look. Seasons, teams and players are read live from RGL's public API; standings, bans and the name search are not here yet.")}</p>
+        <p>{t("This is an early look. Seasons, teams, players, matches and bans are read from RGL's public API; who played each match and its logs are not here yet.")}</p>
         <p className="muted">{t("Things may change, be missing or not work as they should. What is still to come is listed under Coming soon.")}</p>
         <div className="modal-actions">
           <button ref={ok} className="primary" onClick={close}>
@@ -192,6 +211,17 @@ export function RglPage({ active, steamid }: { active: boolean; steamid: string 
     setStack((s) => [...s, { at: "match", id, from: base(s[s.length - 1]) }]);
     window.scrollTo({ top: 0 });
   };
+
+  // A bookmark's team or season, asked for before or while the tab is shown.
+  const goRef = useRef<(to: { kind: "team" | "season"; id: number }) => void>(() => {});
+  useEffect(() => {
+    goRef.current = (to) => (to.kind === "team" ? setStack((s) => [...s, { at: "team", id: to.id, from: { at: "home" } }]) : go({ at: "season", id: to.id }));
+  });
+  useEffect(() => {
+    const pending = takePendingRgl();
+    if (pending) goRef.current(pending);
+    return onOpenRgl((to) => goRef.current(to));
+  }, []);
 
   // Mouse 4 / Alt+Left step back within the tab first, as in the ETF2L tab.
   const depth = useRef(stack.length);
@@ -268,7 +298,7 @@ export function RglPage({ active, steamid }: { active: boolean; steamid: string 
       )}
       {loc.at === "bans" && <BansPage onPlayer={openPlayer} />}
       {loc.at === "team" && <TeamView key={loc.id} id={loc.id} onTeam={openTeam} onPlayer={openPlayer} onMatch={openMatch} />}
-      {loc.at === "players" && <PlayersLanding steamid={steamid} onPlayer={openPlayer} />}
+      {loc.at === "players" && <PlayersLanding steamid={steamid} onPlayer={openPlayer} onTeam={openTeam} />}
       {loc.at === "player" && <PlayerView key={loc.steamId} steamId={loc.steamId} onTeam={openTeam} />}
     </div>
   );
@@ -328,7 +358,6 @@ function RglSearch({ onTeam, onPlayer }: { onTeam: (id: number) => void; onPlaye
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
-  const qc = useQueryClient();
   const term = q.trim();
   useEffect(() => {
     if (!open) return;
@@ -343,25 +372,13 @@ function RglSearch({ onTeam, onPlayer }: { onTeam: (id: number) => void; onPlaye
     setQ("");
   };
   const id = looksLikeSteamId(term);
-  // RGL's own name search is broken, so a name is looked for among the
-  // teams of the seasons already read.
-  const teams: Array<RglTeam & { season: string }> = [];
-  if (!id && term.length >= 2) {
-    const needle = term.toLowerCase();
-    for (const [, s] of qc.getQueriesData<RglSeason>({ queryKey: ["rgl_season"] })) {
-      for (const d of s?.divisions ?? []) {
-        for (const tm of d.teams) {
-          if (tm.name.toLowerCase().includes(needle) || tm.tag?.toLowerCase().includes(needle)) teams.push({ ...tm, season: s!.name });
-        }
-      }
-    }
-  }
+  const found = useNameSearch(open ? term : "");
   return (
     <div className="e2-search" ref={box}>
       <input
         type="search"
         value={q}
-        placeholder={t("SteamID, or a team of a season read")}
+        placeholder={t("Player, team or SteamID")}
         onChange={(e) => {
           setQ(e.target.value);
           setOpen(true);
@@ -376,7 +393,7 @@ function RglSearch({ onTeam, onPlayer }: { onTeam: (id: number) => void; onPlaye
         }}
         aria-label={t("Search RGL")}
       />
-      {open && term.length >= 2 && (
+      {open && (id || term.length >= SEARCH_FROM) && (
         <div className="e2-search-panel">
           {id ? (
             <button
@@ -392,27 +409,53 @@ function RglSearch({ onTeam, onPlayer }: { onTeam: (id: number) => void; onPlaye
               <span className="e2-hit-meta">↵</span>
             </button>
           ) : (
-            <>
-              {teams.length > 0 && <h4>{t("Teams")}</h4>}
-              {teams.slice(0, 8).map((x) => (
-                <button
-                  key={x.id}
-                  className="e2-hit"
-                  onClick={() => {
-                    done();
-                    onTeam(x.id);
-                  }}
-                >
-                  <span className="e2-hit-name">{x.name}</span>
-                  <span className="e2-hit-meta">{x.season}</span>
-                </button>
-              ))}
-              {teams.length === 0 && <p className="hint">{t("No team by that name in the seasons read. A player opens by SteamID.")}</p>}
-            </>
+            <SearchHits
+              found={found}
+              onPlayer={(s) => {
+                done();
+                onPlayer(s);
+              }}
+              onTeam={(x) => {
+                done();
+                onTeam(x);
+              }}
+            />
           )}
         </div>
       )}
     </div>
+  );
+}
+
+/** What RGL's name search found: players, then NA Highlander teams. */
+function SearchHits({ found, onPlayer, onTeam }: { found: ReturnType<typeof useNameSearch>; onPlayer: (s: string) => void; onTeam: (id: number) => void }) {
+  if (found.error) return <ApiError error={found.error} />;
+  const none = found.players.length === 0 && found.teams.length === 0;
+  if (none && found.waiting) return <Loading>{t("Asking RGL…")}</Loading>;
+  if (none) return <p className="hint">{t("No player or NA Highlander team by that name on RGL.")}</p>;
+  return (
+    <>
+      {found.players.length > 0 && <h4>{t("Players")}</h4>}
+      {found.players.map((x) => (
+        <button key={x.steamId} className="e2-hit" onClick={() => onPlayer(x.steamId)}>
+          <span className="e2-hit-name">{x.name}</span>
+          <span className="e2-hit-meta">{t("Player")}</span>
+        </button>
+      ))}
+      {found.teams.length > 0 && <h4>{t("Teams")}</h4>}
+      {found.teams.map((x) => (
+        <button key={x.id} className="e2-hit" onClick={() => onTeam(x.id)}>
+          <span className="e2-hit-name">
+            {x.name}
+            {x.tag && <span className="rgl-tag">{x.tag}</span>}
+          </span>
+          <span className="e2-hit-meta">
+            {x.seasonName}
+            {x.division && ` · ${x.division}`}
+          </span>
+        </button>
+      ))}
+    </>
   );
 }
 
@@ -525,16 +568,73 @@ function SeasonList({ onSeason }: { onSeason: (id: number) => void }) {
       ) : !q.data ? (
         <Loading>{t("Loading the seasons…")}</Loading>
       ) : (
-        <div className="rgl-season-grid">
+        <div className="ts-grid rgl-season-grid">
           {q.data.map((s, i) => (
-            <button key={s.id} className="rgl-season-tile" onClick={() => onSeason(s.id)}>
-              <strong>{s.name}</strong>
-              {i === 0 && <span className="e2-live-chip">{t("Latest")}</span>}
-            </button>
+            <SeasonCard key={s.id} s={s} latest={i === 0} onOpen={() => onSeason(s.id)} />
           ))}
         </div>
       )}
     </section>
+  );
+}
+
+/** A season's card: its best division's top three, or that it is played. */
+function SeasonCard({ s, latest, onOpen }: { s: RglSeasonItem; latest: boolean; onOpen: () => void }) {
+  const q = useQuery({ queryKey: ["rgl_season_card", s.id], queryFn: () => api.getRglSeasonCard(s.id), staleTime: KEEP, retry: false });
+  const c = q.data;
+  const number = s.name.match(/\d+/)?.[0];
+  const place = ["", t("1st"), t("2nd"), t("3rd")];
+  return (
+    <button className="ts-card tn-card rgl-sc" onClick={onOpen} aria-label={t("Open {0}", { "0": s.name })}>
+      <span className="ts-art">
+        <span className="ts-art-img" aria-hidden />
+        <span className="ts-art-label">{number ? `S${number}` : "RGL"}</span>
+        {latest && (
+          <span className="ts-chips">
+            <span className="ts-chip">{t("Latest")}</span>
+          </span>
+        )}
+      </span>
+      <span className="ts-body">
+        <span className="ts-title">{s.name}</span>
+        <span className="ts-stats">
+          {c && c.teams > 0 && <span className="ts-stat">{tx("{0} teams", { "0": c.teams })}</span>}
+          {c && c.maps > 0 && <span className="ts-stat">{tx("{0} maps", { "0": c.maps })}</span>}
+        </span>
+        <span className="ts-rows">
+          {q.error ? (
+            <span className="ts-row">
+              <span className="ts-row-value muted">{t("RGL isn't answering right now.")}</span>
+            </span>
+          ) : !c ? (
+            <span className="ts-row">
+              <span className="ts-row-value muted">{t("Loading…")}</span>
+            </span>
+          ) : c.podium.length === 0 ? (
+            <span className="ts-row">
+              <span className="ts-row-label">{t("Invite")}</span>
+              <span className="ts-row-value muted">{t("being played")}</span>
+            </span>
+          ) : (
+            c.podium.map((tm) => (
+              <span key={tm.id} className="ts-row ts-row-champ">
+                <span className="ts-row-label">{place[tm.finalRank ?? 0]}</span>
+                <span className="ts-row-value">
+                  <MedalGlyph size={16} place={tm.finalRank ?? 1} />
+                  <strong>{tm.name}</strong>
+                </span>
+              </span>
+            ))
+          )}
+        </span>
+        <span className="ts-open">
+          {t("Open season")}
+          <span className="ts-open-arrow" aria-hidden>
+            ›
+          </span>
+        </span>
+      </span>
+    </button>
   );
 }
 
@@ -551,7 +651,9 @@ function SeasonView({ id, onTeam, more }: { id: number; onTeam: (id: number) => 
         <>
           <div className="e2-panel-head">
             <div className="e2-titles">
-              <h2>{s.name}</h2>
+              <h2>
+                {s.name} <BookmarkButton b={{ kind: "rgl_season", id: s.id, label: s.name, sub: t("RGL Highlander") }} />
+              </h2>
               <span className="muted">{t("{0} teams", { "0": s.divisions.reduce((n, d) => n + d.teams.length, 0) })}</span>
             </div>
             {more && (
@@ -1139,6 +1241,7 @@ function TeamView({ id, onTeam, onPlayer, onMatch }: { id: number; onTeam: (id: 
             <div className="pp-name-row">
               <h2 className="pp-name">{v.name}</h2>
               {v.tag && <span className="ts-tag">{v.tag}</span>}
+              <BookmarkButton b={{ kind: "rgl_team", id: v.id, label: v.name, sub: [t("RGL"), v.seasonName, v.division].filter(Boolean).join(" · ") }} />
             </div>
             <span className="muted">
               {[v.seasonName, v.division && (v.tier ? `${v.division} ≈ ${t(v.tier)}` : v.division), placing(v.finalRank), played > 0 && `${won}-${played - won}`].filter(Boolean).join(" · ")}
@@ -1282,15 +1385,16 @@ function OtherSeasons({ ids, onTeam }: { ids: number[]; onTeam: (id: number) => 
 
 // ---- Players ---------------------------------------------------------------
 
-function PlayersLanding({ steamid, onPlayer }: { steamid: string | null; onPlayer: (s: string) => void }) {
+function PlayersLanding({ steamid, onPlayer, onTeam }: { steamid: string | null; onPlayer: (s: string) => void; onTeam: (id: number) => void }) {
   const [q, setQ] = useState("");
   const ok = looksLikeSteamId(q.trim());
+  const found = useNameSearch(q);
   return (
     <section className="panel e2-panel">
       <div className="e2-panel-head">
         <h2>{t("Players")}</h2>
       </div>
-      <p className="hint">{t("RGL's name search is broken on its side for now: paste a SteamID, a Steam profile link or an rgl.gg profile link.")}</p>
+      <p className="hint">{t("A name, or a SteamID, a Steam profile link or an rgl.gg profile link.")}</p>
       <form
         className="rgl-lookup"
         onSubmit={(e) => {
@@ -1298,7 +1402,7 @@ function PlayersLanding({ steamid, onPlayer }: { steamid: string | null; onPlaye
           if (ok) onPlayer(q.trim());
         }}
       >
-        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("SteamID or profile link")} aria-label={t("SteamID or profile link")} />
+        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("Name, SteamID or profile link")} aria-label={t("Name, SteamID or profile link")} />
         <button type="submit" disabled={!ok}>
           {t("Open")}
         </button>
@@ -1308,6 +1412,11 @@ function PlayersLanding({ steamid, onPlayer }: { steamid: string | null; onPlaye
           </button>
         )}
       </form>
+      {found.on && (
+        <div className="rgl-found">
+          <SearchHits found={found} onPlayer={onPlayer} onTeam={onTeam} />
+        </div>
+      )}
     </section>
   );
 }
