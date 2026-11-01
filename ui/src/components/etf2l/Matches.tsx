@@ -55,6 +55,32 @@ function TeamLink({ x, onTeam }: { x: { id: number; name: string; avatar: string
   );
 }
 
+/**
+ * The cup a match is part of, or null for a league season's own divisions
+ * (Flashy: "the main divisions are open to prem, the zombies and whatever are
+ * just halloween ones, there should be like a destinction that they are just
+ * for a fun cup"). A one-night cup's brackets have names of their own
+ * (Vampires, Werewolves), which are not league tiers.
+ */
+export function cupOf(competition: string | undefined): string | null {
+  if (!competition || /^Highlander Season/i.test(competition)) return null;
+  return competition.split(":")[0].trim();
+}
+
+/** A match's division: the league's in its tier's colour, a cup's marked as one. */
+function MatchDivision({ division, tier, competition }: { division: string | null; tier: number | null; competition?: string }) {
+  const cup = cupOf(competition);
+  if (!division) return null;
+  if (cup)
+    return (
+      <span className="div-badge div-cup" title={t("{0}: a cup's bracket, not a league division", { "0": cup })}>
+        <span className="div-cup-tag">{t("Cup")}</span>
+        {division}
+      </span>
+    );
+  return tier !== null ? <DivisionBadge d={{ name: division, tier }} /> : null;
+}
+
 export function FixtureRow(props: { f: Fixture; mine: Set<number>; onTeam: (id: number) => void; onOpen: () => void; showDay?: boolean; showRound?: boolean }) {
   const { f, mine, onTeam, onOpen, showDay, showRound } = props;
   const ours = mine.has(f.clan1.id) || mine.has(f.clan2.id);
@@ -65,7 +91,9 @@ export function FixtureRow(props: { f: Fixture; mine: Set<number>; onTeam: (id: 
         {clockTime(f.time)}
       </span>
       <Countdown time={f.time} />
-      <span className="e2-fx-div">{f.division && f.tier !== null && <DivisionBadge d={{ name: f.division, tier: f.tier }} />}</span>
+      <span className="e2-fx-div">
+        <MatchDivision division={f.division} tier={f.tier} competition={f.competition} />
+      </span>
       <span className="e2-fx-teams">
         <TeamLink x={f.clan1} onTeam={onTeam} />
         <span className="e2-vs">{t("vs")}</span>
@@ -89,7 +117,9 @@ export function ResultLine({ r, mine, onTeam, onOpen }: { r: ResultRow; mine: Se
       <span className="e2-fx-time muted" title={fullDate(r.time)}>
         {formatDate(r.time)}
       </span>
-      <span className="e2-fx-div">{r.division && r.tier !== null && <DivisionBadge d={{ name: r.division, tier: r.tier }} />}</span>
+      <span className="e2-fx-div">
+        <MatchDivision division={r.division} tier={r.tier} competition={r.competition} />
+      </span>
       <span className={a > b ? "e2-rl-side l won" : "e2-rl-side l"}>
         <TeamLink x={r.clan1} onTeam={onTeam} />
       </span>
@@ -144,13 +174,25 @@ export function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void;
   const fixtures = useFixtures();
   const results = useQuery({ queryKey: ["recent_results", limit], queryFn: () => api.getRecentResults(limit), enabled: mode !== "upcoming", placeholderData: keepPreviousData });
   const my = new Set(useYourTeams().map((e) => e.teamId));
-  const keep = (x: { division: string | null; clan1: { id: number }; clan2: { id: number } }) =>
-    (division === "" || x.division === division) && (!onlyMine || my.has(x.clan1.id) || my.has(x.clan2.id));
+  // A division is picked with its cup, as a cup's bracket can share a
+  // league division's name.
+  const keyOf = (x: { division: string | null; competition?: string }) => `${cupOf(x.competition) ?? ""}\u0000${x.division ?? ""}`;
+  const keep = (x: { division: string | null; competition?: string; clan1: { id: number }; clan2: { id: number } }) =>
+    (division === "" || keyOf(x) === division) && (!onlyMine || my.has(x.clan1.id) || my.has(x.clan2.id));
+  // The league's divisions by tier, then each cup's brackets under its name.
   const divisions = useMemo(() => {
-    const all = [...fixtures.map((f) => [f.division, f.tier] as const), ...(results.data ?? []).map((r) => [r.division, r.tier] as const)];
-    const seen = new Map<string, number>();
-    for (const [d, tier] of all) if (d && !seen.has(d)) seen.set(d, tier ?? 9);
-    return [...seen.entries()].sort((a, b) => a[1] - b[1]).map(([d]) => d);
+    const all = [...fixtures, ...(results.data ?? [])];
+    const groups = new Map<string, Map<string, number>>();
+    for (const x of all) {
+      if (!x.division) continue;
+      const cup = cupOf(x.competition) ?? "";
+      const g = groups.get(cup) ?? new Map<string, number>();
+      if (!g.has(x.division)) g.set(x.division, x.tier ?? 9);
+      groups.set(cup, g);
+    }
+    return [...groups.entries()]
+      .sort(([a], [b]) => (a === "" ? -1 : b === "" ? 1 : a.localeCompare(b)))
+      .map(([cup, g]) => ({ cup, divisions: [...g.entries()].sort((a, b) => (cup === "" ? a[1] - b[1] : a[0].localeCompare(b[0]))).map(([d]) => d) }));
   }, [fixtures, results.data]);
   const upcoming = fixtures.filter(keep);
   const played = (results.data ?? []).filter(keep);
@@ -175,10 +217,14 @@ export function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void;
           <span>{t("Division")}</span>
           <select value={division} onChange={(e) => setDivision(e.target.value)}>
             <option value="">{t("All divisions")}</option>
-            {divisions.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
+            {divisions.map(({ cup, divisions: ds }) => (
+              <optgroup key={cup} label={cup === "" ? t("League") : t("{0} (cup)", { "0": cup })}>
+                {ds.map((d) => (
+                  <option key={d} value={`${cup}\u0000${d}`}>
+                    {d}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </label>
@@ -484,6 +530,7 @@ export function LeagueMatchPage({ matchId, fixture, onTeam, onOpenLog }: { match
 function fromFixture(f: Fixture): ResultRow {
   return {
     matchId: f.matchId,
+    competition: f.competition,
     time: f.time,
     season: f.season ?? 0,
     division: f.division,
@@ -721,6 +768,7 @@ function fromPage(matchId: number, p: Etf2lMatchPage): ResultRow | null {
   const team = (x: { id: number; name: string }) => ({ id: x.id, name: x.name, avatar: null });
   return {
     matchId,
+    competition: comp,
     time: p.scheduled ?? 0,
     season,
     division,

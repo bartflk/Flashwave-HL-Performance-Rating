@@ -232,6 +232,9 @@
 .div-t2 { color: #3fb8a0; }
 .div-t3 { color: #6aa3e8; }
 .div-t4 { color: #a8998b; }
+/* A cup's bracket (Vampires, Werewolves): not a tier, so no tier colour. */
+.div-badge.div-cup { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); border-style: dashed; }
+.div-cup-tag { font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--accent); }
 
 .pp-body { padding-top: 6px; }
 

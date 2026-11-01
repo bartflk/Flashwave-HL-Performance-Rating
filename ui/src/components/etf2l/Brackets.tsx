@@ -488,6 +488,7 @@ function MatchCard({ m, mine, final, onTeam, onOpen }: { m: ResultRow; mine: Set
 function fromFixture(f: Fixture): ResultRow {
   return {
     matchId: f.matchId,
+    competition: f.competition,
     time: f.time,
     season: f.season ?? 0,
     division: f.division,

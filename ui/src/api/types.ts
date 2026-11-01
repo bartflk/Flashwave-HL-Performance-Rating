@@ -450,6 +450,8 @@ export interface ResultRow {
   week: number | null;
   /** "regular", "Playoffs", "3rd Place", "Qualifiers", "Cup". */
   stage: string;
+  /** ETF2L's name for the competition: a league season's, or a cup's. */
+  competition: string;
   clan1: { id: number; name: string; avatar: string | null };
   clan2: { id: number; name: string; avatar: string | null };
   r1: number | null;

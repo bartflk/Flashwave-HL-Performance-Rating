@@ -1465,8 +1465,25 @@ export const mockApi: Api = {
     ),
   // DD14's season so far, read as everyone's results.
   getRecentResults: (limit = 10) =>
-    delay<ResultRow[]>(
-      (team37805 as unknown as TeamView).results.slice(0, limit).map((r) => ({
+    delay<ResultRow[]>([
+      // A one-night fun cup's brackets, as ETF2L's Halloween cup had them.
+      ...(["Werewolves", "Zombies", "Vampires"] as const).map((division, i) => ({
+        matchId: 99000 + i,
+        time: 1_793_480_000 - i * 3600,
+        season: 36,
+        division,
+        tier: i,
+        round: "Round 1",
+        week: null,
+        stage: "Cup",
+        competition: "Crit or Treat! Highlander One-Night-Cup",
+        clan1: { id: 37805, name: "DD14", avatar: null },
+        clan2: { id: 1, name: "TWS", avatar: null },
+        r1: 2,
+        r2: 1,
+        defaultWin: false,
+      })),
+      ...(team37805 as unknown as TeamView).results.slice(0, limit).map((r) => ({
         matchId: r.matchId,
         time: r.time ?? 0,
         season: r.season,
@@ -1475,13 +1492,14 @@ export const mockApi: Api = {
         round: r.round,
         week: null,
         stage: r.stage,
+        competition: `Highlander Season ${r.season}`,
         clan1: { id: 37805, name: "DD14", avatar: "https://etf2l.org/wp-content/uploads/avatars/6a18b9b147176.png" },
         clan2: { id: r.opponentId, name: r.opponent, avatar: null },
         r1: r.scoreFor,
         r2: r.scoreAgainst,
         defaultWin: r.defaultWin,
       })),
-    ),
+    ]),
   // One of DD14's officials, with DD14's roster as its lineup; a fixture's
   // id is not in the database, so the page reads it from the fixtures.
   // DD14's grand final as etf2l.org showed it on 17 October 2026.
@@ -1522,6 +1540,7 @@ export const mockApi: Api = {
     const half = (n: number | null) => (n === null ? 0 : Math.round(n / 2));
     return delay<LeagueMatch | null>({
       matchId: r.matchId,
+      competition: `Highlander Season ${r.season}`,
       time: r.time ?? 0,
       season: r.season,
       division: r.division,
@@ -1583,6 +1602,7 @@ export const mockApi: Api = {
     const add = (division: string, tier: number, stage: string, round: string, week: number | null, at: number, a: T, b: T, aWins: boolean | null) => {
       rows.push({
         matchId: id++,
+        competition: `Highlander Season ${season}`,
         time: at,
         season,
         division,

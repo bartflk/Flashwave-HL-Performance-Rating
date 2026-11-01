@@ -616,6 +616,9 @@ pub struct ResultRow {
     pub week: Option<i64>,
     /// "regular", "Playoffs", "3rd Place", "Qualifiers", "Cup".
     pub stage: String,
+    /// ETF2L's name for the competition: a league season's, or a cup's
+    /// ("Crit or Treat! Highlander One-Night-Cup").
+    pub competition: String,
     pub clan1: TeamRef,
     pub clan2: TeamRef,
     pub r1: Option<i64>,
@@ -689,7 +692,7 @@ pub struct MatchLog {
 
 // A playoff kept as its own competition ("Low Playoffs") has no division on
 // its matches: the competition's is theirs.
-const RESULT_SELECT: &str = "SELECT m.match_id, m.time, c.season, COALESCE(m.division, NULLIF(c.division, '')) AS division, m.tier, m.round, m.week, c.stage,
+const RESULT_SELECT: &str = "SELECT m.match_id, m.time, c.season, c.name AS competition, COALESCE(m.division, NULLIF(c.division, '')) AS division, m.tier, m.round, m.week, c.stage,
         m.r1, m.r2, m.default_win,
         m.clan1_id, t1.name AS n1, t1.avatar AS a1, m.clan2_id, t2.name AS n2, t2.avatar AS a2
    FROM etf2l_season_match m
@@ -708,6 +711,7 @@ fn result_row(r: &sqlx::sqlite::SqliteRow) -> ResultRow {
         round: r.get("round"),
         week: r.get("week"),
         stage: r.get("stage"),
+        competition: r.get::<Option<String>, _>("competition").unwrap_or_default(),
         clan1: TeamRef { id: r.get("clan1_id"), name: r.get::<Option<String>, _>("n1").unwrap_or_default(), avatar: r.get("a1") },
         clan2: TeamRef { id: r.get("clan2_id"), name: r.get::<Option<String>, _>("n2").unwrap_or_default(), avatar: r.get("a2") },
         r1: r.get("r1"),
