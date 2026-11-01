@@ -490,10 +490,13 @@
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px 14px;
+  /* Room above, below and between the rows (Flashy: "this header needs
+     more padding top/bottom between the rows"): 16px inside, 14px between,
+     as every control panel has. */
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
 .filter-row {
@@ -503,7 +506,7 @@
   gap: 14px;
   /* Anything taller than one line pushes the row down rather than sitting
      on top of what follows. */
-  row-gap: 10px;
+  row-gap: 14px;
   /* A season's dates are not in this row: they sat in its bottom-right
      corner and ended up behind Refresh and Import once those moved down.
      The table's first divider says them (PeriodRow). */
@@ -1449,6 +1452,9 @@ th.num {
 }
 /* Q56: the STV filter sits at the class row's far end. */
 .class-filter .cf-stv { align-self: center; }
+/* In the filter panel the panel spaces it: it used to pull itself 4px
+   closer to the row above and leave 12px more below. */
+.filters > .class-filter { margin: 0; row-gap: 12px; }
 /* Q61: the class sort, pushing itself and the STV chip to the right. */
 .class-filter .cf-sort { margin-left: auto; align-self: center; }
 .class-filter .cf-sort select { max-width: 190px; }

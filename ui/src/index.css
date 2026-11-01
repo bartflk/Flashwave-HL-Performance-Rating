@@ -537,7 +537,7 @@ th .stip-card { font-weight: 400; }
 /* A row of labelled control groups (the kill map's, Lives on a map's): the
    labels on one line, every control one height (--ctl-h), so a row reads as a
    row (Flashy: "the buttons on the lives on map are very out of order"). */
-.ctl-bar { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px 24px; padding: 12px 16px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--bg) 45%, var(--panel)); }
+.ctl-bar { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px 24px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--bg) 45%, var(--panel)); }
 .ctl-bar + .ctl-bar { margin-top: 8px; }
 .ctl-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .ctl-group-label { font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); line-height: var(--lh-tight); }
