@@ -1513,6 +1513,14 @@ th.num {
   z-index: 40;
 }
 
+/* A notice to read before going on: darker, and the page behind it blurred,
+   so the eye goes to it. */
+.modal-scrim.focus {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(3px);
+  z-index: 80; /* over the sync and download cards too */
+}
+
 .modal.map-aligner {
   max-width: 720px;
 }

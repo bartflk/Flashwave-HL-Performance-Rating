@@ -1,6 +1,12 @@
 /* The RGL tab (PLAN §30): the ETF2L tab's frame, with RGL's seasons, teams
    and players. */
 
+/* The first visit's "in development" notice. */
+.modal.rgl-dev { box-shadow: var(--ctl-shadow); }
+.modal.rgl-dev .e2-eyebrow { display: inline-flex; align-items: center; gap: 6px; }
+.modal.rgl-dev h3 { margin-top: 8px; }
+.modal.rgl-dev .modal-actions { justify-content: flex-end; }
+
 .rgl-maps { display: flex; flex-wrap: wrap; gap: 6px; }
 .rgl-map {
   padding: 3px 10px;
