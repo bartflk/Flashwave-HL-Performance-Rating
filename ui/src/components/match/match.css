@@ -2011,6 +2011,14 @@ button.mx-name:hover, button.mx-name:focus-visible { color: var(--tf2-tan); }
   .scoreboard .player-name { max-width: 140px; }
   .scoreboard .tier-pill { min-width: 2.2em; padding-inline: 5px; }
 }
+/* At 1024 it was still 20 px wider than its panel (Flashy: "fix the
+   scoreboard tables at 1024 too"): names a little shorter, and the first and
+   last cells off the panel's full 22 px edge. */
+@media (max-width: 1100px) {
+  .scoreboard .player-name { max-width: 100px; }
+  .match-page .panel.box .scoreboard :is(td, th):first-child { padding-left: 12px; }
+  .match-page .panel.box .scoreboard :is(td, th):last-child { padding-right: 12px; }
+}
 
 /* The scoreboard's class icons and their hover card: each class's time,
    K / D / A, damage and accuracy, airshots and backstabs beside the class

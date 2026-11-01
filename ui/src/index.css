@@ -641,6 +641,17 @@ button:hover:not(:disabled) {
   background: linear-gradient(color-mix(in srgb, var(--raised) 80%, var(--text) 8%), var(--raised));
   border-color: var(--line-2);
 }
+/* A chip that is switched on (With STV, Import while open): lit like the
+   picked class beside it. It had no look of its own, so on and off were the
+   same button (Flashy: "when you select them they dont have a active css
+   element"). */
+button.km-chip.on,
+button.km-chip.on:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.16);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.35);
+}
 button.primary:hover:not(:disabled) {
   background: linear-gradient(var(--accent-hi-hover), var(--accent-lo-hover));
   border-color: var(--accent-edge-hover);
