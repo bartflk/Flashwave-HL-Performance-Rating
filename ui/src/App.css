@@ -561,6 +561,24 @@
 /* Shown only while a filter is on: the accent link after the count. */
 .fi-reset { margin-left: 10px; }
 
+/* Not wide enough for one line (a window of 900 to 1300 px; the count is
+   wider with Reset filters): the count and Refresh / Import go under the
+   filters, rather than hanging past the row's right edge as they did. */
+@media (min-width: 901px) and (max-width: 1300px) {
+  .filter-row {
+    grid-template-columns: auto minmax(200px, 1fr) minmax(190px, auto);
+  }
+
+  .fi-count {
+    grid-column: 1 / 3;
+    text-align: left;
+  }
+
+  .fi-actions {
+    grid-column: 3;
+  }
+}
+
 /* Narrow: the two dropdowns drop under the format tabs rather than squeezing. */
 @media (max-width: 900px) {
   .filter-row {
@@ -593,6 +611,9 @@
   font-size: var(--fs-small);
   color: var(--muted);
   box-shadow: none;
+  /* One line each: "All formats" broke over two and stood taller than the
+     rest of the row. */
+  white-space: nowrap;
 }
 
 .seg:hover:not(:disabled) {
