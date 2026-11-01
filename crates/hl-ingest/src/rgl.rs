@@ -7,8 +7,12 @@
 //! side) are read the same way. A season's matches are read one by one
 //! (RGL's paged match list ignores its filter and carries no scores), for
 //! its standings and results; the league's bans come from its paged list.
+//! A decided match does not change, so it is kept on disk (`rgl_match`,
+//! Flashy: "store finished seasons on disk"): a finished season opens from
+//! there, a live one asks RGL only for the matches still to be played.
 
 use crate::sources::Sources;
+use hl_db::Db;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -246,14 +250,9 @@ async fn season_name(sources: &Sources, id: i64) -> Option<String> {
 
 /// A team: its roster, its matches one by one (RGL's match list is broken on
 /// its side; a season is about ten) and the ids of its other seasons.
-pub async fn team(sources: &Sources, id: i64) -> Result<Option<RglTeamPage>> {
+pub async fn team(db: &Db, sources: &Sources, id: i64) -> Result<Option<RglTeamPage>> {
     let Some(t) = team_raw(sources, id).await? else { return Ok(None) };
-    let mut matches = Vec::new();
-    for m in &t.match_ids {
-        if let Some(body) = get_opt(sources, &format!("/matches/{m}")).await? {
-            matches.push(serde_json::from_str::<RglMatch>(&body).context("reading RGL's match")?);
-        }
-    }
+    let mut matches = read_matches(db, sources, &t.match_ids).await?;
     matches.sort_by(|a, b| a.match_date.cmp(&b.match_date));
     Ok(Some(RglTeamPage {
         id: t.team_id,
@@ -298,9 +297,35 @@ pub async fn team_seasons(sources: &Sources, ids: Vec<i64>) -> Result<Vec<RglTea
 
 // ---- A season's matches, and the league's bans -------------------------------
 
-/// Every match of a season, oldest first: read one by one at RGL's pace
-/// (about 40 s for a Highlander season), then held like the rest.
-pub async fn season_matches(sources: &Sources, id: i64) -> Result<Vec<RglMatch>> {
+/// Whether a match is over, so its answer will not change: it has a winner,
+/// or was forfeited.
+fn decided(m: &RglMatch) -> bool {
+    m.winner.is_some() || m.is_forfeit
+}
+
+/// These matches: the decided ones from disk, the rest from RGL at its pace,
+/// each newly decided one kept for next time.
+async fn read_matches(db: &Db, sources: &Sources, ids: &[i64]) -> Result<Vec<RglMatch>> {
+    let kept = db.rgl_matches(ids).await?;
+    let mut out = Vec::with_capacity(ids.len());
+    for &id in ids {
+        if let Some(m) = kept.get(&id).and_then(|body| serde_json::from_str::<RglMatch>(body).ok()) {
+            out.push(m);
+            continue;
+        }
+        let Some(body) = get_opt(sources, &format!("/matches/{id}")).await? else { continue };
+        let m: RglMatch = serde_json::from_str(&body).context("reading RGL's match")?;
+        if decided(&m) {
+            db.store_rgl_match(id, &body).await?;
+        }
+        out.push(m);
+    }
+    Ok(out)
+}
+
+/// Every match of a season, oldest first: from disk once decided, else read
+/// one by one at RGL's pace (about 40 s for a whole Highlander season).
+pub async fn season_matches(db: &Db, sources: &Sources, id: i64) -> Result<Vec<RglMatch>> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct Head {
@@ -308,12 +333,7 @@ pub async fn season_matches(sources: &Sources, id: i64) -> Result<Vec<RglMatch>>
         matches_played_during_season: Vec<i64>,
     }
     let head: Head = serde_json::from_str(&get(sources, &format!("/seasons/{id}")).await?).context("reading RGL's season")?;
-    let mut out = Vec::new();
-    for m in head.matches_played_during_season {
-        if let Some(body) = get_opt(sources, &format!("/matches/{m}")).await? {
-            out.push(serde_json::from_str::<RglMatch>(&body).context("reading RGL's match")?);
-        }
-    }
+    let mut out = read_matches(db, sources, &head.matches_played_during_season).await?;
     out.sort_by(|a, b| a.match_date.cmp(&b.match_date).then(a.match_id.cmp(&b.match_id)));
     Ok(out)
 }
@@ -474,6 +494,25 @@ mod tests {
     fn a_match_reads() {
         let m: RglMatch = serde_json::from_str(r#"{"matchId":34332,"seasonName":"HL Season 24","matchDate":"2026-06-02T01:30:00.000Z","matchName":"Week 1 - Vigil","isForfeit":false,"winner":14908,"teams":[{"teamName":"Run It Back","teamTag":"Rib.","teamId":14956,"isHome":false,"points":"0"},{"teamName":"The Amiable Duds","teamTag":"AD.","teamId":14908,"isHome":true,"points":"9"}],"maps":[{"mapName":"pl_vigil_rc10","homeScore":2,"awayScore":0}]}"#).unwrap();
         assert_eq!((m.winner, m.teams.len(), m.maps[0].home_score), (Some(14908), 2, Some(2)));
+    }
+
+    #[test]
+    fn only_a_decided_match_is_kept() {
+        let live: RglMatch = serde_json::from_str(r#"{"matchId":35600,"divisionName":"Newcomer","matchDate":"2026-11-03T01:30:00.000Z","matchName":"Week 6 - Proot","isForfeit":false,"teams":[],"maps":[]}"#).unwrap();
+        assert_eq!(live.division_name.as_deref(), Some("Newcomer"));
+        assert!(!decided(&live));
+        assert!(decided(&RglMatch { winner: Some(15255), ..live.clone() }));
+        assert!(decided(&RglMatch { is_forfeit: true, ..live }));
+    }
+
+    /// Kept matches come from disk: no request to RGL (this test has no network).
+    #[tokio::test]
+    async fn a_kept_season_reads_from_disk() {
+        let db = Db::connect_in_memory().await.unwrap();
+        db.store_rgl_match(2, r#"{"matchId":2,"matchDate":"2026-06-09T01:30:00.000Z","winner":7,"teams":[],"maps":[]}"#).await.unwrap();
+        db.store_rgl_match(1, r#"{"matchId":1,"matchDate":"2026-06-02T01:30:00.000Z","winner":8,"teams":[],"maps":[]}"#).await.unwrap();
+        let got = read_matches(&db, &Sources::new().unwrap(), &[1, 2]).await.unwrap();
+        assert_eq!(got.iter().map(|m| (m.match_id, m.winner)).collect::<Vec<_>>(), [(1, Some(8)), (2, Some(7))]);
     }
 
     #[test]
