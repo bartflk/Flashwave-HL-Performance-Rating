@@ -123,3 +123,30 @@
 .rgl-ban-over td { opacity: 0.6; }
 .rgl-ban-perm { color: var(--bad, #d98a80); font-weight: 700; }
 .rgl-bans-more { margin-top: 12px; align-self: center; }
+
+/* A line or row that opens its match. */
+.rgl-open { cursor: pointer; border-radius: 6px; }
+.rgl-open:hover { background: rgba(var(--text-rgb), 0.04); }
+.rgl-open:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* ---- Home: the next matches beside the latest results --------------------- */
+.rgl-live { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 16px; }
+
+/* ---- One match --------------------------------------------------------------- */
+.rgl-mp-head { display: flex; flex-direction: column; gap: 14px; }
+.rgl-mp-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.rgl-mp-vs { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 18px; }
+.rgl-mp-team { display: inline-flex; align-items: center; gap: 8px; min-width: 0; min-height: 0; padding: 0; border: 0; background: none; color: var(--text); font: 700 var(--fs-section) var(--font-display); letter-spacing: var(--ls-heading); text-transform: uppercase; cursor: pointer; }
+.rgl-mp-team.l { justify-self: end; }
+.rgl-mp-team.r { justify-self: start; }
+.rgl-mp-team:not(.won) { color: var(--muted); }
+.rgl-mp-team:hover .rgl-mp-name { text-decoration: underline; }
+.rgl-mp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rgl-mp-score { font: 700 var(--fs-hero) var(--font-display); font-variant-numeric: tabular-nums; color: var(--tf2-cream); }
+.rgl-mp-when { text-align: center; font-size: var(--fs-small); }
+
+/* ---- A team's record by map ---------------------------------------------------- */
+.rgl-maprec { list-style: none; margin: 0; padding: 0; }
+.rgl-maprec li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--rule); font-size: var(--fs-ui); }
+.rgl-maprec li:first-child { border-top: 0; }
+.rgl-maprec-wl { font-weight: 700; font-variant-numeric: tabular-nums; }

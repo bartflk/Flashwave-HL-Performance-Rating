@@ -1924,6 +1924,12 @@ pub async fn get_rgl_season_matches(state: State<'_, AppState>, id: i64) -> CmdR
     Ok(hl_ingest::rgl::season_matches(&state.db, &state.sources, id).await?)
 }
 
+/// One RGL match, for its page.
+#[tauri::command]
+pub async fn get_rgl_match(state: State<'_, AppState>, id: i64) -> CmdResult<Option<hl_ingest::rgl::RglMatch>> {
+    Ok(hl_ingest::rgl::one_match(&state.db, &state.sources, id).await?)
+}
+
 /// RGL's bans, a page of 50 from `skip`.
 #[tauri::command]
 pub async fn get_rgl_bans(state: State<'_, AppState>, skip: Option<i64>) -> CmdResult<Vec<hl_ingest::rgl::RglBan>> {

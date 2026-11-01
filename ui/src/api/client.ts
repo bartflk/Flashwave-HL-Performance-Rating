@@ -291,6 +291,7 @@ const realApi = {
   getRglSeason: (id: number) => invoke<RglSeason>("get_rgl_season", { id }),
   getRglSeasonMatches: (id: number) => invoke<RglMatch[]>("get_rgl_season_matches", { id }),
   getRglBans: (skip: number) => invoke<RglBan[]>("get_rgl_bans", { skip }),
+  getRglMatch: (id: number) => invoke<RglMatch | null>("get_rgl_match", { id }),
   getRglTeam: (id: number) => invoke<RglTeamPage | null>("get_rgl_team", { id }),
   getRglTeamSeasons: (ids: number[]) => invoke<RglTeamSeason[]>("get_rgl_team_seasons", { ids }),
   getRglPlayer: (input: string) => invoke<RglPlayer | null>("get_rgl_player", { input }),
