@@ -557,7 +557,7 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
               {layer === "heat" && (
                 <div className="km-scale">
                   <span>{tr("fewer")}</span>
-                  <span className="km-scale-bar" style={{ background: `linear-gradient(90deg, transparent, ${heatOf === "kills" ? KILL : DEATH})` }} />
+                  <span className="km-scale-bar" style={{ background: heatLegend(themeColour(heatOf === "kills" ? "--kill" : "--death", heatOf === "kills" ? "#5791c8" : "#d6763a")) }} />
                   <span>{tx("more {0}", { "0": heatOf === "kills" ? tr("kills") : tr("deaths") })}</span>
                 </div>
               )}
@@ -819,21 +819,27 @@ function Canvas(props: {
       drawBuilding(g, px([b.x, b.y]), kind, b.team, focus === null ? 0.7 : 1, icons);
     }
 
-    // Heat: one hue, transparent to full, so more is brighter. No floor:
-    // with a floor every cell anyone ever died in lights up and the hot spots
-    // drown; below 6% a cell stays clear.
+    // Heat: the ramp (heatRgba) painted one pixel per grid cell, then drawn
+    // over the map smoothed, so it reads as a gradient rather than squares.
     if (heat) {
       const max = Math.max(...heat);
-      if (max > 0) {
+      const off = max > 0 ? document.createElement("canvas") : null;
+      const og = off?.getContext("2d");
+      if (off && og) {
+        off.width = frame.width;
+        off.height = frame.height;
+        const data = og.createImageData(frame.width, frame.height);
+        const rgb = rgbOf(heatResolved);
         for (let i = 0; i < heat.length; i++) {
-          const alpha = 0.92 * (heat[i] / max) ** 0.9;
-          if (alpha < 0.06) continue;
-          g.globalAlpha = alpha;
-          g.fillStyle = heatResolved;
-          const [x, y, s] = cellRect(i);
-          g.fillRect(x, y, s, s);
+          const [r, gg, b, a] = heatRgba(rgb, heat[i] / max);
+          data.data.set([r, gg, b, a], i * 4);
         }
-        g.globalAlpha = 1;
+        og.putImageData(data, 0, 0);
+        const [x, y, s] = cellRect(0);
+        const cellPx = s - 0.5;
+        g.imageSmoothingEnabled = true;
+        g.imageSmoothingQuality = "high";
+        g.drawImage(off, x, y, frame.width * cellPx, frame.height * cellPx);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1250,27 +1256,78 @@ function heatGrid(
       if (cx >= 0 && cy >= 0 && cx < f.width && cy < f.height) grid[cy * f.width + cx] += 1;
     }
   }
-  return blur(blur(grid, f.width, f.height), f.width, f.height);
+  return gaussian(grid, f.width, f.height, HEAT_SIGMA);
 }
 
-function blur(g: number[], w: number, h: number): number[] {
-  const out = new Array(g.length).fill(0);
-  const r = 2;
+/** How far a kill or death spreads, in grid cells (180 across the map): about
+ *  a room, so the heat reads as areas, not the spots a 2-cell blur left
+ *  (Flashy: "it would be better to have a bigger gradient ... vs just random
+ *  spots"). */
+const HEAT_SIGMA = 6;
+
+/** A Gaussian blur, done as two passes, across and down. */
+function gaussian(g: number[], w: number, h: number, sigma: number): number[] {
+  const r = Math.ceil(sigma * 3);
+  const k = Array.from({ length: 2 * r + 1 }, (_, i) => Math.exp(-((i - r) ** 2) / (2 * sigma * sigma)));
+  const across = new Array(g.length).fill(0);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      let s = 0;
-      for (let dy = -r; dy <= r; dy++) {
-        const yy = y + dy;
-        if (yy < 0 || yy >= h) continue;
-        for (let dx = -r; dx <= r; dx++) {
-          const xx = x + dx;
-          if (xx >= 0 && xx < w) s += g[yy * w + xx];
-        }
+      const v = g[y * w + x];
+      if (v === 0) continue;
+      for (let d = -r; d <= r; d++) {
+        const xx = x + d;
+        if (xx >= 0 && xx < w) across[y * w + xx] += v * k[d + r];
       }
-      out[y * w + x] = s;
+    }
+  }
+  const out = new Array(g.length).fill(0);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const v = across[y * w + x];
+      if (v === 0) continue;
+      for (let d = -r; d <= r; d++) {
+        const yy = y + d;
+        if (yy >= 0 && yy < h) out[yy * w + x] += v * k[d + r];
+      }
     }
   }
   return out;
+}
+
+/** The heat ramp, 0 to 1, as RGBA: faint and deep at the edge (the colour
+ *  darkened), the colour itself through the middle, near white where it is
+ *  hottest; the same ramp as Lives on a map's. Below 3% it is clear, so the
+ *  map is not washed over. */
+function heatRgba([r, g, b]: [number, number, number], v: number): [number, number, number, number] {
+  if (v < 0.03) return [0, 0, 0, 0];
+  const mix = (a: number, z: number, f: number) => Math.round(a + (z - a) * f);
+  const rgb: [number, number, number] =
+    v < 0.6
+      ? [mix(0, r, 0.55 + 0.75 * v), mix(0, g, 0.55 + 0.75 * v), mix(0, b, 0.55 + 0.75 * v)]
+      : [mix(r, 255, (v - 0.6) * 1.4), mix(g, 255, (v - 0.6) * 1.4), mix(b, 255, (v - 0.6) * 1.4)];
+  const fadeIn = Math.min(1, (v - 0.03) / 0.09);
+  return [...rgb, Math.round(255 * fadeIn * Math.min(0.88, 0.1 + 0.8 * v ** 0.75))];
+}
+
+/** A colour as the canvas reads it, in RGB. */
+function rgbOf(colour: string): [number, number, number] {
+  const c = document.createElement("canvas").getContext("2d");
+  if (!c) return [214, 118, 58];
+  c.fillStyle = colour;
+  const s = String(c.fillStyle);
+  if (s.startsWith("#")) return [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16)];
+  const m = s.match(/\d+(\.\d+)?/g)?.map(Number) ?? [214, 118, 58];
+  return [m[0], m[1], m[2]];
+}
+
+/** The ramp as a CSS gradient, for the legend under the map. */
+function heatLegend(colour: string): string {
+  const rgb = rgbOf(colour);
+  const stops = [0.03, 0.15, 0.35, 0.6, 0.8, 1].map((v) => {
+    const [r, g, b, a] = heatRgba(rgb, v);
+    return `rgba(${r}, ${g}, ${b}, ${(a / 255).toFixed(2)}) ${Math.round(v * 100)}%`;
+  });
+  return `linear-gradient(90deg, transparent, ${stops.join(", ")})`;
 }
 
 /** An overview image as a drawing frame 1024 units across, and as many
