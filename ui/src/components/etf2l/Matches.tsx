@@ -63,7 +63,7 @@ function TeamLink({ x, onTeam }: { x: { id: number; name: string; avatar: string
  * (Vampires, Werewolves), which are not league tiers.
  */
 export function cupOf(competition: string | undefined): string | null {
-  if (!competition || /^Highlander Season/i.test(competition)) return null;
+  if (!competition || !/cup/i.test(competition)) return null;
   return competition.split(":")[0].trim();
 }
 
@@ -708,7 +708,7 @@ export function SeasonFixtures({ season, onTeam, onMatch }: { season: number; on
 }
 
 /** A match of the season not played yet: its date and countdown, the two sides. */
-function UpcomingLine({ r, mine, onTeam, onOpen }: { r: ResultRow; mine: Set<number>; onTeam: (id: number) => void; onOpen: () => void }) {
+export function UpcomingLine({ r, mine, onTeam, onOpen }: { r: ResultRow; mine: Set<number>; onTeam: (id: number) => void; onOpen: () => void }) {
   const ours = mine.has(r.clan1.id) || mine.has(r.clan2.id);
   return (
     <li className={ours ? "e2-rl ours" : "e2-rl"} {...rowKeys(onOpen)} title={t("Open the match")}>

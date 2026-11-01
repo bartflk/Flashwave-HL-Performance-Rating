@@ -59,6 +59,9 @@
 }
 .e2-menu > button:hover { color: var(--text); background: rgba(var(--text-rgb), 0.05); }
 .e2-menu > button.on { color: var(--text); background: rgba(var(--accent-rgb), 0.16); box-shadow: inset 0 -2px 0 var(--accent); }
+/* Eight entries since Tournaments: tighter in a narrow window, so the menu
+   stays one line where it was. */
+@media (max-width: 900px) { .e2-menu > button { padding: 8px 10px; } }
 
 /* Search: players and teams in one box, the answers in a panel under it. */
 .e2-search { position: relative; flex: 0 1 360px; min-width: 220px; }
@@ -1446,3 +1449,31 @@ button.rc-card:hover .rc-name { color: var(--tf2-tan); }
   .np-season button { grid-template-columns: 1fr auto; }
   .np-season .np-date { grid-column: 1 / -1; }
 }
+
+/* ---- Tournaments: the cups beside the seasons ---------------------------- */
+/* A season's card without a banner: a shorter picture, tinted by kind. */
+.tn-card .ts-art { aspect-ratio: 3 / 1; }
+.tn-card .ts-body { margin-top: -18px; }
+.tn-card .ts-art-label { inset: 0 0 18% 0; font-size: var(--fs-hero); }
+.tn-card .ts-title { font-size: var(--fs-section); }
+.tn-card.tn-k-one-night { border-top-color: #e0763a; }
+.tn-card.tn-k-experimental { border-top-color: #3fb8a0; }
+.tn-card.tn-k-nations { border-top-color: #6aa3e8; }
+.tn-card.tn-k-preseason { border-top-color: var(--tf2-tan); }
+.tn-card.tn-k-open, .tn-card.tn-k-other { border-top-color: #a8998b; }
+.tn-k-one-night .ts-art-img { background-image: linear-gradient(135deg, color-mix(in srgb, #e0763a 70%, #000), color-mix(in srgb, #6b2fa0 45%, var(--panel-2))); }
+.tn-k-experimental .ts-art-img { background-image: linear-gradient(135deg, color-mix(in srgb, #3fb8a0 65%, #000), color-mix(in srgb, var(--tf2-tan) 30%, var(--panel-2))); }
+.tn-k-nations .ts-art-img { background-image: linear-gradient(135deg, color-mix(in srgb, #6aa3e8 65%, #000), color-mix(in srgb, var(--tf2-cream) 25%, var(--panel-2))); }
+.tn-k-preseason .ts-art-img { background-image: linear-gradient(135deg, color-mix(in srgb, var(--tf2-tan) 70%, #000), color-mix(in srgb, var(--tf2-red) 30%, var(--panel-2))); }
+.tn-k-open .ts-art-img, .tn-k-other .ts-art-img { background-image: linear-gradient(135deg, color-mix(in srgb, #a8998b 60%, #000), var(--panel-2)); }
+.tn-more { font-size: var(--fs-small); padding-left: 4px; }
+
+.tn-winners { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 0; padding: 0; list-style: none; }
+.tn-winners li { display: inline-flex; align-items: center; gap: 8px; min-height: var(--ctl-h); }
+.tn-winners button { display: inline-flex; align-items: center; gap: 6px; padding: 0; min-height: 0; border: 0; background: none; color: var(--tf2-cream); font: inherit; cursor: pointer; }
+.tn-winners button:hover strong { text-decoration: underline; }
+/* A round's matches in a bracket's panel: the bracket and round are its
+   heading, so a line is the date, the teams and the score. */
+.tn-round-list .e2-rl { grid-template-columns: 64px minmax(0, 1fr) 56px minmax(0, 1fr); }
+.tn-round-list .e2-fx-div,
+.tn-round-list .e2-rl-note { display: none; }

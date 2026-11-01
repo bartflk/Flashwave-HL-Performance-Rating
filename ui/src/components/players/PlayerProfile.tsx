@@ -2,12 +2,12 @@ import { DeepPanels } from "./DeepPanels";
 import { PROFILE_KEEP_MS } from "../../lib/cachetimes";
 import { ApiError } from "../ApiError";
 import { friendlyError } from "../../lib/apierror";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { type Career, type CatDivision, type Etf2lRoster, type Medal, type Mvp, type PlayerProfile as Profile } from "../../api/types";
+import { type Career, type CatDivision, type Etf2lRoster, type Medal, type Mvp, type Official, type PlayerProfile as Profile } from "../../api/types";
 import { formatDate, formatMonth, formatStay } from "../../lib/format";
-import { openLeagueMatch } from "../../lib/goto";
+import { openLeagueMatch, openTournament } from "../../lib/goto";
 import { ClassIcon } from "../ClassIcon";
 import { classLabel } from "../analysis/common";
 import { locale, t, tx } from "../../lib/i18n";
@@ -69,6 +69,8 @@ export function PlayerProfile({ accountId, yours }: { accountId: number; yours: 
           <>
             <TeamStays accountId={p.accountId} />
             <SeasonsTable p={p} />
+            <h3 className="pp-sub">{t("Tournaments")}</h3>
+            <TournamentsTable p={p} />
           </>
         )}
         {tab === "achievements" && <Achievements medals={p.medals} mvps={p.mvps ?? []} />}
@@ -519,6 +521,82 @@ export function TeamStays({ accountId }: { accountId: number }) {
  *  falls between 34 and 35, as `leagues::season_order` has it. */
 export function seasonOrder(season: number): number {
   return season >= 100 ? (season - 100) * 2 + 1 : season * 2;
+}
+
+/** A tournament's name from its competition's: "Highlander Experimental Cup
+ *  #10: Mid Grand Final" is "Highlander Experimental Cup #10". */
+function tournamentOf(competition: string): string {
+  return competition.split(":")[0].split(" - ")[0].trim();
+}
+
+const FINAL = /^(grand[- ]finals?|finals?)$/i;
+
+/**
+ * The cups a player played, beside their seasons (Flashy: "1 day cups and
+ * smaller tournaments ... it would show up in the players history"): each
+ * tournament and team with the bracket, the record and how far they went.
+ */
+export function TournamentsTable({ p }: { p: Profile }) {
+  const rows = useMemo(() => {
+    const out: Array<{ name: string; team: Official["team"]; brackets: string[]; won: number; lost: number; time: number; reached: string; place: 1 | 2 | null }> = [];
+    for (const o of p.officials) {
+      if (o.stage !== "Cup") continue;
+      const name = tournamentOf(o.competition);
+      let r = out.find((x) => x.name === name && x.team.id === o.team.id);
+      if (!r) {
+        // Officials come newest first: the first seen is how far they went.
+        const isFinal = FINAL.test((o.round ?? "").trim());
+        r = { name, team: o.team, brackets: [], won: 0, lost: 0, time: o.time ?? 0, reached: o.round ?? "", place: isFinal && o.won === true ? 1 : isFinal && o.won === false ? 2 : null };
+        out.push(r);
+      }
+      if (o.division && !r.brackets.includes(o.division)) r.brackets.push(o.division);
+      r.won += o.won === true ? 1 : 0;
+      r.lost += o.won === false ? 1 : 0;
+    }
+    return out;
+  }, [p.officials]);
+  if (rows.length === 0) return <p className="hint">{t("No ETF2L tournament in the data read: one-night, Experimental, Nations' and preseason cups show here.")}</p>;
+  return (
+    <table className="pp-seasons pp-cups">
+      <thead>
+        <tr>
+          <th>{t("Tournament")}</th>
+          <th>{t("Team")}</th>
+          <th>{t("Bracket")}</th>
+          <th>{t("Record")}</th>
+          <th>{t("Reached")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={`${r.name}-${r.team.id}`}>
+            <td>
+              <button className="pp-cup-link" onClick={() => openTournament(r.name)} title={t("Open the tournament")}>
+                {r.name}
+              </button>
+              {r.time > 0 && <span className="muted"> · {formatDate(r.time, true)}</span>}
+            </td>
+            <td>
+              <span className="pp-team">
+                <TeamAvatar src={r.team.avatar} />
+                {r.team.name}
+              </span>
+            </td>
+            <td className="muted">{r.brackets.join(", ") || "—"}</td>
+            <td>
+              <span className="w">{r.won}</span>–<span className="l">{r.lost}</span>
+            </td>
+            <td>
+              <span className="pp-cup-reached">
+                {r.place && <MedalGlyph size={16} place={r.place} />}
+                {r.place === 1 ? t("Won it") : r.place === 2 ? t("Runner-up") : r.reached}
+              </span>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }
 
 export function SeasonsTable({ p }: { p: Profile }) {

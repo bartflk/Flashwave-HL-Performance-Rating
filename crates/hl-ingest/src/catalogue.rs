@@ -1566,8 +1566,9 @@ impl Catalogue {
             }
             let (division, tier) = self.division_of(m);
             let (f, a, won) = Self::result_for(m, team);
-            // A tournament is their official, not their season.
-            if m.stage != "Cup" || m.comp_name.is_empty() || crate::leagues::parse_name(&m.comp_name).is_some() {
+            // A tournament is their official, not their season; a preseason
+            // cup too (Flashy: "preseason cups under tournaments").
+            if m.stage != "Cup" || m.comp_name.is_empty() {
                 let e = seasons.entry((m.season, team)).or_default();
                 *e.0.entry((division.clone(), tier)).or_default() += 1;
                 e.1 += 1;

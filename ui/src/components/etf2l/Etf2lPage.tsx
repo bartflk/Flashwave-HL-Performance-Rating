@@ -4,7 +4,7 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { api } from "../../api/client";
 import { type CatTeam, type Fixture, type LeagueTableRow, type RecruitPost, type ResultRow, type SeasonTile } from "../../api/types";
 import { formatDate } from "../../lib/format";
-import { hasPendingPlayer, onOpenLeagueMatch, onOpenSeason, onOpenTeam, onPlayerAsked, openPlayer, takePendingLeagueMatch, takePendingSeason, takePendingTeam } from "../../lib/goto";
+import { hasPendingPlayer, onOpenLeagueMatch, onOpenSeason, onOpenTeam, onOpenTournament, onPlayerAsked, openPlayer, takePendingLeagueMatch, takePendingSeason, takePendingTeam, takePendingTournament } from "../../lib/goto";
 import { t, tx } from "../../lib/i18n";
 import { DivisionBadge } from "../players/PlayerProfile";
 import { MedalGlyph } from "../players/MedalGlyph";
@@ -16,6 +16,7 @@ import { NewsCard, NewsList, NewsReader, SeasonNews, useNews } from "./News";
 import { FixtureRow, LeagueMatchPage, MatchesPage, SeasonFixtures } from "./Matches";
 import { SeasonDivisions, laneOf } from "./Brackets";
 import { TeamsLanding } from "./Teams";
+import { TournamentScreen, TournamentsGrid } from "./Tournaments";
 import { RecruitPostPage, RecruitPreview, RecruitmentPage, type Kind as RecruitKind } from "./Recruitment";
 import "../teams/teams.css";
 import "./etf2l.css";
@@ -35,7 +36,7 @@ import { Loading, Refreshing, Spinner } from "../Spinner";
  * history sees it.
  */
 
-type Section = "home" | "matches" | "seasons" | "teams" | "players" | "news" | "recruitment";
+type Section = "home" | "matches" | "seasons" | "tournaments" | "teams" | "players" | "news" | "recruitment";
 
 type Loc =
   | { at: "home" }
@@ -43,6 +44,8 @@ type Loc =
   | { at: "match"; id: number; fixture?: Fixture; from: Loc }
   | { at: "seasons" }
   | { at: "season"; season: number }
+  | { at: "tournaments" }
+  | { at: "tournament"; name: string }
   | { at: "team"; teamId: number; from: Loc }
   | { at: "teams" }
   | { at: "players" }
@@ -55,6 +58,7 @@ type Loc =
 /** The menu entry a place belongs to: a team under whatever it was opened from. */
 function sectionOf(l: Loc): Section {
   if (l.at === "season") return "seasons";
+  if (l.at === "tournament") return "tournaments";
   if (l.at === "post") return l.from ? sectionOf(l.from) : "news";
   if (l.at === "recruit") return "recruitment";
   if (l.at === "team" || l.at === "match") return sectionOf(l.from);
@@ -118,6 +122,8 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
     if (team !== null) return [{ at: "team", teamId: team, from: { at: "home" } }];
     const season = takePendingSeason();
     if (season !== null) return [{ at: "season", season }];
+    const tournament = takePendingTournament();
+    if (tournament !== null) return [{ at: "tournament", name: tournament }];
     return [hasPendingPlayer() ? { at: "players" } : { at: "home" }];
   });
   const loc = stack[stack.length - 1];
@@ -132,6 +138,7 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
   };
   useEffect(() => onOpenTeam((teamId) => setStack((s) => [...s, { at: "team", teamId, from: base(s[s.length - 1]) }])), []);
   useEffect(() => onOpenSeason((season) => setStack((s) => [...s, { at: "season", season }])), []);
+  useEffect(() => onOpenTournament((name) => setStack((s) => [...s, { at: "tournament", name }])), []);
   useEffect(
     () =>
       onOpenLeagueMatch((id) => {
@@ -191,6 +198,7 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
     ["home", t("Home")],
     ["matches", t("Matches")],
     ["seasons", t("Seasons")],
+    ["tournaments", t("Tournaments")],
     ["teams", t("Teams")],
     ["players", t("Players")],
     ["news", t("News")],
@@ -233,6 +241,8 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
           <SeasonFixtures season={loc.season} onTeam={openTeam} onMatch={(id) => openMatch(id)} />
         </>
       )}
+      {loc.at === "tournaments" && <TournamentsGrid onOpen={(name) => go({ at: "tournament", name })} />}
+      {loc.at === "tournament" && <TournamentScreen key={loc.name} name={loc.name} onTeam={openTeam} onMatch={(id) => openMatch(id)} />}
       {loc.at === "recruitment" && <RecruitmentPage onOpen={(post, kind) => go({ at: "recruit", post, kind })} />}
       {loc.at === "recruit" && <RecruitPostPage key={loc.post.id} p={loc.post} kind={loc.kind} onTeam={openTeam} />}
       {loc.at === "team" && <TeamScreen key={loc.teamId} teamId={loc.teamId} onTeam={openTeam} />}
@@ -274,6 +284,9 @@ function Crumbs({ loc, go }: { loc: Loc; go: (l: Loc) => void }) {
       trail.push([t("Seasons"), { at: "seasons" }]);
       const tile = tiles?.find((s) => s.season === l.season);
       trail.push([tile ? seasonTitle(tile) : t("Season {0}", { "0": l.season }), l]);
+    } else if (l.at === "tournament") {
+      trail.push([t("Tournaments"), { at: "tournaments" }]);
+      trail.push([l.name, l]);
     } else if (l.at === "match") {
       add(l.from);
       trail.push([matchTitle ?? t("Match"), l]);
@@ -285,7 +298,7 @@ function Crumbs({ loc, go }: { loc: Loc; go: (l: Loc) => void }) {
       else trail.push([t("News"), { at: "news" }]);
       trail.push([post?.title ?? t("Post"), l]);
     } else if (l.at !== "home") {
-      trail.push([{ matches: t("Matches"), seasons: t("Seasons"), teams: t("Teams"), players: t("Players"), news: t("News"), recruitment: t("Recruitment") }[l.at], l]);
+      trail.push([{ matches: t("Matches"), seasons: t("Seasons"), tournaments: t("Tournaments"), teams: t("Teams"), players: t("Players"), news: t("News"), recruitment: t("Recruitment") }[l.at], l]);
     }
   };
   add(loc);
