@@ -76,7 +76,7 @@ import type {
   NewsPost,
   RglPlayer,
   RglSeason,
-  RglSeasonItem,
+  RglSeasonItem, RglBan, RglMatch,
   RglTeamPage,
   RglTeamSeason,
   ResultRow,
@@ -1435,6 +1435,50 @@ export const mockApi: Api = {
         },
       ],
     }),
+  // A round robin of S24's Invite, and two of the league's bans.
+  getRglSeasonMatches: (id: number) => {
+    const teams = [
+      [14908, "The Amiable Duds", "AD."],
+      [14954, "Witness Gaming", "wG"],
+      [14839, "The Family", "folk"],
+      [14820, "mandem", "mndm"],
+    ] as const;
+    const pairs = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]];
+    const maps = ["pl_vigil_rc10", "koth_product_final", "pl_upward_f12"];
+    let n = 34000;
+    return delay<RglMatch[]>(
+      pairs.flatMap((week, w) =>
+        week.map(([a, b], i) => {
+          const home = (w + i) % 2 === 0;
+          const hs = (a + w) % 3 === 0 ? 1 : 3;
+          const as = 4 - hs;
+          return {
+            matchId: n++,
+            matchDate: new Date(Date.UTC(2026, 5, 2 + 7 * w, 1, 30)).toISOString(),
+            matchName: `Week ${w + 1} - ${maps[w].split("_")[1].replace(/^./, (c) => c.toUpperCase())}`,
+            divisionName: "Invite",
+            isForfeit: id === 193 && w === 2 && i === 1,
+            winner: hs > as ? teams[a][0] : teams[b][0],
+            teams: [
+              { teamId: teams[a][0], teamName: teams[a][1], teamTag: teams[a][2], isHome: home },
+              { teamId: teams[b][0], teamName: teams[b][1], teamTag: teams[b][2], isHome: !home },
+            ],
+            maps: [{ mapName: maps[w], homeScore: home ? hs : as, awayScore: home ? as : hs }],
+          };
+        }),
+      ),
+    );
+  },
+  getRglBans: (skip: number) =>
+    delay<RglBan[]>(
+      skip > 0
+        ? []
+        : [
+            { steamId: "76561199122247797", alias: "Goose", createdAt: "2026-10-30T08:22:16.103Z", expiresAt: "2026-11-06T08:22:00.000Z", reason: "Failure to Submit Demos: 1st Offense" },
+            { steamId: "76561199884326268", alias: "freak", createdAt: "2026-10-30T00:21:22.293Z", expiresAt: "3026-03-01T00:00:00.000Z", reason: "Permanently banned due to a VAC ban." },
+            { steamId: "76561198000000001", alias: "oldtimer", createdAt: "2026-03-01T00:00:00.000Z", expiresAt: "2026-04-01T00:00:00.000Z", reason: "Toxicity" },
+          ],
+    ),
   getRglTeamSeasons: () => delay<RglTeamSeason[]>([{ id: 12734, name: "The Amiable Duds", tag: "AD.", seasonId: 183, seasonName: "HL Season 23", division: "Advanced", finalRank: 2 }]),
   getRglPlayer: (input: string) =>
     delay<RglPlayer | null>(
