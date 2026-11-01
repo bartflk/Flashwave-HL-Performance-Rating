@@ -558,6 +558,8 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+/* Shown only while a filter is on: the accent link after the count. */
+.fi-reset { margin-left: 10px; }
 
 /* Narrow: the two dropdowns drop under the format tabs rather than squeezing. */
 @media (max-width: 900px) {

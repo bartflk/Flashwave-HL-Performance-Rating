@@ -99,6 +99,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
   const [sort, setSort] = useSaved<{ key: string; ascending: boolean }>("matches.sort", { key: "date", ascending: false }, isSort);
   // Q56 (Emiel): straight to the matches with everyone's movement and aim.
   const [stvOnly, setStvOnly] = useSaved<boolean>("matches.stv", false, (v): v is boolean => typeof v === "boolean");
+  const filtered = view !== "highlander" || cls !== null || map !== null || stvOnly;
   const classSort = parseClassSort(sort.key);
   const picker = useColumns("matches", STAT_COLS);
   const statCols = STAT_COLS.filter(picker.shown);
@@ -218,6 +219,24 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
         )}
         <span className="fi-count">
           {matches.isPending ? <><Spinner /> {t("Loading…")}</> : stale ? <><Spinner /> {t("Sorting…")}</> : t("{0} match{1}", { "0": total.toLocaleString(), "1": total === 1 ? "" : "es" })}
+          {/* The filters are remembered, so a short list says why, and the
+              way back is beside it. The period is the whole app's, and the
+              order narrows nothing: both stay. */}
+          {filtered && (
+            <button
+              className="linkish fi-reset"
+              title={t("Back to every Highlander match: any class, any map, with or without STV")}
+              onClick={() => {
+                setView("highlander");
+                setCls(null);
+                setMap(null);
+                setStvOnly(false);
+                setPages(1);
+              }}
+            >
+              {t("Reset filters")}
+            </button>
+          )}
         </span>
         <div className="fi-actions">
         <button
