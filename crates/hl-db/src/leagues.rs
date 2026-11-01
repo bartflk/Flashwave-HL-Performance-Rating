@@ -736,6 +736,15 @@ impl Db {
         Ok(rows.iter().map(result_row).collect())
     }
 
+    /// Every official of ETF2L's other Highlander tournaments (stage `Cup`:
+    /// the one-night, Experimental, Nations' and preseason cups), by time.
+    pub async fn cup_results(&self) -> Result<Vec<ResultRow>> {
+        let rows = sqlx::query(&format!("{RESULT_SELECT} WHERE c.stage = 'Cup' ORDER BY m.time IS NULL, m.time, m.match_id"))
+            .fetch_all(self.pool())
+            .await?;
+        Ok(rows.iter().map(result_row).collect())
+    }
+
     /// Every official of one season, played or still to come, by time; the
     /// ones not yet given a date last.
     pub async fn season_results(&self, season: i64) -> Result<Vec<ResultRow>> {

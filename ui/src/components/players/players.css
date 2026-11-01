@@ -733,3 +733,11 @@ button.pp-alias-more:hover { border-color: var(--accent-dim); background: rgba(v
 @media (max-width: 720px) {
   .lm-op { grid-template-columns: 1fr; }
 }
+
+/* A player's tournaments, under their seasons. */
+.pp-sub { margin: 22px 0 10px; font: 700 var(--fs-section) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+.pp-cup-link { padding: 0; min-height: 0; border: 0; background: none; color: var(--text); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.pp-cup-link:hover { color: var(--accent); text-decoration: underline; }
+.pp-cup-reached { display: inline-flex; align-items: center; gap: 6px; }
+.pp-cups .w { color: #8fc27a; }
+.pp-cups .l { color: #d98a80; }

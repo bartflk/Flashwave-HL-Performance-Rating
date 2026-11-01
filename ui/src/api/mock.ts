@@ -129,7 +129,7 @@ import type {
   Teammates,
   TfPathInfo,
   FightsCard,
-  SeasonsView, StvStage, RatingGuide, LeagueSample, LeagueActivity, CatalogueHit, PlayerProfile, PlayerStats, Rankings, MatchDivisions, CareerView, SeasonTile, Podium, TeamHonours, TeamEtf2l } from "./types";
+  SeasonsView, StvStage, RatingGuide, LeagueSample, LeagueActivity, CatalogueHit, PlayerProfile, PlayerStats, Rankings, LeagueCup, LeagueCupPage, CupResult, MatchDivisions, CareerView, SeasonTile, Podium, TeamHonours, TeamEtf2l } from "./types";
 
 // Starts configured, since setup is not what you are usually iterating on.
 // Append `?setup` to the URL to start from the first-run screen instead.
@@ -383,6 +383,9 @@ function mockProfile(accountId: number): PlayerProfile {
     officials: [
       { matchId: 93055, competition: "Highlander Season 36", tier: 2, time: 1_790_532_000, season: 36, division: "High", stage: "regular", round: "Week 5", team: dd, opponent: mockTeam(1, "TWS"), scoreFor: 4, scoreAgainst: 2, won: true },
       { matchId: 92011, competition: "Highlander Season 36", tier: 2, time: 1_789_900_000, season: 36, division: "High", stage: "regular", round: "Week 4", team: dd, opponent: mockTeam(2, "ЭТО МОЁ БОЛОТО"), scoreFor: 1, scoreAgainst: 5, won: false },
+      { matchId: 98003, competition: "Crit or Treat! Highlander One-Night-Cup", tier: null, time: 1_793_476_600, season: 36, division: "Werewolves", stage: "Cup", round: "Grand Final", team: dd, opponent: mockTeam(5, "Gibus and The Gang"), scoreFor: 2, scoreAgainst: 1, won: true },
+      { matchId: 98001, competition: "Crit or Treat! Highlander One-Night-Cup", tier: null, time: 1_793_473_000, season: 36, division: "Werewolves", stage: "Cup", round: "Round 1", team: dd, opponent: mockTeam(2, "TWS"), scoreFor: 2, scoreAgainst: 0, won: true },
+      { matchId: 97002, competition: "Highlander Experimental Cup #10", tier: null, time: 1_780_600_000, season: 35, division: "Open", stage: "Cup", round: "Round 2", team: sbq, opponent: mockTeam(10, "Huntsmen"), scoreFor: 1, scoreAgainst: 3, won: false },
       { matchId: 85001, competition: "Highlander Season 33 Playoffs", tier: 4, time: 1_757_000_000, season: 33, division: "Low", stage: "Playoffs", round: "Grand Final", team: sbq, opponent: mockTeam(3, "Gibus and The Gang"), scoreFor: 6, scoreAgainst: 3, won: true },
     ],
     etf2lId: 97913,
@@ -1463,6 +1466,8 @@ export const mockApi: Api = {
         .filter((n) => new RegExp(`season ${season}(?!\\d)`, "i").test(n.title))
         .sort((a, b) => a.time - b.time),
     ),
+  getTournaments: () => delay<LeagueCup[]>(MOCK_CUPS.map(({ results: _r, ...x }) => x)),
+  getTournament: (name: string) => delay<LeagueCupPage | null>(MOCK_CUPS.find((x) => x.name === name) ?? null),
   // DD14's season so far, read as everyone's results.
   getRecentResults: (limit = 10) =>
     delay<ResultRow[]>([
@@ -2200,3 +2205,57 @@ const MOCK_LOGSTF: LogsTfPlayer[] = [
   { accountId: 40001, steamid64: "76561197960305729", name: "flashbang", aliases: ["fb"], logs: 212, competitive: 40, pickup: 172, firstYear: 2015, lastYear: 2017, mainClass: "soldier" },
   { accountId: 40002, steamid64: "76561197960305730", name: "proximo", aliases: [], logs: 1404, competitive: 1210, pickup: 194, firstYear: 2014, lastYear: 2018, mainClass: "demoman" },
 ];
+
+
+/** Two of ETF2L's other tournaments: a one-night fun cup and an Experimental Cup. */
+const MOCK_CUPS: LeagueCupPage[] = (() => {
+  const team = (id: number, name: string) => ({ id, name, avatar: null });
+  const row = (matchId: number, time: number, competition: string, bracket: string, round: string, a: [number, string], b: [number, string], s: [number, number] | null): CupResult => ({
+    matchId,
+    time,
+    season: 36,
+    division: bracket,
+    tier: null,
+    round,
+    week: null,
+    stage: "Cup",
+    competition,
+    clan1: team(...a),
+    clan2: team(...b),
+    r1: s ? s[0] : null,
+    r2: s ? s[1] : null,
+    defaultWin: false,
+    bracket,
+  });
+  const crit = "Crit or Treat! Highlander One-Night-Cup";
+  const ec = "Highlander Experimental Cup #10";
+  const critRows = [
+    row(98001, 1_793_473_000, crit, "Werewolves", "Round 1", [37805, "DD14"], [2, "TWS"], [2, 0]),
+    row(98002, 1_793_473_000, crit, "Zombies", "Round 1", [3, "Kebab"], [4, "mpreg"], [1, 2]),
+    row(98003, 1_793_476_600, crit, "Werewolves", "Grand Final", [37805, "DD14"], [5, "Gibus and The Gang"], [2, 1]),
+    row(98004, 1_793_476_600, crit, "Zombies", "Grand Final", [4, "mpreg"], [6, "Sandvich Express"], [0, 2]),
+  ];
+  const ecRows = [
+    row(97001, 1_780_000_000, ec, "Mid", "Round 1", [7, "Pyro Pals"], [8, "Ubercharged"], [3, 1]),
+    row(97002, 1_780_600_000, ec, "Open", "Round 1", [9, "Bonk Squad"], [10, "Huntsmen"], [2, 2]),
+    row(97003, 1_781_200_000, `${ec}: Mid Grand Final`, "Mid", "Grand Final", [7, "Pyro Pals"], [11, "Gunslingers"], [4, 2]),
+  ];
+  const head = (name: string, kind: LeagueCup["kind"], rows: CupResult[], winners: LeagueCup["winners"]): LeagueCupPage => ({
+    name,
+    kind,
+    first: rows[0].time,
+    last: rows[rows.length - 1].time,
+    matches: rows.length,
+    teams: new Set(rows.flatMap((r) => [r.clan1.id, r.clan2.id])).size,
+    brackets: [...new Set(rows.map((r) => r.bracket))],
+    winners,
+    results: rows,
+  });
+  return [
+    head(crit, "one-night", critRows, [
+      { bracket: "Werewolves", team: team(37805, "DD14") },
+      { bracket: "Zombies", team: team(6, "Sandvich Express") },
+    ]),
+    head(ec, "experimental", ecRows, [{ bracket: "Mid", team: team(7, "Pyro Pals") }]),
+  ];
+})();

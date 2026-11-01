@@ -62,6 +62,7 @@ pub mod spawns;
 pub mod cart;
 pub mod demo_import;
 pub mod leagues;
+pub mod cups;
 pub mod callouts;
 pub mod snapshot;
 pub mod mapsettings;

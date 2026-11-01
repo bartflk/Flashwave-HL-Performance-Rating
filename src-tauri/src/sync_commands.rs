@@ -1966,6 +1966,19 @@ pub async fn get_recent_results(state: State<'_, AppState>, limit: Option<i64>) 
     Ok(state.db.recent_results(limit.unwrap_or(10).clamp(1, 300)).await?)
 }
 
+/// ETF2L's other Highlander tournaments, newest first: the one-night,
+/// Experimental, Nations' and preseason cups.
+#[tauri::command]
+pub async fn get_tournaments(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::cups::Tournament>> {
+    Ok(hl_ingest::cups::list(&state.db).await?)
+}
+
+/// One tournament with all its matches.
+#[tauri::command]
+pub async fn get_tournament(state: State<'_, AppState>, name: String) -> CmdResult<Option<hl_ingest::cups::TournamentPage>> {
+    Ok(hl_ingest::cups::page(&state.db, &name).await?)
+}
+
 /// ETF2L's Highlander recruitment posts (Q74), read at most every half hour.
 #[tauri::command]
 pub async fn get_recruitment(state: State<'_, AppState>) -> CmdResult<hl_ingest::recruitment::Recruitment> {

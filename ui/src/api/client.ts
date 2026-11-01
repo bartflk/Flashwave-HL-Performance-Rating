@@ -132,6 +132,8 @@ import type {
   HeadToHead,
   SeasonBreakdown,
   StatScales,
+  LeagueCup,
+  LeagueCupPage,
 } from "./types";
 import { withChosenNames } from "../lib/names";
 
@@ -291,6 +293,8 @@ const realApi = {
   getNewsPost: (id: number) => invoke<NewsPost | null>("get_news_post", { id }),
   getSeasonNews: (season: number, seasonName: string) => invoke<NewsItem[]>("get_season_news", { season, seasonName }),
   getRecentResults: (limit?: number) => invoke<ResultRow[]>("get_recent_results", { limit }),
+  getTournaments: () => invoke<LeagueCup[]>("get_tournaments"),
+  getTournament: (name: string) => invoke<LeagueCupPage | null>("get_tournament", { name }),
   searchTeams: (query: string) => invoke<TeamHit[]>("search_teams", { query }),
   getLeagueMatch: (matchId: number) => invoke<LeagueMatch | null>("get_league_match", { matchId }),
   getMatchPage: (matchId: number) => invoke<Etf2lMatchPage | null>("get_match_page", { matchId }),

@@ -439,6 +439,30 @@ export interface RglPlayer {
   seasons: RglPlayerSeason[];
 }
 
+/** One of ETF2L's other Highlander tournaments: a one-night, Experimental,
+ *  Nations' or preseason cup (hl_ingest::cups). */
+export interface LeagueCup {
+  name: string;
+  kind: "preseason" | "one-night" | "experimental" | "nations" | "open" | "other";
+  first: number | null;
+  last: number | null;
+  matches: number;
+  teams: number;
+  /** Each bracket's name, in the order its first match was played. */
+  brackets: string[];
+  /** Whoever won each bracket's Grand Final. */
+  winners: Array<{ bracket: string; team: { id: number; name: string; avatar: string | null } }>;
+}
+
+export interface CupResult extends ResultRow {
+  bracket: string;
+}
+
+export interface LeagueCupPage extends LeagueCup {
+  /** Every match, oldest first. */
+  results: CupResult[];
+}
+
 /** A played official, any team's (Q74). */
 export interface ResultRow {
   matchId: number;

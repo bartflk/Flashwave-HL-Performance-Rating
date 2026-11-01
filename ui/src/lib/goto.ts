@@ -129,6 +129,33 @@ export function onOpenSeason(open: (season: number) => void): () => void {
   return () => window.removeEventListener(SEASON_EVENT, handler);
 }
 
+const TOURNAMENT_EVENT = "hl:tournament";
+let pendingTournament: string | null = null;
+
+/** The ETF2L tab, on one tournament's page (from a player's tournaments). */
+export function openTournament(name: string) {
+  pendingTournament = name;
+  goTo("etf2l");
+  window.dispatchEvent(new CustomEvent<string>(TOURNAMENT_EVENT, { detail: name }));
+}
+
+/** For the ETF2L tab: the tournament asked for before it was first shown. */
+export function takePendingTournament(): string | null {
+  const s = pendingTournament;
+  pendingTournament = null;
+  return s;
+}
+
+/** For the ETF2L tab: a tournament asked for while it is mounted. */
+export function onOpenTournament(open: (name: string) => void): () => void {
+  const handler = (e: Event) => {
+    pendingTournament = null;
+    open((e as CustomEvent<string>).detail);
+  };
+  window.addEventListener(TOURNAMENT_EVENT, handler);
+  return () => window.removeEventListener(TOURNAMENT_EVENT, handler);
+}
+
 const LEAGUE_MATCH_EVENT = "hl:league-match";
 let pendingLeagueMatch: number | null = null;
 
