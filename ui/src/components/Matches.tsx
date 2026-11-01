@@ -19,7 +19,7 @@ import { bounds, usePeriod } from "../lib/period";
 import { KindPicker } from "./ContextBadge";
 import { ClassIcon } from "./ClassIcon";
 import { PeriodPicker } from "./PeriodPicker";
-import { t, k } from "../lib/i18n";
+import { t, k, locale } from "../lib/i18n";
 import { Refreshing, Spinner } from "./Spinner";
 import { useSaved } from "../lib/saved";
 
@@ -337,6 +337,10 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
                   tournament's: where the date order's own dividers already
                   name it, they say it. */}
               {period.kind === "season" && !dividers && <PeriodRow name={period.name} from={period.from} to={period.to} total={total} span={5 + statCols.length + (classSort ? 1 : 0)} />}
+              {/* Custom dates too: no tournament divider names those. */}
+              {period.kind === "custom" && (period.from !== null || period.to !== null) && (
+                <PeriodRow name={t("Custom dates")} from={period.from} to={period.to} total={total} span={5 + statCols.length + (classSort ? 1 : 0)} />
+              )}
               {items.map((m, i) => {
                 // A divider where the list enters a tournament's stretch,
                 // or leaves it (by date only: another order mixes them).
@@ -444,14 +448,25 @@ function TournamentRow({ t: x, span }: { t: Tournament | null; span: number }) {
 }
 
 /** The period's season above the rows, in a tournament divider's look. */
-function PeriodRow({ name, from, to, total, span }: { name: string; from: number; to: number; total: number; span: number }) {
+function PeriodRow({ name, from, to, total, span }: { name: string; from: number | null; to: number | null; total: number; span: number }) {
+  // A period's days are UTC days (lib/period), so they are written in UTC:
+  // in local time a day's last second is already the next day east of
+  // Greenwich, and 10 Sept read as 11. Custom dates may have one end open.
+  const day = (x: number, year: boolean) =>
+    new Date(x * 1000).toLocaleDateString(locale(), { day: "numeric", month: "short", ...(year ? { year: "numeric" } : {}), timeZone: "UTC" });
+  const when =
+    from !== null && to !== null
+      ? `${day(from, new Date(from * 1000).getUTCFullYear() !== new Date(to * 1000).getUTCFullYear())} – ${day(to, true)}`
+      : from !== null
+        ? t("from {0}", { "0": day(from, true) })
+        : t("up to {0}", { "0": day(to as number, true) });
   return (
     <tr className="tourney-row tourney-period">
       <td colSpan={span}>
         <span className="tourney-head">
           <strong className="tourney-name">{name}</strong>
           <span className="tourney-meta">
-            {stretch(from, to)} · {t("{0} match{1}", { "0": total.toLocaleString(), "1": total === 1 ? "" : "es" })}
+            {when} · {t("{0} match{1}", { "0": total.toLocaleString(), "1": total === 1 ? "" : "es" })}
           </span>
         </span>
       </td>

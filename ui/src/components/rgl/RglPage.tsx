@@ -6,6 +6,7 @@ import { t, tx } from "../../lib/i18n";
 import { ApiError } from "../ApiError";
 import { Loading } from "../Spinner";
 import { RglMark } from "../RglMark";
+import { LeagueHead } from "../LeagueHead";
 import "../players/players.css";
 import "../teams/teams.css";
 import "../etf2l/etf2l.css";
@@ -188,12 +189,12 @@ export function RglPage({ active, steamid }: { active: boolean; steamid: string 
   return (
     <div className="content e2-page">
       {active && <InDevelopment />}
-      <header className="e2-head">
+      <LeagueHead>
         <div className="e2-brand">
-          <span className="e2-eyebrow">
+          <span className="e2-eyebrow" data-fit="">
             <RglMark size={16} /> {t("RGL Highlander")}
           </span>
-          <nav className="e2-menu" aria-label={t("RGL")}>
+          <nav className="e2-menu" data-fit="" aria-label={t("RGL")}>
             {menu.map(([id, label]) => (
               <button key={id} className={section === id ? "on" : undefined} aria-current={section === id ? "page" : undefined} onClick={() => go({ at: id })}>
                 {label}
@@ -201,10 +202,10 @@ export function RglPage({ active, steamid }: { active: boolean; steamid: string 
             ))}
           </nav>
         </div>
-        <div className="e2-head-tools">
+        <div className="e2-head-tools" data-fit="300">
           <RglSearch onTeam={openTeam} onPlayer={openPlayer} />
         </div>
-      </header>
+      </LeagueHead>
       <Crumbs loc={loc} go={go} />
 
       {loc.at === "home" && <Home steamid={steamid} onTeam={openTeam} onPlayer={openPlayer} go={go} />}
