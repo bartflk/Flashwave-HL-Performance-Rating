@@ -1942,3 +1942,24 @@ button.mini {
 .tourney-none td > * { vertical-align: middle; }
 .tourney-rule { display: inline-block; width: calc(50% - 90px); height: 1px; background: var(--border); }
 .tourney-between { display: inline-block; width: 180px; text-align: center; color: var(--muted); font-family: var(--font-display); font-size: var(--fs-small); text-transform: uppercase; letter-spacing: var(--ls-caps); }
+
+/* The top bar in a narrow window (Flashy: "fix the top bar at narrow
+   widths"): it gave up a line to wrapping and a sideways scrollbar at 1024 px.
+   Nothing in it wraps; what is said elsewhere goes first. The counts are in
+   Sync's tooltip, the SteamID in the badge's menu, the name on its avatar. */
+.brand, .topbar-right, .tabs, .tab, .owner-text, .owner-name, .owner-id { white-space: nowrap; }
+.brand, .topbar-right { flex: none; }
+@media (max-width: 1180px) {
+  .topbar { gap: 12px; }
+  .brand { gap: 16px; }
+  .topbar-right { gap: 12px; }
+  .ss-counts, .owner-id { display: none; }
+}
+@media (max-width: 960px) {
+  .tab { padding-inline: 8px; }
+  .owner-text { display: none; }
+  .owner-button { padding: 3px; }
+}
+@media (max-width: 760px) {
+  .wordmark > span:not(.beta-tag) { display: none; }
+}

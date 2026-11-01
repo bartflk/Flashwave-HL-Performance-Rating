@@ -24,6 +24,8 @@ export function SyncSummary() {
   const note = !s
     ? undefined
     : [
+        // Said out loud too, except in a narrow window, where only this is left.
+        t("{0} matches · {1} officials", { "0": s.highlander.toLocaleString(), "1": s.officials }),
         s.pending > 0 ? t("{0} not fetched yet (about {1})", { "0": s.pending.toLocaleString(), "1": eta(s.pending) }) : null,
         s.outsideWindow > 0
           ? t("{0} older matches kept out — Settings, How far back", { "0": s.outsideWindow.toLocaleString() })
