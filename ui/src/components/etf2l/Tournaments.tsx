@@ -11,6 +11,7 @@ import { MedalGlyph } from "../players/MedalGlyph";
 import { TeamAvatar } from "../teams/TeamsPage";
 import { useYourTeams } from "../teams/YourTeams";
 import { ResultLine, UpcomingLine } from "./Matches";
+import { balanceWrap } from "../../lib/balance";
 
 /**
  * ETF2L's other Highlander tournaments, beside the seasons (Flashy: "a
@@ -70,7 +71,7 @@ export function TournamentsGrid({ onOpen }: { onOpen: (name: string) => void }) 
         </section>
       )}
       {kinds.length > 1 && (
-        <div className="e2-filters">
+        <div className="e2-filters" ref={balanceWrap}>
           <Seg
             label={t("Kind")}
             value={kind}

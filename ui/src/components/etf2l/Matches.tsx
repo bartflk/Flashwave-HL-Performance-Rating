@@ -20,6 +20,7 @@ import { WeekCalendar } from "./Calendar";
 import { CareerChip, OpponentStrength, useLineupRatings } from "../match/OpponentStrength";
 import { Etf2lMark } from "../Etf2lMark";
 import { Loading, Spinner } from "../Spinner";
+import { balanceWrap } from "../../lib/balance";
 
 /**
  * The ETF2L tab's Matches (Q74, Flashy; PLAN §27): what is coming, with a
@@ -202,7 +203,7 @@ export function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void;
         <span className="ts-eyebrow">{t("ETF2L Highlander")}</span>
         <h1>{t("Matches")}</h1>
       </header>
-      <div className="e2-filters">
+      <div className="e2-filters" ref={balanceWrap}>
         <Seg
           label={t("Matches")}
           value={mode}
