@@ -109,3 +109,11 @@ Write-Host "manifest         : $out" -ForegroundColor White
 Write-Host ""
 Write-Host "Upload both to the v$version release. The URL in the manifest must match" -ForegroundColor Yellow
 Write-Host "the tag exactly, or the updater downloads a 404." -ForegroundColor Yellow
+
+# After a release, the side worktrees merged into it and the test copies of
+# the database are done with (scripts/tidy.mjs says what it keeps and why).
+Write-Host ""
+Write-Host "Tidying worktrees and scratch copies" -ForegroundColor Cyan
+Push-Location $root
+& node scripts/tidy.mjs
+Pop-Location

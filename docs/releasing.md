@@ -152,6 +152,20 @@ deletes the incremental caches, then if still over, everything but
 `release/bundle`. Cargo never cleans up on its own -- hl-queue's `target`
 had reached 68 GB. `npm run sweep -- --report` says how big it is.
 
+## Worktrees and scratch copies
+
+Side worktrees (`Desktop\hl-build`, `hl-queue`, ...) each grow their own
+`target`, and test copies of the database pile up in Claude's scratch
+folders: on 6 Nov 2026 they held 105 GB. `scripts/tidy.mjs` runs at the end
+of `npm run release`, and `npm run tidy` runs it any time. It removes a
+worktree only when its branch is merged into main, nothing is uncommitted
+and nothing was touched for 2 days (links into the main checkout are
+unlinked first, never followed; the branch is kept). It removes a
+worktree's `target` when it has been idle for 7 days, and database copies,
+builds and .exe files in the scratch folders after 7 days. A scratch folder
+holding a file named `KEEP` is left alone. `npm run dev` and `npm run build`
+print its report first, with the drive's free space.
+
 ## How the client finds it
 
 The app asks for:
