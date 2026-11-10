@@ -115,11 +115,41 @@ for (const block of git("worktree", "list", "--porcelain").split(/\r?\n\r?\n/)) 
   if (!path) continue;
   worktrees.push({ path: resolve(path), branch: block.match(/^branch refs\/heads\/(.+)$/m)?.[1] ?? null, head: block.match(/^HEAD (\w+)$/m)?.[1] });
 }
-const mainPath = resolve(root);
+// The main checkout is git's first worktree, whichever copy this script
+// was started from. Run from a side worktree, `root` is that worktree and
+// the main checkout would otherwise look like one more merged worktree
+// (audit, 10 Nov 2026): so only report there, and never touch the main one.
+const mainPath = worktrees[0]?.path;
+if (!mainPath) throw new Error("git listed no worktrees");
+const fromMain = resolve(root) === mainPath;
+if (!report && !fromMain) {
+  console.log(`tidy: run from ${resolve(root)}, not the main checkout (${mainPath}); reporting only.`);
+}
+const destructive = !report && fromMain;
+const within = (child, parent) => child === parent || child.startsWith(parent + sep);
+/** Kept whatever git says: a real dev-data folder or any database copy. */
+function holdsData(p) {
+  const dd = lstat(join(p, "dev-data"));
+  if (dd && !dd.isSymbolicLink()) return true;
+  let found = false;
+  const look = (q, depth) => {
+    if (found || depth > 3) return;
+    for (const name of list(q)) {
+      if (name === "target" || name === "node_modules" || name === ".git") continue;
+      const sub = join(q, name);
+      const st = lstat(sub);
+      if (!st || st.isSymbolicLink()) continue;
+      if (/\.sqlite3$/i.test(name)) found = true;
+      else if (st.isDirectory()) look(sub, depth + 1);
+    }
+  };
+  look(p, 0);
+  return found;
+}
 const appMade = (p) => p.startsWith(join(mainPath, ".claude", "worktrees") + sep);
 
 for (const w of worktrees) {
-  if (w.path === mainPath) continue;
+  if (within(mainPath, w.path) || within(resolve(root), w.path)) continue;
   const name = w.branch ?? w.path;
   if (!existsSync(w.path)) {
     lines.push(`worktree ${name}: folder gone, pruned`);
@@ -142,12 +172,12 @@ for (const w of worktrees) {
     // a worktree git cannot read: leave it
   }
   const state = `${fmt(work.bytes)}, cache ${fmt(cache.bytes)}, ${merged ? "merged" : "not merged"}, ${clean ? "clean" : "uncommitted changes"}, idle ${days(idle)}`;
-  if (report) {
+  if (!destructive) {
     lines.push(`worktree ${name}: ${state}`);
     continue;
   }
   try {
-    if (merged && clean && idle >= IDLE_WORKTREE && !appMade(w.path)) {
+    if (merged && clean && idle >= IDLE_WORKTREE && !appMade(w.path) && !holdsData(w.path)) {
       remove(w.path);
       freed += work.bytes;
       lines.push(`worktree ${name}: removed (${state}); branch kept`);
@@ -162,7 +192,7 @@ for (const w of worktrees) {
     lines.push(`worktree ${name}: kept, could not remove (${e.code ?? e.message})`);
   }
 }
-if (!report) git("worktree", "prune");
+if (destructive) git("worktree", "prune");
 
 // ---- Claude's scratch folders --------------------------------------------------
 
@@ -190,7 +220,7 @@ for (const session of list(scratchRoot)) {
   for (const p of found) {
     const { bytes, newest } = walk(p);
     if (now - newest < IDLE_CACHE) continue;
-    if (report) {
+    if (!destructive) {
       scratchJunk += bytes;
       continue;
     }
@@ -203,7 +233,7 @@ for (const session of list(scratchRoot)) {
     }
   }
 }
-if (report) {
+if (!destructive) {
   if (scratchJunk > 0) lines.push(`scratch: ${fmt(scratchBytes)} in Claude's folders, ${fmt(scratchJunk)} of it old database copies and builds (npm run tidy)`);
 } else {
   lines.push(`scratch: ${fmt(scratchJunk)} of old database copies and builds removed from Claude's folders (${fmt(scratchBytes - scratchJunk)} left)`);
@@ -218,6 +248,6 @@ try {
 } catch {
   // not on this platform
 }
-if (!report) lines.push(`freed ${fmt(freed)}`);
+if (destructive) lines.push(`freed ${fmt(freed)}`);
 if (free !== null) lines.push(`${mainPath.slice(0, 2)} free: ${fmt(free)}${free < LOW_FREE ? "  -- LOW: run npm run tidy, or delete target (a build cache)" : ""}`);
 for (const line of lines) console.log(line);
