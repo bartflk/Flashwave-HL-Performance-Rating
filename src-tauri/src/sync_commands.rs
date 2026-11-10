@@ -450,6 +450,11 @@ pub async fn reprocess_start(app: AppHandle, state: State<'_, AppState>) -> CmdR
     let db = state.db.clone();
     let db_path = state.db_path.clone();
     let weights_path = state.db_path.with_file_name("weights.toml");
+    // Stoppable like a sync, through the same `sync_cancel` command: only one
+    // of the two runs at a time (the busy guard), so one slot serves both.
+    let (cancel, mut cancelled) = tokio::sync::oneshot::channel::<()>();
+    *state.sync_cancel.lock().unwrap() = Some(cancel);
+    let cancel_slot = state.sync_cancel.clone();
 
     let startup = state.startup.clone();
     let watch_app = app.clone();
@@ -457,7 +462,7 @@ pub async fn reprocess_start(app: AppHandle, state: State<'_, AppState>) -> CmdR
         let _guard = guard;
         let _startup = startup.lock().await;
         let emitter = app.clone();
-        let result = async {
+        let work = async {
             // A rebuild rewrites every derived table; keep a copy of what was.
             if let Err(e) = hl_ingest::backup::run(&db, &db_path, false).await {
                 tracing::warn!(error = %format!("{e:#}"), "database backup failed");
@@ -487,8 +492,20 @@ pub async fn reprocess_start(app: AppHandle, state: State<'_, AppState>) -> CmdR
             })
             .await?;
             anyhow::Ok(stats)
-        }
-        .await;
+        };
+        let result = tokio::select! {
+            r = work => r,
+            Ok(()) = &mut cancelled => {
+                // What was rebuilt so far is stored; the next rebuild or sync
+                // brings the rest up to date, and the backup taken first is
+                // there if it matters.
+                tracing::info!("rebuild cancelled");
+                *cancel_slot.lock().unwrap() = None;
+                let _ = app.emit(EV_ERROR, CmdError::new("cancelled", "Rebuild cancelled."));
+                return;
+            }
+        };
+        *cancel_slot.lock().unwrap() = None;
 
         match result {
             Ok(stats) => {

@@ -3,7 +3,7 @@ import { friendlyText } from "../lib/apierror";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../api/client";
 import { type AppStatus, type TfPathInfo } from "../api/types";
-import { t, tx, k } from "../lib/i18n";
+import { t, tx } from "../lib/i18n";
 import { Logo } from "./Logo";
 import { Backdrop } from "./Backdrop";
 
@@ -12,8 +12,8 @@ import { Backdrop } from "./Backdrop";
  * for demos), then the first sync. Everything can be changed later in
  * Settings, which reopens this screen.
  */
-export function Setup(props: { status: AppStatus; onDone: () => void; onFinish: () => void }) {
-  const { status, onDone, onFinish } = props;
+export function Setup(props: { status: AppStatus; onDone: () => void; onFinish: () => void; onClose?: () => void }) {
+  const { status, onDone, onFinish, onClose } = props;
   const steamidDone = status.config.steamid !== null;
   const tfDone = status.config.tfPath !== null;
   const [tfSkipped, setTfSkipped] = useState(false);
@@ -38,14 +38,14 @@ export function Setup(props: { status: AppStatus; onDone: () => void; onFinish: 
           onSaved={onDone}
           onSkip={() => setTfSkipped(true)}
         />
-        <FirstSyncStep ready={steamidDone && (tfDone || tfSkipped)} onFinish={onFinish} />
+        <FirstSyncStep ready={steamidDone && (tfDone || tfSkipped || onClose !== undefined)} onFinish={onFinish} onClose={onClose} />
       </div>
     </div>
   );
 }
 
 /** Start the first sync and hand over to the app, where the sync strip shows progress. */
-function FirstSyncStep({ ready, onFinish }: { ready: boolean; onFinish: () => void }) {
+function FirstSyncStep({ ready, onFinish, onClose }: { ready: boolean; onFinish: () => void; onClose?: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -70,7 +70,12 @@ function FirstSyncStep({ ready, onFinish }: { ready: boolean; onFinish: () => vo
         <p className="hint">{tx("The first sync finds every match you played on logs.tf and trends.tf, then fetches them one every 2 seconds to go easy on logs.tf. Detailed kill data comes 100 matches per sync, so a long history takes a few syncs: press {0} again later to fetch the rest. You can use the app while it runs.", { "0": <strong>{t("Sync")}</strong> })}</p>
         <div className="row">
           <button className="primary" disabled={!ready || busy} onClick={() => void start()}>{t("Start first sync")}</button>
-          <button className="linkish" disabled={!ready || busy} onClick={onFinish}>{t("Skip, sync later")}</button>
+          {onClose ? (
+            // Opened from Settings: there is a way back that starts nothing.
+            <button disabled={busy} onClick={onClose}>{t("Done")}</button>
+          ) : (
+            <button className="linkish" disabled={!ready || busy} onClick={onFinish}>{t("Skip, sync later")}</button>
+          )}
         </div>
         {error && <p className="error">{error}</p>}
       </div>
@@ -176,8 +181,8 @@ function TfPathStep({
     // The native picker only exists inside the app window; in browser dev mode
     // fall back to typing a path.
     const picked = inTauri
-      ? await open({ directory: true, title: k("Select your TF2 `tf` folder") })
-      : window.prompt("Path to your tf folder");
+      ? await open({ directory: true, title: t("Select your TF2 `tf` folder") })
+      : window.prompt(t("Path to your tf folder"));
     if (typeof picked === "string" && picked.length > 0) await preview(picked);
   }
 
@@ -187,7 +192,7 @@ function TfPathStep({
     try {
       const found = await api.detectTfPath();
       setInfo(found);
-      if (!found) setError("No TF2 install found in the usual Steam locations — browse for it.");
+      if (!found) setError(t("No TF2 install found in the usual Steam locations — browse for it."));
     } catch (e) {
       setError(friendlyText(e));
     } finally {

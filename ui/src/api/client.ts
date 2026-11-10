@@ -3,6 +3,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { open, save } from "@tauri-apps/plugin-dialog";
+import { t } from "../lib/i18n";
 import type {
   StvStage,
   LanguageFiles,
@@ -261,9 +262,9 @@ const realApi = {
    */
   saveBackupAs: async (suggested: string): Promise<Backup | null> => {
     const path = await save({
-      title: "Save a copy of the database",
+      title: t("Save a copy of the database"),
       defaultPath: suggested,
-      filters: [{ name: "SQLite database", extensions: ["sqlite3"] }],
+      filters: [{ name: t("SQLite database"), extensions: ["sqlite3"] }],
     });
     if (!path) return null;
     return invoke<Backup>("save_backup_as", { path });
@@ -333,10 +334,10 @@ const realApi = {
   /** Pick an image and put it in for this map; false when the dialog was closed. */
   importOverview: async (map: string): Promise<boolean> => {
     const path = await open({
-      title: "Top-down image of the map",
+      title: t("Top-down image of the map"),
       multiple: false,
       directory: false,
-      filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp"] }],
+      filters: [{ name: t("Images"), extensions: ["png", "jpg", "jpeg", "webp"] }],
     });
     if (typeof path !== "string") return false;
     await invoke<void>("import_overview", { map, path });
@@ -347,16 +348,16 @@ const realApi = {
   /** Q32: a map's callouts to a preset file; the path, or null if cancelled. */
   exportCallouts: async (map: string): Promise<string | null> => {
     const path = await save({
-      title: "Save the callouts",
+      title: t("Save the callouts"),
       defaultPath: `${map}.callouts.json`,
-      filters: [{ name: "Callouts", extensions: ["json"] }],
+      filters: [{ name: t("Callouts"), extensions: ["json"] }],
     });
     if (!path) return null;
     await invoke<void>("export_callouts", { map, path });
     return path;
   },
   pickCalloutFile: async (): Promise<string | null> => {
-    const path = await open({ title: "Callouts to import", multiple: false, directory: false, filters: [{ name: "Callouts", extensions: ["json"] }] });
+    const path = await open({ title: t("Callouts to import"), multiple: false, directory: false, filters: [{ name: t("Callouts"), extensions: ["json"] }] });
     return typeof path === "string" ? path : null;
   },
   /** What importing would do; with no map, onto the map the file names. */

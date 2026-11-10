@@ -24,7 +24,7 @@ export type SyncState =
   | { state: "done"; result: SyncDone; notes: string[] }
   | { state: "error"; message: string }
   /** Stopped with Cancel: what landed before is kept. */
-  | { state: "cancelled" };
+  | { state: "cancelled"; rebuild: boolean };
 
 /** How often the match list may refresh while logs are arriving. Newest are
  *  fetched first, so last night's game shows up within seconds — but a
@@ -48,6 +48,8 @@ function secondsPerLog(done: number): number {
 let status: SyncState = { state: "idle" };
 let listeners: Array<() => void> = [];
 let started = false;
+/** The last thing started was a rebuild: a cancel then says so. */
+let rebuilding = false;
 let refreshTimer: number | null = null;
 
 function set(next: SyncState) {
@@ -67,6 +69,14 @@ function invalidateAll(qc: QueryClient) {
     "rawlog_stats",
     "played_filters",
     "all_history",
+    // The Period picker's seasons, the Seasons tab, the tournament dividers
+    // and the map tendencies are all built from the matches a sync stores:
+    // after a first sync the picker would have no seasons until a restart.
+    "seasons",
+    "seasons-view",
+    "my_tournaments",
+    "tendencies",
+    "stat_scales",
   ]) {
     void qc.invalidateQueries({ queryKey: [key] });
   }
@@ -145,12 +155,14 @@ export function watchSync(qc: QueryClient) {
     },
     onError: (e) => {
       if (e.kind === "cancelled") {
-        set({ state: "cancelled" });
+        set({ state: "cancelled", rebuild: rebuilding });
         invalidateAll(qc);
         return;
       }
       noteError({ what: "the sync", message: explain(e.message), detail: e.message });
       set({ state: "error", message: e.message });
+      // What landed before the failure is stored and rated, so it shows.
+      invalidateAll(qc);
     },
   });
 }
@@ -201,6 +213,7 @@ export async function cancelSync() {
 }
 
 export async function startSync(full = false) {
+  rebuilding = false;
   set({ state: "running", progress: null, failures: 0, notes: [] });
   try {
     await api.syncStart(full);
@@ -211,6 +224,7 @@ export async function startSync(full = false) {
 
 /** The same, for rebuilding every match from stored data. */
 export async function startRebuild() {
+  rebuilding = true;
   set({ state: "running", progress: null, failures: 0, notes: [] });
   try {
     await api.reprocessStart();

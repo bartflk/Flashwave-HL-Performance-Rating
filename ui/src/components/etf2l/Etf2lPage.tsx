@@ -132,14 +132,39 @@ export function Etf2lPage({ active, onOpenMatch }: { active: boolean; onOpenMatc
     setStack((s) => (same(s[s.length - 1], l) ? s : [...s, l].slice(-50)));
     window.scrollTo({ top: 0 });
   };
-  const openTeam = (teamId: number) => setStack((s) => [...s, { at: "team", teamId, from: base(s[s.length - 1]) }]);
+  const openTeam = (teamId: number) => {
+    setStack((s) => [...s, { at: "team", teamId, from: base(s[s.length - 1]) }]);
+    window.scrollTo({ top: 0 });
+  };
   const openMatch = (id: number, fixture?: Fixture) => {
     setStack((s) => [...s, { at: "match", id, fixture, from: base(s[s.length - 1]) }]);
     window.scrollTo({ top: 0 });
   };
-  useEffect(() => onOpenTeam((teamId) => setStack((s) => [...s, { at: "team", teamId, from: base(s[s.length - 1]) }])), []);
-  useEffect(() => onOpenSeason((season) => setStack((s) => [...s, { at: "season", season }])), []);
-  useEffect(() => onOpenTournament((name) => setStack((s) => [...s, { at: "tournament", name }])), []);
+  // Whichever way a page is asked for, it opens at its top, not where the last one was left.
+  useEffect(
+    () =>
+      onOpenTeam((teamId) => {
+        setStack((s) => [...s, { at: "team", teamId, from: base(s[s.length - 1]) }]);
+        window.scrollTo({ top: 0 });
+      }),
+    [],
+  );
+  useEffect(
+    () =>
+      onOpenSeason((season) => {
+        setStack((s) => [...s, { at: "season", season }]);
+        window.scrollTo({ top: 0 });
+      }),
+    [],
+  );
+  useEffect(
+    () =>
+      onOpenTournament((name) => {
+        setStack((s) => [...s, { at: "tournament", name }]);
+        window.scrollTo({ top: 0 });
+      }),
+    [],
+  );
   useEffect(
     () =>
       onOpenLeagueMatch((id) => {
@@ -475,7 +500,10 @@ function Home({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: 
   const latest = tiles?.[0] ?? null;
   // Your next official, if one of your teams has one coming.
   const next = fixtures.find((f) => mine.has(f.clan1.id) || mine.has(f.clan2.id)) ?? null;
-  const [when, setWhen] = useState<When>(() => (fixtures.some((f) => dayOffset(f.time) <= 0) ? "today" : "week"));
+  // Until one is picked, Today if the officials have some, else the week:
+  // worked out from the list once it has loaded, not from the empty one at mount.
+  const [pickedWhen, setWhen] = useState<When | null>(null);
+  const when: When = pickedWhen ?? (fixtures.some((f) => dayOffset(f.time) <= 0) ? "today" : "week");
   const shown = fixtures.filter((f) => {
     const d = dayOffset(f.time);
     return when === "today" ? d <= 0 : when === "tomorrow" ? d === 1 : d <= 7;
