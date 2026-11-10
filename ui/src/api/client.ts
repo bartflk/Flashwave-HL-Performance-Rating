@@ -463,6 +463,12 @@ const realApi = {
   onNewDemo: async (h: (d: NewDemo) => void): Promise<UnlistenFn> =>
     listen<NewDemo>("demos://new", (e) => h(e.payload)),
 
+  /**
+   * The startup index of the demos folder finished (it runs after the window
+   * is up), so the demo links on screen may be out of date.
+   */
+  onDemosIndexed: async (h: () => void): Promise<UnlistenFn> => listen("demos://indexed", () => h()),
+
   /** Subscribe to sync events. Returns a function that unsubscribes all three. */
   syncCancel: () => invoke<boolean>("sync_cancel"),
   getDemoFolders: () => invoke<string[]>("get_demo_folders"),

@@ -220,7 +220,7 @@ pub fn strays(db_path: &Path) -> Vec<Stray> {
         let n = e.file_name().to_string_lossy().into_owned();
         if n.starts_with(&format!("{stem}.unreadable")) {
             out.extend(entry(e.path(), "unreadable"));
-        } else if n == format!("{name}.replaced") {
+        } else if n == format!("{name}.replaced") || n.starts_with(&format!("{stem}.replaced-")) {
             out.extend(entry(e.path(), "replaced"));
         }
     }

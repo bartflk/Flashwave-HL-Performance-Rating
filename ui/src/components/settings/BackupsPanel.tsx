@@ -144,6 +144,11 @@ export function BackupsPanel() {
 
       {o && o.backups.length === 0 && <p className="hint bk-note">{t("No copies yet. The next sync makes one.")}</p>}
       {o && o.backups.length > 0 && (
+        <p className="hint bk-note">
+          {t("Restore puts a copy in place of the current database and restarts the app. What is there now is not deleted: it is kept under Left behind.")}
+        </p>
+      )}
+      {o && o.backups.length > 0 && (
         <table className="bk-table">
           <thead>
             <tr>

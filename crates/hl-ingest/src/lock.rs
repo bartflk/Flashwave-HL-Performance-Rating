@@ -26,7 +26,11 @@ pub fn path(db_path: &Path) -> PathBuf {
 /// Held for as long as the app runs. Dropping it releases the database.
 #[derive(Debug)]
 pub struct Lock {
-    _file: File,
+    /// An `Option` so `Drop` can close the handle before it removes the
+    /// file: fields drop after the `Drop` body, so a plain `File` was still
+    /// open while `remove_file` ran (it fails on Windows, and on Linux it
+    /// let a second instance lock a fresh file in that gap).
+    file: Option<File>,
     path: PathBuf,
 }
 
@@ -34,6 +38,7 @@ impl Drop for Lock {
     fn drop(&mut self) {
         // The handle closes first; the file itself is tidiness, and a failure
         // to remove it means nothing because the handle is what locks.
+        drop(self.file.take());
         let _ = std::fs::remove_file(&self.path);
     }
 }
@@ -71,7 +76,22 @@ pub fn hold(db_path: &Path) -> Result<Lock> {
     let file = open_exclusive(&path).with_context(|| {
         format!("{} is already open in another window or tool", db_path.display())
     })?;
-    Ok(Lock { _file: file, path })
+    Ok(Lock { file: Some(file), path })
+}
+
+/// [`hold`], trying again for a few seconds. A restart or an update starts the
+/// new process while the old one is still closing, and the old one's handle
+/// is what the new one collides with; without a wait the restore or update
+/// "did nothing".
+pub fn hold_waiting(db_path: &Path, wait: std::time::Duration) -> Result<Lock> {
+    let until = std::time::Instant::now() + wait;
+    loop {
+        match hold(db_path) {
+            Ok(lock) => return Ok(lock),
+            Err(e) if std::time::Instant::now() >= until => return Err(e),
+            Err(_) => std::thread::sleep(std::time::Duration::from_millis(250)),
+        }
+    }
 }
 
 /// Whether something else has the database open right now.
@@ -153,6 +173,23 @@ mod tests {
         drop(first);
         assert!(hold(&db).is_ok(), "and gets it once the first lets go");
         let _ = std::fs::remove_dir_all(db.parent().unwrap());
+    }
+
+    #[test]
+    fn waiting_for_the_lock_gets_it_once_the_old_holder_exits() {
+        let db = temp("waiting");
+        let first = hold(&db).unwrap();
+        let letting_go = std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(600));
+            drop(first);
+        });
+        assert!(hold_waiting(&db, std::time::Duration::from_secs(5)).is_ok());
+        letting_go.join().unwrap();
+        let db2 = temp("waiting-no");
+        let _held = hold(&db2).unwrap();
+        assert!(hold_waiting(&db2, std::time::Duration::from_millis(300)).is_err(), "gives up when it stays held");
+        let _ = std::fs::remove_dir_all(db.parent().unwrap());
+        let _ = std::fs::remove_dir_all(db2.parent().unwrap());
     }
 
     #[test]

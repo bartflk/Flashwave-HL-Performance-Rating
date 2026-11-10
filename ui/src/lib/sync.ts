@@ -84,6 +84,14 @@ export function watchSync(qc: QueryClient) {
     }
   });
 
+  // The demo index at startup finishes after the window is up: refresh what
+  // shows demo links once it has.
+  void api.onDemosIndexed(() => {
+    for (const key of ["matches", "match", "demo_stats", "demostats", "downloaded_demos"]) {
+      void qc.invalidateQueries({ queryKey: [key] });
+    }
+  });
+
   void api.onSync({
     onProgress: (p) => {
       const was = status.state === "running" ? status : null;
