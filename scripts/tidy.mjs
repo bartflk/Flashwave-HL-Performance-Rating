@@ -19,16 +19,20 @@
 //   - a worktree's `target` (only a build cache) when nothing in it was
 //     touched for 7 days, merged or not.
 //   - in Claude's scratch folders for this project: copies of the database
-//     (*.sqlite3 and their -wal/-shm), `target` folders and .exe files not
-//     touched for 7 days. A scratch folder with a file named KEEP is left
-//     whole.
+//     (*.sqlite3 and their -wal/-shm) and `target` folders not touched for
+//     7 days. Nothing else (an .exe a person kept is theirs). A scratch
+//     folder with a file named KEEP is left whole. Both layouts are read:
+//     Temp\claude\<project slug>\<session>\scratchpad, and the newer
+//     Temp\claude\<hash>\<session>\scratchpad, where a session counts as
+//     this project's only when its transcript is under
+//     ~\.claude\projects\<project slug>*\<session>.jsonl.
 //
 // The main checkout's own `target` is sweep.mjs's (a 30 GB cap). Nothing
 // here ever touches dev-data, the installed app's data, or a branch.
 
 import { execFileSync } from "node:child_process";
 import { existsSync, lstatSync, readdirSync, rmSync, rmdirSync, statfsSync, unlinkSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -127,6 +131,25 @@ if (!report && !fromMain) {
 }
 const destructive = !report && fromMain;
 const within = (child, parent) => child === parent || child.startsWith(parent + sep);
+/** What a worktree holds that git ignores and that is not rebuildable:
+ *  `git status` hides these, so a merged, idle worktree with notes, .env
+ *  files or other ignored work in it would have been deleted whole (audit
+ *  SH-3). Build output and the links into the main checkout do not count. */
+function ignoredExtras(p) {
+  let out = "";
+  try {
+    out = execFileSync("git", ["status", "--porcelain", "--ignored"], { cwd: p, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  } catch {
+    return ["(git could not say)"];
+  }
+  const allowed = [/^target\/?$/, /^node_modules\/?$/, /^ui\/node_modules\/?$/, /^ui\/dist\/?$/, /^src-tauri\/gen\/?$/, /^dev-data\/?$/];
+  return out
+    .split(/\r?\n/)
+    .filter((l) => l.startsWith("!! "))
+    .map((l) => l.slice(3).replace(/^"|"$/g, ""))
+    .filter((f) => !allowed.some((re) => re.test(f)));
+}
+
 /** Kept whatever git says: a real dev-data folder or any database copy. */
 function holdsData(p) {
   const dd = lstat(join(p, "dev-data"));
@@ -171,13 +194,14 @@ for (const w of worktrees) {
   } catch {
     // a worktree git cannot read: leave it
   }
-  const state = `${fmt(work.bytes)}, cache ${fmt(cache.bytes)}, ${merged ? "merged" : "not merged"}, ${clean ? "clean" : "uncommitted changes"}, idle ${days(idle)}`;
+  const extras = merged && clean ? ignoredExtras(w.path) : [];
+  const state = `${fmt(work.bytes)}, cache ${fmt(cache.bytes)}, ${merged ? "merged" : "not merged"}, ${clean ? "clean" : "uncommitted changes"}${extras.length ? `, ignored files: ${extras.slice(0, 3).join(" ")}${extras.length > 3 ? " ..." : ""}` : ""}, idle ${days(idle)}`;
   if (!destructive) {
     lines.push(`worktree ${name}: ${state}`);
     continue;
   }
   try {
-    if (merged && clean && idle >= IDLE_WORKTREE && !appMade(w.path) && !holdsData(w.path)) {
+    if (merged && clean && idle >= IDLE_WORKTREE && !appMade(w.path) && !holdsData(w.path) && extras.length === 0) {
       remove(w.path);
       freed += work.bytes;
       lines.push(`worktree ${name}: removed (${state}); branch kept`);
@@ -197,14 +221,32 @@ if (destructive) git("worktree", "prune");
 // ---- Claude's scratch folders --------------------------------------------------
 
 const slug = mainPath.replace(/[^A-Za-z0-9]/g, "-");
-const scratchRoot = join(tmpdir(), "claude", slug);
-const junk = (name) => /\.sqlite3(-wal|-shm|\.gz)?$/i.test(name) || /\.exe$/i.test(name) || name === "target";
+const claudeTemp = join(tmpdir(), "claude");
+// Sessions this project has had: a transcript per session under
+// ~/.claude/projects/<slug>*, worktrees' folders included.
+const projectsDir = join(homedir(), ".claude", "projects");
+const mySessions = new Set();
+for (const d of list(projectsDir)) {
+  if (!d.startsWith(slug)) continue;
+  for (const f of list(join(projectsDir, d))) if (f.endsWith(".jsonl")) mySessions.add(f.slice(0, -".jsonl".length));
+}
+// Old layout: every session under the slug is this project's. New layout:
+// folders named by a hash, where only the sessions with a transcript are.
+const sessionDirs = [];
+for (const top of list(claudeTemp)) {
+  for (const session of list(join(claudeTemp, top))) {
+    if (top === slug || mySessions.has(session)) sessionDirs.push(join(claudeTemp, top, session));
+  }
+}
+// Only database copies and build folders: the rest of a scratch folder is
+// somebody's notes, scripts and downloads.
+const junk = (name) => /\.sqlite3(-wal|-shm|\.gz)?$/i.test(name) || name === "target";
 let scratchBytes = 0;
 let scratchJunk = 0;
-for (const session of list(scratchRoot)) {
-  const dir = join(scratchRoot, session, "scratchpad");
+for (const sessionDir of sessionDirs) {
+  const dir = join(sessionDir, "scratchpad");
   if (!existsSync(dir)) continue;
-  scratchBytes += walk(join(scratchRoot, session)).bytes;
+  scratchBytes += walk(sessionDir).bytes;
   if (existsSync(join(dir, "KEEP"))) continue;
   const found = [];
   const look = (p) => {
@@ -234,9 +276,9 @@ for (const session of list(scratchRoot)) {
   }
 }
 if (!destructive) {
-  if (scratchJunk > 0) lines.push(`scratch: ${fmt(scratchBytes)} in Claude's folders, ${fmt(scratchJunk)} of it old database copies and builds (npm run tidy)`);
+  if (scratchJunk > 0) lines.push(`scratch: ${fmt(scratchBytes)} in Claude's folders, ${fmt(scratchJunk)} of it old database copies and build folders (npm run tidy)`);
 } else {
-  lines.push(`scratch: ${fmt(scratchJunk)} of old database copies and builds removed from Claude's folders (${fmt(scratchBytes - scratchJunk)} left)`);
+  lines.push(`scratch: ${fmt(scratchJunk)} of old database copies and build folders removed from Claude's folders (${fmt(scratchBytes - scratchJunk)} left)`);
 }
 
 // ---- The drive ---------------------------------------------------------------------

@@ -25,6 +25,35 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $keyPath = Join-Path $env:USERPROFILE ".flashwave-keys\flashwave.key"
 
+# A release is built from what is committed, and every place that carries the
+# version says the same one. The window title and the user agent come from
+# Cargo.toml, the installer's name from tauri.conf.json, and nothing used to
+# check they agreed: 0.4.0 shipped with a 0.3 window title.
+Push-Location $root
+$dirty = (& git status --porcelain) -join "`n"
+Pop-Location
+if ($dirty) { Write-Error "The working tree has uncommitted changes. Commit them first: a release must be buildable from its commit.`n$dirty" }
+
+$versions = [ordered]@{}
+$cargoRoot = Get-Content (Join-Path $root "Cargo.toml") -Raw
+if ($cargoRoot -match '(?ms)\[workspace\.package\].*?^version\s*=\s*"([^"]+)"') { $versions["Cargo.toml (workspace)"] = $Matches[1] }
+else { Write-Error "no [workspace.package] version in Cargo.toml" }
+$cargoApp = Get-Content (Join-Path $root "src-tauri\Cargo.toml") -Raw
+# The app crate normally says version.workspace = true; a literal there has to agree too.
+if ($cargoApp -match '(?m)^version\s*=\s*"([^"]+)"') { $versions["src-tauri/Cargo.toml"] = $Matches[1] }
+$versions["package.json"] = (Get-Content (Join-Path $root "package.json") -Raw | ConvertFrom-Json).version
+$uiPackage = Join-Path $root "ui\package.json"
+if (Test-Path $uiPackage) {
+    # The UI's package.json carries the template's 0.0.0, which is not a release number.
+    $uiVersion = (Get-Content $uiPackage -Raw | ConvertFrom-Json).version
+    if ($uiVersion -and $uiVersion -ne "0.0.0") { $versions["ui/package.json"] = $uiVersion }
+}
+$versions["src-tauri/tauri.conf.json"] = (Get-Content (Join-Path $root "src-tauri\tauri.conf.json") -Raw | ConvertFrom-Json).version
+if (@($versions.Values | Select-Object -Unique).Count -ne 1) {
+    $lines = ($versions.GetEnumerator() | ForEach-Object { "  $($_.Key) = $($_.Value)" }) -join "`n"
+    Write-Error "The version is not the same everywhere:`n$lines`nMake them agree, commit, and run this again."
+}
+
 if (-not (Test-Path $keyPath)) {
     Write-Error "No signing key at $keyPath. Without it the build cannot be updated to. Restore it from your backup, or generate a new one and accept that everyone already on an old version has to reinstall by hand."
 }
