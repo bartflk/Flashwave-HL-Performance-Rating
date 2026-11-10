@@ -5,6 +5,7 @@ import { api } from "../../api/client";
 import { type Fixture, type LeagueRecord, type LeagueTableRow, type Podium, type SeasonTile, type Stay, type TeamEtf2l, type TeamHonours, type TeamInfo, type TeamTransfers, type TeamView } from "../../api/types";
 import { formatDate, formatMonth, formatStay, rating } from "../../lib/format";
 import { openLeagueMatch, openPlayer } from "../../lib/goto";
+import { openOnKey } from "../../lib/rows";
 import { BookmarkButton } from "../Bookmarks";
 import { locale, t, tx } from "../../lib/i18n";
 import { ClassIcon } from "../ClassIcon";
@@ -221,9 +222,9 @@ export function SeasonScreen({ season, onTeam, tables: showTables = true }: { se
             <p className="ts-meta">
               {formatDate(tile.from)} – {formatDate(tile.to)}
               <span className="ts-dot">•</span>
-              {tx("{0} teams", { "0": tile.teams })}
+              {tile.teams === 1 ? t("1 team") : tx("{0} teams", { "0": tile.teams })}
               <span className="ts-dot">•</span>
-              {tx("{0} officials", { "0": tile.matches })}
+              {tile.matches === 1 ? t("1 official") : tx("{0} officials", { "0": tile.matches })}
             </p>
           )}
           {v?.season && v.season.pool.length > 0 && (
@@ -622,7 +623,7 @@ function TeamOverview({
                 role="link"
                 tabIndex={0}
                 onClick={() => openLeagueMatch(r.matchId)}
-                onKeyDown={(e) => e.key === "Enter" && openLeagueMatch(r.matchId)}
+                onKeyDown={openOnKey(() => openLeagueMatch(r.matchId))}
                 title={t("Open the match and its logs")}
               >
                 <span className="pp-vs">

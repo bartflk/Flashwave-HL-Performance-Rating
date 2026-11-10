@@ -1,4 +1,4 @@
-import { useMemo, useState, type KeyboardEvent } from "react";
+import { useMemo, useState } from "react";
 import { ApiError } from "../ApiError";
 import { friendlyText } from "../../lib/apierror";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -6,6 +6,7 @@ import { api } from "../../api/client";
 import type { Etf2lMatchPage, Fixture, LeagueMatch, LineupPlayer, ResultRow, TeamRosterRow } from "../../api/types";
 import { formatDate, rating } from "../../lib/format";
 import { openPlayer, openTeam } from "../../lib/goto";
+import { openOnKey } from "../../lib/rows";
 import { t, tx } from "../../lib/i18n";
 import { CLASS_ORDER } from "../analysis/common";
 import { ClassIcon } from "../ClassIcon";
@@ -34,9 +35,7 @@ function rowKeys(open: () => void) {
     role: "link",
     tabIndex: 0,
     onClick: open,
-    onKeyDown: (e: KeyboardEvent) => {
-      if (e.key === "Enter") open();
-    },
+    onKeyDown: openOnKey(open),
   } as const;
 }
 
