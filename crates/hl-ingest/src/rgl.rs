@@ -227,9 +227,18 @@ struct SeasonHead {
 }
 
 impl SeasonHead {
-    /// The best division's group: the highest order.
+    /// The best division's group: the highest order. Two groups of one
+    /// division can share an order; the lower id then wins, so the answer
+    /// does not depend on the order a hash map happens to be walked in (it
+    /// picked either, from one run to the next, and the season card could
+    /// flip between two divisions' podiums).
     fn top_group(&self) -> Option<i64> {
-        self.division_sorting.iter().filter(|(_, order)| **order > 0).max_by_key(|(_, order)| **order).and_then(|(id, _)| id.parse().ok())
+        self.division_sorting
+            .iter()
+            .filter(|(_, order)| **order > 0)
+            .filter_map(|(id, order)| Some((*order, std::cmp::Reverse(id.parse::<i64>().ok()?))))
+            .max()
+            .map(|(_, std::cmp::Reverse(id))| id)
     }
 }
 
@@ -873,6 +882,79 @@ mod tests {
         let (a, b) = tokio::join!(once("test:once", KEEP, ask), once("test:once", KEEP, ask));
         assert_eq!((a.unwrap(), b.unwrap()), (Some("body".into()), Some("body".into())));
         assert_eq!(asked.load(std::sync::atomic::Ordering::SeqCst), 1);
+    }
+
+    fn head(sorting: &str) -> SeasonHead {
+        serde_json::from_str(&format!(r#"{{"name":"HL","divisionSorting":{sorting}}}"#)).unwrap()
+    }
+
+    #[test]
+    fn two_groups_of_one_order_give_the_same_top_group_every_time() {
+        // Groups 2A and 2B share an order. A hash map walks them in a
+        // different order from one map to the next, so try many.
+        for _ in 0..50 {
+            assert_eq!(head(r#"{"1182":9,"1181":9,"1190":5,"1186":0}"#).top_group(), Some(1181));
+        }
+    }
+
+    #[test]
+    fn a_season_without_a_real_division_has_no_top_group() {
+        assert_eq!(head("{}").top_group(), None);
+        assert_eq!(head(r#"{"1186":0,"1187":-3}"#).top_group(), None, "Admin Placement and Dead Teams are at 0");
+        assert_eq!(head(r#"{"x":9,"1181":4}"#).top_group(), Some(1181), "a key that is not an id is passed over");
+        assert_eq!(head(r#"{"x":9}"#).top_group(), None);
+    }
+
+    #[test]
+    fn a_division_list_that_is_not_one_is_not_decided() {
+        assert!(!decided_division(""));
+        assert!(!decided_division("{}"));
+        assert!(!decided_division("[]"));
+        assert!(!decided_division(r#"[{"name":"no id","finalRank":1}]"#), "a team needs its id to be read");
+        assert!(!decided_division(r#"[{"teamId":1,"name":"A","finalRank":99}]"#), "a team that dropped out is not a winner");
+        assert!(decided_division(r#"[{"teamId":1,"name":"A","finalRank":1},{"teamId":2,"name":"B"}]"#));
+    }
+
+    #[test]
+    fn a_match_changed_and_asked_again_whatever_its_age() {
+        let changed: HashSet<i64> = [1].into();
+        assert!(!still_good(1, 0, Some(&changed)));
+        assert!(still_good(2, 0, Some(&changed)));
+        assert!(still_good(2, PENDING_LIFE - 1, Some(&changed)));
+        assert!(!still_good(2, PENDING_LIFE, Some(&changed)), "at six hours it is asked again");
+        let none: HashSet<i64> = HashSet::new();
+        assert!(still_good(2, 0, Some(&none)));
+        assert!(still_good(2, PENDING_LIFE_UNCHECKED - 1, None));
+        assert!(!still_good(2, PENDING_LIFE_UNCHECKED, None));
+        // A clock set back since it was kept: the age is negative, and it is used as kept.
+        assert!(still_good(2, -100, None));
+    }
+
+    #[test]
+    fn a_forfeit_with_a_winner_or_a_double_forfeit_is_decided() {
+        let mut m: RglMatch = serde_json::from_str(r#"{"matchId":1,"matchDate":null,"winner":null,"isForfeit":true}"#).unwrap();
+        assert!(decided(&m), "a double forfeit has no winner and is over");
+        m.is_forfeit = false;
+        assert!(!decided(&m));
+        m.winner = Some(0);
+        assert!(decided(&m), "a team id of 0 is still a winner");
+    }
+
+    #[test]
+    fn a_match_with_a_missing_part_still_reads() {
+        let m: RglMatch = serde_json::from_str(r#"{"matchId":1,"matchDate":null,"matchName":null,"winner":null,"teams":[{"teamId":1,"teamName":"A"}],"maps":[{"mapName":"pl_x"}]}"#).unwrap();
+        assert_eq!((m.match_date, m.is_forfeit, m.teams[0].is_home, m.maps[0].home_score), (None, false, false, None));
+    }
+
+    #[test]
+    fn steamids_come_in_every_form_a_person_pastes() {
+        let want = 76561197960265728u64 + 5;
+        for form in ["76561197960265733", " 76561197960265733 ", "[U:1:5]", "U:1:5", "STEAM_0:1:2", "https://steamcommunity.com/profiles/76561197960265733/", "https://rgl.gg/Public/PlayerProfile?p=76561197960265733", "https://rgl.gg/Public/PlayerProfile?p=76561197960265733&r=24"] {
+            assert_eq!(steam64(form).unwrap(), want, "{form:?}");
+        }
+        for bad in ["", "   ", "p=", "https://rgl.gg/?p=", "STEAM_0:2:2", "[U:1:x]", "nonsense"] {
+            assert!(steam64(bad).is_err(), "{bad:?}");
+        }
     }
 
     #[test]

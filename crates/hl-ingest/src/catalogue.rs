@@ -732,9 +732,10 @@ impl Catalogue {
         let n = n.strip_suffix(" Division").unwrap_or(n);
         match n.rsplit_once(' ') {
             Some((head, last)) if last.len() == 1 && last.chars().all(|c| c.is_ascii_alphabetic()) => head.to_string(),
-            Some((head, last))
-                if last.len() >= 2 && last[..last.len() - 1].chars().all(|c| c.is_ascii_digit()) && last.ends_with(|c: char| c.is_ascii_alphabetic()) =>
-            {
+            // "2A" -> "2". The letter is cut off as a character, not a byte:
+            // a last word like an accented letter is two bytes, and slicing
+            // it in half panics.
+            Some((head, last)) if last.strip_suffix(|c: char| c.is_ascii_alphabetic()).is_some_and(|d| !d.is_empty() && d.chars().all(|c| c.is_ascii_digit())) => {
                 format!("{head} {}", &last[..last.len() - 1])
             }
             _ => n.to_string(),
@@ -3417,6 +3418,35 @@ mod tests {
             ("Round 4", None),
         ] {
             assert_eq!(Catalogue::round_kind(Some(r)), k, "{r}");
+        }
+    }
+
+    #[test]
+    fn a_division_name_with_an_accented_last_word_does_not_panic() {
+        // "Open \u{e9}": the last word is two bytes, and cutting a byte off it
+        // was a slice through the middle of a character.
+        assert_eq!(Catalogue::ungrouped("Open \u{e9}"), "Open \u{e9}");
+        assert_eq!(Catalogue::ungrouped("Division 2\u{e9}"), "Division 2\u{e9}");
+        assert_eq!(Catalogue::ungrouped("\u{e9}"), "\u{e9}");
+        assert_eq!(Catalogue::ungrouped("Premi\u{e8}re Division"), "Premi\u{e8}re");
+    }
+
+    #[test]
+    fn groups_fold_to_one_division_in_every_spelling() {
+        for (name, base) in [
+            ("", ""),
+            ("  Mid B ", "Mid"),
+            ("Mid b", "Mid"),
+            ("Division 10C", "Division 10"),
+            ("Division 2", "Division 2"),
+            ("Division A", "Division"),
+            ("Division 2AB", "Division 2AB"),
+            ("2A", "2A"),
+            ("High", "High"),
+            ("Open Division", "Open"),
+            ("Open B Division", "Open"),
+        ] {
+            assert_eq!(Catalogue::ungrouped(name), base, "{name:?}");
         }
     }
 
