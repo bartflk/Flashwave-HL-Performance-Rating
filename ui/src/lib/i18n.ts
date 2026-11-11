@@ -200,7 +200,9 @@ export function t(english: string | null | undefined, vars?: Record<string, stri
   const table = tables[current];
   let s = table?.[english] || english;
   if (vars) {
-    for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v));
+    // One pass, so a value that itself looks like a placeholder (a team
+    // called "{0}") is shown as it is and not filled in a second time.
+    s = s.replace(/\{([^{}]+)\}/g, (whole, k: string) => (Object.hasOwn(vars, k) ? String(vars[k]) : whole));
   }
   return s;
 }

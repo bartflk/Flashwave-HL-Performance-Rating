@@ -94,5 +94,7 @@ export function ratingPercent(n: number): number {
 
 export function signed(n: number, digits = 1): string {
   const s = n.toFixed(digits);
+  // A change too small to show reads as plain zero, not "+0.0" or "-0.0".
+  if (Number(s) === 0) return s.replace("-", "");
   return n > 0 ? `+${s}` : s;
 }

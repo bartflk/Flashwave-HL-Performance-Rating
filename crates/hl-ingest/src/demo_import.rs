@@ -310,7 +310,9 @@ pub fn best_shift(demo: &[(f64, u32, u32)], log: &[(i64, u32, u32)]) -> Option<(
     // A shift and its neighbours: the two clocks tick in whole seconds, so
     // the true shift splits its votes across adjacent values.
     let score = |c: i64| (c - 1..=c + 1).map(|x| votes.get(&x).copied().unwrap_or(0)).sum::<usize>();
-    let best = votes.keys().copied().max_by_key(|c| (score(*c), votes[c]))?;
+    // On a tie the earlier shift wins, so the answer does not depend on the
+    // order the map happens to be walked in.
+    let best = votes.keys().copied().max_by_key(|c| (score(*c), votes[c], std::cmp::Reverse(*c)))?;
     let matched = log
         .iter()
         .filter(|&&(at, k, v)| demo.iter().any(|&(s, dk, dv)| dk == k && dv == v && ((at as f64 - s) - best as f64).abs() <= 2.0))
@@ -561,6 +563,10 @@ fn timeline_row(stored: &hl_demos::timeline::Stored) -> TimelineRow {
         stored_bytes: stored.stored_bytes() as i64,
     }
 }
+
+#[cfg(test)]
+#[path = "demo_import_edge_tests.rs"]
+mod edge_tests;
 
 #[cfg(test)]
 mod tests {

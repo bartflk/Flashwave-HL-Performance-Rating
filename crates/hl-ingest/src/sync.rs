@@ -556,7 +556,9 @@ pub fn parse_log_id(text: &str) -> Option<i64> {
     let t = text.trim().trim_end_matches('/');
     let tail = t.rsplit('/').next().unwrap_or(t);
     let digits: String = tail.chars().take_while(char::is_ascii_digit).collect();
-    digits.parse().ok().filter(|id| *id > 0)
+    // A logs.tf profile link ends in a SteamID64, which is not a log: no log
+    // id is anywhere near that size.
+    digits.parse().ok().filter(|id| *id > 0 && *id < 1_000_000_000_000)
 }
 
 /// Fetch one log now, whatever the index thinks of it.
@@ -747,6 +749,32 @@ mod import_tests {
         assert_eq!(parse_log_id("logs.tf/4042136"), Some(4042136));
         // logs.tf puts a player anchor on the link you get from a row.
         assert_eq!(parse_log_id("https://logs.tf/4042136#76561198099396919"), Some(4042136));
+    }
+
+    #[test]
+    fn a_profile_link_or_a_steam_id_is_not_a_log() {
+        assert_eq!(parse_log_id("https://logs.tf/profile/76561198099396919"), None);
+        assert_eq!(parse_log_id("76561198099396919"), None);
+        assert_eq!(parse_log_id("99999999999999999999999"), None);
+        assert_eq!(parse_log_id("https://logs.tf/4042136?title=x"), Some(4042136));
+    }
+
+    #[test]
+    fn a_combined_log_is_told_by_its_title_map_length_or_rounds() {
+        use serde_json::json;
+        let plain = json!({ "info": { "title": "HL scrim", "map": "koth_product_final", "total_length": 1500 }, "rounds": [{"start_time": 1}, {"start_time": 2}] });
+        assert!(!super::looks_combined(&plain));
+        assert!(!super::looks_combined(&json!({})));
+        for (k, v) in [("title", json!("Combined logs")), ("map", json!("a + b")), ("map", json!("a/b")), ("total_length", json!(45 * 60))] {
+            let mut x = plain.clone();
+            x["info"][k] = v;
+            assert!(super::looks_combined(&x), "{k}");
+        }
+        let mut x = plain.clone();
+        x["info"]["total_length"] = json!(45 * 60 - 1);
+        assert!(!super::looks_combined(&x));
+        x["rounds"] = json!([1, 2, 3, 4, 5].map(|i| json!({ "start_time": i })));
+        assert!(super::looks_combined(&x), "more rounds than one map has");
     }
 
     #[test]

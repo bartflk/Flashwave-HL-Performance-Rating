@@ -105,6 +105,9 @@ fn class_values(table: &toml::Table, at: &str, allow: &[&str]) -> Result<HashMap
             .as_float()
             .or_else(|| value.as_integer().map(|i| i as f64))
             .with_context(|| format!("[{at}]: `{key}` must be a number"))?;
+        if !v.is_finite() {
+            bail!("[{at}]: `{key}` is not a finite number");
+        }
         if v < 0.0 {
             bail!("[{at}]: `{key}` is negative");
         }
@@ -172,6 +175,11 @@ impl Weights {
             for (name, &w) in table {
                 let c = Component::parse(name)
                     .with_context(|| format!("[model.{key}]: unknown component `{name}`"))?;
+                // `inf` would turn every renormalised share into NaN, `nan`
+                // would sit in the file doing nothing.
+                if !w.is_finite() {
+                    bail!("[model.{key}]: `{name}` is not a finite number");
+                }
                 if w < 0.0 {
                     bail!("[model.{key}]: `{name}` has a negative weight");
                 }
@@ -218,6 +226,16 @@ impl Weights {
                 Some(rows)
             }
         };
+
+        for (name, v) in [
+            ("assist_share", raw.general.assist_share),
+            ("min_minutes", raw.general.min_minutes),
+            ("even_margin", raw.general.even_margin),
+        ] {
+            if !v.is_finite() || v < 0.0 {
+                bail!("[general]: `{name}` must be a number, zero or more");
+            }
+        }
 
         Ok(Weights {
             situation,
