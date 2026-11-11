@@ -6,6 +6,8 @@
 
 mod aim;
 mod audit;
+#[cfg(test)]
+mod sync_audit_tests;
 
 /// The logs the owner's own rating covers: their rated Highlander logs, and
 /// the per-map logs a rated combined log replaced. A league log among these
@@ -92,6 +94,54 @@ pub struct Db {
     /// A computed value worth keeping for a few seconds (the loaded
     /// catalogue, LG-8), with when it was made.
     shared: std::sync::Arc<std::sync::Mutex<Option<(std::time::Instant, std::sync::Arc<dyn std::any::Any + Send + Sync>)>>>,
+}
+
+/// Why a database would not open, as far as it can be told apart.
+///
+/// Only [`OpenFailure::Corrupt`] is a reason to move the file aside. A
+/// database written by a newer version looks broken to an older binary (a
+/// migration it has never heard of), a locked file or a full disk fails the
+/// same way, and in every one of those cases the file is healthy and moving it
+/// would hand the user an empty app while their data sits renamed next door.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OpenFailure {
+    /// The file records migrations this build does not have: it was written
+    /// by a newer version.
+    Newer,
+    /// SQLite says the file is damaged or is not a database
+    /// (`SQLITE_CORRUPT` or `SQLITE_NOTADB`).
+    Corrupt,
+    /// Anything else: locked, no space, no permission, a bad path.
+    Other,
+}
+
+/// Sort an error from [`Db::connect`] into an [`OpenFailure`].
+pub fn classify_open_error(err: &anyhow::Error) -> OpenFailure {
+    use sqlx::migrate::MigrateError;
+    fn sqlx_kind(e: &sqlx::Error) -> OpenFailure {
+        let code = e
+            .as_database_error()
+            .and_then(|d| d.code())
+            .and_then(|c| c.parse::<i32>().ok());
+        // Extended result codes keep the primary code in the low byte.
+        match code.map(|c| c & 0xff) {
+            Some(11) | Some(26) => OpenFailure::Corrupt,
+            _ => OpenFailure::Other,
+        }
+    }
+    for cause in err.chain() {
+        if let Some(m) = cause.downcast_ref::<MigrateError>() {
+            return match m {
+                MigrateError::VersionMissing(_) | MigrateError::VersionTooNew(..) => OpenFailure::Newer,
+                MigrateError::Execute(e) | MigrateError::ExecuteMigration(e, _) => sqlx_kind(e),
+                _ => OpenFailure::Other,
+            };
+        }
+        if let Some(e) = cause.downcast_ref::<sqlx::Error>() {
+            return sqlx_kind(e);
+        }
+    }
+    OpenFailure::Other
 }
 
 impl Db {
@@ -442,6 +492,49 @@ mod tests {
 /// update. (A comment rename in 0026 did exactly that to the dev database.)
 /// A new migration is a new file, added to the end of this list.
 #[cfg(test)]
+mod open_failure_tests {
+    use super::*;
+
+    fn dir(name: &str) -> std::path::PathBuf {
+        let d = std::env::temp_dir().join(format!("hl-open-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    /// A database from a newer build: it records a migration this one lacks.
+    #[tokio::test]
+    async fn a_database_from_a_newer_version_is_told_apart_from_a_broken_one() {
+        let d = dir("newer");
+        let path = d.join("hl.sqlite3");
+        let db = Db::connect(&path).await.unwrap();
+        sqlx::query("INSERT INTO _sqlx_migrations (version, description, success, checksum, execution_time) VALUES (99999, 'future', 1, x'00', 0)")
+            .execute(&db.pool)
+            .await
+            .unwrap();
+        db.close().await;
+        let err = Db::connect(&path).await.err().expect("must refuse");
+        assert_eq!(classify_open_error(&err), OpenFailure::Newer);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[tokio::test]
+    async fn a_file_that_is_not_a_database_is_corrupt() {
+        let d = dir("notadb");
+        let path = d.join("hl.sqlite3");
+        std::fs::write(&path, vec![b'x'; 4096]).unwrap();
+        let err = Db::connect(&path).await.err().expect("must refuse");
+        assert_eq!(classify_open_error(&err), OpenFailure::Corrupt);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn an_unrelated_error_is_other() {
+        assert_eq!(classify_open_error(&anyhow::anyhow!("disk full")), OpenFailure::Other);
+    }
+}
+
+#[cfg(test)]
 mod frozen_migrations {
     const SHIPPED: &[(&str, u64)] = &[
         ("0001_init.sql", 0xd211cab677938a73),
@@ -489,6 +582,7 @@ mod frozen_migrations {
         ("0043_stv_part.sql", 0xd406788791d27e70),
         ("0044_rgl_match.sql", 0xab210f21f3748b38),
         ("0045_rgl_answer.sql", 0x9eb7f3f9e42ee692),
+        ("0047_audit_sync.sql", 0xe1ca0035dedfc4e2),
     ];
 
     fn fnv1a(bytes: &[u8]) -> u64 {

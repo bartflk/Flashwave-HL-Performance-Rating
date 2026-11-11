@@ -128,7 +128,15 @@ pub async fn for_log_with(db: &Db, log_id: i64, me: SteamId, progress: &mut (dyn
     if demos.is_empty() {
         return Ok(AimReport::default());
     }
-    let offset = db.log_clock_offset(log_id).await?;
+    // A log whose raw kills could not be put on logs.tf's clock has times
+    // hours off: joined to a demo they would match the wrong kills, or none.
+    // Treated as a log with no clock, which is what it is (audit SY-8).
+    let offset = if db.rawlog_unaligned(log_id).await? {
+        tracing::info!(log_id, "kill times are not on logs.tf's clock; reading the demos without joining them");
+        None
+    } else {
+        db.log_clock_offset(log_id).await?
+    };
     let names = db.player_names(log_id).await?;
     let kills = db.kills_for_log(log_id).await?;
     // Every real kill in the match, to join the demo's against. A feign death
@@ -196,6 +204,18 @@ pub async fn for_log_with(db: &Db, log_id: i64, me: SteamId, progress: &mut (dyn
         (None, None) => jobs.push((fallback, Scope::Owner, true)),
     }
 
+    // A demo that failed to parse, and has not changed since, is not read
+    // again: about 16 s of CPU for the same error every sync (audit SY-3).
+    // Checked before any demo of the match is read, so one known-bad file
+    // does not cost the good one beside it a pointless walk.
+    for (d, ..) in &jobs {
+        if let Some((size, mtime)) = file_stamp(Path::new(&d.path)) {
+            if let Some(error) = db.demo_parse_failure(d.demo_id, size, mtime).await? {
+                anyhow::bail!("{} did not read before and has not changed since: {error}", d.path);
+            }
+        }
+    }
+
     let my_id = me.to_steamid3();
     let of = jobs.len();
     for (n, (d, scope, for_paths)) in jobs.into_iter().enumerate() {
@@ -236,23 +256,44 @@ pub async fn for_log_with(db: &Db, log_id: i64, me: SteamId, progress: &mut (dyn
         let (mut walked, mut last, mut shown) = (0u64, None::<u32>, u8::MAX);
         let kind = d.kind.clone();
         progress(ReadStep::Reading { demo, of, kind: kind.clone(), pct: 0 });
-        let (pass, timeline) = hl_demos::aim::pass_recording(
-            file,
-            &owner,
-            rate,
-            record.then_some(hl_demos::timeline::DEFAULT_STRIDE),
-            &mut |tick| {
-                if let Some(l) = last.filter(|l| tick > *l) {
-                    walked += u64::from(tick - l);
+        // The walk is seconds of CPU, so it runs on a thread of its own: on an
+        // async worker it held the runtime still, and a parser panic ended the
+        // whole sync task silently (audit SY-3). The ticks come back over a
+        // channel for the progress line.
+        let stamp = file_stamp(file);
+        let (ticks_tx, mut ticks_rx) = tokio::sync::mpsc::unbounded_channel::<u32>();
+        let (walk_path, walk_owner) = (file.to_path_buf(), owner.clone());
+        let stride = record.then_some(hl_demos::timeline::DEFAULT_STRIDE);
+        let walk = tokio::task::spawn_blocking(move || {
+            hl_demos::aim::pass_recording(&walk_path, &walk_owner, rate, stride, &mut |tick| {
+                let _ = ticks_tx.send(tick);
+            })
+        });
+        while let Some(tick) = ticks_rx.recv().await {
+            if let Some(l) = last.filter(|l| tick > *l) {
+                walked += u64::from(tick - l);
+            }
+            last = Some(tick);
+            let pct = ((walked as f64 / total) * 100.0).min(99.0) as u8;
+            if pct != shown {
+                shown = pct;
+                progress(ReadStep::Reading { demo, of, kind: kind.clone(), pct });
+            }
+        }
+        let walked_demo = match walk.await {
+            Ok(r) => r,
+            Err(e) => Err(anyhow::anyhow!("reading the demo stopped unexpectedly: {e}")),
+        };
+        let (pass, timeline) = match walked_demo {
+            Ok(v) => v,
+            Err(e) => {
+                if let Some((size, mtime)) = stamp {
+                    db.record_demo_parse_failure(d.demo_id, size, mtime, &format!("{e:#}")).await?;
                 }
-                last = Some(tick);
-                let pct = ((walked as f64 / total) * 100.0).min(99.0) as u8;
-                if pct != shown {
-                    shown = pct;
-                    progress(ReadStep::Reading { demo, of, kind: kind.clone(), pct });
-                }
-            },
-        )?;
+                return Err(e);
+            }
+        };
+        db.clear_demo_parse_failure(d.demo_id).await?;
         out.demos_read += 1;
         if let Some(s) = timeline {
             progress(ReadStep::Keeping { demo, of });
@@ -390,6 +431,14 @@ pub async fn for_log_with(db: &Db, log_id: i64, me: SteamId, progress: &mut (dyn
     Ok(out)
 }
 
+/// A demo file's size and modified time (seconds), which say whether it is
+/// still the file that failed to read. `None` when it cannot be stat'ed.
+fn file_stamp(path: &Path) -> Option<(i64, i64)> {
+    let m = std::fs::metadata(path).ok()?;
+    let mtime = m.modified().ok()?.duration_since(std::time::UNIX_EPOCH).ok()?.as_secs() as i64;
+    Some((m.len() as i64, mtime))
+}
+
 /// Whose numbers one pass over one demo is allowed to contribute.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Scope {
@@ -494,6 +543,12 @@ pub async fn derive_all(
 ) -> Result<AimSummary> {
     let ids = db.aim_queue().await?;
     let mut done = if all { Default::default() } else { db.aim_logs(VERSION).await? };
+    // A demo recorded at an older timeline format is read again whatever the
+    // aim version says: the aim version alone left its timeline to be decoded
+    // with the new layout (audit SY-6).
+    for id in db.logs_with_old_timeline(TIMELINE_VERSION).await? {
+        done.remove(&id);
+    }
     // Once: the matches with several STV demos, read when only the first
     // was (Q84: the S36 High final's five other halves had no movement).
     const MULTI_STV_KEY: &str = "aim_multi_stv_reread";
@@ -528,9 +583,8 @@ pub async fn derive_all(
         }
         let rows: Vec<hl_db::AimRow> = report.kills.iter().map(store_row).collect();
         let deaths: Vec<hl_db::DeathRow> = report.deaths.iter().map(death_row).collect();
-        db.replace_aim(log_id, VERSION, &rows).await?;
-        db.replace_deaths(log_id, &deaths, &report.life).await?;
-        db.replace_paths(log_id, &report.paths).await?;
+        // One transaction: the aim write marks the log read (audit SY-2).
+        db.replace_aim_all(log_id, VERSION, &rows, &deaths, &report.life, &report.paths).await?;
         out.read += 1;
         out.kills += rows.len();
     }
@@ -573,9 +627,7 @@ pub async fn derive_log_with(db: &Db, me: SteamId, log_id: i64, progress: &mut (
     progress(ReadStep::Saving);
     let rows: Vec<hl_db::AimRow> = report.kills.iter().map(store_row).collect();
     let deaths: Vec<hl_db::DeathRow> = report.deaths.iter().map(death_row).collect();
-    db.replace_aim(log_id, VERSION, &rows).await?;
-    db.replace_deaths(log_id, &deaths, &report.life).await?;
-    db.replace_paths(log_id, &report.paths).await?;
+    db.replace_aim_all(log_id, VERSION, &rows, &deaths, &report.life, &report.paths).await?;
     Ok(report.paths.len())
 }
 

@@ -59,7 +59,8 @@ pub async fn mass_start(
     cancel.store(false, Ordering::Relaxed);
     let (weights, _) = hl_rating::Weights::load(&state.db_path.with_file_name("weights.toml"));
 
-    tauri::async_runtime::spawn(async move {
+    let watch_app = app.clone();
+    let handle = tauri::async_runtime::spawn(async move {
         let _guard = guard;
         // One download at a time, app-wide: an STV fetched from a match page
         // waits for this, and this for it.
@@ -81,6 +82,7 @@ pub async fn mass_start(
             }
         }
     });
+    crate::sync_commands::watch_panic(watch_app, handle, None);
     Ok(batch_id)
 }
 

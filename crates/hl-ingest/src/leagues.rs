@@ -358,6 +358,8 @@ async fn fetch_competitions(db: &Db, sources: &Sources, found: &[Found], newest:
         };
         let pool = match sources.etf2l_get(&format!("/competition/{id}")).await {
             Ok(Some(body)) => serde_json::from_str::<Value>(&body).ok().and_then(|v| v.pointer("/competition/pool").map(|p| p.to_string())),
+            // Turned away: the rest of the pass would only be turned away too.
+            Err(e) if crate::http::refused(&e) => return Err(e),
             _ => None,
         };
         db.upsert_competition(&CompetitionRow {
@@ -431,7 +433,12 @@ async fn fetch_competitions(db: &Db, sources: &Sources, found: &[Found], newest:
                 out.tables += 1;
             }
             Ok(_) => {}
-            Err(e) => tracing::info!(competition = id, error = %format!("{e:#}"), "ETF2L table not read"),
+            Err(e) => {
+                tracing::info!(competition = id, error = %format!("{e:#}"), "ETF2L table not read");
+                if crate::http::refused(&e) {
+                    break;
+                }
+            }
         }
     }
 
@@ -511,6 +518,9 @@ pub async fn fetch_match_detail(db: &Db, sources: &Sources, match_id: i64) -> Re
     {
         let body = match sources.etf2l_get(&format!("/matches/{match_id}")).await {
             Ok(Some(b)) => b,
+            // Turned away, or not reachable: the caller stops asking, rather
+            // than counting every match it has left as one more failure.
+            Err(e) if crate::http::unreachable(&e) => return Err(e),
             _ => return Ok(false),
         };
         let Ok(v) = serde_json::from_str::<Value>(&body) else {
@@ -976,9 +986,11 @@ const LEAGUE_LOG_WINDOW_S: i64 = 6 * 3600;
 pub async fn league_sides(db: &Db, sources: &Sources, log_id: i64) -> Result<Option<LeagueSides>> {
     let Some((at, colours)) = db.log_time_and_colours(log_id).await? else { return Ok(None) };
     let mut best: Option<(usize, i64, i64, i64)> = None; // (players placed, match, red team, blue team)
+    // One failure to reach ETF2L ends the asking; the rosters stored are used.
+    let mut asking = true;
     for (match_id, c1, c2, fetched) in db.season_matches_before(at, LEAGUE_LOG_WINDOW_S).await? {
-        if !fetched {
-            let _ = fetch_match_detail(db, sources, match_id).await;
+        if !fetched && asking {
+            asking = fetch_match_detail(db, sources, match_id).await.is_ok();
         }
         let roster = db.season_match_roster(match_id).await?;
         // RED's players on each team, BLU's on each.

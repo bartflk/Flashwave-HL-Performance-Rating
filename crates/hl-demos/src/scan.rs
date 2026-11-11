@@ -33,6 +33,28 @@ pub struct DemoFile {
 /// Where STV demos fetched from demos.tf are saved, relative to `tf`.
 pub const STV_DIR: &str = "demos/stv";
 
+/// File names of demos the app itself wrote into the demo folders (a
+/// download, an unpacked archive, a copied import), lower-cased. The folder
+/// watcher reads a new demo there as "a match was just played" and starts
+/// asking logs.tf for it; a demo the app is writing is nothing of the sort,
+/// and a mass import would send hundreds of requests.
+fn own_writes() -> &'static std::sync::Mutex<std::collections::HashSet<String>> {
+    static OWN: std::sync::OnceLock<std::sync::Mutex<std::collections::HashSet<String>>> = std::sync::OnceLock::new();
+    OWN.get_or_init(Default::default)
+}
+
+/// Say the app is about to write this demo: call before creating the file.
+pub fn mark_own_write(path: &Path) {
+    if let Some(name) = path.file_name() {
+        own_writes().lock().unwrap().insert(name.to_string_lossy().to_ascii_lowercase());
+    }
+}
+
+/// Whether the app wrote this demo itself.
+pub fn is_own_write(path: &Path) -> bool {
+    path.file_name().is_some_and(|name| own_writes().lock().unwrap().contains(&name.to_string_lossy().to_ascii_lowercase()))
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SidecarEvent {
     pub name: String,

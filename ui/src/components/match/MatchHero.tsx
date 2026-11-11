@@ -26,7 +26,7 @@ export function MatchHero({ d, ledger }: { d: MatchDetail; ledger?: Ledger | nul
   // segments, and a missing list must not take the page with it.
   const maps = [...new Set((d.segments ?? []).map((s) => s.map).filter((m): m is string => m !== null))];
   const single = maps.length === 1 ? maps[0] : maps.length === 0 ? d.map : null;
-  const art = useQuery({ queryKey: ["overview_image", single], queryFn: () => api.overviewImage(single!), enabled: !!single, staleTime: Infinity }).data;
+  const art = useQuery({ queryKey: ["overviewImage", single], queryFn: () => api.overviewImage(single!), enabled: !!single, staleTime: Infinity }).data;
 
   const mine = d.myTeam;
   // A match you did not play: the ETF2L official it was, found by its time

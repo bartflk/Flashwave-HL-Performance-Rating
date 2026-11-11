@@ -32,6 +32,8 @@ pub struct AppState {
     pub busy: Arc<AtomicBool>,
     /// Stops the running sync (Flashy): taken and fired by `sync_cancel`.
     pub sync_cancel: Arc<std::sync::Mutex<Option<tokio::sync::oneshot::Sender<()>>>>,
+    /// Locked by the startup jobs until they finish; a sync waits on it.
+    pub startup: Arc<tokio::sync::Mutex<()>>,
     /// What the league sample's background job is doing, for Settings.
     pub league_activity: league::SharedActivity,
     /// Demo downloads waiting their turn, and the one permit they take in
@@ -61,185 +63,12 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
-            // The window title carries the version, and a literal in
-            // tauri.conf.json is a literal somebody forgets: 0.4.0 shipped
-            // with a title saying 0.3. Set it from the one constant instead.
-            if let Some(w) = app.get_webview_window("main") {
-                let _ = w.set_title(&format!("Flashwave.tf {DISPLAY_VERSION}"));
+            // Anything that stops the start must be seen: a release build has
+            // no console, so a failure here used to be a panic nobody read and
+            // a process that simply never showed a window.
+            if let Err(e) = start(app) {
+                startup_failed(app.handle(), &e);
             }
-            // Errors are stringified rather than passed through as `anyhow`:
-            // Tauri's setup wants a `Box<dyn Error>`, and `{:#}` keeps the
-            // whole cause chain in the message.
-            let db_path = data_dir(app)?.join("hl.sqlite3");
-            tracing::info!(dir = %db_path.parent().map(|p| p.display().to_string()).unwrap_or_default(), "data folder");
-
-            // Hold the database for as long as this window is open, so no
-            // other tool can write to it at the same time. Two writers on one
-            // SQLite file corrupted this database twice on 25 September 2026.
-            let lock = hl_ingest::lock::hold(&db_path)
-                .map_err(|e| format!("{e:#}"))?;
-
-            // A backup asked for last run goes in now, while nothing has the
-            // file open. Failing here must not stop the app: the marker is
-            // cleared either way, and the old database is still there.
-            match hl_ingest::restore::apply_pending(&db_path) {
-                Ok(Some(from)) => tracing::info!(from = %from.display(), "database restored"),
-                Ok(None) => {}
-                Err(e) => tracing::error!(error = %format!("{e:#}"), "restore failed"),
-            }
-
-            // Blocking here is deliberate: the window should not appear until
-            // migrations have applied, so no command can race an unmigrated db.
-            //
-            // A database that will not open at all used to end here, with the
-            // window showing "Could not start" and no way forward -- while
-            // five backups sat in the folder next door. That happened on 25
-            // September 2026. So the file is moved aside and a fresh one takes
-            // its place, which puts the start on the same path as any other
-            // empty database: the restore offer, which now says which of the
-            // two happened.
-            let db = match tauri::async_runtime::block_on(Db::connect(&db_path)) {
-                Ok(db) => db,
-                Err(first) => {
-                    tracing::error!(error = %format!("{first:#}"), "database would not open");
-                    let moved = hl_ingest::restore::set_aside(&db_path)
-                        .map_err(|e| format!("the database could not be opened ({first:#}), and moving it aside failed too: {e:#}"))?;
-                    let db = tauri::async_runtime::block_on(Db::connect(&db_path))
-                        .map_err(|e| format!("{e:#}"))?;
-                    let note = format!("{}|{first:#}", moved.display());
-                    let _ = tauri::async_runtime::block_on(
-                        db.set_setting(hl_ingest::restore::SET_ASIDE_KEY, &note),
-                    );
-                    db
-                }
-            };
-            let sources = Arc::new(Sources::new().map_err(|e| format!("{e:#}"))?);
-
-            // Index demos in the background at startup: the window should not
-            // wait on a folder scan, and a missing TF2 folder is not an error.
-            {
-                let db = db.clone();
-                let handle = app.handle().clone();
-                let weights_path = db_path.with_file_name("weights.toml");
-                let sources = sources.clone();
-                tauri::async_runtime::spawn(async move {
-                    let Ok(cfg) = db.get_config().await else { return };
-                    // Classify matches from stored data first: instant, and it
-                    // brings a database from before M5 up to date without a sync.
-                    if let Some(me) = cfg.steamid {
-                        match hl_ingest::etf2l::derive_context(&db, me).await {
-                            Ok(s) => tracing::info!(officials = s.officials, scrims = s.scrims, pugs = s.pugs, "matches classified"),
-                            Err(e) => tracing::warn!(error = %format!("{e:#}"), "context pass failed"),
-                        }
-                    }
-                    if let Some(tf) = cfg.tf_path {
-                        match hl_ingest::index_demos(&db, std::path::Path::new(&tf)).await {
-                            Ok(s) => {
-                                tracing::info!(demos = s.scanned, linked = s.demos_linked, "demos indexed");
-                                let _ = tauri::Emitter::emit(&handle, "demos://indexed", &s);
-                            }
-                            Err(e) => tracing::warn!(error = %format!("{e:#}"), "demo index failed"),
-                        }
-                    }
-                    match hl_ingest::maps::resolve_all(&db).await {
-                        Ok(s) => tracing::info!(multi_map = s.multi_map_logs, unresolved = s.unresolved, "round maps resolved"),
-                        Err(e) => tracing::warn!(error = %format!("{e:#}"), "round map pass failed"),
-                    }
-                    match hl_ingest::fights::derive_all(&db, false, |_, _| {}).await {
-                        Ok(s) => tracing::info!(derived = s.derived, total = s.total, "fights derived"),
-                        Err(e) => tracing::warn!(error = %format!("{e:#}"), "fights pass failed"),
-                    }
-                    // Your name and picture, if they have never been fetched.
-                    if let Some(me) = cfg.steamid {
-                        if db.get_setting("owner_avatar").await.ok().flatten().is_none() {
-                            if let Err(e) = hl_ingest::owner::refresh(&db, &sources, me).await {
-                                tracing::warn!(error = %format!("{e:#}"), "owner profile refresh failed");
-                            }
-                        }
-                    }
-                    // The league snapshot this version ships (Q43): the officials'
-                    // results, rosters and ratings, so the player lookup works
-                    // before the league has been downloaded. Once per snapshot.
-                    match hl_ingest::snapshot::apply_built_in(&db).await {
-                        Ok(a) if a.rescore => {
-                            // Its scale replaced the one measured here: rate
-                            // this install's own games on it.
-                            let (weights, _) = hl_rating::Weights::load(&weights_path);
-                            match hl_ingest::rate_all(&db, cfg.steamid, &weights, |_| {}).await {
-                                Ok(s) => tracing::info!(rated = s.rated, "rated on the league snapshot's scale"),
-                                Err(e) => tracing::warn!(error = %format!("{e:#}"), "rating on the snapshot's scale failed"),
-                            }
-                        }
-                        Ok(_) => {}
-                        Err(e) => tracing::warn!(error = %format!("{e:#}"), "league snapshot not imported"),
-                    }
-                    // A new rating model has no ratings until something rates:
-                    // do it now rather than leave the profile empty until a sync.
-                    if db.rating_count(hl_rating::MODEL_VERSION).await.unwrap_or(1) == 0 {
-                        let (weights, _) = hl_rating::Weights::load(&weights_path);
-                        match hl_ingest::rate_all(&db, cfg.steamid, &weights, |_| {}).await {
-                            Ok(s) => tracing::info!(rated = s.rated, model = hl_rating::MODEL_VERSION, "rated for a new model"),
-                            Err(e) => tracing::warn!(error = %format!("{e:#}"), "rating pass failed"),
-                        }
-                    }
-                });
-            }
-
-            // Watch the demos folder, so a match you have just played shows
-            // up on the page while you are alt-tabbing out of the game.
-            if let Ok(cfg) = tauri::async_runtime::block_on(db.get_config()) {
-                if let Some(tf) = cfg.tf_path {
-                    watch::spawn(app.handle().clone(), std::path::PathBuf::from(tf));
-                }
-            }
-
-            // Every player's numbers in every log that has none yet: the
-            // season tables, profiles and impact (Q85). A database from
-            // before them has thousands of logs to read; a few minutes in
-            // the background, a chunk at a time, then nothing until new
-            // logs arrive (Flashy: S31 Low's table was all dashes).
-            {
-                let db = db.clone();
-                tauri::async_runtime::spawn(async move {
-                    // Listed once: a log that cannot be read is passed over,
-                    // not tried again in a loop.
-                    let ids = match db.logs_without_stats(i64::MAX).await {
-                        Ok(ids) => ids,
-                        Err(e) => return tracing::warn!(error = %format!("{e:#}"), "listing logs without player numbers"),
-                    };
-                    let total = ids.len();
-                    for (i, chunk) in ids.chunks(100).enumerate() {
-                        match hl_ingest::logstat::fill(&db, chunk).await {
-                            Ok(n) => tracing::info!(read = n, done = (i + 1) * 100, total, "player numbers"),
-                            Err(e) => return tracing::warn!(error = %format!("{e:#}"), "reading player numbers stopped"),
-                        }
-                    }
-                });
-            }
-
-            // The league sample, when it is switched on (Settings).
-            let busy = Arc::new(AtomicBool::new(false));
-            let league_activity = league::SharedActivity::default();
-            // The mass log downloader is the developer's (Flashy): it runs in
-            // a dev build only. A release never starts it, whatever the
-            // database's setting says.
-            if cfg!(debug_assertions) {
-                league::spawn(db.clone(), sources.clone(), busy.clone(), league_activity.clone(), db_path.with_file_name("weights.toml"));
-                league::spawn_transfers(db.clone(), sources.clone());
-            }
-
-            app.manage(AppState {
-                db,
-                db_path,
-                _lock: lock,
-                sources,
-                busy,
-                sync_cancel: Arc::default(),
-                league_activity,
-                demo_queue: Arc::new(sync_commands::DemoQueue::default()),
-                demo_turn: Arc::new(tokio::sync::Semaphore::new(1)),
-                mass_cancel: Arc::default(),
-            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -413,7 +242,278 @@ pub fn run() {
             sync_commands::get_tendencies,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running application");
+        .unwrap_or_else(|e| startup_failed_plain(&format!("{e}")));
+}
+
+/// Tell the person why the app cannot start, then stop. A release build has
+/// no console, so before this a failed start was a panic nobody saw. The
+/// message is also written to `startup-error.txt` in the data folder.
+fn startup_failed(app: &tauri::AppHandle, message: &str) -> ! {
+    if let Ok(dir) = data_dir(app) {
+        let _ = std::fs::create_dir_all(&dir);
+        let line = format!("{}  {message}\n\n", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"));
+        let _ = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(dir.join("startup-error.txt"))
+            .and_then(|mut f| std::io::Write::write_all(&mut f, line.as_bytes()));
+    }
+    startup_failed_plain(message)
+}
+
+/// The native box and the exit, for when there is no data folder to log to.
+fn startup_failed_plain(message: &str) -> ! {
+    tracing::error!(%message, "could not start");
+    eprintln!("Flashwave.tf could not start: {message}");
+    show_native_error("Flashwave.tf could not start", message);
+    std::process::exit(1)
+}
+
+/// A message box that needs nothing from the app: the window may not exist
+/// and the dialog plugin needs the event loop, which has not started.
+#[cfg(windows)]
+fn show_native_error(title: &str, message: &str) {
+    use std::os::windows::ffi::OsStrExt;
+    #[link(name = "user32")]
+    extern "system" {
+        fn MessageBoxW(hwnd: *mut std::ffi::c_void, text: *const u16, caption: *const u16, kind: u32) -> i32;
+    }
+    let wide = |s: &str| std::ffi::OsStr::new(s).encode_wide().chain(Some(0)).collect::<Vec<u16>>();
+    // MB_OK | MB_ICONERROR | MB_SETFOREGROUND
+    unsafe { MessageBoxW(std::ptr::null_mut(), wide(message).as_ptr(), wide(title).as_ptr(), 0x10 | 0x10000) };
+}
+
+#[cfg(not(windows))]
+fn show_native_error(_title: &str, _message: &str) {}
+
+/// Everything the window needs before it can open: the lock, a pending
+/// restore, the database, and the background jobs. An `Err` is shown to the
+/// person by [`startup_failed`].
+fn start(app: &mut tauri::App) -> Result<(), String> {
+    // The window title carries the version, and a literal in
+    // tauri.conf.json is a literal somebody forgets: 0.4.0 shipped
+    // with a title saying 0.3. Set it from the one constant instead.
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.set_title(&format!("Flashwave.tf {DISPLAY_VERSION}"));
+    }
+    // Errors are stringified rather than passed through as `anyhow`:
+    // Tauri's setup wants a `Box<dyn Error>`, and `{:#}` keeps the
+    // whole cause chain in the message.
+    let db_path = data_dir(app.handle())?.join("hl.sqlite3");
+    tracing::info!(dir = %db_path.parent().map(|p| p.display().to_string()).unwrap_or_default(), "data folder");
+
+    // Hold the database for as long as this window is open, so no
+    // other tool can write to it at the same time. Two writers on one
+    // SQLite file corrupted this database twice on 25 September 2026.
+    //
+    // A restart or an update starts this process while the old one is
+    // still closing, so the lock is waited for a few seconds. A second
+    // window opened by hand waits those seconds too, and then says so.
+    let lock = hl_ingest::lock::hold_waiting(&db_path, std::time::Duration::from_secs(8)).map_err(|_| {
+        "Flashwave.tf is already running (or another tool has its database open).
+
+Look for its window in the taskbar, or close the other one and start again.".to_string()
+    })?;
+
+    // A backup asked for last run goes in now, while nothing has the
+    // file open. Failing here must not stop the app: the marker is
+    // cleared either way, and the old database is still there.
+    match hl_ingest::restore::apply_pending(&db_path) {
+        Ok(Some(from)) => tracing::info!(from = %from.display(), "database restored"),
+        Ok(None) => {}
+        Err(e) => tracing::error!(error = %format!("{e:#}"), "restore failed"),
+    }
+
+    // Blocking here is deliberate: the window should not appear until
+    // migrations have applied, so no command can race an unmigrated db.
+    //
+    // A database that will not open at all used to end here, with the
+    // window showing "Could not start" and no way forward -- while
+    // five backups sat in the folder next door. That happened on 25
+    // September 2026. So a file SQLite calls damaged is moved aside and a
+    // fresh one takes its place, which puts the start on the same path as
+    // any other empty database: the restore offer, which now says which of
+    // the two happened.
+    //
+    // Only damage earns that. A database from a newer version (a
+    // tester going back to an older beta), a locked file and a full disk
+    // all fail to open too, and the file is healthy: moving it would hand
+    // the person an empty app with their data renamed next door. Those
+    // stop the start with a message and leave the file where it is.
+    let db = match tauri::async_runtime::block_on(Db::connect(&db_path)) {
+        Ok(db) => db,
+        Err(first) => {
+            tracing::error!(error = %format!("{first:#}"), "database would not open");
+            match hl_db::classify_open_error(&first) {
+                hl_db::OpenFailure::Newer => {
+                    return Err(format!(
+                        "This data is from a newer version of Flashwave.tf than this one ({DISPLAY_VERSION}).
+
+                         Install the newer version to keep using it. Nothing has been changed or moved.
+
+{}",
+                        db_path.display()
+                    ));
+                }
+                hl_db::OpenFailure::Other => {
+                    return Err(format!(
+                        "The database could not be opened, and nothing has been moved: {first:#}
+
+{}",
+                        db_path.display()
+                    ));
+                }
+                hl_db::OpenFailure::Corrupt => {}
+            }
+            let moved = hl_ingest::restore::set_aside(&db_path)
+                .map_err(|e| format!("the database could not be opened ({first:#}), and moving it aside failed too: {e:#}"))?;
+            let db = tauri::async_runtime::block_on(Db::connect(&db_path))
+                .map_err(|e| format!("{e:#}"))?;
+            let note = format!("{}|{first:#}", moved.display());
+            let _ = tauri::async_runtime::block_on(
+                db.set_setting(hl_ingest::restore::SET_ASIDE_KEY, &note),
+            );
+            db
+        }
+    };
+    let sources = Arc::new(Sources::new().map_err(|e| format!("{e:#}"))?);
+
+    // Held by the startup jobs below until they are done, so a sync or a
+    // rebuild asked for in the first minute waits for them instead of
+    // running the same passes (rate_all, fights, the demo index) a second
+    // time at once. They wait rather than being refused, so the window's
+    // first automatic sync still happens.
+    let startup = Arc::new(tokio::sync::Mutex::new(()));
+    let startup_guard = startup.clone().try_lock_owned().ok();
+
+    // Index demos in the background at startup: the window should not
+    // wait on a folder scan, and a missing TF2 folder is not an error.
+    {
+        let db = db.clone();
+        let handle = app.handle().clone();
+        let weights_path = db_path.with_file_name("weights.toml");
+        let sources = sources.clone();
+        tauri::async_runtime::spawn(async move {
+            let _startup = startup_guard;
+            let Ok(cfg) = db.get_config().await else { return };
+            // Classify matches from stored data first: instant, and it
+            // brings a database from before M5 up to date without a sync.
+            if let Some(me) = cfg.steamid {
+                match hl_ingest::etf2l::derive_context(&db, me).await {
+                    Ok(s) => tracing::info!(officials = s.officials, scrims = s.scrims, pugs = s.pugs, "matches classified"),
+                    Err(e) => tracing::warn!(error = %format!("{e:#}"), "context pass failed"),
+                }
+            }
+            if let Some(tf) = cfg.tf_path {
+                match hl_ingest::index_demos(&db, std::path::Path::new(&tf)).await {
+                    Ok(s) => {
+                        tracing::info!(demos = s.scanned, linked = s.demos_linked, "demos indexed");
+                        let _ = tauri::Emitter::emit(&handle, "demos://indexed", &s);
+                    }
+                    Err(e) => tracing::warn!(error = %format!("{e:#}"), "demo index failed"),
+                }
+            }
+            match hl_ingest::maps::resolve_all(&db).await {
+                Ok(s) => tracing::info!(multi_map = s.multi_map_logs, unresolved = s.unresolved, "round maps resolved"),
+                Err(e) => tracing::warn!(error = %format!("{e:#}"), "round map pass failed"),
+            }
+            match hl_ingest::fights::derive_all(&db, false, |_, _| {}).await {
+                Ok(s) => tracing::info!(derived = s.derived, total = s.total, "fights derived"),
+                Err(e) => tracing::warn!(error = %format!("{e:#}"), "fights pass failed"),
+            }
+            // Your name and picture, if they have never been fetched.
+            if let Some(me) = cfg.steamid {
+                if db.get_setting("owner_avatar").await.ok().flatten().is_none() {
+                    if let Err(e) = hl_ingest::owner::refresh(&db, &sources, me).await {
+                        tracing::warn!(error = %format!("{e:#}"), "owner profile refresh failed");
+                    }
+                }
+            }
+            // The league snapshot this version ships (Q43): the officials'
+            // results, rosters and ratings, so the player lookup works
+            // before the league has been downloaded. Once per snapshot.
+            match hl_ingest::snapshot::apply_built_in(&db).await {
+                Ok(a) if a.rescore => {
+                    // Its scale replaced the one measured here: rate
+                    // this install's own games on it.
+                    let (weights, _) = hl_rating::Weights::load(&weights_path);
+                    match hl_ingest::rate_all(&db, cfg.steamid, &weights, |_| {}).await {
+                        Ok(s) => tracing::info!(rated = s.rated, "rated on the league snapshot's scale"),
+                        Err(e) => tracing::warn!(error = %format!("{e:#}"), "rating on the snapshot's scale failed"),
+                    }
+                }
+                Ok(_) => {}
+                Err(e) => tracing::warn!(error = %format!("{e:#}"), "league snapshot not imported"),
+            }
+            // A new rating model has no ratings until something rates:
+            // do it now rather than leave the profile empty until a sync.
+            if db.rating_count(hl_rating::MODEL_VERSION).await.unwrap_or(1) == 0 {
+                let (weights, _) = hl_rating::Weights::load(&weights_path);
+                match hl_ingest::rate_all(&db, cfg.steamid, &weights, |_| {}).await {
+                    Ok(s) => tracing::info!(rated = s.rated, model = hl_rating::MODEL_VERSION, "rated for a new model"),
+                    Err(e) => tracing::warn!(error = %format!("{e:#}"), "rating pass failed"),
+                }
+            }
+        });
+    }
+
+    // Watch the demos folder, so a match you have just played shows
+    // up on the page while you are alt-tabbing out of the game.
+    if let Ok(cfg) = tauri::async_runtime::block_on(db.get_config()) {
+        if let Some(tf) = cfg.tf_path {
+            watch::spawn(app.handle().clone(), std::path::PathBuf::from(tf));
+        }
+    }
+
+    // Every player's numbers in every log that has none yet: the
+    // season tables, profiles and impact (Q85). A database from
+    // before them has thousands of logs to read; a few minutes in
+    // the background, a chunk at a time, then nothing until new
+    // logs arrive (Flashy: S31 Low's table was all dashes).
+    {
+        let db = db.clone();
+        tauri::async_runtime::spawn(async move {
+            // Listed once: a log that cannot be read is passed over,
+            // not tried again in a loop.
+            let ids = match db.logs_without_stats(i64::MAX).await {
+                Ok(ids) => ids,
+                Err(e) => return tracing::warn!(error = %format!("{e:#}"), "listing logs without player numbers"),
+            };
+            let total = ids.len();
+            for (i, chunk) in ids.chunks(100).enumerate() {
+                match hl_ingest::logstat::fill(&db, chunk).await {
+                    Ok(n) => tracing::info!(read = n, done = (i + 1) * 100, total, "player numbers"),
+                    Err(e) => return tracing::warn!(error = %format!("{e:#}"), "reading player numbers stopped"),
+                }
+            }
+        });
+    }
+
+    // The league sample, when it is switched on (Settings).
+    let busy = Arc::new(AtomicBool::new(false));
+    let league_activity = league::SharedActivity::default();
+    // The mass log downloader is the developer's (Flashy): it runs in
+    // a dev build only. A release never starts it, whatever the
+    // database's setting says.
+    if cfg!(debug_assertions) {
+        league::spawn(db.clone(), sources.clone(), busy.clone(), league_activity.clone(), db_path.with_file_name("weights.toml"));
+        league::spawn_transfers(db.clone(), sources.clone());
+    }
+
+    app.manage(AppState {
+        db,
+        db_path,
+        _lock: lock,
+        sources,
+        busy,
+        sync_cancel: Arc::default(),
+            startup,
+        league_activity,
+        demo_queue: Arc::new(sync_commands::DemoQueue::default()),
+        demo_turn: Arc::new(tokio::sync::Semaphore::new(1)),
+        mass_cancel: Arc::default(),
+    });
+    Ok(())
 }
 
 /// Where this build keeps its database, backups and language files.
@@ -433,7 +533,7 @@ pub fn run() {
 ///
 /// `dev-data/` is outside AppData, so nothing redirects it, and it is
 /// ignored by git.
-fn data_dir(app: &tauri::App) -> Result<PathBuf, String> {
+fn data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     if cfg!(debug_assertions) {
         let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()

@@ -183,7 +183,35 @@ impl Db {
     /// Replace one log's aim rows and mark it read at `version`.
     pub async fn replace_aim(&self, log_id: i64, version: i64, rows: &[AimRow]) -> Result<()> {
         let mut tx = self.pool().begin().await?;
-        sqlx::query("DELETE FROM demo_aim WHERE log_id = ?1").bind(log_id).execute(&mut *tx).await?;
+        Self::write_aim(&mut tx, log_id, version, rows).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Aim, deaths and routes for one log in one transaction. The aim write
+    /// marks the log read at `version`, so it must not land without the
+    /// deaths and routes beside it: a sync cancelled between three separate
+    /// writes left new aim next to old or empty deaths and routes until the
+    /// next version bump (audit SY-2).
+    pub async fn replace_aim_all(
+        &self,
+        log_id: i64,
+        version: i64,
+        aim: &[AimRow],
+        deaths: &[DeathRow],
+        life: &[(i64, u32, i64, i64)],
+        paths: &[PathRow],
+    ) -> Result<()> {
+        let mut tx = self.pool().begin().await?;
+        Self::write_deaths(&mut tx, log_id, deaths, life).await?;
+        Self::write_paths(&mut tx, log_id, paths).await?;
+        Self::write_aim(&mut tx, log_id, version, aim).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    async fn write_aim(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>, log_id: i64, version: i64, rows: &[AimRow]) -> Result<()> {
+        sqlx::query("DELETE FROM demo_aim WHERE log_id = ?1").bind(log_id).execute(&mut **tx).await?;
         for r in rows {
             sqlx::query(
                 "INSERT OR REPLACE INTO demo_aim
@@ -211,16 +239,15 @@ impl Db {
             .bind(r.before_dx_deg)
             .bind(r.before_dy_deg)
             .bind(serde_json::to_string(&r.path).unwrap_or_else(|_| "[]".into()))
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await?;
         }
         sqlx::query("INSERT OR REPLACE INTO aim_log (log_id, version, kills) VALUES (?1, ?2, ?3)")
             .bind(log_id)
             .bind(version)
             .bind(rows.len() as i64)
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await?;
-        tx.commit().await?;
         Ok(())
     }
 
@@ -229,8 +256,14 @@ impl Db {
     /// ticks alive, ticks scoped)`.
     pub async fn replace_deaths(&self, log_id: i64, rows: &[DeathRow], life: &[(i64, u32, i64, i64)]) -> Result<()> {
         let mut tx = self.pool().begin().await?;
-        sqlx::query("DELETE FROM demo_death WHERE log_id = ?1").bind(log_id).execute(&mut *tx).await?;
-        sqlx::query("DELETE FROM demo_life WHERE log_id = ?1").bind(log_id).execute(&mut *tx).await?;
+        Self::write_deaths(&mut tx, log_id, rows, life).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    async fn write_deaths(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>, log_id: i64, rows: &[DeathRow], life: &[(i64, u32, i64, i64)]) -> Result<()> {
+        sqlx::query("DELETE FROM demo_death WHERE log_id = ?1").bind(log_id).execute(&mut **tx).await?;
+        sqlx::query("DELETE FROM demo_life WHERE log_id = ?1").bind(log_id).execute(&mut **tx).await?;
         for r in rows {
             sqlx::query(
                 "INSERT OR REPLACE INTO demo_death
@@ -251,7 +284,7 @@ impl Db {
             .bind(i64::from(r.seen))
             .bind(r.killer_dx_deg)
             .bind(r.killer_dy_deg)
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await?;
         }
         for &(demo_id, account_id, alive, scoped) in life {
@@ -264,17 +297,22 @@ impl Db {
             .bind(account_id)
             .bind(alive)
             .bind(scoped)
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await?;
         }
-        tx.commit().await?;
         Ok(())
     }
 
     /// Replace one log's routes.
     pub async fn replace_paths(&self, log_id: i64, rows: &[PathRow]) -> Result<()> {
         let mut tx = self.pool().begin().await?;
-        sqlx::query("DELETE FROM demo_path WHERE log_id = ?1").bind(log_id).execute(&mut *tx).await?;
+        Self::write_paths(&mut tx, log_id, rows).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    async fn write_paths(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>, log_id: i64, rows: &[PathRow]) -> Result<()> {
+        sqlx::query("DELETE FROM demo_path WHERE log_id = ?1").bind(log_id).execute(&mut **tx).await?;
         for r in rows {
             sqlx::query(
                 "INSERT OR REPLACE INTO demo_path
@@ -291,10 +329,9 @@ impl Db {
             .bind(serde_json::to_string(&r.points).unwrap_or_else(|_| "[]".into()))
             .bind(r.account_id)
             .bind(serde_json::to_string(&r.caps).unwrap_or_else(|_| "[]".into()))
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await?;
         }
-        tx.commit().await?;
         Ok(())
     }
 
@@ -494,6 +531,56 @@ impl Db {
         .fetch_all(self.pool())
         .await?;
         Ok(rows.into_iter().map(|(at, team, point)| (at, team, point.unwrap_or(0))).collect())
+    }
+
+    /// Logs with a demo whose stored timeline was recorded at a format older
+    /// than `timeline_version`: read again whatever their aim version says,
+    /// so a timeline bump re-records the demo instead of leaving old rows to
+    /// be misread (audit SY-6). Deleted demos are left out: nothing to read.
+    pub async fn logs_with_old_timeline(&self, timeline_version: i64) -> Result<Vec<i64>> {
+        Ok(sqlx::query_scalar(
+            "SELECT DISTINCT l.log_id FROM demo_link l
+               JOIN demo d ON d.demo_id = l.demo_id AND d.deleted_at IS NULL
+               JOIN demo_timeline t ON t.demo_id = d.demo_id
+              WHERE t.version < ?1",
+        )
+        .bind(timeline_version)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    /// Remember that a demo file would not parse, as it was: its size and
+    /// modified time. It is not read again until the file changes (audit SY-3).
+    pub async fn record_demo_parse_failure(&self, demo_id: i64, size_bytes: i64, mtime: i64, error: &str) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO demo_parse_failed (demo_id, size_bytes, mtime, error) VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT(demo_id) DO UPDATE SET size_bytes = excluded.size_bytes, mtime = excluded.mtime,
+                failed_at = unixepoch(), error = excluded.error",
+        )
+        .bind(demo_id)
+        .bind(size_bytes)
+        .bind(mtime)
+        .bind(error)
+        .execute(self.pool())
+        .await?;
+        Ok(())
+    }
+
+    /// The error a demo failed with, when the file is still the one that
+    /// failed (same size and modified time).
+    pub async fn demo_parse_failure(&self, demo_id: i64, size_bytes: i64, mtime: i64) -> Result<Option<String>> {
+        Ok(sqlx::query_scalar("SELECT error FROM demo_parse_failed WHERE demo_id = ?1 AND size_bytes = ?2 AND mtime = ?3")
+            .bind(demo_id)
+            .bind(size_bytes)
+            .bind(mtime)
+            .fetch_optional(self.pool())
+            .await?)
+    }
+
+    /// A demo read fine: forget that it ever failed.
+    pub async fn clear_demo_parse_failure(&self, demo_id: i64) -> Result<()> {
+        sqlx::query("DELETE FROM demo_parse_failed WHERE demo_id = ?1").bind(demo_id).execute(self.pool()).await?;
+        Ok(())
     }
 
     /// Logs already read at this version of the pass.

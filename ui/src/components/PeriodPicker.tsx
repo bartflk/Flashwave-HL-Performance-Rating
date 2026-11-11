@@ -53,7 +53,7 @@ export function PeriodPicker({ range = true }: { range?: boolean }) {
         >
           <option value="all">{tr("All time")}</option>
           {list.length > 0 && (
-            <optgroup label="Seasons">
+            <optgroup label={tr("Seasons")}>
               {list.map((s) => (
                 <option key={s.key} value={`s:${s.key}`}>
                   {s.name}
@@ -81,7 +81,7 @@ export function PeriodPicker({ range = true }: { range?: boolean }) {
           <span className="hint">{tr("to")}</span>
           <input
             type="date"
-            aria-label="To"
+            aria-label={tr("To")}
             value={toInput(period.to)}
             onChange={(e) => setPeriod({ ...period, to: fromInput(e.target.value, true) })}
           />

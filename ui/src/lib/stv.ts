@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import { errorMessage, type MatchDetail } from "../api/types";
 import { beginDownload, failDownload, useDownload } from "./downloads";
 import { t } from "./i18n";
+import { matchLabel } from "./format";
 
 /**
  * Whether a match has an STV demo to read, and how to get one: shared by
@@ -39,7 +40,7 @@ export function useStv(d: MatchDetail) {
   const [error, setError] = useState<string | null>(null);
   async function fetch() {
     setError(null);
-    beginDownload(d.logId, `${d.map ?? "this match"}, log ${d.logId}`);
+    beginDownload(d.logId, matchLabel(d.map, d.logId));
     try {
       await api.fetchStv(d.logId);
     } catch (e) {
