@@ -700,7 +700,9 @@ function SeasonCard({ s, latest, onOpen }: { s: RglSeasonItem; latest: boolean; 
       <span className="ts-body">
         <span className="ts-title">{s.name}</span>
         <span className="ts-stats">
-          {c && c.teams > 0 && <span className="ts-stat">{c.teams === 1 ? t("1 team") : tx("{0} teams", { "0": c.teams })}</span>}
+          {c && c.teams > 0 && <span className="ts-stat">{c.division
+                ? c.teams === 1 ? tx("1 team in {0}", { "0": c.division }) : tx("{0} teams in {1}", { "0": c.teams, "1": c.division })
+                : c.teams === 1 ? t("1 team") : tx("{0} teams", { "0": c.teams })}</span>}
           {c && c.maps > 0 && <span className="ts-stat">{tx("{0} maps", { "0": c.maps })}</span>}
         </span>
         <span className="ts-rows">
