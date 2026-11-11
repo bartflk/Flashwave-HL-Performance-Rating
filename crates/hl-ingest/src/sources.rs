@@ -161,10 +161,14 @@ impl Sources {
             let body = self.trends.get_text(&next).await?;
             let page: Value = serde_json::from_str(&body).context("parsing trends.tf page")?;
 
+            // One row trends.tf cannot describe the usual way (a null field,
+            // a new shape) is skipped, not allowed to fail the whole index:
+            // the rest of the history is still good (audit SY-7).
             for raw in page.get("logs").and_then(Value::as_array).into_iter().flatten() {
-                let row: TrendsRow =
-                    serde_json::from_value(raw.clone()).context("parsing trends.tf row")?;
-                rows.push((row, raw.to_string()));
+                match serde_json::from_value::<TrendsRow>(raw.clone()) {
+                    Ok(row) => rows.push((row, raw.to_string())),
+                    Err(e) => tracing::warn!(error = %e, row = %raw, "skipping a trends.tf row that would not parse"),
+                }
             }
             on_page(rows.len());
 
