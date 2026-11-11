@@ -34,6 +34,13 @@ pub fn normalize(log_id: i64, raw: &Value) -> anyhow::Result<NormalizedLog> {
         let Some(team) = p.get("team").and_then(Value::as_str).and_then(Team::parse) else {
             continue; // spectators and unassigned players
         };
+        // One account under two keys (`[U:1:3]` and `STEAM_0:1:1`) is one
+        // player: the database keeps a single row per log and account, and a
+        // second one would fail the whole log. The first in key order is kept.
+        if players.iter().any(|q: &PlayerLine| q.id == id) {
+            tracing::debug!(log_id, key, "skipping a second key for the same account");
+            continue;
+        }
 
         players.push(PlayerLine {
             id,
@@ -301,7 +308,12 @@ fn event(e: &Value, base: i64) -> Option<EventLine> {
 fn as_i64(v: &Value) -> Option<i64> {
     match v {
         Value::Number(n) => n.as_i64().or_else(|| n.as_f64().map(|f| f.round() as i64)),
-        Value::String(s) => s.trim().parse().ok(),
+        // A string may hold a float too ("1800.4"); NaN and infinity are no number.
+        Value::String(s) => s
+            .trim()
+            .parse()
+            .ok()
+            .or_else(|| s.trim().parse::<f64>().ok().filter(|f| f.is_finite()).map(|f| f.round() as i64)),
         Value::Bool(b) => Some(*b as i64),
         _ => None,
     }
@@ -321,3 +333,7 @@ fn str_field(v: &Value, key: &str) -> Option<String> {
         .filter(|s| !s.is_empty())
         .map(str::to_owned)
 }
+
+#[cfg(test)]
+#[path = "normalize_edge_tests.rs"]
+mod edge_tests;

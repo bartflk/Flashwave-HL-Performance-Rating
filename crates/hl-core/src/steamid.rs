@@ -176,4 +176,51 @@ mod tests {
         assert!(SteamId::parse("STEAM_0:9:5").is_err());
         assert!(SteamId::parse("123").is_ok()); // bare account id is allowed
     }
+
+    #[test]
+    fn the_extremes_round_trip() {
+        for account in [0u32, 1, 2, 3, 2006, i32::MAX as u32, i32::MAX as u32 + 1, u32::MAX - 1, u32::MAX] {
+            let id = SteamId::from_account_id(account);
+            for text in [id.to_steamid64(), id.to_steamid3(), id.to_steamid2(), id.to_string()] {
+                assert_eq!(SteamId::parse(&text).unwrap(), id, "{text}");
+            }
+            assert_eq!(SteamId::from_u64(id.as_u64()).unwrap(), id);
+        }
+    }
+
+    #[test]
+    fn steamid2_parity_and_universe_digit() {
+        // Even accounts are Y=0, odd Y=1; STEAM_1 is the same account as STEAM_0.
+        assert_eq!(SteamId::from_account_id(2).to_steamid2(), "STEAM_0:0:1");
+        assert_eq!(SteamId::from_account_id(3).to_steamid2(), "STEAM_0:1:1");
+        assert_eq!(SteamId::parse("STEAM_1:1:1").unwrap(), SteamId::from_account_id(3));
+        assert_eq!(SteamId::parse("steam_0:0:1").unwrap(), SteamId::from_account_id(2));
+        assert!(SteamId::parse("STEAM_0:1").is_err());
+        assert!(SteamId::parse("STEAM_0:1:2:3").is_err());
+        assert!(SteamId::parse("STEAM_0:1:-1").is_err());
+        // Z so large that 2Z+Y does not fit an account id.
+        assert!(SteamId::parse("STEAM_0:0:2147483648").is_err());
+        assert!(SteamId::parse("STEAM_0:1:2147483647").is_ok());
+    }
+
+    #[test]
+    fn out_of_range_sixty_four_bit_ids_are_refused() {
+        assert!(SteamId::from_u64(STEAMID64_BASE - 1).is_err());
+        assert!(SteamId::from_u64(STEAMID64_BASE + u32::MAX as u64 + 1).is_err());
+        assert!(SteamId::parse("76561197960265727").is_err() || SteamId::parse("76561197960265727").unwrap().account_id() > 0);
+        assert!(SteamId::parse("99999999999999999999").is_err());
+        // A bare number between the account range and the 64-bit base is neither.
+        assert!(SteamId::parse("4294967296").is_err());
+    }
+
+    #[test]
+    fn pasted_forms_with_spaces_brackets_and_case() {
+        let want = SteamId::from_account_id(2006);
+        for text in ["  [U:1:2006]  ", "u:1:2006", "[u:1:2006]", "\t76561197960267734\n", "https://steamcommunity.com/profiles/76561197960267734"] {
+            assert_eq!(SteamId::parse(text).unwrap(), want, "{text:?}");
+        }
+        for text in ["[U:2:2006]", "[U:1:]", "[U:1:-5]", "U:1:abc", "https://steamcommunity.com/id/vanity", "[[U:1:5]]x"] {
+            assert!(SteamId::parse(text).is_err(), "{text:?}");
+        }
+    }
 }

@@ -421,3 +421,7 @@ pub fn enrich(log: &NormalizedLog, kills: &[StoredKill], me: Option<SteamId>, de
 fn now_s() -> i64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64)
 }
+
+#[cfg(test)]
+#[path = "kills_edge_tests.rs"]
+mod edge_tests;

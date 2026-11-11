@@ -470,6 +470,10 @@ fn position(s: &str) -> Option<[i32; 3]> {
 }
 
 #[cfg(test)]
+#[path = "rawlog_edge_tests.rs"]
+mod edge_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

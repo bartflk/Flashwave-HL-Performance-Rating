@@ -107,6 +107,51 @@ mod tests {
     use super::*;
 
     #[test]
+    fn empty_and_degenerate_names_do_not_panic() {
+        assert_eq!(map_base(""), "");
+        assert_eq!(map_name(""), "");
+        assert_eq!(map_base("pl_"), "");
+        assert_eq!(map_name("pl_"), "pl_");
+        assert_eq!(map_base("_"), "_");
+        assert_eq!(map_base("pl__f12"), "");
+        // A name that is only a version word is a name.
+        assert_eq!(map_base("final"), "final");
+        assert_eq!(map_base("pl_final"), "final");
+        // Lowercasing is ASCII only; a map name outside ASCII is left alone, not mangled.
+        assert_eq!(map_name("Ünïcode_F12"), "Ünïcode");
+    }
+
+    #[test]
+    fn every_version_of_a_map_is_one_map_in_any_case() {
+        let same = ["cp_process_final", "cp_process_f12", "CP_PROCESS_F9", "cp_process_rc1", "cp_process"];
+        for m in same {
+            assert_eq!(map_name(m), "cp_process", "{m}");
+            assert_eq!(map_base(m), "process", "{m}");
+        }
+        // The gamemode keeps maps of the same name apart.
+        assert_ne!(map_name("pl_upward"), map_name("cp_upward"));
+    }
+
+    #[test]
+    fn naming_a_map_twice_changes_nothing() {
+        for m in [
+            "pl_upward_f12", "koth_product_rcx", "koth_viaduct", "pl_badwater_pro_v12", "tow_tetsudo_b10a", "cp_gullywash_final1",
+            "koth_ultiduo_r_b7", "dm_lostvillage_two_final", "cornwater_b7c_fix", "millstone_ugc_4", "PL_Vigil_RC10", "", "unknown_map",
+        ] {
+            let once = map_name(m);
+            assert_eq!(map_name(&once), once, "{m}");
+            assert_eq!(map_base(&map_base(m)), map_base(m), "{m}");
+        }
+    }
+
+    #[test]
+    fn a_map_without_a_known_prefix_is_just_lowercased() {
+        assert_eq!(map_name("Some_Custom_Map"), "some_custom_map");
+        // Only a whole prefix counts: `plx_` is not `pl_`.
+        assert_eq!(map_name("plx_thing"), "plx_thing");
+    }
+
+    #[test]
     fn a_map_name_keeps_its_gamemode() {
         assert_eq!(map_name("pl_upward_f12"), "pl_upward");
         assert_eq!(map_name("pl_upward_f10"), "pl_upward");
