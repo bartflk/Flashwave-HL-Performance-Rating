@@ -611,6 +611,12 @@ pub fn rate(perf: &Performance, baseline: &Baseline, w: &Weights) -> Option<Rati
 
     let mut parts = Vec::new();
     for &(c, raw) in &perf.values {
+        // A value that is not a number has no place in a pool and none in a
+        // rating: left to `percentile` it would count as the lowest of all,
+        // which for a lower-is-better stat is the best.
+        if !raw.is_finite() {
+            continue;
+        }
         let Some(&weight) = weights.get(&c).filter(|w| **w > 0.0) else { continue };
         let Some(p) = baseline.percentile(perf.class, c, perf.map.as_deref(), raw) else { continue };
         let p = if c.higher_is_better() { p } else { 1.0 - p };

@@ -769,6 +769,92 @@ mod tests {
         // A season of few maps is pulled towards the average.
         assert!(s.rating(0.8, 2) < s.rating(0.8, 20));
     }
+
+    fn stat(account: i64, secs: i64, impact: Option<f64>) -> LogStat {
+        LogStat { log_id: 1, account_id: account, class: "soldier".into(), main: true, time_s: secs, impact, ..Default::default() }
+    }
+
+    #[test]
+    fn a_class_with_too_few_games_has_the_fallback_scale() {
+        // Under 30 measured maps: no spread worth trusting, so mean 0 and sd 0.5.
+        let few: Vec<LogStat> = (0..29).map(|i| stat(i, 1800, Some(i as f64))).collect();
+        let s = ImpactScale::of(&few);
+        assert_eq!((s.mean, s.sd), (0.0, 0.5));
+        // 30 of them is a pool, and short games and side classes do not count.
+        let mut many: Vec<LogStat> = (0..30).map(|i| stat(i, 1800, Some(i as f64))).collect();
+        many.push(stat(99, 100, Some(500.0)));
+        many.push(LogStat { main: false, ..stat(98, 1800, Some(500.0)) });
+        many.push(stat(97, 1800, None));
+        let s = ImpactScale::of(&many);
+        assert!((s.mean - 14.5).abs() < 1e-9, "{s:?}");
+        assert!(s.sd > 8.0 && s.sd < 9.0);
+    }
+
+    #[test]
+    fn a_class_where_everyone_has_the_same_impact_has_a_scale_that_divides_safely() {
+        let same: Vec<LogStat> = (0..40).map(|i| stat(i, 1800, Some(1.0))).collect();
+        let s = ImpactScale::of(&same);
+        assert_eq!(s.sd, 0.05, "floored, not zero");
+        assert!(s.rating(1.0, 10).is_finite() && s.rating(3.0, 10).is_finite());
+        assert!((s.rating(1.0, 10) - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn an_impact_rating_for_no_time_or_no_maps_is_nothing_or_the_average() {
+        let s = ImpactScale { mean: 0.2, sd: 0.6 };
+        assert_eq!(s.map_rating(5.0, 0), None, "a map of no seconds has no rating, not infinity");
+        assert_eq!(s.map_rating(5.0, -10), None);
+        assert!((s.rating(9.0, 0) - 1.0).abs() < 1e-9, "no maps is the class average");
+        // Better never rates lower, over a map and over a season.
+        let mut last = f64::MIN;
+        for i in 0..20 {
+            let r = s.map_rating(f64::from(i) * 0.1, 1800).unwrap();
+            assert!(r >= last);
+            last = r;
+        }
+    }
+
+    #[test]
+    fn totals_of_no_time_have_no_rates_and_a_map_with_no_server_log_adds_no_impact() {
+        let t = Totals::default();
+        assert_eq!(t.per30(5), None);
+        assert_eq!(t.impact_per30(), None);
+        assert_eq!((K30.f)(&t), None);
+        let mut t = Totals::default();
+        t.add(&LogStat { kills: 10, deaths: 5, ..stat(1, 1800, None) });
+        assert_eq!(t.per30(t.kills), Some(10.0));
+        assert_eq!((t.maps, t.raw_maps, t.raw_time_s), (1, 0, 0));
+        assert_eq!(t.impact_per30(), None, "no server log: missing, not 0");
+        t.add(&stat(1, 3600, Some(2.0)));
+        assert_eq!(t.impact_per30(), Some(2.0 * 1800.0 / 3600.0), "per the time of the maps that have it");
+        assert_eq!(t.per30(t.kills), Some(10.0 * 1800.0 / 5400.0));
+    }
+
+    #[test]
+    fn the_average_build_time_ignores_maps_without_one() {
+        let mut t = Totals::default();
+        for b in [Some(40.0), None, Some(0.0), Some(60.0)] {
+            t.add(&LogStat { build_s: b, ..stat(1, 1800, None) });
+        }
+        assert_eq!(t.build_s, Some(50.0), "40 and 60; no charge and a zero are not builds");
+    }
+
+    #[test]
+    fn a_percentile_with_ties_counts_them_half_and_flips_when_lower_is_better() {
+        let pop = vec![1.0, 2.0, 2.0, 2.0, 3.0];
+        assert_eq!(percentile(&pop, 2.0, false), 50.0);
+        assert_eq!(percentile(&pop, 2.0, true), 50.0);
+        assert_eq!(percentile(&pop, 1.0, true), 90.0, "the fewest deaths is near the top");
+        assert_eq!(percentile(&[], 5.0, false), 50.0, "nobody to compare to: the middle, not an error");
+        for x in [-1.0, 0.0, 1.0, 2.5, 3.0, 100.0] {
+            for flip in [false, true] {
+                assert!((0.0..=100.0).contains(&percentile(&pop, x, flip)), "{x} {flip}");
+            }
+        }
+        assert_eq!(verdict(70.0), "good");
+        assert_eq!(verdict(30.0), "poor");
+        assert_eq!(verdict(69.9), "okay");
+    }
 }
 
 // ---- One player's season, worked out ---------------------------------------
