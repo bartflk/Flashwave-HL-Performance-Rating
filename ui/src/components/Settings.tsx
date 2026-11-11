@@ -29,6 +29,7 @@ import { RELEASES } from "../lib/changelog";
 import { Markdown } from "./Markdown";
 import { clearProblems, markProblemsSeen, report, useProblems } from "../lib/problems";
 import { Spinner } from "./Spinner";
+import { ApiError } from "./ApiError";
 import { SortTh, useSort } from "../lib/sort";
 
 /** The groups of Settings, in order, for the side menu and the page. */
@@ -286,9 +287,7 @@ export function Settings({
               <div className="panel">
                 <h2>{t("Data")}</h2>
                 <div className="row" style={{ marginTop: 4 }}>
-                  <button onClick={() => void startRebuild()} disabled={busy}>
-                    {busy ? tr("Working…") : tr("Rebuild from stored data")}
-                  </button>
+                  <RebuildButton busy={busy} />
                 </div>
                 <dl className="kv" style={{ marginTop: 16 }}>
                   <dt>{tr("Database")}</dt>
@@ -374,6 +373,39 @@ function SourcesPanel() {
 }
 
 /**
+ * Rebuild from stored data, asked twice: it keeps Sync off until it ends, so
+ * a mis-click must not commit anyone to it. It can be stopped from the card
+ * in the corner once it runs.
+ */
+function RebuildButton({ busy }: { busy: boolean }) {
+  const [armed, setArmed] = useState(false);
+  const stats = useQuery({ queryKey: ["index_stats"], queryFn: api.indexStats });
+  if (!armed) {
+    return (
+      <button onClick={() => setArmed(true)} disabled={busy}>
+        {busy ? tr("Working…") : tr("Rebuild from stored data")}
+      </button>
+    );
+  }
+  const n = stats.data?.normalized ?? stats.data?.highlander ?? 0;
+  return (
+    <>
+      <button
+        className="bk-danger"
+        onClick={() => {
+          setArmed(false);
+          void startRebuild();
+        }}
+      >
+        {n > 0 ? tr("Rebuild {0} matches now", { "0": n.toLocaleString() }) : tr("Rebuild every match now")}
+      </button>
+      <button className="linkish" onClick={() => setArmed(false)}>{tr("Not now")}</button>
+      <span className="hint">{tr("Sync waits until it is done. You can stop it from the card in the corner.")}</span>
+    </>
+  );
+}
+
+/**
  * Which version this is, and a way to ask for a newer one. The app looks
  * once at startup on its own; this is for when you have heard there is a new
  * release and do not want to restart to find out.
@@ -385,7 +417,7 @@ function UpdatesPanel({ version }: { version: string }) {
       <h2>{tr("Updates")}</h2>
       <div className="row" style={{ marginTop: 10, gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <span>{tx("You have {0}", { "0": <strong>{tr("Version {version}", { version: version })}</strong> })}</span>
-        <button onClick={() => void checkForUpdate(true)} disabled={u.state === "checking" || u.state === "downloading"}>
+        <button onClick={() => void checkForUpdate(true)} disabled={u.state === "checking" || u.state === "downloading" || u.state === "ready"}>
           {u.state === "checking" ? <><Spinner /> {tr("Checking…")}</> : tr("Check for updates")}
         </button>
       </div>
@@ -1160,7 +1192,7 @@ function DownloadedDemosPanel() {
 
       {items.length === 0 ? (
         <p className="hint" style={{ marginTop: 14 }}>
-          {q.isPending ? <><Spinner /> {tr("Looking…")}</> : tr("None downloaded yet.")}
+          {q.isPending ? <><Spinner /> {tr("Looking…")}</> : q.isError ? <ApiError error={q.error} /> : tr("None downloaded yet.")}
         </p>
       ) : (
         <>

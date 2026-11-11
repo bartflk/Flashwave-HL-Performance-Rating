@@ -221,6 +221,9 @@ fn placement_path(dir: &Path, base: &str) -> PathBuf {
 
 /// The player's own image file for a base, if there is one.
 fn user_image(dir: &Path, base: &str) -> Option<PathBuf> {
+    if !hl_core::maps::is_safe_map_base(base) {
+        return None;
+    }
     EXTENSIONS
         .iter()
         .map(|e| dir.join(format!("{base}.{e}")))
@@ -229,8 +232,9 @@ fn user_image(dir: &Path, base: &str) -> Option<PathBuf> {
 
 /// A placement the player saved, else the built-in one.
 pub fn placement_for(dir: &Path, base: &str) -> Option<Placement> {
-    if let Some(p) = std::fs::read_to_string(placement_path(dir, base))
-        .ok()
+    if let Some(p) = Some(base)
+        .filter(|b| hl_core::maps::is_safe_map_base(b))
+        .and_then(|b| std::fs::read_to_string(placement_path(dir, b)).ok())
         .and_then(|t| serde_json::from_str(&t).ok())
     {
         return Some(p);
@@ -374,10 +378,7 @@ pub fn user_bases(dir: &Path) -> Vec<String> {
 /// was. Refuses anything that is not a PNG, JPEG or WebP, or is too large.
 pub fn import(dir: &Path, map: &str, from: &Path) -> Result<()> {
     let base = map_base(map);
-    anyhow::ensure!(
-        !base.is_empty() && base.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'),
-        "`{map}` is not a map"
-    );
+    anyhow::ensure!(hl_core::maps::is_safe_map_base(&base), "`{map}` is not a map");
     let bytes = std::fs::read(from).with_context(|| format!("reading {}", from.display()))?;
     anyhow::ensure!(
         bytes.len() <= MAX_BYTES,
@@ -409,6 +410,7 @@ pub fn import(dir: &Path, map: &str, from: &Path) -> Result<()> {
 
 /// Save where the player lined the image up.
 pub fn save_placement(dir: &Path, map: &str, p: Placement) -> Result<()> {
+    anyhow::ensure!(hl_core::maps::is_safe_map_base(&map_base(map)), "`{map}` is not a map");
     anyhow::ensure!(
         p.min_x.is_finite() && p.max_y.is_finite() && p.size.is_finite() && p.size > 0.0,
         "not a placement"
@@ -424,6 +426,7 @@ pub fn save_placement(dir: &Path, map: &str, p: Placement) -> Result<()> {
 /// Back to the built-in image and placement: the player's own files go.
 pub fn remove(dir: &Path, map: &str) -> Result<()> {
     let base = map_base(map);
+    anyhow::ensure!(hl_core::maps::is_safe_map_base(&base), "`{map}` is not a map");
     for path in EXTENSIONS
         .iter()
         .map(|e| dir.join(format!("{base}.{e}")))

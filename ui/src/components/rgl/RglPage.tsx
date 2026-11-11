@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { RglBan, RglMatch, RglPlayer, RglSeasonItem, RglTeamPage } from "../../api/types";
-import { t, tx } from "../../lib/i18n";
+import { locale, t, tx } from "../../lib/i18n";
+import { openOnKey } from "../../lib/rows";
 import { ApiError } from "../ApiError";
 import { Loading } from "../Spinner";
 import { RglMark } from "../RglMark";
@@ -46,10 +47,11 @@ function sectionOf(l: Loc): Section {
   return l.at;
 }
 
-/** What a new team or player page goes back to: never another of those. */
-function base(l: Loc): Loc {
-  return l.at === "team" || l.at === "player" || l.at === "match" ? l.from : l;
-}
+/*
+ * A team, player or match page goes back to the page it was opened from, and
+ * that page is in the trail above it: opening Team B from Team A reads
+ * "... > Team A > Team B", so Back and the trail say the same thing.
+ */
 
 const same = (a: Loc, b: Loc) => JSON.stringify(a) === JSON.stringify(b);
 const KEEP = 30 * 60_000;
@@ -65,18 +67,41 @@ const useSeason = (id: number | null) =>
   useQuery({ queryKey: ["rgl_season", id], queryFn: () => api.getRglSeason(id!), enabled: id !== null, staleTime: KEEP });
 const useTeam = (id: number | null) => useQuery({ queryKey: ["rgl_team", id], queryFn: () => api.getRglTeam(id!), enabled: id !== null, staleTime: KEEP });
 const useMatch = (id: number | null) => useQuery({ queryKey: ["rgl_match", id], queryFn: () => api.getRglMatch(id!), enabled: id !== null, staleTime: KEEP });
-/** The live season (RGL's newest) and its matches. */
+/**
+ * The live season and its matches: RGL's newest, unless that has no match
+ * yet (between seasons its empty successor is already listed), then the one
+ * before it. The second read happens only in that case.
+ */
 function useLive() {
   const seasons = useSeasons();
-  const latest = seasons.data?.[0] ?? null;
-  const matches = useQuery({
-    queryKey: ["rgl_season_matches", latest?.id ?? null],
-    queryFn: () => api.getRglSeasonMatches(latest!.id),
-    enabled: latest !== null,
+  const list = seasons.data;
+  const newest = list?.[0] ?? null;
+  const first = useQuery({
+    queryKey: ["rgl_season_matches", newest?.id ?? null],
+    queryFn: () => api.getRglSeasonMatches(newest!.id),
+    enabled: newest !== null,
     staleTime: KEEP,
     retry: false,
   });
-  return { season: latest, error: seasons.error ?? matches.error, matches: matches.data ?? null };
+  const before = list?.[1] ?? null;
+  const fallback = before !== null && first.data !== undefined && first.data.length === 0;
+  const second = useQuery({
+    queryKey: ["rgl_season_matches", before?.id ?? null],
+    queryFn: () => api.getRglSeasonMatches(before!.id),
+    enabled: fallback,
+    staleTime: KEEP,
+    retry: false,
+  });
+  const matches = fallback ? second : first;
+  return {
+    season: fallback ? before : newest,
+    error: seasons.error ?? matches.error,
+    matches: matches.data ?? null,
+    /** RGL listed no season at all. */
+    none: list !== undefined && list.length === 0,
+    /** Asks again, whichever of the reads failed. */
+    retry: () => void (seasons.error ? seasons.refetch() : matches.refetch()),
+  };
 }
 const secs = (iso: string | null) => (iso ? Date.parse(iso) / 1000 : 0);
 const decided = (m: RglMatch) => m.winner !== null || m.isForfeit;
@@ -90,7 +115,7 @@ function dayLabel(time: number): string {
   if (off === 0) return t("Today");
   if (off === 1) return t("Tomorrow");
   if (off === -1) return t("Yesterday");
-  return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  return d.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
 }
 function byDay(rows: RglMatch[]): Array<[string, RglMatch[]]> {
   const out: Array<[string, RglMatch[]]> = [];
@@ -118,7 +143,7 @@ function useNameSearch(term: string) {
   const on = q.length >= SEARCH_FROM && !looksLikeSteamId(q);
   const players = useQuery({ queryKey: ["rgl_search_players", q.toLowerCase()], queryFn: () => api.searchRglPlayers(q), enabled: on, staleTime: KEEP, retry: false });
   const teams = useQuery({ queryKey: ["rgl_search_teams", q.toLowerCase()], queryFn: () => api.searchRglTeams(q), enabled: on, staleTime: KEEP, retry: false });
-  return { on, waiting: term.trim() !== q || (on && (players.isFetching || teams.isFetching)), players: players.data ?? [], teams: teams.data ?? [], error: players.error ?? teams.error };
+  return { on, waiting: term.trim() !== q || (on && (players.isFetching || teams.isFetching)), players: players.data ?? [], teams: teams.data ?? [], playersError: players.error, teamsError: teams.error };
 }
 const usePlayer = (steamId: string | null) =>
   useQuery({ queryKey: ["rgl_player", steamId], queryFn: () => api.getRglPlayer(steamId!), enabled: steamId !== null, staleTime: KEEP, retry: false });
@@ -127,7 +152,29 @@ const usePlayer = (steamId: string | null) =>
 function day(iso: string | null): string {
   if (!iso) return "–";
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
+  return d.toLocaleDateString(locale(), { day: "numeric", month: "short", year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
+}
+
+/**
+ * The wait for a season's matches, which are read one by one. The tabs stay
+ * usable meanwhile: leaving the page does not cancel the read, it carries on
+ * and is kept for the next visit.
+ */
+function Reading() {
+  return <Loading>{t("Reading the season from RGL… about 40 seconds the first time. You can look at another page meanwhile: the read carries on in the background.")}</Loading>;
+}
+
+/** An undecided match: its countdown, or that a past one has no result yet. */
+function Awaiting({ time, countdown }: { time: number; countdown: boolean }) {
+  // A match is "on" for three hours after its start; later with no result
+  // entered it is waiting for one, not played.
+  if (time < Date.now() / 1000 - 3 * 3600) return <> · {t("awaiting result")}</>;
+  return countdown ? (
+    <>
+      {" · "}
+      <Countdown time={time} />
+    </>
+  ) : null;
 }
 
 /** RGL's final placing as the list shows it; 99 is a team that dropped out. */
@@ -139,7 +186,11 @@ function placing(rank: number | null, seeding?: number | null): string {
 
 const SEEN_KEY = "rgl-in-development-seen";
 
+/** Said already in this run, for when storage is blocked and cannot say. */
+let seenThisRun = false;
+
 function seen(): boolean {
+  if (seenThisRun) return true;
   try {
     return localStorage.getItem(SEEN_KEY) === "1";
   } catch {
@@ -155,7 +206,9 @@ function seen(): boolean {
 function InDevelopment() {
   const [open, setOpen] = useState(() => !seen());
   const ok = useRef<HTMLButtonElement>(null);
+  const card = useRef<HTMLDivElement>(null);
   const close = () => {
+    seenThisRun = true;
     try {
       localStorage.setItem(SEEN_KEY, "1");
     } catch {
@@ -168,6 +221,21 @@ function InDevelopment() {
     ok.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
+      // Tab stays inside the dialog: behind it the page is not reachable.
+      if (e.key === "Tab" && card.current) {
+        const items = [...card.current.querySelectorAll<HTMLElement>("button, a[href], input, select, textarea, [tabindex]:not([tabindex='-1'])")].filter((x) => !x.hasAttribute("disabled"));
+        if (items.length === 0) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        const at = document.activeElement;
+        if (!card.current.contains(at) || (e.shiftKey && at === first)) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && at === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -175,7 +243,7 @@ function InDevelopment() {
   if (!open) return null;
   return (
     <div className="modal-scrim focus" role="dialog" aria-modal="true" aria-labelledby="rgl-dev-title" onClick={(e) => e.target === e.currentTarget && close()}>
-      <div className="modal rgl-dev">
+      <div className="modal rgl-dev" ref={card}>
         <span className="e2-eyebrow">
           <RglMark size={16} /> {t("RGL Highlander")}
         </span>
@@ -200,15 +268,15 @@ export function RglPage({ active, steamid }: { active: boolean; steamid: string 
     window.scrollTo({ top: 0 });
   };
   const openTeam = (id: number) => {
-    setStack((s) => [...s, { at: "team", id, from: base(s[s.length - 1]) }]);
+    setStack((s) => [...s, { at: "team", id, from: s[s.length - 1] }]);
     window.scrollTo({ top: 0 });
   };
   const openPlayer = (steamId: string) => {
-    setStack((s) => [...s, { at: "player", steamId, from: base(s[s.length - 1]) }]);
+    setStack((s) => [...s, { at: "player", steamId, from: s[s.length - 1] }]);
     window.scrollTo({ top: 0 });
   };
   const openMatch = (id: number) => {
-    setStack((s) => [...s, { at: "match", id, from: base(s[s.length - 1]) }]);
+    setStack((s) => [...s, { at: "match", id, from: s[s.length - 1] }]);
     window.scrollTo({ top: 0 });
   };
 
@@ -306,28 +374,28 @@ export function RglPage({ active, steamid }: { active: boolean; steamid: string 
 
 // ---- Breadcrumbs ---------------------------------------------------------
 
-function Crumbs({ loc, go }: { loc: Loc; go: (l: Loc) => void }) {
+/** A trail link's name, from what the pages already read (kept, so no new asks). */
+function CrumbName({ loc }: { loc: Loc }) {
   const seasons = useSeasons().data;
-  const teamId = loc.at === "team" ? loc.id : null;
-  const team = useTeam(teamId).data;
-  const steamId = loc.at === "player" ? loc.steamId : null;
-  const player = usePlayer(steamId).data;
-  const matchId = loc.at === "match" ? loc.id : null;
-  const match = useMatch(matchId).data;
-  const trail: Array<[string, Loc]> = [];
+  const team = useTeam(loc.at === "team" ? loc.id : null).data;
+  const player = usePlayer(loc.at === "player" ? loc.steamId : null).data;
+  const match = useMatch(loc.at === "match" ? loc.id : null).data;
+  if (loc.at === "team") return <>{team?.name ?? t("Team")}</>;
+  if (loc.at === "player") return <>{player?.name ?? t("Player")}</>;
+  if (loc.at === "match") return <>{match && match.teams.length >= 2 ? `${match.teams[0].teamName} vs ${match.teams[1].teamName}` : t("Match")}</>;
+  if (loc.at === "season") return <>{seasons?.find((s) => s.id === loc.id)?.name ?? t("Season")}</>;
+  return null;
+}
+
+function Crumbs({ loc, go }: { loc: Loc; go: (l: Loc) => void }) {
+  const trail: Array<[ReactNode, Loc]> = [];
   const add = (l: Loc) => {
-    if (l.at === "team") {
+    if (l.at === "team" || l.at === "match" || l.at === "player") {
       add(l.from);
-      trail.push([team?.name ?? t("Team"), l]);
-    } else if (l.at === "match") {
-      add(l.from);
-      trail.push([match && match.teams.length >= 2 ? `${match.teams[0].teamName} vs ${match.teams[1].teamName}` : t("Match"), l]);
-    } else if (l.at === "player") {
-      add(l.from);
-      trail.push([player?.name ?? t("Player"), l]);
+      trail.push([<CrumbName key={trail.length} loc={l} />, l]);
     } else if (l.at === "season") {
       trail.push([t("Seasons"), { at: "seasons" }]);
-      trail.push([seasons?.find((s) => s.id === l.id)?.name ?? t("Season"), l]);
+      trail.push([<CrumbName key={trail.length} loc={l} />, l]);
     } else if (l.at !== "home") {
       trail.push([{ matches: t("Matches"), seasons: t("Seasons"), players: t("Players"), bans: t("Bans") }[l.at], l]);
     }
@@ -374,7 +442,14 @@ function RglSearch({ onTeam, onPlayer }: { onTeam: (id: number) => void; onPlaye
   const id = looksLikeSteamId(term);
   const found = useNameSearch(open ? term : "");
   return (
-    <div className="e2-search" ref={box}>
+    <div
+      className="e2-search"
+      ref={box}
+      onBlur={(e) => {
+        // Tabbing out of the box closes the panel; moving to a hit inside does not.
+        if (!box.current?.contains(e.relatedTarget as Node | null)) setOpen(false);
+      }}
+    >
       <input
         type="search"
         value={q}
@@ -389,11 +464,22 @@ function RglSearch({ onTeam, onPlayer }: { onTeam: (id: number) => void; onPlaye
           if (e.key === "Enter" && id) {
             done();
             onPlayer(term);
+          } else if (e.key === "Enter") {
+            // The first hit: a player before a team, as they are listed.
+            const p = found.players[0];
+            const tm = found.teams[0];
+            if (p) {
+              done();
+              onPlayer(p.steamId);
+            } else if (tm) {
+              done();
+              onTeam(tm.id);
+            }
           }
         }}
         aria-label={t("Search RGL")}
       />
-      {open && (id || term.length >= SEARCH_FROM) && (
+      {open && term.length > 0 && (
         <div className="e2-search-panel">
           {id ? (
             <button
@@ -408,6 +494,8 @@ function RglSearch({ onTeam, onPlayer }: { onTeam: (id: number) => void; onPlaye
               </span>
               <span className="e2-hit-meta">↵</span>
             </button>
+          ) : term.length < SEARCH_FROM ? (
+            <p className="hint">{t("Type at least {0} letters.", { "0": SEARCH_FROM })}</p>
           ) : (
             <SearchHits
               found={found}
@@ -429,20 +517,22 @@ function RglSearch({ onTeam, onPlayer }: { onTeam: (id: number) => void; onPlaye
 
 /** What RGL's name search found: players, then NA Highlander teams. */
 function SearchHits({ found, onPlayer, onTeam }: { found: ReturnType<typeof useNameSearch>; onPlayer: (s: string) => void; onTeam: (id: number) => void }) {
-  if (found.error) return <ApiError error={found.error} />;
+  // Each list says if its own question failed; the other's answer still shows.
   const none = found.players.length === 0 && found.teams.length === 0;
   if (none && found.waiting) return <Loading>{t("Asking RGL…")}</Loading>;
-  if (none) return <p className="hint">{t("No player or NA Highlander team by that name on RGL.")}</p>;
+  if (none && !found.playersError && !found.teamsError) return <p className="hint">{t("No player or NA Highlander team by that name on RGL.")}</p>;
   return (
     <>
-      {found.players.length > 0 && <h4>{t("Players")}</h4>}
+      {(found.players.length > 0 || found.playersError) && <h4>{t("Players")}</h4>}
+      {found.playersError && <ApiError error={found.playersError} />}
       {found.players.map((x) => (
         <button key={x.steamId} className="e2-hit" onClick={() => onPlayer(x.steamId)}>
           <span className="e2-hit-name">{x.name}</span>
           <span className="e2-hit-meta">{t("Player")}</span>
         </button>
       ))}
-      {found.teams.length > 0 && <h4>{t("Teams")}</h4>}
+      {(found.teams.length > 0 || found.teamsError) && <h4>{t("Teams")}</h4>}
+      {found.teamsError && <ApiError error={found.teamsError} />}
       {found.teams.map((x) => (
         <button key={x.id} className="e2-hit" onClick={() => onTeam(x.id)}>
           <span className="e2-hit-name">
@@ -472,6 +562,10 @@ function Home(props: { steamid: string | null; onTeam: (id: number) => void; onP
         {seasons.error ? (
           <section className="panel e2-panel">
             <ApiError error={seasons.error} />
+          </section>
+        ) : seasons.data && latest === null ? (
+          <section className="panel e2-panel">
+            <p className="hint">{t("RGL lists no seasons.")}</p>
           </section>
         ) : latest === null ? (
           <section className="panel e2-panel">
@@ -567,6 +661,8 @@ function SeasonList({ onSeason }: { onSeason: (id: number) => void }) {
         <ApiError error={q.error} />
       ) : !q.data ? (
         <Loading>{t("Loading the seasons…")}</Loading>
+      ) : q.data.length === 0 ? (
+        <p className="hint">{t("RGL lists no seasons.")}</p>
       ) : (
         <div className="ts-grid rgl-season-grid">
           {q.data.map((s, i) => (
@@ -582,6 +678,12 @@ function SeasonList({ onSeason }: { onSeason: (id: number) => void }) {
 function SeasonCard({ s, latest, onOpen }: { s: RglSeasonItem; latest: boolean; onOpen: () => void }) {
   const q = useQuery({ queryKey: ["rgl_season_card", s.id], queryFn: () => api.getRglSeasonCard(s.id), staleTime: KEEP, retry: false });
   const c = q.data;
+  // Whether a match has been played, from the season's matches if Home or
+  // Matches has read them already; never a read of its own for the card.
+  const read = useQuery({ queryKey: ["rgl_season_matches", s.id], queryFn: () => api.getRglSeasonMatches(s.id), enabled: false, staleTime: KEEP }).data;
+  const notStarted = !!read && !read.some(decided);
+  // A season still being played has no podium; "Latest" belongs on it alone.
+  const live = !!c && c.podium.length === 0;
   const number = s.name.match(/\d+/)?.[0];
   const place = ["", t("1st"), t("2nd"), t("3rd")];
   return (
@@ -589,7 +691,7 @@ function SeasonCard({ s, latest, onOpen }: { s: RglSeasonItem; latest: boolean; 
       <span className="ts-art">
         <span className="ts-art-img" aria-hidden />
         <span className="ts-art-label">{number ? `S${number}` : "RGL"}</span>
-        {latest && (
+        {latest && live && (
           <span className="ts-chips">
             <span className="ts-chip">{t("Latest")}</span>
           </span>
@@ -598,7 +700,9 @@ function SeasonCard({ s, latest, onOpen }: { s: RglSeasonItem; latest: boolean; 
       <span className="ts-body">
         <span className="ts-title">{s.name}</span>
         <span className="ts-stats">
-          {c && c.teams > 0 && <span className="ts-stat">{tx("{0} teams", { "0": c.teams })}</span>}
+          {c && c.teams > 0 && <span className="ts-stat">{c.division
+                ? c.teams === 1 ? tx("1 team in {0}", { "0": c.division }) : tx("{0} teams in {1}", { "0": c.teams, "1": c.division })
+                : c.teams === 1 ? t("1 team") : tx("{0} teams", { "0": c.teams })}</span>}
           {c && c.maps > 0 && <span className="ts-stat">{tx("{0} maps", { "0": c.maps })}</span>}
         </span>
         <span className="ts-rows">
@@ -612,8 +716,8 @@ function SeasonCard({ s, latest, onOpen }: { s: RglSeasonItem; latest: boolean; 
             </span>
           ) : c.podium.length === 0 ? (
             <span className="ts-row">
-              <span className="ts-row-label">{t("Invite")}</span>
-              <span className="ts-row-value muted">{t("being played")}</span>
+              <span className="ts-row-label">{t("Season")}</span>
+              <span className="ts-row-value muted">{notStarted ? t("not started") : t("being played")}</span>
             </span>
           ) : (
             c.podium.map((tm) => (
@@ -621,7 +725,7 @@ function SeasonCard({ s, latest, onOpen }: { s: RglSeasonItem; latest: boolean; 
                 <span className="ts-row-label">{place[tm.finalRank ?? 0]}</span>
                 <span className="ts-row-value">
                   <MedalGlyph size={16} place={tm.finalRank ?? 1} />
-                  <strong>{tm.name}</strong>
+                  <strong title={tm.name}>{tm.name}</strong>
                 </span>
               </span>
             ))
@@ -654,7 +758,10 @@ function SeasonView({ id, onTeam, more }: { id: number; onTeam: (id: number) => 
               <h2>
                 {s.name} <BookmarkButton b={{ kind: "rgl_season", id: s.id, label: s.name, sub: t("RGL Highlander") }} />
               </h2>
-              <span className="muted">{t("{0} teams", { "0": s.divisions.reduce((n, d) => n + d.teams.length, 0) })}</span>
+              <span className="muted">{(() => {
+                const n = s.divisions.reduce((sum, d) => sum + d.teams.length, 0);
+                return n === 1 ? t("1 team") : t("{0} teams", { "0": n });
+              })()}</span>
             </div>
             {more && (
               <button className="e2-more" onClick={more}>
@@ -691,7 +798,7 @@ function SeasonView({ id, onTeam, more }: { id: number; onTeam: (id: number) => 
                             <span className="rgl-rank">
                               {out ? "" : tm.finalRank !== null && tm.finalRank <= 3 ? <MedalGlyph size={16} place={tm.finalRank} /> : placing(tm.finalRank, tm.seeding)}
                             </span>
-                            <span className="rgl-name">{tm.name}</span>
+                            <span className="rgl-name" title={tm.name}>{tm.name}</span>
                             {tm.tag && <span className="rgl-tag">{tm.tag}</span>}
                             {out && <span className="rgl-out">{t("dropped out")}</span>}
                           </button>
@@ -716,11 +823,25 @@ const weekOf = (m: RglMatch) => (m.matchName ?? "").split(" - ")[0].trim() || t(
 
 type Standing = { id: number; name: string; tag: string | null; played: number; won: number; lost: number; for: number; against: number };
 
-/** Each division's table from its matches: wins, then losses, then rounds. */
+/** A regular-season week ("Week 3 - Vigil"); playoffs are rounds of their own. */
+const isWeek = (m: RglMatch) => /^week\b/i.test((m.matchName ?? "").trim());
+/** A pairing with RGL's placeholder for a team that has the week off. */
+const isBye = (m: RglMatch) => m.teams.some((x) => x.teamName.startsWith("Bye Week"));
+
+/**
+ * Each division's table from its matches: wins, then losses, then rounds.
+ * Only the regular season counts (playoffs would add games to a table they
+ * are not part of), a Bye Week is no game, and a forfeit with no winner named
+ * is a loss for both. RGL ranks by points, which its API does not give, so
+ * the table is by wins and losses and says so.
+ */
 function standings(matches: RglMatch[]): Map<string, Standing[]> {
   const by = new Map<string, Map<number, Standing>>();
+  // A season whose matches carry no week names at all is counted whole.
+  const weeks = matches.some(isWeek);
   for (const m of matches) {
-    if (m.winner === null || m.teams.length < 2) continue;
+    if (m.teams.length < 2 || isBye(m) || (weeks && !isWeek(m))) continue;
+    if (!decided(m)) continue;
     const div = m.divisionName ?? "";
     const rows = by.get(div) ?? new Map<number, Standing>();
     by.set(div, rows);
@@ -730,6 +851,7 @@ function standings(matches: RglMatch[]): Map<string, Standing[]> {
       r.played += 1;
       if (m.winner === tm.teamId) r.won += 1;
       else r.lost += 1;
+      if (m.isForfeit) continue;
       for (const x of m.maps) {
         r.for += (tm.isHome ? x.homeScore : x.awayScore) ?? 0;
         r.against += (tm.isHome ? x.awayScore : x.homeScore) ?? 0;
@@ -758,14 +880,14 @@ function SeasonPlay({ id, onTeam, onMatch }: { id: number; onTeam: (id: number) 
   const tables = useMemo(() => standings(matches), [matches]);
   const weeks = useMemo(() => [...new Set(matches.map(weekOf))], [matches]);
   // Open on the week being played: the first with a match not yet decided.
-  const live = weeks.find((w) => matches.some((m) => weekOf(m) === w && m.winner === null));
+  const live = weeks.find((w) => matches.some((m) => weekOf(m) === w && !decided(m)));
   const current = live ?? weeks[weeks.length - 1];
   const [picked, setPicked] = useState<string | null>(null);
   const week = picked && weeks.includes(picked) ? picked : current;
   const order = (season?.divisions ?? []).map((d) => d.name);
   const divs = [...new Set([...order, ...matches.map((m) => m.divisionName ?? "")])].filter((d) => d && (tables.has(d) || matches.some((m) => m.divisionName === d)));
   if (q.error) return <ApiError error={q.error} />;
-  if (q.isPending) return <Loading>{t("Reading the season's matches from RGL, one by one: about 40 seconds the first time…")}</Loading>;
+  if (q.isPending) return <Reading />;
   if (matches.length === 0) return null;
   const inWeek = matches.filter((m) => weekOf(m) === week);
   return (
@@ -778,7 +900,7 @@ function SeasonPlay({ id, onTeam, onMatch }: { id: number; onTeam: (id: number) 
             <section key={d} className="panel e2-panel">
               <div className="e2-panel-head">
                 <h2>{d}</h2>
-                <span className="muted">{t("from the results")}</span>
+                <span className="muted" title={t("RGL ranks by points, which its API does not give: this table is by wins and losses, from the regular season's results.")}>{t("by W-L")}</span>
               </div>
               <table className="match-table rgl-table">
                 <thead>
@@ -862,6 +984,7 @@ function WeekLine({ m, onTeam, onOpen, countdown }: { m: RglMatch; onTeam: (id: 
       <span className={`${cls}${m.winner === x.teamId ? " won" : ""}`}>
         <button
           className="linkish"
+          title={x.teamName}
           onClick={(e) => {
             e.stopPropagation();
             onTeam(x.teamId);
@@ -874,7 +997,7 @@ function WeekLine({ m, onTeam, onOpen, countdown }: { m: RglMatch; onTeam: (id: 
       <span className={cls}>–</span>
     );
   return (
-    <li className="rgl-wl rgl-open" role="link" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()} title={t("Open the match")}>
+    <li className="rgl-wl rgl-open" role="link" tabIndex={0} onClick={onOpen} onKeyDown={openOnKey(onOpen)} title={t("Open the match")}>
       <span className="muted rgl-wl-day" title={m.matchDate ? fullDate(secs(m.matchDate)) : undefined}>
         {countdown ? clockTime(secs(m.matchDate)) : day(m.matchDate)}
       </span>
@@ -883,12 +1006,7 @@ function WeekLine({ m, onTeam, onOpen, countdown }: { m: RglMatch; onTeam: (id: 
       {side(away, "rgl-wl-side r")}
       <span className="muted rgl-wl-map">
         {m.maps.map((x) => x.mapName).join(", ")}
-        {countdown && !decided(m) && m.matchDate && (
-          <>
-            {" · "}
-            <Countdown time={secs(m.matchDate)} />
-          </>
-        )}
+        {!decided(m) && m.matchDate && <Awaiting time={secs(m.matchDate)} countdown={!!countdown} />}
       </span>
     </li>
   );
@@ -899,7 +1017,6 @@ function WeekLine({ m, onTeam, onOpen, countdown }: { m: RglMatch; onTeam: (id: 
 /** Home's two panels: the next matches and the latest results. */
 function LiveMatches({ onTeam, onMatch, go }: { onTeam: (id: number) => void; onMatch: (id: number) => void; go: (l: Loc) => void }) {
   const live = useLive();
-  if (live.error) return null;
   const all = live.matches;
   const next = (all ?? []).filter((m) => !decided(m)).slice(0, 6);
   const last = (all ?? []).filter(decided).slice(-6).reverse();
@@ -911,8 +1028,15 @@ function LiveMatches({ onTeam, onMatch, go }: { onTeam: (id: number) => void; on
           {t("All matches")} ›
         </button>
       </div>
-      {all === null ? (
-        <Loading>{t("Reading the season's matches from RGL, one by one: about 40 seconds the first time…")}</Loading>
+      {live.error ? (
+        <>
+          <ApiError error={live.error} />
+          <button onClick={live.retry}>{t("Try again")}</button>
+        </>
+      ) : live.none ? (
+        <p className="hint">{t("RGL lists no seasons.")}</p>
+      ) : all === null ? (
+        <Reading />
       ) : rows.length === 0 ? (
         <p className="hint">{empty}</p>
       ) : (
@@ -995,9 +1119,14 @@ function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void; onMatc
         </label>
       </div>
       {live.error ? (
-        <ApiError error={live.error} />
+        <>
+          <ApiError error={live.error} />
+          <button onClick={live.retry}>{t("Try again")}</button>
+        </>
+      ) : live.none ? (
+        <p className="hint">{t("RGL lists no seasons.")}</p>
       ) : live.matches === null ? (
-        <Loading>{t("Reading the season's matches from RGL, one by one: about 40 seconds the first time…")}</Loading>
+        <Reading />
       ) : mode === "week" ? (
         inWeek.length === 0 ? (
           <p className="hint">{t("No matches in this division this week.")}</p>
@@ -1050,7 +1179,7 @@ function MatchPage({ id, onTeam }: { id: number; onTeam: (id: number) => void })
   const side = (x: RglMatch["teams"][number] | undefined, cls: string) =>
     x ? (
       <button className={`rgl-mp-team ${cls}${m.winner === x.teamId ? " won" : ""}`} onClick={() => onTeam(x.teamId)}>
-        <span className="rgl-mp-name">{x.teamName}</span>
+        <span className="rgl-mp-name" title={x.teamName}>{x.teamName}</span>
         {x.teamTag && <span className="rgl-tag">{x.teamTag}</span>}
       </button>
     ) : (
@@ -1070,12 +1199,7 @@ function MatchPage({ id, onTeam }: { id: number; onTeam: (id: number) => void })
         </div>
         <div className="rgl-mp-when muted">
           {at > 0 && fullDate(at)}
-          {!decided(m) && at > 0 && (
-            <>
-              {" · "}
-              <Countdown time={at} />
-            </>
-          )}
+          {!decided(m) && at > 0 && <Awaiting time={at} countdown />}
         </div>
       </div>
       <section className="panel e2-panel">
@@ -1171,7 +1295,7 @@ function BansPage({ onPlayer }: { onPlayer: (s: string) => void }) {
         <p className="hint">{t("The league's bans, newest first, every format's: RGL keeps one list.")}</p>
       </header>
       <section className="panel e2-panel">
-        {q.error ? (
+        {q.isError && bans.length === 0 ? (
           <ApiError error={q.error} />
         ) : q.isPending ? (
           <Loading>{t("Loading the bans…")}</Loading>
@@ -1210,11 +1334,14 @@ function BansPage({ onPlayer }: { onPlayer: (s: string) => void }) {
             </table>
           </div>
         )}
+        {/* A failed "Show more" says so under the table instead of replacing it. */}
+        {q.isError && bans.length > 0 && <ApiError error={q.error} />}
         {q.hasNextPage && (
           <button className="e2-more rgl-bans-more" onClick={() => void q.fetchNextPage()} disabled={q.isFetchingNextPage}>
-            {q.isFetchingNextPage ? t("Loading…") : t("Show more")}
+            {q.isFetchingNextPage ? t("Loading…") : q.isError ? t("Try again") : t("Show more")}
           </button>
         )}
+        {!q.hasNextPage && bans.length > 0 && <p className="hint rgl-bans-end">{t("That is the whole list.")}</p>}
       </section>
     </>
   );
@@ -1297,7 +1424,7 @@ function ResultRow({ m, us, onTeam, onOpen }: { m: RglMatch; us: number; onTeam:
   const theirs = m.maps.reduce((n, x) => n + ((home ? x.awayScore : x.homeScore) ?? 0), 0);
   const cls = m.winner === null ? "num" : m.winner === us ? "num team-won" : "num team-lost";
   return (
-    <tr className="rgl-open" onClick={onOpen} title={t("Open the match")}>
+    <tr className="rgl-open" tabIndex={0} onClick={onOpen} onKeyDown={openOnKey(onOpen)} title={t("Open the match")}>
       <td className="nowrap muted">{day(m.matchDate)}</td>
       <td className="nowrap muted">{m.matchName ?? "–"}</td>
       <td>
@@ -1412,6 +1539,7 @@ function PlayersLanding({ steamid, onPlayer, onTeam }: { steamid: string | null;
           </button>
         )}
       </form>
+      {q.trim().length > 0 && q.trim().length < SEARCH_FROM && !ok && <p className="hint">{t("Type at least {0} letters.", { "0": SEARCH_FROM })}</p>}
       {found.on && (
         <div className="rgl-found">
           <SearchHits found={found} onPlayer={onPlayer} onTeam={onTeam} />
@@ -1441,7 +1569,7 @@ function PlayerView({ steamId, onTeam }: { steamId: string; onTeam: (id: number)
               {p.probation && <span className="badge">{t("On probation")}</span>}
             </div>
             <span className="muted">
-              {t("{0} NA Highlander seasons", { "0": p.seasons.length })} · {wins}-{losses}
+              {p.seasons.length === 1 ? t("1 NA Highlander season") : t("{0} NA Highlander seasons", { "0": p.seasons.length })} · {wins}-{losses}
             </span>
           </div>
           <OnRgl href={`https://rgl.gg/Public/PlayerProfile?p=${p.steamId}`} />

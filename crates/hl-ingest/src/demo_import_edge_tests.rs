@@ -23,9 +23,10 @@ fn the_start_time_of_odd_names_falls_back_to_the_file() {
     // An impossible Demo Support stamp (month 13) likewise.
     assert_eq!(wall_start("x2026-13-17_21-00-24.dem", 10_000, 600), 9_400);
     // A leap day is a day.
-    assert_eq!(wall_start("match-20240229-2359-x.dem", 0, 0), 1_709_251_140);
+    let leap = chrono::NaiveDate::from_ymd_opt(2024, 2, 29).unwrap().and_hms_opt(23, 59, 0).unwrap();
+    assert_eq!(wall_start("match-20240229-2359-x.dem", 0, 0), local_unix(leap));
     // Upper-case prefix, and a name with more dashes than parts it needs.
-    assert_eq!(wall_start("MATCH-20260823-1956-pl_upward-f12.dem", 0, 0), 1_787_514_960);
+    assert_eq!(wall_start("MATCH-20260823-1956-pl_upward-f12.dem", 0, 0), wall_start("match-20260823-1956-x.dem", 0, 0));
     // The file's own time less its length can go before 1970 for a bad mtime: no panic.
     assert_eq!(wall_start("x.dem", 0, 600), -600);
 }

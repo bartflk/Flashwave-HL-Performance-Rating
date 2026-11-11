@@ -217,11 +217,11 @@ mod tests {
         // Log on the real clock: 1000..2000 (offset 0, uploaded 5 s after).
         let l = log(7, Some("pl_upward_f12"), 1000, 2000, 2005);
         // A 1000 s demo starting at 1500 overlaps 500 s: half of the shorter (both 1000 s).
-        assert_eq!(link(&[demo("pl_upward_f12", 1500.0, 1000.0)], &[l.clone()]).len(), 1);
+        assert_eq!(link(&[demo("pl_upward_f12", 1500.0, 1000.0)], std::slice::from_ref(&l)).len(), 1);
         // One second less overlap: no link.
-        assert!(link(&[demo("pl_upward_f12", 1501.0, 1000.0)], &[l.clone()]).is_empty());
+        assert!(link(&[demo("pl_upward_f12", 1501.0, 1000.0)], std::slice::from_ref(&l)).is_empty());
         // Touching but not overlapping.
-        assert!(link(&[demo("pl_upward_f12", 2000.0, 1000.0)], &[l.clone()]).is_empty());
+        assert!(link(&[demo("pl_upward_f12", 2000.0, 1000.0)], std::slice::from_ref(&l)).is_empty());
         assert!(link(&[demo("pl_upward_f12", 0.0, 1000.0)], &[l]).is_empty());
     }
 
@@ -238,7 +238,7 @@ mod tests {
     fn a_log_with_no_map_needs_a_stricter_overlap() {
         let l = log(7, None, 1000, 2000, 2005);
         // 70% of the shorter: enough with a map, not without one.
-        assert!(link(&[demo("anything", 1300.0, 1000.0)], &[l.clone()]).is_empty());
+        assert!(link(&[demo("anything", 1300.0, 1000.0)], std::slice::from_ref(&l)).is_empty());
         let links = link(&[demo("anything", 1200.0, 1000.0)], &[l]);
         assert_eq!(links[0].method, "nomap");
     }
@@ -246,9 +246,9 @@ mod tests {
     #[test]
     fn empty_and_backwards_spans_never_link() {
         let l = log(7, Some("pl_upward_f12"), 1000, 2000, 2005);
-        assert!(link(&[], &[l.clone()]).is_empty());
+        assert!(link(&[], std::slice::from_ref(&l)).is_empty());
         assert!(link(&[demo("pl_upward_f12", 1000.0, 1000.0)], &[]).is_empty());
-        assert!(link(&[demo("pl_upward_f12", 1000.0, 0.0)], &[l.clone()]).is_empty());
+        assert!(link(&[demo("pl_upward_f12", 1000.0, 0.0)], std::slice::from_ref(&l)).is_empty());
         assert!(link(&[demo("pl_upward_f12", 1000.0, -5.0)], &[l]).is_empty());
         // A log whose end is not after its start.
         let flat = log(8, Some("pl_upward_f12"), 1000, 1000, 1005);
@@ -260,7 +260,7 @@ mod tests {
         let demo = demo("pl_upward_f12", 0.0, 3000.0);
         let on_time = log(1, Some("pl_upward_f12"), 100, 1000, 1000 + MAX_UPLOAD_DELAY_S);
         let late = log(2, Some("pl_upward_f12"), 100, 1000, 1000 + MAX_UPLOAD_DELAY_S + 1);
-        assert_eq!(link(&[demo.clone()], &[on_time]).len(), 1);
+        assert_eq!(link(std::slice::from_ref(&demo), &[on_time]).len(), 1);
         assert!(link(&[demo], &[late]).is_empty());
     }
 

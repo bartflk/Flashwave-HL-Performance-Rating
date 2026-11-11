@@ -12,6 +12,8 @@ pub mod sources;
 pub mod sync;
 
 pub use sources::Sources;
+/// Whether the app itself wrote this demo (for the folder watcher).
+pub use hl_demos::scan::is_own_write as app_wrote_demo;
 pub use sync::{import_log, parse_log_id, reprocess, sync, Imported, Progress, SyncOptions, SyncSummary};
 
 pub use detail::{match_detail, view_of, MatchView};

@@ -54,6 +54,9 @@ impl KillState {
 pub fn kill_states(raw: &RawLog, gs: &GameState, tags: &[Option<KillTags>]) -> Vec<Option<(KillState, usize)>> {
     let mut fight = 0usize;
     let mut first = true;
+    // Deaths already taken in the same second, per colour: two kills in one
+    // second must not both see the full numbers (RA-13), as in round impact.
+    let mut same_second: (i64, [i16; 2]) = (i64::MIN, [0, 0]);
     tags.iter()
         .enumerate()
         .map(|(i, t)| {
@@ -65,8 +68,14 @@ pub fn kill_states(raw: &RawLog, gs: &GameState, tags: &[Option<KillTags>]) -> V
             let k = &raw.kills[i];
             let (kt, vt) = (k.killer.team?, k.victim.team?);
             let n = gs.numbers_at(k.at - 1);
-            let alive = |team: Team| i16::from(if team == Team::Red { n[0] } else { n[1] });
+            if same_second.0 != k.at {
+                same_second = (k.at, [0, 0]);
+            }
+            let slot = |team: Team| usize::from(team != Team::Red);
+            let taken = same_second.1;
+            let alive = |team: Team| (i16::from(n[slot(team)]) - taken[slot(team)]).max(0);
             let diff = (alive(kt) - alive(vt)).clamp(-i16::from(MAX_DIFF), i16::from(MAX_DIFF)) as i8;
+            same_second.1[slot(vt)] += 1;
             let adv = match gs.advantage_at(k.at - 1) {
                 Some(t) if t == kt => 1,
                 Some(_) => -1,
@@ -308,6 +317,32 @@ mod tests {
     }
 
     #[test]
+    fn a_double_kill_in_one_second_sees_the_numbers_the_first_left() {
+        // RA-13: one Blue against three Red, two of them killed in the same
+        // second. The second kill finds two Red left, not three.
+        let l = |sec: u32, body: &str| format!("L 10/01/2026 - 20:00:{sec:02}: {body}\n");
+        let kill = |victim: &str| {
+            l(10, &format!("\"a<1><[U:1:1]><Blue>\" killed \"{victim}\" with \"scattergun\" (attacker_position \"0 0 0\") (victim_position \"0 0 0\")"))
+        };
+        let text = [
+            l(0, "World triggered \"Round_Start\""),
+            l(0, "\"a<1><[U:1:1]><Blue>\" spawned as \"Scout\""),
+            l(0, "\"b<2><[U:1:2]><Red>\" spawned as \"Scout\""),
+            l(0, "\"c<3><[U:1:3]><Red>\" spawned as \"Soldier\""),
+            l(0, "\"d<4><[U:1:4]><Red>\" spawned as \"Pyro\""),
+            kill("b<2><[U:1:2]><Red>"),
+            kill("c<3><[U:1:3]><Red>"),
+            l(40, "World triggered \"Round_Win\" (winner \"Blue\")"),
+        ]
+        .concat();
+        let raw = crate::rawlog::parse(&text);
+        let gs = GameState::build(&raw);
+        let tags = analyse(&raw, &gs).tags;
+        let diffs: Vec<i8> = kill_states(&raw, &gs, &tags).into_iter().flatten().map(|(s, _)| s.diff).collect();
+        assert_eq!(diffs, vec![-2, -1], "the second kill is not made from the same numbers as the first");
+    }
+
+    #[test]
     fn a_kill_records_both_sides() {
         let mut t = HashMap::new();
         record(&mut t, KillState { diff: 2, adv: 1 }, true);
@@ -372,7 +407,7 @@ impl Mode {
         let m = map.to_ascii_lowercase();
         if m.starts_with("koth_") {
             Mode::Koth
-        } else if m.starts_with("pl_") || m.starts_with("cp_steel") || m.starts_with("cp_gravelpit") {
+        } else if hl_core::maps::is_attack_defend(&m) {
             Mode::Stopwatch
         } else {
             Mode::Other

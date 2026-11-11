@@ -132,24 +132,25 @@ pub async fn reveal_path(app: tauri::AppHandle, path: String) -> CmdResult<()> {
 ///
 /// The copy itself happens at the next start, with nothing connected: SQLite
 /// holds the file open while the app runs, and Windows will not let an open
-/// file be replaced underneath. Refused unless the database really is empty,
-/// so this can never be the thing that loses a history.
+/// file be replaced underneath.
+///
+/// A database with matches in it is replaced too: this used to refuse unless
+/// the database was empty, which made every Restore button in Settings >
+/// Backups fail for anyone who had a history, and told them to rename files
+/// by hand. What was there is not lost: the swap keeps it beside the new one
+/// as `hl.replaced-<time>.sqlite3` with its write-ahead log, and the Backups
+/// panel lists it.
 #[tauri::command]
 pub async fn restore_backup(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
     path: String,
 ) -> CmdResult<()> {
-    let indexed = state.db.index_stats().await?.indexed;
-    if indexed > 0 {
-        return Err(CmdError::new(
-            "not_empty",
-            format!(
-                "This database already holds {indexed} matches. \
-                 Close the app and rename the copy over `hl.sqlite3` if you mean to replace it."
-            ),
-        ));
-    }
+    // A sync writing to the database as it goes down would leave the kept
+    // copy half-written.
+    let Some(_guard) = crate::sync_commands::BusyGuard::acquire(&state.busy) else {
+        return Err(CmdError::new("busy", "A sync is running; restore when it has finished."));
+    };
     hl_ingest::restore::request(&state.db_path, std::path::Path::new(&path))
         .map_err(|e| CmdError::new("restore_failed", format!("{e:#}")))?;
     tracing::info!(%path, "restore requested; restarting");

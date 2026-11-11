@@ -85,8 +85,18 @@ async function look() {
   // A new demo may have replaced this one while we asked.
   if (seen?.fileName !== at.fileName) return;
   if (found) {
+    // Ask first, then mark it syncing and start in the same breath: the card
+    // clears when the sync is over, so it must not read "syncing" while the
+    // sync store still shows the last one's end.
+    let busy = false;
+    try {
+      busy = await api.syncBusy();
+    } catch (e) {
+      noteError({ what: "starting the sync for the new log", message: String(e) });
+    }
+    if (seen?.fileName !== at.fileName) return;
     set({ ...seen, state: "syncing" });
-    if (!(await api.syncBusy())) void startSync(false);
+    if (!busy) void startSync(false);
     return;
   }
   if (Date.now() - seen.at >= FIRST_LOOK_MS + LOOK_FOR_MS) {

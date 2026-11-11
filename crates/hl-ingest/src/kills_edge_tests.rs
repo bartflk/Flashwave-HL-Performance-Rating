@@ -8,6 +8,7 @@ fn stored(killer: u32, victim: u32, live: bool, custom: Option<&str>, assister: 
         live,
         killer,
         killer_class: Some("scout".into()),
+        killer_team: Some("Red".into()),
         victim,
         victim_team: Some("Blue".into()),
         victim_class: Some("heavyweapons".into()),
