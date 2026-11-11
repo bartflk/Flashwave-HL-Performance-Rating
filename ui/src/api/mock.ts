@@ -1456,6 +1456,9 @@ export const mockApi: Api = {
       id,
       maps: 6,
       teams: id === 198 ? 8 : 10,
+      division: "Invite",
+      over: id !== 198,
+      matches: id === 198 ? 12 : 90,
       podium: id === 198 ? [] : [
         { id: 14908 + id, name: id === 193 ? "The Amiable Duds" : "Witness Gaming", tag: id === 193 ? "AD." : "wG", finalRank: 1, seeding: null, teamStatus: "Ready" },
         { id: 14954 + id, name: id === 193 ? "Witness Gaming" : "The Family", tag: id === 193 ? "wG" : "folk", finalRank: 2, seeding: null, teamStatus: "Ready" },
@@ -1980,6 +1983,8 @@ export const mockApi: Api = {
     (window as unknown as { mockNewDemo: () => void }).mockNewDemo = () => h({ fileName: "flashwav2026-09-28_22-18-30.dem", bytes: 48_000_000 });
     return () => {};
   },
+
+  onDemosIndexed: async () => () => {},
 
   onStv: async (h) => {
     stvHandlers = h;

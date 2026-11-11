@@ -449,8 +449,14 @@ export interface RglPlayerSeason {
 export interface RglSeasonCard {
   id: number;
   maps: number;
-  /** Teams in its best division. */
+  /** Teams in its best division (`division`), not the season's. */
   teams: number;
+  /** The best division's name ("Invite"), which `teams` counts. */
+  division: string | null;
+  /** Every division decided. */
+  over: boolean;
+  /** Matches played or scheduled so far; 0 means it has not started. */
+  matches: number;
   podium: RglTeam[];
 }
 

@@ -90,6 +90,13 @@ pub fn spawn(app: AppHandle, tf: PathBuf) {
                 if known.contains_key(path) {
                     continue;
                 }
+                // A demo the app wrote (downloaded, unpacked, imported) is not
+                // a match just played: known, and not announced, or each one of
+                // a mass import starts two minutes of logs.tf lookups.
+                if hl_ingest::app_wrote_demo(path) {
+                    known.insert(path.clone(), *size);
+                    continue;
+                }
                 match settle(settling.get(path).copied(), *size, needed) {
                     Some(state) => {
                         settling.insert(path.clone(), state);

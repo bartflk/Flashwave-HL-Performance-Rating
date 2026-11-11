@@ -1003,7 +1003,7 @@ function Canvas(props: {
               return;
             }
             const m = nearest(e);
-            if (m?.k.jump) jumpTo(m.k.jump, `${m.kind} at ${roundClock(m.k.t, a.rounds)}`);
+            if (m?.k.jump) jumpTo(m.k.jump, tr("{0} at {1}", { "0": m.kind, "1": roundClock(m.k.t, a.rounds) }));
           }}
           style={{ cursor: dragging ? "grabbing" : onMapClick ? "crosshair" : hover?.k.jump ? "pointer" : zoom.z > 1 ? "grab" : "default" }}
         >
@@ -1119,7 +1119,7 @@ function TimeStrip(props: { a: Analysis; slice: Slice; marks: Mark[]; hover: Mar
         onMouseLeave={() => onHover(null)}
         onClick={(e) => {
           const m = nearest(e);
-          if (m?.k.jump) jumpTo(m.k.jump, `${m.kind} at ${roundClock(m.k.t, a.rounds)}`);
+          if (m?.k.jump) jumpTo(m.k.jump, tr("{0} at {1}", { "0": m.kind, "1": roundClock(m.k.t, a.rounds) }));
         }}
       >
         <line x1={0} x2={w} y1={mid} y2={mid} className="km-axis" />
@@ -1196,7 +1196,7 @@ function MarkTable({ marks: all, a }: { marks: Mark[]; a: Analysis }) {
               <td className="num">{m.k.distance === null ? "—" : Math.round(m.k.distance).toLocaleString()}</td>
               <td>
                 {m.k.jump && (
-                  <button className="linkish" onClick={() => jumpTo(m.k.jump!, `${m.kind} at ${roundClock(m.k.t, a.rounds)}`)}>{tr("copy tick")}</button>
+                  <button className="linkish" onClick={() => jumpTo(m.k.jump!, tr("{0} at {1}", { "0": m.kind, "1": roundClock(m.k.t, a.rounds) }))}>{tr("copy tick")}</button>
                 )}
               </td>
             </tr>

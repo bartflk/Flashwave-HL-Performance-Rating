@@ -4,6 +4,22 @@
 //! `pl_upward_rc7`, `koth_product_final`. For anything a player thinks of as
 //! "my upward games" those are one map, so the version comes off.
 
+/// Whether a map base can be a file name: ASCII letters, digits, `_`, `-` and
+/// `.` (not first, and not `..`), at most 64 long, no path separator, and not
+/// a name Windows keeps for a device. A log's map field is whatever its
+/// uploader typed, and the callouts and overview files are named after it.
+pub fn is_safe_map_base(base: &str) -> bool {
+    let stem = base.split('.').next().unwrap_or("").to_ascii_lowercase();
+    let device = matches!(stem.as_str(), "con" | "prn" | "aux" | "nul")
+        || ((stem.starts_with("com") || stem.starts_with("lpt")) && stem.len() == 4 && stem.as_bytes()[3].is_ascii_digit());
+    !base.is_empty()
+        && base.len() <= 64
+        && !base.starts_with('.')
+        && !base.contains("..")
+        && !device
+        && base.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.'))
+}
+
 /// A map without its prefix or its version: `pl_upward_f12` is `upward`, and
 /// `koth_product_final` is `product`.
 pub fn map_base(map: &str) -> String {
@@ -91,6 +107,16 @@ fn is_version(s: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn only_a_plain_name_is_a_safe_map_base() {
+        for ok in ["product", "pro_viaduct", "upward-x", "a.b", "koth_product_final"] {
+            assert!(is_safe_map_base(ok), "{ok}");
+        }
+        for bad in ["", "../../x", "..", ".hidden", "a/b", "a\\b", "a..b", "C:x", "con", "NUL.txt", "com1", "lpt9", "pl_\u{e9}", &"a".repeat(65)] {
+            assert!(!is_safe_map_base(bad), "{bad}");
+        }
+    }
+
     /// Cases found by auditing the maps actually in the database, September
     /// 2026: 21 of 50 had no overview image, and three of those were this
     /// function's fault rather than a missing picture.

@@ -81,6 +81,51 @@ impl Db {
         Ok(())
     }
 
+    /// A raw log and the kills and chat read from it, in one transaction. The
+    /// raw log is what takes a log out of the raw-log queue, so it must never
+    /// land without its kills: a sync cancelled between two separate writes
+    /// left a log whose kills were never derived and never asked for again
+    /// (audit SY-1). `aligned` is whether the kills could be put on logs.tf's
+    /// clock (see `frame_offset`).
+    pub async fn store_rawlog_with_kills(&self, log_id: i64, zip: &[u8], kills: &[KillRow<'_>], chat: &[ChatRow<'_>], aligned: bool) -> Result<()> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query(
+            "INSERT INTO rawlog (log_id, fetched_at, size_bytes, zip) VALUES (?1, unixepoch(), ?2, ?3)
+             ON CONFLICT (log_id) DO UPDATE SET fetched_at = excluded.fetched_at,
+                size_bytes = excluded.size_bytes, zip = excluded.zip",
+        )
+        .bind(log_id)
+        .bind(zip.len() as i64)
+        .bind(zip)
+        .execute(&mut *tx)
+        .await?;
+        sqlx::query("DELETE FROM rawlog_missing WHERE log_id = ?1").bind(log_id).execute(&mut *tx).await?;
+        write_kill_events(&mut tx, log_id, kills, chat).await?;
+        set_unaligned(&mut tx, log_id, !aligned).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Note whether a log's kills sit on logs.tf's clock, for a log written
+    /// without [`store_rawlog_with_kills`](Self::store_rawlog_with_kills).
+    pub async fn set_rawlog_aligned(&self, log_id: i64, aligned: bool) -> Result<()> {
+        let mut tx = self.pool().begin().await?;
+        set_unaligned(&mut tx, log_id, !aligned).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Whether this log's kills could not be put on logs.tf's clock: their
+    /// times are the server's own, hours off, and must not be joined to a
+    /// demo's clock.
+    pub async fn rawlog_unaligned(&self, log_id: i64) -> Result<bool> {
+        Ok(sqlx::query_scalar::<_, i64>("SELECT 1 FROM rawlog_unaligned WHERE log_id = ?1")
+            .bind(log_id)
+            .fetch_optional(self.pool())
+            .await?
+            .is_some())
+    }
+
     pub async fn mark_rawlog_missing(&self, log_id: i64, reason: &str) -> Result<()> {
         sqlx::query(
             "INSERT INTO rawlog_missing (log_id, checked_at, reason) VALUES (?1, unixepoch(), ?2)
@@ -110,8 +155,11 @@ impl Db {
         Ok(sqlx::query_scalar(&format!(
             "SELECT log_id FROM ({WANTED})
              WHERE log_id NOT IN (SELECT log_id FROM rawlog)
+               -- A zip that would not open is more likely a cut-off download
+               -- than a bad file: asked again within the hour, not the week
+               -- (audit SY-11).
                AND log_id NOT IN (SELECT log_id FROM rawlog_missing
-                                  WHERE checked_at > unixepoch() - 7 * 86400)
+                                  WHERE checked_at > unixepoch() - CASE reason WHEN 'unreadable zip' THEN 3600 ELSE 7 * 86400 END)
              ORDER BY log_id DESC"
         ))
         .fetch_all(self.pool())
@@ -351,6 +399,15 @@ fn stored_kill(r: &sqlx::sqlite::SqliteRow) -> StoredKill {
 }
 
 /// Replace one log's kills and chat inside an open transaction.
+async fn set_unaligned(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>, log_id: i64, unaligned: bool) -> Result<()> {
+    if unaligned {
+        sqlx::query("INSERT OR IGNORE INTO rawlog_unaligned (log_id) VALUES (?1)").bind(log_id).execute(&mut **tx).await?;
+    } else {
+        sqlx::query("DELETE FROM rawlog_unaligned WHERE log_id = ?1").bind(log_id).execute(&mut **tx).await?;
+    }
+    Ok(())
+}
+
 async fn write_kill_events(
     tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
     log_id: i64,

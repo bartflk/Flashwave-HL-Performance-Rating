@@ -7,6 +7,7 @@ import { type StorageStray } from "../../api/types";
 import { formatDate } from "../../lib/format";
 import { t, tx } from "../../lib/i18n";
 import { Spinner } from "../Spinner";
+import { toastError } from "../../lib/toast";
 
 /** Bytes as people read them: 812 MB, 2.3 GB. */
 export function size(bytes: number): string {
@@ -100,6 +101,14 @@ export function BackupsPanel() {
       <p className="hint">{tx("{0} Keep a copy on another drive.", { "0": <strong>{t("Uninstalling can delete these.")}</strong> })}</p>
 
       {q.isPending && <Spinner />}
+      {/* The overview failing must not leave the panel looking empty: the
+          buttons below still work, and the error says why the sizes do not show. */}
+      {q.isError && (
+        <>
+          <ApiError error={q.error} />
+          <button onClick={() => void q.refetch()}>{t("Try again")}</button>
+        </>
+      )}
       {o && (
         <>
           <div className="bk-total">
@@ -115,7 +124,7 @@ export function BackupsPanel() {
               <i className="bk-db" /> {t("Database")} <strong>{size(o.database)}</strong>
             </li>
             <li>
-              <i className="bk-copies" /> {t("{0} copies", { "0": o.backups.length })} <strong>{size(o.backupsBytes)}</strong>
+              <i className="bk-copies" /> {o.backups.length === 1 ? t("1 copy") : t("{0} copies", { "0": o.backups.length })} <strong>{size(o.backupsBytes)}</strong>
             </li>
             {o.strays.length > 0 && (
               <li>
@@ -134,7 +143,7 @@ export function BackupsPanel() {
           {t("Save a whole copy elsewhere…")}
         </button>
         {o && (
-          <button className="linkish" onClick={() => void api.revealPath(o.dir)}>
+          <button className="linkish" onClick={() => void api.revealPath(o.dir).catch(toastError)}>
             {t("Show in Explorer")}
           </button>
         )}
@@ -143,6 +152,11 @@ export function BackupsPanel() {
       {error && <p className="error bk-note">{error}</p>}
 
       {o && o.backups.length === 0 && <p className="hint bk-note">{t("No copies yet. The next sync makes one.")}</p>}
+      {o && o.backups.length > 0 && (
+        <p className="hint bk-note">
+          {t("Restore puts a copy in place of the current database and restarts the app. What is there now is not deleted: it is kept under Left behind.")}
+        </p>
+      )}
       {o && o.backups.length > 0 && (
         <table className="bk-table">
           <thead>
