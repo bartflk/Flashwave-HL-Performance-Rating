@@ -180,9 +180,18 @@ pub(crate) fn parse_comments(page: &str) -> Vec<RecruitComment> {
     for item in list.split("<li ").skip(1) {
         let raw_cite = between(item, "<cite>", "</cite>").unwrap_or("");
         let cite = text(raw_cite);
-        let (author, teams) = match cite.split_once(':') {
-            Some((a, t)) => (a.trim().to_string(), t.trim().to_string()),
-            None => (cite.clone(), String::new()),
+        // "Name: Team, Team". The name is the cite's first link when it has
+        // one, so a name with a colon in it (":pregnant_man:" is a real
+        // team and player name) is not cut at its own colon.
+        let (author, teams) = match raw_cite.find("</a>") {
+            Some(i) if raw_cite.trim_start().starts_with("<a") => {
+                let (name, rest) = raw_cite.split_at(i + "</a>".len());
+                (text(name), text(rest).trim_start_matches(':').trim().to_string())
+            }
+            _ => match cite.split_once(':') {
+                Some((a, t)) => (a.trim().to_string(), t.trim().to_string()),
+                None => (cite.clone(), String::new()),
+            },
         };
         let meta_end = item.find("class=\"postmeta\"").and_then(|i| item[i..].find("</p>").map(|j| i + j + "</p>".len()));
         let body = meta_end.map_or("", |i| &item[i..]);

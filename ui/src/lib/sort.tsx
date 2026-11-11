@@ -54,7 +54,7 @@ export function compare(x: SortValue, y: SortValue): number {
   if (blank(x) && blank(y)) return 0;
   if (blank(x)) return 1;
   if (blank(y)) return -1;
-  if (typeof x === "number" && typeof y === "number") return x - y;
+  if (typeof x === "number" && typeof y === "number") return x === y ? 0 : x < y ? -1 : 1; // not x - y: two infinities give NaN
   return String(x).localeCompare(String(y), undefined, { numeric: true, sensitivity: "base" });
 }
 

@@ -342,8 +342,8 @@ pub fn match_by_time(logs: &[(i64, i64)], matches: &[(i64, i64)]) -> Vec<(i64, i
     for &(log_id, played_at) in logs {
         let best = matches
             .iter()
-            .filter(|(_, t)| played_at >= *t && played_at - *t <= OFFICIAL_WINDOW_S)
-            .min_by_key(|(_, t)| played_at - *t);
+            .filter(|(_, t)| played_at >= *t && played_at.saturating_sub(*t) <= OFFICIAL_WINDOW_S)
+            .min_by_key(|(_, t)| played_at.saturating_sub(*t));
         if let Some((match_id, _)) = best {
             out.push((log_id, *match_id));
         }

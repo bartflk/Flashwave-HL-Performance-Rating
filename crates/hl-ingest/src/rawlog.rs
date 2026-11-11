@@ -477,6 +477,10 @@ fn position(s: &str) -> Option<[i32; 3]> {
 }
 
 #[cfg(test)]
+#[path = "rawlog_edge_tests.rs"]
+mod edge_tests;
+
+#[cfg(test)]
 mod tests {
     #[test]
     fn a_zip_that_unpacks_past_the_cap_is_refused() {
