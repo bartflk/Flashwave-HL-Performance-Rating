@@ -38,6 +38,8 @@ pub struct StoredKill {
     pub live: bool,
     pub killer: u32,
     pub killer_class: Option<String>,
+    /// The killer's colour at that moment, to tell a team kill from a kill.
+    pub killer_team: Option<String>,
     pub victim: u32,
     pub victim_team: Option<String>,
     pub victim_class: Option<String>,
@@ -143,7 +145,7 @@ impl Db {
     /// of them at once.
     pub async fn all_kills(&self) -> Result<HashMap<i64, Vec<StoredKill>>> {
         let rows = sqlx::query(
-            "SELECT log_id, at_raw, live, killer, killer_class, victim, victim_team, victim_class,
+            "SELECT log_id, at_raw, live, killer, killer_class, killer_team, victim, victim_team, victim_class,
                     weapon, custom, assister
              FROM kill_event ORDER BY log_id, seq",
         )
@@ -158,7 +160,7 @@ impl Db {
 
     pub async fn kills_for_log(&self, log_id: i64) -> Result<Vec<StoredKill>> {
         let rows = sqlx::query(
-            "SELECT at_raw, live, killer, killer_class, victim, victim_team, victim_class, weapon, custom, assister
+            "SELECT at_raw, live, killer, killer_class, killer_team, victim, victim_team, victim_class, weapon, custom, assister
              FROM kill_event WHERE log_id = ?1 ORDER BY seq",
         )
         .bind(log_id)
@@ -338,6 +340,7 @@ fn stored_kill(r: &sqlx::sqlite::SqliteRow) -> StoredKill {
         live: r.get::<i64, _>("live") != 0,
         killer: r.get::<i64, _>("killer") as u32,
         killer_class: r.get("killer_class"),
+        killer_team: r.get("killer_team"),
         victim: r.get::<i64, _>("victim") as u32,
         victim_team: r.get("victim_team"),
         victim_class: r.get("victim_class"),

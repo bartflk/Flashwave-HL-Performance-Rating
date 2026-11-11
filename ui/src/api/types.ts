@@ -1149,6 +1149,10 @@ export interface Matchup {
   winner: "left" | "right" | "even" | null;
   decisive: boolean;
   involvesMe: boolean;
+  /** One percentile point of a part as a rating on this class's own scale
+   *  (every class has its own mean and spread); the match's pooled value
+   *  where the server did not send it. */
+  ratingPerPercentile?: number;
 }
 
 export interface PlayerRow {
@@ -2995,6 +2999,9 @@ export interface H2hSide {
   /** Kills on each class, and what a kill of that class is worth. */
   victims: [string, number, number][];
   onOther: number;
+  /** The scale this side's rating was put on: its class's own. */
+  scaleMean?: number | null;
+  scaleSd?: number | null;
 }
 
 /** Each class's DPM and accuracy at fixed percentiles (stat_scale.rs). */

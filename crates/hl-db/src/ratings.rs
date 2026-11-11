@@ -149,6 +149,43 @@ impl Db {
         Ok(())
     }
 
+    /// Store the per-class scales (RA-3) beside the pooled one, in the same
+    /// table under `<version>|<class>|<log>` keys (`log` being `log`, `nolog`
+    /// or `all`), so no schema change is needed. Replaces the version's
+    /// earlier ones: a class that now has too few games must not keep a stale row.
+    pub async fn replace_class_scales(&self, version: &str, rows: &[(String, f64, f64, usize)]) -> Result<()> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("DELETE FROM rating_scale WHERE substr(model_version, 1, length(?1) + 1) = ?1 || '|'")
+            .bind(version)
+            .execute(&mut *tx)
+            .await?;
+        for (key, mean, sd, n) in rows {
+            sqlx::query(
+                "INSERT INTO rating_scale (model_version, mean, sd, n, made_at) VALUES (?1, ?2, ?3, ?4, datetime('now'))",
+            )
+            .bind(format!("{version}|{key}"))
+            .bind(mean)
+            .bind(sd)
+            .bind(*n as i64)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// The per-class scales: `(key, mean, sd)`, the key as stored after `<version>|`.
+    pub async fn class_scales(&self, version: &str) -> Result<Vec<(String, f64, f64)>> {
+        let rows: Vec<(String, f64, f64)> = sqlx::query_as(
+            "SELECT substr(model_version, length(?1) + 2), mean, sd FROM rating_scale
+             WHERE substr(model_version, 1, length(?1) + 1) = ?1 || '|'",
+        )
+        .bind(version)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows)
+    }
+
     /// The stored `(mean, sd)`, or `None` before the first full rating pass.
     /// How many performances the stored scale was measured over.
     pub async fn rating_scale_size(&self, version: &str) -> Result<Option<i64>> {

@@ -39,6 +39,20 @@ pub fn map_base(map: &str) -> String {
     }
 }
 
+/// Control-point maps with an attacking and a defending side. Every payload
+/// map is one too, and is not listed. The one list: the log's `attack_defend`
+/// flag, the situation tables and the weights all read it (RA-9), where they
+/// once each held their own.
+pub const ATTACK_DEFEND_CP: &[&str] =
+    &["cp_steel", "cp_gravelpit", "cp_dustbowl", "cp_egypt", "cp_gorge", "cp_junction", "cp_mountainlab"];
+
+/// Whether a map has an attacking and a defending side: payload, or one of
+/// [`ATTACK_DEFEND_CP`], by the start of its name so versions do not matter.
+pub fn is_attack_defend(map: &str) -> bool {
+    let m = map.to_ascii_lowercase();
+    m.starts_with("pl_") || ATTACK_DEFEND_CP.iter().any(|p| m.starts_with(p))
+}
+
 /// A map as people name it: the gamemode kept, the version gone.
 /// `pl_upward_f12` and `pl_upward_rc7` are both `pl_upward`; versions are
 /// small fixes, not a different map to win or lose on.

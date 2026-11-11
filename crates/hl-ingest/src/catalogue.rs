@@ -183,7 +183,7 @@ impl AwardRules {
     }
     /// Enough officials on the class: EVPs, and the first half of the class award.
     pub fn enough(&self, l: &SeasonLine) -> bool {
-        l.officials.len() >= self.need(l.season, l.tier)
+        l.units() + 1e-9 >= self.need(l.season, l.tier) as f64
     }
     /// Best of the class: enough officials, on one of the division's three
     /// medal teams.
@@ -191,6 +191,23 @@ impl AwardRules {
         self.enough(l) && self.podium.contains(&(l.season, l.tier, l.team))
     }
 }
+/// Minutes in an official at which it counts in full. A shorter appearance
+/// (a substitute's six minutes) counts in proportion, so it cannot weigh as
+/// much as a whole match in a season rating, in the shrinkage or in an
+/// award's eligibility (RA-6).
+pub const FULL_OFFICIAL_MINUTES: f64 = 30.0;
+
+/// How much of a full official `minutes` on the class are.
+pub fn official_share(minutes: f64) -> f64 {
+    (minutes / FULL_OFFICIAL_MINUTES).clamp(0.0, 1.0)
+}
+
+/// Officials counted in full ones, from the minutes played in each (an
+/// official on several classes is its minutes over all of them).
+pub fn official_units(minutes: impl IntoIterator<Item = f64>) -> f64 {
+    minutes.into_iter().map(official_share).sum()
+}
+
 /// The Season MVP's blend: season, Grand Final, the rest of the playoffs.
 /// With no other playoff games, their share goes to the season.
 pub const SEASON_MVP_WEIGHTS: (f64, f64, f64) = (0.50, 0.35, 0.15);
@@ -291,6 +308,12 @@ impl OfficialGame {
     pub fn rating(&self) -> f64 {
         if self.minutes > 0.0 { self.score_minutes / self.minutes } else { 1.0 }
     }
+
+    /// Its weight in a season: the stage's, by how much of a full official
+    /// it was (RA-6).
+    pub fn weight(&self) -> f64 {
+        self.stage * official_share(self.minutes)
+    }
 }
 
 /// An official's when, round, opponent and result: [`Catalogue::official_info`].
@@ -334,7 +357,14 @@ impl SeasonLine {
 
     /// One rated log into its official.
     pub fn add(&mut self, g: &hl_db::RatedGame, stage: f64) {
-        let key = g.etf2l_match_id.unwrap_or(-g.log_id);
+        // An official with no ETF2L match is told apart by its day, not its
+        // log: a three-map official uploaded as three logs is one official,
+        // not three (RA-14). Its number is negative so it cannot be a match's.
+        let key = match g.etf2l_match_id {
+            Some(id) => id,
+            None if g.played_at > 0 => i64::MIN / 2 + g.played_at / 86_400,
+            None => -g.log_id,
+        };
         self.officials.insert(key);
         let e = self.games.entry(key).or_insert_with(|| OfficialGame { stage, ..Default::default() });
         let m = if g.minutes > 0.0 { g.minutes } else { 1.0 };
@@ -362,6 +392,12 @@ impl SeasonLine {
         (self.opponents.1 > 0).then(|| self.opponents.0 / self.opponents.1 as f64)
     }
 
+    /// Their officials in full ones: a short appearance counts for part of
+    /// one. An official with no games recorded counts in full.
+    pub fn units(&self) -> f64 {
+        official_units(self.officials.iter().map(|id| self.games.get(id).map_or(FULL_OFFICIAL_MINUTES, |o| o.minutes)))
+    }
+
     /// The plain average over their officials.
     pub fn average(&self) -> f64 {
         if self.games.is_empty() { 1.0 } else { self.games.values().map(OfficialGame::rating).sum::<f64>() / self.games.len() as f64 }
@@ -369,7 +405,19 @@ impl SeasonLine {
     /// The season rating: one rating per official, weighted by stage and
     /// pulled towards 1.00 by [`SHRINK_OFFICIALS`].
     pub fn rating(&self) -> f64 {
-        let (sw, w) = self.games.values().fold((0.0, 0.0), |(sw, w), o| (sw + o.stage * o.rating(), w + o.stage));
+        let (sw, w) = self.games.values().fold((0.0, 0.0), |(sw, w), o| (sw + o.weight() * o.rating(), w + o.weight()));
+        (sw + SHRINK_OFFICIALS) / (w + SHRINK_OFFICIALS)
+    }
+
+    /// The same over the regular season alone: no playoff and no final. The
+    /// Season MVP's season term, since its blend already counts the final and
+    /// the playoffs apart (RA-8).
+    pub fn regular_rating(&self) -> f64 {
+        let (sw, w) = self
+            .games
+            .values()
+            .filter(|o| (o.stage - 1.0).abs() < 1e-9)
+            .fold((0.0, 0.0), |(sw, w), o| (sw + o.weight() * o.rating(), w + o.weight()));
         (sw + SHRINK_OFFICIALS) / (w + SHRINK_OFFICIALS)
     }
 }
@@ -1169,20 +1217,28 @@ impl Catalogue {
             }
         }
         // Each player's officials in the season, on any class.
-        let mut per_player: HashMap<(i64, i64, u32), std::collections::HashSet<i64>> = HashMap::new();
+        // Minutes in each, over every class they played it on, to count them
+        // in full officials (RA-6).
+        let mut per_player: HashMap<(i64, i64, u32), HashMap<i64, f64>> = HashMap::new();
         for l in lines.values() {
-            per_player.entry((l.season, l.tier, l.account_id)).or_default().extend(l.officials.iter().copied());
+            let e = per_player.entry((l.season, l.tier, l.account_id)).or_default();
+            for id in &l.officials {
+                *e.entry(*id).or_default() += l.games.get(id).map_or(FULL_OFFICIAL_MINUTES, |o| o.minutes);
+            }
             if rules.playoff_teams.contains(&(l.season, l.team)) {
                 rules.has_playoffs.insert((l.season, l.tier));
             }
         }
-        let mut most: HashMap<(i64, i64), usize> = HashMap::new();
+        let mut most: HashMap<(i64, i64), f64> = HashMap::new();
         for ((season, tier, _), o) in per_player {
             let e = most.entry((season, tier)).or_default();
-            *e = (*e).max(o.len());
+            *e = e.max(official_units(o.values().copied()));
         }
         for (key, n) in most {
-            rules.need.insert(key, AWARD_MIN_OFFICIALS.max((n as f64 * AWARD_SHARE_OF_SEASON).ceil() as usize));
+            // Rounded to a hundredth first: 10 officials of 30 minutes are
+            // 10 units however the floats add up, and 60% of it is 6.
+            let n = (n * 100.0).round() / 100.0;
+            rules.need.insert(key, AWARD_MIN_OFFICIALS.max((n * AWARD_SHARE_OF_SEASON - 1e-9).ceil() as usize));
         }
         rules
     }
@@ -1277,13 +1333,15 @@ impl Catalogue {
                 let Some((class, _)) = by_class.iter().max_by(|x, y| x.1.total_cmp(y.1)) else { continue };
                 let Some(line) = lines.get(&(season, tier, class.to_string(), a)) else { continue };
                 let Some(final_game) = line.games.get(&f.match_id) else { continue };
-                // Officials in the season, on any class.
-                let officials: std::collections::HashSet<i64> = lines
-                    .iter()
-                    .filter(|((s, t, _, acc), _)| *s == season && *t == tier && *acc == a)
-                    .flat_map(|(_, l)| l.officials.iter().copied())
-                    .collect();
-                if officials.len() < rules.need(season, tier) {
+                // Officials in the season, on any class, and the minutes in each.
+                let mut official_minutes: HashMap<i64, f64> = HashMap::new();
+                for (_, l) in lines.iter().filter(|((s, t, _, acc), _)| *s == season && *t == tier && *acc == a) {
+                    for id in &l.officials {
+                        *official_minutes.entry(*id).or_default() += l.games.get(id).map_or(FULL_OFFICIAL_MINUTES, |o| o.minutes);
+                    }
+                }
+                let officials: std::collections::HashSet<i64> = official_minutes.keys().copied().collect();
+                if official_units(official_minutes.values().copied()) + 1e-9 < rules.need(season, tier) as f64 {
                     continue;
                 }
                 // The rest of the playoffs: each official once, by its maps.
@@ -1291,7 +1349,11 @@ impl Catalogue {
                 let maps_of = |o: &OfficialGame| o.maps.len().max(1) as f64;
                 let final_maps = maps_of(final_game);
                 let playoff_maps: f64 = playoff.iter().map(|o| maps_of(o)).sum();
-                let s_rating = line.rating();
+                // The season term is the regular season: the final and the
+                // playoffs are the blend's other two terms, and a game in both
+                // would count twice, once at its stage weight and once here
+                // (RA-8). The season rating shown stays the table's.
+                let s_rating = line.regular_rating();
                 let f_rating = shrunk(final_game.rating() * final_maps, final_maps);
                 let p_rating = (!playoff.is_empty()).then(|| shrunk(playoff.iter().map(|o| o.rating() * maps_of(o)).sum(), playoff_maps));
                 let (ws, wf, wp) = SEASON_MVP_WEIGHTS;
@@ -1311,7 +1373,7 @@ impl Catalogue {
                     event: true,
                     kind: "season".into(),
                     score,
-                    season_rating: s_rating,
+                    season_rating: line.rating(),
                     officials: officials.len(),
                     season_maps: line.maps(),
                     final_rating: Some(final_game.rating()),
@@ -3120,7 +3182,7 @@ mod tests {
             official: true,
             etf2l_match_id: Some(match_id),
             listed: true,
-            minutes: 15.0,
+            minutes: 30.0,
             map: None,
             ..Default::default()
         };
@@ -3621,5 +3683,69 @@ mod tests {
         ms.push((5, 32, "Playoffs", Some("Grand Final"), 2));
         let c = tiered(ms);
         assert_eq!(c.divisions()[&(1, 32)].0, 1, "a Mid finalist counts as High");
+    }
+
+    fn rated(log_id: i64, match_id: Option<i64>, score: f64, minutes: f64, played_at: i64) -> hl_db::RatedGame {
+        hl_db::RatedGame { account_id: 1, log_id, played_at, class: "sniper".into(), score, official: true, etf2l_match_id: match_id, listed: true, minutes, ..Default::default() }
+    }
+
+    #[test]
+    fn a_short_appearance_counts_for_part_of_an_official() {
+        // RA-6: six minutes as a substitute at 2.00, beside a full official at 1.00.
+        let mut l = SeasonLine::default();
+        l.add(&rated(10, Some(1), 1.0, 30.0, 0), 1.0);
+        l.add(&rated(11, Some(2), 2.0, 6.0, 0), 1.0);
+        assert!((l.units() - 1.2).abs() < 1e-9, "{}", l.units());
+        let want = (1.0 + 2.0 * 0.2 + SHRINK_OFFICIALS) / (1.2 + SHRINK_OFFICIALS);
+        assert!((l.rating() - want).abs() < 1e-9, "{} vs {want}", l.rating());
+        // Five short appearances are not five officials for an award.
+        let mut subs = SeasonLine::default();
+        for i in 0..5 {
+            subs.add(&rated(20 + i, Some(100 + i), 1.0, 6.0, 0), 1.0);
+        }
+        assert_eq!(subs.officials.len(), 5);
+        assert!((subs.units() - 1.0).abs() < 1e-9);
+        let rules = AwardRules { need: [((1, 1), 4)].into_iter().collect(), ..Default::default() };
+        subs.season = 1;
+        subs.tier = 1;
+        assert!(!rules.enough(&subs), "one official's worth of minutes");
+    }
+
+    #[test]
+    fn the_season_term_of_the_mvp_leaves_the_final_out() {
+        // RA-8: a final at 2.00 already weighs double inside the season
+        // rating; the MVP's season term is the regular season alone, because
+        // the blend counts the final and the playoffs as terms of their own.
+        let mut l = SeasonLine::default();
+        for i in 0..4 {
+            l.add(&rated(10 + i, Some(i), 1.0, 30.0, 0), 1.0);
+        }
+        l.add(&rated(50, Some(50), 2.0, 30.0, 0), FINAL_WEIGHT);
+        assert!((l.regular_rating() - 1.0).abs() < 1e-9, "{}", l.regular_rating());
+        assert!(l.rating() > 1.1, "the table's rating still counts the final, doubled");
+    }
+
+    #[test]
+    fn logs_of_an_official_with_no_match_id_are_one_official_a_day() {
+        // RA-14: three maps of one unlinked official, uploaded as three logs.
+        let day = 1_700_000_000;
+        let mut l = SeasonLine::default();
+        for (i, at) in [day, day + 1800, day + 3600].into_iter().enumerate() {
+            l.add(&rated(300 + i as i64, None, 1.0, 10.0, at), 1.0);
+        }
+        assert_eq!(l.officials.len(), 1);
+        assert_eq!(l.games.len(), 1);
+        assert_eq!(l.logs(), 3);
+        // The next week's is another.
+        l.add(&rated(400, None, 1.0, 10.0, day + 7 * 86_400), 1.0);
+        assert_eq!(l.officials.len(), 2);
+    }
+
+    #[test]
+    fn an_opponent_adjustment_moves_a_rating_part_of_the_way() {
+        // The adjustment is OPPONENT_SLOPE times how far the opponent was from average.
+        let s = 1.25;
+        let adjusted = 1.0 + OPPONENT_SLOPE * (s - 1.0);
+        assert!(adjusted > 1.0 && adjusted < s, "{adjusted}");
     }
 }

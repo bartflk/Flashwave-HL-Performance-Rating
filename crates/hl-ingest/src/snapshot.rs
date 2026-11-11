@@ -84,9 +84,11 @@ fn league_tables(keep_ours: bool) -> Vec<TableCopy<'static>> {
 /// The pool's baselines and scale for the current model.
 fn scale_tables() -> Vec<TableCopy<'static>> {
     let filter = Some(format!("model_version = '{MODEL_VERSION}'"));
+    // The per-class scales are rows of the same table, keyed `<version>|...`.
+    let scales = Some(format!("model_version = '{MODEL_VERSION}' OR model_version LIKE '{MODEL_VERSION}|%'"));
     vec![
-        TableCopy { table: "baseline", filter: filter.clone(), keep_ours: false },
-        TableCopy { table: "rating_scale", filter, keep_ours: false },
+        TableCopy { table: "baseline", filter, keep_ours: false },
+        TableCopy { table: "rating_scale", filter: scales, keep_ours: false },
     ]
 }
 
@@ -129,7 +131,7 @@ pub async fn export(source: &Db, source_path: &Path, w: &Weights, out: &Path) ->
         let rows: Vec<(i64, u32, &str, f64, f64, String)> = perfs
             .iter()
             .filter_map(|p| {
-                let r = hl_rating::model::rate(p, &baseline, w)?.scaled(&scale);
+                let r = hl_rating::model::rate(p, &baseline, w)?.scaled_for(&scale);
                 Some((log_id, p.account_id, p.class.as_str(), r.score, r.minutes, hl_rating::guide::group_scores_json(&r.parts)))
             })
             .collect();

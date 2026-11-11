@@ -252,6 +252,7 @@ pub fn stored_kills(log: &RawLog) -> Vec<hl_db::StoredKill> {
             live: k.live,
             killer: k.killer.account,
             killer_class: k.killer.class.map(|c| c.as_str().to_string()),
+            killer_team: k.killer.team.map(|t| t.as_str().to_string()),
             victim: k.victim.account,
             victim_team: k.victim.team.map(|t| t.as_str().to_string()),
             victim_class: k.victim.class.map(|c| c.as_str().to_string()),
@@ -292,13 +293,37 @@ pub fn impacts_for(
     if kills.is_empty() {
         return HashMap::new();
     }
+    // Some raw logs write a kill line twice, and a team kill is not a kill:
+    // the fights pass drops both, so the kills valued here must too, or the
+    // impact kills and assists of such a log double while round impact does not
+    // (RA-4). A repeat is the same second, pair and weapon.
+    let mut seen = std::collections::HashSet::new();
     impacts(
         kills.iter().enumerate().map(|(seq, k)| {
             let s = situations.and_then(|m| m.get(&(seq as i64)).copied());
-            (ctx(k, s), map_at(windows, k.at_raw).or(log_map))
+            let mut c = ctx(k, s);
+            if !is_real_kill(k, &mut seen) {
+                c.counts = false;
+                c.assist_counts = false;
+            }
+            (c, map_at(windows, k.at_raw).or(log_map))
         }),
         w,
     )
+}
+
+/// False for a repeat of a kill line already seen, a kill of oneself and a
+/// kill of a teammate: the same rules as `fights::analyse_on`. Only a kill
+/// that counts is remembered, so a feign death does not hide the real kill
+/// written after it.
+pub fn is_real_kill(k: &StoredKill, seen: &mut std::collections::HashSet<(i64, u32, u32, String)>) -> bool {
+    if !(k.live && k.custom.as_deref() != Some("feign_death")) {
+        return true;
+    }
+    if k.killer == k.victim || (k.killer_team.is_some() && k.killer_team == k.victim_team) {
+        return false;
+    }
+    seen.insert((k.at_raw, k.killer, k.victim, k.weapon.clone()))
 }
 
 /// Add each player's fight counts (from `Db::fight_counts`) to their impact,
@@ -420,4 +445,41 @@ pub fn enrich(log: &NormalizedLog, kills: &[StoredKill], me: Option<SteamId>, de
 
 fn now_s() -> i64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn kill(at: i64, killer: u32, killer_team: &str, victim: u32, victim_team: &str) -> StoredKill {
+        StoredKill {
+            at_raw: at,
+            live: true,
+            killer,
+            killer_class: Some("scout".into()),
+            killer_team: Some(killer_team.into()),
+            victim,
+            victim_team: Some(victim_team.into()),
+            victim_class: Some("soldier".into()),
+            weapon: "scattergun".into(),
+            custom: None,
+            assister: Some(9),
+        }
+    }
+
+    #[test]
+    fn a_repeated_kill_line_and_a_team_kill_are_not_kills() {
+        // RA-4: some raw logs write a line twice; the fights pass drops the
+        // repeat and the team kill, and the impact kills and assists must too.
+        let w = Weights::default_weights();
+        let once = vec![kill(100, 1, "Red", 2, "Blue")];
+        let noisy = vec![kill(100, 1, "Red", 2, "Blue"), kill(100, 1, "Red", 2, "Blue"), kill(130, 1, "Red", 3, "Red"), kill(140, 1, "Red", 1, "Red")];
+        let a = impacts_for(&once, None, &[], Some("koth_product_final"), &w);
+        let b = impacts_for(&noisy, None, &[], Some("koth_product_final"), &w);
+        assert_eq!(a[&1].kills, b[&1].kills);
+        assert_eq!(a[&9].assists, b[&9].assists);
+        // A second kill of the same player in another second is a kill.
+        let two = vec![kill(100, 1, "Red", 2, "Blue"), kill(101, 1, "Red", 2, "Blue")];
+        assert_eq!(impacts_for(&two, None, &[], None, &w)[&1].kills, 2.0 * a[&1].kills);
+    }
 }
