@@ -342,6 +342,12 @@ impl Db {
     /// one account, or everyone's. A game in both is counted once, from the
     /// owner's matches.
     pub async fn rated_games(&self, version: &str, account: Option<u32>) -> Result<Vec<RatedGame>> {
+        self.rated_games_of(version, account.map(|a| vec![a]).as_deref()).await
+    }
+
+    /// [`rated_games`](Self::rated_games) for several accounts in one query:
+    /// a team page asked once per player before (LG-8).
+    pub async fn rated_games_of(&self, version: &str, accounts: Option<&[u32]>) -> Result<Vec<RatedGame>> {
         let rows = sqlx::query(&format!(
             "SELECT r.account_id, r.log_id, COALESCE(m.played_at, 0) AS played_at, r.class, r.score,
                     r.parts AS parts, NULL AS groups,
@@ -370,16 +376,16 @@ impl Db {
                     EXISTS (SELECT 1 FROM league_log l WHERE l.log_id = r.log_id) AS listed,
                     r.minutes AS minutes, m.map AS map
              FROM rating r JOIN match m ON m.log_id = r.log_id
-             WHERE r.model_version = ?1 AND (?2 IS NULL OR r.account_id = ?2)
+             WHERE r.model_version = ?1 AND (?2 IS NULL OR r.account_id IN (SELECT value FROM json_each(?2)))
              UNION ALL
              SELECT r.account_id, r.log_id, l.played_at, r.class, r.score, NULL, r.groups, 1, l.etf2l_match_id, 1, r.minutes, l.map
              FROM league_rating r JOIN league_log l ON l.log_id = r.log_id
-             WHERE r.model_version = ?1 AND (?2 IS NULL OR r.account_id = ?2)
+             WHERE r.model_version = ?1 AND (?2 IS NULL OR r.account_id IN (SELECT value FROM json_each(?2)))
                AND r.log_id NOT IN ({covered})",
             covered = crate::OWNER_COVERED
         ))
         .bind(version)
-        .bind(account.map(i64::from))
+        .bind(accounts.map(serde_json::to_string).transpose()?)
         .fetch_all(self.pool())
         .await?;
         Ok(rows

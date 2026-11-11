@@ -233,7 +233,8 @@ ours   = [1, 1, 1, 1, 1, 1, 1, 0.75, 0.5]
 #
 # Settled with 6x the data:
 # - Damage per minute: hurts or is unclear once the rest is known, for all
-#   nine (SchmitShot's proposal). Not in any model.
+#   nine (SchmitShot's proposal). Not in any model -- until v12 brought it
+#   back, small, in every model but the Medic's (see below).
 # - One model serves every division: a model fitted on one division alone
 #   never beat the pooled one by more than noise, Premiership included.
 # - The respawn-wave cost of a cap (Q25) now earns a place in every class it
@@ -431,17 +432,24 @@ round_impact       = 0.85
 # healing say (a Medic who lives builds them), and the newest games pick
 # better without them; drops are the game's own verdict on a Medic and stay
 # by the same judgement as above (Flashy: "an integral part of the game").
+# v14 (audit RA-2): a Medic's round impact is mostly the round-win chance his
+# own deaths gave away -- he has few kills to add any -- so it is dying under
+# another name, and with it the model was about three-quarters "who died less".
+# Round impact is now 0.4 of 1.4, under a third (not half, as for the other
+# eight), and deaths and untraded deaths shrink with it, the weight going to
+# healing and assists. Dying, round impact and drops together are exactly half; the test
+# `no_model_is_mostly_about_dying` counts a Medic's round impact as dying.
+# JUDGEMENT, not a refit: it has to be fitted again on the next league pool.
 [model.medic]
-impact_assists = 0.14
-heal           = 0.22
+impact_assists = 0.2
+heal           = 0.35
 drops          = 0.1
-# Half the model, the other half being the rest below too.
-round_impact   = 1.0
+round_impact   = 0.4
 # Q17: captures weighed by enemies alive. See [model.scout].
-caps_contested  = 0.14
-deaths          = 0.25
-deaths_attack_defend = 0.25
-untraded_deaths = 0.15
+caps_contested  = 0.15
+deaths          = 0.1
+deaths_attack_defend = 0.1
+untraded_deaths = 0.1
 
 # Cross-validated 72.9%, against 71.0% for the old hand-written model -- and
 # 72.3% on `generic`, which the old Spy model *lost to*. That is the finding:

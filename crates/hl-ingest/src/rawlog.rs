@@ -223,12 +223,19 @@ pub struct Chat {
     pub message: String,
 }
 
+/// The most a raw log may unzip to.
+const RAW_LOG_MAX: u64 = if cfg!(test) { 4 << 20 } else { 200 << 20 };
+
 /// The single `.log` inside a logs.tf raw-log zip.
 pub fn unzip(bytes: &[u8]) -> Result<String> {
     let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).context("raw log is not a zip")?;
-    let mut file = archive.by_index(0).context("raw log zip is empty")?;
-    let mut buf = Vec::with_capacity(file.size() as usize);
-    file.read_to_end(&mut buf).context("reading raw log from zip")?;
+    let file = archive.by_index(0).context("raw log zip is empty")?;
+    // The size in the header is the zip's own word, and a hostile one can say
+    // anything: no allocation from it, and no more read than a log can be (the
+    // biggest real ones are about 30 MB of text).
+    let mut buf = Vec::new();
+    file.take(RAW_LOG_MAX + 1).read_to_end(&mut buf).context("reading raw log from zip")?;
+    anyhow::ensure!(buf.len() as u64 <= RAW_LOG_MAX, "the raw log is larger than {} MB", RAW_LOG_MAX >> 20);
     // Player names are arbitrary bytes; a stray invalid one must not lose the log.
     Ok(String::from_utf8_lossy(&buf).into_owned())
 }
@@ -471,6 +478,23 @@ fn position(s: &str) -> Option<[i32; 3]> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_zip_that_unpacks_past_the_cap_is_refused() {
+        use std::io::Write;
+        let mut buf = std::io::Cursor::new(Vec::new());
+        {
+            let mut z = zip::ZipWriter::new(&mut buf);
+            z.start_file("log.log", zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated)).unwrap();
+            let line = vec![b'a'; 1 << 20];
+            for _ in 0..=(RAW_LOG_MAX >> 20) {
+                z.write_all(&line).unwrap();
+            }
+            z.finish().unwrap();
+        }
+        let err = unzip(&buf.into_inner()).unwrap_err();
+        assert!(format!("{err:#}").contains("larger than"), "{err:#}");
+    }
+
     use super::*;
 
     const LINES: &str = r#"L 09/15/2026 - 19:45:07: "flashy<6><[U:1:139131191]><Red>" changed role to "sniper"

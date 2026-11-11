@@ -82,7 +82,7 @@ export function Matchups({ d }: { d: MatchDetail }) {
           left={left}
           right={right}
           maxGap={maxGap}
-          perPct={d.ratingPerPercentile}
+          perPct={m.ratingPerPercentile ?? d.ratingPerPercentile}
           open={open === m.class}
           onToggle={() => setOpen(open === m.class ? null : m.class)}
           divisions={divisions}

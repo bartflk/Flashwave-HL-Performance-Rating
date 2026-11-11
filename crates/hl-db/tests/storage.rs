@@ -330,6 +330,10 @@ async fn storing_a_log_ends_its_failures_and_a_stored_log_is_not_queued() {
     assert_eq!(db.raw_log(1).await.unwrap().as_deref(), Some("{\"a\":2}"));
     assert_eq!(db.raw_log_ids().await.unwrap(), vec![1]);
     assert!(db.failed_logs().await.unwrap().is_empty());
+    // Stored but never written as a match (a cancelled sync): fetched again (SY-1).
+    assert_eq!(db.fetch_queue(3).await.unwrap(), vec![1]);
+    sqlx::query("UPDATE log_index SET format = 'highlander' WHERE log_id = 1").execute(db.pool()).await.unwrap();
+    db.write_match(&log(1, vec![], 0)).await.unwrap();
     assert!(db.fetch_queue(3).await.unwrap().is_empty());
 }
 

@@ -9,7 +9,7 @@ import { beginDownload, failDownload, useDownload } from "../../lib/downloads";
 import { beforeDemosTf } from "../../lib/stv";
 import { locale, t, tx } from "../../lib/i18n";
 import { Spinner } from "../Spinner";
-import { capitalize, splitMap } from "../../lib/format";
+import { capitalize, matchLabel, splitMap } from "../../lib/format";
 import { StvPartsNotice } from "./StvParts";
 
 /**
@@ -42,7 +42,7 @@ export function DemoPanel({ d }: { d: MatchDetail }) {
 
   async function fetchStv() {
     setError(null);
-    beginDownload(d.logId, `${d.map ?? "this match"}, log ${d.logId}`);
+    beginDownload(d.logId, matchLabel(d.map, d.logId));
     try {
       await api.fetchStv(d.logId);
     } catch (e) {
@@ -482,7 +482,7 @@ function DemoRow({ demo }: { demo: DemoView }) {
         // sends someone into TF2 to be told so by the console.
         <span className="hint" title={t("Deleted to save space. Everything read from it is still here.")}>{t("deleted · download again below")}</span>
       ) : (
-        <button className="primary" onClick={() => void copy(cmd, "playdemo command")} title={cmd}>{t("Copy playdemo")}</button>
+        <button className="primary" onClick={() => void copy(cmd, t("playdemo command"))} title={cmd}>{t("Copy playdemo")}</button>
       )}
     </div>
   );

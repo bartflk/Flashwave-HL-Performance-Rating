@@ -16,7 +16,13 @@ export function useColumns(id: string, cols: PickerCol[]) {
   const [picked, setPicked] = useState<Record<string, boolean>>(() => {
     try {
       const s = localStorage.getItem(storeKey);
-      if (s) return JSON.parse(s) as Record<string, boolean>;
+      if (s) {
+        const saved = JSON.parse(s) as Record<string, boolean>;
+        // Sentries destroyed once shared the key "sentries" with Sentries
+        // built, so a tick on one was a tick on both: keep that choice.
+        if (id === "matches" && "sentries" in saved && !("sentry_kills" in saved)) saved.sentry_kills = saved.sentries;
+        return saved;
+      }
     } catch {
       // Blocked or broken storage: the defaults.
     }

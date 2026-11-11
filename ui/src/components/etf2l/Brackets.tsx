@@ -4,6 +4,7 @@ import { api } from "../../api/client";
 import type { Fixture, ResultRow } from "../../api/types";
 import { formatDate } from "../../lib/format";
 import { t, tx } from "../../lib/i18n";
+import { openOnKey } from "../../lib/rows";
 import { DivisionBadge } from "../players/PlayerProfile";
 import { MedalGlyph } from "../players/MedalGlyph";
 import { useMeasuredWidth } from "../../lib/measure";
@@ -459,7 +460,7 @@ function MatchCard({ m, mine, final, onTeam, onOpen }: { m: ResultRow; mine: Set
         role="link"
         tabIndex={0}
         onClick={onOpen}
-        onKeyDown={(e) => e.key === "Enter" && onOpen()}
+        onKeyDown={openOnKey(onOpen)}
         title={m.time > 0 ? `${t("Open the match")} · ${fullDate(m.time)}` : t("Open the match")}
       >
         {side(m.clan1, m.r1)}

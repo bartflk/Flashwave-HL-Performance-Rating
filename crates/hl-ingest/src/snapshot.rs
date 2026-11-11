@@ -84,9 +84,11 @@ fn league_tables(keep_ours: bool) -> Vec<TableCopy<'static>> {
 /// The pool's baselines and scale for the current model.
 fn scale_tables() -> Vec<TableCopy<'static>> {
     let filter = Some(format!("model_version = '{MODEL_VERSION}'"));
+    // The per-class scales are rows of the same table, keyed `<version>|...`.
+    let scales = Some(format!("model_version = '{MODEL_VERSION}' OR model_version LIKE '{MODEL_VERSION}|%'"));
     vec![
-        TableCopy { table: "baseline", filter: filter.clone(), keep_ours: false },
-        TableCopy { table: "rating_scale", filter, keep_ours: false },
+        TableCopy { table: "baseline", filter, keep_ours: false },
+        TableCopy { table: "rating_scale", filter: scales, keep_ours: false },
     ]
 }
 
@@ -129,7 +131,7 @@ pub async fn export(source: &Db, source_path: &Path, w: &Weights, out: &Path) ->
         let rows: Vec<(i64, u32, &str, f64, f64, String)> = perfs
             .iter()
             .filter_map(|p| {
-                let r = hl_rating::model::rate(p, &baseline, w)?.scaled(&scale);
+                let r = hl_rating::model::rate(p, &baseline, w)?.scaled_for(&scale);
                 Some((log_id, p.account_id, p.class.as_str(), r.score, r.minutes, hl_rating::guide::group_scores_json(&r.parts)))
             })
             .collect();
@@ -231,24 +233,32 @@ async fn apply(db: &Db, path: &Path, meta: &Meta) -> Result<Applied> {
     let local_pool = db.rating_scale_size(MODEL_VERSION).await?.unwrap_or(0);
     let take_scale = local_pool < meta.pool;
     let mut tables = league_tables(true);
-    // Officials this install had listed but not downloaded are the
-    // snapshot's now, so the download leaves them be.
-    let mut after = vec!["UPDATE main.league_log SET json_source = 'snapshot', raw_state = 'snapshot'
-           WHERE json_source IS NULL AND log_id IN (SELECT log_id FROM src.league_log WHERE json_source = 'snapshot')"
-        .to_string()];
+    let mut before = Vec::new();
     if take_scale {
-        // Replaced whole, not merged: a scale is one measurement. The copy
-        // replaces every row the snapshot has; the rest of this model's
-        // baselines go in the same transaction, so a copy that fails
-        // leaves the install's own baselines instead of none.
+        // Replaced whole, not merged: a scale is one measurement. Cleared in
+        // the copy's own transaction, so a failed copy leaves the old ones.
+        before.push(format!("DELETE FROM main.baseline WHERE model_version = '{MODEL_VERSION}'"));
         tables.extend(scale_tables());
-        after.push(format!(
-            "DELETE FROM main.baseline WHERE model_version = '{MODEL_VERSION}' AND NOT EXISTS (
-                 SELECT 1 FROM src.baseline s WHERE s.model_version = main.baseline.model_version
-                   AND s.class = main.baseline.class AND s.component = main.baseline.component AND s.map = main.baseline.map)"
-        ));
     }
-    db.copy_in(path, &tables, &after).await?;
+    db.copy_in_with(
+        path,
+        &before,
+        &tables,
+        &[
+            // Officials this install had listed but not downloaded are the
+            // snapshot's now, so the download leaves them be.
+            "UPDATE main.league_log SET json_source = 'snapshot', raw_state = 'snapshot'
+             WHERE json_source IS NULL AND log_id IN (SELECT log_id FROM src.league_log WHERE json_source = 'snapshot')"
+                .into(),
+            // A match held here as scheduled takes the result the snapshot
+            // has: rows already here win, but not over no result at all.
+            "UPDATE main.etf2l_season_match SET r1 = s.r1, r2 = s.r2, default_win = s.default_win, time = s.time, maps = s.maps, detail_fetched = s.detail_fetched
+             FROM src.etf2l_season_match AS s
+             WHERE main.etf2l_season_match.match_id = s.match_id AND main.etf2l_season_match.r1 IS NULL AND s.r1 IS NOT NULL"
+                .into(),
+        ],
+    )
+    .await?;
     db.set_setting(KEY_AT, &meta.made_at.to_string()).await?;
     db.set_setting(KEY_VERSION, &meta.model).await?;
     if take_scale {

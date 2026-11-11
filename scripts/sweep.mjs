@@ -18,7 +18,7 @@
 // The cap is 30 GB, or HL_TARGET_CAP_GB. A file another program holds
 // (a running dev app) is skipped, never waited on.
 
-import { readdirSync, lstatSync, rmSync, existsSync } from "node:fs";
+import { readdirSync, lstatSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -60,6 +60,17 @@ function remove(p) {
 const fmt = (b) => (b < GB ? `${Math.round(b / 1024 ** 2)} MB` : `${(b / GB).toFixed(1)} GB`);
 
 if (!existsSync(target)) process.exit(0);
+// A CARGO_TARGET_DIR pointing somewhere else (a shared folder, a drive root)
+// would have been emptied from the inside. Only a folder cargo made itself
+// (it writes CACHEDIR.TAG) that sits beside this workspace's Cargo.toml is
+// swept; the main checkout's target, shared with its worktrees, qualifies.
+const owner = join(dirname(target), "Cargo.toml");
+const looksOurs =
+  existsSync(join(target, "CACHEDIR.TAG")) && existsSync(owner) && readFileSync(owner, "utf8").includes("crates/hl-core");
+if (!looksOurs) {
+  console.log(`target: ${target} is not a cargo build folder of this project (no CACHEDIR.TAG, or no workspace beside it); not touching it`);
+  process.exit(0);
+}
 let total = size(target);
 console.log(`target: ${fmt(total)} (cap ${capGb} GB)`);
 if (process.argv.includes("--report") || total <= capGb * GB) process.exit(0);
