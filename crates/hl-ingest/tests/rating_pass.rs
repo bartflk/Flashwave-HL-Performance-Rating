@@ -74,7 +74,7 @@ async fn what_a_pass_stores_is_finite_unique_and_centred_on_one() {
     let mean = rows.iter().map(|r| r.3).sum::<f64>() / rows.len() as f64;
     assert!((mean - 1.0).abs() < 0.05, "the pool is its own average: {mean}");
     let scale = hl_ingest::rating::load_scale(&db).await.unwrap().expect("a scale is stored");
-    assert!(scale.sd > 0.0 && scale.mean.is_finite());
+    assert!(scale.pooled.sd > 0.0 && scale.pooled.mean.is_finite());
 }
 
 #[tokio::test]

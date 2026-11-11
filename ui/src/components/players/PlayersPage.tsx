@@ -151,7 +151,7 @@ function Results({
             )}
           </span>
           <span className="ph-meta muted">
-            {h.officials > 0 ? tx("{0} official{1}", { "0": h.officials, "1": h.officials === 1 ? "" : "s" }) : t("your matches")}
+            {h.officials > 0 ? (h.officials === 1 ? t("1 official") : tx("{0} officials", { "0": h.officials })) : t("your matches")}
             {h.lastSeen !== null && t(" · last {0}", { "0": formatDate(h.lastSeen, true) })}
           </span>
         </button>

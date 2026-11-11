@@ -76,6 +76,21 @@ export function setPeriod(p: Period) {
   listeners.forEach((l) => l());
 }
 
+/**
+ * A picked season keeps the key it was picked by, and its dates follow the
+ * seasons as they are now: the live season's end moves with every official,
+ * and a stored copy would stop the list at the old end. Called whenever the
+ * season list loads; a season no longer in the list keeps what it had.
+ */
+export function refreshSeason(list: ReadonlyArray<{ key: string; name: string; from: number; to: number }>) {
+  if (current.kind !== "season") return;
+  const key = current.key;
+  const s = list.find((x) => x.key === key);
+  if (s && (s.from !== current.from || s.to !== current.to || s.name !== current.name)) {
+    setPeriod({ kind: "season", key: s.key, name: s.name, from: s.from, to: s.to });
+  }
+}
+
 /** The period shared by the match list and the profile. */
 export function usePeriod(): Period {
   return useSyncExternalStore(

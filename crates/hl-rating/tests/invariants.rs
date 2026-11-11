@@ -234,7 +234,9 @@ fn a_rating_is_the_weighted_average_of_its_parts_and_the_weights_add_to_one() {
     // hundredth off per part.
     assert!((total - 1.0).abs() <= 0.005 * r.parts.len() as f64, "weights add to {total}");
     let sum: f64 = r.parts.iter().map(|p| p.percentile * p.weight).sum();
-    assert!((sum - r.score).abs() < 0.1, "{sum} vs {}", r.score);
+    // The score is worked from unrounded percentiles and weights (RA-7), only
+    // what is shown is rounded: the working agrees to within that rounding.
+    assert!((sum - r.score).abs() < 1.0, "{sum} vs {}", r.score);
     assert!(r.parts.iter().all(|p| (0.0..=100.0).contains(&p.percentile)));
 }
 

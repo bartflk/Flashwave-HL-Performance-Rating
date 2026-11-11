@@ -208,4 +208,18 @@ mod tests {
         assert_eq!((t[2].kind, t[2].brackets[0].as_str(), t[2].winners[0].team.id), ("nations", "Playoffs", 10));
         assert_eq!(kind_of("Highlander Season 25 Preseason Cup"), "preseason");
     }
+
+    #[test]
+    fn preseason_cups_of_one_season_are_tournaments_of_their_own() {
+        // Not "Highlander Season 36 (Autumn 2026)" for all of them (LG-7).
+        let rows = vec![
+            row(1, 10, "Highlander Season 36 (Autumn 2026): Preseason Cup #1: Low", Some("Low"), "Round 1", (1, 2), (2, 1)),
+            row(2, 20, "Highlander Season 36 (Autumn 2026): Preseason Cup #2: Low", Some("Low"), "Round 1", (3, 4), (2, 0)),
+        ];
+        let mut t: Vec<Tournament> = group(rows).into_iter().map(|(n, r)| summarise(n, &r)).collect();
+        t.sort_by(|a, b| a.name.cmp(&b.name));
+        assert_eq!(t.iter().map(|x| x.name.as_str()).collect::<Vec<_>>(), ["Highlander Season 36 (Autumn 2026): Preseason Cup #1", "Highlander Season 36 (Autumn 2026): Preseason Cup #2"]);
+        assert!(t.iter().all(|x| x.kind == "preseason"));
+        assert_eq!(parse_tournament("Highlander Spring 2023 Preseason Cup: Low Playoffs"), ("Highlander Spring 2023 Preseason Cup".to_string(), "Low".to_string()));
+    }
 }

@@ -251,7 +251,7 @@ export function SeasonNews({ season, onPost }: { season: number; onPost: (id: nu
     <section className="e2-block">
       <div className="e2-block-head">
         <h2 className="ts-section">{t("News of this season")}</h2>
-        <span className="muted">{t("{0} posts on ETF2L", { "0": items.length })}</span>
+        <span className="muted">{items.length === 1 ? t("1 post on ETF2L") : t("{0} posts on ETF2L", { "0": items.length })}</span>
       </div>
       <ol className="np-season">
         {items.map((n) => (

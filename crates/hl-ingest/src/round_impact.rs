@@ -12,7 +12,8 @@
 //!
 //! This is not the rating's fight swing (`kills.rs`): that values a kill by
 //! winning the *fight*, counts kills only, and is one part of the rating.
-//! Impact is shown beside the rating and never feeds it.
+//! Impact is shown beside the rating, and since v12 it also feeds it: round
+//! impact is half of every class's model (the Medic's, less).
 //!
 //! Measured on 6,157 officials (21 October 2026): a season's impact agrees
 //! with itself between odd and even officials better than the rating does
@@ -22,6 +23,7 @@
 use crate::rawlog::RawLog;
 use crate::state::{GameState, Round};
 use hl_core::matchdata::Team;
+use hl_core::TfClass;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -109,6 +111,9 @@ struct Moment {
     enemy: usize,
     /// 0 the killer's side had the uber advantage, 1 nobody, 2 the victim's.
     adv: usize,
+    /// The same after the kill. It differs only when the victim was a Medic:
+    /// his charge dies with him, so the advantage he held is gone (RA-5).
+    adv_after: usize,
     winner: Option<Team>,
 }
 
@@ -138,12 +143,16 @@ fn moments(raw: &RawLog, gs: &GameState, counted: &dyn Fn(usize) -> bool) -> Vec
         if enemy == 0 {
             continue;
         }
-        let adv = match gs.advantage_at(k.at - 1) {
+        let side = |a: Option<Team>| match a {
             Some(t) if t == kt => 0,
             Some(_) => 2,
             None => 1,
         };
-        out.push(Moment { at: k.at, killer: k.killer.account, victim: k.victim.account, assister: k.assister, killer_team: kt, own, enemy, adv, winner: round.winner });
+        let adv = side(gs.advantage_at(k.at - 1));
+        // Killing the Medic who held the advantage takes it away, and the kill
+        // is valued into the state it leaves, not the one it found.
+        let adv_after = if k.victim.class == Some(TfClass::Medic) { side(gs.advantage_at(k.at)) } else { adv };
+        out.push(Moment { at: k.at, killer: k.killer.account, victim: k.victim.account, assister: k.assister, killer_team: kt, own, enemy, adv, adv_after, winner: round.winner });
     }
     out
 }
@@ -197,7 +206,7 @@ pub fn impacts(raw: &RawLog, gs: &GameState, counted: &dyn Fn(usize) -> bool, at
     let mut times: HashMap<u32, Vec<i64>> = HashMap::new();
     for m in &ms {
         let before = table.p(m.adv, m.own, m.enemy);
-        let after = table.p(m.adv, m.own, m.enemy - 1);
+        let after = table.p(m.adv_after, m.own, m.enemy - 1);
         let gain = after - before;
         let share = if m.assister.is_some() { 1.0 - ASSIST_SHARE } else { 1.0 };
         let attacking = m.killer_team == Team::Blue;
@@ -355,6 +364,35 @@ mod tests {
         assert!((k.impact + v.impact).abs() < 1e-9, "zero-sum without an assist");
         // BLU killed RED on an attack/defend map: an attack kill, a defence death.
         assert_eq!((k.kills_attack, v.deaths_defence), (1, 1));
+    }
+
+    /// Red's Medic holds a ready charge, Blue's is still building; a Blue Scout
+    /// kills him. Same numbers, with and without the charge.
+    fn medic_pick(charged: bool) -> PlayerImpact {
+        let ready = if charged { "L 10/01/2026 - 20:00:09: \"m<4><[U:1:4]><Red>\" triggered \"chargeready\"\n" } else { "" };
+        let text = format!(
+            "L 10/01/2026 - 20:00:00: World triggered \"Round_Start\"\n\
+             L 10/01/2026 - 20:00:00: \"a<1><[U:1:1]><Blue>\" spawned as \"Scout\"\n\
+             L 10/01/2026 - 20:00:00: \"b<2><[U:1:2]><Blue>\" spawned as \"Medic\"\n\
+             L 10/01/2026 - 20:00:00: \"c<3><[U:1:3]><Red>\" spawned as \"Soldier\"\n\
+             L 10/01/2026 - 20:00:00: \"m<4><[U:1:4]><Red>\" spawned as \"Medic\"\n\
+             {ready}\
+             L 10/01/2026 - 20:00:10: \"a<1><[U:1:1]><Blue>\" killed \"m<4><[U:1:4]><Red>\" with \"scattergun\" (attacker_position \"0 0 0\") (victim_position \"0 0 0\")\n\
+             L 10/01/2026 - 20:01:00: World triggered \"Round_Win\" (winner \"Blue\")\n"
+        );
+        let raw = crate::rawlog::parse(&text);
+        let gs = GameState::build(&raw);
+        impacts(&raw, &gs, &|_| true, false, WinTable::shipped())[&1]
+    }
+
+    #[test]
+    fn killing_the_medic_who_held_the_advantage_takes_it_away() {
+        // RA-5: valued by the state before the kill, the pick into a
+        // disadvantage was worth no more than any other; it is worth the
+        // state it leaves.
+        let with = medic_pick(true);
+        let without = medic_pick(false);
+        assert!(with.impact > without.impact, "{} vs {}", with.impact, without.impact);
     }
 
     const SAMPLE: &str = r#"L 10/01/2026 - 20:00:00: World triggered "Round_Start"

@@ -129,7 +129,7 @@ function Round(props: {
           <button
             className="round-num jumpable"
             title={tr("Copy demo_gototick {tick} (round start)", { tick: r.jump.tick })}
-            onClick={() => jumpTo(r.jump!, `round ${r.roundNum} start`, demoName)}
+            onClick={() => jumpTo(r.jump!, tr("round {0} start", { "0": r.roundNum }), demoName)}
           >
             R{r.roundNum}
           </button>
@@ -276,11 +276,11 @@ function Marker(props: {
     ? {
         role: "button" as const,
         tabIndex: 0,
-        onClick: () => jumpTo(jump, `${e.kind.replace("_", " ")} at ${at}`, demoName),
+        onClick: () => jumpTo(jump, tr("{0} at {1}", { "0": e.kind.replace("_", " "), "1": at }), demoName),
         onKeyDown: (k: React.KeyboardEvent) => {
           if (k.key === "Enter" || k.key === " ") {
             k.preventDefault();
-            jumpTo(jump, `${e.kind.replace("_", " ")} at ${at}`, demoName);
+            jumpTo(jump, tr("{0} at {1}", { "0": e.kind.replace("_", " "), "1": at }), demoName);
           }
         },
       }
@@ -382,7 +382,7 @@ function StatRow(props: { label: string; a: number | null; b: number | null; lef
 
 function jumpTo(j: Jump, what: string, demoName: (j: Jump) => string | undefined) {
   const name = demoName(j);
-  void copy(`demo_gototick ${j.tick}`, name ? `${what} (in ${name})` : what);
+  void copy(`demo_gototick ${j.tick}`, name ? tr("{0} (in {1})", { "0": what, "1": name }) : what);
 }
 
 function Legend({ jumps, mine }: { jumps: boolean; mine: boolean }) {

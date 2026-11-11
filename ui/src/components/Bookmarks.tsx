@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import type { Bookmark, BookmarkKind } from "../api/types";
 import { openPlayer, openRgl, openSeason, openTeam } from "../lib/goto";
 import { t, k } from "../lib/i18n";
+import { toastError } from "../lib/toast";
 
 /**
  * Bookmarks (Q60, Clark): a star on match, player, team and season pages,
@@ -29,6 +30,8 @@ export function BookmarkButton({ b }: { b: Bookmark }) {
     setBusy(true);
     try {
       qc.setQueryData(KEY, await api.setBookmark(b, !on));
+    } catch (err) {
+      toastError(err);
     } finally {
       setBusy(false);
     }
@@ -91,7 +94,11 @@ export function BookmarksMenu({ onOpenMatch }: { onOpenMatch: (logId: number) =>
   }
 
   async function remove(b: Bookmark) {
-    qc.setQueryData(KEY, await api.setBookmark(b, false));
+    try {
+      qc.setQueryData(KEY, await api.setBookmark(b, false));
+    } catch (err) {
+      toastError(err);
+    }
   }
 
   return (

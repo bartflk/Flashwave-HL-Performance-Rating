@@ -4,7 +4,7 @@
 //! every matchup reads "us vs them". Otherwise Red is on the left.
 
 use crate::impact::Impact;
-use crate::model::{extract, rate, Baseline, Rating, Scale, MODEL_VERSION};
+use crate::model::{extract, rate, Baseline, Rating, Scales, MODEL_VERSION};
 use crate::weights::Weights;
 use hl_core::matchdata::{EventLine, LogFlags, NormalizedLog, PlayerLine, Team};
 use hl_core::{SteamId, TfClass};
@@ -130,6 +130,9 @@ pub struct Matchup {
     /// One of the few largest gaps of the match.
     pub decisive: bool,
     pub involves_me: bool,
+    /// What one percentile point of a part is worth as a rating on this
+    /// class's own scale (RA-3), for the matchup's breakdown.
+    pub rating_per_percentile: f64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -260,7 +263,7 @@ pub struct EventRow {
 pub struct Rater<'a> {
     pub w: &'a Weights,
     pub baseline: &'a Baseline,
-    pub scale: &'a Scale,
+    pub scale: &'a Scales,
     /// The map the pools are for, or `None` for every map together.
     pub map: Option<&'a str>,
     /// Each player's kills valued from the raw log, when there is one.
@@ -271,7 +274,7 @@ impl Rater<'_> {
     /// One player's rating on their main class, on the 1.00 scale.
     fn of(&self, p: &PlayerLine, flags: &LogFlags) -> Option<Rating> {
         let perf = extract(p, flags, self.w, self.impacts.get(&p.id.account_id()), self.map)?;
-        Some(rate(&perf, self.baseline, self.w)?.scaled(self.scale))
+        Some(rate(&perf, self.baseline, self.w)?.scaled_for(self.scale))
     }
 }
 
@@ -282,7 +285,7 @@ pub fn build(
     me: Option<SteamId>,
     w: &Weights,
     baseline: &Baseline,
-    scale: &Scale,
+    scale: &Scales,
     impacts: &HashMap<u32, Impact>,
 ) -> MatchDetail {
     // The pool this log is measured against: its own map, when it has one.
@@ -328,7 +331,7 @@ pub fn build(
         players: players(log, me, &rater),
         rounds: rounds(log, &names, me),
         model_version: MODEL_VERSION,
-        rating_per_percentile: scale.per_percentile(),
+        rating_per_percentile: scale.pooled.per_percentile(),
         rated: !baseline.is_empty(),
         format: None,
         league: None,
@@ -372,8 +375,10 @@ fn matchups(
                     p.id == m && p.classes.iter().any(|c| c.class == class && c.time_s >= MIN_MATCHUP_TIME_S)
                 })
             });
+            let with_log = [&l, &r].into_iter().flatten().filter_map(|s| s.rating.as_ref()).any(Rating::has_round_impact);
             Matchup {
                 class,
+                rating_per_percentile: rater.scale.for_game(class, with_log).per_percentile(),
                 head_to_head: head_to_head(log, left, class),
                 left: l,
                 right: r,

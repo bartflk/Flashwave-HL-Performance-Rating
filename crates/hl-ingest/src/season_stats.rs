@@ -53,6 +53,10 @@ pub struct Totals {
     pub first_picks: i64,
     pub trade_kills: i64,
     pub traded_deaths: i64,
+    /// Deaths on the maps that have a server log: what `traded_deaths` is a
+    /// share of (RA-12), since `deaths` counts the maps without one too.
+    #[serde(skip)]
+    pub raw_deaths: i64,
     pub cleanup_kills: i64,
     pub forces: i64,
     pub fights_present: i64,
@@ -116,6 +120,7 @@ impl Totals {
             self.first_picks += o(s.first_picks);
             self.trade_kills += o(s.trade_kills);
             self.traded_deaths += o(s.traded_deaths);
+            self.raw_deaths += s.deaths;
             self.cleanup_kills += o(s.cleanup_kills);
             self.forces += o(s.forces);
             self.fights_present += o(s.fights_present);
@@ -493,7 +498,7 @@ const OPEN: Def = d("opening_kills_per30", false, true, |t| t.per30_raw(t.openin
 const FIRST: Def = d("first_picks_per30", false, true, |t| t.per30_raw(t.first_picks as f64));
 const OPEN_WIN: Def = d("opening_success", false, true, |t| ratio(t.opening_kills, t.opening_kills + t.opening_deaths));
 const TRADE: Def = d("trade_kills_per30", false, true, |t| t.per30_raw(t.trade_kills as f64));
-const TRADED: Def = d("traded_death_share", false, true, |t| ratio(t.traded_deaths, t.deaths));
+const TRADED: Def = d("traded_death_share", false, true, |t| ratio(t.traded_deaths, t.raw_deaths));
 const CLEANUP: Def = d("cleanup_kills_per30", false, true, |t| t.per30_raw(t.cleanup_kills as f64));
 const DOWN: Def = d("down_kills_per30", false, true, |t| t.per30_raw(t.down_kills as f64));
 const MULTI: Def = d("multi_kills_per30", false, true, |t| t.per30_raw((t.multi2 + t.multi3) as f64));
@@ -559,6 +564,17 @@ fn percentile(pop: &[f64], x: f64, lower_better: bool) -> f64 {
     if lower_better { 100.0 - p } else { p }
 }
 
+/// Where a season's average rating stands among everyone's season averages on
+/// the class. With too few of them to place it, the single-game spread is the
+/// fallback (the old reading, which puts a season average too high).
+fn rating_percentile(pop: &[f64], avg: f64) -> f64 {
+    if pop.len() >= 10 {
+        percentile(pop, avg, false)
+    } else {
+        (50.0 + (avg - 1.0) / 0.25 * 34.0).clamp(0.0, 100.0)
+    }
+}
+
 fn verdict(p: f64) -> &'static str {
     if p >= 70.0 {
         "good"
@@ -611,6 +627,25 @@ pub async fn player_deep(db: &Db, account: u32, officials_only: bool, mut progre
         opposite.iter().filter_map(|((log_id, _), opp)| Some((*log_id, u32::try_from(*opp).ok()?, *when.get(log_id)?))).collect();
     let opp = crate::catalogue::opponent_divisions(db, &pairs).await?;
     let weapons = db.log_weapons(account).await?;
+    // Everyone's season average per class, for placing the player's own
+    // rating (RA-15): a season's average spreads far less than a single game.
+    let mut season_avgs: HashMap<String, Vec<f64>> = HashMap::new();
+    if !rated.is_empty() {
+        let mut sums: HashMap<(u32, String), (f64, usize)> = HashMap::new();
+        for g in db.rated_games(hl_rating::MODEL_VERSION, None).await?.into_iter().filter(|g| in_scope(g.log_id)) {
+            let e = sums.entry((g.account_id, g.class)).or_default();
+            e.0 += g.score;
+            e.1 += 1;
+        }
+        for ((_, class), (sum, n)) in sums {
+            if n >= MIN_POPULATION_MAPS {
+                season_avgs.entry(class).or_default().push(sum / n as f64);
+            }
+        }
+        for v in season_avgs.values_mut() {
+            v.sort_by(|a, b| a.total_cmp(b));
+        }
+    }
 
     let too_few: Vec<(String, usize)> = all_by_class
         .iter()
@@ -666,7 +701,7 @@ pub async fn player_deep(db: &Db, account: u32, officials_only: bool, mut progre
                 key: "rating".into(),
                 value: avg,
                 average: 1.0,
-                percentile: (50.0 + (avg - 1.0) / 0.25 * 34.0).clamp(0.0, 100.0),
+                percentile: rating_percentile(season_avgs.get(&class).map_or(&[][..], |v| v.as_slice()), avg),
                 verdict: if avg >= 1.10 { "good" } else if avg <= 0.90 { "poor" } else { "okay" }.into(),
                 lower_better: false,
             });
@@ -760,6 +795,31 @@ mod tests {
         assert_eq!(verdict(75.0), "good");
         assert_eq!(verdict(50.0), "okay");
         assert_eq!(verdict(10.0), "poor");
+    }
+
+    #[test]
+    fn a_season_rating_is_placed_among_season_averages() {
+        // RA-15: players' season averages sit about 0.11 apart, so 1.15 is
+        // near the top of them, not the 70th percentile a single game's
+        // spread (0.25 a deviation) would give it.
+        let pop: Vec<f64> = (0..40).map(|i| 0.85 + f64::from(i) * 0.005).collect();
+        let near_top = rating_percentile(&pop, 1.04);
+        assert!(near_top > 90.0, "{near_top}");
+        assert!((rating_percentile(&pop, 0.95) - 50.0).abs() < 10.0);
+        // Too few to place it among: the old reading.
+        assert!((rating_percentile(&pop[..3], 1.0) - 50.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn traded_death_share_is_over_the_deaths_of_the_same_maps() {
+        // RA-12: one map with a server log (4 deaths, 2 traded) and one
+        // without (6 deaths). The share is 2 of 4, not 2 of 10.
+        let with_log = LogStat { time_s: 1200, deaths: 4, impact: Some(1.0), traded_deaths: Some(2), ..Default::default() };
+        let without = LogStat { time_s: 1200, deaths: 6, ..Default::default() };
+        let mut t = Totals::default();
+        t.add(&with_log);
+        t.add(&without);
+        assert_eq!((TRADED.f)(&t), Some(0.5));
     }
 
     #[test]
@@ -952,8 +1012,11 @@ pub async fn season_breakdown(db: &Db, w: &hl_rating::Weights, season: i64, tier
         })
         .collect();
     officials.sort_by_key(|o| o.time.unwrap_or(0));
-    let sum_weighted: f64 = officials.iter().map(|o| o.stage_weight * o.adjusted).sum();
-    let sum_weights: f64 = officials.iter().map(|o| o.stage_weight).sum();
+    // As `SeasonLine::rating`: by stage, and by how much of a full official
+    // the minutes were (RA-6).
+    let weight_of = |o: &OfficialRow| o.stage_weight * crate::catalogue::official_share(o.minutes);
+    let sum_weighted: f64 = officials.iter().map(|o| weight_of(o) * o.adjusted).sum();
+    let sum_weights: f64 = officials.iter().map(weight_of).sum();
 
     // The parts, from each log rated again as the rating pass rates it.
     let baseline = crate::rating::load_baseline(db).await?;

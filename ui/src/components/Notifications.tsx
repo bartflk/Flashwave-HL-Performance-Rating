@@ -7,7 +7,7 @@ import { dismissEtf2lCheck, useEtf2lCheck } from "../lib/etf2lcheck";
 import { dismissStorage, gb, useStorageNotice } from "../lib/storagewatch";
 import { openSettingsSection } from "../lib/goto";
 import { formatDate } from "../lib/format";
-import { dismissUpdate, installUpdate, restartNow, useUpdate } from "../lib/update";
+import { checkForUpdate, dismissUpdate, installUpdate, restartNow, useUpdate } from "../lib/update";
 import { t, tx } from "../lib/i18n";
 import { Spinner } from "./Spinner";
 import type { SyncReport } from "../api/types";
@@ -154,9 +154,13 @@ function UpdateCard() {
           {u.state === "ready" && t("Update ready")}
           {u.state === "failed" && t("Update failed")}
         </span>
-        <button className="dl-close" onClick={() => dismissUpdate()} title={t("Dismiss")}>
-          ×
-        </button>
+        {/* Not while it downloads: the card would hide, and the next
+            progress event would bring it straight back. */}
+        {u.state !== "downloading" && (
+          <button className="dl-close" onClick={() => dismissUpdate()} title={t("Dismiss")}>
+            ×
+          </button>
+        )}
       </div>
 
       {u.state === "available" && (
@@ -189,7 +193,12 @@ function UpdateCard() {
         </>
       )}
 
-      {u.state === "failed" && <p className="dl-sub dl-error">{u.message}</p>}
+      {u.state === "failed" && (
+        <>
+          <p className="dl-sub dl-error">{u.message}</p>
+          <button className="dl-go" onClick={() => void checkForUpdate(true)}>{t("Try again")}</button>
+        </>
+      )}
     </div>
   );
 }
@@ -202,7 +211,8 @@ function DemoSeenCard() {
   const d = useDemoSeen();
   const sync = useSyncStatus();
   // Its log is fetched: the sync card beside it says the rest.
-  const fetched = d?.state === "syncing" && (sync.state === "done" || sync.state === "error");
+  // A cancelled sync, or one dismissed, ends it as well: it would spin for good.
+  const fetched = d?.state === "syncing" && sync.state !== "running";
   useEffect(() => {
     if (fetched) dismissDemoSeen();
   }, [fetched]);
@@ -275,7 +285,6 @@ function SyncCard() {
   const done = sync.state === "done";
   const failed = sync.state === "error";
   const cancelled = sync.state === "cancelled";
-  const rebuilding = sync.state === "running" && sync.progress?.kind === "reprocessing";
   const fraction = sync.state === "running" ? fractionOf(sync.progress) : null;
   const phase = sync.state === "running" ? phaseOf(sync.progress) : null;
 
@@ -289,7 +298,7 @@ function SyncCard() {
             (sync.progress?.kind === "reprocessing" ? t("Rebuilding") : t("Syncing"))}
           {done && (sync.result.kind === "reprocess" ? t("Rebuilt") : t("Sync finished"))}
           {failed && t("Sync failed")}
-          {cancelled && t("Sync cancelled")}
+          {cancelled && (sync.rebuild ? t("Rebuild cancelled") : t("Sync cancelled"))}
         </span>
         {/* A running sync has no close button: stopping it is not something
             this card can do, and a card that hides itself would only make
@@ -312,12 +321,11 @@ function SyncCard() {
           )}
           <p className="dl-label">{labelOf(sync.progress)}</p>
           {matchOf(sync.progress) && <p className="dl-sub dl-match">{matchOf(sync.progress)}</p>}
-          {/* A rebuild rewrites every table and has to finish; a sync can stop. */}
-          {!rebuilding && (
-            <button className="dl-cancel" onClick={() => void cancelSync()}>
-              {t("Cancel")}
-            </button>
-          )}
+          {/* A rebuild stops like a sync: what it has rewritten stays, and
+              the backup taken before it is there if that matters. */}
+          <button className="dl-cancel" onClick={() => void cancelSync()}>
+            {t("Cancel")}
+          </button>
           <div className="dl-bar" aria-hidden>
             <span
               className={fraction === null ? "dl-fill dl-unknown" : "dl-fill"}
@@ -328,7 +336,13 @@ function SyncCard() {
         </>
       )}
 
-      {cancelled && <p className="dl-sub">{t("Stopped. The matches downloaded so far are kept; the next sync carries on from there.")}</p>}
+      {cancelled && (
+        <p className="dl-sub">
+          {sync.rebuild
+            ? t("Stopped. Matches rebuilt so far are kept; rebuild again to finish the rest.")
+            : t("Stopped. The matches downloaded so far are kept; the next sync carries on from there.")}
+        </p>
+      )}
 
       {done && (
         <p className="dl-sub">
@@ -371,9 +385,13 @@ function DownloadCard({ d, onOpenMatch }: { d: Download; onOpenMatch: (logId: nu
           {d.state === "done" && t("Demo ready")}
           {d.state === "failed" && t("Download failed")}
         </span>
-        <button className="dl-close" onClick={() => dismissDownload(d.logId)} title={t("Dismiss")}>
-          ×
-        </button>
+        {/* Not while it runs: the card would go, and the next progress
+            event would bring it back as a bare "log 12345". */}
+        {d.state !== "running" && (
+          <button className="dl-close" onClick={() => dismissDownload(d.logId)} title={t("Dismiss")}>
+            ×
+          </button>
+        )}
       </div>
       <p className="dl-label">{t(d.label)}</p>
 
