@@ -297,9 +297,10 @@ mod tests {
         good.close().await;
         // Now break it the way it broke: a header that is not a database.
         std::fs::write(&db_path, b"SQLite format 3  and then nonsense").unwrap();
-        std::fs::write(dir.join("hl.sqlite3-wal"), b"a journal for a file that is gone").unwrap();
-
         assert!(hl_db::Db::connect(&db_path).await.is_err(), "the broken file must not open");
+        // The journal is written after the failed open, which may itself
+        // clear away a journal it finds beside a broken file.
+        std::fs::write(dir.join("hl.sqlite3-wal"), b"a journal for a file that is gone").unwrap();
 
         let moved = set_aside(&db_path).unwrap();
         assert!(moved.exists(), "the old file is kept, not deleted");
