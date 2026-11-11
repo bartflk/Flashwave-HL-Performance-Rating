@@ -358,7 +358,7 @@ async fn fetch_demostf(
         .map(|c| if c.is_ascii_alphanumeric() || "-_.".contains(c) { c } else { '_' })
         .collect();
     let dest = tf.join(hl_demos::scan::STV_DIR).join(&safe);
-    let bytes = sources.download(&meta.url, &dest, progress).await?;
+    let bytes = sources.download_demostf(&meta.url, &dest, progress).await?;
 
     let f = hl_demos::scan::read_demo(tf, &dest)?;
     let playback = f.header.playback_s as f64;

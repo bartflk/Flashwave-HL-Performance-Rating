@@ -136,6 +136,16 @@ pub fn request(db_path: &Path, backup_path: &Path) -> Result<()> {
     if !backup_path.is_file() {
         bail!("{} is not a file", backup_path.display());
     }
+    // A backup is a `.sqlite3` file that is a SQLite database: the path
+    // comes from the window, and what it names replaces the database.
+    if !backup_path.extension().is_some_and(|x| x.eq_ignore_ascii_case("sqlite3")) {
+        bail!("{} is not a .sqlite3 backup", backup_path.display());
+    }
+    let mut head = [0u8; 16];
+    let read = std::fs::File::open(backup_path).and_then(|mut f| std::io::Read::read_exact(&mut f, &mut head));
+    if read.is_err() || &head != b"SQLite format 3\0" {
+        bail!("{} is not a SQLite database", backup_path.display());
+    }
     let marker = db_path.with_file_name(MARKER);
     std::fs::write(&marker, backup_path.to_string_lossy().as_bytes())
         .with_context(|| format!("writing {}", marker.display()))?;
@@ -206,9 +216,15 @@ mod tests {
         let dir = temp("request");
         let db = dir.join("hl.sqlite3");
         let backup = dir.join("copy.sqlite3");
-        std::fs::write(&backup, b"not really a database").unwrap();
+        std::fs::write(&backup, b"SQLite format 3\0 and then not really a database").unwrap();
+        let text = dir.join("notes.sqlite3");
+        std::fs::write(&text, b"just some words, long enough").unwrap();
+        let wrong_kind = dir.join("copy.txt");
+        std::fs::write(&wrong_kind, b"SQLite format 3\0 but named for something else").unwrap();
 
         assert!(request(&db, &dir.join("gone.sqlite3")).is_err(), "a missing file is an error");
+        assert!(request(&db, &text).is_err(), "a file that is not a SQLite database is refused");
+        assert!(request(&db, &wrong_kind).is_err(), "and so is one not named .sqlite3");
         assert_eq!(pending(&db), None, "and leaves nothing behind");
 
         request(&db, &backup).unwrap();
@@ -222,7 +238,7 @@ mod tests {
         let db = dir.join("hl.sqlite3");
         let backup = dir.join("copy.sqlite3");
         std::fs::write(&db, b"the empty one").unwrap();
-        std::fs::write(&backup, b"the good one").unwrap();
+        std::fs::write(&backup, b"SQLite format 3\0 the good one").unwrap();
         // Stale journal files from the database being replaced.
         std::fs::write(dir.join("hl.sqlite3-wal"), b"stale").unwrap();
 
@@ -230,7 +246,7 @@ mod tests {
         let done = apply_pending(&db).unwrap();
 
         assert_eq!(done.as_deref(), Some(backup.as_path()));
-        assert_eq!(std::fs::read(&db).unwrap(), b"the good one");
+        assert_eq!(std::fs::read(&db).unwrap(), b"SQLite format 3\0 the good one");
         assert_eq!(std::fs::read(dir.join("hl.sqlite3.replaced")).unwrap(), b"the empty one");
         assert!(!dir.join("hl.sqlite3-wal").exists(), "the old write-ahead log is gone");
         assert_eq!(pending(&db), None, "and the marker is cleared");

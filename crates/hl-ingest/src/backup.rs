@@ -124,6 +124,10 @@ pub fn list(db_path: &Path) -> Vec<Backup> {
 /// database is three files in WAL mode and copying one of them tears it.
 /// Whole, the league's logs included: it is the one copy kept on purpose.
 pub async fn save_as(db: &hl_db::Db, to: &Path) -> Result<Backup> {
+    // The path comes from the window's save dialog, which asks for a
+    // `.sqlite3` file; anything else is not what the dialog gave.
+    anyhow::ensure!(to.is_absolute(), "{} is not a full path", to.display());
+    anyhow::ensure!(to.extension().is_some_and(|x| x.eq_ignore_ascii_case("sqlite3")), "{} is not a .sqlite3 file", to.display());
     if let Some(parent) = to.parent() {
         std::fs::create_dir_all(parent).with_context(|| format!("creating {}", parent.display()))?;
     }

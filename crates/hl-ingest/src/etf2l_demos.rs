@@ -95,6 +95,10 @@ fn kind_of(head: &[u8]) -> Kind {
     }
 }
 
+/// The most a demo archive may unpack to, in all, and the most files it may hold.
+const UNZIP_MAX: u64 = 1200 << 20;
+const UNZIP_ENTRIES_MAX: usize = 100;
+
 /// A file name safe on any disk.
 fn safe(name: &str) -> String {
     name.chars().map(|c| if c.is_ascii_alphanumeric() || "-_.".contains(c) { c } else { '_' }).collect()
@@ -114,22 +118,46 @@ fn unpack(download: &Path, dir: &Path, prefix: &str) -> Result<Vec<PathBuf>> {
     let out = match kind_of(&head) {
         Kind::Dem => {
             let to = dir.join(format!("{prefix}.dem"));
+            hl_demos::scan::mark_own_write(&to);
             std::fs::rename(download, &to)?;
             return Ok(vec![to]);
         }
         Kind::Zip => {
             let mut zip = zip::ZipArchive::new(std::fs::File::open(download)?).context("opening the zip")?;
+            // A player's upload is not ours to trust: a few entries, and no
+            // more bytes out than a demo archive can be, however small the zip.
+            if zip.len() > UNZIP_ENTRIES_MAX {
+                bail!("the zip has {} files; a demo archive has a few", zip.len());
+            }
             let mut out = Vec::new();
+            let mut left = UNZIP_MAX;
             for i in 0..zip.len() {
-                let mut entry = zip.by_index(i)?;
+                let entry = zip.by_index(i)?;
                 let name = entry.name().rsplit(['/', '\\']).next().unwrap_or("").to_string();
                 if !name.to_ascii_lowercase().ends_with(".dem") {
                     continue;
                 }
                 let to = dir.join(format!("{prefix}-{}", safe(&name)));
+                hl_demos::scan::mark_own_write(&to);
                 let mut f = std::fs::File::create(&to)?;
-                std::io::copy(&mut entry, &mut f)?;
-                out.push(to);
+                let written = std::io::copy(&mut std::io::Read::take(entry, left + 1), &mut f);
+                drop(f);
+                match written {
+                    Ok(n) if n <= left => {
+                        left -= n;
+                        out.push(to);
+                    }
+                    other => {
+                        // Over the cap, or broken: none of it is kept.
+                        let _ = std::fs::remove_file(&to);
+                        for done in &out {
+                            let _ = std::fs::remove_file(done);
+                        }
+                        let _ = std::fs::remove_file(download);
+                        other?;
+                        bail!("the zip unpacks to more than {} MB", UNZIP_MAX >> 20);
+                    }
+                }
             }
             out
         }
@@ -189,7 +217,7 @@ pub async fn fetch(db: &Db, sources: &Sources, tf: &Path, log_id: i64, mut progr
     let mut last_error: Option<String> = None;
     for (i, d) in wanted.iter().enumerate() {
         let download = dir.join(format!("etf2l-{m}-{i}.download"));
-        bytes += sources.download(&d.url, &download, &mut progress).await?;
+        bytes += sources.download_etf2l(&d.url, &download, &mut progress).await?;
         let dems = match unpack(&download, &dir, &format!("etf2l-{m}-{i}")) {
             Ok(d) => d,
             Err(e) => {

@@ -63,6 +63,7 @@ fn place(tf: &Path, file: &Path) -> Result<PathBuf> {
     let size = std::fs::metadata(file)?.len();
     if std::fs::metadata(&dest).map(|m| m.len()) .ok() != Some(size) {
         std::fs::create_dir_all(tf.join("demos"))?;
+        hl_demos::scan::mark_own_write(&dest);
         std::fs::copy(file, &dest).with_context(|| format!("copying the demo to {}", dest.display()))?;
     }
     Ok(dest)
@@ -437,7 +438,7 @@ pub async fn link_demostf(
     let dir = tf.join(hl_demos::scan::STV_DIR);
     std::fs::create_dir_all(&dir)?;
     let dest = dir.join(&safe);
-    sources.download(&meta.url, &dest, progress).await?;
+    sources.download_demostf(&meta.url, &dest, progress).await?;
     crate::kills::ensure_one(db, sources, log_id).await?;
     let linked = match link_to_log_by(db, tf, &dest, log_id, me, "demos.tf", |_| {}).await {
         Ok(l) => l,

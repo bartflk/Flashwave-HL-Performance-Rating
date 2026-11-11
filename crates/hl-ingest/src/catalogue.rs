@@ -1811,6 +1811,19 @@ fn now() -> i64 {
 /// the first's answer instead of asking again.
 static ETF2L_PLAYER_LOOKUP: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
+/// Someone ETF2L has no account for is not asked about again for a week
+/// (a pug player never will have one, and every profile and pop-card opening
+/// asked): the setting holds when ETF2L last said so.
+fn etf2l_none_key(account: u32) -> String {
+    format!("etf2l_no_account:{account}")
+}
+
+/// Whether ETF2L said, within the week, that this player has no account.
+pub async fn etf2l_has_no_account(db: &Db, account: u32) -> Result<bool> {
+    let at = db.get_setting(&etf2l_none_key(account)).await?.and_then(|v| v.parse::<i64>().ok());
+    Ok(at.is_some_and(|at| now() - at < ETF2L_PLAYER_KEEP_S))
+}
+
 /// A player's ETF2L profile: the one held if under a week old, else ETF2L's
 /// page read now and kept. A failed read is not tried again for a quarter
 /// of an hour ([`crate::backoff`]); what was held is given meanwhile.
@@ -1826,7 +1839,7 @@ pub async fn etf2l_player(db: &Db, sources: &Sources, account: u32) -> Result<Op
         }
     }
     let key = format!("etf2l-player:{account}");
-    if crate::backoff::waiting(&key) {
+    if crate::backoff::waiting(&key) || (held.is_none() && etf2l_has_no_account(db, account).await?) {
         return Ok(held);
     }
     let steamid = SteamId::from_account_id(account);
@@ -1843,6 +1856,8 @@ pub async fn etf2l_player(db: &Db, sources: &Sources, account: u32) -> Result<Op
         }
         Ok(None) => {
             crate::backoff::worked(&key);
+            // ETF2L answered, and has no one by this SteamID: remembered.
+            db.set_setting(&etf2l_none_key(account), &now().to_string()).await?;
             held
         }
         Err(e) => {
@@ -2746,7 +2761,15 @@ pub async fn season_banner_image(db: &Db, sources: &Sources, season: i64, season
 
 /// A picture no wider than `width`, as a JPEG at quality 80.
 fn shrink_to_jpeg(bytes: &[u8], width: u32) -> Result<Vec<u8>> {
-    let img = image::load_from_memory(bytes).context("reading the picture")?;
+    // A picture from a page's own HTML is not ours to trust: no more than
+    // 64 megapixels' worth of memory goes to decoding it.
+    let mut reader = image::ImageReader::new(std::io::Cursor::new(bytes)).with_guessed_format().context("reading the picture")?;
+    let mut limits = image::Limits::default();
+    limits.max_image_width = Some(8192);
+    limits.max_image_height = Some(8192);
+    limits.max_alloc = Some(256 << 20);
+    reader.limits(limits);
+    let img = reader.decode().context("reading the picture")?;
     let img = if img.width() > width { img.resize(width, u32::MAX, image::imageops::FilterType::Triangle) } else { img };
     let mut out = Vec::new();
     image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 80).encode_image(&img.to_rgb8())?;

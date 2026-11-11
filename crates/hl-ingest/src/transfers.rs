@@ -107,6 +107,11 @@ pub async fn fetch_player(db: &Db, sources: &Sources, account: u32) -> Result<us
     // The same lookup the profile's header makes, shared: never a second
     // request for it.
     let Some((id, name)) = crate::catalogue::etf2l_player(db, sources, account).await?.and_then(|p| Some((p.etf2l_id?, p.name.unwrap_or_default()))) else {
+        // No ETF2L account (as ETF2L said, not a failed lookup): there is no
+        // list to read, and saying so keeps every profile from asking again.
+        if crate::catalogue::etf2l_has_no_account(db, account).await? {
+            db.set_transfers_fetched("player", i64::from(account), now()).await?;
+        }
         return Ok(0);
     };
     let read_before = db.transfers_fetched("player", i64::from(account)).await?.is_some();

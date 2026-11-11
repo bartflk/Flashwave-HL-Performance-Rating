@@ -155,12 +155,54 @@ pub fn parse(page: &str, link: &str) -> Option<MatchPage> {
     })
 }
 
+/// How long a page is kept before ETF2L is asked again: a played match's
+/// page rarely changes (a late comment, a demo), a match not yet played
+/// does (it gets scheduled, then played).
+const KEEP_PLAYED_S: i64 = 24 * 3600;
+const KEEP_OPEN_S: i64 = 10 * 60;
+
+fn now() -> i64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64)
+}
+
 /// One official's page, read when it is opened; its logs that are in the
 /// owner's matches marked so the app opens them itself.
+///
+/// The parsed page is kept on disk, so opening a match again, after the
+/// window's own few minutes or after a restart, does not ask ETF2L again:
+/// a day for a played match, ten minutes otherwise. A failed read is not
+/// repeated for a quarter of an hour; the page held is shown meanwhile.
 pub async fn page(db: &hl_db::Db, sources: &Sources, match_id: i64) -> Result<Option<MatchPage>> {
     let link = format!("https://etf2l.org/matches/{match_id}/");
-    let Some(html) = sources.fetch_text_interactive(&link).await? else { return Ok(None) };
-    let Some(mut p) = parse(&html, &link) else { return Ok(None) };
+    let held: Option<(i64, MatchPage)> = db.etf2l_raw_one("match_page", match_id).await?.and_then(|(at, json)| Some((at, serde_json::from_str(&json).ok()?)));
+    let key = format!("etf2l-match-page:{match_id}");
+    let mut p = match held {
+        Some((at, p)) if now() - at < if p.submitted.is_some() { KEEP_PLAYED_S } else { KEEP_OPEN_S } => p,
+        held if crate::backoff::waiting(&key) => match held {
+            Some((_, p)) => p,
+            None => return Ok(None),
+        },
+        held => match sources.fetch_text_interactive(&link).await {
+            Ok(Some(html)) => {
+                crate::backoff::worked(&key);
+                let Some(p) = parse(&html, &link) else { return Ok(held.map(|(_, p)| p)) };
+                db.store_etf2l_raw("match_page", match_id, &serde_json::to_string(&p)?).await?;
+                p
+            }
+            Ok(None) => {
+                crate::backoff::worked(&key);
+                return Ok(None);
+            }
+            Err(e) => {
+                crate::backoff::failed(&key);
+                match held {
+                    Some((_, p)) => p,
+                    None => return Err(e),
+                }
+            }
+        },
+    };
+    p.stored_logs.clear();
     for id in p.maps.iter().flat_map(|m| m.logs.iter().copied()).collect::<Vec<_>>() {
         if db.has_match(id).await? {
             p.stored_logs.push(id);
