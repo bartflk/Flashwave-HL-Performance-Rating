@@ -248,7 +248,7 @@ impl Db {
         let rows = sqlx::query(
             "SELECT class, COUNT(*) AS n FROM rating
              WHERE account_id = ?1 AND model_version = ?2
-             GROUP BY class ORDER BY n DESC",
+             GROUP BY class ORDER BY n DESC, class",
         )
         .bind(account_id as i64)
         .bind(version)

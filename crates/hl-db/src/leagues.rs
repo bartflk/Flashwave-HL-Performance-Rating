@@ -273,7 +273,7 @@ impl Db {
         Ok(sqlx::query_scalar(
             "SELECT m.match_id FROM etf2l_season_match m JOIN etf2l_competition c ON c.competition_id = m.competition_id
              WHERE m.detail_fetched = 0 AND m.default_win = 0 AND c.season >= ?2
-             ORDER BY m.time DESC LIMIT ?1",
+             ORDER BY m.time DESC, m.match_id DESC LIMIT ?1",
         )
         .bind(limit)
         .bind(min_season)
@@ -388,7 +388,7 @@ impl Db {
              LEFT JOIN etf2l_team t1 ON t1.team_id = m.clan1_id
              LEFT JOIN etf2l_team t2 ON t2.team_id = m.clan2_id
              WHERE (?1 IS NULL OR c.season = ?1) AND (?2 IS NULL OR m.clan1_id = ?2 OR m.clan2_id = ?2)
-             ORDER BY m.time DESC",
+             ORDER BY m.time DESC, m.match_id DESC",
         )
         .bind(season)
         .bind(team)
@@ -577,7 +577,7 @@ impl Db {
             "SELECT m.match_id, m.time, c.season, m.division, m.round, m.clan1_id, m.r1, m.r2, m.default_win
                FROM etf2l_season_match m JOIN etf2l_competition c ON c.competition_id = m.competition_id
               WHERE (m.clan1_id = ?1 AND m.clan2_id = ?2) OR (m.clan1_id = ?2 AND m.clan2_id = ?1)
-              ORDER BY m.time DESC",
+              ORDER BY m.time DESC, m.match_id DESC",
         )
         .bind(a)
         .bind(b)
@@ -727,7 +727,7 @@ impl Db {
         let rows = sqlx::query(&format!(
             "{RESULT_SELECT}
               WHERE m.time IS NOT NULL AND (m.r1 IS NOT NULL OR m.default_win <> 0)
-              ORDER BY m.time DESC
+              ORDER BY m.time DESC, m.match_id DESC
               LIMIT ?1"
         ))
         .bind(limit)
@@ -801,7 +801,7 @@ impl Db {
                JOIN etf2l_competition c ON c.competition_id = m.competition_id
                JOIN etf2l_team t ON t.team_id = p.team_id
               WHERE p.account_id = ?1 AND p.team_id IS NOT NULL AND m.time > ?2
-              ORDER BY p.team_id IS ?3 DESC, m.time
+              ORDER BY p.team_id IS ?3 DESC, m.time, m.match_id
               LIMIT 1",
         )
         .bind(i64::from(account))
@@ -849,7 +849,7 @@ impl Db {
                     (SELECT MAX(m.time) FROM etf2l_season_match m WHERE m.clan1_id = t.team_id OR m.clan2_id = t.team_id) AS last_played
                FROM etf2l_team t
               WHERE lower(t.name) LIKE ?1 ESCAPE '!'
-              ORDER BY (lower(t.name) = ?2) DESC, (lower(t.name) LIKE ?3 ESCAPE '!') DESC, last_played DESC
+              ORDER BY (lower(t.name) = ?2) DESC, (lower(t.name) LIKE ?3 ESCAPE '!') DESC, last_played DESC, t.team_id
               LIMIT ?4",
         )
         .bind(&like)

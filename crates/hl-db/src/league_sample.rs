@@ -174,7 +174,7 @@ impl Db {
                 AND NOT EXISTS (SELECT 1 FROM log_index i WHERE i.etf2l_match_id = m.match_id)
                 AND NOT EXISTS (SELECT 1 FROM etf2l_raw r WHERE r.kind = 'log_search' AND r.id = m.match_id)
                 AND a IS NOT NULL AND b IS NOT NULL
-              ORDER BY m.time DESC LIMIT ?3",
+              ORDER BY m.time DESC, m.match_id DESC LIMIT ?3",
         )
         .bind(since)
         .bind(until)
@@ -207,10 +207,10 @@ impl Db {
     pub async fn league_json_todo(&self, limit: i64, include_stand_ins: bool, max_attempts: i64) -> Result<Vec<i64>> {
         let sql = if include_stand_ins {
             "SELECT log_id FROM league_log WHERE picked = 1 AND (json_source IS NULL OR json_source = 'more.tf')
-               AND json_attempts < ?2 ORDER BY json_source IS NOT NULL, (etf2l_match_id IN (SELECT match_id FROM etf2l_season_match WHERE LOWER(REPLACE(COALESCE(round, ''), '-', ' ')) LIKE '%grand final%')) DESC, played_at DESC LIMIT ?1"
+               AND json_attempts < ?2 ORDER BY json_source IS NOT NULL, (etf2l_match_id IN (SELECT match_id FROM etf2l_season_match WHERE LOWER(REPLACE(COALESCE(round, ''), '-', ' ')) LIKE '%grand final%')) DESC, played_at DESC, log_id DESC LIMIT ?1"
         } else {
             "SELECT log_id FROM league_log WHERE picked = 1 AND json_source IS NULL
-               AND json_attempts < ?2 ORDER BY (etf2l_match_id IN (SELECT match_id FROM etf2l_season_match WHERE LOWER(REPLACE(COALESCE(round, ''), '-', ' ')) LIKE '%grand final%')) DESC, played_at DESC LIMIT ?1"
+               AND json_attempts < ?2 ORDER BY (etf2l_match_id IN (SELECT match_id FROM etf2l_season_match WHERE LOWER(REPLACE(COALESCE(round, ''), '-', ' ')) LIKE '%grand final%')) DESC, played_at DESC, log_id DESC LIMIT ?1"
         };
         Ok(sqlx::query_scalar(sql).bind(limit).bind(max_attempts).fetch_all(self.pool()).await?)
     }
@@ -241,7 +241,7 @@ impl Db {
     pub async fn league_raw_todo(&self, limit: i64) -> Result<Vec<i64>> {
         Ok(sqlx::query_scalar(
             "SELECT log_id FROM league_log WHERE picked = 1 AND json_source IS NOT NULL AND raw_state IS NULL
-             ORDER BY (etf2l_match_id IN (SELECT match_id FROM etf2l_season_match WHERE LOWER(REPLACE(COALESCE(round, ''), '-', ' ')) LIKE '%grand final%')) DESC, played_at DESC LIMIT ?1",
+             ORDER BY (etf2l_match_id IN (SELECT match_id FROM etf2l_season_match WHERE LOWER(REPLACE(COALESCE(round, ''), '-', ' ')) LIKE '%grand final%')) DESC, played_at DESC, log_id DESC LIMIT ?1",
         )
         .bind(limit)
         .fetch_all(self.pool())

@@ -98,13 +98,13 @@ impl Db {
                     (SELECT x.name FROM match_player x
                       JOIN match mx ON mx.log_id = x.log_id
                       WHERE x.account_id = t.account_id
-                      ORDER BY mx.played_at DESC LIMIT 1) AS name,
+                      ORDER BY mx.played_at DESC, mx.log_id DESC LIMIT 1) AS name,
                     (SELECT x.main_class FROM match_player x
                       WHERE x.account_id = t.account_id AND x.main_class IS NOT NULL
-                      GROUP BY x.main_class ORDER BY COUNT(*) DESC LIMIT 1) AS top_class
+                      GROUP BY x.main_class ORDER BY COUNT(*) DESC, x.main_class LIMIT 1) AS top_class
              FROM theirs t
              GROUP BY t.account_id
-             ORDER BY games DESC
+             ORDER BY games DESC, t.account_id
              LIMIT ?3"
         );
         let rows = sqlx::query(&sql).bind(by_id).bind(&like).bind(limit).fetch_all(self.pool()).await?;
@@ -162,7 +162,7 @@ impl Db {
             "SELECT x.name, MAX(m.played_at) AS seen
              FROM match_player x JOIN match m ON m.log_id = x.log_id
              WHERE x.account_id = ?1 AND x.name IS NOT NULL AND x.name <> ''
-             GROUP BY x.name ORDER BY seen DESC",
+             GROUP BY x.name ORDER BY seen DESC, x.name",
         )
         .bind(account_id as i64)
         .fetch_all(self.pool())
@@ -174,7 +174,7 @@ impl Db {
         let classes: Vec<PlayerClass> = sqlx::query(
             "SELECT class, COUNT(*) AS n, AVG(score) AS avg FROM rating
              WHERE account_id = ?1 AND model_version = ?2
-             GROUP BY class ORDER BY n DESC",
+             GROUP BY class ORDER BY n DESC, class",
         )
         .bind(account_id as i64)
         .bind(version)

@@ -401,7 +401,7 @@ impl Db {
                  SELECT r.log_id, COALESCE(m.played_at, 0) FROM log_raw r LEFT JOIN match m ON m.log_id = r.log_id
              ) x
              WHERE NOT EXISTS (SELECT 1 FROM log_stat s WHERE s.log_id = x.log_id)
-             ORDER BY played_at DESC LIMIT ?1",
+             ORDER BY played_at DESC, log_id DESC LIMIT ?1",
         )
         .bind(limit)
         .fetch_all(self.pool())

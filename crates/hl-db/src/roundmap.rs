@@ -401,7 +401,7 @@ impl Db {
     }
 
     pub async fn round_map_stats(&self) -> Result<RoundMapStats> {
-        let by = sqlx::query("SELECT COALESCE(source, 'unresolved') AS s, COUNT(*) AS n FROM round_map GROUP BY s ORDER BY n DESC")
+        let by = sqlx::query("SELECT COALESCE(source, 'unresolved') AS s, COUNT(*) AS n FROM round_map GROUP BY s ORDER BY n DESC, s")
             .fetch_all(self.pool())
             .await?;
         let by_source: Vec<(String, i64)> = by.into_iter().map(|r| (r.get("s"), r.get("n"))).collect();

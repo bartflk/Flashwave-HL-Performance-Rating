@@ -231,21 +231,24 @@ async fn apply(db: &Db, path: &Path, meta: &Meta) -> Result<Applied> {
     let local_pool = db.rating_scale_size(MODEL_VERSION).await?.unwrap_or(0);
     let take_scale = local_pool < meta.pool;
     let mut tables = league_tables(true);
-    if take_scale {
-        // Replaced whole, not merged: a scale is one measurement.
-        db.clear_baselines(MODEL_VERSION).await?;
-        tables.extend(scale_tables());
-    }
-    db.copy_in(
-        path,
-        &tables,
-        // Officials this install had listed but not downloaded are the
-        // snapshot's now, so the download leaves them be.
-        &["UPDATE main.league_log SET json_source = 'snapshot', raw_state = 'snapshot'
+    // Officials this install had listed but not downloaded are the
+    // snapshot's now, so the download leaves them be.
+    let mut after = vec!["UPDATE main.league_log SET json_source = 'snapshot', raw_state = 'snapshot'
            WHERE json_source IS NULL AND log_id IN (SELECT log_id FROM src.league_log WHERE json_source = 'snapshot')"
-            .into()],
-    )
-    .await?;
+        .to_string()];
+    if take_scale {
+        // Replaced whole, not merged: a scale is one measurement. The copy
+        // replaces every row the snapshot has; the rest of this model's
+        // baselines go in the same transaction, so a copy that fails
+        // leaves the install's own baselines instead of none.
+        tables.extend(scale_tables());
+        after.push(format!(
+            "DELETE FROM main.baseline WHERE model_version = '{MODEL_VERSION}' AND NOT EXISTS (
+                 SELECT 1 FROM src.baseline s WHERE s.model_version = main.baseline.model_version
+                   AND s.class = main.baseline.class AND s.component = main.baseline.component AND s.map = main.baseline.map)"
+        ));
+    }
+    db.copy_in(path, &tables, &after).await?;
     db.set_setting(KEY_AT, &meta.made_at.to_string()).await?;
     db.set_setting(KEY_VERSION, &meta.model).await?;
     if take_scale {
@@ -346,5 +349,93 @@ mod tests {
         // A snapshot for another model is not imported.
         let other = Meta { made_at: 44, model: "v0".into(), ..meta };
         assert!(!apply(&db, &snap_path, &other).await.unwrap().imported);
+    }
+}
+
+#[cfg(test)]
+mod keeps_local_rows {
+    use super::*;
+
+    async fn tiny_snapshot(dir: &Path) -> std::path::PathBuf {
+        let snap_path = dir.join("snap.sqlite3");
+        let snap = Db::connect(&snap_path).await.unwrap();
+        for sql in [
+            format!("INSERT INTO league_rating (model_version, log_id, account_id, class, score, minutes, groups) VALUES ('{MODEL_VERSION}', 10, 7, 'sniper', 1.2, 30, '{{}}'), ('{MODEL_VERSION}', 10, 8, 'medic', 0.8, 30, '{{}}')"),
+            format!("INSERT INTO rating_scale (model_version, mean, sd, n, made_at) VALUES ('{MODEL_VERSION}', 50, 18, 500, 'now')"),
+            format!("INSERT INTO baseline (model_version, class, component, map, n, sorted_values) VALUES ('{MODEL_VERSION}', 'sniper', 'dpm', '', 2, '[1,2]')"),
+            // Another model's baseline in the snapshot is never taken.
+            "INSERT INTO baseline (model_version, class, component, map, n, sorted_values) VALUES ('v0', 'sniper', 'dpm', '', 2, '[9,9]')".to_string(),
+        ] {
+            sqlx::query(&sql).execute(snap.pool()).await.unwrap();
+        }
+        snap.pool().close().await;
+        snap_path
+    }
+
+    fn temp(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("hl-snapshot-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[tokio::test]
+    async fn an_install_with_its_own_rows_keeps_them_and_a_larger_pool_keeps_its_scale() {
+        let dir = temp("local");
+        let snap_path = tiny_snapshot(&dir).await;
+        let db = Db::connect(dir.join("mine.sqlite3")).await.unwrap();
+        // A local rating for the same performance, one the snapshot lacks,
+        // and a pool larger than the snapshot's with its own baseline.
+        for sql in [
+            format!("INSERT INTO league_rating (model_version, log_id, account_id, class, score, minutes, groups) VALUES ('{MODEL_VERSION}', 10, 7, 'sniper', 9.9, 31, '{{}}'), ('{MODEL_VERSION}', 11, 1, 'spy', 1.0, 20, '{{}}')"),
+            format!("INSERT INTO rating_scale (model_version, mean, sd, n, made_at) VALUES ('{MODEL_VERSION}', 40, 10, 9000, 'then')"),
+            format!("INSERT INTO baseline (model_version, class, component, map, n, sorted_values) VALUES ('{MODEL_VERSION}', 'soldier', 'dpm', '', 1, '[5]')"),
+        ] {
+            sqlx::query(&sql).execute(db.pool()).await.unwrap();
+        }
+        let meta = Meta { made_at: 42, model: MODEL_VERSION.into(), pool: 500, logs: 1, newest: 1000 };
+        let a = apply(&db, &snap_path, &meta).await.unwrap();
+        assert!(a.imported && !a.rescore, "a bigger pool of its own keeps its scale");
+
+        let scores: Vec<(i64, i64, f64)> = sqlx::query_as("SELECT log_id, account_id, score FROM league_rating ORDER BY log_id, account_id").fetch_all(db.pool()).await.unwrap();
+        assert_eq!(scores, [(10, 7, 9.9), (10, 8, 0.8), (11, 1, 1.0)], "ours kept, the gap filled, nothing lost");
+        assert_eq!(db.rating_scale_size(MODEL_VERSION).await.unwrap(), Some(9000));
+        let classes: Vec<String> = sqlx::query_scalar("SELECT class FROM baseline").fetch_all(db.pool()).await.unwrap();
+        assert_eq!(classes, ["soldier"], "the snapshot's baselines were not mixed in");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn taking_the_scale_replaces_the_baselines_of_this_model_only() {
+        let dir = temp("scale");
+        let snap_path = tiny_snapshot(&dir).await;
+        let db = Db::connect(dir.join("mine.sqlite3")).await.unwrap();
+        let sql = format!("INSERT INTO baseline (model_version, class, component, map, n, sorted_values) VALUES ('{MODEL_VERSION}', 'soldier', 'dpm', '', 1, '[5]'), ('{MODEL_VERSION}', 'sniper', 'dpm', '', 1, '[7]'), ('old', 'soldier', 'dpm', '', 1, '[6]')");
+        sqlx::query(&sql).execute(db.pool()).await.unwrap();
+        let meta = Meta { made_at: 42, model: MODEL_VERSION.into(), pool: 500, logs: 1, newest: 1000 };
+        let a = apply(&db, &snap_path, &meta).await.unwrap();
+        assert!(a.imported && a.rescore);
+        let mine: Vec<(String, String)> = sqlx::query_as("SELECT class, sorted_values FROM baseline WHERE model_version = ?1 ORDER BY class").bind(MODEL_VERSION).fetch_all(db.pool()).await.unwrap();
+        assert_eq!(mine, [("sniper".to_string(), "[1,2]".to_string())], "replaced whole: the snapshot's row, and the stale one gone");
+        let old: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM baseline WHERE model_version = 'old'").fetch_one(db.pool()).await.unwrap();
+        assert_eq!(old, 1, "another model's are not touched");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn a_snapshot_that_cannot_be_read_leaves_the_install_as_it_was() {
+        let dir = temp("missing");
+        let db = Db::connect(dir.join("mine.sqlite3")).await.unwrap();
+        sqlx::query(&format!("INSERT INTO baseline (model_version, class, component, map, n, sorted_values) VALUES ('{MODEL_VERSION}', 'soldier', 'dpm', '', 1, '[5]')"))
+            .execute(db.pool())
+            .await
+            .unwrap();
+        let meta = Meta { made_at: 42, model: MODEL_VERSION.into(), pool: 500, logs: 1, newest: 1000 };
+        assert!(apply(&db, &dir.join("no-such-file.sqlite3"), &meta).await.is_err());
+        assert!(!dir.join("no-such-file.sqlite3").exists(), "and no empty database is made in its place");
+        let n: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM baseline").fetch_one(db.pool()).await.unwrap();
+        assert_eq!(n, 1, "the baselines are still there");
+        assert_eq!(db.get_setting(KEY_AT).await.unwrap(), None, "and it will be tried again");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

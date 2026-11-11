@@ -346,8 +346,8 @@ impl Db {
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11,
                          CASE WHEN ?7 IS NULL THEN NULL ELSE 'trends' END, datetime('now'))
                  ON CONFLICT(log_id) DO UPDATE SET
-                    title          = COALESCE(excluded.title, NULLIF(log_index.title, '')),
-                    map            = COALESCE(excluded.map, NULLIF(log_index.map, '')),
+                    title          = COALESCE(NULLIF(excluded.title, ''), NULLIF(log_index.title, ''), excluded.title),
+                    map            = COALESCE(NULLIF(excluded.map, ''), NULLIF(log_index.map, ''), excluded.map),
                     played_at      = COALESCE(excluded.played_at, log_index.played_at),
                     duration_s     = COALESCE(excluded.duration_s, log_index.duration_s),
                     trends_json    = excluded.trends_json,
@@ -396,7 +396,7 @@ impl Db {
                     title        = COALESCE(NULLIF(log_index.title, ''), excluded.title),
                     map          = COALESCE(NULLIF(log_index.map, ''), excluded.map),
                     played_at    = COALESCE(log_index.played_at, excluded.played_at),
-                    player_count = excluded.player_count,
+                    player_count = COALESCE(excluded.player_count, log_index.player_count),
                     logstf_json  = excluded.logstf_json",
             )
             .bind(r.log_id)
@@ -498,7 +498,7 @@ impl Db {
                AND (e.log_id IS NULL OR (e.gone = 0 AND (e.attempts < ?1
                     OR (e.attempts < ?2 AND e.last_attempt_at <= datetime('now', '-7 days')))))
                AND {window}
-             ORDER BY i.played_at DESC"
+             ORDER BY i.played_at DESC, i.log_id DESC"
         );
         let rows = sqlx::query(&sql).bind(max_attempts).bind(MAX_FETCH_TRIES).fetch_all(self.pool()).await?;
         Ok(rows.into_iter().map(|r| r.get("log_id")).collect())
@@ -673,7 +673,7 @@ impl Db {
         Ok(sqlx::query_scalar(
             "SELECT e.log_id FROM log_fetch_error e LEFT JOIN log_index i ON i.log_id = e.log_id
               WHERE e.gone = 1 AND e.rescue_tried = 0 AND e.log_id NOT IN (SELECT log_id FROM log_raw)
-              ORDER BY COALESCE(i.played_at, 0) DESC LIMIT ?1",
+              ORDER BY COALESCE(i.played_at, 0) DESC, e.log_id DESC LIMIT ?1",
         )
         .bind(limit)
         .fetch_all(self.pool())
@@ -1119,7 +1119,7 @@ impl Db {
              LEFT JOIN match_context c ON c.log_id = mp.log_id
              WHERE mp.account_id = ?1 AND mp.main_class IS NOT NULL AND {shared} AND {by_map}
                AND (?6 IS NULL OR 1)
-             GROUP BY mp.main_class ORDER BY COUNT(*) DESC"
+             GROUP BY mp.main_class ORDER BY COUNT(*) DESC, mp.main_class"
         ))
         .bind(me)
         .bind(&filter.format)

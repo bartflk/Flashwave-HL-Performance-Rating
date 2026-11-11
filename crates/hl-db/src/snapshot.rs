@@ -23,6 +23,11 @@ impl Db {
     /// `after` (which may read `src.*`), all in one transaction: a failure
     /// leaves this database as it was.
     pub async fn copy_in(&self, from: &Path, tables: &[TableCopy<'_>], after: &[String]) -> Result<()> {
+        // ATTACH makes an empty database of its own where the file is
+        // missing and then copies nothing from it, which reads as success.
+        if !from.is_file() {
+            anyhow::bail!("{} is not a file", from.display());
+        }
         let mut conn = self.pool().acquire().await?;
         sqlx::query("ATTACH DATABASE ?1 AS src")
             .bind(from.to_string_lossy().to_string())
@@ -87,12 +92,6 @@ impl Db {
         sqlx::query("UPDATE league_log SET json_source = NULL, raw_state = NULL WHERE json_source = 'snapshot'")
             .execute(self.pool())
             .await?;
-        Ok(())
-    }
-
-    /// Drop a model's baselines, before a snapshot's replace them whole.
-    pub async fn clear_baselines(&self, version: &str) -> Result<()> {
-        sqlx::query("DELETE FROM baseline WHERE model_version = ?1").bind(version).execute(self.pool()).await?;
         Ok(())
     }
 
