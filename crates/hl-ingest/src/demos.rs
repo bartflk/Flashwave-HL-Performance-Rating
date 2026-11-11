@@ -53,7 +53,7 @@ pub async fn index_demos(db: &Db, tf: &Path) -> Result<DemoIndexSummary> {
     // found in it last time, rather than having it all pruned.
     let mut offline: Vec<String> = Vec::new();
     for dir in extra_demo_dirs(db).await? {
-        if !Path::new(&dir).is_dir() {
+        if !Path::new(&dir).is_dir() || std::fs::read_dir(&dir).is_err() {
             tracing::info!(%dir, "demo folder not reachable; keeping what was found in it");
             offline.push(dir);
             continue;
@@ -70,7 +70,7 @@ pub async fn index_demos(db: &Db, tf: &Path) -> Result<DemoIndexSummary> {
         tracing::warn!(path = %path.display(), %error, "skipping unreadable demo");
     }
 
-    let mut keep = Vec::with_capacity(files.len());
+    let mut keep = Vec::with_capacity(files.len() + failed.len());
     for f in &files {
         let path = f.path.to_string_lossy().into_owned();
         db.upsert_demo(&DemoRow {
@@ -94,7 +94,20 @@ pub async fn index_demos(db: &Db, tf: &Path) -> Result<DemoIndexSummary> {
         .await?;
         keep.push(path);
     }
-    let removed = db.prune_demos_except(&keep, &offline).await?;
+    // A file that would not read -- still being recorded, locked by the game
+    // -- is still there: it is kept, not forgotten with its links (audit SY-4).
+    keep.extend(failed.iter().map(|(p, _)| p.to_string_lossy().into_owned()));
+    // Only what is confirmed gone is pruned. A tf folder that is not there
+    // (an unplugged drive), or a scan that found nothing where the database
+    // knows demos, says nothing about those demos: pruning then hard-deleted
+    // every demo without a demos.tf id, with its manual and imported links.
+    let nothing_seen = files.is_empty() && failed.is_empty();
+    let removed = if !tf.is_dir() || (nothing_seen && db.live_demo_count().await? > 0) {
+        tracing::warn!(tf = %tf.display(), "the demo folder looks unreachable or empty; no demo is forgotten this time");
+        0
+    } else {
+        db.prune_demos_except(&keep, &offline).await?
+    };
 
     let clocks = place_logs(db).await?;
     let spans: Vec<DemoSpan> = db
@@ -393,6 +406,10 @@ async fn fetch_demostf(
             .find(|c| c.log_id == log_id)
             .map(|c| {
                 let (ls, le) = (c.start_utc() as f64, c.end_utc() as f64);
+                // A log with no length has no share: 0 / 0 stored a NaN (audit SY-13).
+                if le <= ls {
+                    return 0.0;
+                }
                 let overlap = (s + playback).min(le) - s.max(ls);
                 ((overlap.max(0.0) / (le - ls)) * 100.0).round() / 100.0
             })
@@ -433,4 +450,54 @@ pub async fn jumper(db: &Db, log_id: i64) -> Result<Option<Jumper>> {
         return Ok(None);
     }
     Ok(db.log_clock_offset(log_id).await?.map(|offset| Jumper { demos, offset }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    async fn with_a_known_demo() -> Db {
+        let db = Db::connect_in_memory().await.unwrap();
+        db.upsert_demo(&DemoRow {
+            path: "X:/unplugged/a.dem",
+            file_name: "a.dem",
+            playdemo_arg: "a",
+            kind: "pov",
+            size_bytes: 1,
+            mtime: 1,
+            map: "pl_upward",
+            server: "",
+            recorder: "",
+            playback_s: 1.0,
+            ticks: 1,
+            tick_rate: Some(66.0),
+            start_utc: None,
+            filename_time: None,
+            demos_tf_id: None,
+            events: Vec::new(),
+        })
+        .await
+        .unwrap();
+        db
+    }
+
+    #[tokio::test]
+    async fn a_folder_that_is_not_there_forgets_no_demo() {
+        let db = with_a_known_demo().await;
+        let missing = std::env::temp_dir().join(format!("hl-no-such-tf-{}", std::process::id()));
+        let s = index_demos(&db, &missing).await.unwrap();
+        assert_eq!(s.removed, 0);
+        assert_eq!(db.live_demo_count().await.unwrap(), 1, "an unplugged drive is not a deleted demo");
+    }
+
+    #[tokio::test]
+    async fn a_scan_that_finds_nothing_where_demos_are_known_forgets_none() {
+        let db = with_a_known_demo().await;
+        let empty = std::env::temp_dir().join(format!("hl-empty-tf-{}", std::process::id()));
+        std::fs::create_dir_all(&empty).unwrap();
+        let s = index_demos(&db, &empty).await.unwrap();
+        let _ = std::fs::remove_dir_all(&empty);
+        assert_eq!(s.removed, 0);
+        assert_eq!(db.live_demo_count().await.unwrap(), 1);
+    }
 }

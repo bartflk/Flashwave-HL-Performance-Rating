@@ -3,11 +3,11 @@ import { ApiError } from "../ApiError";
 import { friendlyText } from "../../lib/apierror";
 import { ReflectPanel } from "./DemoStats";
 import { MatchTabs } from "./MatchTabs";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { type Ledger, type MatchDetail, type PartScore } from "../../api/types";
-import { capitalize, splitMap } from "../../lib/format";
+import { capitalize, matchLabel, splitMap } from "../../lib/format";
 import { MatchHero } from "./MatchHero";
 import { BoxScore } from "./BoxScore";
 import { Fold } from "../Fold";
@@ -57,20 +57,33 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
   const hasStv = q.data?.demos.some((x) => x.kind === "stv") ?? false;
   const isPayload = /^pl_/i.test(shown?.map ?? "");
 
+  // Which pick is the latest: two parts chosen quickly each fetch, and the
+  // first one failing must not reset the part the second one chose, nor clear
+  // "Fetching" while that one is still loading.
+  const pickId = useRef(0);
   async function pick(next: number | null) {
+    const mine = ++pickId.current;
     setPart(next);
     setPartError(null);
-    if (next === null) return;
-    if ((partsQ.data ?? []).find((p) => p.logId === next)?.detail) return;
+    if (next === null) {
+      setFetching(false);
+      return;
+    }
+    if ((partsQ.data ?? []).find((p) => p.logId === next)?.detail) {
+      setFetching(false);
+      return;
+    }
     setFetching(true);
     try {
       await api.fetchPart(next);
       await qc.invalidateQueries({ queryKey: ["parts", logId] });
     } catch (e) {
-      setPartError(friendlyText(e));
-      setPart(null);
+      if (mine === pickId.current) {
+        setPartError(friendlyText(e));
+        setPart(null);
+      }
     } finally {
-      setFetching(false);
+      if (mine === pickId.current) setFetching(false);
     }
   }
 
@@ -136,7 +149,7 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
           <Fold id="demos">
             <DemoPanel d={q.data} />
             <StvPrompt d={q.data} />
-            <StvPartsPrompt logId={q.data.logId} label={`${q.data.map ?? "this match"}, log ${q.data.logId}`} />
+            <StvPartsPrompt logId={q.data.logId} label={matchLabel(q.data.map, q.data.logId)} />
           </Fold>
           {/* The STV-only panels: blurred, with the reason and the download,
               where there is no STV rather than missing without a word. */}

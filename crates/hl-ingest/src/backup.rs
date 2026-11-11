@@ -151,7 +151,12 @@ pub async fn save_as(db: &hl_db::Db, to: &Path) -> Result<Backup> {
 /// [`MIN_GAP_S`] old. Errors are the caller's to log: a sync must not fail
 /// because a disk is full, but the user should be told.
 pub async fn run(db: &hl_db::Db, db_path: &Path, force: bool) -> Result<Option<Backup>> {
-    let existing = list(db_path);
+    // Only copies this app made count, and only those are ever pruned: a
+    // database a person put in the folder by hand is listed (it can be
+    // restored) but is neither a recent copy nor ours to delete (audit SY-12).
+    let stem = db_path.file_stem().map_or_else(|| "hl".into(), |s| s.to_string_lossy().into_owned());
+    let own = |b: &Backup| Path::new(&b.path).file_name().is_some_and(|n| is_copy(&n.to_string_lossy(), &stem));
+    let existing: Vec<Backup> = list(db_path).into_iter().filter(own).collect();
     let now = now_s();
     if !force {
         if let Some(last) = existing.first() {
@@ -163,7 +168,6 @@ pub async fn run(db: &hl_db::Db, db_path: &Path, force: bool) -> Result<Option<B
 
     let dir = dir(db_path);
     std::fs::create_dir_all(&dir).with_context(|| format!("creating {}", dir.display()))?;
-    let stem = db_path.file_stem().map_or_else(|| "hl".into(), |s| s.to_string_lossy().into_owned());
     let path = dir.join(format!("{stem}-{}.sqlite3", stamp(now)));
     // A half-written copy would look like a good one, so it is written under a
     // temporary name and renamed once SQLite is done with it.
@@ -212,24 +216,41 @@ pub fn strays(db_path: &Path) -> Vec<Stray> {
         let meta = std::fs::metadata(&p).ok()?;
         meta.is_file().then(|| Stray { bytes: meta.len(), made_at: meta.modified().ok().and_then(when).unwrap_or(0), path: p.to_string_lossy().into_owned(), kind })
     };
+    let stem = db_path.file_stem().map_or_else(|| "hl".into(), |s| s.to_string_lossy().into_owned());
     let mut out = Vec::new();
     for e in std::fs::read_dir(dir(db_path)).into_iter().flatten().flatten() {
-        if !e.path().extension().is_some_and(|x| x == "sqlite3") {
+        // Only what this app writes: `<stem>-<stamp>.part`. A note, a `.bak`
+        // or a zipped copy a person put in the folder is not a half-written
+        // copy and is left alone, not listed and not cleared (audit SY-12).
+        if is_partial(&e.file_name().to_string_lossy(), &stem) {
             out.extend(entry(e.path(), "partial"));
         }
     }
-    let stem = db_path.file_stem().map_or_else(|| "hl".into(), |s| s.to_string_lossy().into_owned());
     let name = db_path.file_name().map_or_else(String::new, |s| s.to_string_lossy().into_owned());
     for e in db_path.parent().and_then(|d| std::fs::read_dir(d).ok()).into_iter().flatten().flatten() {
         let n = e.file_name().to_string_lossy().into_owned();
         if n.starts_with(&format!("{stem}.unreadable")) {
             out.extend(entry(e.path(), "unreadable"));
-        } else if n == format!("{name}.replaced") {
+        } else if n == format!("{name}.replaced") || n.starts_with(&format!("{stem}.replaced-")) {
             out.extend(entry(e.path(), "replaced"));
         }
     }
     out.sort_by_key(|s| std::cmp::Reverse(s.made_at));
     out
+}
+
+/// Whether a file name is a finished copy: `<stem>-<YYYYMMDD>-<HHMMSS>.sqlite3`,
+/// as [`run`] names them.
+fn is_copy(name: &str, stem: &str) -> bool {
+    let Some(stamp) = name.strip_prefix(&format!("{stem}-")).and_then(|r| r.strip_suffix(".sqlite3")) else { return false };
+    let b = stamp.as_bytes();
+    b.len() == 15 && b[8] == b'-' && b.iter().enumerate().all(|(i, c)| i == 8 || c.is_ascii_digit())
+}
+
+/// Whether a file name is a copy that was never finished: the temporary name
+/// [`run`] writes under, `<stem>-<stamp>.part`.
+fn is_partial(name: &str, stem: &str) -> bool {
+    name.strip_prefix(&format!("{stem}-")).is_some_and(|rest| rest.rsplit_once('.').is_some_and(|(_, ext)| ext.starts_with("part")))
 }
 
 /// Clear the half-written copies an interrupted sync left: only those, and
@@ -369,6 +390,37 @@ mod tests {
     }
 
     #[test]
+    fn only_the_apps_own_names_are_its_copies_and_its_partials() {
+        assert!(is_copy("hl-20260920-134233.sqlite3", "hl"));
+        assert!(!is_copy("hl-notes.sqlite3", "hl"));
+        assert!(!is_copy("hl-20260920-134233.sqlite3.bak", "hl"));
+        assert!(!is_copy("other-20260920-134233.sqlite3", "hl"));
+        assert!(is_partial("hl-20260920-134233.part", "hl"));
+        assert!(!is_partial("hl-notes.txt", "hl"));
+        assert!(!is_partial("readme.part", "hl"));
+        assert!(!is_partial("hl-20260920-134233.sqlite3.bak", "hl"));
+    }
+
+    #[test]
+    fn a_stray_clear_leaves_what_the_app_did_not_write() {
+        let dir = std::env::temp_dir().join(format!("hl-backup-stray-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let backups = dir.join("backups");
+        std::fs::create_dir_all(&backups).unwrap();
+        let db_path = dir.join("hl.sqlite3");
+        for name in ["hl-20260920-134233.part", "notes.txt", "hl-copy.bak", "mine.zip"] {
+            std::fs::write(backups.join(name), b"x").unwrap();
+        }
+        // Far enough ahead that every file counts as old.
+        clear_strays(&db_path, now_s() + 10 * STRAY_AFTER_S);
+        assert!(!backups.join("hl-20260920-134233.part").exists(), "its own half-written copy goes");
+        for kept in ["notes.txt", "hl-copy.bak", "mine.zip"] {
+            assert!(backups.join(kept).exists(), "{kept} is not the app's to delete");
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn tables_fall_into_their_parts() {
         assert_eq!(part_of("league_rawlog"), "league_logs");
         assert_eq!(part_of("league_log_json"), "league_logs");
@@ -391,6 +443,10 @@ mod tests {
         db.upsert_league_logs(&[hl_db::LeagueLogRow { log_id: 7, etf2l_match_id: 1, map: "pl_upward", played_at: 1, duration_s: Some(1500), title: None }]).await.unwrap();
         db.put_league_json(7, "{}", "logs.tf").await.unwrap();
 
+        // A database a person put in the folder by hand: never pruned.
+        std::fs::create_dir_all(dir.join("backups")).unwrap();
+        std::fs::write(dir.join("backups").join("mine.sqlite3"), b"not ours").unwrap();
+
         let first = run(&db, &db_path, false).await.unwrap();
         assert!(first.is_some(), "the first run always takes one");
         assert!(run(&db, &db_path, false).await.unwrap().is_none(), "an hour has not passed");
@@ -401,7 +457,8 @@ mod tests {
             std::thread::sleep(std::time::Duration::from_millis(1100));
             run(&db, &db_path, true).await.unwrap();
         }
-        let kept = list(&db_path);
+        assert!(dir.join("backups").join("mine.sqlite3").exists(), "a file the app did not write is not pruned");
+        let kept: Vec<Backup> = list(&db_path).into_iter().filter(|b| !b.path.ends_with("mine.sqlite3")).collect();
         assert_eq!(kept.len(), 1, "{kept:?}");
         // The copy opens, without the JSON, and marked so.
         let copy = hl_db::Db::connect(std::path::Path::new(&kept[0].path)).await.unwrap();

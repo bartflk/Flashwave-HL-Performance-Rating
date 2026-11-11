@@ -1839,6 +1839,7 @@ name = "hl-app"
 version = "0.13.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "hl-core",
  "hl-db",
  "hl-ingest",
