@@ -469,6 +469,10 @@ fn now_s() -> i64 {
 }
 
 #[cfg(test)]
+#[path = "kills_edge_tests.rs"]
+mod edge_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

@@ -222,4 +222,69 @@ mod tests {
         c.sort_unstable();
         assert_eq!(c, vec![4, 5, 6]);
     }
+
+    #[test]
+    fn coverage_edges_slack_tail_and_empty_inputs() {
+        let rounds = [(1, 100.0, 160.0), (2, 200.0, 260.0)];
+        // No recordings, no rounds.
+        assert!(covered_rounds(&rounds, &[]).is_empty());
+        assert!(covered_rounds(&[], &[(0.0, 1000.0)]).is_empty());
+        // A recording that began up to 5 s after the round started still has it; 5.1 s does not.
+        assert!(covered_rounds(&rounds, &[(95.0, 1000.0)]).contains(&1));
+        assert!(covered_rounds(&rounds, &[(105.0, 1000.0)]).contains(&1));
+        assert!(!covered_rounds(&rounds, &[(105.1, 1000.0)]).contains(&1));
+        // One that ends 30 s after the round began has it; 29.9 s does not.
+        assert!(covered_rounds(&rounds, &[(0.0, 130.0)]).contains(&1));
+        assert!(!covered_rounds(&rounds, &[(0.0, 129.9)]).contains(&1));
+        // A recording shorter than the tail holds nothing, even over a round's start.
+        assert!(covered_rounds(&rounds, &[(100.0, 20.0)]).is_empty());
+        // Two recordings each cover their own round.
+        let got = covered_rounds(&rounds, &[(95.0, 100.0), (195.0, 100.0)]);
+        assert_eq!(got, [1, 2].into_iter().collect());
+    }
+
+    #[test]
+    fn a_part_needs_a_file_a_time_a_length_and_the_right_map() {
+        let rounds: Vec<(i64, f64, f64)> = vec![(1, 1000.0, 1360.0), (2, 1400.0, 1760.0)];
+        let ok = demo(1, "koth_product_final", 1000 + 700, 700);
+        let mut deleted = demo(2, "koth_product_final", 1000 + 700, 700);
+        deleted.backend = Some("deleted".into());
+        let mut no_url = demo(3, "koth_product_final", 1000 + 700, 700);
+        no_url.url.clear();
+        let mut no_time = demo(4, "koth_product_final", 1700, 700);
+        no_time.time = None;
+        let mut no_len = demo(5, "koth_product_final", 1700, 700);
+        no_len.duration = None;
+        let mut no_map = demo(6, "koth_product_final", 1700, 700);
+        no_map.map = None;
+        let other_map = demo(7, "pl_upward_f12", 1700, 700);
+        let listed = [ok.clone(), deleted, no_url, no_time, no_len, no_map.clone(), other_map.clone(), ok.clone()];
+        let maps: HashSet<String> = ["product".to_string()].into();
+        let parts = parts_of(&listed, &maps, &rounds, 0.0, &HashSet::new());
+        assert_eq!(parts.iter().map(|p| p.demos_tf_id).collect::<Vec<_>>(), vec![1], "the duplicate listing collapses too");
+        // With no known map, any map counts, a demo with no map included.
+        let any = parts_of(&[no_map, other_map], &HashSet::new(), &rounds, 0.0, &HashSet::new());
+        assert_eq!(any.len(), 2);
+    }
+
+    #[test]
+    fn the_clock_offset_moves_the_match_into_the_demos_time() {
+        // The log's rounds sit two hours behind real time.
+        let rounds: Vec<(i64, f64, f64)> = vec![(1, 1000.0, 1360.0)];
+        let maps: HashSet<String> = HashSet::new();
+        let d = demo(1, "koth_product_final", 1000 + 7200 + 400, 400);
+        assert_eq!(parts_of(std::slice::from_ref(&d), &maps, &rounds, 7200.0, &HashSet::new()).len(), 1);
+        assert!(parts_of(std::slice::from_ref(&d), &maps, &rounds, 0.0, &HashSet::new()).is_empty());
+        assert!(parts_of(&[d], &maps, &rounds, 3600.0, &HashSet::new()).is_empty());
+    }
+
+    #[test]
+    fn missing_rounds_are_the_ones_not_covered() {
+        let c = Coverage { rounds: vec![1, 2, 3], covered: vec![1, 2, 3] };
+        assert!(c.missing().is_empty());
+        let c = Coverage { rounds: vec![1, 2, 3], covered: vec![2] };
+        assert_eq!(c.missing(), vec![1, 3]);
+        let c = Coverage { rounds: vec![], covered: vec![] };
+        assert!(c.missing().is_empty());
+    }
 }
