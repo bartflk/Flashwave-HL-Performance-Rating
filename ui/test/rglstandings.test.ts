@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decided, openWeek, standings, weekOf } from "../src/lib/rglstandings.ts";
+import { decided, standings, weekOf } from "../src/lib/rglstandings.ts";
 import type { RglMatch } from "../src/api/types.ts";
 
 let id = 0;
@@ -61,12 +61,21 @@ test("standings: forfeit with a winner counts as a win and a loss with no rounds
   assert.deepEqual(t.map((r) => [r.name, r.won, r.lost, r.for, r.against]), [["B", 1, 0, 0, 0], ["A", 0, 1, 0, 0]]);
 });
 
-test("standings: a double forfeit or a match not played yet gives nobody a game", () => {
+test("standings: a double forfeit is a loss for both, a match not played yet counts for nobody", () => {
   const t = standings([
     match({ home: [1, "A"], away: [2, "B"], winner: null, forfeit: true }),
     match({ home: [1, "A"], away: [2, "B"], winner: null }),
-  ]);
-  assert.equal(t.size, 0);
+  ]).get("Advanced")!;
+  assert.deepEqual(t.map((r) => [r.played, r.won, r.lost]), [[1, 0, 1], [1, 0, 1]]);
+});
+
+test("standings: playoffs do not count in a season that has weeks, a Bye Week is no game", () => {
+  const t = standings([
+    match({ week: "Week 1 - Vigil", home: [1, "A"], away: [2, "B"], winner: 1 }),
+    match({ week: "Semi Final", home: [1, "A"], away: [2, "B"], winner: 2 }),
+    match({ week: "Week 2 - Vigil", home: [1, "A"], away: [3, "Bye Week - Advanced"], winner: 1 }),
+  ]).get("Advanced")!;
+  assert.deepEqual(t.map((r) => [r.id, r.played, r.won]), [[1, 1, 1], [2, 1, 0]]);
 });
 
 test("standings: a match with fewer than two teams (a bye) is skipped", () => {
@@ -110,15 +119,3 @@ test("decided: a winner or a forfeit", () => {
   assert.equal(decided(match({ home: [1, "A"], away: [2, "B"], winner: null })), false);
 });
 
-test("openWeek: the first week with an undecided match, else the last", () => {
-  const w = (week: string, winner: number | null, forfeit = false) => match({ week: `${week} - Map`, home: [1, "A"], away: [2, "B"], winner, forfeit });
-  assert.equal(openWeek([w("Week 1", 1), w("Week 2", null), w("Week 3", null)]), "Week 2");
-  assert.equal(openWeek([w("Week 1", 1), w("Week 2", 2)]), "Week 2");
-  assert.equal(openWeek([]), undefined);
-});
-
-test("openWeek: a double forfeit does not hold the page on its week", () => {
-  const w = (week: string, winner: number | null, forfeit = false) => match({ week: `${week} - Map`, home: [1, "A"], away: [2, "B"], winner, forfeit });
-  assert.equal(openWeek([w("Week 1", null, true), w("Week 2", null)]), "Week 2");
-  assert.equal(openWeek([w("Week 1", 1), w("Week 2", null, true)]), "Week 2");
-});

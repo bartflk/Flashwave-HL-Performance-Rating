@@ -118,20 +118,37 @@ pub async fn fetch(
         .collect();
 
     let (total, mut fetched, mut failed) = (todo.len(), 0, 0);
+    // A refusal ends the pass, and so do three failures to reach ETF2L in a
+    // row: the matches left are read at the next sync, not asked for now,
+    // one request each, into a server that is not answering.
+    let mut unreachable_run = 0;
     for (i, id) in todo.into_iter().enumerate() {
         progress(i, total);
         match sources.etf2l_get(&format!("/matches/{id}")).await {
             Ok(Some(body)) if serde_json::from_str::<Value>(&body).is_ok_and(|v| v.get("match").is_some()) => {
+                unreachable_run = 0;
                 db.store_etf2l_raw("match", id, &body).await?;
                 fetched += 1;
             }
             Ok(_) => {
+                unreachable_run = 0;
                 tracing::warn!(match_id = id, "ETF2L match missing or malformed");
                 failed += 1;
             }
             Err(e) => {
                 tracing::warn!(match_id = id, error = %format!("{e:#}"), "ETF2L match fetch failed");
                 failed += 1;
+                if crate::http::refused(&e) {
+                    break;
+                }
+                if crate::http::unreachable(&e) {
+                    unreachable_run += 1;
+                    if unreachable_run >= 3 {
+                        break;
+                    }
+                } else {
+                    unreachable_run = 0;
+                }
             }
         }
     }

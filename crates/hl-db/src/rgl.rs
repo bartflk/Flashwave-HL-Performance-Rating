@@ -39,6 +39,20 @@ impl Db {
         Ok(())
     }
 
+    /// Forget these matches' kept answers, those that are kept: RGL changed
+    /// them, so they are read once more.
+    pub async fn drop_rgl_matches(&self, ids: &[i64]) -> Result<()> {
+        for chunk in ids.chunks(500) {
+            let sql = format!("DELETE FROM rgl_match WHERE match_id IN ({})", vec!["?"; chunk.len()].join(","));
+            let mut q = sqlx::query(&sql);
+            for id in chunk {
+                q = q.bind(id);
+            }
+            q.execute(self.pool()).await?;
+        }
+        Ok(())
+    }
+
     /// Kept answers of these paths, by path, with when each was kept (unix s).
     pub async fn rgl_answers(&self, paths: &[String]) -> Result<HashMap<String, (String, i64)>> {
         let mut out = HashMap::new();
@@ -84,6 +98,15 @@ mod tests {
         let got = db.rgl_matches(&[35150, 35151]).await.unwrap();
         assert_eq!(got.len(), 1);
         assert!(got[&35150].contains("15199"));
+    }
+
+    #[tokio::test]
+    async fn a_changed_match_is_forgotten() {
+        let db = crate::Db::connect_in_memory().await.unwrap();
+        db.store_rgl_match(1, "{}").await.unwrap();
+        db.store_rgl_match(2, "{}").await.unwrap();
+        db.drop_rgl_matches(&[2, 3]).await.unwrap();
+        assert_eq!(db.rgl_matches(&[1, 2]).await.unwrap().len(), 1);
     }
 
     #[tokio::test]

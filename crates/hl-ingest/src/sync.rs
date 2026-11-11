@@ -245,14 +245,21 @@ pub async fn sync(
                     None => return Ok(false),
                 }
             };
-            db.store_raw_log(log_id, &json).await?;
-            process_raw(db, log_id, &json).await?;
+            store_fetched(db, log_id, &json).await?;
             anyhow::Ok(true)
         }
         .await;
 
         match result {
-            Ok(false) => left.push(log_id),
+            Ok(false) => {
+                left.push(log_id);
+                // A log a day old that drops.tf does not have is asked for
+                // again after a day, then a week, then a month, not on every
+                // sync (audit API-3). A fresher one may only be late there.
+                if db.log_played_at(log_id).await?.is_none_or(|t| now_s() - t >= 86_400) {
+                    db.record_log_miss(log_id).await?;
+                }
+            }
             Err(e) if !logstf_out && crate::http::refused(&e) => {
                 tracing::warn!(log_id, error = %format!("{e:#}"), "logs.tf refused us; drops.tf only for the rest of the pass");
                 progress(Progress::SourceFailed { source: "logs.tf", error: "refusing requests for now; carrying on with drops.tf".into() });
@@ -348,11 +355,14 @@ async fn stand_ins(db: &Db, sources: &Sources, w: &hl_rating::Weights, ids: &[i6
             let v: serde_json::Value = serde_json::from_str(&body)?;
             let s = crate::moretf::stand_in(&v)?;
             let json = serde_json::to_string(&s.json)?;
-            db.store_raw_log(log_id, &json).await?;
-            db.store_rawlog(log_id, &crate::demo_import::zip_text(&s.text)?).await?;
+            // Read before anything is written, so a log that will not read
+            // leaves nothing behind. The stand-in mark goes first: it is what
+            // keeps the log queued for logs.tf's real one, so a failure after
+            // it cannot leave a stored copy that is never replaced (audit SY-1).
+            let log = normalize(log_id, &serde_json::from_str(&json)?)?;
             db.mark_stand_in(log_id, crate::moretf::SOURCE).await?;
-            process_raw(db, log_id, &json).await?;
-            crate::kills::derive_log(db, log_id).await?;
+            db.store_log(&log, &json, classify(&log)).await?;
+            crate::kills::store(db, log_id, &crate::demo_import::zip_text(&s.text)?, crate::rawlog::parse(&s.text)).await?;
             anyhow::Ok(true)
         }
         .await;
@@ -411,6 +421,20 @@ pub async fn reprocess(db: &Db, mut progress: impl FnMut(Progress)) -> Result<In
     recompute_supersessions(db).await?;
 
     db.index_stats().await
+}
+
+fn now_s() -> i64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64)
+}
+
+/// A log just downloaded: its raw JSON and everything normalized from it,
+/// written together. A log that does not read is stored nowhere, so it stays
+/// in the queue (audit SY-1).
+async fn store_fetched(db: &Db, log_id: i64, json: &str) -> Result<()> {
+    let value: serde_json::Value =
+        serde_json::from_str(json).with_context(|| format!("log {log_id} is not valid JSON"))?;
+    let log = normalize(log_id, &value)?;
+    db.store_log(&log, json, classify(&log)).await
 }
 
 /// Normalize one stored log, write it, and classify it where trends.tf could not.
@@ -582,9 +606,7 @@ pub async fn store_log_json(db: &Db, w: &hl_rating::Weights, log_id: i64, json: 
         raw_json: json,
     }])
     .await?;
-    db.store_raw_log(log_id, json).await?;
-    db.write_match(&log).await?;
-    db.set_heuristic_format(log_id, classify(&log)).await?;
+    db.store_log(&log, json, classify(&log)).await?;
     recompute_supersessions(db).await?;
 
     let yours = match db.get_me().await? {
@@ -617,6 +639,10 @@ pub struct FoundParts {
     /// Of those, the ones whose every round is one of the match's: stored,
     /// and folded into it.
     pub added: usize,
+    /// Candidates logs.tf would not give this time. The search is marked
+    /// done only when this is 0: a log that failed to download may be the
+    /// missing part (audit SY-5).
+    pub failed: usize,
 }
 
 /// Round starts of a log, to the second, from its logs.tf JSON.
@@ -671,7 +697,7 @@ pub async fn find_parts(db: &Db, sources: &Sources, w: &hl_rating::Weights, log_
         .filter(|(id, _, _, date, n)| *id != log_id && (16..=22).contains(n) && *date >= first - 300 && *date <= uploaded + 60)
         .map(|(id, ..)| id)
         .collect();
-    let mut found = FoundParts { candidates: near.len(), added: 0 };
+    let mut found = FoundParts { candidates: near.len(), added: 0, failed: 0 };
     for id in near {
         let body = match db.raw_log(id).await? {
             Some(b) => b,
@@ -679,6 +705,7 @@ pub async fn find_parts(db: &Db, sources: &Sources, w: &hl_rating::Weights, log_
                 Ok((b, _)) => b,
                 Err(e) => {
                     tracing::info!(log_id = id, error = %format!("{e:#}"), "a possible part could not be fetched");
+                    found.failed += 1;
                     continue;
                 }
             },

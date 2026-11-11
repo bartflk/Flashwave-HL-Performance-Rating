@@ -1,6 +1,11 @@
 import type { Team } from "../api/types";
 import { locale, t } from "./i18n";
 
+/** What a match is called on a download card: `cp_process, log 12345`. */
+export function matchLabel(map: string | null, logId: number): string {
+  return t("{0}, log {1}", { "0": map ?? t("this match"), "1": logId });
+}
+
 /** `pl_swiftwater_final1` -> mode `pl`, name `swiftwater`. */
 export function splitMap(map: string | null): { mode: string | null; name: string | null } {
   if (!map) return { mode: null, name: null };
@@ -30,7 +35,7 @@ export function formatMonth(unix: number | null): string {
 /** How long a stay lasted, coarsely: `12 days`, `5 mo`, `2 yr 3 mo`. */
 export function formatStay(seconds: number): string {
   const days = Math.max(0, Math.round(seconds / 86400));
-  if (days < 31) return t("{0} days", { "0": days });
+  if (days < 31) return days === 1 ? t("1 day") : t("{0} days", { "0": days });
   const months = Math.round(days / 30.44);
   if (months < 12) return t("{0} mo", { "0": months });
   const years = Math.floor(months / 12);

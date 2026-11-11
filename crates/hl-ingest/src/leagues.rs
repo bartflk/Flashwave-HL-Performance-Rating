@@ -137,10 +137,13 @@ pub fn parse_name(name: &str) -> Option<(i64, String, String, String)> {
     if lower.starts_with("preseason") && lower.contains("playoff") {
         return Some((season, season_name, label.to_string(), "Qualifiers".to_string()));
     }
-    const STAGES: [(&str, &str); 8] = [
+    const STAGES: [(&str, &str); 11] = [
         ("Grand Final", "Grand Final"),
         ("3rd Place Match", "3rd Place"),
+        ("Third Place Match", "3rd Place"),
+        ("Bronze Match", "3rd Place"),
         ("3rd Place", "3rd Place"),
+        ("Third Place", "3rd Place"),
         ("Playoffs", "Playoffs"),
         ("Final", "Final"),
         ("Relegation", "Relegation"),
@@ -171,6 +174,17 @@ pub fn is_tournament(category: &str, kind: &str, name: &str) -> bool {
 /// `("Highlander Experimental Cup #10", "Mid")`;
 /// `"Highlander Nations Cup #7 - Bronze Match"` -> `(".. #7", "")`.
 pub fn parse_tournament(name: &str) -> (String, String) {
+    // A preseason cup is named by the cup, not by the season ETF2L files it
+    // under: splitting "Highlander Season 36 (Autumn 2026): Preseason Cup #2:
+    // Low" at its first colon made every cup of the season one tournament
+    // called "Highlander Season 36 (Autumn 2026)" (LG-7).
+    if let Some((_, _, division, stage)) = parse_name(name) {
+        if stage == "Cup" {
+            if let Some(cup) = preseason_cup_name(name) {
+                return (cup, division);
+            }
+        }
+    }
     let (cup, label) = name.split_once(':').or_else(|| name.split_once(" - ")).unwrap_or((name, ""));
     let mut division = label.trim().to_string();
     for suffix in ["3rd Place Match", "Third Place Match", "3rd Place", "Bronze Match", "Grand Final", "Playoffs", "Final"] {
@@ -180,6 +194,20 @@ pub fn parse_tournament(name: &str) -> (String, String) {
         }
     }
     (cup.trim().to_string(), division)
+}
+
+/// "Highlander Season 36 (Autumn 2026): Preseason Cup #2: Low" -> "Highlander
+/// Season 36 (Autumn 2026): Preseason Cup #2": the name up to the cup and its
+/// number, if it has one.
+fn preseason_cup_name(name: &str) -> Option<String> {
+    const CUP: &str = "preseason cup";
+    let at = name.to_ascii_lowercase().find(CUP)? + CUP.len();
+    let rest = &name[at..];
+    let after = rest.trim_start();
+    let number = after.strip_prefix('#').unwrap_or(after);
+    let digits = number.find(|c: char| !c.is_ascii_digit()).unwrap_or(number.len());
+    let end = if digits > 0 { at + (rest.len() - number.len()) + digits } else { at };
+    Some(name[..end].trim().to_string())
 }
 
 /// A competition's division and stage, whichever kind it is.
@@ -330,6 +358,8 @@ async fn fetch_competitions(db: &Db, sources: &Sources, found: &[Found], newest:
         };
         let pool = match sources.etf2l_get(&format!("/competition/{id}")).await {
             Ok(Some(body)) => serde_json::from_str::<Value>(&body).ok().and_then(|v| v.pointer("/competition/pool").map(|p| p.to_string())),
+            // Turned away: the rest of the pass would only be turned away too.
+            Err(e) if crate::http::refused(&e) => return Err(e),
             _ => None,
         };
         db.upsert_competition(&CompetitionRow {
@@ -403,7 +433,12 @@ async fn fetch_competitions(db: &Db, sources: &Sources, found: &[Found], newest:
                 out.tables += 1;
             }
             Ok(_) => {}
-            Err(e) => tracing::info!(competition = id, error = %format!("{e:#}"), "ETF2L table not read"),
+            Err(e) => {
+                tracing::info!(competition = id, error = %format!("{e:#}"), "ETF2L table not read");
+                if crate::http::refused(&e) {
+                    break;
+                }
+            }
         }
     }
 
@@ -483,6 +518,9 @@ pub async fn fetch_match_detail(db: &Db, sources: &Sources, match_id: i64) -> Re
     {
         let body = match sources.etf2l_get(&format!("/matches/{match_id}")).await {
             Ok(Some(b)) => b,
+            // Turned away, or not reachable: the caller stops asking, rather
+            // than counting every match it has left as one more failure.
+            Err(e) if crate::http::unreachable(&e) => return Err(e),
             _ => return Ok(false),
         };
         let Ok(v) = serde_json::from_str::<Value>(&body) else {
@@ -625,6 +663,11 @@ pub async fn season(db: &Db, season: Option<i64>) -> Result<SeasonView> {
     let mut tables: BTreeMap<String, HashMap<i64, TableRow>> = BTreeMap::new();
     for m in matches.iter().filter(|m| m.stage == "regular") {
         let (Some(r1), Some(r2)) = (m.r1, m.r2) else { continue };
+        // A scheduled match is stored 0-0: not a draw, not played. A forfeit
+        // is a result (LG-9).
+        if r1 + r2 == 0 && !m.default_win {
+            continue;
+        }
         let t = tables.entry(m.division.clone()).or_default();
         for (id, name, us, them) in [(m.clan1_id, &m.clan1_name, r1, r2), (m.clan2_id, &m.clan2_name, r2, r1)] {
             let row = t.entry(id).or_insert_with(|| TableRow { team_id: id, name: name.clone(), avatar: None, record: Record::default(), score_for: 0, score_against: 0 });
@@ -640,11 +683,12 @@ pub async fn season(db: &Db, season: Option<i64>) -> Result<SeasonView> {
         for row in &mut teams {
             row.avatar = db.etf2l_team(row.team_id).await?.and_then(|(_, _, a)| a);
         }
-        teams.sort_by_key(|t| std::cmp::Reverse((t.record.won, t.score_for - t.score_against)));
+        // Equal teams in the same order every time, not the map's.
+        teams.sort_by(|a, b| (b.record.won, b.score_for - b.score_against).cmp(&(a.record.won, a.score_for - a.score_against)).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase())).then(a.team_id.cmp(&b.team_id)));
         divisions.push(DivisionTable { division: div.clone(), teams });
     }
     let recent = db.newest_etf2l_season().await?.unwrap_or(0) - SEASONS_BACK;
-    let pending_details = db.season_matches_without_detail(10_000, recent).await?.len();
+    let pending_details = db.count_season_matches_without_detail(recent).await?.max(0) as usize;
     Ok(SeasonView { seasons, season: Some(chosen), divisions, pending_details })
 }
 
@@ -738,8 +782,12 @@ pub async fn team(db: &Db, team_id: i64) -> Result<Option<TeamView>> {
         if !seasons.iter().any(|(s, d)| *s == m.season && *d == m.division) {
             seasons.push((m.season, m.division.clone()));
         }
-        if let (Some(a), Some(b)) = (us, them) {
-            record.add(a, b);
+        if let Some((a, b)) = us.zip(them).filter(|(a, b)| a + b > 0 || m.default_win) {
+            // The record is the season's: a cup or a playoff match is in the
+            // results below, not in the league record (LG-9).
+            if m.stage == "regular" {
+                record.add(a, b);
+            }
             // Per map from the match page where read; otherwise the match's
             // map, which in Highlander is one map played twice.
             match by_match.get(&m.match_id) {
@@ -800,17 +848,20 @@ pub async fn team(db: &Db, team_id: i64) -> Result<Option<TeamView>> {
     let by_season = db.season_players_by_season(team_id).await?;
     let classes_by_season = db.team_classes_by_season(team_id).await?;
     let season_of: HashMap<i64, i64> = matches.iter().map(|m| (m.match_id, m.season)).collect();
+    // Every player's rated games in one query, not one query each (LG-8).
+    let accounts: Vec<u32> = players.iter().map(|p| p.0).collect();
+    let mut rated_by: HashMap<u32, Vec<hl_db::RatedGame>> = HashMap::new();
+    for g in db.rated_games_of(hl_rating::MODEL_VERSION, Some(&accounts)).await? {
+        if g.etf2l_match_id.is_some_and(|id| season_of.contains_key(&id)) {
+            rated_by.entry(g.account_id).or_default().push(g);
+        }
+    }
     let mut roster = Vec::new();
     for (account_id, name, matches, last_played) in players {
         // Most time first per account.
         let class = classes.iter().find(|c| c.0 == account_id).map(|c| c.1.clone());
         // Their rated games in this team's officials, any class.
-        let rated: Vec<hl_db::RatedGame> = db
-            .rated_games(hl_rating::MODEL_VERSION, Some(account_id))
-            .await?
-            .into_iter()
-            .filter(|g| g.etf2l_match_id.is_some_and(|id| season_of.contains_key(&id)))
-            .collect();
+        let rated: Vec<hl_db::RatedGame> = rated_by.remove(&account_id).unwrap_or_default();
         let avg = |v: Vec<f64>| (!v.is_empty()).then(|| v.iter().sum::<f64>() / v.len() as f64);
         let on_class: Vec<&hl_db::RatedGame> = rated.iter().filter(|g| class.as_deref() == Some(g.class.as_str())).collect();
         let games = on_class.iter().filter_map(|g| g.etf2l_match_id).collect::<HashSet<i64>>().len() as i64;
@@ -854,6 +905,7 @@ mod tests {
         assert_eq!(parse_name("Highlander Season 12: Preseason playoffs").map(|p| p.3), Some("Qualifiers".into()));
         assert_eq!(parse_name("Highlander Season 13: Preseason Playoffs").map(|p| p.3), Some("Qualifiers".into()));
         assert_eq!(parse_name("Highlander Season 34: High 3rd Place Match"), Some((34, "Season 34".into(), "High".into(), "3rd Place".into())));
+        assert_eq!(parse_name("Highlander Season 34: High Third Place Match"), Some((34, "Season 34".into(), "High".into(), "3rd Place".into())));
         // Between 27 and 32: named by the time of year.
         assert_eq!(parse_name("Highlander Winter 2024: Low Playoffs"), Some((31, "Winter 2024".into(), "Low".into(), "Playoffs".into())));
         assert_eq!(parse_name("Highlander Winter 2024"), Some((31, "Winter 2024".into(), "".into(), "regular".into())));
@@ -934,9 +986,11 @@ const LEAGUE_LOG_WINDOW_S: i64 = 6 * 3600;
 pub async fn league_sides(db: &Db, sources: &Sources, log_id: i64) -> Result<Option<LeagueSides>> {
     let Some((at, colours)) = db.log_time_and_colours(log_id).await? else { return Ok(None) };
     let mut best: Option<(usize, i64, i64, i64)> = None; // (players placed, match, red team, blue team)
+    // One failure to reach ETF2L ends the asking; the rosters stored are used.
+    let mut asking = true;
     for (match_id, c1, c2, fetched) in db.season_matches_before(at, LEAGUE_LOG_WINDOW_S).await? {
-        if !fetched {
-            let _ = fetch_match_detail(db, sources, match_id).await;
+        if !fetched && asking {
+            asking = fetch_match_detail(db, sources, match_id).await.is_ok();
         }
         let roster = db.season_match_roster(match_id).await?;
         // RED's players on each team, BLU's on each.

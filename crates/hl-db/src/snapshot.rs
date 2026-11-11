@@ -23,6 +23,13 @@ impl Db {
     /// `after` (which may read `src.*`), all in one transaction: a failure
     /// leaves this database as it was.
     pub async fn copy_in(&self, from: &Path, tables: &[TableCopy<'_>], after: &[String]) -> Result<()> {
+        self.copy_in_with(from, &[], tables, after).await
+    }
+
+    /// [`copy_in`](Self::copy_in), with `before` run first inside the same
+    /// transaction: what is cleared to be replaced whole is cleared only if
+    /// the copy then succeeds (LG-5).
+    pub async fn copy_in_with(&self, from: &Path, before: &[String], tables: &[TableCopy<'_>], after: &[String]) -> Result<()> {
         let mut conn = self.pool().acquire().await?;
         sqlx::query("ATTACH DATABASE ?1 AS src")
             .bind(from.to_string_lossy().to_string())
@@ -32,6 +39,9 @@ impl Db {
         let copied: Result<()> = async {
             sqlx::query("BEGIN IMMEDIATE").execute(&mut *conn).await?;
             let work: Result<()> = async {
+                for sql in before {
+                    sqlx::query(sql).execute(&mut *conn).await.with_context(|| sql.clone())?;
+                }
                 for t in tables {
                     let ours = columns(&mut conn, "main", t.table).await?;
                     let theirs = columns(&mut conn, "src", t.table).await?;
@@ -67,7 +77,14 @@ impl Db {
             }
         }
         .await;
-        sqlx::query("DETACH DATABASE src").execute(&mut *conn).await?;
+        // Whatever happened, the file is let go. A DETACH that fails would
+        // hand the pool a connection with `src` still attached (LG-13), so
+        // that connection is dropped from the pool and closed instead.
+        if let Err(e) = sqlx::query("DETACH DATABASE src").execute(&mut *conn).await {
+            tracing::warn!(error = %e, "could not detach the copied file; closing the connection");
+            drop(conn.detach());
+            return copied.and(Err(e.into()));
+        }
         copied
     }
 
@@ -90,12 +107,6 @@ impl Db {
         Ok(())
     }
 
-    /// Drop a model's baselines, before a snapshot's replace them whole.
-    pub async fn clear_baselines(&self, version: &str) -> Result<()> {
-        sqlx::query("DELETE FROM baseline WHERE model_version = ?1").bind(version).execute(self.pool()).await?;
-        Ok(())
-    }
-
     /// Shrink the file after a large copy: what the snapshot ships.
     pub async fn vacuum(&self) -> Result<()> {
         sqlx::query("VACUUM").execute(self.pool()).await?;
@@ -112,6 +123,25 @@ async fn columns(conn: &mut sqlx::SqliteConnection, schema: &str, table: &str) -
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn what_is_cleared_first_comes_back_when_the_copy_fails() {
+        let dir = std::env::temp_dir().join(format!("hl-copy-in-before-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let theirs = Db::connect(dir.join("theirs.sqlite3")).await.unwrap();
+        theirs.pool().close().await;
+        let ours = Db::connect(dir.join("ours.sqlite3")).await.unwrap();
+        sqlx::query("INSERT INTO etf2l_team (team_id, name) VALUES (1, 'ours one')").execute(ours.pool()).await.unwrap();
+        let clear = vec!["DELETE FROM main.etf2l_team".to_string()];
+        let bad = ours.copy_in_with(&dir.join("theirs.sqlite3"), &clear, &[], &["SELECT * FROM no_such_table".into()]).await;
+        assert!(bad.is_err());
+        let n: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM etf2l_team").fetch_one(ours.pool()).await.unwrap();
+        assert_eq!(n, 1, "the clearing was rolled back with the copy");
+        ours.copy_in_with(&dir.join("theirs.sqlite3"), &clear, &[], &[]).await.unwrap();
+        let n: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM etf2l_team").fetch_one(ours.pool()).await.unwrap();
+        assert_eq!(n, 0, "and done when it works");
+    }
 
     #[tokio::test]
     async fn copies_in_keeping_ours_or_replacing_and_rolls_back_on_failure() {

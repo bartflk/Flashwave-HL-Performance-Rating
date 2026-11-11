@@ -1,10 +1,6 @@
 import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { StatTip } from "../components/StatTip";
 import type { Entry, GlossaryKey } from "./glossary";
-import { compare, sortRows, type Dir, type SortValue } from "./compare";
-
-export { compare };
-export type { Dir, SortValue };
 
 /**
  * Every table sorts by its columns (Q79, Flashy: "all the tables in the app
@@ -18,6 +14,8 @@ export type { Dir, SortValue };
  * either way.
  */
 
+export type SortValue = number | string | null | undefined;
+export type Dir = "asc" | "desc";
 export type SortState = { key: string; dir: Dir } | null;
 
 export interface Sorter {
@@ -45,6 +43,21 @@ function write(id: string, s: SortState) {
   }
 }
 
+/** Nothing to sort by: missing, empty, or not a number. One definition for
+ *  `compare` and for the "blanks last" rule in `useSort`, which disagreed
+ *  about NaN and sent it to the top of a descending table. */
+export function blank(v: SortValue): boolean {
+  return v === null || v === undefined || (typeof v === "number" && Number.isNaN(v)) || v === "";
+}
+
+export function compare(x: SortValue, y: SortValue): number {
+  if (blank(x) && blank(y)) return 0;
+  if (blank(x)) return 1;
+  if (blank(y)) return -1;
+  if (typeof x === "number" && typeof y === "number") return x === y ? 0 : x < y ? -1 : 1; // not x - y: two infinities give NaN
+  return String(x).localeCompare(String(y), undefined, { numeric: true, sensitivity: "base" });
+}
+
 /**
  * `id` names the table for remembering its sort; `columns` reads each
  * sortable column from a row; `initial` is the order before any click
@@ -57,7 +70,15 @@ export function useSort<R>(id: string, rows: R[], columns: Record<string, (r: R)
   const sorted = useMemo(() => {
     const get = sort ? cols.current[sort.key] : undefined;
     if (!sort || !get) return rows;
-    return sortRows(rows, get, sort.dir);
+    const sign = sort.dir === "asc" ? 1 : -1;
+    // Blanks last whichever way: compare puts them last ascending, so flip
+    // only the rest.
+    return [...rows].sort((a, b) => {
+      const x = get(a);
+      const y = get(b);
+      const c = compare(x, y);
+      return blank(x) || blank(y) ? c : c * sign;
+    });
   }, [rows, sort]);
   const toggle = (key: string) => {
     setSort((s) => {
@@ -65,7 +86,7 @@ export function useSort<R>(id: string, rows: R[], columns: Record<string, (r: R)
       if (s?.key === key) next = { key, dir: s.dir === "asc" ? "desc" : "asc" };
       else {
         // Numbers start biggest first, text A to Z.
-        const first = rows.map((r) => cols.current[key]?.(r)).find((v) => v !== null && v !== undefined && v !== "");
+        const first = rows.map((r) => cols.current[key]?.(r)).find((v) => !blank(v));
         next = { key, dir: typeof first === "number" ? "desc" : "asc" };
       }
       write(id, next);

@@ -16,7 +16,7 @@ use crate::Progress;
 use anyhow::{Context, Result};
 use hl_core::{SteamId, TfClass};
 use hl_db::{Db, RatingRow};
-use hl_rating::model::{extract, rate, Baseline, Component, Performance, Scale};
+use hl_rating::model::{extract, rate, Baseline, Component, Performance, Scale, Scales};
 use hl_rating::profile::{self, Extra, HistoryRow};
 use hl_rating::{Profile, Rating, Weights, MODEL_VERSION};
 use serde::Serialize;
@@ -77,8 +77,13 @@ async fn rate_all_inner(
     // Pass 2: the pools. The owner is in them now (Flashy): with the league
     // in the pool they are one player among thousands, where in their own
     // matches alone they were half of their class's pool and were left out
-    // so as not to be measured against themselves.
-    let baseline = Baseline::build(perfs.iter().chain(league.iter()).map(|(_, p)| p), None);
+    // so as not to be measured against themselves. Only their officials, once
+    // there are enough of them: a pool is meant to describe a league game,
+    // and their scrims and pugs, unweighted, would shift every percentile
+    // (RA-10).
+    let officials = db.official_log_ids().await?;
+    let pool_perfs = pool_of(&perfs, &league, &officials);
+    let baseline = Baseline::build(pool_perfs.iter().copied(), None);
     let stored: Vec<(String, String, Option<String>, Vec<f64>)> = baseline
         .parts()
         .map(|(class, c, map, vals)| {
@@ -106,22 +111,26 @@ async fn rate_all_inner(
     // owner's own logs' ratings are stored; the sample's are not theirs.
     let league_rated: Vec<(i64, u32, hl_rating::Rating)> =
         league_all.iter().filter_map(|(log_id, p)| Some((*log_id, p.account_id, rate(p, &baseline, w)?))).collect();
-    // The scale over the pool only, like the baselines.
-    let raw: Vec<f64> = scored
+    // The scale over the pool only, like the baselines: the pooled one, and
+    // one per class and kind of game (RA-3), so a Sniper game and a Medic game
+    // that are equally far from their own class's average rate alike.
+    let officials_only = pool_perfs.len() >= MIN_OFFICIAL_POOL && league.len() + officials_in(&perfs, &officials) >= MIN_OFFICIAL_POOL;
+    let samples: Vec<(TfClass, bool, f64)> = scored
         .iter()
+        .filter(|(l, _, _)| !officials_only || officials.contains(l))
         .chain(league_rated.iter().filter(|(l, _, _)| pool_logs.contains(l)))
-        .map(|(_, _, r)| r.score)
+        .map(|(_, _, r)| (r.class, r.has_round_impact(), r.score))
         .collect();
-    let Some(scale) = Scale::of(&raw) else {
+    let Some(scale) = Scales::of(&samples) else {
         // Nothing to measure: leave the last scale and the last ratings alone
         // rather than writing numbers that mean nothing.
         return Ok(RateSummary { logs: total, performances: perfs.len(), rated: 0, mine: 0 });
     };
-    db.replace_rating_scale(MODEL_VERSION, scale.mean, scale.sd, raw.len()).await?;
+    store_scales(db, &scale, &samples).await?;
 
     let mut rows = Vec::with_capacity(scored.len());
     for (log_id, account_id, r) in scored {
-        let r = r.scaled(&scale);
+        let r = r.scaled_for(&scale);
         rows.push(RatingRow {
             log_id,
             account_id,
@@ -138,7 +147,7 @@ async fn rate_all_inner(
     let league_rows: Vec<(i64, u32, &str, f64, f64, String)> = league_rated
         .into_iter()
         .map(|(log_id, account, r)| {
-            let r = r.scaled(&scale);
+            let r = r.scaled_for(&scale);
             (log_id, account, r.class.as_str(), r.score, r.minutes, hl_rating::guide::group_scores_json(&r.parts))
         })
         .collect();
@@ -146,6 +155,31 @@ async fn rate_all_inner(
     progress(Progress::Rating { done: total, total });
 
     Ok(RateSummary { logs: total, performances: perfs.len(), rated: rows.len(), mine })
+}
+
+/// Official performances needed before the pool is officials alone. Below
+/// it (an install with no league sample yet) every game is in the pool, as
+/// before: too few officials would measure nothing.
+pub const MIN_OFFICIAL_POOL: usize = 1000;
+
+fn officials_in(own: &[(i64, Performance)], officials: &std::collections::HashSet<i64>) -> usize {
+    own.iter().filter(|(l, _)| officials.contains(l)).count()
+}
+
+/// The performances the baselines are measured from: the league sample's
+/// officials and the owner's own, the owner's scrims and pugs left out once
+/// there are [`MIN_OFFICIAL_POOL`] officials to measure from.
+fn pool_of<'a>(
+    own: &'a [(i64, Performance)],
+    league: &'a [(i64, Performance)],
+    officials: &std::collections::HashSet<i64>,
+) -> Vec<&'a Performance> {
+    let official_only = league.len() + officials_in(own, officials) >= MIN_OFFICIAL_POOL;
+    own.iter()
+        .filter(|(l, _)| !official_only || officials.contains(l))
+        .chain(league.iter())
+        .map(|(_, p)| p)
+        .collect()
 }
 
 /// Score this install's games, and whatever league logs it holds, against
@@ -171,7 +205,7 @@ async fn rate_on_stored_scale(
         if me.is_some_and(|m| m.account_id() == perf.account_id) {
             mine += 1;
         }
-        let r = r.scaled(&scale);
+        let r = r.scaled_for(&scale);
         rows.push(RatingRow {
             log_id: *log_id,
             account_id: perf.account_id,
@@ -186,7 +220,7 @@ async fn rate_on_stored_scale(
     let league_rows: Vec<(i64, u32, &str, f64, f64, String)> = league
         .iter()
         .filter_map(|(log_id, p)| {
-            let r = rate(p, &baseline, w)?.scaled(&scale);
+            let r = rate(p, &baseline, w)?.scaled_for(&scale);
             Some((*log_id, p.account_id, r.class.as_str(), r.score, r.minutes, hl_rating::guide::group_scores_json(&r.parts)))
         })
         .collect();
@@ -245,7 +279,7 @@ pub async fn rate_logs(db: &Db, w: &Weights, log_ids: &[i64]) -> Result<usize> {
             .iter()
             .filter_map(|p| extract(p, &log.flags, w, impact.get(&p.id.account_id()), pool_map.as_deref()))
             .filter_map(|perf| {
-                let r = rate(&perf, &baseline, w)?.scaled(&scale);
+                let r = rate(&perf, &baseline, w)?.scaled_for(&scale);
                 Some(RatingRow {
                     log_id,
                     account_id: perf.account_id,
@@ -319,9 +353,39 @@ pub async fn collect_performances(
     Ok((total, perfs))
 }
 
-/// The stored scale for the current model; `None` until the first full pass.
-pub async fn load_scale(db: &Db) -> Result<Option<Scale>> {
-    Ok(db.rating_scale(MODEL_VERSION).await?.map(|(mean, sd)| Scale { mean, sd }))
+/// Writes the pooled scale and every class's own beside it.
+async fn store_scales(db: &Db, scales: &Scales, samples: &[(TfClass, bool, f64)]) -> Result<()> {
+    db.replace_rating_scale(MODEL_VERSION, scales.pooled.mean, scales.pooled.sd, samples.len()).await?;
+    let rows: Vec<(String, f64, f64, usize)> = scales
+        .stored()
+        .into_iter()
+        .map(|(class, log, mean, sd)| {
+            let n = samples.iter().filter(|(c, l, _)| *c == class && log.is_none_or(|x| x == *l)).count();
+            let kind = match log {
+                None => "all",
+                Some(true) => "log",
+                Some(false) => "nolog",
+            };
+            (format!("{}|{kind}", class.as_str()), mean, sd, n)
+        })
+        .collect();
+    db.replace_class_scales(MODEL_VERSION, &rows).await
+}
+
+/// The stored scales for the current model; `None` until the first full pass.
+pub async fn load_scale(db: &Db) -> Result<Option<Scales>> {
+    let Some((mean, sd)) = db.rating_scale(MODEL_VERSION).await? else { return Ok(None) };
+    let rows = db.class_scales(MODEL_VERSION).await?.into_iter().filter_map(|(key, mean, sd)| {
+        let (class, kind) = key.split_once('|')?;
+        let log = match kind {
+            "all" => None,
+            "log" => Some(true),
+            "nolog" => Some(false),
+            _ => return None,
+        };
+        Some((TfClass::parse(class).ok()?, log, mean, sd))
+    });
+    Ok(Some(Scales::from_stored(Scale { mean, sd }, rows)))
 }
 
 /// The stored baselines for the current model; empty until the first rating pass.
@@ -536,6 +600,29 @@ fn weapon_accuracy(json: &str, account: u32, class: TfClass) -> Option<(i64, i64
         }
     }
     (shots > 0).then_some((shots, hits))
+}
+
+#[cfg(test)]
+mod pool_tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    fn perf(account: u32) -> Performance {
+        Performance { account_id: account, class: TfClass::Sniper, minutes: 30.0, values: vec![(Component::Dpm, 100.0)], map: None }
+    }
+
+    #[test]
+    fn the_pool_is_officials_once_there_are_enough() {
+        // RA-10: the owner's pugs and scrims are not league games.
+        let own: Vec<(i64, Performance)> = vec![(1, perf(1)), (2, perf(2)), (3, perf(3))];
+        let officials: HashSet<i64> = [1].into_iter().collect();
+        let league: Vec<(i64, Performance)> = (0..MIN_OFFICIAL_POOL as i64).map(|i| (100 + i, perf(9))).collect();
+        let pool = pool_of(&own, &league, &officials);
+        assert_eq!(pool.len(), league.len() + 1, "the official, not the scrim or the pug");
+        // Too few officials to measure from: everything is in, as before.
+        let few = pool_of(&own, &league[..10], &officials);
+        assert_eq!(few.len(), 13);
+    }
 }
 
 #[cfg(test)]

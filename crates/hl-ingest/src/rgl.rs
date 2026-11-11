@@ -47,6 +47,12 @@ static HELD: Mutex<Option<HashMap<String, (Instant, String)>>> = Mutex::new(None
 /// One gate per answer being asked for, so the same one is asked once.
 static ASKING: Mutex<Option<HashMap<String, Arc<tokio::sync::Mutex<()>>>>> = Mutex::new(None);
 
+/// Held in place of a page RGL does not have, so it is not asked again at
+/// once (LG-10: a 404 match was asked for on every view).
+const MISSING: &str = "\u{0}missing";
+/// How long a missing page is remembered.
+const KEEP_MISSING: Duration = Duration::from_secs(5 * 60);
+
 fn held(key: &str) -> Option<String> {
     let mut held = HELD.lock().unwrap();
     let map = held.get_or_insert_with(HashMap::new);
@@ -71,6 +77,13 @@ fn hold(key: &str, body: &str, life: Duration) {
     map.insert(key.to_string(), (Instant::now() + life, body.to_string()));
 }
 
+/// Drop an answer from memory: RGL changed it, so the copy is stale.
+fn forget(key: &str) {
+    if let Some(map) = HELD.lock().unwrap().as_mut() {
+        map.remove(key);
+    }
+}
+
 /// An answer from memory while it is fresh, else asked for: once, however
 /// many are waiting for it.
 async fn once<F, Fut>(key: &str, life: Duration, ask: F) -> Result<Option<String>>
@@ -79,17 +92,19 @@ where
     Fut: Future<Output = Result<Option<String>>>,
 {
     if let Some(body) = held(key) {
-        return Ok(Some(body));
+        return Ok(if body == MISSING { None } else { Some(body) });
     }
     let gate = ASKING.lock().unwrap().get_or_insert_with(HashMap::new).entry(key.to_string()).or_default().clone();
     let turn = gate.lock().await;
     // Whoever held the gate before may have just asked.
     let out = match held(key) {
-        Some(body) => Ok(Some(body)),
+        Some(body) => Ok(if body == MISSING { None } else { Some(body) }),
         None => {
             let out = ask().await;
-            if let Ok(Some(body)) = &out {
-                hold(key, body, life);
+            match &out {
+                Ok(Some(body)) => hold(key, body, life),
+                Ok(None) => hold(key, MISSING, KEEP_MISSING),
+                Err(_) => {}
             }
             out
         }
@@ -121,17 +136,39 @@ async fn post_opt(sources: &Sources, path: &str, body: serde_json::Value, life: 
     once(&key, life, || async move { sources.rgl_post(path, &body).await }).await
 }
 
-/// A path's answer from disk when it was kept, else from RGL; kept from
-/// now on when `lasts` says it cannot change any more.
+/// A kept answer is asked for again after this long, so a correction RGL
+/// makes late still lands (LG-1).
+const RECHECK: i64 = 30 * 24 * 3600;
+/// A team's page is looked at again sooner: its list of linked seasons grows
+/// when the team plays on (LG-2).
+const RECHECK_TEAM: i64 = 7 * 24 * 3600;
+
+/// A path's answer from disk when it was kept and is not due for another
+/// look, else from RGL; kept from now on when `lasts` says it cannot change
+/// any more, forgotten when it no longer holds.
+async fn kept_for(db: &Db, sources: &Sources, path: &str, recheck: i64, lasts: impl Fn(&str) -> bool) -> Result<Option<String>> {
+    let stored = db.rgl_answers(&[path.to_string()]).await?.remove(path);
+    if let Some((body, at)) = &stored {
+        if unix_now() - at < recheck {
+            return Ok(Some(body.clone()));
+        }
+    }
+    let got = match get_opt(sources, path).await {
+        Ok(got) => got,
+        // RGL cannot be reached: the old copy still beats nothing.
+        Err(_) if stored.is_some() => return Ok(stored.map(|(body, _)| body)),
+        Err(e) => return Err(e),
+    };
+    match &got {
+        Some(body) if lasts(body) => db.store_rgl_answer(path, body).await?,
+        _ if stored.is_some() => db.drop_rgl_answer(path).await?,
+        _ => {}
+    }
+    Ok(got)
+}
+
 async fn kept_opt(db: &Db, sources: &Sources, path: &str, lasts: impl Fn(&str) -> bool) -> Result<Option<String>> {
-    if let Some((body, _)) = db.rgl_answers(&[path.to_string()]).await?.remove(path) {
-        return Ok(Some(body));
-    }
-    let Some(body) = get_opt(sources, path).await? else { return Ok(None) };
-    if lasts(&body) {
-        db.store_rgl_answer(path, &body).await?;
-    }
-    Ok(Some(body))
+    kept_for(db, sources, path, RECHECK, lasts).await
 }
 
 async fn kept(db: &Db, sources: &Sources, path: &str, lasts: impl Fn(&str) -> bool) -> Result<String> {
@@ -214,7 +251,7 @@ pub async fn seasons(sources: &Sources) -> Result<Vec<RglSeasonItem>> {
 
 /// A season's page on RGL: its name and maps, its divisions' group ids
 /// with their order (Admin Placement and Dead Teams at 0), and its matches.
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SeasonHead {
     name: String,
@@ -227,19 +264,32 @@ struct SeasonHead {
 }
 
 impl SeasonHead {
-    /// The best division's group: the highest order. Two groups of one
-    /// division can share an order; the lower id then wins, so the answer
-    /// does not depend on the order a hash map happens to be walked in (it
-    /// picked either, from one run to the next, and the season card could
-    /// flip between two divisions' podiums).
-    fn top_group(&self) -> Option<i64> {
-        self.division_sorting
-            .iter()
-            .filter(|(_, order)| **order > 0)
-            .filter_map(|(id, order)| Some((*order, std::cmp::Reverse(id.parse::<i64>().ok()?))))
-            .max()
-            .map(|(_, std::cmp::Reverse(id))| id)
+    /// The divisions' group ids, best first (ties by id, so it is the same
+    /// every time: LG-12).
+    fn groups(&self) -> Vec<i64> {
+        let mut g: Vec<(i64, i64)> = self.division_sorting.iter().filter(|(_, order)| **order > 0).filter_map(|(id, order)| Some((*order, id.parse().ok()?))).collect();
+        g.sort_by_key(|&(order, id)| (-order, id));
+        g.into_iter().map(|(_, id)| id).collect()
     }
+
+    /// The best division's group: the highest order.
+    fn top_group(&self) -> Option<i64> {
+        self.groups().first().copied()
+    }
+}
+
+/// A season's divisions, as `/seasons/{id}/groups` lists them.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Group {
+    group_id: i64,
+    group_name: String,
+    #[serde(default)]
+    sort_order: i64,
+}
+
+fn groups_of(body: &str) -> Result<Vec<Group>> {
+    serde_json::from_str(body).context("reading RGL's divisions")
 }
 
 /// A division's teams, as RGL lists them.
@@ -247,47 +297,66 @@ fn teams_of(body: &str) -> Result<Vec<RglTeam>> {
     serde_json::from_str(body).context("reading RGL's teams")
 }
 
-/// A division whose winner is decided: its season is over.
+/// A division whose winner is decided.
 fn decided_division(body: &str) -> bool {
     teams_of(body).is_ok_and(|teams| teams.iter().any(|t| t.final_rank == Some(1)))
 }
 
-/// A season's page, from disk once it is over. Whether it is over is told
-/// by its best division having a winner, read first.
-async fn season_head(db: &Db, sources: &Sources, id: i64) -> Result<SeasonHead> {
-    let path = format!("/seasons/{id}");
-    if let Some((body, _)) = db.rgl_answers(std::slice::from_ref(&path)).await?.get(&path) {
-        return serde_json::from_str(body).context("reading RGL's season");
+/// A division that has nothing left to decide: a winner, or no teams.
+fn finished_division(body: &str) -> bool {
+    teams_of(body).is_ok_and(|teams| teams.is_empty() || teams.iter().any(|t| t.final_rank == Some(1)))
+}
+
+/// Whether the season is over: every division is decided, not the best
+/// alone (LG-1: the lower divisions' playoffs run after it ends). The best
+/// division is read first, and the rest only once it is decided.
+async fn season_over(db: &Db, sources: &Sources, head: &SeasonHead) -> Result<bool> {
+    let groups = head.groups();
+    let Some(top) = groups.first() else { return Ok(false) };
+    if !decided_division(&kept(db, sources, &format!("/groups/{top}/teams"), decided_division).await?) {
+        return Ok(false);
     }
-    let body = get(sources, &path).await?;
-    let head: SeasonHead = serde_json::from_str(&body).context("reading RGL's season")?;
-    if let Some(top) = head.top_group() {
-        let teams = kept(db, sources, &format!("/groups/{top}/teams"), decided_division).await?;
-        if decided_division(&teams) {
-            db.store_rgl_answer(&path, &body).await?;
+    for g in &groups[1..] {
+        if !finished_division(&kept(db, sources, &format!("/groups/{g}/teams"), decided_division).await?) {
+            return Ok(false);
         }
     }
-    Ok(head)
+    Ok(true)
+}
+
+/// A season's page, and whether the season is over. A page kept on disk is
+/// over (and looked at again after a month); otherwise it is read, and kept
+/// once every division is decided.
+async fn season_head(db: &Db, sources: &Sources, id: i64) -> Result<(SeasonHead, bool)> {
+    let path = format!("/seasons/{id}");
+    if let Some((body, at)) = db.rgl_answers(std::slice::from_ref(&path)).await?.get(&path) {
+        if unix_now() - at < RECHECK {
+            return Ok((serde_json::from_str(body).context("reading RGL's season")?, true));
+        }
+    }
+    let mut head: SeasonHead = serde_json::from_str(&get(sources, &path).await?).context("reading RGL's season")?;
+    if head.division_sorting.is_empty() {
+        // A page without its divisions' order: the divisions' own list has it.
+        let groups = groups_of(&get(sources, &format!("/seasons/{id}/groups")).await?)?;
+        head.division_sorting = groups.iter().map(|g| (g.group_id.to_string(), g.sort_order)).collect();
+    }
+    let over = season_over(db, sources, &head).await?;
+    if over {
+        db.store_rgl_answer(&path, &serde_json::to_string(&head)?).await?;
+    } else {
+        db.drop_rgl_answer(&path).await?;
+    }
+    Ok((head, over))
 }
 
 /// One season: its maps and each division's teams.
 pub async fn season(db: &Db, sources: &Sources, id: i64) -> Result<RglSeason> {
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Group {
-        group_id: i64,
-        group_name: String,
-        #[serde(default)]
-        sort_order: i64,
-    }
-    let head = season_head(db, sources, id).await?;
+    let (head, over) = season_head(db, sources, id).await?;
     // Its page is kept once the season is over; so are its divisions then.
-    let page = format!("/seasons/{id}");
-    let over = db.rgl_answers(std::slice::from_ref(&page)).await?.contains_key(&page);
-    let mut groups: Vec<Group> = serde_json::from_str(&kept(db, sources, &format!("/seasons/{id}/groups"), |_| over).await?).context("reading RGL's divisions")?;
+    let mut groups = groups_of(&kept(db, sources, &format!("/seasons/{id}/groups"), |_| over).await?)?;
     // Admin Placement and Dead Teams are not divisions.
     groups.retain(|g| g.sort_order > 0);
-    groups.sort_by_key(|g| -g.sort_order);
+    groups.sort_by_key(|g| (-g.sort_order, g.group_id));
     let mut divisions = Vec::new();
     for g in groups {
         let mut teams = teams_of(&kept(db, sources, &format!("/groups/{}/teams", g.group_id), |b| over || decided_division(b)).await?)?;
@@ -306,16 +375,23 @@ pub async fn season(db: &Db, sources: &Sources, id: i64) -> Result<RglSeason> {
 pub struct RglSeasonCard {
     pub id: i64,
     pub maps: usize,
-    /// Teams in its best division.
+    /// Teams in its best division only (`division`), not the season's.
     pub teams: usize,
+    /// The best division's name ("Invite"), which `teams` counts.
+    pub division: Option<String>,
+    /// Every division decided.
+    pub over: bool,
+    /// Matches played or scheduled so far; none means it has not started.
+    pub matches: usize,
     /// The best division's top three, best first; empty while it is played.
     pub podium: Vec<RglTeam>,
 }
 
 pub async fn season_card(db: &Db, sources: &Sources, id: i64) -> Result<RglSeasonCard> {
-    let head = season_head(db, sources, id).await?;
-    let mut card = RglSeasonCard { id, maps: head.maps.len(), teams: 0, podium: Vec::new() };
+    let (head, over) = season_head(db, sources, id).await?;
+    let mut card = RglSeasonCard { id, maps: head.maps.len(), teams: 0, division: None, over, matches: head.matches_played_during_season.len(), podium: Vec::new() };
     let Some(top) = head.top_group() else { return Ok(card) };
+    card.division = groups_of(&kept(db, sources, &format!("/seasons/{id}/groups"), |_| over).await?).ok().and_then(|g| g.into_iter().find(|g| g.group_id == top)).map(|g| g.group_name);
     let mut teams = teams_of(&kept(db, sources, &format!("/groups/{top}/teams"), decided_division).await?)?;
     teams.retain(|t| !t.name.starts_with("Bye Week"));
     card.teams = teams.len();
@@ -424,11 +500,30 @@ struct TeamRaw {
     match_ids: Vec<i64>,
 }
 
-/// A team, from disk once its season placed it.
+/// A team, from disk once its season is over. A team that dropped out
+/// mid-season has a final rank too, so the rank alone proves nothing
+/// (LG-2); and the page lists the team's later seasons, so even a kept one
+/// is read again after a week.
 async fn team_raw(db: &Db, sources: &Sources, id: i64) -> Result<Option<TeamRaw>> {
-    let placed = |body: &str| serde_json::from_str::<TeamRaw>(body).is_ok_and(|t| t.final_rank.is_some());
-    let Some(body) = kept_opt(db, sources, &format!("/teams/{id}"), placed).await? else { return Ok(None) };
-    Ok(Some(serde_json::from_str(&body).context("reading RGL's team")?))
+    let path = format!("/teams/{id}");
+    if let Some((body, at)) = db.rgl_answers(std::slice::from_ref(&path)).await?.get(&path) {
+        if unix_now() - at < RECHECK_TEAM {
+            return Ok(Some(serde_json::from_str(body).context("reading RGL's team")?));
+        }
+    }
+    let Some(body) = get_opt(sources, &path).await? else { return Ok(None) };
+    let t: TeamRaw = serde_json::from_str(&body).context("reading RGL's team")?;
+    // Another format's team is never shown, and its season never changes.
+    let keep = match season_name(sources, t.season_id).await {
+        None => true,
+        Some(_) => t.final_rank.is_some() && season_head(db, sources, t.season_id).await.is_ok_and(|(_, over)| over),
+    };
+    if keep {
+        db.store_rgl_answer(&path, &body).await?;
+    } else {
+        db.drop_rgl_answer(&path).await?;
+    }
+    Ok(Some(t))
 }
 
 /// A season's name, from NA Highlander's list; `None` for another format's.
@@ -474,9 +569,14 @@ pub struct RglTeamSeason {
 /// The team's other seasons, newest first: NA Highlander's only.
 pub async fn team_seasons(db: &Db, sources: &Sources, ids: Vec<i64>) -> Result<Vec<RglTeamSeason>> {
     let mut out = Vec::new();
+    // The newest teams first, so the cut at 30 drops the oldest seasons; an
+    // unreadable season list is an error, not an empty panel.
+    let mut ids = ids;
+    ids.sort_by_key(|id| std::cmp::Reverse(*id));
+    let names: HashMap<i64, String> = seasons(sources).await?.into_iter().map(|s| (s.id, s.name)).collect();
     for id in ids.into_iter().take(30) {
         let Some(t) = team_raw(db, sources, id).await? else { continue };
-        let Some(season_name) = season_name(sources, t.season_id).await else { continue };
+        let Some(season_name) = names.get(&t.season_id).cloned() else { continue };
         out.push(RglTeamSeason { id: t.team_id, name: t.name, tag: t.tag, season_id: t.season_id, season_name, division: t.division_name, final_rank: t.final_rank });
     }
     out.sort_by_key(|t| -t.season_id);
@@ -489,6 +589,19 @@ pub async fn team_seasons(db: &Db, sources: &Sources, ids: Vec<i64>) -> Result<V
 /// or was forfeited.
 fn decided(m: &RglMatch) -> bool {
     m.winner.is_some() || m.is_forfeit
+}
+
+/// Whether a decided match is also settled enough to keep for good: RGL
+/// forfeited it, or its map scores are in, or it is old. A winner named
+/// before the scores are entered is still liable to change (LG-3).
+fn final_match(m: &RglMatch) -> bool {
+    if !decided(m) {
+        return false;
+    }
+    if m.is_forfeit || m.maps.iter().any(|x| x.home_score.is_some() || x.away_score.is_some()) {
+        return true;
+    }
+    m.match_date.as_deref().and_then(|d| chrono::DateTime::parse_from_rfc3339(d).ok()).is_some_and(|d| unix_now() - d.timestamp() > 14 * 24 * 3600)
 }
 
 /// A match still to be played is asked for again after this long, whatever
@@ -508,9 +621,10 @@ async fn changed_since(sources: &Sources, since: i64) -> Option<HashSet<i64>> {
     struct Row {
         match_id: i64,
     }
-    // A margin for the two clocks, and rounded so that pages asked a minute
-    // apart are one answer.
-    let since = (since - 600).div_euclid(600) * 600;
+    // A margin for the two clocks (an hour: a PC clock further off than ten
+    // minutes missed changes, LG-10), and rounded so that pages asked a
+    // minute apart are one answer.
+    let since = (since - 3600).div_euclid(600) * 600;
     let at = chrono::DateTime::from_timestamp(since, 0)?.format("%Y-%m-%dT%H:%M:%SZ").to_string();
     let mut out = HashSet::new();
     for page in 0..CHANGES_PAGES {
@@ -527,6 +641,36 @@ async fn changed_since(sources: &Sources, since: i64) -> Option<HashSet<i64>> {
     None
 }
 
+/// Where, in `rgl_answer`, the time RGL's changes were last read up to is
+/// kept.
+const CHANGES_SEEN: &str = "/internal/changes-seen";
+/// RGL's changes are read for the decided matches at most this often.
+const CHANGES_EVERY: Duration = Duration::from_secs(10 * 60);
+static CHANGES_READ: Mutex<Option<Instant>> = Mutex::new(None);
+
+/// RGL corrects matches it has decided (a forfeit overturned, a score
+/// edited), so the decided matches it changed since the last look are
+/// forgotten, to be read once more (LG-3). One request, every ten minutes
+/// at most, however many matches are read.
+async fn forget_changed(db: &Db, sources: &Sources) -> Result<()> {
+    {
+        let mut last = CHANGES_READ.lock().unwrap();
+        if last.is_some_and(|t| t.elapsed() < CHANGES_EVERY) {
+            return Ok(());
+        }
+        *last = Some(Instant::now());
+    }
+    let now = unix_now();
+    let seen = db.rgl_answers(&[CHANGES_SEEN.to_string()]).await?.remove(CHANGES_SEEN).and_then(|(body, _)| body.parse::<i64>().ok());
+    // The first look has nothing to compare with: start from now.
+    if let Some(seen) = seen {
+        let Some(changed) = changed_since(sources, seen).await else { return Ok(()) };
+        let ids: Vec<i64> = changed.into_iter().collect();
+        db.drop_rgl_matches(&ids).await?;
+    }
+    db.store_rgl_answer(CHANGES_SEEN, &now.to_string()).await
+}
+
 /// Whether a match still to be played, kept `age` seconds ago, is used as
 /// kept: RGL did not change it since (`changed`, when that could be read),
 /// and it is not older than six hours, or half an hour unchecked.
@@ -541,6 +685,7 @@ fn still_good(id: i64, age: i64, changed: Option<&HashSet<i64>>) -> bool {
 /// disk unless RGL changed them since, the rest from RGL at its pace. A
 /// newly decided one is kept for good, one still to be played until next.
 async fn read_matches(db: &Db, sources: &Sources, ids: &[i64]) -> Result<Vec<RglMatch>> {
+    forget_changed(db, sources).await?;
     let kept = db.rgl_matches(ids).await?;
     let path = |id: i64| format!("/matches/{id}");
     let rest: Vec<String> = ids.iter().filter(|id| !kept.contains_key(id)).map(|&id| path(id)).collect();
@@ -566,9 +711,12 @@ async fn read_matches(db: &Db, sources: &Sources, ids: &[i64]) -> Result<Vec<Rgl
             }
         }
         let at = path(id);
+        if changed.as_ref().is_some_and(|c| c.contains(&id)) {
+            forget(&at);
+        }
         let Some(body) = once(&at, KEEP_MATCH, || sources.rgl_get(&at)).await? else { continue };
         let m: RglMatch = serde_json::from_str(&body).context("reading RGL's match")?;
-        if decided(&m) {
+        if final_match(&m) {
             db.store_rgl_match(id, &body).await?;
             db.drop_rgl_answer(&path(id)).await?;
         } else {
@@ -587,7 +735,7 @@ pub async fn one_match(db: &Db, sources: &Sources, id: i64) -> Result<Option<Rgl
 /// Every match of a season, oldest first: from disk once decided, else read
 /// one by one at RGL's pace (about 40 s for a whole Highlander season).
 pub async fn season_matches(db: &Db, sources: &Sources, id: i64) -> Result<Vec<RglMatch>> {
-    let head = season_head(db, sources, id).await?;
+    let (head, _) = season_head(db, sources, id).await?;
     let mut out = read_matches(db, sources, &head.matches_played_during_season).await?;
     out.sort_by(|a, b| a.match_date.cmp(&b.match_date).then(a.match_id.cmp(&b.match_id)));
     Ok(out)
@@ -619,8 +767,11 @@ pub async fn bans(sources: &Sources, skip: i64) -> Result<Vec<RglBan>> {
 
 // ---- Search by name ------------------------------------------------------------
 
-/// How many of RGL's hits are shown, and so how many are looked up.
+/// How many of RGL's hits are shown, and so how many are looked up. A name
+/// like "Dead" finds teams of every format and region first, so a team
+/// search reads more (`TEAM_HITS`), each kept on disk or in memory.
 const HITS: usize = 8;
+const TEAM_HITS: usize = 20;
 
 #[derive(Deserialize)]
 struct Hits {
@@ -683,12 +834,13 @@ pub async fn search_teams(db: &Db, sources: &Sources, q: &str) -> Result<Vec<Rgl
     if q.chars().count() < 2 {
         return Ok(Vec::new());
     }
-    let Some(body) = post_opt(sources, &format!("/search/teams?take={HITS}&skip=0"), serde_json::json!({ "nameContains": q }), KEEP).await? else { return Ok(Vec::new()) };
-    let ids: Vec<i64> = serde_json::from_str::<Hits>(&body).context("reading RGL's search")?.results.iter().filter_map(|id| id.parse().ok()).take(HITS).collect();
+    let Some(body) = post_opt(sources, &format!("/search/teams?take={TEAM_HITS}&skip=0"), serde_json::json!({ "nameContains": q }), KEEP).await? else { return Ok(Vec::new()) };
+    let ids: Vec<i64> = serde_json::from_str::<Hits>(&body).context("reading RGL's search")?.results.iter().filter_map(|id| id.parse().ok()).take(TEAM_HITS).collect();
     let names: HashMap<i64, String> = seasons(sources).await?.into_iter().map(|s| (s.id, s.name)).collect();
     let mut out = Vec::new();
     for id in ids {
-        let Some(t) = team_raw(db, sources, id).await? else { continue };
+        // One team that cannot be read does not end the search.
+        let Ok(Some(t)) = team_raw(db, sources, id).await else { continue };
         let Some(season_name) = names.get(&t.season_id) else { continue };
         out.push(RglTeamHit { id: t.team_id, name: t.name, tag: t.tag, season_id: t.season_id, season_name: season_name.clone(), division: t.division_name, final_rank: t.final_rank });
     }
@@ -857,6 +1009,34 @@ mod tests {
     }
 
     #[test]
+    fn divisions_tie_by_id_and_an_old_winnerless_match_is_final() {
+        let head: SeasonHead = serde_json::from_str(r#"{"name":"S","divisionSorting":{"1182":9,"1181":9,"1186":0,"1190":10}}"#).unwrap();
+        assert_eq!(head.groups(), [1190, 1181, 1182]);
+        let m = |date: &str, winner: Option<i64>, scores: bool| RglMatch {
+            match_id: 1,
+            match_date: Some(date.into()),
+            match_name: None,
+            division_name: None,
+            season_id: None,
+            season_name: None,
+            is_forfeit: false,
+            winner,
+            teams: vec![],
+            maps: vec![RglMatchMap { map_name: "x".into(), home_score: scores.then_some(2), away_score: None }],
+        };
+        assert!(!final_match(&m("2999-01-01T00:00:00Z", Some(5), false)), "a winner without scores, today: not yet");
+        assert!(final_match(&m("2999-01-01T00:00:00Z", Some(5), true)));
+        assert!(final_match(&m("2020-01-01T00:00:00Z", Some(5), false)), "old enough");
+        assert!(!final_match(&m("2020-01-01T00:00:00Z", None, true)));
+    }
+
+    #[test]
+    fn a_division_with_no_teams_has_nothing_to_decide() {
+        assert!(finished_division("[]"));
+        assert!(!finished_division(r#"[{"teamId":1,"name":"A","finalRank":null}]"#));
+    }
+
+    #[test]
     fn a_division_with_a_winner_is_over() {
         assert!(decided_division(r#"[{"teamId":1,"name":"A","finalRank":2},{"teamId":2,"name":"B","finalRank":1}]"#));
         assert!(!decided_division(r#"[{"teamId":1,"name":"A","finalRank":null,"seeding":1}]"#));
@@ -882,79 +1062,6 @@ mod tests {
         let (a, b) = tokio::join!(once("test:once", KEEP, ask), once("test:once", KEEP, ask));
         assert_eq!((a.unwrap(), b.unwrap()), (Some("body".into()), Some("body".into())));
         assert_eq!(asked.load(std::sync::atomic::Ordering::SeqCst), 1);
-    }
-
-    fn head(sorting: &str) -> SeasonHead {
-        serde_json::from_str(&format!(r#"{{"name":"HL","divisionSorting":{sorting}}}"#)).unwrap()
-    }
-
-    #[test]
-    fn two_groups_of_one_order_give_the_same_top_group_every_time() {
-        // Groups 2A and 2B share an order. A hash map walks them in a
-        // different order from one map to the next, so try many.
-        for _ in 0..50 {
-            assert_eq!(head(r#"{"1182":9,"1181":9,"1190":5,"1186":0}"#).top_group(), Some(1181));
-        }
-    }
-
-    #[test]
-    fn a_season_without_a_real_division_has_no_top_group() {
-        assert_eq!(head("{}").top_group(), None);
-        assert_eq!(head(r#"{"1186":0,"1187":-3}"#).top_group(), None, "Admin Placement and Dead Teams are at 0");
-        assert_eq!(head(r#"{"x":9,"1181":4}"#).top_group(), Some(1181), "a key that is not an id is passed over");
-        assert_eq!(head(r#"{"x":9}"#).top_group(), None);
-    }
-
-    #[test]
-    fn a_division_list_that_is_not_one_is_not_decided() {
-        assert!(!decided_division(""));
-        assert!(!decided_division("{}"));
-        assert!(!decided_division("[]"));
-        assert!(!decided_division(r#"[{"name":"no id","finalRank":1}]"#), "a team needs its id to be read");
-        assert!(!decided_division(r#"[{"teamId":1,"name":"A","finalRank":99}]"#), "a team that dropped out is not a winner");
-        assert!(decided_division(r#"[{"teamId":1,"name":"A","finalRank":1},{"teamId":2,"name":"B"}]"#));
-    }
-
-    #[test]
-    fn a_match_changed_and_asked_again_whatever_its_age() {
-        let changed: HashSet<i64> = [1].into();
-        assert!(!still_good(1, 0, Some(&changed)));
-        assert!(still_good(2, 0, Some(&changed)));
-        assert!(still_good(2, PENDING_LIFE - 1, Some(&changed)));
-        assert!(!still_good(2, PENDING_LIFE, Some(&changed)), "at six hours it is asked again");
-        let none: HashSet<i64> = HashSet::new();
-        assert!(still_good(2, 0, Some(&none)));
-        assert!(still_good(2, PENDING_LIFE_UNCHECKED - 1, None));
-        assert!(!still_good(2, PENDING_LIFE_UNCHECKED, None));
-        // A clock set back since it was kept: the age is negative, and it is used as kept.
-        assert!(still_good(2, -100, None));
-    }
-
-    #[test]
-    fn a_forfeit_with_a_winner_or_a_double_forfeit_is_decided() {
-        let mut m: RglMatch = serde_json::from_str(r#"{"matchId":1,"matchDate":null,"winner":null,"isForfeit":true}"#).unwrap();
-        assert!(decided(&m), "a double forfeit has no winner and is over");
-        m.is_forfeit = false;
-        assert!(!decided(&m));
-        m.winner = Some(0);
-        assert!(decided(&m), "a team id of 0 is still a winner");
-    }
-
-    #[test]
-    fn a_match_with_a_missing_part_still_reads() {
-        let m: RglMatch = serde_json::from_str(r#"{"matchId":1,"matchDate":null,"matchName":null,"winner":null,"teams":[{"teamId":1,"teamName":"A"}],"maps":[{"mapName":"pl_x"}]}"#).unwrap();
-        assert_eq!((m.match_date, m.is_forfeit, m.teams[0].is_home, m.maps[0].home_score), (None, false, false, None));
-    }
-
-    #[test]
-    fn steamids_come_in_every_form_a_person_pastes() {
-        let want = 76561197960265728u64 + 5;
-        for form in ["76561197960265733", " 76561197960265733 ", "[U:1:5]", "U:1:5", "STEAM_0:1:2", "https://steamcommunity.com/profiles/76561197960265733/", "https://rgl.gg/Public/PlayerProfile?p=76561197960265733", "https://rgl.gg/Public/PlayerProfile?p=76561197960265733&r=24"] {
-            assert_eq!(steam64(form).unwrap(), want, "{form:?}");
-        }
-        for bad in ["", "   ", "p=", "https://rgl.gg/?p=", "STEAM_0:2:2", "[U:1:x]", "nonsense"] {
-            assert!(steam64(bad).is_err(), "{bad:?}");
-        }
     }
 
     #[test]

@@ -95,7 +95,7 @@ impl Component {
             Component::Caps => "Points you capped, per 10 minutes.",
             Component::Deaths => "How often you died, per 10 minutes. Fewer is better: every death is a player down for a respawn.",
             Component::DeathsAttackDefend => "How often you died on a payload or attack/defend map, per 10 minutes. Weighed apart from KOTH deaths: on attack a death is the price of pushing, and for a Sniper it costs about a third of a KOTH death.",
-            Component::Dpm => "Damage per minute. Measured twice and found to add nothing on top of what your kills and assists already count, so only the fallback model uses it.",
+            Component::Dpm => "Damage per minute. A small part of every class's rating but the Medic's (a tenth at most): the damage that does not end in a kill, which the kills and assists leave out.",
             Component::Opening => "The first kill of a fight, got minus given away. Opening a fight a player up decides most fights.",
             Component::Untraded => "The share of your kills after which your team did not lose someone within 3 seconds. A kill that is instantly traded back won nothing.",
             Component::UntradedDeaths => "Deaths your team did not avenge within 3 seconds. A death that was traded at least took someone with it. Fewer is better.",
@@ -108,7 +108,7 @@ impl Component {
             Component::CapsContested => "Points you capped, each counted by the enemies alive to stop it. Walking onto a point after a wipe adds nothing.",
             Component::CapsMatesDead => "Points you capped, counted by your own team's dead at the time.",
             Component::FightSwingShared => "Fight swing, with each kill's worth shared among everyone who damaged the victim in the 5 seconds before: the damage that set up a kill earns part of it, and the last shot keeps at least half.",
-            Component::RoundImpact => "How much your kills added to your team's chance of winning the round, less what your deaths gave away, from how many were alive on each side and who had the uber advantage. Half of every class's rating since v12: a player who takes more fights and wins them comes out ahead even when they die more.",
+            Component::RoundImpact => "How much your kills added to your team's chance of winning the round, less what your deaths gave away, from how many were alive on each side and who had the uber advantage. Half of every class's rating since v12 (less for the Medic, whose is mostly what his own deaths cost): a player who takes more fights and wins them comes out ahead even when they die more.",
             Component::CapsSpawnDelay => "Seconds your caps cost your own dead teammates by pushing back their respawn a whole wave (8 s or more). Only on KOTH and 5CP: on payload and attack/defend a capture moves the attackers' spawn up. Fewer is better.",
         }
     }

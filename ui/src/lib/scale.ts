@@ -32,22 +32,52 @@ export function storedScale(): number {
 let current = storedScale();
 const listeners = new Set<() => void>();
 
-async function apply(scale: number) {
-  if (inTauri) {
+/** The layout is built for 900 CSS px and up (the window's minimum width). */
+const MIN_LAYOUT_PX = 900;
+
+/** What is drawn now, and whether it is the webview's zoom (which shrinks
+ *  `innerWidth`) or the page's own `zoom` (which does not). */
+let applied = 1;
+let byWebview = inTauri;
+
+/**
+ * The scale to draw: the chosen one, but never so large that the window is
+ * narrower than the layout wants in CSS px. At 150% a 900 px window is 600
+ * CSS px wide, and the header and tables break; so the zoom stops where the
+ * window still fits 900. Below 100% nothing is capped.
+ */
+function effectiveScale(): number {
+  if (current <= 1) return current;
+  const width = byWebview ? window.innerWidth * applied : window.innerWidth;
+  const cap = Math.floor((width / MIN_LAYOUT_PX) * 100) / 100;
+  return Math.max(1, Math.min(current, cap));
+}
+
+async function apply() {
+  const scale = effectiveScale();
+  if (scale === applied) return;
+  if (inTauri && byWebview) {
     try {
       const { getCurrentWebview } = await import("@tauri-apps/api/webview");
       await getCurrentWebview().setZoom(scale);
+      applied = scale;
       return;
     } catch {
       // An older webview without zoom: the page's own zoom below instead.
+      byWebview = false;
     }
   }
+  applied = scale;
   document.documentElement.style.setProperty("zoom", String(scale));
 }
 
 /** Applies the stored scale; called once before the first render. */
 export function initScale() {
-  if (current !== DEFAULT_SCALE) void apply(current);
+  void apply();
+  // A window made narrower (or wider) moves the cap.
+  window.addEventListener("resize", () => {
+    if (current > 1) void apply();
+  });
 }
 
 export function setScale(scale: number) {
@@ -59,7 +89,7 @@ export function setScale(scale: number) {
   } catch {
     // Storage can be blocked; the scale then lasts until the app closes.
   }
-  void apply(s);
+  void apply();
   listeners.forEach((f) => f());
 }
 
