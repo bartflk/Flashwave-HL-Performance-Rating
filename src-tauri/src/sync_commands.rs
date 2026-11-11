@@ -39,6 +39,26 @@ impl Drop for BusyGuard {
     }
 }
 
+/// Watch a background job and say so when it panics. The busy guard is
+/// released by the unwinding, but without this no event ever reached the
+/// window, so the sync card spun until the app was restarted. The
+/// `JoinHandle` used to be thrown away.
+pub(crate) fn watch_panic(
+    app: AppHandle,
+    handle: tauri::async_runtime::JoinHandle<()>,
+    cancel_slot: Option<Arc<std::sync::Mutex<Option<tokio::sync::oneshot::Sender<()>>>>>,
+) {
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = handle.await {
+            tracing::error!(error = %e, "a background job stopped unexpectedly");
+            if let Some(slot) = cancel_slot {
+                *slot.lock().unwrap_or_else(|p| p.into_inner()) = None;
+            }
+            let _ = app.emit(EV_ERROR, CmdError::new("internal", "The job stopped unexpectedly. See the log in the data folder; try again."));
+        }
+    });
+}
+
 /// What `sync://done` carries. Reprocess reuses it with `fetched = 0`.
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -182,21 +202,29 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
     *state.sync_cancel.lock().unwrap() = Some(cancel);
     let cancel_slot = state.sync_cancel.clone();
 
-    tauri::async_runtime::spawn(async move {
+    let startup = state.startup.clone();
+    let watch_app = app.clone();
+    let handle = tauri::async_runtime::spawn(async move {
         let _guard = guard;
+        // The jobs the app starts with (rating, fights, the demo index) are
+        // still running for a little after launch; two of them at once
+        // would rewrite the same tables.
+        let _startup = startup.lock().await;
         let emitter = app.clone();
         let opts = SyncOptions { full, max_fetch: None };
         let began = std::time::Instant::now();
+        let mut report = SyncReport::default();
+        let (weights, _) = hl_rating::Weights::load(&weights_path);
+        // Cancelling stops the work up to the demo pass. The last two steps
+        // -- deleting the demos that were read, and re-rating everything --
+        // are not cancellable: dropped midway, the first leaves files and
+        // rows out of step and the second leaves ratings partly rewritten.
         let work = async {
-            let mut report = SyncReport::default();
             // A copy first: a sync rewrites derived tables, and the file is
             // the only thing here that cannot be fetched again.
             if let Err(e) = hl_ingest::backup::run(&db, &db_path, false).await {
                 tracing::warn!(error = %format!("{e:#}"), "database backup failed");
             }
-            // Loaded once: the fetch loop rates each log as it lands, and
-            // the pass at the end re-rates everything.
-            let (weights, _) = hl_rating::Weights::load(&weights_path);
             let summary = hl_ingest::sync(&db, &sources, me, &opts, &weights, |p: Progress| {
                 let _ = emitter.emit(EV_PROGRESS, p);
             })
@@ -359,28 +387,7 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                     report.problems.push(format!("reading demos: {e:#}"));
                 }
             }
-            // Asked for in Settings: a demo that has been read is 80 MB
-            // doing nothing. It is swept here, right after the pass, and
-            // nowhere else -- this is the only point where "the app has
-            // finished with it" is certainly true.
-            if db.auto_delete_demos().await.unwrap_or(false) {
-                match sweep_read_demos(&db).await {
-                    Ok(n) => {
-                        report.demos_cleaned = n;
-                        if n > 0 {
-                            tracing::info!(deleted = n, "downloaded demos cleaned up");
-                        }
-                    }
-                    Err(e) => tracing::warn!(error = %format!("{e:#}"), "demo cleanup failed"),
-                }
-            }
-            // Every sync ends by re-rating: new matches shift the baselines.
-            hl_ingest::rate_all(&db, Some(me), &weights, |p: Progress| {
-                let _ = emitter.emit(EV_PROGRESS, p);
-            })
-            .await?;
-            report.seconds = began.elapsed().as_secs();
-            anyhow::Ok((summary, report))
+            anyhow::Ok(summary)
         };
         let result = tokio::select! {
             r = work => r,
@@ -391,10 +398,45 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                 return;
             }
         };
+        // From here on there is nothing to cancel: the button has nothing to
+        // reach, and `sync_cancel` says so.
         *cancel_slot.lock().unwrap() = None;
+        drop(cancelled);
+
+        let result = match result {
+            Ok(summary) => {
+                let finished = async {
+                // Asked for in Settings: a demo that has been read is 80 MB
+                // doing nothing. It is swept here, right after the pass, and
+                // nowhere else -- this is the only point where "the app has
+                // finished with it" is certainly true.
+                if db.auto_delete_demos().await.unwrap_or(false) {
+                    match sweep_read_demos(&db).await {
+                        Ok(n) => {
+                            report.demos_cleaned = n;
+                            if n > 0 {
+                                tracing::info!(deleted = n, "downloaded demos cleaned up");
+                            }
+                        }
+                        Err(e) => tracing::warn!(error = %format!("{e:#}"), "demo cleanup failed"),
+                    }
+                }
+                // Every sync ends by re-rating: new matches shift the baselines.
+                hl_ingest::rate_all(&db, Some(me), &weights, |p: Progress| {
+                    let _ = emitter.emit(EV_PROGRESS, p);
+                })
+                .await?;
+                    anyhow::Ok(())
+                }
+                .await;
+                finished.map(|()| summary)
+            }
+            Err(e) => Err(e),
+        };
+        report.seconds = began.elapsed().as_secs();
 
         match result {
-            Ok((SyncSummary { fetched, failed, stats }, report)) => {
+            Ok(SyncSummary { fetched, failed, stats }) => {
                 let _ = app.emit(EV_DONE, Done { kind: "sync", fetched, failed, stats, report: Some(report) });
             }
             Err(e) => {
@@ -402,6 +444,7 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             }
         }
     });
+    watch_panic(watch_app, handle, Some(state.sync_cancel.clone()));
     Ok(())
 }
 
@@ -412,11 +455,19 @@ pub async fn reprocess_start(app: AppHandle, state: State<'_, AppState>) -> CmdR
     let db = state.db.clone();
     let db_path = state.db_path.clone();
     let weights_path = state.db_path.with_file_name("weights.toml");
+    // Stoppable like a sync, through the same `sync_cancel` command: only one
+    // of the two runs at a time (the busy guard), so one slot serves both.
+    let (cancel, mut cancelled) = tokio::sync::oneshot::channel::<()>();
+    *state.sync_cancel.lock().unwrap() = Some(cancel);
+    let cancel_slot = state.sync_cancel.clone();
 
-    tauri::async_runtime::spawn(async move {
+    let startup = state.startup.clone();
+    let watch_app = app.clone();
+    let handle = tauri::async_runtime::spawn(async move {
         let _guard = guard;
+        let _startup = startup.lock().await;
         let emitter = app.clone();
-        let result = async {
+        let work = async {
             // A rebuild rewrites every derived table; keep a copy of what was.
             if let Err(e) = hl_ingest::backup::run(&db, &db_path, false).await {
                 tracing::warn!(error = %format!("{e:#}"), "database backup failed");
@@ -446,8 +497,20 @@ pub async fn reprocess_start(app: AppHandle, state: State<'_, AppState>) -> CmdR
             })
             .await?;
             anyhow::Ok(stats)
-        }
-        .await;
+        };
+        let result = tokio::select! {
+            r = work => r,
+            Ok(()) = &mut cancelled => {
+                // What was rebuilt so far is stored; the next rebuild or sync
+                // brings the rest up to date, and the backup taken first is
+                // there if it matters.
+                tracing::info!("rebuild cancelled");
+                *cancel_slot.lock().unwrap() = None;
+                let _ = app.emit(EV_ERROR, CmdError::new("cancelled", "Rebuild cancelled."));
+                return;
+            }
+        };
+        *cancel_slot.lock().unwrap() = None;
 
         match result {
             Ok(stats) => {
@@ -458,6 +521,7 @@ pub async fn reprocess_start(app: AppHandle, state: State<'_, AppState>) -> CmdR
             }
         }
     });
+    watch_panic(watch_app, handle, None);
     Ok(())
 }
 
@@ -545,7 +609,8 @@ pub async fn newest_log(state: State<'_, AppState>) -> CmdResult<Option<NewestLo
 }
 
 /// Stop the running sync. `false` when there is none to stop (a rebuild is
-/// not stopped this way: it rewrites every table and must finish).
+/// not stopped this way: it rewrites every table and must finish), or when
+/// the sync has reached its last steps, which must finish too.
 #[tauri::command]
 pub async fn sync_cancel(state: State<'_, AppState>) -> CmdResult<bool> {
     Ok(state.sync_cancel.lock().unwrap().take().is_some_and(|tx| tx.send(()).is_ok()))
@@ -1103,6 +1168,9 @@ pub(crate) async fn tf_path(state: &AppState) -> CmdResult<std::path::PathBuf> {
 /// this is quick (~0.6 s for 100 demos) and safe to run on every sync.
 #[tauri::command]
 pub async fn scan_demos(app: AppHandle, state: State<'_, AppState>) -> CmdResult<hl_ingest::DemoIndexSummary> {
+    // A sync indexes the folder itself; scanning at the same time rewrites
+    // the same links. Nothing to report then, which is not an error.
+    let Some(_guard) = BusyGuard::acquire(&state.busy) else { return Ok(Default::default()) };
     let tf = tf_path(&state).await?;
     let summary = hl_ingest::index_demos(&state.db, &tf).await?;
     let _ = app.emit(EV_DEMOS_INDEXED, &summary);
@@ -1380,6 +1448,7 @@ pub async fn retry_failed(state: State<'_, AppState>, log_id: Option<i64>) -> Cm
 /// exists. Runs in the foreground — it is one log, and the person is watching.
 #[tauri::command]
 pub async fn import_log(state: State<'_, AppState>, text: String) -> CmdResult<hl_ingest::Imported> {
+    let _guard = BusyGuard::acquire(&state.busy).ok_or_else(|| CmdError::new("busy", "A sync is running; add the log when it has finished."))?;
     let log_id = hl_ingest::parse_log_id(&text).ok_or_else(|| {
         CmdError::new("bad_input", "That is not a log id or a logs.tf link.")
     })?;
@@ -1419,6 +1488,8 @@ pub async fn known_maps(state: State<'_, AppState>) -> CmdResult<Vec<String>> {
 /// to take it back.
 #[tauri::command]
 pub async fn set_round_map(state: State<'_, AppState>, log_id: i64, rounds: Vec<i64>, map: Option<String>) -> CmdResult<()> {
+    // It rewrites rounds that a running sync is also resolving.
+    let _guard = BusyGuard::acquire(&state.busy).ok_or_else(|| CmdError::new("busy", "A sync is running; set the map when it has finished."))?;
     Ok(hl_ingest::maps::set_round_map(&state.db, log_id, &rounds, map.as_deref()).await?)
 }
 
@@ -1621,6 +1692,7 @@ pub async fn find_parts(state: State<'_, AppState>, log_id: i64) -> CmdResult<hl
 /// log was read (Flashy). Nothing found is not an error: `matched` is 0.
 #[tauri::command]
 pub async fn refresh_demostf(state: State<'_, AppState>, log_id: i64) -> CmdResult<hl_ingest::demostf::Found> {
+    let _guard = BusyGuard::acquire(&state.busy).ok_or_else(|| CmdError::new("busy", "A sync is running; look again when it has finished."))?;
     let me = state.db.get_me().await?.ok_or_else(|| CmdError::new("missing_config", "Set your Steam account in Settings first."))?;
     Ok(hl_ingest::demostf::index_one(&state.db, &state.sources, me, log_id).await?)
 }

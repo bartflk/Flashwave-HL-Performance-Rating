@@ -156,7 +156,18 @@ export function TimelineChart(props: {
             </thead>
             <tbody>
               {sort.sorted.map((s) => (
-                <tr key={s.p.accountId} className="clickable" onClick={() => onPick(s.p.accountId)}>
+                <tr
+                  key={s.p.accountId}
+                  className="clickable"
+                  tabIndex={0}
+                  onClick={() => onPick(s.p.accountId)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onPick(s.p.accountId);
+                    }
+                  }}
+                >
                   <td className={`team-${s.p.team.toLowerCase()}`}>
                     {s.p.name}
                     {s.p.accountId === player && <span className="muted">{" "}{tr("· chosen")}</span>}

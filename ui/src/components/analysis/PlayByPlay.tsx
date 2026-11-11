@@ -95,7 +95,14 @@ export function PlayByPlay({ a, player, slice }: { a: Analysis; player: number; 
               <li
                 key={i}
                 className={`pbp-row pbp-${r.kind}${r.jump ? " jumpable" : ""}${involves(r) ? " pbp-involved" : ""}`}
-                onClick={() => r.jump && jumpTo(r.jump, `${r.kind} at ${roundClock(r.t, a.rounds)}`)}
+                tabIndex={r.jump ? 0 : undefined}
+                onKeyDown={(e) => {
+                  if (r.jump && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    jumpTo(r.jump, tr("{0} at {1}", { "0": r.kind, "1": roundClock(r.t, a.rounds) }));
+                  }
+                }}
+                onClick={() => r.jump && jumpTo(r.jump, tr("{0} at {1}", { "0": r.kind, "1": roundClock(r.t, a.rounds) }))}
                 title={r.jump ? tr("Copy demo_gototick {tick}", { tick: r.jump.tick }) : undefined}
               >
                 <span className="pbp-time">{roundClock(r.t, a.rounds).replace(/^R\d+ /, "")}</span>

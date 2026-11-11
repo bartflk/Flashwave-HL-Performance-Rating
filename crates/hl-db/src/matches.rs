@@ -157,7 +157,7 @@ pub const SORTS: [(&str, &str); 35] = [
     ("lks", "p.lks"),
     ("suicides", "p.suicides"),
     ("dmgk", "CASE WHEN COALESCE(p.kills, 0) > 0 THEN p.dmg * 1.0 / p.kills END"),
-    ("sentries", "(SELECT SUM(ls.sentry_kills) FROM log_stat ls WHERE ls.log_id = m.log_id AND ls.account_id = p.account_id)"),
+    ("sentry_kills", "(SELECT SUM(ls.sentry_kills) FROM log_stat ls WHERE ls.log_id = m.log_id AND ls.account_id = p.account_id)"),
     ("acc", "(SELECT CAST(SUM(w.hits) AS REAL) / SUM(w.shots) FROM log_weapon w WHERE w.log_id = m.log_id AND w.account_id = p.account_id AND w.class = p.main_class HAVING SUM(w.shots) >= 30)"),
 ];
 
@@ -1342,6 +1342,11 @@ mod tests {
     fn every_sort_is_a_known_column_and_anything_else_falls_back_to_the_date() {
         assert!(order_by(&filter(Some("dpm"), false)).contains("p.dmg * 60.0 / p.time_s"));
         assert!(order_by(&filter(Some("rating"), true)).contains("r.score) ASC"));
+        // Sentries built and sentries destroyed are two columns with two keys.
+        assert!(order_by(&filter(Some("sentries"), false)).contains("p.sentries"));
+        assert!(order_by(&filter(Some("sentry_kills"), false)).contains("ls.sentry_kills"));
+        let keys: Vec<&str> = SORTS.iter().map(|(k, _)| *k).collect();
+        assert!(keys.iter().all(|k| keys.iter().filter(|x| x == &k).count() == 1), "a sort key is listed twice");
         // A sort from outside the list can never reach the query.
         let sneaky = order_by(&filter(Some("1; DROP TABLE match"), false));
         assert!(!sneaky.contains("DROP"), "{sneaky}");

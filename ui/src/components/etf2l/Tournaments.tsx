@@ -106,7 +106,7 @@ function TournamentCard({ x, onOpen }: { x: LeagueCup; onOpen: () => void }) {
         <span className="ts-title">{x.name}</span>
         <span className="ts-dates">{dates(x)}</span>
         <span className="ts-stats">
-          <span className="ts-stat">{tx("{0} teams", { "0": x.teams })}</span>
+          <span className="ts-stat">{x.teams === 1 ? t("1 team") : tx("{0} teams", { "0": x.teams })}</span>
           <span className="ts-stat">{x.matches === 1 ? t("1 match") : tx("{0} matches", { "0": x.matches })}</span>
         </span>
         <span className="ts-rows">
@@ -168,7 +168,7 @@ export function TournamentScreen({ name, onTeam, onMatch }: { name: string; onTe
         <span className="ts-eyebrow">{t(KIND_LABEL[x.kind])}</span>
         <h1>{x.name}</h1>
         <p className="hint">
-          {dates(x)} · {tx("{0} teams", { "0": x.teams })} · {x.matches === 1 ? t("1 match") : tx("{0} matches", { "0": x.matches })}
+          {dates(x)} · {x.teams === 1 ? t("1 team") : tx("{0} teams", { "0": x.teams })} · {x.matches === 1 ? t("1 match") : tx("{0} matches", { "0": x.matches })}
         </p>
       </header>
       {x.winners.length > 0 && (

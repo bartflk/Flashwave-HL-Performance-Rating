@@ -1981,6 +1981,8 @@ export const mockApi: Api = {
     return () => {};
   },
 
+  onDemosIndexed: async () => () => {},
+
   onStv: async (h) => {
     stvHandlers = h;
     return () => {

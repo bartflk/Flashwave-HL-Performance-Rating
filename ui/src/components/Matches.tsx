@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { ApiError } from "./ApiError";
 import { friendlyText } from "../lib/apierror";
 import { RatingValue } from "./RatingValue";
@@ -15,7 +15,8 @@ import { RankBySwitch, useRankBy } from "./RankBy";
 import { TierPill } from "./TierPill";
 import { tierOf, useStatScales } from "../lib/tiers";
 import { startSync, useSyncStatus } from "../lib/sync";
-import { bounds, usePeriod } from "../lib/period";
+import { bounds, setPeriod, usePeriod } from "../lib/period";
+import { toastError } from "../lib/toast";
 import { KindPicker } from "./ContextBadge";
 import { ClassIcon } from "./ClassIcon";
 import { PeriodPicker } from "./PeriodPicker";
@@ -65,7 +66,7 @@ const STAT_COLS: StatCol[] = [
   { key: "medkits_hp", label: k("Pack HP"), name: k("Health from packs"), group: k("Totals"), title: k("Health gained from health packs"), value: (me) => me.medkitsHp, fmt: thousands, on: false },
   { key: "sentries", label: k("SG"), name: k("Sentries built"), group: k("Totals"), title: k("Sentries built"), value: (me) => me.sentries, on: false },
   { key: "cpc", label: k("CAP"), name: k("Points captured"), group: k("Totals"), title: k("Points captured"), value: (me) => me.cpc, on: false },
-  { key: "sentries", label: k("SG"), name: k("Sentries destroyed"), group: k("Totals"), title: k("Sentries destroyed, from the server log"), value: (me) => me.sentryKills ?? null, on: false },
+  { key: "sentry_kills", label: k("SG kills"), name: k("Sentries destroyed"), group: k("Totals"), title: k("Sentries destroyed, from the server log"), value: (me) => me.sentryKills ?? null, on: false },
   { key: "lks", label: k("Streak"), name: k("Longest killstreak"), group: k("Totals"), title: k("Longest killstreak"), value: (me) => me.lks, on: false },
   { key: "suicides", label: k("Suicides"), name: k("Suicides"), group: k("Totals"), title: k("Suicides"), value: (me) => me.suicides, on: false },
   { key: "time", label: k("Time"), name: k("Time played"), group: k("Totals"), title: k("Time played"), value: (me) => me.timeS, fmt: (v) => clock(v), on: false },
@@ -157,7 +158,18 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
   // when it finishes.
   const syncing = useSyncStatus().state === "running";
   const refresh = async () => {
-    if (!(await api.syncBusy())) await startSync(false);
+    try {
+      if (!(await api.syncBusy())) await startSync(false);
+    } catch (e) {
+      toastError(e);
+    }
+  };
+  const resetFilters = () => {
+    setView("highlander");
+    setCls(null);
+    setMap(null);
+    setStvOnly(false);
+    setPages(1);
   };
 
   // What is picked stays on offer when the other filters leave it at none,
@@ -227,13 +239,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
             <button
               className="linkish fi-reset"
               title={t("Back to every Highlander match: any class, any map, with or without STV")}
-              onClick={() => {
-                setView("highlander");
-                setCls(null);
-                setMap(null);
-                setStvOnly(false);
-                setPages(1);
-              }}
+              onClick={resetFilters}
             >
               {t("Reset filters")}
             </button>
@@ -253,8 +259,10 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
         </div>
         </div>
 
-      {classRows.length > 0 && (
-        <div className="class-filter" role="tablist" aria-label={t("Class")} ref={balanceWrap}>
+      {/* The row stays when no class matches: With STV is the way out of a
+          filter that leaves nothing, so it must not go with the classes. */}
+      <div className="class-filter" role="tablist" aria-label={t("Class")} ref={balanceWrap}>
+          {classRows.length > 0 && <>
           <button
             role="tab"
             aria-selected={cls === null}
@@ -281,6 +289,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
             </button>
           ))}
           <ClassSortPicker sort={sort} onSort={setSort} />
+          </>}
           <button
             className={stvOnly ? "km-chip on cf-stv" : "km-chip cf-stv"}
             aria-pressed={stvOnly}
@@ -294,8 +303,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
           </button>
           {hasPct && <RankBySwitch value={rankBy} onPick={pickRank} stat="DPM" />}
           <ColumnPicker cols={STAT_COLS} state={picker} />
-        </div>
-      )}
+      </div>
       </div>
 
       {matches.isError && <ApiError error={matches.error} />}
@@ -306,6 +314,21 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
             <>
               <p>{t("No match here has its SourceTV demo on this machine.")}</p>
               <p className="hint">{t("Download one from a match's Demo linking panel, or turn off With STV.")}</p>
+            </>
+          ) : filtered || period.kind !== "all" ? (
+            <>
+              <p>{t("No matches for these filters.")}</p>
+              <p className="hint">
+                <button
+                  className="linkish"
+                  onClick={() => {
+                    resetFilters();
+                    setPeriod({ kind: "all" });
+                  }}
+                >
+                  {t("Reset filters")}
+                </button>
+              </p>
             </>
           ) : (
             <>
@@ -488,7 +511,14 @@ function SortHead(props: {
       className={`sortable${col.num ? " num" : ""}${on ? " sorted" : ""}`}
       title={col.title ? t(col.title) : t("Sort by date")}
       aria-sort={on ? (sort.ascending ? "ascending" : "descending") : "none"}
+      tabIndex={0}
       onClick={() => onSort({ key: col.key, ascending: on ? !sort.ascending : false })}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSort({ key: col.key, ascending: on ? !sort.ascending : false });
+        }
+      }}
     >
       {t(col.label)}
       {on && <span className="sort-arrow">{sort.ascending ? " ▴" : " ▾"}</span>}
@@ -510,6 +540,24 @@ function ImportLog({ onOpen }: { onOpen: (logId: number) => void }) {
   // Opens toward the room it has: leftward from the row's right end, or
   // rightward when a narrow window has wrapped the button to the left.
   const [toRight, setToRight] = useState(false);
+
+  // A click anywhere else, or Escape with the focus anywhere, closes it (as
+  // the column picker does); the input is disabled while fetching, so its own
+  // Escape handler was not enough.
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
 
   async function add() {
     if (!text.trim()) return;
@@ -537,7 +585,7 @@ function ImportLog({ onOpen }: { onOpen: (logId: number) => void }) {
   }
 
   return (
-    <div className="fi-import">
+    <div className="fi-import" ref={box}>
       <button
         className={open ? "km-chip on" : "km-chip"}
         onClick={(e) => {
@@ -557,7 +605,7 @@ function ImportLog({ onOpen }: { onOpen: (logId: number) => void }) {
               void add();
             }}
           >
-            <input autoFocus value={text} placeholder="https://logs.tf/4042136" onChange={(e) => setText(e.target.value)} disabled={busy} onKeyDown={(e) => e.key === "Escape" && setOpen(false)} />
+            <input autoFocus value={text} placeholder="https://logs.tf/4042136" onChange={(e) => setText(e.target.value)} disabled={busy} />
             <button type="submit" className="primary" disabled={busy || !text.trim()}>{busy ? <><Spinner /> {t("Fetching…")}</> : t("Add it")}</button>
           </form>
           <span className="hint">{t("A log id or logs.tf link. Fetched now, not at the next sync.")}</span>

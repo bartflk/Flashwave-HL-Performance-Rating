@@ -26,7 +26,36 @@ permissions:
   contents: write
 
 jobs:
+  # The checks that gate the build: the version is the same everywhere and
+  # matches the tag, and the crates that do not need a window pass their tests.
+  # The Windows installer is built on the maintainer's PC, so this is the only
+  # automated look at a release before files are attached to it.
+  check:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version is the same everywhere
+        run: |
+          conf=$(jq -r .version src-tauri/tauri.conf.json)
+          pkg=$(jq -r .version package.json)
+          cargo=$(awk '/^\[workspace.package\]/{f=1;next} f&&/^version/{gsub(/[" ]/,"",$0);sub(/version=/,"",$0);print;exit}' Cargo.toml)
+          echo "tauri.conf.json $conf, package.json $pkg, Cargo.toml $cargo"
+          [ "$conf" = "$pkg" ] && [ "$conf" = "$cargo" ] || { echo "The versions disagree." >&2; exit 1; }
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v$conf" ]; then
+            echo "The tag ${GITHUB_REF_NAME} is not v$conf." >&2
+            exit 1
+          fi
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+
+      - name: Tests
+        run: cargo test -q -p hl-db -p hl-rating -p hl-ingest --lib
+
   linux:
+    needs: check
     # The oldest supported runner: an AppImage runs on systems at least as
     # new as the one it was built on, so older is wider.
     runs-on: ubuntu-22.04
@@ -102,7 +131,12 @@ jobs:
           name=$(basename "$appimage")
           sig=$(cat "$appimage.sig")
           url="https://github.com/${GITHUB_REPOSITORY}/releases/download/v$VERSION/$name"
-          gh release download "v$VERSION" --pattern latest.json --dir manifest
+          # The release was only just created, and the first request can miss it.
+          for i in 1 2 3 4 5; do
+            gh release download "v$VERSION" --pattern latest.json --dir manifest --clobber && break
+            [ "$i" = 5 ] && { echo "latest.json could not be downloaded." >&2; exit 1; }
+            sleep 20
+          done
           jq --arg sig "$sig" --arg url "$url" \
             '.platforms["linux-x86_64"] = { signature: $sig, url: $url }' \
             manifest/latest.json > latest.json
