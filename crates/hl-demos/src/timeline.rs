@@ -50,6 +50,13 @@ pub use tf_demo_parser::demo::gamevent::GameEvent;
 /// 2: ping per player, and reflects (Q44, Q45).
 pub const TIMELINE_VERSION: i64 = 2;
 
+/// The oldest stored format [`Timeline::decode`] still reads. Versions so far
+/// only added fields and event kinds, so 1 reads under the 2 layout (it just
+/// lacks ping and reflects). Raise this the day a bump changes a layout:
+/// older rows then fail with "needs reading again" instead of being misread
+/// as the new one, and the aim pass records them again (audit SY-6).
+pub const MIN_READABLE_VERSION: i64 = 1;
+
 /// Ticks between samples: every one. Measured on three demos (PLAN §14b):
 /// recomputing "a second before" from a timeline matched the demo to 0.05°
 /// on average at every tick, and drifted to 1-2° with outliers past 100° at
@@ -1000,6 +1007,14 @@ impl Timeline {
     }
 
     pub fn decode(stored: &Stored) -> Result<Timeline> {
+        if !(MIN_READABLE_VERSION..=TIMELINE_VERSION).contains(&stored.version) {
+            bail!(
+                "this timeline was recorded at format {} and this version reads {} to {}: the demo needs reading again",
+                stored.version,
+                MIN_READABLE_VERSION,
+                TIMELINE_VERSION
+            );
+        }
         let head: Head = serde_json::from_str(&stored.head).context("reading a timeline's head")?;
         let n = head.people.len();
 
@@ -1111,6 +1126,15 @@ mod tests {
 
     fn sample(t: u32, x: f32, yaw: f32, pitch: f32) -> Sample {
         Sample { t, pos: [x, -x, 64.0], yaw, pitch }
+    }
+
+    #[test]
+    fn a_timeline_from_a_format_this_build_does_not_read_is_refused_not_misread() {
+        for version in [MIN_READABLE_VERSION - 1, TIMELINE_VERSION + 1] {
+            let stored = Stored { version, ..Stored::default() };
+            let err = Timeline::decode(&stored).unwrap_err().to_string();
+            assert!(err.contains("needs reading again"), "{err}");
+        }
     }
 
     #[test]

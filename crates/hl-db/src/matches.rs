@@ -490,9 +490,17 @@ impl Db {
              LEFT JOIN log_raw r         ON r.log_id = i.log_id
              LEFT JOIN log_fetch_error e ON e.log_id = i.log_id
              -- A log stored from more.tf is asked of logs.tf again (0031).
-             WHERE (r.log_id IS NULL OR i.log_id IN (SELECT log_id FROM log_stand_in))
+             -- Or one whose raw JSON is stored but whose match rows never
+             -- were: written separately once, so a cancelled sync could leave
+             -- one (audit SY-1). It is fetched again and written whole.
+             WHERE (r.log_id IS NULL OR i.log_id IN (SELECT log_id FROM log_stand_in)
+                    OR NOT EXISTS (SELECT 1 FROM match m WHERE m.log_id = i.log_id))
                AND i.superseded_by IS NULL
                AND {WORTH_FETCHING}
+               -- A log the sources did not have is asked for again after a
+               -- day, then a week, then a month (audit API-3).
+               AND i.log_id NOT IN (SELECT log_id FROM log_source_miss
+                                     WHERE last_miss_at + CASE misses WHEN 1 THEN 86400 WHEN 2 THEN 604800 ELSE 2592000 END > unixepoch())
                -- Never a deleted log (Q77); a failing one on its first tries,
                -- then once a week until it has had them all.
                AND (e.log_id IS NULL OR (e.gone = 0 AND (e.attempts < ?1
@@ -573,18 +581,7 @@ impl Db {
 
     pub async fn store_raw_log(&self, log_id: i64, json: &str) -> Result<()> {
         let mut tx = self.pool().begin().await?;
-        sqlx::query(
-            "INSERT INTO log_raw (log_id, json) VALUES (?1, ?2)
-             ON CONFLICT(log_id) DO UPDATE SET json = excluded.json, fetched_at = datetime('now')",
-        )
-        .bind(log_id)
-        .bind(json)
-        .execute(&mut *tx)
-        .await?;
-        sqlx::query("DELETE FROM log_fetch_error WHERE log_id = ?1")
-            .bind(log_id)
-            .execute(&mut *tx)
-            .await?;
+        put_raw_log(&mut tx, log_id, json).await?;
         tx.commit().await?;
         Ok(())
     }
@@ -628,6 +625,22 @@ impl Db {
             .bind(log_id)
             .execute(self.pool())
             .await?;
+        // Asking by hand also ends the wait for a log the sources lacked.
+        sqlx::query("DELETE FROM log_source_miss WHERE log_id = ?1").bind(log_id).execute(self.pool()).await?;
+        Ok(())
+    }
+
+    /// The sources did not have this log: note it, and how many times, so the
+    /// sync asks again after a day, then a week, then a month rather than on
+    /// every sync for ever (audit API-3).
+    pub async fn record_log_miss(&self, log_id: i64) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO log_source_miss (log_id) VALUES (?1)
+             ON CONFLICT(log_id) DO UPDATE SET misses = misses + 1, last_miss_at = unixepoch()",
+        )
+        .bind(log_id)
+        .execute(self.pool())
+        .await?;
         Ok(())
     }
 
@@ -635,6 +648,7 @@ impl Db {
     /// again" means. A deleted log, or one out of tries, stays given up (Q77):
     /// trying it again is one log at a time, by hand.
     pub async fn clear_all_fetch_errors(&self) -> Result<u64> {
+        sqlx::query("DELETE FROM log_source_miss").execute(self.pool()).await?;
         Ok(sqlx::query("DELETE FROM log_fetch_error WHERE gone = 0 AND attempts < ?1")
             .bind(MAX_FETCH_TRIES)
             .execute(self.pool())
@@ -750,8 +764,54 @@ impl Db {
     /// Replace everything normalized for one log. Idempotent: running it twice
     /// leaves the same rows, which is what makes `reprocess` safe.
     pub async fn write_match(&self, log: &NormalizedLog) -> Result<()> {
-        let id = log.log_id;
         let mut tx = self.pool().begin().await?;
+        write_match_in(&mut tx, log).await?;
+        tx.commit().await.with_context(|| format!("committing match {}", log.log_id))?;
+        Ok(())
+    }
+
+    /// A downloaded log: its raw JSON, its match rows and its heuristic
+    /// format, written in one transaction. The raw JSON is what takes a log
+    /// out of the download queue, so it must never land without the rows
+    /// beside it: a sync cancelled between two separate writes left a log
+    /// that was never read and never fetched again (audit SY-1).
+    pub async fn store_log(&self, log: &NormalizedLog, json: &str, format: Format) -> Result<()> {
+        let mut tx = self.pool().begin().await?;
+        put_raw_log(&mut tx, log.log_id, json).await?;
+        write_match_in(&mut tx, log).await?;
+        sqlx::query(
+            "UPDATE log_index SET format = ?2, classified_by = 'heuristic'
+             WHERE log_id = ?1 AND (format IS NULL OR classified_by = 'heuristic'
+                                    OR (classified_by = 'trends' AND format = 'other'))",
+        )
+        .bind(log.log_id)
+        .bind(format.as_str())
+        .execute(&mut *tx)
+        .await?;
+        tx.commit().await.with_context(|| format!("committing log {}", log.log_id))?;
+        Ok(())
+    }
+}
+
+/// Write the raw JSON and forget the log's failures and misses.
+async fn put_raw_log(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>, log_id: i64, json: &str) -> Result<()> {
+    sqlx::query(
+        "INSERT INTO log_raw (log_id, json) VALUES (?1, ?2)
+         ON CONFLICT(log_id) DO UPDATE SET json = excluded.json, fetched_at = datetime('now')",
+    )
+    .bind(log_id)
+    .bind(json)
+    .execute(&mut **tx)
+    .await?;
+    sqlx::query("DELETE FROM log_fetch_error WHERE log_id = ?1").bind(log_id).execute(&mut **tx).await?;
+    sqlx::query("DELETE FROM log_source_miss WHERE log_id = ?1").bind(log_id).execute(&mut **tx).await?;
+    Ok(())
+}
+
+/// [`Db::write_match`] inside a transaction of the caller's.
+async fn write_match_in(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>, log: &NormalizedLog) -> Result<()> {
+    {
+        let id = log.log_id;
 
         // Explicit child deletes rather than relying on ON DELETE CASCADE, so
         // correctness does not hinge on the foreign_keys pragma.
@@ -765,7 +825,7 @@ impl Db {
         ] {
             sqlx::query(&format!("DELETE FROM {table} WHERE log_id = ?1"))
                 .bind(id)
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
         }
 
@@ -793,7 +853,7 @@ impl Db {
         .bind(f.dt)
         .bind(f.airshots)
         .bind(f.hr)
-        .execute(&mut *tx)
+        .execute(&mut **tx)
         .await
         .with_context(|| format!("inserting match {id}"))?;
 
@@ -836,7 +896,7 @@ impl Db {
             .bind(s.ic)
             .bind(s.lks)
             .bind(s.airshots)
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await
             .with_context(|| format!("inserting player {} in match {id}", p.id))?;
 
@@ -854,7 +914,7 @@ impl Db {
                 .bind(c.assists)
                 .bind(c.deaths)
                 .bind(c.dmg)
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
             }
 
@@ -870,7 +930,7 @@ impl Db {
                 .bind(v.kills)
                 .bind(v.deaths)
                 .bind(v.assists)
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
             }
         }
@@ -895,7 +955,7 @@ impl Db {
             .bind(r.red.ubers)
             .bind(r.blue.ubers)
             .bind(r.colours_swapped)
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await?;
 
             for (seq, e) in r.events.iter().enumerate() {
@@ -914,15 +974,16 @@ impl Db {
                 .bind(e.killer.map(|s| s.account_id() as i64))
                 .bind(&e.medigun)
                 .bind(e.point)
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
             }
         }
 
-        tx.commit().await.with_context(|| format!("committing match {id}"))?;
         Ok(())
     }
+}
 
+impl Db {
     // ---- reads -------------------------------------------------------------
 
     pub async fn list_matches(&self, me: Option<u32>, filter: &MatchFilter) -> Result<MatchPage> {

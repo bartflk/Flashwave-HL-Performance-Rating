@@ -366,12 +366,18 @@ impl Db {
                     .await?;
                 continue;
             }
-            for t in ["demo_link", "demo_event", "demo"] {
+            for t in ["demo_link", "demo_event", "demo_parse_failed", "demo"] {
                 sqlx::query(&format!("DELETE FROM {t} WHERE demo_id = ?1")).bind(id).execute(self.pool()).await?;
             }
             removed += 1;
         }
         Ok(removed)
+    }
+
+    /// How many demos are known and not marked gone: what a scan that finds
+    /// none of them is compared against before anything is pruned.
+    pub async fn live_demo_count(&self) -> Result<i64> {
+        Ok(sqlx::query_scalar("SELECT COUNT(*) FROM demo WHERE deleted_at IS NULL").fetch_one(self.pool()).await?)
     }
 
     /// The demos the app downloaded and still holds on disk, newest first.

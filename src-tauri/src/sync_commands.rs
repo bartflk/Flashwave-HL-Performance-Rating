@@ -276,7 +276,12 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                         Ok(f) => {
                             tracing::info!(log_id, candidates = f.candidates, added = f.added, "combined log: parts looked for");
                             report.combined_parts += f.added;
-                            searched.insert(log_id);
+                            // Only when every candidate was looked at: one
+                            // logs.tf could not give this time may be the part
+                            // that is missing, so it is searched again.
+                            if f.failed == 0 {
+                                searched.insert(log_id);
+                            }
                         }
                         Err(e) => tracing::warn!(log_id, error = %format!("{e:#}"), "combined log: parts not looked for"),
                     }

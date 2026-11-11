@@ -23,10 +23,46 @@ pub const METHOD: &str = "import";
 /// How a demo dropped onto a match page is linked to it: also kept.
 pub const MANUAL: &str = "manual";
 
-/// The log id an imported demo is stored under.
+/// The log id an imported demo is first tried under.
 pub fn log_id_for(file_name: &str) -> i64 {
-    let h = file_name.to_ascii_lowercase().bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ u64::from(b)).wrapping_mul(0x0000_0100_0000_01b3));
+    log_id_attempt(file_name, 0)
+}
+
+/// The `attempt`th id a demo's name hashes to. Attempt 0 is the id every
+/// import so far was stored under, so those rows keep theirs; a later attempt
+/// hashes the name with the attempt number, to probe past a file whose name
+/// collides with another's (audit SY-10).
+fn log_id_attempt(file_name: &str, attempt: u32) -> i64 {
+    let name = file_name.to_ascii_lowercase();
+    let name = if attempt == 0 { name } else { format!("{name}#{attempt}") };
+    let h = name.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ u64::from(b)).wrapping_mul(0x0000_0100_0000_01b3));
     -((h % 1_000_000_000) as i64) - 1
+}
+
+/// The title an imported match is given.
+fn import_title(file_name: &str) -> String {
+    format!("{} (from the demo)", file_name.trim_end_matches(".dem"))
+}
+
+/// The id this demo is stored under: its name's hash, unless a different demo
+/// already holds that id. The id is only 30 bits of the name, so two names
+/// can collide, and the same name in two folders is two demos: either used to
+/// overwrite the other's match silently. The same file again finds its own id.
+async fn free_log_id(db: &Db, file_name: &str, path: &Path) -> Result<i64> {
+    let same_file = |a: &Path| a == path || a.canonicalize().ok().zip(path.canonicalize().ok()).is_some_and(|(x, y)| x == y);
+    let title = import_title(file_name);
+    for attempt in 0..64 {
+        let id = log_id_attempt(file_name, attempt);
+        let Some(json) = db.raw_log(id).await? else { return Ok(id) };
+        let demos = db.demos_for_log(id).await?;
+        // Its own match from an earlier import, whose demo is linked or (the
+        // link lost) which carries this name's title.
+        let titled = serde_json::from_str::<serde_json::Value>(&json).ok().is_some_and(|v| v.pointer("/info/title").and_then(|t| t.as_str()) == Some(title.as_str()));
+        if demos.iter().any(|d| same_file(Path::new(&d.path))) || (demos.is_empty() && titled) {
+            return Ok(id);
+        }
+    }
+    bail!("no free log id was found for {file_name}")
 }
 
 /// When the demo started, as a server writes its local time into a log:
@@ -38,15 +74,24 @@ pub fn wall_start(file_name: &str, mtime_unix: i64, duration_s: i64) -> i64 {
     if stv.len() >= 3 && stv[0].eq_ignore_ascii_case("match") && stv[1].len() == 8 && stv[2].len() == 4 {
         let s = format!("{} {}", stv[1], stv[2]);
         if let Ok(t) = chrono::NaiveDateTime::parse_from_str(&format!("{s}00"), "%Y%m%d %H%M%S") {
-            return t.and_utc().timestamp();
+            return local_unix(t);
         }
     }
     if let Some(s) = hl_demos::scan::filename_time(file_name) {
         if let Ok(t) = chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S") {
-            return t.and_utc().timestamp();
+            return local_unix(t);
         }
     }
     mtime_unix - duration_s
+}
+
+/// A wall-clock time read off a file name, as the Unix time it was on this
+/// machine's clock. Recorders and servers write their local time, not UTC:
+/// read as UTC it put a match an hour or two off in Europe, which moved it in
+/// the list and out of its ETF2L and demos.tf windows (audit SY-9).
+fn local_unix(t: chrono::NaiveDateTime) -> i64 {
+    use chrono::TimeZone;
+    chrono::Local.from_local_datetime(&t).earliest().map_or_else(|| t.and_utc().timestamp(), |l| l.timestamp())
 }
 
 /// Where the demo is kept: as it is inside the TF folder's demo folders,
@@ -133,7 +178,7 @@ pub async fn import(db: &Db, w: &hl_rating::Weights, tf: &Path, file: &Path, me:
         .find(|(_, p)| Path::new(p).canonicalize().ok().as_ref() == Some(&here))
         .map(|(id, _)| id)
         .context("the demo was not found by the folder scan")?;
-    let log_id = log_id_for(&file_name);
+    let log_id = free_log_id(db, &file_name, &path).await?;
     // Any link to a logs.tf log (positive ids) means one exists: a demo
     // that is half of a combined log covers a small share of it, and is no
     // less that log's.
@@ -157,7 +202,7 @@ pub async fn import(db: &Db, w: &hl_rating::Weights, tf: &Path, file: &Path, me:
     progress("Building the match from it");
     let mtime = std::fs::metadata(&path)?.modified()?.duration_since(std::time::UNIX_EPOCH)?.as_secs() as i64;
     let start = wall_start(&file_name, mtime, tl.seconds(tl.end()) as i64);
-    let title = format!("{} (from the demo)", file_name.trim_end_matches(".dem"));
+    let title = import_title(&file_name);
     let synth = hl_demos::synth::synthesize(&tl, &header.map, start, &title);
     if synth.kills == 0 {
         bail!("{file_name} has no kills in a live round: nothing to rate");
@@ -165,8 +210,8 @@ pub async fn import(db: &Db, w: &hl_rating::Weights, tf: &Path, file: &Path, me:
 
     let json = serde_json::to_string(&synth.json)?;
     let log = store_log_json(db, w, log_id, &json).await?;
-    db.store_rawlog(log_id, &zip_text(&synth.text)?).await?;
-    crate::kills::derive_log(db, log_id).await?;
+    // The zip and its kills in one write (audit SY-1).
+    crate::kills::store(db, log_id, &zip_text(&synth.text)?, crate::rawlog::parse(&synth.text)).await?;
 
     progress("Linking the demo");
     // Made by hand: an imported log has no upload time to be placed by.
@@ -557,10 +602,46 @@ mod tests {
     }
 
     #[test]
+    fn a_name_that_collides_is_probed_past_and_the_same_demo_keeps_its_id() {
+        let name = "match-20260823-1956-pl_upward_f12.dem";
+        // Attempt 0 is the id every earlier import used; the rest differ.
+        assert_eq!(log_id_attempt(name, 0), log_id_for(name));
+        let ids: std::collections::HashSet<i64> = (0..8).map(|a| log_id_attempt(name, a)).collect();
+        assert_eq!(ids.len(), 8);
+        assert!(ids.iter().all(|i| *i < 0));
+    }
+
+    #[tokio::test]
+    async fn two_demos_with_one_id_do_not_overwrite_each_other() {
+        let db = Db::connect_in_memory().await.unwrap();
+        let name = "match-20260823-1956-pl_upward_f12.dem";
+        let (a, b) = (std::path::Path::new("C:/demos/a/x.dem"), std::path::Path::new("C:/demos/b/x.dem"));
+        // Nothing stored: the first attempt.
+        assert_eq!(free_log_id(&db, name, a).await.unwrap(), log_id_attempt(name, 0));
+        // A match from demo A holds that id, with the title the import gives it.
+        let json = serde_json::json!({"info": {"title": import_title(name)}}).to_string();
+        db.store_raw_log(log_id_attempt(name, 0), &json).await.unwrap();
+        db.upsert_demo(&hl_db::DemoRow {
+            path: "C:/demos/a/x.dem", file_name: name, playdemo_arg: "x", kind: "stv", size_bytes: 1, mtime: 1, map: "pl_upward", server: "",
+            recorder: "", playback_s: 1.0, ticks: 1, tick_rate: Some(66.0), start_utc: None, filename_time: None, demos_tf_id: None, events: Vec::new(),
+        })
+        .await
+        .unwrap();
+        let demo_a = db.demos_named(name).await.unwrap()[0].0;
+        db.add_demo_link(demo_a, log_id_attempt(name, 0), METHOD, 1.0).await.unwrap();
+        // The same file again finds its own match; another folder's file with the
+        // same name gets the next id instead of replacing it.
+        assert_eq!(free_log_id(&db, name, a).await.unwrap(), log_id_attempt(name, 0));
+        assert_eq!(free_log_id(&db, name, b).await.unwrap(), log_id_attempt(name, 1));
+    }
+
+    #[test]
     fn the_start_comes_from_the_name_when_it_has_one() {
-        // 2026-08-23 19:56 as the server's clock, written as if UTC.
-        assert_eq!(wall_start("match-20260823-1956-pl_upward_f12.dem", 0, 0), 1_787_514_960);
-        assert_eq!(wall_start("flashwav2026-09-17_21-00-24.dem", 0, 0), 1_789_678_824);
+        // The name's time is the machine's local time, whatever zone that is.
+        use chrono::TimeZone;
+        let local = |y, mo, d, h, mi, s| chrono::Local.with_ymd_and_hms(y, mo, d, h, mi, s).earliest().unwrap().timestamp();
+        assert_eq!(wall_start("match-20260823-1956-pl_upward_f12.dem", 0, 0), local(2026, 8, 23, 19, 56, 0));
+        assert_eq!(wall_start("flashwav2026-09-17_21-00-24.dem", 0, 0), local(2026, 9, 17, 21, 0, 24));
         assert_eq!(wall_start("my_demo.dem", 10_000, 600), 9_400);
     }
 }

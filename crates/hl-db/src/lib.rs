@@ -6,6 +6,8 @@
 
 mod aim;
 mod audit;
+#[cfg(test)]
+mod sync_audit_tests;
 
 /// The logs the owner's own rating covers: their rated Highlander logs, and
 /// the per-map logs a rated combined log replaced. A league log among these
@@ -470,6 +472,7 @@ mod frozen_migrations {
         ("0043_stv_part.sql", 0xd406788791d27e70),
         ("0044_rgl_match.sql", 0xab210f21f3748b38),
         ("0045_rgl_answer.sql", 0x9eb7f3f9e42ee692),
+        ("0047_audit_sync.sql", 0xe1ca0035dedfc4e2),
     ];
 
     fn fnv1a(bytes: &[u8]) -> u64 {

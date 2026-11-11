@@ -72,9 +72,18 @@ pub async fn fetch(
             Ok(Some(zip)) => match rawlog::unzip(&zip) {
                 Ok(text) => {
                     unreachable_run = 0;
-                    db.store_rawlog(log_id, &zip).await?;
-                    s.kills += store(db, log_id, rawlog::parse(&text)).await?;
-                    s.fetched += 1;
+                    // The zip and its kills in one write, and a failure is
+                    // this log's: it used to end the whole pass (audit SY-1).
+                    match store(db, log_id, &zip, rawlog::parse(&text)).await {
+                        Ok(kills) => {
+                            s.kills += kills;
+                            s.fetched += 1;
+                        }
+                        Err(e) => {
+                            tracing::warn!(log_id, error = %format!("{e:#}"), "storing a raw log failed");
+                            s.failed += 1;
+                        }
+                    }
                 }
                 Err(e) => {
                     tracing::warn!(log_id, error = %format!("{e:#}"), "raw log unreadable");
@@ -117,7 +126,11 @@ pub async fn rederive_all(db: &Db, mut progress: impl FnMut(Progress)) -> Result
         }
         let Some(zip) = db.rawlog(log_id).await? else { continue };
         match rawlog::unzip(&zip) {
-            Ok(text) => group.push((log_id, shifted(db, log_id, rawlog::parse(&text)).await?)),
+            Ok(text) => {
+                let (log, aligned) = shifted(db, log_id, rawlog::parse(&text)).await?;
+                db.set_rawlog_aligned(log_id, aligned).await?;
+                group.push((log_id, log));
+            }
             Err(e) => tracing::warn!(log_id, error = %format!("{e:#}"), "stored raw log unreadable"),
         }
         if group.len() == REBUILD_GROUP {
@@ -146,16 +159,18 @@ async fn write_group(db: &Db, group: &[(i64, RawLog)]) -> Result<usize> {
     Ok(batch.iter().map(|(_, k, _)| k.len()).sum())
 }
 
-/// Store a parsed raw log's kills and chat, shifted into logs.tf's round-time
-/// frame (see [`rawlog::frame_offset`]).
+/// Store a raw log's zip with its parsed kills and chat, shifted into logs.tf's
+/// round-time frame (see [`rawlog::frame_offset`]), in one transaction: the zip
+/// is what takes the log out of the raw-log queue, so it must not be stored
+/// without its kills (audit SY-1).
 ///
 /// Takes the log by value and shifts it in place. It used to borrow it and
 /// clone the whole thing -- every kill, chat line and event -- only to shift
 /// the copy, 755 times a rebuild, while the caller dropped the original.
-async fn store(db: &Db, log_id: i64, log: RawLog) -> Result<usize> {
-    let log = shifted(db, log_id, log).await?;
+pub(crate) async fn store(db: &Db, log_id: i64, zip: &[u8], log: RawLog) -> Result<usize> {
+    let (log, aligned) = shifted(db, log_id, log).await?;
     let (kills, chat) = rows(&log);
-    db.replace_kill_events(log_id, &kills, &chat).await.with_context(|| format!("storing kills of {log_id}"))?;
+    db.store_rawlog_with_kills(log_id, zip, &kills, &chat, aligned).await.with_context(|| format!("storing kills of {log_id}"))?;
     Ok(kills.len())
 }
 
@@ -171,8 +186,7 @@ pub async fn ensure_one(db: &Db, sources: &Sources, log_id: i64) -> Result<bool>
         return Ok(false);
     };
     let text = rawlog::unzip(&zip)?;
-    db.store_rawlog(log_id, &zip).await?;
-    store(db, log_id, rawlog::parse(&text)).await?;
+    store(db, log_id, &zip, rawlog::parse(&text)).await?;
     Ok(true)
 }
 
@@ -180,20 +194,27 @@ pub async fn ensure_one(db: &Db, sources: &Sources, log_id: i64) -> Result<bool>
 /// come through the fetch (Q18: one built from a demo).
 pub async fn derive_log(db: &Db, log_id: i64) -> Result<usize> {
     let zip = db.rawlog(log_id).await?.with_context(|| format!("log {log_id} has no raw log"))?;
-    store(db, log_id, rawlog::parse(&rawlog::unzip(&zip)?)).await
+    store(db, log_id, &zip, rawlog::parse(&rawlog::unzip(&zip)?)).await
 }
 
-/// A parsed raw log moved into logs.tf's round-time frame, in place.
-async fn shifted(db: &Db, log_id: i64, mut log: RawLog) -> Result<RawLog> {
+/// A parsed raw log moved into logs.tf's round-time frame, in place, and
+/// whether it could be: `false` when logs.tf has rounds and none of them lines
+/// up, so the times stay as the server wrote them, hours off. That is noted
+/// beside the kills (audit SY-8) so nothing joins them to a demo's clock.
+async fn shifted(db: &Db, log_id: i64, mut log: RawLog) -> Result<(RawLog, bool)> {
     let logstf_starts = logstf_round_starts(db, log_id).await?;
-    match rawlog::frame_offset(&log.round_starts, &logstf_starts) {
-        Some(shift) => log.shift(shift),
-        None if !logstf_starts.is_empty() => {
-            tracing::warn!(log_id, "raw log rounds do not line up with logs.tf's; times left as the server wrote them")
+    let aligned = match rawlog::frame_offset(&log.round_starts, &logstf_starts) {
+        Some(shift) => {
+            log.shift(shift);
+            true
         }
-        None => {}
-    }
-    Ok(log)
+        None if !logstf_starts.is_empty() => {
+            tracing::warn!(log_id, "raw log rounds do not line up with logs.tf's; times left as the server wrote them");
+            false
+        }
+        None => true,
+    };
+    Ok((log, aligned))
 }
 
 /// The rows a log's kills and chat are stored as, borrowing from it.
