@@ -89,6 +89,9 @@ static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 #[derive(Clone)]
 pub struct Db {
     pool: SqlitePool,
+    /// A computed value worth keeping for a few seconds (the loaded
+    /// catalogue, LG-8), with when it was made.
+    shared: std::sync::Arc<std::sync::Mutex<Option<(std::time::Instant, std::sync::Arc<dyn std::any::Any + Send + Sync>)>>>,
 }
 
 impl Db {
@@ -122,7 +125,7 @@ impl Db {
             .context("applying database migrations")?;
 
         tracing::info!(path = %path.display(), "database ready");
-        Ok(Db { pool })
+        Ok(Db { pool, shared: Default::default() })
     }
 
     /// Write a consistent copy of the whole database to `path`, which must
@@ -237,11 +240,27 @@ impl Db {
             .await
             .context("opening in-memory database")?;
         MIGRATOR.run(&pool).await.context("applying migrations")?;
-        Ok(Db { pool })
+        Ok(Db { pool, shared: Default::default() })
     }
 
     pub fn pool(&self) -> &SqlitePool {
         &self.pool
+    }
+
+    /// The value kept by [`Db::keep_shared`], while it is younger than `life`
+    /// and of type `T`.
+    pub fn shared<T: Send + Sync + 'static>(&self, life: std::time::Duration) -> Option<std::sync::Arc<T>> {
+        let slot = self.shared.lock().unwrap();
+        let (at, v) = slot.as_ref()?;
+        if at.elapsed() >= life {
+            return None;
+        }
+        v.clone().downcast::<T>().ok()
+    }
+
+    /// Keep one computed value for [`Db::shared`], replacing the last.
+    pub fn keep_shared<T: Send + Sync + 'static>(&self, value: std::sync::Arc<T>) {
+        *self.shared.lock().unwrap() = Some((std::time::Instant::now(), value));
     }
 
     // ---- config -----------------------------------------------------------

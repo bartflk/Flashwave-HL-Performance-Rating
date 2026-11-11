@@ -565,9 +565,11 @@ impl Catalogue {
                 *votes.entry(d.clone()).or_default().entry(t).or_default() += 1;
             }
         }
-        let tier_by_name = votes.into_iter().filter_map(|(d, v)| Some((d, v.into_iter().max_by_key(|(_, n)| *n)?.0))).collect();
-        // The newest numbered season: 134 (AFA 2025) is older than 35.
-        let newest_season = matches.values().map(|m| m.season).filter(|s| *s < crate::leagues::OFF_SEASON).max().unwrap_or(0);
+        let tier_by_name = votes.into_iter().filter_map(|(d, v)| Some((d, v.into_iter().max_by(|a, b| a.1.cmp(&b.1).then_with(|| b.0.cmp(&a.0)))?.0))).collect();
+        // The newest numbered season: 134 (AFA 2025) is older than 35. Read
+        // from its regular matches: a preseason cup is filed under the season
+        // it precedes, and would make the season before it look over early.
+        let newest_season = matches.values().filter(|m| m.stage == "regular").map(|m| m.season).filter(|s| *s < crate::leagues::OFF_SEASON).max().unwrap_or(0);
         let mercs = db.catalogue_mercs().await?.into_iter().collect();
         let mut transfers: HashMap<(i64, u32), Vec<(i64, bool)>> = HashMap::new();
         for (team, account, time, joined) in db.catalogue_transfers().await? {
@@ -589,6 +591,20 @@ impl Catalogue {
             }
         }
         Ok(Catalogue { matches, rosters, teams: db.etf2l_teams().await?, tiers, tier_by_name, newest_season, mercs, transfers, season_end, final_colours, official_places, results_fit: Default::default() })
+    }
+
+    /// [`Catalogue::load`], kept for a few seconds: the team, honours and
+    /// podium pages each loaded the whole catalogue, and a page asks for
+    /// several of them (LG-8). Pages that only read use this; what a sync or
+    /// a rating run changes shows within the time it is kept.
+    pub async fn shared(db: &Db) -> Result<std::sync::Arc<Catalogue>> {
+        const LIFE: std::time::Duration = std::time::Duration::from_secs(20);
+        if let Some(c) = db.shared::<Catalogue>(LIFE) {
+            return Ok(c);
+        }
+        let c = std::sync::Arc::new(Self::load(db).await?);
+        db.keep_shared(c.clone());
+        Ok(c)
     }
 
     /// Each team's last decided match of each season.
@@ -700,7 +716,7 @@ impl Catalogue {
                     }
                 }
             }
-            if let Some((d, _)) = seen.into_iter().max_by_key(|(_, n)| *n) {
+            if let Some((d, _)) = seen.into_iter().max_by(|a, b| a.1.cmp(&b.1).then_with(|| b.0.cmp(&a.0))) {
                 name = d;
             }
         }
@@ -921,7 +937,8 @@ impl Catalogue {
                     e.push((1, w, format!("Grand Final {}", score(m, w))));
                     e.push((2, l, format!("Grand Final {}", score(m, l))));
                 }
-            } else if m.stage == "Cup" {
+            } else if matches!(m.stage.as_str(), "Cup" | "Qualifiers") {
+                // Neither is the league's: a qualifier's 3rd place is not a medal.
                 continue;
             } else if m.stage == "3rd Place" || Self::round_kind(m.round.as_deref()) == Some(RoundKind::Third) {
                 if let Some((w, _)) = winner_loser(m) {
@@ -955,23 +972,48 @@ impl Catalogue {
                 }
             }
         }
-        // Divisions without a final: the table, once the season is over.
+        // Divisions without a final: the table, once the season is over. A
+        // forfeit is a win and counts. A division that ran in groups (2A, 2B)
+        // has a table for each, and only a final could say which group's
+        // winner is first, so it gets none.
         let mut tables: HashMap<(i64, String), HashMap<i64, (u32, i64)>> = HashMap::new();
-        for m in self.matches.values().filter(|m| Self::played(m) && m.stage == "regular" && season_order(m.season) < season_order(self.newest_season)) {
-            let t = tables.entry((m.season, self.medal_division(m))).or_default();
+        let mut groups: HashMap<(i64, String), std::collections::BTreeSet<String>> = HashMap::new();
+        // Wins over each other, for a tie.
+        let mut head_to_head: HashMap<(i64, i64), u32> = HashMap::new();
+        for m in self.matches.values().filter(|m| (Self::played(m) || m.default_win) && m.stage == "regular" && season_order(m.season) < season_order(self.newest_season)) {
+            let key = (m.season, self.medal_division(m));
+            groups.entry(key.clone()).or_default().insert(self.division_of(m).0);
+            let t = tables.entry(key).or_default();
             for team in [m.clan1, m.clan2] {
                 let (f, a, won) = Self::result_for(m, team);
                 let e = t.entry(team).or_default();
                 e.0 += u32::from(won == Some(true));
                 e.1 += f.unwrap_or(0) - a.unwrap_or(0);
+                if won == Some(true) {
+                    *head_to_head.entry((team, if team == m.clan1 { m.clan2 } else { m.clan1 })).or_default() += 1;
+                }
             }
         }
         for (key, table) in tables {
-            if out.contains_key(&key) || table.len() < 4 {
+            if out.contains_key(&key) || table.len() < 4 || groups.get(&key).is_some_and(|g| g.len() > 1) {
                 continue;
             }
             let mut rows: Vec<(i64, (u32, i64))> = table.into_iter().collect();
             rows.sort_by(|a, b| (b.1).cmp(&a.1).then(a.0.cmp(&b.0)));
+            // Two teams level on wins: the one that beat the other is first,
+            // as ETF2L ranks them, before the round difference.
+            for i in 0..rows.len().saturating_sub(1) {
+                let (a, b) = (rows[i].0, rows[i + 1].0);
+                let level_before = i > 0 && rows[i - 1].1 .0 == rows[i].1 .0;
+                let level_after = i + 2 < rows.len() && rows[i + 2].1 .0 == rows[i + 1].1 .0;
+                if rows[i].1 .0 == rows[i + 1].1 .0
+                    && !level_before
+                    && !level_after
+                    && head_to_head.get(&(b, a)).copied().unwrap_or(0) > head_to_head.get(&(a, b)).copied().unwrap_or(0)
+                {
+                    rows.swap(i, i + 1);
+                }
+            }
             let e = out.entry(key).or_default();
             for (i, (team, _)) in rows.into_iter().take(3).enumerate() {
                 e.push((i as u8 + 1, team, "League table".to_string()));
@@ -2407,7 +2449,7 @@ pub async fn opponent_divisions(db: &Db, games: &[(i64, u32, i64)]) -> Result<Ha
     if games.is_empty() {
         return Ok(HashMap::new());
     }
-    let cat = Catalogue::load(db).await?;
+    let cat = Catalogue::shared(db).await?;
     let windows = cat.season_windows();
     let divisions = cat.divisions();
     Ok(games
@@ -2424,7 +2466,7 @@ pub async fn match_divisions(db: &Db, log_id: i64) -> Result<MatchDivisions> {
     let Some((played_at, accounts)) = db.match_accounts(log_id).await? else {
         return Ok(MatchDivisions { players: HashMap::new(), tier_names: BTreeMap::new() });
     };
-    let cat = Catalogue::load(db).await?;
+    let cat = Catalogue::shared(db).await?;
     let windows = cat.season_windows();
     let divisions = cat.divisions();
     let mut players = HashMap::new();
@@ -2518,7 +2560,7 @@ impl Catalogue {
 
 /// Every league season, newest first, as tiles.
 pub async fn seasons_overview(db: &Db) -> Result<Vec<SeasonTile>> {
-    let cat = Catalogue::load(db).await?;
+    let cat = Catalogue::shared(db).await?;
     let medals = cat.medals();
     let windows = cat.season_windows();
     let me = db.get_me().await?.map(|s| s.account_id());
@@ -2569,7 +2611,7 @@ pub async fn seasons_overview(db: &Db) -> Result<Vec<SeasonTile>> {
 
 /// One season's podiums, top tier first, each with its event MVP.
 pub async fn season_podiums(db: &Db, season: i64) -> Result<Vec<Podium>> {
-    let cat = Catalogue::load(db).await?;
+    let cat = Catalogue::shared(db).await?;
     let rated = rated_officials(db, None).await?;
     let mvps = cat.mvps(&rated);
     let mut out: Vec<Podium> = cat
@@ -2616,7 +2658,7 @@ pub async fn season_podiums(db: &Db, season: i64) -> Result<Vec<Podium>> {
 
 /// A team's medals and its seasons, newest first.
 pub async fn team_honours(db: &Db, team: i64) -> Result<TeamHonours> {
-    let cat = Catalogue::load(db).await?;
+    let cat = Catalogue::shared(db).await?;
     let all = cat.medals();
     let mut medals: Vec<Medal> = Vec::new();
     for ((season, division), list) in &all {
@@ -2650,7 +2692,7 @@ pub async fn team_honours(db: &Db, team: i64) -> Result<TeamHonours> {
     let mut seasons: Vec<TeamSeason> = by
         .into_iter()
         .map(|(season, (divs, played, won, lost))| {
-            let ((division, tier), _) = divs.into_iter().max_by_key(|(_, n)| *n).unwrap_or(((String::new(), None), 0));
+            let ((division, tier), _) = divs.into_iter().max_by(|a, b| a.1.cmp(&b.1).then_with(|| b.0.cmp(&a.0))).unwrap_or(((String::new(), None), 0));
             let place = medals.iter().filter(|m| m.season == season).map(|m| m.place).min();
             TeamSeason { season, season_name: cat.season_name(season), division, tier, played, won, lost, place }
         })
@@ -3562,6 +3604,24 @@ mod tests {
         let medals = c.medals();
         assert!(medals[&(30, "Open".to_string())].contains(&(1, 10, "Grand Final 5-1".into())), "Open B is Open on the ladder");
         assert!(!medals.contains_key(&(31, "Low A".to_string())), "a preseason cup is not the league");
+    }
+
+    #[test]
+    fn a_league_table_counts_forfeits_and_breaks_a_tie_head_to_head() {
+        let mut forfeit = m(5, 34, "regular", Some("High"), "", None, 1, 4, 1, 0);
+        forfeit.default_win = true;
+        let c = cat(vec![
+            m(1, 34, "regular", Some("High"), "", None, 1, 2, 6, 0),
+            m(2, 34, "regular", Some("High"), "", None, 1, 3, 6, 0),
+            m(3, 34, "regular", Some("High"), "", None, 3, 2, 6, 5),
+            m(4, 34, "regular", Some("High"), "", None, 2, 4, 6, 0),
+            forfeit,
+            m(99, 35, "regular", Some("High"), "", None, 20, 21, 6, 0),
+        ]);
+        // Teams 2 and 3 each won once; 2 has the better round difference, 3
+        // beat 2 (LG-6).
+        let places: Vec<(u8, i64)> = c.medals()[&(34, "High".to_string())].iter().map(|x| (x.0, x.1)).collect();
+        assert_eq!(places, vec![(1, 1), (2, 3), (3, 2)]);
     }
 
     /// Matches with their own tier, and one roster: player 1 for team 10.
