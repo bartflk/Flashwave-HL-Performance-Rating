@@ -63,7 +63,7 @@ function valid(p: unknown): p is Period {
 export function setPeriod(p: Period) {
   // Two dates the wrong way round select nothing at all, which looks like
   // the app is broken rather than like a typo. Read them as a range.
-  if (p.kind === "custom" && time(p.from) && time(p.to) && p.from > p.to) {
+  if (p?.kind === "custom" && time(p.from) && time(p.to) && p.from > p.to) {
     p = { ...p, from: p.to, to: p.from };
   }
   if (!valid(p)) p = { kind: "all" };

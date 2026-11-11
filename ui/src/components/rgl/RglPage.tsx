@@ -12,6 +12,7 @@ import { Countdown, clockTime, fullDate } from "../etf2l/Countdown";
 import { LeagueHead } from "../LeagueHead";
 import { BookmarkButton } from "../Bookmarks";
 import { onOpenRgl, takePendingRgl } from "../../lib/goto";
+import { decided, liveWeek, openWeek, standings, weekOf } from "../../lib/rglstandings";
 import "../players/players.css";
 import "../teams/teams.css";
 import "../etf2l/etf2l.css";
@@ -79,7 +80,6 @@ function useLive() {
   return { season: latest, error: seasons.error ?? matches.error, matches: matches.data ?? null };
 }
 const secs = (iso: string | null) => (iso ? Date.parse(iso) / 1000 : 0);
-const decided = (m: RglMatch) => m.winner !== null || m.isForfeit;
 /** RGL's division on the ETF2L ladder (PLAN §30), as the backend's tier_of. */
 const LADDER: Record<string, string> = { Invite: "Premiership", Advanced: "High", Main: "Mid", Intermediate: "Low", Amateur: "Low", Newcomer: "Open" };
 /** "Today", "Tomorrow" or the date, for a day's heading. */
@@ -712,38 +712,6 @@ function SeasonView({ id, onTeam, more }: { id: number; onTeam: (id: number) => 
 // ---- A season's standings and results ----------------------------------------
 
 /** "Week 1 - Vigil" is week "Week 1"; a playoff round keeps its own name. */
-const weekOf = (m: RglMatch) => (m.matchName ?? "").split(" - ")[0].trim() || t("Other");
-
-type Standing = { id: number; name: string; tag: string | null; played: number; won: number; lost: number; for: number; against: number };
-
-/** Each division's table from its matches: wins, then losses, then rounds. */
-function standings(matches: RglMatch[]): Map<string, Standing[]> {
-  const by = new Map<string, Map<number, Standing>>();
-  for (const m of matches) {
-    if (m.winner === null || m.teams.length < 2) continue;
-    const div = m.divisionName ?? "";
-    const rows = by.get(div) ?? new Map<number, Standing>();
-    by.set(div, rows);
-    for (const tm of m.teams) {
-      const r = rows.get(tm.teamId) ?? { id: tm.teamId, name: tm.teamName, tag: tm.teamTag, played: 0, won: 0, lost: 0, for: 0, against: 0 };
-      rows.set(tm.teamId, r);
-      r.played += 1;
-      if (m.winner === tm.teamId) r.won += 1;
-      else r.lost += 1;
-      for (const x of m.maps) {
-        r.for += (tm.isHome ? x.homeScore : x.awayScore) ?? 0;
-        r.against += (tm.isHome ? x.awayScore : x.homeScore) ?? 0;
-      }
-    }
-  }
-  const out = new Map<string, Standing[]>();
-  for (const [div, rows] of by)
-    out.set(
-      div,
-      [...rows.values()].sort((a, b) => b.won - a.won || a.lost - b.lost || b.for - b.against - (a.for - a.against) || a.name.localeCompare(b.name)),
-    );
-  return out;
-}
 
 /**
  * A season's standings and results (Flashy: "continue work on the RGL
@@ -758,8 +726,8 @@ function SeasonPlay({ id, onTeam, onMatch }: { id: number; onTeam: (id: number) 
   const tables = useMemo(() => standings(matches), [matches]);
   const weeks = useMemo(() => [...new Set(matches.map(weekOf))], [matches]);
   // Open on the week being played: the first with a match not yet decided.
-  const live = weeks.find((w) => matches.some((m) => weekOf(m) === w && m.winner === null));
-  const current = live ?? weeks[weeks.length - 1];
+  const live = liveWeek(matches);
+  const current = openWeek(matches);
   const [picked, setPicked] = useState<string | null>(null);
   const week = picked && weeks.includes(picked) ? picked : current;
   const order = (season?.divisions ?? []).map((d) => d.name);

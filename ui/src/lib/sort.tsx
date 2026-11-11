@@ -1,6 +1,10 @@
 import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { StatTip } from "../components/StatTip";
 import type { Entry, GlossaryKey } from "./glossary";
+import { compare, sortRows, type Dir, type SortValue } from "./compare";
+
+export { compare };
+export type { Dir, SortValue };
 
 /**
  * Every table sorts by its columns (Q79, Flashy: "all the tables in the app
@@ -14,8 +18,6 @@ import type { Entry, GlossaryKey } from "./glossary";
  * either way.
  */
 
-export type SortValue = number | string | null | undefined;
-export type Dir = "asc" | "desc";
 export type SortState = { key: string; dir: Dir } | null;
 
 export interface Sorter {
@@ -43,15 +45,6 @@ function write(id: string, s: SortState) {
   }
 }
 
-export function compare(x: SortValue, y: SortValue): number {
-  const blank = (v: SortValue) => v === null || v === undefined || (typeof v === "number" && Number.isNaN(v)) || v === "";
-  if (blank(x) && blank(y)) return 0;
-  if (blank(x)) return 1;
-  if (blank(y)) return -1;
-  if (typeof x === "number" && typeof y === "number") return x - y;
-  return String(x).localeCompare(String(y), undefined, { numeric: true, sensitivity: "base" });
-}
-
 /**
  * `id` names the table for remembering its sort; `columns` reads each
  * sortable column from a row; `initial` is the order before any click
@@ -64,17 +57,7 @@ export function useSort<R>(id: string, rows: R[], columns: Record<string, (r: R)
   const sorted = useMemo(() => {
     const get = sort ? cols.current[sort.key] : undefined;
     if (!sort || !get) return rows;
-    const sign = sort.dir === "asc" ? 1 : -1;
-    // Blanks last whichever way: compare puts them last ascending, so flip
-    // only the rest.
-    return [...rows].sort((a, b) => {
-      const x = get(a);
-      const y = get(b);
-      const c = compare(x, y);
-      const blankX = x === null || x === undefined || x === "";
-      const blankY = y === null || y === undefined || y === "";
-      return blankX || blankY ? c : c * sign;
-    });
+    return sortRows(rows, get, sort.dir);
   }, [rows, sort]);
   const toggle = (key: string) => {
     setSort((s) => {
