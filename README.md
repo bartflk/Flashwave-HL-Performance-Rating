@@ -155,7 +155,7 @@ has the whole of it, including what to do if one does break.
 
 | Source | Used for |
 |---|---|
-| [drops.tf](https://drops.tf/about) by Icewind | Match stats and the raw server logs, asked first: logs.tf's own data, fast and with no rate limit, about an hour behind. The league's officials too, every season's, rated into the league snapshot the app ships with |
+| [drops.tf](https://drops.tf/about) by Icewind | Match stats and the raw server logs, asked first: logs.tf's own data, fast and with no rate limit, about an hour behind. The league's officials too, every season's, rated into the league snapshot the app ships with. An RGL match page's statistics (team totals, awards, the player table) are read from its logs here, one request per log, kept on disk |
 | [logs.tf](https://logs.tf) | Match stats and the raw server log behind each match (every kill with positions, every hit, heal and uber) for what drops.tf has not got yet: a game just played, or a log it lost |
 | [trends.tf](https://trends.tf) | Which matches you played, which logs were combined from which |
 | [logs.tf](https://logs.tf) history | The logs.tf career on every profile and the search over every Highlander player since 2012: a ~6 MB summary built into the app from a full logs.tf database (`hl logsdump`, then `hl logsdump-summary`), duplicates and combined logs left out, rated on logs.tf's JSON; and the damage per minute and accuracy scales the scoreboard colours by, from the last five years of Highlander games in it (`hl logsdump-scales`, `league/logstf-scales.json`); and the logs of ETF2L Seasons 12 to 23, which ETF2L never linked to their matches, found in that database's index by each match's maps, time and lineups (`hl old-season N`), then downloaded from drops.tf and rated |

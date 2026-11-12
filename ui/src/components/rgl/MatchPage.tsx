@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { RglMatch, RglMatchMore, RglMember } from "../../api/types";
@@ -11,10 +12,18 @@ import { fullDate } from "../etf2l/Countdown";
 import { LogButton } from "../etf2l/Matches";
 import { KEEP, useMatch, secs, LADDER, day } from "./data";
 import { Awaiting, OnRgl } from "./bits";
+import { MatchStats } from "./MatchStats";
+import { matchRatings } from "../../lib/rglstats";
+import { rating } from "../../lib/format";
 
 export function MatchPage({ id, onTeam, onMatch, onPlayer, onOpenLog }: { id: number; onTeam: (id: number) => void; onMatch: (id: number) => void; onPlayer: (s: string) => void; onOpenLog: (logId: number) => void }) {
   const q = useMatch(id);
   const more = useQuery({ queryKey: ["rgl_match_more", id], queryFn: () => api.getRglMatchMore(id), staleTime: KEEP, retry: false });
+  // The statistics wait for the logs search: only a match that has logs is asked about, and only
+  // once its page is open (each log is one request to drops.tf the first time, then kept).
+  const hasLogs = (more.data?.logs.length ?? 0) > 0;
+  const stats = useQuery({ queryKey: ["rgl_match_stats", id], queryFn: () => api.getRglMatchStats(id), enabled: hasLogs, staleTime: KEEP, retry: false });
+  const ratings = useMemo(() => matchRatings(stats.data?.maps ?? []), [stats.data]);
   const m = q.data;
   const [shown] = useShowResults();
   if (q.error) return <ApiError error={q.error} />;
@@ -83,6 +92,7 @@ export function MatchPage({ id, onTeam, onMatch, onPlayer, onOpenLog }: { id: nu
               </table>
             )}
           </section>
+          {hasLogs && <MatchStats q={stats} home={home} away={away} onPlayer={onPlayer} />}
           <section className="panel e2-panel">
             <div className="e2-panel-head">
               <h2>{t("Lineups")}</h2>
@@ -98,7 +108,7 @@ export function MatchPage({ id, onTeam, onMatch, onPlayer, onOpenLog }: { id: nu
                   team ? (
                     <div key={team.teamId}>
                       <h3 className="e2-lu-team">{team.teamName}</h3>
-                      <RglLineup players={lineup(team.teamId)} onPlayer={onPlayer} />
+                      <RglLineup players={lineup(team.teamId)} onPlayer={onPlayer} ratings={ratings} />
                     </div>
                   ) : null,
                 )}
@@ -152,10 +162,10 @@ function logsWhy(why: RglMatchMore["logsWhy"]): string {
 }
 
 /** A team's roster on the day, as a lineup: leaders first, each opening their RGL page. */
-export function RglLineup({ players, onPlayer }: { players: RglMember[]; onPlayer: (s: string) => void }) {
+export function RglLineup({ players, onPlayer, ratings }: { players: RglMember[]; onPlayer: (s: string) => void; ratings?: Map<string, number> }) {
   if (players.length === 0) return <p className="hint">{t("No one on the roster then.")}</p>;
   return (
-    <ol className="e2-lineup rgl-lineup">
+    <ol className={`e2-lineup rgl-lineup${ratings && ratings.size > 0 ? " rated" : ""}`}>
       {players.map((p) => (
         <li key={p.steamId}>
           <button onClick={() => onPlayer(p.steamId)} title={t("Open their RGL page")}>
@@ -164,6 +174,11 @@ export function RglLineup({ players, onPlayer }: { players: RglMember[]; onPlaye
             </span>
             <span className="e2-lu-name">{p.name}</span>
             {p.isLeader ? <span className="badge">{t("Leader")}</span> : <span />}
+            {ratings && ratings.size > 0 && (
+              <span className="e2-lu-rating" title={t("The app's rating for their game on the logs")}>
+                {ratings.has(p.steamId) ? rating(ratings.get(p.steamId)) : ""}
+              </span>
+            )}
           </button>
         </li>
       ))}

@@ -64,6 +64,7 @@ import type {
   RglBan,
   RglMatch,
   RglMatchMore,
+  RglMatchStats,
   RglPlayer,
   RglPlayerMore,
   RglPlayerHit,
@@ -329,6 +330,7 @@ const realApi = {
   },
   getRglMatch: (id: number) => invoke<RglMatch | null>("get_rgl_match", { id }),
   getRglMatchMore: (id: number) => invoke<RglMatchMore | null>("get_rgl_match_more", { id }),
+  getRglMatchStats: (id: number) => invoke<RglMatchStats | null>("get_rgl_match_stats", { id }),
   getRglTeam: (id: number) => invoke<RglTeamPage | null>("get_rgl_team", { id }),
   getRglTeamSeasons: (ids: number[]) => invoke<RglTeamSeason[]>("get_rgl_team_seasons", { ids }),
   /** `all`: every linked season (up to 12), not only the newest three. */

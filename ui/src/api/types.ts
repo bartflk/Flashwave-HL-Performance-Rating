@@ -3219,3 +3219,75 @@ export interface Tournament {
   to: number;
   officials: number;
 }
+
+/** An RGL match's statistics, from its logs (read once, kept on disk). */
+export interface RglMatchStats {
+  maps: RglMapStats[];
+  /** Logs that could not be read; asked for again next time. */
+  unread: number[];
+}
+
+export interface RglMapStats {
+  logId: number;
+  map: string;
+  minutes: number;
+  /** RED's and BLU's totals, in that order. */
+  sides: [RglSideTotals, RglSideTotals];
+  players: RglStatPlayer[];
+  awards: RglAwards;
+  /** The players carry the app's rating. */
+  rated: boolean;
+}
+
+export interface RglSideTotals {
+  side: "Red" | "Blue";
+  /** The RGL team that played this colour, when the rosters say. */
+  teamId: number | null;
+  score: number;
+  kills: number;
+  deaths: number;
+  damage: number;
+  heals: number;
+  ubers: number;
+  drops: number;
+}
+
+export interface RglStatPlayer {
+  steamId: string;
+  name: string;
+  side: "Red" | "Blue";
+  teamId: number | null;
+  class: string | null;
+  minutes: number;
+  kills: number;
+  assists: number;
+  deaths: number;
+  damage: number;
+  dpm: number | null;
+  dtpm: number | null;
+  /** DPM minus the class's typical DPM; the basis says what that is. */
+  dpmVs: number | null;
+  dpmVsBasis: "archive" | "opponent" | null;
+  headshots: number;
+  heals: number;
+  ubers: number;
+  drops: number;
+  rating: number | null;
+}
+
+export interface RglAward {
+  steamId: string;
+  name: string;
+  side: "Red" | "Blue";
+  class: string | null;
+  value: number;
+  basis: "rating" | "kapd" | "heals" | "kills" | "headshots";
+  extra: number | null;
+}
+
+export interface RglAwards {
+  mvp: RglAward | null;
+  medicMvp: RglAward | null;
+  topFragger: RglAward | null;
+  mostHeadshots: RglAward | null;
+}
