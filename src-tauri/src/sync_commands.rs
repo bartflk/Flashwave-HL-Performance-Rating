@@ -2273,6 +2273,14 @@ pub async fn get_rgl_match_more(state: State<'_, AppState>, id: i64) -> CmdResul
     Ok(hl_ingest::rgl::match_more(&state.db, &state.sources, id).await?)
 }
 
+/// An RGL match's statistics from its logs (read from the database or drops.tf
+/// once, then kept), for the match page's Statistics section.
+#[tauri::command]
+pub async fn get_rgl_match_stats(state: State<'_, AppState>, id: i64) -> CmdResult<Option<hl_ingest::rgl_stats::RglMatchStats>> {
+    let (weights, _) = hl_rating::Weights::load(&state.db_path.with_file_name("weights.toml"));
+    Ok(hl_ingest::rgl_stats::match_stats(&state.db, &state.sources, &weights, id).await?)
+}
+
 /// RGL's bans, a page of 50 from `skip`.
 #[tauri::command]
 pub async fn get_rgl_bans(state: State<'_, AppState>, skip: Option<i64>) -> CmdResult<Vec<hl_ingest::rgl::RglBan>> {

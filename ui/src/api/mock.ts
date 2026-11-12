@@ -81,7 +81,7 @@ import type {
   RglSeasonCard,
   RglTeamHit,
   RglSeason,
-  RglSeasonItem, RglBan, RglMatch, RglMatchMore,
+  RglSeasonItem, RglBan, RglMatch, RglMatchMore, RglMatchStats, RglAward, RglSideTotals,
   RglTeamPage,
   RglTeamSeason,
   ResultRow,
@@ -1487,6 +1487,82 @@ export const mockApi: Api = {
         : [],
       logsWhy: m.isForfeit ? "forfeit" : m.winner === null ? "notPlayed" : null,
     });
+  },
+  getRglMatchStats: (id: number) => {
+    const all = [...mockRglMatches(198), ...mockRglMatches(193)];
+    const m = all.find((x) => x.matchId === id);
+    if (!m) return delay<RglMatchStats | null>(null);
+    if (m.winner === null || m.isForfeit) return delay<RglMatchStats | null>({ maps: [], unread: [] });
+    const classes = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
+    const names = ["nyxi", "Joey Lemons", "civ.", "b4nny", "Ash", "corsa", "kaidus", "yomps", "habib"];
+    const typical: Record<string, number> = { scout: 230, soldier: 290, pyro: 170, demoman: 350, heavy: 420, engineer: 150, medic: 40, sniper: 240, spy: 150 };
+    // The same few numbers every time for a match: a hash of its id, the player and the map.
+    const roll = (a: number, b: number, c: number) => ((Math.sin(a * 12.9898 + b * 78.233 + c * 37.719) * 43758.5453) % 1 + 1) % 1;
+    const logIds = m.maps.flatMap((x, i) => [{ logId: 4_100_000 + id * 2, map: x.mapName, i }, ...(x.mapName.startsWith("koth_") ? [] : [{ logId: 4_100_001 + id * 2, map: x.mapName, i }])]);
+    const maps = logIds.map(({ logId, map, i }) => {
+      const minutes = 22 + Math.round(roll(logId, 1, i) * 8);
+      const players = m.teams.flatMap((team, ti) =>
+        classes.map((cls, ci) => {
+          const r = roll(logId, ti * 9 + ci, 2);
+          const dpm = typical[cls] * (0.75 + r * 0.55);
+          const damage = Math.round(dpm * minutes);
+          const medic = cls === "medic";
+          const kills = medic ? Math.round(r * 3) : Math.round((dpm / 11) * (0.8 + r * 0.5));
+          const deaths = Math.round(8 + roll(logId, ti * 9 + ci, 3) * 12);
+          return {
+            steamId: `7656119800${team.teamId}${ci}`,
+            name: ci === 0 ? names[ci] : `${names[ci]}${team.teamId % 7 === 0 ? "" : ` ${team.teamId % 100}`}`,
+            side: (ti === 0 ? "Red" : "Blue") as "Red" | "Blue",
+            teamId: team.teamId,
+            class: cls,
+            minutes,
+            kills,
+            assists: Math.round(kills * (medic ? 6 : 0.5)),
+            deaths,
+            damage,
+            dpm,
+            dtpm: (damage * (0.9 + roll(logId, ci, 4) * 0.3)) / minutes,
+            dpmVs: dpm - typical[cls],
+            dpmVsBasis: "archive" as const,
+            headshots: cls === "sniper" || cls === "spy" ? Math.round(r * 6) : 0,
+            heals: medic ? Math.round(minutes * (380 + r * 140)) : 0,
+            ubers: medic ? 3 + Math.round(r * 5) : 0,
+            drops: medic ? Math.round(r * 2) : 0,
+            rating: Math.round((0.7 + roll(logId, ti * 9 + ci, 5) * 0.75) * 100) / 100,
+          };
+        }),
+      );
+      const sum = (side: "Red" | "Blue", f: (p: (typeof players)[number]) => number) => players.filter((p) => p.side === side).reduce((n, p) => n + f(p), 0);
+      const total = (side: "Red" | "Blue", teamId: number, score: number) => ({
+        side,
+        teamId,
+        score,
+        kills: sum(side, (p) => p.kills),
+        deaths: sum(side, (p) => p.deaths),
+        damage: sum(side, (p) => p.damage),
+        heals: sum(side, (p) => p.heals),
+        ubers: sum(side, (p) => p.ubers),
+        drops: sum(side, (p) => p.drops),
+      });
+      const best = (list: typeof players, f: (p: (typeof players)[number]) => number) => list.reduce((a, b) => (f(b) > f(a) ? b : a));
+      const award = (p: (typeof players)[number], value: number, basis: RglAward["basis"], extra: number | null): RglAward => ({ steamId: p.steamId, name: p.name, side: p.side, class: p.class, value, basis, extra });
+      const mvp = best(players, (p) => p.rating ?? 0);
+      const medic = best(players.filter((p) => p.class === "medic"), (p) => p.heals + 500 * p.ubers);
+      const frag = best(players, (p) => p.kills);
+      const hs = best(players, (p) => p.headshots);
+      const home = m.maps[i]?.homeScore ?? 0;
+      const away = m.maps[i]?.awayScore ?? 0;
+      return {
+        logId,
+        map,
+        minutes,
+        sides: [total("Red", m.teams[0].teamId, home), total("Blue", m.teams[1].teamId, away)] as [RglSideTotals, RglSideTotals],
+        players,
+        awards: { mvp: award(mvp, mvp.rating ?? 0, "rating", null), medicMvp: award(medic, medic.heals, "heals", medic.ubers), topFragger: award(frag, frag.kills, "kills", frag.deaths), mostHeadshots: hs.headshots > 0 ? award(hs, hs.headshots, "headshots", null) : null },
+        rated: true,
+      };
+    });
+    return delay<RglMatchStats | null>({ maps, unread: [] });
   },
   getRglBans: (skip: number) =>
     delay<RglBan[]>(

@@ -86,7 +86,7 @@ fn forget(key: &str) {
 
 /// An answer from memory while it is fresh, else asked for: once, however
 /// many are waiting for it.
-async fn once<F, Fut>(key: &str, life: Duration, ask: F) -> Result<Option<String>>
+pub(crate) async fn once<F, Fut>(key: &str, life: Duration, ask: F) -> Result<Option<String>>
 where
     F: FnOnce() -> Fut,
     Fut: Future<Output = Result<Option<String>>>,
@@ -480,7 +480,7 @@ pub struct RglTeamPage {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct TeamRaw {
+pub(crate) struct TeamRaw {
     team_id: i64,
     name: String,
     #[serde(default)]
@@ -493,7 +493,7 @@ struct TeamRaw {
     #[serde(default)]
     team_status: Option<String>,
     #[serde(default)]
-    players: Vec<RglMember>,
+    pub(crate) players: Vec<RglMember>,
     #[serde(default)]
     linked_teams: Vec<i64>,
     #[serde(default)]
@@ -504,7 +504,7 @@ struct TeamRaw {
 /// mid-season has a final rank too, so the rank alone proves nothing
 /// (LG-2); and the page lists the team's later seasons, so even a kept one
 /// is read again after a week.
-async fn team_raw(db: &Db, sources: &Sources, id: i64) -> Result<Option<TeamRaw>> {
+pub(crate) async fn team_raw(db: &Db, sources: &Sources, id: i64) -> Result<Option<TeamRaw>> {
     let path = format!("/teams/{id}");
     if let Some((body, at)) = db.rgl_answers(std::slice::from_ref(&path)).await?.get(&path) {
         if unix_now() - at < RECHECK_TEAM {
@@ -1011,13 +1011,13 @@ const MEETING_SEASONS: usize = 4;
 const LOGS_AFTER_S: i64 = 3600;
 const LOGS_SETTLED_S: i64 = 3 * 24 * 3600;
 
-fn rfc3339(s: Option<&str>) -> Option<i64> {
+pub(crate) fn rfc3339(s: Option<&str>) -> Option<i64> {
     s.and_then(|d| chrono::DateTime::parse_from_rfc3339(d).ok()).map(|d| d.timestamp())
 }
 
 /// Who was on the team at `at`: joined by then and not yet left. Without a
 /// date, whoever is on it now.
-fn roster_at(players: &[RglMember], at: Option<i64>) -> Vec<RglMember> {
+pub(crate) fn roster_at(players: &[RglMember], at: Option<i64>) -> Vec<RglMember> {
     let mut out: Vec<RglMember> = players
         .iter()
         .filter(|p| match at {
@@ -1057,7 +1057,7 @@ async fn match_ids_with_linked(db: &Db, sources: &Sources, team: &TeamRaw) -> (H
 }
 
 /// Where a match's logs search is kept, in `rgl_answer`.
-fn logs_key(id: i64) -> String {
+pub(crate) fn logs_key(id: i64) -> String {
     format!("/internal/match-logs/{id}")
 }
 
