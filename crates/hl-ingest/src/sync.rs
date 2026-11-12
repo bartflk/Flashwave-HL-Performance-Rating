@@ -87,6 +87,9 @@ pub enum Progress {
     /// Fights: who was in each one, and what each kill's state was.
     #[serde(rename_all = "camelCase")]
     Fights { done: usize, total: usize },
+    /// Every log's player numbers read again (a rebuild).
+    #[serde(rename_all = "camelCase")]
+    PlayerNumbers { done: usize, total: usize },
     /// Demos being read for aim, routes and deaths (PLAN Q24).
     ///
     /// The slowest thing the app does -- about 16 s a demo, and 396 s for
@@ -400,10 +403,19 @@ pub async fn reprocess(db: &Db, mut progress: impl FnMut(Progress)) -> Result<In
     // Re-derive the index columns from the stored trends.tf rows, so a change
     // to how those rows are interpreted takes effect too.
     let raw_rows = db.trends_raw_rows().await?;
+    // A stored row that no longer reads is passed over, as the sync passes
+    // over one that arrives that way (audit SY-7): one row used to stop the
+    // whole rebuild before a single log was read (audit, 12 Nov 2026).
     let parsed: Vec<(TrendsRow, &str)> = raw_rows
         .iter()
-        .map(|raw| Ok((serde_json::from_str(raw).context("stored trends.tf row")?, raw.as_str())))
-        .collect::<Result<_>>()?;
+        .filter_map(|raw| match serde_json::from_str(raw) {
+            Ok(row) => Some((row, raw.as_str())),
+            Err(e) => {
+                tracing::warn!(error = %e, "skipping a stored trends.tf row that would not parse");
+                None
+            }
+        })
+        .collect();
     store_trends(db, &parsed).await?;
     recompute_supersessions(db).await?;
 

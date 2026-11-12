@@ -2976,6 +2976,7 @@ fn print_progress(p: Progress) {
         Progress::StandIns { done, total } => print!("\rfrom more.tf {done}/{total}          "),
         Progress::Stage { what } => print!("\r{what}...          "),
         Progress::Fights { done, total } => print!("\rfights {done}/{total}          "),
+        Progress::PlayerNumbers { done, total } => print!("\rplayer numbers {done}/{total}          "),
         Progress::ReadingDemos { done, total, log_id, .. } => match log_id {
             Some(id) => print!("\rreading demos {done}/{total}  (log {id})          "),
             None => print!("\rreading demos {done}/{total}          "),

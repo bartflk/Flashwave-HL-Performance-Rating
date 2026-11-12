@@ -10,7 +10,23 @@ import { formatDate } from "../lib/format";
 import { checkForUpdate, dismissUpdate, installUpdate, restartNow, useUpdate } from "../lib/update";
 import { t, tx } from "../lib/i18n";
 import { Spinner } from "./Spinner";
-import type { SyncReport } from "../api/types";
+import type { JobKind, SyncReport } from "../api/types";
+
+/** The card's title while a job runs, once it is done, and once it is stopped. */
+function jobTitle(kind: JobKind, when: "running" | "done" | "cancelled"): string {
+  switch (kind) {
+    case "reprocess":
+      return when === "running" ? t("Rebuilding") : when === "done" ? t("Rebuilt") : t("Rebuild cancelled");
+    case "rerate":
+      return when === "running" ? t("Re-rating") : when === "done" ? t("Re-rated") : t("Re-rate cancelled");
+    case "demos":
+      return when === "running" ? t("Reading demos") : when === "done" ? t("Demos read") : t("Demo reading stopped");
+    case "startup":
+      return when === "running" ? t("Rating on the new model") : t("Rated on the new model");
+    default:
+      return when === "running" ? t("Syncing") : when === "done" ? t("Sync finished") : t("Sync cancelled");
+  }
+}
 
 /**
  * The corner: everything running in the background, one card each.
@@ -286,7 +302,7 @@ function SyncCard() {
   const failed = sync.state === "error";
   const cancelled = sync.state === "cancelled";
   const fraction = sync.state === "running" ? fractionOf(sync.progress) : null;
-  const phase = sync.state === "running" ? phaseOf(sync.progress) : null;
+  const phase = sync.state === "running" ? phaseOf(sync.progress, sync.job) : null;
 
   return (
     <div className={`dl ${done ? "dl-done" : failed ? "dl-failed" : "dl-running"}`}>
@@ -294,11 +310,10 @@ function SyncCard() {
         <span className="dl-title">
           {/* A rebuild sends the same events as a sync and only names itself
               at the end, so the phase it is in says which one this is. */}
-          {sync.state === "running" &&
-            (sync.progress?.kind === "reprocessing" ? t("Rebuilding") : t("Syncing"))}
-          {done && (sync.result.kind === "reprocess" ? t("Rebuilt") : t("Sync finished"))}
+          {sync.state === "running" && jobTitle(sync.job, "running")}
+          {done && jobTitle(sync.result.kind, "done")}
           {failed && t("Sync failed")}
-          {cancelled && (sync.rebuild ? t("Rebuild cancelled") : t("Sync cancelled"))}
+          {cancelled && jobTitle(sync.job, "cancelled")}
         </span>
         {/* A running sync has no close button: stopping it is not something
             this card can do, and a card that hides itself would only make
@@ -323,9 +338,14 @@ function SyncCard() {
           {matchOf(sync.progress) && <p className="dl-sub dl-match">{matchOf(sync.progress)}</p>}
           {/* A rebuild stops like a sync: what it has rewritten stays, and
               the backup taken before it is there if that matters. */}
-          <button className="dl-cancel" onClick={() => void cancelSync()}>
-            {t("Cancel")}
-          </button>
+          {/* The rating pass is never stopped half-way (its four writes
+              must land together), so a re-rate and the startup rating,
+              which are nothing else, offer no Cancel. */}
+          {sync.job !== "startup" && sync.job !== "rerate" && (
+            <button className="dl-cancel" onClick={() => void cancelSync()}>
+              {t("Cancel")}
+            </button>
+          )}
           <div className="dl-bar" aria-hidden>
             <span
               className={fraction === null ? "dl-fill dl-unknown" : "dl-fill"}
@@ -338,9 +358,11 @@ function SyncCard() {
 
       {cancelled && (
         <p className="dl-sub">
-          {sync.rebuild
+          {sync.job === "reprocess"
             ? t("Stopped. Matches rebuilt so far are kept; rebuild again to finish the rest.")
-            : t("Stopped. The matches downloaded so far are kept; the next sync carries on from there.")}
+            : sync.job === "demos"
+              ? t("Stopped. The demos read so far are kept.")
+              : t("Stopped. The matches downloaded so far are kept; the next sync carries on from there.")}
         </p>
       )}
 
@@ -348,6 +370,12 @@ function SyncCard() {
         <p className="dl-sub">
           {sync.result.kind === "reprocess"
             ? t("Every match rebuilt from stored data.")
+            : sync.result.kind === "rerate"
+              ? t("Every match rated again.")
+              : sync.result.kind === "demos"
+                ? t("Every demo on this computer read again.")
+                : sync.result.kind === "startup"
+                  ? t("This version rates differently: your matches are rated on its model now.")
             : sync.result.fetched === 0
               ? t("Up to date — no new matches.")
               : t("{fetched} new match{1}, rated and in the list.", { "1": sync.result.fetched === 1 ? "" : "es", fetched: sync.result.fetched })}

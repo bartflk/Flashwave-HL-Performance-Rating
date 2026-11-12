@@ -9,6 +9,7 @@ import { t, tx } from "../lib/i18n";
 import { DemoImport } from "./DemoImport";
 import { Spinner } from "./Spinner";
 import { SortTh, useSort } from "../lib/sort";
+import { startSync, useSyncStatus } from "../lib/sync";
 
 /**
  * Logs that would not import, and a way to add one by hand.
@@ -28,6 +29,7 @@ export function ImportPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [got, setGot] = useState<Imported | null>(null);
+  const syncing = useSyncStatus().state === "running";
 
   // Still being tried, and given up (Q77, Flashy): a log deleted from
   // logs.tf, or out of tries, is no longer asked for and waits out of the way.
@@ -60,12 +62,14 @@ export function ImportPanel() {
     }
   }
 
-  async function retry(logId?: number) {
+  /** `now`: and start a sync to fetch them, rather than wait for the next one. */
+  async function retry(logId?: number, now = false) {
     setBusy(true);
     setError(null);
     try {
       await api.retryFailed(logId);
       await refresh();
+      if (now) void startSync(false);
     } catch (e) {
       setError(friendlyText(e));
     } finally {
@@ -88,7 +92,10 @@ export function ImportPanel() {
             })}
           </p>
           <FailedTable rows={rows} busy={busy} action={t("Try now")} onTry={(id) => void add(String(id))} />
-          <button className="linkish" style={{ marginTop: 12 }} disabled={busy} onClick={() => void retry()}>{t("Let the next sync try these again")}</button>
+          <div className="row" style={{ marginTop: 12, gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <button disabled={busy || syncing} onClick={() => void retry(undefined, true)}>{t("Try them all now")}</button>
+            <button className="linkish" disabled={busy} onClick={() => void retry()}>{t("Let the next sync try these again")}</button>
+          </div>
         </>
       )}
 

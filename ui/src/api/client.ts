@@ -5,6 +5,8 @@ import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { t } from "../lib/i18n";
 import type {
+  Diagnostics,
+  ModelShift,
   StvStage,
   LanguageFiles,
   SavedLanguageFile,
@@ -200,6 +202,22 @@ const realApi = {
     invoke<SeasonBreakdown>("get_season_breakdown", { season, tier, class: cls, accountId }),
   syncStart: (full: boolean) => invoke<void>("sync_start", { full }),
   reprocessStart: () => invoke<void>("reprocess_start"),
+  /** The rating pass alone. */
+  rerateStart: () => invoke<void>("rerate_start"),
+  /** Every demo on this machine read again. */
+  rereadDemosStart: () => invoke<void>("reread_demos_start"),
+  getDiagnostics: () => invoke<Diagnostics>("get_diagnostics"),
+  /** The last lines of this run's log file. */
+  recentLog: (lines?: number) => invoke<string>("recent_log", { lines: lines ?? null }),
+  getModelShift: () => invoke<ModelShift | null>("get_model_shift"),
+  /** The rating the app runs at startup for a new model: its progress, and its end. */
+  onStartupRating: async (h: { onProgress: (p: Progress) => void; onDone: () => void }): Promise<UnlistenFn> => {
+    const offs = await Promise.all([
+      listen<Progress>("startup://progress", (e) => h.onProgress(e.payload)),
+      listen<null>("startup://rated", () => h.onDone()),
+    ]);
+    return () => offs.forEach((off) => off());
+  },
   getMatch: (logId: number) => invoke<MatchDetail | null>("get_match", { logId }),
   getProfile: (cls: string | null, kind: ContextKind | null = null, from: number | null = null, to: number | null = null) =>
     invoke<ProfileResponse>("get_profile", { class: cls, kind, from, to }),

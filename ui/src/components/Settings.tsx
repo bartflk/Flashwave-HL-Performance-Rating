@@ -7,6 +7,8 @@ import { Help } from "./StatTip";
 import { LeagueSamplePanel } from "./LeagueSamplePanel";
 import { BackupsPanel } from "./settings/BackupsPanel";
 import { OlderSeasonsPanel } from "./settings/OlderSeasonsPanel";
+import { DataJobs, DiagnosticsPanel, ModelShiftPanel, RereadDemosButton } from "./settings/DiagnosticsPanel";
+import { logTail } from "../lib/diagnostics";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../api/client";
@@ -85,6 +87,7 @@ export function Settings({
         { id: "theme", title: t("Theme"), icon: "palette" },
         { id: "scale", title: t("Interface size"), icon: "scale" },
         { id: "problems", title: t("Problems"), icon: "alert" },
+        { id: "diagnostics", title: t("Diagnostics"), icon: "info" },
       ],
     },
     {
@@ -115,6 +118,7 @@ export function Settings({
         { id: "data", title: t("Data"), icon: "database" },
         { id: "league-data", title: t("League data"), icon: "network" },
         { id: "backups", title: t("Backups"), icon: "archive" },
+        { id: "model", title: t("Rating model"), icon: "scale" },
       ],
     },
     {
@@ -206,6 +210,11 @@ export function Settings({
               info={t("Failed downloads, unreadable files and the like, since you opened the app. Copy the report into Discord when asking for help.")}>
               <ProblemsPanel version={status.version} />
             </SettingsSection>
+            <SettingsSection id="diagnostics" icon="info" title={t("Diagnostics")} keywords="diagnostics log file debug sources history runs report"
+              summary={t("The log file, each source's last sync, and recent runs")}
+              info={t("Everything the app noticed while it worked is written to a log file in the data folder; the last three runs are kept. Copy diagnostics puts this page and the end of the log on the clipboard for Discord.")}>
+              <DiagnosticsPanel />
+            </SettingsSection>
 
             {shows("matches") && <h2 className="settings-group">{t("Matches and data")}</h2>}
             <SettingsSection id="history" icon="clock" title={t("How far back")} keywords="history years old scrims pugs"
@@ -239,6 +248,14 @@ export function Settings({
               summary={t("Where your demos are found, and how they link")} hideIntro
               info={t("Demos in tf, tf/demos and tf/demos/stv, and in any other folders you add, are matched to their logs by map and time.")}>
               <DemosPanel />
+              <div className="panel">
+                <h2>{t("Read demos again")}</h2>
+                <div className="row" style={{ marginTop: 4, gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <RereadDemosButton busy={busy} />
+                </div>
+                {/* Below the button: the section hides a panel's opening hint. */}
+                <p className="hint" style={{ marginTop: 10 }}>{t("Demos are read once, and again when the app learns to read more from them. This reads every one again now, for when a match's aim or routes look wrong.")}</p>
+              </div>
             </SettingsSection>
             <SettingsSection id="downloaded" icon="drive" title={t("Downloaded demos")} keywords="downloaded delete space stv"
               summary={t("SourceTV demos the app fetched, and clearing them")} hideIntro
@@ -281,13 +298,16 @@ export function Settings({
               <OlderSeasonsPanel />
             </SettingsSection>
 
-            <SettingsSection id="data" icon="database" title={t("Data")} keywords="rebuild database reprocess"
-              summary={t("Rebuild every match from what is stored")}
-              info={t("Works everything out again from the logs already stored, without downloading anything. Worth running after an update that changes how matches are read.")}>
+            <SettingsSection id="data" icon="database" title={t("Data")} keywords="rebuild database reprocess re-rate rerate full sync"
+              summary={t("Rebuild every match, re-rate, or sync the whole history")}
+              info={t("Rebuild works everything out again from the logs already stored, without downloading anything: worth running after an update that changes how matches are read. Re-rate only runs the rating, in seconds. Full sync asks every source for your whole history again, for a log that never arrived.")}>
               <div className="panel">
                 <h2>{t("Data")}</h2>
-                <div className="row" style={{ marginTop: 4 }}>
+                <div className="row" style={{ marginTop: 4, gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                   <RebuildButton busy={busy} />
+                </div>
+                <div className="row" style={{ marginTop: 10, gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <DataJobs busy={busy} />
                 </div>
                 <dl className="kv" style={{ marginTop: 16 }}>
                   <dt>{tr("Database")}</dt>
@@ -306,6 +326,11 @@ export function Settings({
               summary={t("Copies of your database, taken before every sync")} hideIntro
               info={t("The newest five are kept beside the database. To restore one, close the app and rename it over hl.sqlite3. Uninstalling can delete them, so keep a copy on another drive too.")}>
               <BackupsPanel />
+            </SettingsSection>
+            <SettingsSection id="model" icon="scale" title={t("Rating model")} keywords="rating model version compare v13 v14 changed"
+              summary={t("How your ratings moved with the new model")}
+              info={t("When an update changes how ratings are worked out, the old ratings are kept: this compares your games under the last model and this one.")}>
+              <ModelShiftPanel onOpenMatch={onOpenMatch} />
             </SettingsSection>
 
             {shows("about") && <h2 className="settings-group">{t("About")}</h2>}
@@ -563,9 +588,15 @@ function ProblemsPanel({ version }: { version: string }) {
       <div className="row" style={{ marginTop: 12 }}>
         <button
           onClick={() => {
-            void navigator.clipboard?.writeText(report({ version }));
-            setCopied(true);
-            window.setTimeout(() => setCopied(false), 2000);
+            // The backend's side too: what the window caught is only half of it.
+            void logTail().then((tail) => {
+              void navigator.clipboard?.writeText(report({ version }) + (tail ? `
+
+Log (last lines):
+${tail}` : ""));
+              setCopied(true);
+              window.setTimeout(() => setCopied(false), 2000);
+            });
           }}
         >
           {copied ? tr("Copied") : tr("Copy report")}
