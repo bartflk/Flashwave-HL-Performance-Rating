@@ -959,6 +959,104 @@ pub async fn player(sources: &Sources, input: &str) -> Result<Option<RglPlayer>>
     Ok(Some(RglPlayer { steam_id: p.steam_id, name: p.name, avatar: p.avatar, banned: status.is_banned, probation: status.is_on_probation, seasons }))
 }
 
+// ---- A player's medals and recent form ---------------------------------------
+
+/// A podium finish of a team the player was on at the season's end.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RglMedal {
+    pub season_id: i64,
+    pub season_name: String,
+    pub team_id: i64,
+    pub team_name: String,
+    pub division: Option<String>,
+    /// 1, 2 or 3.
+    pub place: i64,
+}
+
+/// One decided match of a team the player was on, played while they were.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RglFormMatch {
+    /// The player's team in it.
+    pub team_id: i64,
+    #[serde(rename = "match")]
+    pub game: RglMatch,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RglPlayerMore {
+    pub medals: Vec<RglMedal>,
+    /// Newest first.
+    pub form: Vec<RglFormMatch>,
+}
+
+/// The team reads one player page makes, newest stints first: the most it
+/// reads however long the career (each is kept on disk once its season is
+/// over, so only the first view of a player is slow).
+const PLAYER_TEAMS_MAX: usize = 30;
+/// How many of the newest stints their results are read for, and how many
+/// results are listed: a season's matches are about ten requests each the
+/// first time, then none (decided matches are kept on disk).
+const FORM_STINTS: usize = 3;
+const FORM_MAX: usize = 20;
+
+/// The place on the podium a final rank is, if it is one.
+fn podium_place(rank: Option<i64>) -> Option<i64> {
+    rank.filter(|r| (1..=3).contains(r))
+}
+
+/// Whether a match is a decided one of `team`, played between the player's
+/// joining (when known) and leaving (when they did) the team. A Bye Week is
+/// no match.
+fn played_while_on(m: &RglMatch, team: i64, joined: Option<i64>, left: Option<i64>) -> bool {
+    if !decided(m) || !m.teams.iter().any(|x| x.team_id == team) || m.teams.iter().any(|x| x.team_name.starts_with("Bye Week")) {
+        return false;
+    }
+    let Some(at) = rfc3339(m.match_date.as_deref()) else { return false };
+    joined.is_none_or(|j| at >= j) && left.is_none_or(|l| at <= l)
+}
+
+/// A player's podium finishes and their teams' newest results while they
+/// were on the roster. Requests: the player's two profile answers (held
+/// already by `player`), a team each for up to `PLAYER_TEAMS_MAX` stints
+/// (those they were on at the season's end, and the newest three), and the
+/// matches of the newest three teams; all kept on disk once decided.
+pub async fn player_more(db: &Db, sources: &Sources, input: &str) -> Result<RglPlayerMore> {
+    let Some(p) = player(sources, input).await? else { return Ok(RglPlayerMore { medals: Vec::new(), form: Vec::new() }) };
+    let mut medals: Vec<RglMedal> = Vec::new();
+    let mut form: Vec<RglFormMatch> = Vec::new();
+    let mut read = 0;
+    for (i, s) in p.seasons.iter().enumerate() {
+        let for_form = i < FORM_STINTS;
+        // Still on the roster when the season ended: not left at all.
+        let for_medal = s.left_at.is_none();
+        if !(for_form || for_medal) || read >= PLAYER_TEAMS_MAX {
+            continue;
+        }
+        read += 1;
+        let Some(t) = team_raw(db, sources, s.team_id).await? else { continue };
+        if for_medal && !medals.iter().any(|m| m.team_id == s.team_id) {
+            if let Some(place) = podium_place(t.final_rank) {
+                medals.push(RglMedal { season_id: s.season_id, season_name: s.season_name.clone(), team_id: s.team_id, team_name: s.team_name.clone(), division: s.division.clone(), place });
+            }
+        }
+        if for_form {
+            let (from, to) = (rfc3339(s.started_at.as_deref()), rfc3339(s.left_at.as_deref()));
+            for m in read_matches(db, sources, &t.match_ids).await? {
+                if played_while_on(&m, s.team_id, from, to) {
+                    form.push(RglFormMatch { team_id: s.team_id, game: m });
+                }
+            }
+        }
+    }
+    form.sort_by(|a, b| b.game.match_date.cmp(&a.game.match_date));
+    form.dedup_by_key(|f| f.game.match_id);
+    form.truncate(FORM_MAX);
+    Ok(RglPlayerMore { medals, form })
+}
+
 // ---- A match's lineups, earlier meetings and logs ------------------------------
 
 /// What a match page shows beyond RGL's match: who was on each team then,
@@ -1175,6 +1273,35 @@ mod tests {
         // No match date: whoever has not left.
         let now: Vec<String> = roster_at(&players, None).into_iter().map(|p| p.name).collect();
         assert_eq!(now, ["lead", "late", "nodate", "zed"]);
+    }
+
+    #[test]
+    fn podium_places_and_matches_played_while_on_the_roster() {
+        assert_eq!([Some(1), Some(3), Some(4), Some(99), None].map(podium_place), [Some(1), Some(3), None, None, None]);
+        let team = |id: i64, name: &str| RglMatchTeam { team_id: id, team_name: name.into(), team_tag: None, is_home: false };
+        let game = |date: &str, winner: Option<i64>, other: &str| RglMatch {
+            match_id: 1,
+            match_date: Some(date.into()),
+            match_name: None,
+            division_name: None,
+            season_id: None,
+            season_name: None,
+            is_forfeit: false,
+            winner,
+            teams: vec![team(7, "Mine"), team(8, other)],
+            maps: vec![],
+        };
+        let joined = rfc3339(Some("2026-09-01T00:00:00Z"));
+        let left = rfc3339(Some("2026-10-01T00:00:00Z"));
+        assert!(played_while_on(&game("2026-09-15T02:00:00Z", Some(7), "Them"), 7, joined, left));
+        // Before joining, after leaving, undecided, another team's, a bye week.
+        assert!(!played_while_on(&game("2026-08-15T02:00:00Z", Some(7), "Them"), 7, joined, left));
+        assert!(!played_while_on(&game("2026-10-15T02:00:00Z", Some(7), "Them"), 7, joined, left));
+        assert!(!played_while_on(&game("2026-09-15T02:00:00Z", None, "Them"), 7, joined, left));
+        assert!(!played_while_on(&game("2026-09-15T02:00:00Z", Some(7), "Them"), 9, joined, left));
+        assert!(!played_while_on(&game("2026-09-15T02:00:00Z", Some(7), "Bye Week"), 7, joined, left));
+        // Still on the roster: no end.
+        assert!(played_while_on(&game("2027-01-01T00:00:00Z", Some(8), "Them"), 7, joined, None));
     }
 
     #[test]

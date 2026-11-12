@@ -232,7 +232,7 @@ export function RglPage({ active, steamid, onOpenMatch }: { active: boolean; ste
       {loc.at === "bans" && <BansPage onPlayer={openPlayer} />}
       {loc.at === "team" && <TeamView key={loc.id} id={loc.id} onTeam={openTeam} onPlayer={openPlayer} onMatch={openMatch} />}
       {loc.at === "players" && <PlayersLanding steamid={steamid} onPlayer={openPlayer} onTeam={openTeam} />}
-      {loc.at === "player" && <PlayerView key={loc.steamId} steamId={loc.steamId} onTeam={openTeam} />}
+      {loc.at === "player" && <PlayerView key={loc.steamId} steamId={loc.steamId} onTeam={openTeam} onMatch={openMatch} />}
     </div>
   );
 }

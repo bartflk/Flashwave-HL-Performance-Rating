@@ -77,6 +77,7 @@ import type {
   NewsItem,
   NewsPost,
   RglPlayer,
+  RglPlayerMore,
   RglPlayerHit,
   RglSeasonCard,
   RglTeamHit,
@@ -1543,6 +1544,34 @@ export const mockApi: Api = {
           }
         : null,
     ),
+  getRglPlayerMore: () => {
+    const side = (id: number, name: string, home: boolean) => ({ teamId: id, teamName: name, teamTag: null, isHome: home });
+    const game = (matchId: number, date: string, week: string, mine: boolean, won: boolean, scores: [number, number], other: [number, string]) => ({
+      teamId: 14908,
+      match: {
+        matchId,
+        matchDate: date,
+        matchName: week,
+        divisionName: "Invite",
+        seasonId: 193,
+        seasonName: "HL Season 24",
+        isForfeit: false,
+        winner: won ? 14908 : other[0],
+        teams: mine ? [side(14908, "The Amiable Duds", true), side(other[0], other[1], false)] : [side(other[0], other[1], true), side(14908, "The Amiable Duds", false)],
+        maps: [{ mapName: "pl_vigil_rc10", homeScore: scores[0], awayScore: scores[1] }],
+      },
+    });
+    return delay<RglPlayerMore>({
+      medals: [{ seasonId: 193, seasonName: "HL Season 24", teamId: 14908, teamName: "The Amiable Duds", division: "Invite", place: 1 }],
+      form: [
+        game(9005, "2026-08-02T02:00:00Z", "Week 8 - Process", true, true, [3, 1], [15001, "Sunday Drivers"]),
+        game(9004, "2026-07-26T02:00:00Z", "Week 7 - Gullywash", false, false, [3, 2], [15002, "Hit the Griddy"]),
+        game(9003, "2026-07-19T02:00:00Z", "Week 6 - Product", true, true, [2, 0], [15003, "Tea Time"]),
+        game(9002, "2026-07-12T02:00:00Z", "Week 5 - Metalworks", true, true, [3, 0], [15004, "Spawn Campers"]),
+        game(9001, "2026-07-05T02:00:00Z", "Week 4 - Vigil", false, true, [0, 2], [15005, "Late Night Pugs"]),
+      ],
+    });
+  },
   // ETF2L's Highlander posts, 16 October 2026.
   getNews: () => delay(newsPosts as unknown as NewsItem[]),
   getNewsPost: (id: number) => {

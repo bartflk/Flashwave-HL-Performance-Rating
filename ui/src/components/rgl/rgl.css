@@ -1,4 +1,4 @@
-/* The RGL tab (PLAN §30): the ETF2L tab's frame, with RGL's seasons, teams
+﻿/* The RGL tab (PLAN §30): the ETF2L tab's frame, with RGL's seasons, teams
    and players. */
 
 /* The first visit's "in development" notice. */
@@ -148,3 +148,51 @@
 /* Earlier meetings open their match. */
 .rgl-meetings li { cursor: pointer; border-radius: 6px; padding-left: 6px; padding-right: 6px; margin: 0 -6px; }
 .rgl-meetings li:hover, .rgl-meetings li:focus-visible { background: rgba(var(--accent-rgb), 0.1); }
+
+/* ---- A player: headline cards, results, career by year, cabinet --------------- */
+.rgl-kpis { margin: 16px 0; }
+.rgl-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.rgl-medal { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+.rgl-sq {
+  display: inline-flex; align-items: center; justify-content: center; flex: 0 0 22px; width: 22px; height: 22px;
+  border-radius: 5px; font-style: normal; font: 700 var(--fs-micro) var(--font-display); color: var(--muted);
+  background: rgba(var(--text-rgb), 0.08);
+}
+.rgl-sq.w { background: var(--ok); color: #10210f; }
+.rgl-sq.l { background: var(--bad); color: #2a0d0b; }
+.rgl-form { display: inline-flex; gap: 4px; }
+.rgl-form i {
+  display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 5px;
+  font: 700 var(--fs-micro) var(--font-display); font-style: normal; color: var(--muted); background: rgba(var(--text-rgb), 0.08);
+}
+.rgl-form i.w { background: var(--ok); color: #10210f; }
+.rgl-form i.l { background: var(--bad); color: #2a0d0b; }
+.rgl-pr {
+  display: grid; grid-template-columns: 22px 64px minmax(0, 1fr) 52px minmax(0, 1fr); gap: 4px 10px; align-items: center;
+  padding: 7px 4px; border-top: 1px solid var(--rule); font-size: var(--fs-ui);
+}
+.rgl-pr:first-child { border-top: 0; }
+.rgl-pr-day, .rgl-pr-week { font-size: var(--fs-small); }
+.rgl-pr-vs { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rgl-pr-score { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rgl-pr-week { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.rgl-years { display: flex; flex-direction: column; gap: 14px; }
+.rgl-year-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--rule); }
+.rgl-year ul { list-style: none; margin: 0; padding: 0; }
+.rgl-year li {
+  display: grid; grid-template-columns: 110px minmax(0, 1fr) minmax(0, 160px) 52px; gap: 4px 10px; align-items: center;
+  padding: 6px 0; font-size: var(--fs-ui);
+}
+.rgl-year li .num { text-align: right; font-variant-numeric: tabular-nums; }
+.rgl-yr-team { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.rgl-yr-season, .rgl-yr-div { font-size: var(--fs-small); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rgl-cabinet { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.rgl-cabinet li { display: flex; align-items: center; gap: 10px; }
+.rgl-cab-what { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.rgl-cab-what .muted { font-size: var(--fs-small); }
+@media (max-width: 700px) {
+  .rgl-pr { grid-template-columns: 22px 64px minmax(0, 1fr) 52px; }
+  .rgl-pr-week { grid-column: 2 / -1; text-align: left; }
+  .rgl-year li { grid-template-columns: minmax(0, 1fr) 52px; }
+  .rgl-yr-season, .rgl-yr-div { grid-column: 1 / -1; }
+}
