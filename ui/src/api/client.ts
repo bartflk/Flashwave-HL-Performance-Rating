@@ -72,6 +72,7 @@ import type {
   RglSeasonItem,
   RglTeamPage,
   RglTeamSeason,
+  RglTeamHistory,
   ResultRow,
   TeamHit,
   LeagueMatch,
@@ -329,6 +330,8 @@ const realApi = {
   getRglMatchMore: (id: number) => invoke<RglMatchMore | null>("get_rgl_match_more", { id }),
   getRglTeam: (id: number) => invoke<RglTeamPage | null>("get_rgl_team", { id }),
   getRglTeamSeasons: (ids: number[]) => invoke<RglTeamSeason[]>("get_rgl_team_seasons", { ids }),
+  /** `all`: every linked season (up to 12), not only the newest three. */
+  getRglTeamHistory: (id: number, all = false) => invoke<RglTeamHistory | null>("get_rgl_team_history", { id, all }),
   getRglPlayer: (input: string) => invoke<RglPlayer | null>("get_rgl_player", { input }),
   getRglSeasonCard: (id: number) => invoke<RglSeasonCard>("get_rgl_season_card", { id }),
   searchRglPlayers: (q: string) => invoke<RglPlayerHit[]>("search_rgl_players", { q }),

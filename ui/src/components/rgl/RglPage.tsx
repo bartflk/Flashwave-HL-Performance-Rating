@@ -17,6 +17,7 @@ import { SeasonList, SeasonView, SeasonPlay } from "./Seasons";
 import { LiveMatches, MatchesPage } from "./Matches";
 import { MatchPage } from "./MatchPage";
 import { TeamsLanding, TeamView } from "./Team";
+import { CompareView } from "./Compare";
 import { PlayersLanding, PlayerView, YourRgl } from "./Players";
 import { BansPage } from "./Bans";
 
@@ -32,7 +33,7 @@ import { BansPage } from "./Bans";
 
 function sectionOf(l: Loc): Section {
   if (l.at === "season") return "seasons";
-  if (l.at === "team" || l.at === "player" || l.at === "match") return sectionOf(l.from);
+  if (l.at === "team" || l.at === "player" || l.at === "match" || l.at === "compare") return sectionOf(l.from);
   return l.at;
 }
 
@@ -139,6 +140,12 @@ export function RglPage({ active, steamid, onOpenMatch }: { active: boolean; ste
     setStack((s) => [...s, { at: "player", steamId, from: s[s.length - 1] }]);
     window.scrollTo({ top: 0 });
   };
+  const openCompare = (a: number, b: number | null = null) => {
+    setStack((s) => [...s, { at: "compare", a, b, from: s[s.length - 1] }]);
+    window.scrollTo({ top: 0 });
+  };
+  /** Choosing (or clearing) the second team changes this page, not the trail. */
+  const pickCompare = (b: number | null) => setStack((s) => (s[s.length - 1].at === "compare" ? [...s.slice(0, -1), { ...(s[s.length - 1] as Extract<Loc, { at: "compare" }>), b }] : s));
   const openMatch = (id: number) => {
     setStack((s) => [...s, { at: "match", id, from: s[s.length - 1] }]);
     window.scrollTo({ top: 0 });
@@ -232,7 +239,8 @@ export function RglPage({ active, steamid, onOpenMatch }: { active: boolean; ste
       )}
       {loc.at === "teams" && <TeamsLanding steamid={steamid} onTeam={openTeam} />}
       {loc.at === "bans" && <BansPage onPlayer={openPlayer} />}
-      {loc.at === "team" && <TeamView key={loc.id} id={loc.id} onTeam={openTeam} onPlayer={openPlayer} onMatch={openMatch} />}
+      {loc.at === "team" && <TeamView key={loc.id} id={loc.id} onTeam={openTeam} onPlayer={openPlayer} onMatch={openMatch} onCompare={openCompare} />}
+      {loc.at === "compare" && <CompareView key={loc.a} a={loc.a} b={loc.b} onTeam={openTeam} onMatch={openMatch} onPick={pickCompare} />}
       {loc.at === "players" && <PlayersLanding steamid={steamid} onPlayer={openPlayer} onTeam={openTeam} />}
       {loc.at === "player" && <PlayerView key={loc.steamId} steamId={loc.steamId} onTeam={openTeam} />}
     </div>
@@ -265,6 +273,7 @@ function CrumbName({ loc }: { loc: Loc }) {
   if (loc.at === "team") return <>{team?.name ?? t("Team")}</>;
   if (loc.at === "player") return <>{player?.name ?? t("Player")}</>;
   if (loc.at === "match") return <>{match && match.teams.length >= 2 ? `${match.teams[0].teamName} vs ${match.teams[1].teamName}` : t("Match")}</>;
+  if (loc.at === "compare") return <>{t("Compare")}</>;
   if (loc.at === "season") return <>{seasons?.find((s) => s.id === loc.id)?.name ?? t("Season")}</>;
   return null;
 }
@@ -272,7 +281,7 @@ function CrumbName({ loc }: { loc: Loc }) {
 function Crumbs({ loc, go }: { loc: Loc; go: (l: Loc) => void }) {
   const trail: Array<[ReactNode, Loc]> = [];
   const add = (l: Loc) => {
-    if (l.at === "team" || l.at === "match" || l.at === "player") {
+    if (l.at === "team" || l.at === "match" || l.at === "player" || l.at === "compare") {
       add(l.from);
       trail.push([<CrumbName key={trail.length} loc={l} />, l]);
     } else if (l.at === "season") {

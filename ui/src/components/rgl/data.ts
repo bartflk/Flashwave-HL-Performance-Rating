@@ -13,6 +13,7 @@ export type Loc =
   | { at: "seasons" }
   | { at: "season"; id: number }
   | { at: "team"; id: number; from: Loc }
+  | { at: "compare"; a: number; b: number | null; from: Loc }
   | { at: "teams" }
   | { at: "players" }
   | { at: "bans" }

@@ -84,6 +84,7 @@ import type {
   RglSeasonItem, RglBan, RglMatch, RglMatchMore,
   RglTeamPage,
   RglTeamSeason,
+  RglTeamHistory,
   ResultRow,
   TeamHit,
   LeagueMatch,
@@ -1531,6 +1532,56 @@ export const mockApi: Api = {
       ].filter((x) => x.name.toLowerCase().includes(q.trim().toLowerCase()) || x.tag.toLowerCase().includes(q.trim().toLowerCase())),
     ),
   getRglTeamSeasons: () => delay<RglTeamSeason[]>([{ id: 12734, name: "The Amiable Duds", tag: "AD.", seasonId: 183, seasonName: "HL Season 23", division: "Advanced", finalRank: 2 }]),
+  getRglTeamHistory: (id: number, all = false) =>
+    delay<RglTeamHistory | null>({
+      teamIds: [id, 12734, 11102],
+      seasons: [
+        { teamId: id, name: "The Amiable Duds", tag: "AD.", seasonId: 193, seasonName: "HL Season 24", division: "Invite", tier: "Premiership", finalRank: 1, record: { won: 8, lost: 1, forfeitsWon: 1, forfeitsLost: 0 } },
+        { teamId: 12734, name: "The Amiable Duds", tag: "AD.", seasonId: 183, seasonName: "HL Season 23", division: "Advanced", tier: "High", finalRank: 2, record: { won: 6, lost: 3, forfeitsWon: 0, forfeitsLost: 1 } },
+        { teamId: 11102, name: "Duds Inc", tag: "DI", seasonId: 173, seasonName: "HL Season 22", division: "Advanced", tier: "High", finalRank: 3, record: { won: 5, lost: 4, forfeitsWon: 0, forfeitsLost: 0 } },
+      ],
+      total: { won: 19, lost: 8, forfeitsWon: 1, forfeitsLost: 1 },
+      formerNames: ["Duds Inc"],
+      firstSeason: "HL Season 22",
+      seasonsLinked: all ? 3 : 5,
+      capped: false,
+      opponents: [
+        { name: "Run It Back", tag: "Rib.", won: 4, lost: 1, teamId: 14956, last: "2026-06-02T01:30:00.000Z" },
+        { name: "Cat Herders", tag: "CH", won: 2, lost: 3, teamId: 14950, last: "2026-05-12T01:30:00.000Z" },
+        { name: "Pocket Aces", tag: null, won: 2, lost: 1, teamId: 14951, last: "2026-04-21T01:30:00.000Z" },
+      ],
+      maps: [
+        { map: "pl_vigil_rc10", won: 9, lost: 2, roundsFor: 22, roundsAgainst: 9 },
+        { map: "cp_gullywash_f9", won: 4, lost: 4, roundsFor: 14, roundsAgainst: 15 },
+        { map: "koth_product_final", won: 3, lost: 5, roundsFor: 11, roundsAgainst: 16 },
+      ],
+      matches: [
+        {
+          matchId: 34332,
+          matchDate: "2026-06-02T01:30:00.000Z",
+          matchName: "Week 1 - Vigil",
+          isForfeit: false,
+          winner: id,
+          teams: [
+            { teamId: 14956, teamName: "Run It Back", teamTag: "Rib.", isHome: false },
+            { teamId: id, teamName: "The Amiable Duds", teamTag: "AD.", isHome: true },
+          ],
+          maps: [{ mapName: "pl_vigil_rc10", homeScore: 2, awayScore: 0 }],
+        },
+        {
+          matchId: 30011,
+          matchDate: "2026-02-10T01:30:00.000Z",
+          matchName: "Week 4 - Product",
+          isForfeit: false,
+          winner: 14000,
+          teams: [
+            { teamId: 14000, teamName: "Run It Back", teamTag: "Rib.", isHome: true },
+            { teamId: 12734, teamName: "The Amiable Duds", teamTag: "AD.", isHome: false },
+          ],
+          maps: [{ mapName: "koth_product_final", homeScore: 3, awayScore: 1 }],
+        },
+      ],
+    }),
   getRglPlayer: (input: string) =>
     delay<RglPlayer | null>(
       input.includes("7656119") || /^\d+$/.test(input.trim())
