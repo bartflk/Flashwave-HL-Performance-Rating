@@ -105,7 +105,7 @@ export function MatchChips({ m }: { m: RglMatch }) {
       {m.divisionName && (
         <span className="rgl-chip div" title={tier ? t("{0} is about ETF2L {1}", { "0": m.divisionName, "1": t(tier) }) : undefined}>
           {m.divisionName}
-          {tier && <span className="muted"> â‰ˆ {t(tier)}</span>}
+          {tier && <span className="muted"> ≈ {t(tier)}</span>}
         </span>
       )}
       {maps && <span className="rgl-chip map">{maps}</span>}
@@ -142,13 +142,13 @@ export function WeekLine({ m, onTeam, onOpen, countdown, form }: { m: RglMatch; 
         </button>
       </span>
     ) : (
-      <span className={`rgl-wl-side ${cls}`}>â€“</span>
+      <span className={`rgl-wl-side ${cls}`}>–</span>
     );
   // The marks are the team's form going into this match, so an old result
   // does not show its own outcome in them.
   const marksOf = (x: RglMatch["teams"][number] | undefined, cls: "l" | "r") =>
     marks && x ? <FormMarks marks={form(x.teamId, m.matchDate ? at : null)} side={cls} /> : null;
-  const score = !decided(m) ? t("vs") : !shown ? "â€“" : m.isForfeit ? t("forfeit") : `${hs}:${as}`;
+  const score = !decided(m) ? t("vs") : !shown ? "–" : m.isForfeit ? t("forfeit") : `${hs}:${as}`;
   return (
     <li className={`rgl-wl rgl-open${marks ? " withform" : ""}`} role="link" tabIndex={0} onClick={onOpen} onKeyDown={openOnKey(onOpen)} title={t("Open the match")}>
       <span className="muted rgl-wl-day" title={m.matchDate ? fullDate(at) : undefined}>

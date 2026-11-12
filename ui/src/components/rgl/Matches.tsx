@@ -25,7 +25,7 @@ export function LiveMatches({ onTeam, onMatch, go }: { onTeam: (id: number) => v
       <div className="e2-panel-head">
         <h2>{title}</h2>
         <button className="e2-more" onClick={() => go({ at: "matches" })}>
-          {t("All matches")} â€º
+          {t("All matches")} ›
         </button>
       </div>
       {live.error ? (
@@ -111,7 +111,7 @@ export function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void;
   const exportIt = async () => {
     try {
       const name = filter.team.trim() || (live.season?.name ?? "RGL");
-      const text = icsOf(calendar, { name: `${t("RGL Highlander")} Ã‚Â· ${name}`, stamp: Date.now() / 1000 });
+      const text = icsOf(calendar, { name: `${t("RGL Highlander")} · ${name}`, stamp: Date.now() / 1000 });
       const file = `${name.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "rgl"}.ics`;
       const path = await api.saveCalendar(text, file);
       if (path) toast(t("Calendar saved"), path);
@@ -140,7 +140,7 @@ export function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void;
       <header className="ts-pagehead">
         <span className="ts-eyebrow">
           {t("RGL Highlander")}
-          {live.season ? ` Ã‚Â· ${live.season.name}` : ""}
+          {live.season ? ` · ${live.season.name}` : ""}
         </span>
         <h1>{t("Matches")}</h1>
       </header>
@@ -170,7 +170,7 @@ export function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void;
         <label className="km-field">
           <span>{t("Week")}</span>
           <select value={filter.week} onChange={(e) => set({ week: e.target.value })}>
-            <option value="">{mode === "week" ? tx("Now ({0})", { "0": current ?? "Ã¢â‚¬â€œ" }) : t("All weeks")}</option>
+            <option value="">{mode === "week" ? tx("Now ({0})", { "0": current ?? "–" }) : t("All weeks")}</option>
             {weeks.map((w) => (
               <option key={w} value={w}>
                 {w}
@@ -229,7 +229,7 @@ export function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void;
                 <section key={d} className="panel e2-panel">
                   <div className="e2-panel-head">
                     <h2>{d}</h2>
-                    {LADDER[d] && <span className="muted">Ã¢â€°Ë† {t(LADDER[d])}</span>}
+                    {LADDER[d] && <span className="muted">≈ {t(LADDER[d])}</span>}
                   </div>
                   <ol className="rgl-results">
                     {inWeek
