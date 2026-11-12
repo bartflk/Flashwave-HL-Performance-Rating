@@ -107,7 +107,55 @@
 .rgl-wl-side.l { text-align: right; }
 .rgl-wl-side.won .linkish { font-weight: 700; color: var(--text); }
 .rgl-wl-score { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
-.rgl-wl-map { grid-column: 2 / -1; font-size: var(--fs-small); }
+.rgl-wl-map { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: var(--fs-small); }
+/* With form marks: a column of marks each side of the score, as wide as five marks, so rows line up. */
+.rgl-wl.withform { grid-template-columns: 64px minmax(0, 1fr) 70px 64px 70px minmax(0, 1fr); }
+
+/* Form: the last five results, newest on the right. Won and lost keep their fixed colours. */
+.rgl-form { display: inline-flex; gap: 2px; }
+.rgl-form.l { justify-content: flex-end; }
+.rgl-form > span {
+  display: inline-grid; place-items: center; width: 12px; height: 16px; border-radius: 3px;
+  font: 700 var(--fs-micro) var(--font-display); line-height: 1;
+}
+.rgl-form > .w { background: rgba(var(--ok-rgb), 0.2); color: var(--ok); }
+.rgl-form > .l { background: rgba(var(--bad-rgb), 0.2); color: var(--bad); }
+
+/* Chips on a row: week, division and its tier, the maps. */
+.rgl-chips { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rgl-chip {
+  padding: 1px 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--panel-2);
+  color: var(--muted); font-size: var(--fs-micro); line-height: var(--lh-snug); white-space: nowrap;
+}
+.rgl-chip.div { color: var(--text); }
+.rgl-chip .muted { font-size: inherit; }
+
+/* The filter bar: the controls, then the buttons pushed to the end. */
+.rgl-filters { margin-bottom: 16px; }
+.rgl-filters-end { display: inline-flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.rgl-team-filter { width: 180px; max-width: 100%; }
+
+/* Live now and tonight: a row of small cards. */
+.rgl-strip { margin-bottom: 16px; }
+.rgl-ticks { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.rgl-tick {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 9px 12px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel-2); font-size: var(--fs-ui);
+}
+.rgl-tick:hover { background: rgba(var(--accent-rgb), 0.1); }
+.rgl-tick:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.rgl-tick.live { border-color: rgba(var(--bad-rgb), 0.5); }
+.rgl-tick-when { font-size: var(--fs-small); font-variant-numeric: tabular-nums; color: var(--muted); }
+.rgl-tick-live { display: inline-flex; align-items: center; gap: 6px; color: var(--bad); font-weight: 700; letter-spacing: var(--ls-caps); }
+.rgl-tick-teams { display: flex; align-items: baseline; gap: 6px; font-weight: 600; min-width: 0; }
+.rgl-tick-teams > span:not(.muted) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rgl-tick-teams .muted { font-weight: 400; font-size: var(--fs-small); }
+.rgl-tick-meta { font-size: var(--fs-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* The spoiler switch in the header's tools. */
+.rgl-spoiler { display: inline-flex; align-items: center; gap: 7px; flex: none; height: var(--ctl-h); padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--sunken, var(--panel)); color: var(--muted); font: inherit; font-size: var(--fs-small); white-space: nowrap; cursor: pointer; }
+.rgl-spoiler:hover { color: var(--text); border-color: var(--accent-dim); }
+.rgl-spoiler[aria-pressed="true"] { color: var(--text); border-color: rgba(var(--accent-rgb), 0.55); background: rgba(var(--accent-rgb), 0.12); }
 
 /* ---- The league's bans ---------------------------------------------------- */
 .rgl-bans td { vertical-align: top; }

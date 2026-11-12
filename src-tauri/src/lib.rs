@@ -130,6 +130,7 @@ pub fn run() {
             sync_commands::get_rgl_season,
             sync_commands::get_rgl_season_matches,
             sync_commands::get_rgl_bans,
+            sync_commands::export_calendar,
             sync_commands::get_rgl_match,
             sync_commands::get_rgl_match_more,
             sync_commands::get_rgl_team,

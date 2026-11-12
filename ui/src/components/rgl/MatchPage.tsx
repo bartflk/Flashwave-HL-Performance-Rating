@@ -4,6 +4,7 @@ import type { RglMatch, RglMatchMore, RglMember } from "../../api/types";
 import { t } from "../../lib/i18n";
 import { openOnKey } from "../../lib/rows";
 import { decided } from "../../lib/rglstandings";
+import { useShowResults } from "../../lib/spoilers";
 import { ApiError } from "../ApiError";
 import { Loading } from "../Spinner";
 import { fullDate } from "../etf2l/Countdown";
@@ -15,6 +16,7 @@ export function MatchPage({ id, onTeam, onMatch, onPlayer, onOpenLog }: { id: nu
   const q = useMatch(id);
   const more = useQuery({ queryKey: ["rgl_match_more", id], queryFn: () => api.getRglMatchMore(id), staleTime: KEEP, retry: false });
   const m = q.data;
+  const [shown] = useShowResults();
   if (q.error) return <ApiError error={q.error} />;
   if (q.isPending) return <Loading>{t("Loading the match…")}</Loading>;
   if (!m) return <p className="hint">{t("RGL has no such match.")}</p>;
@@ -26,7 +28,7 @@ export function MatchPage({ id, onTeam, onMatch, onPlayer, onOpenLog }: { id: nu
   const tier = m.divisionName ? LADDER[m.divisionName] : undefined;
   const side = (x: RglMatch["teams"][number] | undefined, cls: string) =>
     x ? (
-      <button className={`rgl-mp-team ${cls}${m.winner === x.teamId ? " won" : ""}`} onClick={() => onTeam(x.teamId)}>
+      <button className={`rgl-mp-team ${cls}${shown && m.winner === x.teamId ? " won" : ""}`} onClick={() => onTeam(x.teamId)}>
         <span className="rgl-mp-name" title={x.teamName}>{x.teamName}</span>
         {x.teamTag && <span className="rgl-tag">{x.teamTag}</span>}
       </button>
@@ -44,7 +46,7 @@ export function MatchPage({ id, onTeam, onMatch, onPlayer, onOpenLog }: { id: nu
         </div>
         <div className="rgl-mp-vs">
           {side(home, "l")}
-          <span className="rgl-mp-score">{m.isForfeit ? t("forfeit") : decided(m) ? `${hs} : ${as}` : t("vs")}</span>
+          <span className="rgl-mp-score">{!decided(m) ? t("vs") : !shown ? "–" : m.isForfeit ? t("forfeit") : `${hs} : ${as}`}</span>
           {side(away, "r")}
         </div>
         <div className="rgl-mp-when muted">
@@ -73,8 +75,8 @@ export function MatchPage({ id, onTeam, onMatch, onPlayer, onOpenLog }: { id: nu
                   {m.maps.map((mp, i) => (
                     <tr key={`${mp.mapName}-${i}`}>
                       <td>{mp.mapName}</td>
-                      <td className={`num${(mp.homeScore ?? 0) > (mp.awayScore ?? 0) ? " team-won" : ""}`}>{mp.homeScore ?? "–"}</td>
-                      <td className={`num${(mp.awayScore ?? 0) > (mp.homeScore ?? 0) ? " team-won" : ""}`}>{mp.awayScore ?? "–"}</td>
+                      <td className={`num${shown && (mp.homeScore ?? 0) > (mp.awayScore ?? 0) ? " team-won" : ""}`}>{shown ? (mp.homeScore ?? "–") : "–"}</td>
+                      <td className={`num${shown && (mp.awayScore ?? 0) > (mp.homeScore ?? 0) ? " team-won" : ""}`}>{shown ? (mp.awayScore ?? "–") : "–"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -172,6 +174,7 @@ export function RglLineup({ players, onPlayer }: { players: RglMember[]; onPlaye
 /** Earlier matches between the two teams, from the first team's side.
  *  `them`: the other team's ids across its seasons (a new id each season). */
 export function RglMeetings({ them, list, onMatch }: { them: number[]; list: RglMatch[] | null; onMatch: (id: number) => void }) {
+  const [shown] = useShowResults();
   const theirs = new Set(them);
   const ours = (m: RglMatch) => {
     const home = (m.teams.find((x) => x.isHome) ?? m.teams[0])?.teamId;
@@ -186,7 +189,7 @@ export function RglMeetings({ them, list, onMatch }: { them: number[]; list: Rgl
     <section className="panel e2-panel">
       <div className="e2-panel-head">
         <h2>{t("Head-to-head")}</h2>
-        {played.length > 0 && <span className="e2-h2h-rec">{`${won}–${lost}`}</span>}
+        {shown && played.length > 0 && <span className="e2-h2h-rec">{`${won}–${lost}`}</span>}
       </div>
       {list === null ? (
         <Loading>{t("Reading both teams' seasons…")}</Loading>
@@ -200,13 +203,13 @@ export function RglMeetings({ them, list, onMatch }: { them: number[]; list: Rgl
               <li key={m.matchId} tabIndex={0} role="link" onClick={() => onMatch(m.matchId)} onKeyDown={openOnKey(() => onMatch(m.matchId))}>
                 <span className="muted">{m.matchDate ? day(m.matchDate) : (m.seasonName ?? "")}</span>
                 <span className="e2-map-score">
-                  {m.isForfeit ? (
+                  {m.isForfeit && shown ? (
                     <span>{t("forfeit")}</span>
                   ) : (
                     <>
-                      <span className={a > b ? "won" : undefined}>{decided(m) ? a : "–"}</span>
+                      <span className={shown && a > b ? "won" : undefined}>{decided(m) && shown ? a : "–"}</span>
                       <span className="e2-rl-dash">:</span>
-                      <span className={b > a ? "won" : undefined}>{decided(m) ? b : "–"}</span>
+                      <span className={shown && b > a ? "won" : undefined}>{decided(m) && shown ? b : "–"}</span>
                     </>
                   )}
                 </span>

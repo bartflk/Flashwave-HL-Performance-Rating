@@ -314,6 +314,17 @@ const realApi = {
   getRglSeason: (id: number) => invoke<RglSeason>("get_rgl_season", { id }),
   getRglSeasonMatches: (id: number) => invoke<RglMatch[]>("get_rgl_season_matches", { id }),
   getRglBans: (skip: number) => invoke<RglBan[]>("get_rgl_bans", { skip }),
+  /** Matches as a calendar file: asks where to save it; the path, or null if cancelled. */
+  saveCalendar: async (text: string, suggested: string): Promise<string | null> => {
+    const path = await save({
+      title: t("Save the calendar"),
+      defaultPath: suggested,
+      filters: [{ name: t("Calendar"), extensions: ["ics"] }],
+    });
+    if (!path) return null;
+    await invoke<void>("export_calendar", { path, text });
+    return path;
+  },
   getRglMatch: (id: number) => invoke<RglMatch | null>("get_rgl_match", { id }),
   getRglMatchMore: (id: number) => invoke<RglMatchMore | null>("get_rgl_match_more", { id }),
   getRglTeam: (id: number) => invoke<RglTeamPage | null>("get_rgl_team", { id }),

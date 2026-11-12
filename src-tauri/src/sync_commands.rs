@@ -2085,6 +2085,15 @@ pub async fn import_demo(state: State<'_, AppState>, path: String) -> CmdResult<
 mod tests {
     use super::*;
 
+    #[test]
+    fn a_calendar_is_written_only_as_an_ics_file_of_calendar_text() {
+        assert!(check_calendar("C:\\x\\rgl.ics", "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n").is_ok());
+        assert!(check_calendar("C:\\x\\RGL.ICS", "BEGIN:VCALENDAR").is_ok());
+        assert!(check_calendar("C:\\x\\startup.bat", "BEGIN:VCALENDAR").is_err());
+        assert!(check_calendar("C:\\x\\rgl.ics", "echo hi").is_err());
+        assert!(check_calendar("rgl.ics", &format!("BEGIN:VCALENDAR{}", "x".repeat(1_000_000))).is_err());
+    }
+
     fn run(at: i64) -> RunRecord {
         RunRecord { kind: "sync".into(), at, seconds: 1, fetched: 0, failed: 0, error: None, problems: vec![] }
     }
@@ -2277,6 +2286,25 @@ pub async fn get_rgl_match_more(state: State<'_, AppState>, id: i64) -> CmdResul
 #[tauri::command]
 pub async fn get_rgl_bans(state: State<'_, AppState>, skip: Option<i64>) -> CmdResult<Vec<hl_ingest::rgl::RglBan>> {
     Ok(hl_ingest::rgl::bans(&state.sources, skip.unwrap_or(0)).await?)
+}
+
+/// Write a calendar file (.ics) the user chose a place for in the save dialog.
+/// Only that one file is written, and only calendar text: the name must end in
+/// `.ics`, and the text must be a calendar of a size a season's matches can be.
+#[tauri::command]
+pub async fn export_calendar(path: String, text: String) -> CmdResult<()> {
+    check_calendar(&path, &text).map_err(|why| CmdError::new("calendar_refused", why))?;
+    std::fs::write(&path, text).map_err(|e| CmdError::new("calendar_write", format!("Could not write `{path}`: {e}")))
+}
+
+fn check_calendar(path: &str, text: &str) -> Result<(), String> {
+    if !path.to_ascii_lowercase().ends_with(".ics") {
+        return Err(format!("`{path}` is not an .ics file"));
+    }
+    if !text.starts_with("BEGIN:VCALENDAR") || text.len() > 1_000_000 {
+        return Err("That is not a calendar".into());
+    }
+    Ok(())
 }
 
 /// One RGL season: its maps and each division's teams.

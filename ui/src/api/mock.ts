@@ -1488,6 +1488,10 @@ export const mockApi: Api = {
       logsWhy: m.isForfeit ? "forfeit" : m.winner === null ? "notPlayed" : null,
     });
   },
+  saveCalendar: async (text: string, suggested: string) => {
+    console.info("would save the calendar", suggested, `(${text.length} characters)`);
+    return delay(`C:\\Users\\you\\Downloads\\${suggested}`);
+  },
   getRglBans: (skip: number) =>
     delay<RglBan[]>(
       skip > 0
@@ -2426,7 +2430,8 @@ function mockRglMatches(id: number): RglMatch[] {
   const pairs = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]];
   const maps = ["pl_vigil_rc10", "koth_product_final", "pl_upward_f12"];
   const live = id === 198;
-  const start = live ? Date.now() - 14 * 86_400_000 + 3 * 3_600_000 : Date.UTC(2026, 5, 2, 1, 30);
+  // The live season is on its third week right now: one match started 45 minutes ago, the next in 15.
+  const start = live ? Date.now() - 14 * 86_400_000 - 45 * 60_000 : Date.UTC(2026, 5, 2, 1, 30);
   let n = live ? 35000 : 34000;
   return pairs.flatMap((week, w) =>
     week.map(([a, b], i) => {

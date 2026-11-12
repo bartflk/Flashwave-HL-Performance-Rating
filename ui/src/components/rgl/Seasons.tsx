@@ -4,6 +4,7 @@ import { api } from "../../api/client";
 import type { RglSeasonItem } from "../../api/types";
 import { t, tx } from "../../lib/i18n";
 import { decided, weekOf, standings } from "../../lib/rglstandings";
+import { useShowResults } from "../../lib/spoilers";
 import { ApiError } from "../ApiError";
 import { Loading } from "../Spinner";
 import { MedalGlyph } from "../players/MedalGlyph";
@@ -188,6 +189,7 @@ export function SeasonView({ id, onTeam, more }: { id: number; onTeam: (id: numb
  */
 export function SeasonPlay({ id, onTeam, onMatch }: { id: number; onTeam: (id: number) => void; onMatch: (id: number) => void }) {
   const season = useSeason(id).data;
+  const [shown] = useShowResults();
   const q = useQuery({ queryKey: ["rgl_season_matches", id], queryFn: () => api.getRglSeasonMatches(id), staleTime: KEEP, retry: false });
   const matches = useMemo(() => q.data ?? [], [q.data]);
   const tables = useMemo(() => standings(matches), [matches]);
@@ -206,9 +208,10 @@ export function SeasonPlay({ id, onTeam, onMatch }: { id: number; onTeam: (id: n
   return (
     <>
       <h2 className="ts-section">{t("Standings")}</h2>
+      {!shown && <p className="hint">{t("The standings are results, so they are hidden. Turn on Show results to see them.")}</p>}
       <div className="rgl-standings">
         {divs
-          .filter((d) => tables.has(d))
+          .filter((d) => shown && tables.has(d))
           .map((d) => (
             <section key={d} className="panel e2-panel">
               <div className="e2-panel-head">

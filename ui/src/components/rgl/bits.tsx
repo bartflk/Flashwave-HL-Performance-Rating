@@ -1,12 +1,17 @@
 import type { RglMatch } from "../../api/types";
 import { t } from "../../lib/i18n";
 import { openOnKey } from "../../lib/rows";
-import { decided } from "../../lib/rglstandings";
 import { ApiError } from "../ApiError";
 import { Loading } from "../Spinner";
 import { RglMark } from "../RglMark";
 import { Countdown, clockTime, fullDate } from "../etf2l/Countdown";
-import { secs, useNameSearch, day } from "./data";
+import { secs, useNameSearch, day, LADDER } from "./data";
+import { useShowResults } from "../../lib/spoilers";
+import { decided, weekOf } from "../../lib/rglstandings";
+import type { Mark } from "../../lib/rglmatches";
+
+/** A team's form before a time: see formIndex. */
+export type FormOf = (team: number, before: number | null) => Mark[];
 
 /**
  * The wait for a season's matches, which are read one by one. The tabs stay
@@ -77,16 +82,54 @@ export function OnRgl({ href }: { href: string }) {
   );
 }
 
-/** One match of a week: home and away, the score between, the map; the
- *  whole line opens the match. */
-export function WeekLine({ m, onTeam, onOpen, countdown }: { m: RglMatch; onTeam: (id: number) => void; onOpen: () => void; countdown?: boolean }) {
+/** A team's last results as small W / L marks, the newest on the right. */
+export function FormMarks({ marks, side }: { marks: Mark[]; side: "l" | "r" }) {
+  return (
+    <span className={`rgl-form ${side}`} title={t("Last five results this season, newest on the right")} aria-label={marks.join(" ")}>
+      {marks.map((x, i) => (
+        <span key={i} className={x === "W" ? "w" : "l"} aria-hidden>
+          {x === "W" ? t("W") : t("L")}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** A match's week, its division with the ETF2L tier it stands for, and its maps, as small chips. */
+export function MatchChips({ m }: { m: RglMatch }) {
+  const tier = m.divisionName ? LADDER[m.divisionName] : undefined;
+  const maps = m.maps.map((x) => x.mapName).join(", ");
+  return (
+    <span className="rgl-chips">
+      {m.matchName && <span className="rgl-chip">{weekOf(m)}</span>}
+      {m.divisionName && (
+        <span className="rgl-chip div" title={tier ? t("{0} is about ETF2L {1}", { "0": m.divisionName, "1": t(tier) }) : undefined}>
+          {m.divisionName}
+          {tier && <span className="muted"> â‰ˆ {t(tier)}</span>}
+        </span>
+      )}
+      {maps && <span className="rgl-chip map">{maps}</span>}
+    </span>
+  );
+}
+
+/**
+ * One match: home and away, the score between, form marks beside each team
+ * (when given), and the week, division and map as chips under them; the
+ * whole line opens the match. With "Show results" off the score is a dash,
+ * nobody is bold and the form marks are gone.
+ */
+export function WeekLine({ m, onTeam, onOpen, countdown, form }: { m: RglMatch; onTeam: (id: number) => void; onOpen: () => void; countdown?: boolean; form?: FormOf }) {
+  const [shown] = useShowResults();
   const home = m.teams.find((x) => x.isHome) ?? m.teams[0];
   const away = m.teams.find((x) => x !== home);
   const hs = m.maps.reduce((n, x) => n + (x.homeScore ?? 0), 0);
   const as = m.maps.reduce((n, x) => n + (x.awayScore ?? 0), 0);
-  const side = (x: RglMatch["teams"][number] | undefined, cls: string) =>
+  const at = secs(m.matchDate);
+  const marks = shown && form;
+  const side = (x: RglMatch["teams"][number] | undefined, cls: "l" | "r") =>
     x ? (
-      <span className={`${cls}${m.winner === x.teamId ? " won" : ""}`}>
+      <span className={`rgl-wl-side ${cls}${shown && m.winner === x.teamId ? " won" : ""}`}>
         <button
           className="linkish"
           title={x.teamName}
@@ -99,19 +142,30 @@ export function WeekLine({ m, onTeam, onOpen, countdown }: { m: RglMatch; onTeam
         </button>
       </span>
     ) : (
-      <span className={cls}>–</span>
+      <span className={`rgl-wl-side ${cls}`}>â€“</span>
     );
+  // The marks are the team's form going into this match, so an old result
+  // does not show its own outcome in them.
+  const marksOf = (x: RglMatch["teams"][number] | undefined, cls: "l" | "r") =>
+    marks && x ? <FormMarks marks={form(x.teamId, m.matchDate ? at : null)} side={cls} /> : null;
+  const score = !decided(m) ? t("vs") : !shown ? "â€“" : m.isForfeit ? t("forfeit") : `${hs}:${as}`;
   return (
-    <li className="rgl-wl rgl-open" role="link" tabIndex={0} onClick={onOpen} onKeyDown={openOnKey(onOpen)} title={t("Open the match")}>
-      <span className="muted rgl-wl-day" title={m.matchDate ? fullDate(secs(m.matchDate)) : undefined}>
-        {countdown ? clockTime(secs(m.matchDate)) : day(m.matchDate)}
+    <li className={`rgl-wl rgl-open${marks ? " withform" : ""}`} role="link" tabIndex={0} onClick={onOpen} onKeyDown={openOnKey(onOpen)} title={t("Open the match")}>
+      <span className="muted rgl-wl-day" title={m.matchDate ? fullDate(at) : undefined}>
+        {countdown ? clockTime(at) : day(m.matchDate)}
       </span>
-      {side(home, "rgl-wl-side l")}
-      <span className="rgl-wl-score">{m.isForfeit ? t("forfeit") : m.winner === null ? t("vs") : `${hs}:${as}`}</span>
-      {side(away, "rgl-wl-side r")}
-      <span className="muted rgl-wl-map">
-        {m.maps.map((x) => x.mapName).join(", ")}
-        {!decided(m) && m.matchDate && <Awaiting time={secs(m.matchDate)} countdown={!!countdown} />}
+      {side(home, "l")}
+      {marksOf(home, "l")}
+      <span className="rgl-wl-score">{score}</span>
+      {marksOf(away, "r")}
+      {side(away, "r")}
+      <span className="rgl-wl-map">
+        <MatchChips m={m} />
+        {!decided(m) && m.matchDate && (
+          <span className="muted">
+            <Awaiting time={at} countdown={!!countdown} />
+          </span>
+        )}
       </span>
     </li>
   );

@@ -4,6 +4,7 @@ import { ApiError } from "../ApiError";
 import { Loading } from "../Spinner";
 import { RglMark } from "../RglMark";
 import { LeagueHead } from "../LeagueHead";
+import { useShowResults } from "../../lib/spoilers";
 import { onOpenRgl, takePendingRgl } from "../../lib/goto";
 import "../players/players.css";
 import "../teams/teams.css";
@@ -213,6 +214,7 @@ export function RglPage({ active, steamid, onOpenMatch }: { active: boolean; ste
           </nav>
         </div>
         <div className="e2-head-tools" data-fit="300">
+          <ShowResults />
           <RglSearch onTeam={openTeam} onPlayer={openPlayer} />
         </div>
       </LeagueHead>
@@ -234,6 +236,21 @@ export function RglPage({ active, steamid, onOpenMatch }: { active: boolean; ste
       {loc.at === "players" && <PlayersLanding steamid={steamid} onPlayer={openPlayer} onTeam={openTeam} />}
       {loc.at === "player" && <PlayerView key={loc.steamId} steamId={loc.steamId} onTeam={openTeam} />}
     </div>
+  );
+}
+
+/** The spoiler switch: off hides every score and winner on this tab. */
+function ShowResults() {
+  const [shown, set] = useShowResults();
+  return (
+    <button
+      className="rgl-spoiler"
+      aria-pressed={shown}
+      onClick={() => set(!shown)}
+      title={shown ? t("Scores and winners are shown. Click to hide them, so nothing is spoiled.") : t("Scores and winners are hidden. Click to show them.")}
+    >
+      <span aria-hidden>{shown ? "●" : "○"}</span> {t("Show results")}
+    </button>
   );
 }
 

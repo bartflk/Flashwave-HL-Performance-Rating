@@ -5,6 +5,7 @@ import type { RglMatch, RglTeamPage } from "../../api/types";
 import { t, tx } from "../../lib/i18n";
 import { openOnKey } from "../../lib/rows";
 import { standings } from "../../lib/rglstandings";
+import { useShowResults } from "../../lib/spoilers";
 import { ApiError } from "../ApiError";
 import { Loading } from "../Spinner";
 import { Monogram } from "../etf2l/Teams";
@@ -27,6 +28,7 @@ export function TeamsLanding({ steamid, onTeam }: { steamid: string | null; onTe
   const hits = useQuery({ queryKey: ["rgl_search_teams", term.toLowerCase()], queryFn: () => api.searchRglTeams(term), enabled: on, staleTime: KEEP, retry: false });
   const me = usePlayer(steamid);
   const live = useLive();
+  const [shown] = useShowResults();
   const season = useSeason(live.season?.id ?? null).data;
   const tables = useMemo(() => standings(live.matches ?? []), [live.matches]);
   // Your seasons, one card a team, newest first.
@@ -89,14 +91,12 @@ export function TeamsLanding({ steamid, onTeam }: { steamid: string | null; onTe
                     </span>
                   </span>
                   <span className="tm-bar" aria-hidden>
-                    <span className="tm-bar-w" style={{ width: `${wr ?? 0}%` }} />
+                    <span className="tm-bar-w" style={{ width: `${shown ? (wr ?? 0) : 0}%` }} />
                   </span>
                   <span className="tm-card-stats">
                     <span>
-                      <strong>
-                        {s.wins}–{s.losses}
-                      </strong>
-                      {wr !== null && <em> {wr.toFixed(0)}%</em>}
+                      <strong>{shown ? `${s.wins}–${s.losses}` : "–"}</strong>
+                      {shown && wr !== null && <em> {wr.toFixed(0)}%</em>}
                     </span>
                     {s.tier && <span className="muted">≈ {t(s.tier)}</span>}
                   </span>
@@ -155,15 +155,11 @@ export function TeamsLanding({ steamid, onTeam }: { steamid: string | null; onTe
                           return (
                             <li key={x.id}>
                               <button className={mine.has(x.id) ? "tm-row mine" : "tm-row"} onClick={() => onTeam(x.id)}>
-                                <span className={place === 1 && x.won > 0 ? "tm-place first" : "tm-place"}>{place}</span>
+                                <span className={shown && place === 1 && x.won > 0 ? "tm-place first" : "tm-place"}>{place}</span>
                                 <Monogram name={x.name} />
                                 <span className="tm-row-name">{x.name}</span>
-                                <span className="tm-row-wl">
-                                  {x.won}–{x.lost}
-                                </span>
-                                <span className={diff > 0 ? "tm-row-maps up" : diff < 0 ? "tm-row-maps down" : "tm-row-maps"}>
-                                  {x.for}–{x.against}
-                                </span>
+                                <span className="tm-row-wl">{shown ? `${x.won}–${x.lost}` : "–"}</span>
+                                <span className={shown && diff > 0 ? "tm-row-maps up" : shown && diff < 0 ? "tm-row-maps down" : "tm-row-maps"}>{shown ? `${x.for}–${x.against}` : "–"}</span>
                               </button>
                             </li>
                           );
@@ -185,6 +181,7 @@ export function TeamsLanding({ steamid, onTeam }: { steamid: string | null; onTe
 
 /** A team's record on each map it played, by the map's own score. */
 export function MapRecord({ team }: { team: RglTeamPage }) {
+  const [shown] = useShowResults();
   const rows = useMemo(() => {
     const by = new Map<string, { won: number; lost: number }>();
     for (const m of team.matches) {
@@ -200,7 +197,7 @@ export function MapRecord({ team }: { team: RglTeamPage }) {
     }
     return [...by.entries()].sort((a, b) => b[1].won + b[1].lost - (a[1].won + a[1].lost) || a[0].localeCompare(b[0]));
   }, [team]);
-  if (rows.length === 0) return null;
+  if (rows.length === 0 || !shown) return null;
   return (
     <section className="panel e2-panel">
       <div className="e2-panel-head">
@@ -226,6 +223,7 @@ export function MapRecord({ team }: { team: RglTeamPage }) {
 export function TeamView({ id, onTeam, onPlayer, onMatch }: { id: number; onTeam: (id: number) => void; onPlayer: (s: string) => void; onMatch: (id: number) => void }) {
   const q = useTeam(id);
   const v = q.data;
+  const [shown] = useShowResults();
   if (q.error) return <ApiError error={q.error} />;
   if (q.isPending) return <Loading>{t("Loading the team and its matches…")}</Loading>;
   if (!v) return <p className="hint">{t("RGL has no such team.")}</p>;
@@ -245,7 +243,7 @@ export function TeamView({ id, onTeam, onPlayer, onMatch }: { id: number; onTeam
               <BookmarkButton b={{ kind: "rgl_team", id: v.id, label: v.name, sub: [t("RGL"), v.seasonName, v.division].filter(Boolean).join(" · ") }} />
             </div>
             <span className="muted">
-              {[v.seasonName, v.division && (v.tier ? `${v.division} ≈ ${t(v.tier)}` : v.division), placing(v.finalRank), played > 0 && `${won}-${played - won}`].filter(Boolean).join(" · ")}
+              {[v.seasonName, v.division && (v.tier ? `${v.division} ≈ ${t(v.tier)}` : v.division), placing(v.finalRank), shown && played > 0 && `${won}-${played - won}`].filter(Boolean).join(" · ")}
             </span>
           </div>
           <OnRgl href={`https://rgl.gg/Public/Team?t=${v.id}`} />
@@ -292,11 +290,12 @@ export function Results({ team, onTeam, onMatch }: { team: RglTeamPage; onTeam: 
 }
 
 export function ResultRow({ m, us, onTeam, onOpen }: { m: RglMatch; us: number; onTeam: (id: number) => void; onOpen: () => void }) {
+  const [shown] = useShowResults();
   const them = m.teams.find((x) => x.teamId !== us);
   const home = m.teams.find((x) => x.teamId === us)?.isHome ?? true;
   const ours = m.maps.reduce((n, x) => n + ((home ? x.homeScore : x.awayScore) ?? 0), 0);
   const theirs = m.maps.reduce((n, x) => n + ((home ? x.awayScore : x.homeScore) ?? 0), 0);
-  const cls = m.winner === null ? "num" : m.winner === us ? "num team-won" : "num team-lost";
+  const cls = !shown || m.winner === null ? "num" : m.winner === us ? "num team-won" : "num team-lost";
   return (
     <tr className="rgl-open" tabIndex={0} onClick={onOpen} onKeyDown={openOnKey(onOpen)} title={t("Open the match")}>
       <td className="nowrap muted">{day(m.matchDate)}</td>
@@ -317,7 +316,7 @@ export function ResultRow({ m, us, onTeam, onOpen }: { m: RglMatch; us: number; 
         )}
       </td>
       <td className="nowrap">{m.maps.map((x) => x.mapName).join(", ") || "–"}</td>
-      <td className={cls}>{m.isForfeit ? t("forfeit") : m.winner === null ? "–" : `${ours}:${theirs}`}</td>
+      <td className={cls}>{!shown ? "–" : m.isForfeit ? t("forfeit") : m.winner === null ? "–" : `${ours}:${theirs}`}</td>
     </tr>
   );
 }
