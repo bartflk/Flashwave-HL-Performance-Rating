@@ -959,9 +959,261 @@ pub async fn player(sources: &Sources, input: &str) -> Result<Option<RglPlayer>>
     Ok(Some(RglPlayer { steam_id: p.steam_id, name: p.name, avatar: p.avatar, banned: status.is_banned, probation: status.is_on_probation, seasons }))
 }
 
+// ---- A match's lineups, earlier meetings and logs ------------------------------
+
+/// What a match page shows beyond RGL's match: who was on each team then,
+/// the two teams' earlier meetings, and the match's logs (Flashy: "up to
+/// parity with etf2l"; the ETF2L match page has all three).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RglMatchMore {
+    /// Each team's roster on the match's date, in `teams` order.
+    pub lineups: Vec<RglLineup>,
+    /// Earlier matches between the two teams (this season and the seasons
+    /// either team is linked to), newest first.
+    pub meetings: Vec<RglMatch>,
+    pub logs: Vec<RglMatchLog>,
+    /// Why there are no logs: "notPlayed", "forfeit", "tooSoon" (an hour
+    /// after the match, uploads may still be coming), "resting" (logs.tf is
+    /// refusing us for now), "unavailable" (logs.tf did not answer),
+    /// "noRoster", or `None` when they were looked for.
+    pub logs_why: Option<&'static str>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RglLineup {
+    pub team_id: i64,
+    /// The team's ids in the seasons read for meetings, its own first: a
+    /// team has a new id each season, so this says which side of an earlier
+    /// meeting it was.
+    pub ids: Vec<i64>,
+    pub players: Vec<RglMember>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RglMatchLog {
+    pub log_id: i64,
+    pub title: String,
+    pub map: String,
+    pub played_at: i64,
+    /// In the app already, so it opens without a download.
+    #[serde(default)]
+    pub stored: bool,
+}
+
+/// How many of a team's other seasons are read for earlier meetings: each is
+/// one request the first time, kept on disk after.
+const MEETING_SEASONS: usize = 4;
+/// How soon after the match its logs are looked for, and how long an empty
+/// search is not kept: logs are uploaded during and after the match.
+const LOGS_AFTER_S: i64 = 3600;
+const LOGS_SETTLED_S: i64 = 3 * 24 * 3600;
+
+fn rfc3339(s: Option<&str>) -> Option<i64> {
+    s.and_then(|d| chrono::DateTime::parse_from_rfc3339(d).ok()).map(|d| d.timestamp())
+}
+
+/// Who was on the team at `at`: joined by then and not yet left. Without a
+/// date, whoever is on it now.
+fn roster_at(players: &[RglMember], at: Option<i64>) -> Vec<RglMember> {
+    let mut out: Vec<RglMember> = players
+        .iter()
+        .filter(|p| match at {
+            Some(at) => rfc3339(p.joined_at.as_deref()).is_none_or(|j| j <= at) && rfc3339(p.left_at.as_deref()).is_none_or(|l| l > at),
+            None => p.left_at.is_none(),
+        })
+        .cloned()
+        .collect();
+    // Leaders first, then by name, so the list reads the same every time.
+    out.sort_by(|a, b| b.is_leader.cmp(&a.is_leader).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase())).then_with(|| a.steam_id.cmp(&b.steam_id)));
+    out
+}
+
+/// The matches two teams both played, from their ids alone: no match is read
+/// to find them.
+fn shared(a: &HashSet<i64>, b: &HashSet<i64>, not: i64) -> Vec<i64> {
+    let mut ids: Vec<i64> = a.intersection(b).copied().filter(|&id| id != not).collect();
+    ids.sort_unstable();
+    ids
+}
+
+/// A team's match ids, with those of up to [`MEETING_SEASONS`] of its other
+/// seasons (the newest: RGL's ids grow), and the team ids they were read for.
+async fn match_ids_with_linked(db: &Db, sources: &Sources, team: &TeamRaw) -> (HashSet<i64>, Vec<i64>) {
+    let mut ids: HashSet<i64> = team.match_ids.iter().copied().collect();
+    let mut teams = vec![team.team_id];
+    let mut linked: Vec<i64> = team.linked_teams.iter().copied().filter(|&l| l != team.team_id).collect();
+    linked.sort_unstable_by(|a, b| b.cmp(a));
+    for l in linked.into_iter().take(MEETING_SEASONS) {
+        // One season that will not read costs that season's meetings only.
+        if let Ok(Some(t)) = team_raw(db, sources, l).await {
+            ids.extend(t.match_ids);
+            teams.push(l);
+        }
+    }
+    (ids, teams)
+}
+
+/// Where a match's logs search is kept, in `rgl_answer`.
+fn logs_key(id: i64) -> String {
+    format!("/internal/match-logs/{id}")
+}
+
+/// A match's lineups, earlier meetings and logs. RGL is asked for the two
+/// teams (kept on disk once their season is over) and a few of their other
+/// seasons; logs.tf once, for a played match, and that answer is kept.
+pub async fn match_more(db: &Db, sources: &Sources, id: i64) -> Result<Option<RglMatchMore>> {
+    let Some(m) = one_match(db, sources, id).await? else { return Ok(None) };
+    let at = rfc3339(m.match_date.as_deref());
+
+    let mut raws = Vec::new();
+    for t in &m.teams {
+        // Best effort, like each panel it feeds: a team RGL will not give
+        // costs its lineup and the meetings, not the page.
+        raws.push(team_raw(db, sources, t.team_id).await.unwrap_or_else(|e| {
+            tracing::warn!(team = t.team_id, error = %format!("{e:#}"), "RGL team for a match page");
+            None
+        }));
+    }
+    let mut lineups: Vec<RglLineup> = m
+        .teams
+        .iter()
+        .zip(&raws)
+        .map(|(t, raw)| RglLineup { team_id: t.team_id, ids: vec![t.team_id], players: raw.as_ref().map(|r| roster_at(&r.players, at)).unwrap_or_default() })
+        .collect();
+
+    let mut meetings = Vec::new();
+    if let [Some(a), Some(b)] = raws.as_slice() {
+        let (a_matches, a_ids) = match_ids_with_linked(db, sources, a).await;
+        let (b_matches, b_ids) = match_ids_with_linked(db, sources, b).await;
+        lineups[0].ids = a_ids;
+        lineups[1].ids = b_ids;
+        let ids = shared(&a_matches, &b_matches, id);
+        meetings = read_matches(db, sources, &ids).await.unwrap_or_else(|e| {
+            tracing::warn!(match_id = id, error = %format!("{e:#}"), "RGL meetings for a match page");
+            Vec::new()
+        });
+        meetings.sort_by(|x, y| y.match_date.cmp(&x.match_date).then(y.match_id.cmp(&x.match_id)));
+    }
+
+    let (mut logs, logs_why) = match_logs(db, sources, &m, at, &lineups).await?;
+    let stored = db.logs_in_matches(&logs.iter().map(|l| l.log_id).collect::<Vec<_>>()).await?;
+    for l in &mut logs {
+        l.stored = stored.contains(&l.log_id);
+    }
+    Ok(Some(RglMatchMore { lineups, meetings, logs, logs_why }))
+}
+
+/// The match's logs: logs.tf's logs with a player of each team in them,
+/// Highlander-sized, within a day and a half of the match, as an ETF2L
+/// official's are found (`league_sample::matching_logs`). Searched once and
+/// kept; an empty answer only once the match is a few days old, as uploads
+/// can come late.
+async fn match_logs(db: &Db, sources: &Sources, m: &RglMatch, at: Option<i64>, lineups: &[RglLineup]) -> Result<(Vec<RglMatchLog>, Option<&'static str>)> {
+    let key = logs_key(m.match_id);
+    if let Some((body, _)) = db.rgl_answers(std::slice::from_ref(&key)).await?.remove(&key) {
+        if let Ok(logs) = serde_json::from_str::<Vec<RglMatchLog>>(&body) {
+            return Ok((logs, None));
+        }
+    }
+    if m.is_forfeit {
+        return Ok((Vec::new(), Some("forfeit")));
+    }
+    let Some(at) = at.filter(|_| decided(m)) else { return Ok((Vec::new(), Some("notPlayed"))) };
+    let now = unix_now();
+    if now - at < LOGS_AFTER_S {
+        return Ok((Vec::new(), Some("tooSoon")));
+    }
+    if sources.logstf_resting() {
+        return Ok((Vec::new(), Some("resting")));
+    }
+    // A player from each side: the first listed, a leader where there is one.
+    let ids: Vec<String> = lineups.iter().filter_map(|l| l.players.first().map(|p| p.steam_id.clone())).collect();
+    if ids.len() < 2 {
+        return Ok((Vec::new(), Some("noRoster")));
+    }
+    let listed = match sources.logstf_with_players(&ids, 40).await {
+        Ok(listed) => listed,
+        Err(e) => {
+            tracing::warn!(match_id = m.match_id, error = %format!("{e:#}"), "logs.tf search for an RGL match");
+            return Ok((Vec::new(), Some("unavailable")));
+        }
+    };
+    let found = crate::league_sample::matching_logs(&listed, at);
+    let logs: Vec<RglMatchLog> =
+        found.into_iter().map(|(log_id, title, map, played_at, _)| RglMatchLog { log_id, title, map, played_at, stored: false }).collect();
+    if !logs.is_empty() || now - at > LOGS_SETTLED_S {
+        db.store_rgl_answer(&key, &serde_json::to_string(&logs)?).await?;
+    }
+    Ok((logs, None))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn member(name: &str, leader: bool, joined: Option<&str>, left: Option<&str>) -> RglMember {
+        RglMember { name: name.into(), steam_id: format!("7656{name}"), is_leader: leader, joined_at: joined.map(Into::into), left_at: left.map(Into::into) }
+    }
+
+    #[test]
+    fn a_lineup_is_who_was_on_the_team_that_day() {
+        let at = rfc3339(Some("2026-10-01T02:00:00Z"));
+        let players = [
+            member("zed", false, Some("2026-09-01T00:00:00Z"), None),
+            member("amy", false, Some("2026-09-01T00:00:00Z"), Some("2026-10-15T00:00:00Z")),
+            member("lead", true, Some("2026-08-01T00:00:00.000Z"), None),
+            member("late", false, Some("2026-10-05T00:00:00Z"), None),
+            member("gone", false, Some("2026-08-01T00:00:00Z"), Some("2026-09-20T00:00:00Z")),
+            member("nodate", false, None, None),
+        ];
+        let names: Vec<String> = roster_at(&players, at).into_iter().map(|p| p.name).collect();
+        // The leader first, then by name; joined later and left earlier are out.
+        assert_eq!(names, ["lead", "amy", "nodate", "zed"]);
+        // No match date: whoever has not left.
+        let now: Vec<String> = roster_at(&players, None).into_iter().map(|p| p.name).collect();
+        assert_eq!(now, ["lead", "late", "nodate", "zed"]);
+    }
+
+    #[test]
+    fn meetings_are_the_matches_both_teams_played_but_this_one() {
+        let a: HashSet<i64> = [1, 2, 3, 9].into();
+        let b: HashSet<i64> = [9, 3, 7].into();
+        assert_eq!(shared(&a, &b, 9), vec![3]);
+        assert!(shared(&a, &HashSet::new(), 9).is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_kept_logs_search_is_read_back_without_asking() {
+        let db = Db::connect_in_memory().await.unwrap();
+        let logs = vec![RglMatchLog { log_id: 42, title: "RED vs BLU".into(), map: "pl_upward".into(), played_at: 1, stored: false }];
+        db.store_rgl_answer(&logs_key(7), &serde_json::to_string(&logs).unwrap()).await.unwrap();
+        let m = RglMatch {
+            match_id: 7,
+            match_date: None,
+            match_name: None,
+            division_name: None,
+            season_id: None,
+            season_name: None,
+            is_forfeit: false,
+            winner: None,
+            teams: vec![],
+            maps: vec![],
+        };
+        // Sources is never touched: a kept answer comes first.
+        let sources = Sources::new().unwrap();
+        let (got, why) = match_logs(&db, &sources, &m, None, &[]).await.unwrap();
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].log_id, 42);
+        assert_eq!(why, None);
+        // Without a kept answer, a match not yet played is not searched.
+        let m2 = RglMatch { match_id: 8, ..m };
+        assert_eq!(match_logs(&db, &sources, &m2, None, &[]).await.unwrap().1, Some("notPlayed"));
+        let forfeit = RglMatch { match_id: 9, is_forfeit: true, ..m2 };
+        assert_eq!(match_logs(&db, &sources, &forfeit, None, &[]).await.unwrap().1, Some("forfeit"));
+    }
 
     #[test]
     fn the_ladder() {

@@ -2007,6 +2007,12 @@ pub async fn get_rgl_match(state: State<'_, AppState>, id: i64) -> CmdResult<Opt
     Ok(hl_ingest::rgl::one_match(&state.db, &state.sources, id).await?)
 }
 
+/// An RGL match's lineups, earlier meetings and logs, for its page.
+#[tauri::command]
+pub async fn get_rgl_match_more(state: State<'_, AppState>, id: i64) -> CmdResult<Option<hl_ingest::rgl::RglMatchMore>> {
+    Ok(hl_ingest::rgl::match_more(&state.db, &state.sources, id).await?)
+}
+
 /// RGL's bans, a page of 50 from `skip`.
 #[tauri::command]
 pub async fn get_rgl_bans(state: State<'_, AppState>, skip: Option<i64>) -> CmdResult<Vec<hl_ingest::rgl::RglBan>> {

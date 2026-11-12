@@ -394,6 +394,18 @@ export interface RglMatch {
   maps: { mapName: string; homeScore: number | null; awayScore: number | null }[];
 }
 
+/** A match page's lineups, earlier meetings and logs. */
+export interface RglMatchMore {
+  /** Each team's roster on the match's date, in the match's team order. */
+  /** `ids`: the team's ids in the seasons read for meetings, its own first. */
+  lineups: { teamId: number; ids: number[]; players: RglMember[] }[];
+  /** Earlier matches between the two teams, newest first. */
+  meetings: RglMatch[];
+  logs: { logId: number; title: string; map: string; playedAt: number; stored: boolean }[];
+  /** Why there are no logs, when they were not looked for. */
+  logsWhy: "notPlayed" | "forfeit" | "tooSoon" | "resting" | "unavailable" | "noRoster" | null;
+}
+
 /** One of RGL's bans. */
 export interface RglBan {
   steamId: string;

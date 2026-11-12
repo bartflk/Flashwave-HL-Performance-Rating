@@ -791,7 +791,7 @@ function fromPage(matchId: number, p: Etf2lMatchPage): ResultRow | null {
  * hand" does -- it then joins the pool everyone is rated against, and stays
  * out of your match list. logs.tf is a small link beside it.
  */
-function LogButton({ logId, label, stored, matchId, onOpenLog }: { logId: number; label: string; stored: boolean; matchId: number; onOpenLog: (logId: number) => void }) {
+export function LogButton({ logId, label, stored, matchId, onOpenLog, onFetched }: { logId: number; label: string; stored: boolean; matchId: number; onOpenLog: (logId: number) => void; onFetched?: () => void }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -803,6 +803,7 @@ function LogButton({ logId, label, stored, matchId, onOpenLog }: { logId: number
       await api.importLog(String(logId));
       void qc.invalidateQueries({ queryKey: ["match_page", matchId] });
       void qc.invalidateQueries({ queryKey: ["league_match", matchId] });
+      onFetched?.();
       onOpenLog(logId);
     } catch (e) {
       setError(friendlyText(e));

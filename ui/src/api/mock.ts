@@ -79,7 +79,7 @@ import type {
   RglSeasonCard,
   RglTeamHit,
   RglSeason,
-  RglSeasonItem, RglBan, RglMatch,
+  RglSeasonItem, RglBan, RglMatch, RglMatchMore,
   RglTeamPage,
   RglTeamSeason,
   ResultRow,
@@ -1441,6 +1441,36 @@ export const mockApi: Api = {
   // A round robin of an Invite, and some of the league's bans.
   getRglSeasonMatches: (id: number) => delay<RglMatch[]>(mockRglMatches(id)),
   getRglMatch: (id: number) => delay<RglMatch | null>([...mockRglMatches(198), ...mockRglMatches(193)].find((m) => m.matchId === id) ?? null),
+  getRglMatchMore: (id: number) => {
+    const all = [...mockRglMatches(198), ...mockRglMatches(193)];
+    const m = all.find((x) => x.matchId === id);
+    if (!m) return delay<RglMatchMore | null>(null);
+    const roster = (teamId: number) =>
+      ["nyxi", "Joey Lemons", "civ.", "b4nny", "Ash", "corsa", "kaidus", "yomps", "habib"].map((name, i) => ({
+        name: i === 0 ? name : `${name}${teamId % 7 === 0 ? "" : ` ${teamId % 100}`}`,
+        steamId: `7656119800${teamId}${i}`,
+        isLeader: i === 0,
+        joinedAt: "2026-05-03T03:14:05.557Z",
+        leftAt: null,
+      }));
+    const ids = new Set(m.teams.map((x) => x.teamId));
+    const meetings = all
+      .filter((x) => x.matchId !== id && x.teams.every((t) => ids.has(t.teamId)))
+      .sort((a, b) => (b.matchDate ?? "").localeCompare(a.matchDate ?? ""));
+    const played = m.winner !== null && !m.isForfeit;
+    const at = m.matchDate ? Date.parse(m.matchDate) / 1000 : 0;
+    return delay<RglMatchMore | null>({
+      lineups: m.teams.map((x) => ({ teamId: x.teamId, ids: [x.teamId], players: roster(x.teamId) })),
+      meetings,
+      logs: played
+        ? m.maps.flatMap((x, i) => [
+            { logId: 4_100_000 + id * 2, title: "serveme.tf #1 - RED vs BLU", map: x.mapName, playedAt: at + 1800 + i * 3600, stored: id % 2 === 0 },
+            ...(x.mapName.startsWith("koth_") ? [] : [{ logId: 4_100_001 + id * 2, title: "serveme.tf #1 - BLU vs RED", map: x.mapName, playedAt: at + 3600 + i * 3600, stored: false }]),
+          ])
+        : [],
+      logsWhy: m.isForfeit ? "forfeit" : m.winner === null ? "notPlayed" : null,
+    });
+  },
   getRglBans: (skip: number) =>
     delay<RglBan[]>(
       skip > 0

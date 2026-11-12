@@ -26,7 +26,7 @@ function span(e: TeamEra): string {
 }
 
 /** A team with no avatar: its initials on a tile. */
-function Monogram({ name }: { name: string }) {
+export function Monogram({ name }: { name: string }) {
   const letters = name
     .replace(/[^\p{L}\p{N} ]/gu, "")
     .split(/\s+/)

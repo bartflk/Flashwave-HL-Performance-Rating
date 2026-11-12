@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { RglBan, RglMatch, RglPlayer, RglSeasonItem, RglTeamPage } from "../../api/types";
+import type { RglBan, RglMatch, RglMatchMore, RglMember, RglPlayer, RglSeasonItem, RglTeamPage } from "../../api/types";
 import { locale, t, tx } from "../../lib/i18n";
 import { openOnKey } from "../../lib/rows";
 import { decided, weekOf, standings } from "../../lib/rglstandings";
@@ -12,6 +12,10 @@ import { MedalGlyph } from "../players/MedalGlyph";
 import { Seg } from "../analysis/MapChrome";
 import { Countdown, clockTime, fullDate } from "../etf2l/Countdown";
 import { LeagueHead } from "../LeagueHead";
+import { LogButton } from "../etf2l/Matches";
+import { Monogram } from "../etf2l/Teams";
+import { tierOf } from "../etf2l/Brackets";
+import { DivisionBadge } from "../players/PlayerProfile";
 import { BookmarkButton } from "../Bookmarks";
 import { onOpenRgl, takePendingRgl } from "../../lib/goto";
 import "../players/players.css";
@@ -29,7 +33,7 @@ import "./rgl.css";
  * (hl_ingest::rgl says how RGL is asked as little as it can be).
  */
 
-type Section = "home" | "matches" | "seasons" | "players" | "bans";
+type Section = "home" | "matches" | "seasons" | "teams" | "players" | "bans";
 
 type Loc =
   | { at: "home" }
@@ -38,6 +42,7 @@ type Loc =
   | { at: "seasons" }
   | { at: "season"; id: number }
   | { at: "team"; id: number; from: Loc }
+  | { at: "teams" }
   | { at: "players" }
   | { at: "bans" }
   | { at: "player"; steamId: string; from: Loc };
@@ -59,7 +64,6 @@ const KEEP = 30 * 60_000;
 
 /** What the full tab will add, shown until it is built. */
 const coming = (): [string, string][] => [
-  [t("Logs"), t("Each match's logs, and who played it.")],
   [t("Through the app"), t("RGL on profiles and the scoreboard, and RGL officials counted as officials.")],
 ];
 
@@ -248,7 +252,7 @@ function InDevelopment() {
           <RglMark size={16} /> {t("RGL Highlander")}
         </span>
         <h3 id="rgl-dev-title">{t("The RGL tab is in development")}</h3>
-        <p>{t("This is an early look. Seasons, teams, players, matches and bans are read from RGL's public API; who played each match and its logs are not here yet.")}</p>
+        <p>{t("This is an early look. Seasons, teams, players, matches and bans are read from RGL's public API, and each match's logs are found on logs.tf; RGL on your profile and the scoreboard is not here yet.")}</p>
         <p className="muted">{t("Things may change, be missing or not work as they should. What is still to come is listed under Coming soon.")}</p>
         <div className="modal-actions">
           <button ref={ok} className="primary" onClick={close}>
@@ -260,7 +264,7 @@ function InDevelopment() {
   );
 }
 
-export function RglPage({ active, steamid }: { active: boolean; steamid: string | null }) {
+export function RglPage({ active, steamid, onOpenMatch }: { active: boolean; steamid: string | null; onOpenMatch: (logId: number) => void }) {
   const [stack, setStack] = useState<Loc[]>([{ at: "home" }]);
   const loc = stack[stack.length - 1];
   const go = (l: Loc) => {
@@ -328,6 +332,7 @@ export function RglPage({ active, steamid }: { active: boolean; steamid: string 
     ["home", t("Home")],
     ["matches", t("Matches")],
     ["seasons", t("Seasons")],
+    ["teams", t("Teams")],
     ["players", t("Players")],
     ["bans", t("Bans")],
   ];
@@ -356,7 +361,7 @@ export function RglPage({ active, steamid }: { active: boolean; steamid: string 
 
       {loc.at === "home" && <Home steamid={steamid} onTeam={openTeam} onPlayer={openPlayer} onMatch={openMatch} go={go} />}
       {loc.at === "matches" && <MatchesPage onTeam={openTeam} onMatch={openMatch} />}
-      {loc.at === "match" && <MatchPage key={loc.id} id={loc.id} onTeam={openTeam} />}
+      {loc.at === "match" && <MatchPage key={loc.id} id={loc.id} onTeam={openTeam} onMatch={openMatch} onPlayer={openPlayer} onOpenLog={onOpenMatch} />}
       {loc.at === "seasons" && <SeasonList onSeason={(id) => go({ at: "season", id })} />}
       {loc.at === "season" && (
         <>
@@ -364,6 +369,7 @@ export function RglPage({ active, steamid }: { active: boolean; steamid: string 
           <SeasonPlay id={loc.id} onTeam={openTeam} onMatch={openMatch} />
         </>
       )}
+      {loc.at === "teams" && <TeamsLanding steamid={steamid} onTeam={openTeam} />}
       {loc.at === "bans" && <BansPage onPlayer={openPlayer} />}
       {loc.at === "team" && <TeamView key={loc.id} id={loc.id} onTeam={openTeam} onPlayer={openPlayer} onMatch={openMatch} />}
       {loc.at === "players" && <PlayersLanding steamid={steamid} onPlayer={openPlayer} onTeam={openTeam} />}
@@ -397,7 +403,7 @@ function Crumbs({ loc, go }: { loc: Loc; go: (l: Loc) => void }) {
       trail.push([t("Seasons"), { at: "seasons" }]);
       trail.push([<CrumbName key={trail.length} loc={l} />, l]);
     } else if (l.at !== "home") {
-      trail.push([{ matches: t("Matches"), seasons: t("Seasons"), players: t("Players"), bans: t("Bans") }[l.at], l]);
+      trail.push([{ matches: t("Matches"), seasons: t("Seasons"), teams: t("Teams"), players: t("Players"), bans: t("Bans") }[l.at], l]);
     }
   };
   add(loc);
@@ -644,6 +650,175 @@ function YourRgl({ steamid, onTeam, onPlayer }: { steamid: string; onTeam: (id: 
         </div>
       )}
     </section>
+  );
+}
+
+// ---- Teams -----------------------------------------------------------------
+
+/**
+ * Teams, as the ETF2L tab's (Flashy: "up to parity with etf2l"): a name
+ * search, your teams from your RGL career, and the live season's teams by
+ * division with their record so far. The search asks RGL once a word, three
+ * letters at least, as the header's does; the rest is read already for Home.
+ */
+function TeamsLanding({ steamid, onTeam }: { steamid: string | null; onTeam: (id: number) => void }) {
+  const [q, setQ] = useState("");
+  const term = useSettled(q.trim());
+  const on = term.length >= SEARCH_FROM;
+  const hits = useQuery({ queryKey: ["rgl_search_teams", term.toLowerCase()], queryFn: () => api.searchRglTeams(term), enabled: on, staleTime: KEEP, retry: false });
+  const me = usePlayer(steamid);
+  const live = useLive();
+  const season = useSeason(live.season?.id ?? null).data;
+  const tables = useMemo(() => standings(live.matches ?? []), [live.matches]);
+  // Your seasons, one card a team, newest first.
+  const yours = me.data?.seasons ?? [];
+  const mine = new Set(yours.map((s) => s.teamId));
+  const divisions = (season?.divisions ?? []).filter((d) => d.teams.length > 0);
+
+  return (
+    <>
+      <header className="tm-head">
+        <div className="ts-pagehead">
+          <span className="ts-eyebrow">{t("RGL Highlander")}</span>
+          <h1>{t("Teams")}</h1>
+        </div>
+        <div className="e2-search tm-search">
+          <input type="search" value={q} placeholder={t("Search any team by name")} onChange={(e) => setQ(e.target.value)} aria-label={t("Search teams")} autoFocus />
+        </div>
+      </header>
+
+      {q.trim().length > 0 && q.trim().length < SEARCH_FROM && <p className="hint">{t("Three letters at least.")}</p>}
+      {on && (
+        <section className="tm-section">
+          <h2 className="ts-section">{tx("Teams matching “{0}”", { "0": term })}</h2>
+          {hits.error ? (
+            <ApiError error={hits.error} />
+          ) : hits.isPending ? (
+            <Loading>{t("Asking RGL…")}</Loading>
+          ) : (hits.data ?? []).length === 0 ? (
+            <p className="hint">{t("No team by that name.")}</p>
+          ) : (
+            <div className="tm-grid">
+              {(hits.data ?? []).map((x) => (
+                <button key={x.id} className="tm-tile" onClick={() => onTeam(x.id)}>
+                  <Monogram name={x.name} />
+                  <span className="tm-tile-text">
+                    <strong>{x.name}</strong>
+                    <span className="muted">{[x.seasonName, x.division].filter(Boolean).join(" · ")}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {yours.length > 0 && (
+        <section className="tm-section">
+          <h2 className="ts-section">{t("Your teams")}</h2>
+          <div className="tm-yours">
+            {yours.map((s) => {
+              const total = s.wins + s.losses;
+              const wr = total > 0 ? (s.wins / total) * 100 : null;
+              return (
+                <button key={`${s.teamId}-${s.seasonId}`} className="tm-card" onClick={() => onTeam(s.teamId)}>
+                  <span className="tm-card-top">
+                    <Monogram name={s.teamName} />
+                    <span className="tm-card-name">
+                      <strong>{s.teamName}</strong>
+                      <span className="muted">{[s.seasonName, s.division].filter(Boolean).join(" · ")}</span>
+                    </span>
+                  </span>
+                  <span className="tm-bar" aria-hidden>
+                    <span className="tm-bar-w" style={{ width: `${wr ?? 0}%` }} />
+                  </span>
+                  <span className="tm-card-stats">
+                    <span>
+                      <strong>
+                        {s.wins}–{s.losses}
+                      </strong>
+                      {wr !== null && <em> {wr.toFixed(0)}%</em>}
+                    </span>
+                    {s.tier && <span className="muted">≈ {t(s.tier)}</span>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {live.error ? (
+        <ApiError error={live.error} />
+      ) : !live.none && (!season || live.matches === null) ? (
+        <Reading />
+      ) : season && divisions.length > 0 ? (
+        <section className="tm-section">
+          <h2 className="ts-section">{tx("Teams in {0}", { "0": season.name })}</h2>
+          <div className="tm-divs">
+            {divisions.map((d, i) => {
+              const odd = divisions.length % 2 === 1 && i === divisions.length - 1;
+              // The table so far where the season has results, else RGL's seeding.
+              const table = tables.get(d.name) ?? [];
+              const rows = d.teams
+                .map((x) => {
+                  const r = table.find((s) => s.id === x.id);
+                  return { id: x.id, name: x.name, won: r?.won ?? 0, lost: r?.lost ?? 0, for: r?.for ?? 0, against: r?.against ?? 0, at: r ? table.indexOf(r) : table.length + (x.seeding ?? 99) };
+                })
+                .sort((a, b) => a.at - b.at || a.name.localeCompare(b.name));
+              // One left over takes the row, its list split in two -- unless it
+              // is too short to split.
+              const wide = odd && rows.length > 6;
+              const half = Math.ceil(rows.length / 2);
+              const ladder = LADDER[d.name];
+              return (
+                <section key={d.name} className={odd ? "panel tm-div wide" : "panel tm-div"}>
+                  <div className="tm-div-head">
+                    <DivisionBadge d={{ name: d.name, tier: Math.floor(tierOf(ladder ?? "Open")) }} />
+                    <span className="muted">
+                      {rows.length === 1 ? t("1 team") : tx("{0} teams", { "0": rows.length })}
+                      {ladder && ` · ≈ ${t(ladder)}`}
+                    </span>
+                  </div>
+                  <div className="tm-div-cols">
+                    {(wide ? [rows.slice(0, half), rows.slice(half)] : [rows]).map((col, c) => (
+                      <ol key={c} className="tm-div-list" start={c * half + 1}>
+                        <li className="tm-row tm-row-head" aria-hidden>
+                          <span>#</span>
+                          <span />
+                          <span>{t("Team")}</span>
+                          <span title={t("Matches won and lost")}>{t("W–L")}</span>
+                          <span title={t("Rounds won and lost")}>{t("Rounds")}</span>
+                        </li>
+                        {col.map((x, j) => {
+                          const place = (wide ? c * half : 0) + j + 1;
+                          const diff = x.for - x.against;
+                          return (
+                            <li key={x.id}>
+                              <button className={mine.has(x.id) ? "tm-row mine" : "tm-row"} onClick={() => onTeam(x.id)}>
+                                <span className={place === 1 && x.won > 0 ? "tm-place first" : "tm-place"}>{place}</span>
+                                <Monogram name={x.name} />
+                                <span className="tm-row-name">{x.name}</span>
+                                <span className="tm-row-wl">
+                                  {x.won}–{x.lost}
+                                </span>
+                                <span className={diff > 0 ? "tm-row-maps up" : diff < 0 ? "tm-row-maps down" : "tm-row-maps"}>
+                                  {x.for}–{x.against}
+                                </span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+    </>
   );
 }
 
@@ -1115,8 +1290,9 @@ function MatchesPage({ onTeam, onMatch }: { onTeam: (id: number) => void; onMatc
 
 // ---- One match --------------------------------------------------------------
 
-function MatchPage({ id, onTeam }: { id: number; onTeam: (id: number) => void }) {
+function MatchPage({ id, onTeam, onMatch, onPlayer, onOpenLog }: { id: number; onTeam: (id: number) => void; onMatch: (id: number) => void; onPlayer: (s: string) => void; onOpenLog: (logId: number) => void }) {
   const q = useMatch(id);
+  const more = useQuery({ queryKey: ["rgl_match_more", id], queryFn: () => api.getRglMatchMore(id), staleTime: KEEP, retry: false });
   const m = q.data;
   if (q.error) return <ApiError error={q.error} />;
   if (q.isPending) return <Loading>{t("Loading the match…")}</Loading>;
@@ -1136,6 +1312,8 @@ function MatchPage({ id, onTeam }: { id: number; onTeam: (id: number) => void })
     ) : (
       <span className={cls}>–</span>
     );
+  const x = more.data;
+  const lineup = (teamId: number | undefined) => x?.lineups.find((l) => l.teamId === teamId)?.players ?? [];
   return (
     <>
       <div className="panel pp-head rgl-mp-head">
@@ -1153,35 +1331,171 @@ function MatchPage({ id, onTeam }: { id: number; onTeam: (id: number) => void })
           {!decided(m) && at > 0 && <Awaiting time={at} countdown />}
         </div>
       </div>
-      <section className="panel e2-panel">
-        <div className="e2-panel-head">
-          <h2>{m.maps.length === 1 ? t("Map") : t("Maps")}</h2>
+      <div className="e2-match-grid">
+        <div className="e2-main">
+          <section className="panel e2-panel">
+            <div className="e2-panel-head">
+              <h2>{m.maps.length === 1 ? t("Map") : t("Maps")}</h2>
+            </div>
+            {m.maps.length === 0 ? (
+              <p className="hint">{t("No map yet.")}</p>
+            ) : (
+              <table className="match-table">
+                <thead>
+                  <tr>
+                    <th>{t("Map")}</th>
+                    <th className="num">{home?.teamTag ?? home?.teamName ?? t("Home")}</th>
+                    <th className="num">{away?.teamTag ?? away?.teamName ?? t("Away")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {m.maps.map((mp, i) => (
+                    <tr key={`${mp.mapName}-${i}`}>
+                      <td>{mp.mapName}</td>
+                      <td className={`num${(mp.homeScore ?? 0) > (mp.awayScore ?? 0) ? " team-won" : ""}`}>{mp.homeScore ?? "–"}</td>
+                      <td className={`num${(mp.awayScore ?? 0) > (mp.homeScore ?? 0) ? " team-won" : ""}`}>{mp.awayScore ?? "–"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+          <section className="panel e2-panel">
+            <div className="e2-panel-head">
+              <h2>{t("Lineups")}</h2>
+              <span className="muted">{decided(m) ? t("each team's roster on the day") : t("each team's roster now")}</span>
+            </div>
+            {more.error ? (
+              <ApiError error={more.error} />
+            ) : !x ? (
+              <Loading>{t("Reading the teams…")}</Loading>
+            ) : (
+              <div className="e2-lineups">
+                {[home, away].map((team) =>
+                  team ? (
+                    <div key={team.teamId}>
+                      <h3 className="e2-lu-team">{team.teamName}</h3>
+                      <RglLineup players={lineup(team.teamId)} onPlayer={onPlayer} />
+                    </div>
+                  ) : null,
+                )}
+              </div>
+            )}
+            <p className="hint">{t("RGL lists rosters, not who played: a stand-in is not on them.")}</p>
+          </section>
         </div>
-        {m.maps.length === 0 ? (
-          <p className="hint">{t("No map yet.")}</p>
-        ) : (
-          <table className="match-table">
-            <thead>
-              <tr>
-                <th>{t("Map")}</th>
-                <th className="num">{home?.teamTag ?? home?.teamName ?? t("Home")}</th>
-                <th className="num">{away?.teamTag ?? away?.teamName ?? t("Away")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {m.maps.map((x, i) => (
-                <tr key={`${x.mapName}-${i}`}>
-                  <td>{x.mapName}</td>
-                  <td className={`num${(x.homeScore ?? 0) > (x.awayScore ?? 0) ? " team-won" : ""}`}>{x.homeScore ?? "–"}</td>
-                  <td className={`num${(x.awayScore ?? 0) > (x.homeScore ?? 0) ? " team-won" : ""}`}>{x.awayScore ?? "–"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        <p className="hint">{t("RGL's matches name no players and no logs: who played and the logs come with RGL through the app.")}</p>
-      </section>
+        <aside className="e2-rail">
+          {home && away && <RglMeetings them={x?.lineups.find((l) => l.teamId === away.teamId)?.ids ?? [away.teamId]} list={x?.meetings ?? null} onMatch={onMatch} />}
+          <section className="panel e2-panel">
+            <div className="e2-panel-head">
+              <h2>{t("Logs")}</h2>
+            </div>
+            {!x ? (
+              more.error ? <ApiError error={more.error} /> : <Loading>{t("Looking for the logs…")}</Loading>
+            ) : x.logs.length > 0 ? (
+              <div className="e2-logs">
+                {x.logs.map((l) => (
+                  <LogButton key={l.logId} logId={l.logId} label={l.map || `#${l.logId}`} stored={l.stored} matchId={id} onOpenLog={onOpenLog} onFetched={() => void more.refetch()} />
+                ))}
+              </div>
+            ) : (
+              <p className="hint">{logsWhy(x.logsWhy)}</p>
+            )}
+          </section>
+        </aside>
+      </div>
     </>
+  );
+}
+
+/** Why a match page lists no logs. */
+function logsWhy(why: RglMatchMore["logsWhy"]): string {
+  switch (why) {
+    case "notPlayed":
+      return t("Not played yet.");
+    case "forfeit":
+      return t("A forfeit has no logs.");
+    case "tooSoon":
+      return t("Logs are looked for an hour after the match, once they are uploaded.");
+    case "resting":
+      return t("logs.tf is refusing requests for now; the logs are looked for next time.");
+    case "unavailable":
+      return t("logs.tf did not answer; the logs are looked for next time.");
+    case "noRoster":
+      return t("No roster to look for the logs by.");
+    default:
+      return t("No log on logs.tf has a player of each team at the match's time.");
+  }
+}
+
+/** A team's roster on the day, as a lineup: leaders first, each opening their RGL page. */
+function RglLineup({ players, onPlayer }: { players: RglMember[]; onPlayer: (s: string) => void }) {
+  if (players.length === 0) return <p className="hint">{t("No one on the roster then.")}</p>;
+  return (
+    <ol className="e2-lineup rgl-lineup">
+      {players.map((p) => (
+        <li key={p.steamId}>
+          <button onClick={() => onPlayer(p.steamId)} title={t("Open their RGL page")}>
+            <span className="rgl-lu-mark" aria-hidden>
+              {p.isLeader ? "★" : ""}
+            </span>
+            <span className="e2-lu-name">{p.name}</span>
+            {p.isLeader ? <span className="badge">{t("Leader")}</span> : <span />}
+          </button>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** Earlier matches between the two teams, from the first team's side.
+ *  `them`: the other team's ids across its seasons (a new id each season). */
+function RglMeetings({ them, list, onMatch }: { them: number[]; list: RglMatch[] | null; onMatch: (id: number) => void }) {
+  const theirs = new Set(them);
+  const ours = (m: RglMatch) => {
+    const home = (m.teams.find((x) => x.isHome) ?? m.teams[0])?.teamId;
+    const h = m.maps.reduce((n, x) => n + (x.homeScore ?? 0), 0);
+    const a = m.maps.reduce((n, x) => n + (x.awayScore ?? 0), 0);
+    return home !== undefined && theirs.has(home) ? [a, h] : [h, a];
+  };
+  const played = (list ?? []).filter((m) => decided(m) && m.winner !== null);
+  const won = played.filter((m) => !theirs.has(m.winner!)).length;
+  const lost = played.length - won;
+  return (
+    <section className="panel e2-panel">
+      <div className="e2-panel-head">
+        <h2>{t("Head-to-head")}</h2>
+        {played.length > 0 && <span className="e2-h2h-rec">{`${won}–${lost}`}</span>}
+      </div>
+      {list === null ? (
+        <Loading>{t("Reading both teams' seasons…")}</Loading>
+      ) : list.length === 0 ? (
+        <p className="hint">{t("Their first meeting on RGL.")}</p>
+      ) : (
+        <ol className="e2-meetings rgl-meetings">
+          {list.slice(0, 8).map((m) => {
+            const [a, b] = ours(m);
+            return (
+              <li key={m.matchId} tabIndex={0} role="link" onClick={() => onMatch(m.matchId)} onKeyDown={openOnKey(() => onMatch(m.matchId))}>
+                <span className="muted">{m.matchDate ? day(m.matchDate) : (m.seasonName ?? "")}</span>
+                <span className="e2-map-score">
+                  {m.isForfeit ? (
+                    <span>{t("forfeit")}</span>
+                  ) : (
+                    <>
+                      <span className={a > b ? "won" : undefined}>{decided(m) ? a : "–"}</span>
+                      <span className="e2-rl-dash">:</span>
+                      <span className={b > a ? "won" : undefined}>{decided(m) ? b : "–"}</span>
+                    </>
+                  )}
+                </span>
+                <span className="muted">{m.seasonName ?? m.divisionName ?? ""}</span>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </section>
   );
 }
 

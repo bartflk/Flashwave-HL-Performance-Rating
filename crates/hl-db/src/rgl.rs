@@ -11,6 +11,20 @@ use sqlx::Row;
 use std::collections::HashMap;
 
 impl Db {
+    /// Which of these logs are in the app's matches already.
+    pub async fn logs_in_matches(&self, ids: &[i64]) -> Result<std::collections::HashSet<i64>> {
+        let mut out = std::collections::HashSet::new();
+        for chunk in ids.chunks(500) {
+            let sql = format!("SELECT log_id FROM match WHERE log_id IN ({})", vec!["?"; chunk.len()].join(","));
+            let mut q = sqlx::query_scalar::<_, i64>(&sql);
+            for id in chunk {
+                q = q.bind(id);
+            }
+            out.extend(q.fetch_all(self.pool()).await?);
+        }
+        Ok(out)
+    }
+
     /// The stored answers of these matches, by id; the rest are not kept.
     pub async fn rgl_matches(&self, ids: &[i64]) -> Result<HashMap<i64, String>> {
         let mut out = HashMap::new();

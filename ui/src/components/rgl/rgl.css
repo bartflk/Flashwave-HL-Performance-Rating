@@ -141,3 +141,10 @@
 .rgl-maprec li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--rule); font-size: var(--fs-ui); }
 .rgl-maprec li:first-child { border-top: 0; }
 .rgl-maprec-wl { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* A match page's lineups: a leader's star where ETF2L's has the class. */
+.rgl-lineup .rgl-lu-mark { color: var(--tf2-tan); text-align: center; font-size: var(--fs-small); }
+.rgl-lineup .badge { justify-self: end; }
+/* Earlier meetings open their match. */
+.rgl-meetings li { cursor: pointer; border-radius: 6px; padding-left: 6px; padding-right: 6px; margin: 0 -6px; }
+.rgl-meetings li:hover, .rgl-meetings li:focus-visible { background: rgba(var(--accent-rgb), 0.1); }
