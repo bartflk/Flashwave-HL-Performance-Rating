@@ -92,7 +92,13 @@ export function MatchPage({ id, onTeam, onMatch, onPlayer, onOpenLog }: { id: nu
               </table>
             )}
           </section>
-          {hasLogs && <MatchStats q={stats} home={home} away={away} onPlayer={onPlayer} />}
+          {/* The logs' numbers give the result away: hidden with it. */}
+          {hasLogs && shown && <MatchStats q={stats} home={home} away={away} onPlayer={onPlayer} />}
+          {hasLogs && !shown && (
+            <section className="panel e2-panel">
+              <p className="hint">{t("Statistics are hidden while results are: Show results brings them back.")}</p>
+            </section>
+          )}
           <section className="panel e2-panel">
             <div className="e2-panel-head">
               <h2>{t("Lineups")}</h2>
