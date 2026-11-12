@@ -242,7 +242,7 @@ export function RglPage({ active, steamid, onOpenMatch }: { active: boolean; ste
       {loc.at === "team" && <TeamView key={loc.id} id={loc.id} onTeam={openTeam} onPlayer={openPlayer} onMatch={openMatch} onCompare={openCompare} />}
       {loc.at === "compare" && <CompareView key={loc.a} a={loc.a} b={loc.b} onTeam={openTeam} onMatch={openMatch} onPick={pickCompare} />}
       {loc.at === "players" && <PlayersLanding steamid={steamid} onPlayer={openPlayer} onTeam={openTeam} />}
-      {loc.at === "player" && <PlayerView key={loc.steamId} steamId={loc.steamId} onTeam={openTeam} />}
+      {loc.at === "player" && <PlayerView key={loc.steamId} steamId={loc.steamId} onTeam={openTeam} onMatch={openMatch} />}
     </div>
   );
 }

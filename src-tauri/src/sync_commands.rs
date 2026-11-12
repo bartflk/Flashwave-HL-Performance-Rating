@@ -2358,6 +2358,13 @@ pub async fn get_rgl_player(state: State<'_, AppState>, input: String) -> CmdRes
     Ok(hl_ingest::rgl::player(&state.sources, &input).await?)
 }
 
+/// A player's podium finishes and recent results with their teams (a handful of
+/// team reads, kept on disk once their seasons are over).
+#[tauri::command]
+pub async fn get_rgl_player_more(state: State<'_, AppState>, input: String) -> CmdResult<hl_ingest::rgl::RglPlayerMore> {
+    Ok(hl_ingest::rgl::player_more(&state.db, &state.sources, &input).await?)
+}
+
 /// ETF2L's latest Highlander news (Q74), read at most every half hour.
 #[tauri::command]
 pub async fn get_news(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::news::NewsItem>> {

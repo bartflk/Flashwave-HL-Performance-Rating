@@ -65,6 +65,7 @@ import type {
   RglMatch,
   RglMatchMore,
   RglPlayer,
+  RglPlayerMore,
   RglPlayerHit,
   RglSeasonCard,
   RglTeamHit,
@@ -333,6 +334,7 @@ const realApi = {
   /** `all`: every linked season (up to 12), not only the newest three. */
   getRglTeamHistory: (id: number, all = false) => invoke<RglTeamHistory | null>("get_rgl_team_history", { id, all }),
   getRglPlayer: (input: string) => invoke<RglPlayer | null>("get_rgl_player", { input }),
+  getRglPlayerMore: (input: string) => invoke<RglPlayerMore>("get_rgl_player_more", { input }),
   getRglSeasonCard: (id: number) => invoke<RglSeasonCard>("get_rgl_season_card", { id }),
   searchRglPlayers: (q: string) => invoke<RglPlayerHit[]>("search_rgl_players", { q }),
   searchRglTeams: (q: string) => invoke<RglTeamHit[]>("search_rgl_teams", { q }),

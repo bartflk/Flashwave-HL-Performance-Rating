@@ -584,6 +584,31 @@ export interface RglTeamHistory {
   matches: RglMatch[];
 }
 
+/** A podium finish of a team the player was on at the season's end. */
+export interface RglMedal {
+  seasonId: number;
+  seasonName: string;
+  teamId: number;
+  teamName: string;
+  division: string | null;
+  /** 1, 2 or 3. */
+  place: number;
+}
+
+/** A decided match of a team the player was on, played while they were. */
+export interface RglFormMatch {
+  /** The player's team in it. */
+  teamId: number;
+  match: RglMatch;
+}
+
+/** What a player's RGL page reads beyond their profile: podiums and recent results. */
+export interface RglPlayerMore {
+  medals: RglMedal[];
+  /** Newest first. */
+  form: RglFormMatch[];
+}
+
 /** One of ETF2L's other Highlander tournaments: a one-night, Experimental,
  *  Nations' or preseason cup (hl_ingest::cups). */
 export interface LeagueCup {
