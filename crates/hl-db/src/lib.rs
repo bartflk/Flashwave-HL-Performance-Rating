@@ -22,6 +22,7 @@ pub(crate) const OWNER_COVERED: &str = "SELECT i.log_id FROM log_index i JOIN lo
        WHERE i.superseded_by IS NULL AND COALESCE(i.format_override, i.format) = 'highlander')";
 mod context;
 mod demos;
+mod diagnostics;
 mod fights;
 mod catalogue;
 mod league_sample;
@@ -51,6 +52,7 @@ pub use rawlog::{ChatRow, KillRow, RawlogStats, StoredKill};
 pub use roundmap::{
     PartRow, ResolverLog, RoundMapRow, RoundMapStats, RoundRow, RoundWindow, Segment, SegmentRow,
 };
+pub use diagnostics::{model_number, ClassShift, GameShift, SourceState};
 pub use ratings::{ClassTotals, HistoryDbRow, RatingRow, VsTotals};
 pub use timeline::{TimelineRow, TimelineTotals};
 pub use leagues::{Competition, CompetitionRow, H2hRow, LaterTeam, MatchLog, MatchMap, MatchPlayerRow, ResultRow, SeasonMap, SeasonMatch, SeasonMatchRow, TeamHit, TeamRef};

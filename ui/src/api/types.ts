@@ -164,6 +164,8 @@ export interface IndexStats {
   normalized: number;
   pending: number;
   failed: number;
+  /** Deleted on logs.tf, or out of tries: no longer asked for. */
+  givenUp?: number;
   /** Old logs the two-year window is holding back; 0 on full history. */
   outsideWindow: number;
 }
@@ -198,7 +200,52 @@ export type Progress =
   /** Downloading stopped early because the server stopped answering. */
   | { kind: "gaveUp"; source: string; done: number; total: number; what: "logs" | "raw server logs" | "combined logs' parts" }
   /** logs.tf refused us: new logs come from more.tf's copy instead. */
-  | { kind: "standIns"; done: number; total: number };
+  | { kind: "standIns"; done: number; total: number }
+  /** A rebuild reading every log's player numbers again. */
+  | { kind: "playerNumbers"; done: number; total: number };
+
+/** One source's last sync, from `sync_state`. */
+export interface SourceState {
+  source: string;
+  cursor: string | null;
+  /** UTC, "YYYY-MM-DD HH:MM:SS". */
+  lastRunAt: string | null;
+  lastError: string | null;
+}
+
+/** One finished sync, rebuild or re-rate. */
+export interface RunRecord {
+  kind: JobKind;
+  /** Unix seconds, when it finished. */
+  at: number;
+  seconds: number;
+  fetched: number;
+  failed: number;
+  error: string | null;
+  problems: string[];
+}
+
+/** Settings > Diagnostics. */
+export interface Diagnostics {
+  version: string;
+  model: string;
+  dataDir: string;
+  logFile: string | null;
+  logDir: string;
+  stats: IndexStats;
+  /** [model version, the owner's rated games], oldest first. */
+  rated: Array<[string, number]>;
+  sources: SourceState[];
+  runs: RunRecord[];
+}
+
+/** The owner's games under the model before this one and this one. */
+export interface ModelShift {
+  before: string;
+  after: string;
+  classes: Array<{ class: string; games: number; before: number; after: number }>;
+  games: Array<{ logId: number; class: string; map: string | null; playedAt: number | null; before: number; after: number }>;
+}
 
 /** One component of a class's model, for "How ratings work". */
 export interface ComponentGuide {
@@ -875,9 +922,13 @@ export interface NewestLog {
   known: boolean;
 }
 
+/** What a sync or job is: the sync, a rebuild, the rating pass alone, every
+ *  demo read again, or the rating the app runs at startup for a new model. */
+export type JobKind = "sync" | "reprocess" | "rerate" | "demos" | "startup";
+
 /** Sent once on `sync://done`. */
 export interface SyncDone {
-  kind: "sync" | "reprocess";
+  kind: JobKind;
   fetched: number;
   failed: number;
   stats: IndexStats;

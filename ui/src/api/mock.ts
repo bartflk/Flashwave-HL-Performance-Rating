@@ -41,6 +41,8 @@ import fightsSniper from "./fixtures/fights_sniper.json";
 import leagues from "./fixtures/leagues.json";
 import team37805 from "./fixtures/team_37805.json";
 import type {
+  Diagnostics,
+  ModelShift,
   Tournament,
   SeasonTable,
   PlayerDeep,
@@ -582,7 +584,7 @@ let pending = 24;
 let syncTimers: number[] = [];
 let demoFolders: string[] = ["E:/TF2 archive/demoreviews"];
 
-function simulateSync(kind: "sync" | "reprocess") {
+function simulateSync(kind: "sync" | "reprocess" | "rerate" | "demos") {
   busy = true;
   const steps: Array<() => void> = [];
   if (kind === "sync") {
@@ -629,9 +631,24 @@ function simulateSync(kind: "sync" | "reprocess") {
     for (let done = 0; done <= 666; done += 111) {
       steps.push(() => handlers?.onProgress({ kind: "rating", done, total: 666 }));
     }
-  } else {
+  } else if (kind === "reprocess") {
     for (let done = 0; done <= 759; done += 69) {
       steps.push(() => handlers?.onProgress({ kind: "reprocessing", done, total: 759 }));
+    }
+    for (let done = 0; done <= 3_200; done += 800) {
+      steps.push(() => handlers?.onProgress({ kind: "playerNumbers", done, total: 3_200 }));
+    }
+    steps.push(() => handlers?.onProgress({ kind: "stage", what: "Reading every player's numbers" }));
+    steps.push(() => handlers?.onProgress({ kind: "rating", done: 759, total: 759 }));
+  } else if (kind === "rerate") {
+    steps.push(() => handlers?.onProgress({ kind: "stage", what: "Reading every player's numbers" }));
+    steps.push(() => handlers?.onProgress({ kind: "stage", what: "Rating the league sample" }));
+    steps.push(() => handlers?.onProgress({ kind: "rating", done: 759, total: 759 }));
+  } else {
+    for (let done = 0; done <= 3; done++) {
+      steps.push(() =>
+        handlers?.onProgress({ kind: "readingDemos", done, total: 3, logId: 4_122_234, what: { map: "pl_upward", playedAt: 1789401600, kind: "official", opponent: "Kebab" } }),
+      );
     }
   }
   steps.push(() => {
@@ -2267,6 +2284,67 @@ export const mockApi: Api = {
     simulateSync("reprocess");
     return delay(undefined);
   },
+
+  rerateStart: () => {
+    if (busy) return Promise.reject({ kind: "busy", message: "A sync is already running." });
+    simulateSync("rerate");
+    return delay(undefined);
+  },
+
+  rereadDemosStart: () => {
+    if (busy) return Promise.reject({ kind: "busy", message: "A sync is already running." });
+    simulateSync("demos");
+    return delay(undefined);
+  },
+
+  getDiagnostics: () =>
+    delay<Diagnostics>({
+      version: "0.13.0-mock beta",
+      model: "v14",
+      dataDir: "C:/Users/you/AppData/Roaming/tf.flashwave.app",
+      logFile: "C:/Users/you/AppData/Roaming/tf.flashwave.app/logs/flashwave.log",
+      logDir: "C:/Users/you/AppData/Roaming/tf.flashwave.app/logs",
+      stats: fakeStats(pending),
+      rated: [["v13", 742], ["v14", 759]],
+      sources: [
+        { source: "logstf_search", cursor: null, lastRunAt: "2026-11-11 21:04:12", lastError: null },
+        { source: "trends", cursor: "1789512000", lastRunAt: "2026-11-12 08:31:40", lastError: "error sending request for url (https://trends.tf/api/v1/logs): operation timed out" },
+      ],
+      runs: [
+        { kind: "sync", at: 1789633900, seconds: 134, fetched: 3, failed: 0, error: null, problems: ["demos.tf: error sending request: operation timed out"] },
+        { kind: "rerate", at: 1789630000, seconds: 21, fetched: 0, failed: 0, error: null, problems: [] },
+        { kind: "sync", at: 1789547500, seconds: 96, fetched: 0, failed: 1, error: null, problems: [] },
+        { kind: "reprocess", at: 1789461000, seconds: 412, fetched: 0, failed: 0, error: "database is locked", problems: [] },
+      ],
+    }),
+
+  recentLog: () =>
+    delay(
+      [
+        "2026-11-12T08:31:02.114Z  INFO hl_app_lib: Flashwave.tf starting version=\"0.13.0 beta\" model=\"v14\"",
+        "2026-11-12T08:31:02.180Z  INFO hl_db: database ready",
+        "2026-11-12T08:31:40.502Z  WARN hl_ingest::sync: trends.tf index failed error=operation timed out",
+        "2026-11-12T08:32:11.007Z  WARN hl_app_lib::sync_commands: sync step failed; carrying on error=operation timed out step=\"demos.tf\"",
+      ].join("\n"),
+    ),
+
+  getModelShift: () =>
+    delay<ModelShift | null>({
+      before: "v13",
+      after: "v14",
+      classes: [
+        { class: "soldier", games: 412, before: 1.08, after: 1.02 },
+        { class: "medic", games: 188, before: 0.91, after: 1.04 },
+        { class: "demoman", games: 96, before: 1.12, after: 1.1 },
+      ],
+      games: [
+        { logId: 4_121_877, class: "medic", map: "koth_product_final", playedAt: 1789401600, before: 0.62, after: 1.21 },
+        { logId: 4_098_331, class: "soldier", map: "pl_upward_f12", playedAt: 1788796800, before: 1.74, after: 1.31 },
+        { logId: 4_060_102, class: "medic", map: "cp_steel_f12", playedAt: 1788192000, before: 0.88, after: 1.24 },
+      ],
+    }),
+
+  onStartupRating: async () => () => {},
 
   onSync: async (h: SyncHandlers) => {
     handlers = h;

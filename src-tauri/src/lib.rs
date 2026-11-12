@@ -1,3 +1,4 @@
+mod applog;
 mod commands;
 mod error;
 mod mass;
@@ -49,12 +50,20 @@ pub struct AppState {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info,hl_app=debug,hl_db=debug,hl_ingest=debug".into()),
-        )
-        .init();
+    // The console, and the log file in the data folder (see `applog`): a
+    // release build has no console, so the file is the only place its
+    // warnings can be read.
+    {
+        use tracing_subscriber::layer::SubscriberExt;
+        use tracing_subscriber::util::SubscriberInitExt;
+        let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| "info,hl_app=debug,hl_db=debug,hl_ingest=debug".into());
+        tracing_subscriber::registry()
+            .with(filter)
+            .with(tracing_subscriber::fmt::layer())
+            .with(tracing_subscriber::fmt::layer().with_ansi(false).with_writer(|| applog::FileWriter))
+            .init();
+    }
 
     tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
@@ -87,6 +96,11 @@ pub fn run() {
             commands::decline_restore,
             sync_commands::sync_start,
             sync_commands::reprocess_start,
+            sync_commands::rerate_start,
+            sync_commands::reread_demos_start,
+            sync_commands::get_diagnostics,
+            sync_commands::recent_log,
+            sync_commands::get_model_shift,
             sync_commands::sync_busy,
             sync_commands::sync_cancel,
             sync_commands::get_demo_folders,
@@ -301,6 +315,10 @@ fn start(app: &mut tauri::App) -> Result<(), String> {
     // Tauri's setup wants a `Box<dyn Error>`, and `{:#}` keeps the
     // whole cause chain in the message.
     let db_path = data_dir(app.handle())?.join("hl.sqlite3");
+    if let Some(dir) = db_path.parent() {
+        applog::open(dir);
+    }
+    tracing::info!(version = DISPLAY_VERSION, model = hl_rating::MODEL_VERSION, "Flashwave.tf starting");
     tracing::info!(dir = %db_path.parent().map(|p| p.display().to_string()).unwrap_or_default(), "data folder");
 
     // Hold the database for as long as this window is open, so no
@@ -438,10 +456,11 @@ Look for its window in the taskbar, or close the other one and start again.".to_
                     // Its scale replaced the one measured here: rate
                     // this install's own games on it.
                     let (weights, _) = hl_rating::Weights::load(&weights_path);
-                    match hl_ingest::rate_all(&db, cfg.steamid, &weights, |_| {}).await {
+                    match hl_ingest::rate_all(&db, cfg.steamid, &weights, startup_progress(&handle)).await {
                         Ok(s) => tracing::info!(rated = s.rated, "rated on the league snapshot's scale"),
                         Err(e) => tracing::warn!(error = %format!("{e:#}"), "rating on the snapshot's scale failed"),
                     }
+                    let _ = tauri::Emitter::emit(&handle, "startup://rated", ());
                 }
                 Ok(_) => {}
                 Err(e) => tracing::warn!(error = %format!("{e:#}"), "league snapshot not imported"),
@@ -450,10 +469,11 @@ Look for its window in the taskbar, or close the other one and start again.".to_
             // do it now rather than leave the profile empty until a sync.
             if db.rating_count(hl_rating::MODEL_VERSION).await.unwrap_or(1) == 0 {
                 let (weights, _) = hl_rating::Weights::load(&weights_path);
-                match hl_ingest::rate_all(&db, cfg.steamid, &weights, |_| {}).await {
+                match hl_ingest::rate_all(&db, cfg.steamid, &weights, startup_progress(&handle)).await {
                     Ok(s) => tracing::info!(rated = s.rated, model = hl_rating::MODEL_VERSION, "rated for a new model"),
                     Err(e) => tracing::warn!(error = %format!("{e:#}"), "rating pass failed"),
                 }
+                let _ = tauri::Emitter::emit(&handle, "startup://rated", ());
             }
         });
     }
@@ -515,6 +535,16 @@ Look for its window in the taskbar, or close the other one and start again.".to_
         mass_cancel: Arc::default(),
     });
     Ok(())
+}
+
+/// The startup rating pass's progress, for the window's card (audit, 12 Nov
+/// 2026): it rates every game for a new model, and the profile sat on the old
+/// numbers with nothing saying why until it was done. Its own events, not the
+/// sync's: no sync is running, and the card must not offer to cancel one.
+fn startup_progress(handle: &tauri::AppHandle) -> impl FnMut(hl_ingest::Progress) + '_ {
+    move |p| {
+        let _ = tauri::Emitter::emit(handle, "startup://progress", p);
+    }
 }
 
 /// Where this build keeps its database, backups and language files.
