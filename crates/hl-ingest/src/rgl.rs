@@ -368,8 +368,18 @@ pub async fn season(db: &Db, sources: &Sources, id: i64) -> Result<RglSeason> {
     Ok(RglSeason { id, name: head.name, maps: head.maps, divisions })
 }
 
-/// A season's card on the Seasons page: its best division's top three, from
-/// that division alone (two requests a season, then none once it is over).
+/// A season's card on the Seasons page: its best division's top three, its
+/// teams across every division, and its first and last match date (Flashy:
+/// "keep working and iterating on the rgl page ... i want a lot of the site
+/// features copied", tf2esports' Events page).
+///
+/// What it asks RGL: the season's page, its divisions and each division's
+/// teams (the season's own read already needs them, and they are kept on
+/// disk once the season is over), and at most two matches for the dates,
+/// the lowest and the highest id in `matchesPlayedDuringSeason`. Those two
+/// are kept on disk with the season once it is over (`season_span_key`);
+/// a season still running reads them through `read_matches`, which holds a
+/// match not yet played for six hours. Never the whole season.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RglSeasonCard {
@@ -377,24 +387,120 @@ pub struct RglSeasonCard {
     pub maps: usize,
     /// Teams in its best division only (`division`), not the season's.
     pub teams: usize,
+    /// Teams in every division, byes left out; none when a division could not be read.
+    pub total_teams: Option<usize>,
+    /// How many divisions it has.
+    pub divisions: usize,
     /// The best division's name ("Invite"), which `teams` counts.
     pub division: Option<String>,
     /// Every division decided.
     pub over: bool,
     /// Matches played or scheduled so far; none means it has not started.
     pub matches: usize,
+    /// When its first and last match are (unix s), from the two matches
+    /// read; none before RGL has scheduled any.
+    pub first_match: Option<i64>,
+    pub last_match: Option<i64>,
+    /// How many maps a match has, as its first match shows: the format.
+    pub maps_per_match: Option<usize>,
     /// The best division's top three, best first; empty while it is played.
     pub podium: Vec<RglTeam>,
 }
 
+/// A season's first and last match, from the earliest and latest id.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+struct SeasonSpan {
+    first: Option<i64>,
+    last: Option<i64>,
+    maps_per_match: Option<usize>,
+}
+
+/// The ids of the matches whose dates bound a season: the lowest and the
+/// highest (RGL numbers matches as it makes them, so the schedule's first
+/// week and the last playoff round are at the ends). One id when it has one.
+fn span_ids(ids: &[i64]) -> Vec<i64> {
+    let (Some(&lo), Some(&hi)) = (ids.iter().min(), ids.iter().max()) else { return Vec::new() };
+    if lo == hi { vec![lo] } else { vec![lo, hi] }
+}
+
+/// The span the matches read show: the earlier date and the later, whichever
+/// order the ids put them in, and the most maps either had.
+fn span_of(read: &[RglMatch]) -> SeasonSpan {
+    let dates: Vec<i64> = read.iter().filter_map(|m| rfc3339(m.match_date.as_deref())).collect();
+    let per = read.iter().map(|m| m.maps.len()).filter(|n| *n > 0).max();
+    SeasonSpan { first: dates.iter().min().copied(), last: dates.iter().max().copied(), maps_per_match: per }
+}
+
+fn season_span_key(id: i64) -> String {
+    format!("/internal/season-span/{id}")
+}
+
+/// A season's span: from disk once the season is over, else from its two
+/// end matches. A failure costs the dates, not the card.
+async fn season_span(db: &Db, sources: &Sources, id: i64, ids: &[i64], over: bool) -> SeasonSpan {
+    let key = season_span_key(id);
+    if over {
+        if let Ok(mut kept) = db.rgl_answers(std::slice::from_ref(&key)).await {
+            if let Some(span) = kept.remove(&key).and_then(|(body, _)| serde_json::from_str::<SeasonSpan>(&body).ok()) {
+                return span;
+            }
+        }
+    }
+    let ends = span_ids(ids);
+    if ends.is_empty() {
+        return SeasonSpan::default();
+    }
+    let read = match read_matches(db, sources, &ends).await {
+        Ok(read) => read,
+        Err(e) => {
+            tracing::warn!("RGL season {id}'s dates were not read: {e:#}");
+            return SeasonSpan::default();
+        }
+    };
+    let span = span_of(&read);
+    // Only a finished season's dates cannot move, and only when both are known.
+    if over && span.first.is_some() && span.last.is_some() {
+        if let Ok(body) = serde_json::to_string(&span) {
+            let _ = db.store_rgl_answer(&key, &body).await;
+        }
+    }
+    span
+}
+
 pub async fn season_card(db: &Db, sources: &Sources, id: i64) -> Result<RglSeasonCard> {
     let (head, over) = season_head(db, sources, id).await?;
-    let mut card = RglSeasonCard { id, maps: head.maps.len(), teams: 0, division: None, over, matches: head.matches_played_during_season.len(), podium: Vec::new() };
+    let groups = head.groups();
+    let span = season_span(db, sources, id, &head.matches_played_during_season, over).await;
+    let mut card = RglSeasonCard {
+        id,
+        maps: head.maps.len(),
+        teams: 0,
+        total_teams: None,
+        divisions: groups.len(),
+        division: None,
+        over,
+        matches: head.matches_played_during_season.len(),
+        first_match: span.first,
+        last_match: span.last,
+        maps_per_match: span.maps_per_match,
+        podium: Vec::new(),
+    };
     let Some(top) = head.top_group() else { return Ok(card) };
     card.division = groups_of(&kept(db, sources, &format!("/seasons/{id}/groups"), |_| over).await?).ok().and_then(|g| g.into_iter().find(|g| g.group_id == top)).map(|g| g.group_name);
     let mut teams = teams_of(&kept(db, sources, &format!("/groups/{top}/teams"), decided_division).await?)?;
     teams.retain(|t| !t.name.starts_with("Bye Week"));
     card.teams = teams.len();
+    // The other divisions' teams are the same reads the season's own page
+    // makes (same paths, so the same kept and held answers): a season over
+    // has them on disk already, one still played asks for each once.
+    let mut total = Some(teams.len());
+    for g in &groups[1..] {
+        match kept(db, sources, &format!("/groups/{g}/teams"), decided_division).await.ok().and_then(|b| teams_of(&b).ok()) {
+            Some(t) => total = total.map(|n| n + t.iter().filter(|t| !t.name.starts_with("Bye Week")).count()),
+            None => total = None,
+        }
+    }
+    card.total_teams = total;
     teams.retain(|t| matches!(t.final_rank, Some(1..=3)));
     teams.sort_by_key(|t| t.final_rank);
     card.podium = teams;
@@ -1595,6 +1701,35 @@ mod tests {
         assert_eq!(match_logs(&db, &sources, &m2, None, &[]).await.unwrap().1, Some("notPlayed"));
         let forfeit = RglMatch { match_id: 9, is_forfeit: true, ..m2 };
         assert_eq!(match_logs(&db, &sources, &forfeit, None, &[]).await.unwrap().1, Some("forfeit"));
+    }
+
+    #[test]
+    fn a_seasons_span_is_its_lowest_and_highest_match_id() {
+        assert!(span_ids(&[]).is_empty());
+        assert_eq!(span_ids(&[7]), vec![7]);
+        assert_eq!(span_ids(&[40, 12, 90, 33]), vec![12, 90]);
+    }
+
+    #[test]
+    fn a_span_is_the_earlier_and_later_date_whichever_id_has_which() {
+        let a = played(1, "2026-06-09T01:30:00.000Z", (1, "a"), (2, "b"), None, false, &[("pl_upward", 0, 0), ("koth_x", 0, 0)]);
+        let b = played(2, "2026-06-02T01:30:00.000Z", (1, "a"), (2, "b"), None, false, &[]);
+        let span = span_of(&[a, b]);
+        assert_eq!(span.first, rfc3339(Some("2026-06-02T01:30:00.000Z")));
+        assert_eq!(span.last, rfc3339(Some("2026-06-09T01:30:00.000Z")));
+        assert_eq!(span.maps_per_match, Some(2));
+        assert_eq!(span_of(&[]), SeasonSpan::default());
+    }
+
+    /// A kept span of a finished season is read back with no request: this
+    /// test has no network, and the season's matches are not on disk.
+    #[tokio::test]
+    async fn a_finished_seasons_span_reads_from_disk() {
+        let db = Db::connect_in_memory().await.unwrap();
+        let span = SeasonSpan { first: Some(100), last: Some(900), maps_per_match: Some(2) };
+        db.store_rgl_answer(&season_span_key(5), &serde_json::to_string(&span).unwrap()).await.unwrap();
+        let got = season_span(&db, &Sources::new().unwrap(), 5, &[1, 2, 3], true).await;
+        assert_eq!(got, span);
     }
 
     #[test]

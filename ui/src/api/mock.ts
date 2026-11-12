@@ -1585,9 +1585,15 @@ export const mockApi: Api = {
       id,
       maps: 6,
       teams: id === 198 ? 8 : 10,
+      totalTeams: id === 198 ? 42 : 58,
+      divisions: id === 198 ? 5 : 6,
       division: "Invite",
       over: id !== 198,
       matches: id === 198 ? 12 : 90,
+      // Season 198 is running (week 2); the others ended: spaced by season.
+      firstMatch: id === 198 ? Math.floor(Date.now() / 1000) - 9 * 86400 : 1_780_000_000 - (198 - id) * 70 * 86400,
+      lastMatch: id === 198 ? Math.floor(Date.now() / 1000) + 60 * 86400 : 1_780_000_000 - (198 - id) * 70 * 86400 + 63 * 86400,
+      mapsPerMatch: 2,
       podium: id === 198 ? [] : [
         { id: 14908 + id, name: id === 193 ? "The Amiable Duds" : "Witness Gaming", tag: id === 193 ? "AD." : "wG", finalRank: 1, seeding: null, teamStatus: "Ready" },
         { id: 14954 + id, name: id === 193 ? "Witness Gaming" : "The Family", tag: id === 193 ? "wG" : "folk", finalRank: 2, seeding: null, teamStatus: "Ready" },

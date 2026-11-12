@@ -14,6 +14,7 @@ import { useSeasons, useTeam, useMatch, SEARCH_FROM, useNameSearch, usePlayer, l
 import type { Loc, Section } from "./data";
 import { SearchHits } from "./bits";
 import { SeasonList, SeasonView, SeasonPlay } from "./Seasons";
+import { NewToRgl } from "./NewToRgl";
 import { LiveMatches, MatchesPage } from "./Matches";
 import { MatchPage } from "./MatchPage";
 import { TeamsLanding, TeamView } from "./Team";
@@ -429,6 +430,7 @@ function Home(props: { steamid: string | null; onTeam: (id: number) => void; onP
       </div>
       <aside className="e2-rail">
         {steamid && <YourRgl steamid={steamid} onTeam={onTeam} onPlayer={onPlayer} />}
+        <NewToRgl />
         <section className="panel e2-panel">
           <div className="e2-panel-head">
             <h2>{t("Coming soon")}</h2>

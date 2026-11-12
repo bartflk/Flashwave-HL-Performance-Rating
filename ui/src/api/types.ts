@@ -510,12 +510,21 @@ export interface RglSeasonCard {
   maps: number;
   /** Teams in its best division (`division`), not the season's. */
   teams: number;
+  /** Teams in every division, byes left out; null when a division could not be read. */
+  totalTeams: number | null;
+  /** How many divisions it has. */
+  divisions: number;
   /** The best division's name ("Invite"), which `teams` counts. */
   division: string | null;
   /** Every division decided. */
   over: boolean;
   /** Matches played or scheduled so far; 0 means it has not started. */
   matches: number;
+  /** Its first and last match, unix seconds; null before RGL has scheduled any. */
+  firstMatch: number | null;
+  lastMatch: number | null;
+  /** How many maps a match has, as its first match shows. */
+  mapsPerMatch: number | null;
   podium: RglTeam[];
 }
 

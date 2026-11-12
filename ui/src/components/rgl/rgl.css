@@ -361,3 +361,19 @@
 /* Lineups with a rating in the match, as ETF2L's: a column after the name. */
 .rgl-lineup.rated button { grid-template-columns: 22px minmax(0, 1fr) auto 44px; }
 .rgl-lineup .e2-lu-rating { text-align: right; }
+
+/* ---- Seasons as events -------------------------------------------------- */
+/* The four headline cards between a season's header and its divisions. */
+.rgl-cards-season { margin: 0 0 16px; }
+/* Each division's champion, one line each, wrapping together. */
+.rgl-champs { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.rgl-champs li { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.rgl-champs .muted { font-size: var(--fs-small); }
+.rgl-mappool { margin-bottom: 16px; }
+.rgl-mappool .hint { margin: 12px 0 0; }
+/* The primer for someone new to RGL, in Home's rail. */
+.rgl-new p { margin: 0 0 10px; line-height: var(--lh-snug); }
+.rgl-new .pp-links { margin-top: 4px; }
+.rgl-new-divs { list-style: none; margin: 0 0 12px; padding: 0; display: grid; grid-template-columns: 1fr; gap: 4px; }
+.rgl-new-divs li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel-2); }
+.rgl-new-divs .muted { font-size: var(--fs-small); }
