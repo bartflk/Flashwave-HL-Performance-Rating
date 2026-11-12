@@ -478,7 +478,7 @@ pub struct RglTeamPage {
     pub matches: Vec<RglMatch>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct TeamRaw {
     team_id: i64,
@@ -581,6 +581,247 @@ pub async fn team_seasons(db: &Db, sources: &Sources, ids: Vec<i64>) -> Result<V
     }
     out.sort_by_key(|t| -t.season_id);
     Ok(out)
+}
+
+// ---- A team across its seasons -------------------------------------------------
+
+/// Wins and losses, forfeits apart: a forfeit says nothing about how a team
+/// plays, so it is counted on its own and left out of the win rate.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RglRecord {
+    pub won: i64,
+    pub lost: i64,
+    pub forfeits_won: i64,
+    pub forfeits_lost: i64,
+}
+
+/// One season of a team, with its record there.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RglHistorySeason {
+    pub team_id: i64,
+    pub name: String,
+    pub tag: Option<String>,
+    pub season_id: i64,
+    pub season_name: String,
+    pub division: Option<String>,
+    pub tier: Option<&'static str>,
+    pub final_rank: Option<i64>,
+    pub record: RglRecord,
+}
+
+/// The record against one opponent, in every season.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RglOpponent {
+    pub name: String,
+    pub tag: Option<String>,
+    pub won: i64,
+    pub lost: i64,
+    /// The latest id this opponent played under, to open its page.
+    pub team_id: i64,
+    /// When they last met (RGL's time).
+    pub last: Option<String>,
+}
+
+/// A team's record on one map, across its seasons.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RglMapRecord {
+    pub map: String,
+    pub won: i64,
+    pub lost: i64,
+    pub rounds_for: i64,
+    pub rounds_against: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RglTeamHistory {
+    /// Every id the team played under in the seasons read, for matching its
+    /// matches against another team's.
+    pub team_ids: Vec<i64>,
+    /// Newest first.
+    pub seasons: Vec<RglHistorySeason>,
+    pub total: RglRecord,
+    /// Names the team had before, newest first, without the current one.
+    pub former_names: Vec<String>,
+    /// The oldest season read.
+    pub first_season: Option<String>,
+    /// More seasons are linked than were read: totals and "first season" cover
+    /// the newest ones only.
+    pub capped: bool,
+    /// The most played first, at most twelve.
+    pub opponents: Vec<RglOpponent>,
+    pub maps: Vec<RglMapRecord>,
+    /// Every decided match of the seasons read, newest first.
+    pub matches: Vec<RglMatch>,
+}
+
+/// How many seasons a team's history reads at most. Each season is a team
+/// page and about a dozen matches, every one a request the first time (kept
+/// on disk once decided), so a team that has played thirty seasons is read
+/// for its newest twelve rather than made to wait ten minutes.
+const HISTORY_SEASONS: usize = 12;
+/// Opponents listed.
+const OPPONENTS_SHOWN: usize = 12;
+
+/// A season read: the team as it was then, and its decided matches.
+struct SeasonRead {
+    team_id: i64,
+    name: String,
+    tag: Option<String>,
+    season_id: i64,
+    season_name: String,
+    division: Option<String>,
+    final_rank: Option<i64>,
+    matches: Vec<RglMatch>,
+}
+
+fn add_result(r: &mut RglRecord, m: &RglMatch, us: i64) {
+    let Some(w) = m.winner else { return };
+    match (m.is_forfeit, w == us) {
+        (false, true) => r.won += 1,
+        (false, false) => r.lost += 1,
+        (true, true) => r.forfeits_won += 1,
+        (true, false) => r.forfeits_lost += 1,
+    }
+}
+
+/// The matches the page counts: RGL's "Bye Week" is a place holder, not a game.
+fn is_game(m: &RglMatch) -> bool {
+    !m.teams.iter().any(|x| x.team_name.starts_with("Bye Week"))
+}
+
+/// The history from what was read, newest season first. `current` is the
+/// name the page shows. An opponent is the same team in every season by its
+/// name, trimmed and in lower case, because RGL gives a team a new id each
+/// season.
+fn build_history(current: &str, mut reads: Vec<SeasonRead>, capped: bool) -> RglTeamHistory {
+    reads.sort_by_key(|r| std::cmp::Reverse(r.season_id));
+    let mut total = RglRecord::default();
+    let mut seasons = Vec::new();
+    let mut opponents: HashMap<String, RglOpponent> = HashMap::new();
+    let mut maps: HashMap<String, RglMapRecord> = HashMap::new();
+    let mut matches = Vec::new();
+    let mut former: Vec<String> = Vec::new();
+    for r in &reads {
+        let mut rec = RglRecord::default();
+        let mut rows: Vec<&RglMatch> = r.matches.iter().filter(|m| decided(m) && is_game(m)).collect();
+        rows.sort_by(|a, b| a.match_date.cmp(&b.match_date));
+        for m in rows {
+            add_result(&mut rec, m, r.team_id);
+            matches.push(m.clone());
+            if m.is_forfeit || m.winner.is_none() {
+                continue;
+            }
+            let won = m.winner == Some(r.team_id);
+            if let Some(o) = m.teams.iter().find(|x| x.team_id != r.team_id) {
+                let key = o.team_name.trim().to_lowercase();
+                let e = opponents.entry(key).or_insert_with(|| RglOpponent { name: o.team_name.clone(), tag: o.team_tag.clone(), won: 0, lost: 0, team_id: o.team_id, last: None });
+                if won {
+                    e.won += 1;
+                } else {
+                    e.lost += 1;
+                }
+                // The name, tag and id shown are the latest meeting's.
+                if m.match_date > e.last {
+                    e.last = m.match_date.clone();
+                    e.team_id = o.team_id;
+                    e.name = o.team_name.clone();
+                    e.tag = o.team_tag.clone();
+                }
+            }
+            let home = m.teams.iter().find(|x| x.team_id == r.team_id).is_none_or(|x| x.is_home);
+            for x in &m.maps {
+                let (Some(h), Some(a)) = (x.home_score, x.away_score) else { continue };
+                let (mine, theirs) = if home { (h, a) } else { (a, h) };
+                let e = maps.entry(x.map_name.clone()).or_insert_with(|| RglMapRecord { map: x.map_name.clone(), won: 0, lost: 0, rounds_for: 0, rounds_against: 0 });
+                e.rounds_for += mine;
+                e.rounds_against += theirs;
+                // A drawn map is neither a win nor a loss.
+                if mine > theirs {
+                    e.won += 1;
+                } else if mine < theirs {
+                    e.lost += 1;
+                }
+            }
+        }
+        total.won += rec.won;
+        total.lost += rec.lost;
+        total.forfeits_won += rec.forfeits_won;
+        total.forfeits_lost += rec.forfeits_lost;
+        let n = r.name.trim();
+        if !n.eq_ignore_ascii_case(current.trim()) && !former.iter().any(|f| f.eq_ignore_ascii_case(n)) {
+            former.push(n.to_string());
+        }
+        seasons.push(RglHistorySeason {
+            team_id: r.team_id,
+            name: r.name.clone(),
+            tag: r.tag.clone(),
+            season_id: r.season_id,
+            season_name: r.season_name.clone(),
+            tier: r.division.as_deref().and_then(tier_of),
+            division: r.division.clone(),
+            final_rank: r.final_rank,
+            record: rec,
+        });
+    }
+    matches.sort_by(|a, b| b.match_date.cmp(&a.match_date).then(b.match_id.cmp(&a.match_id)));
+    let mut opponents: Vec<RglOpponent> = opponents.into_values().collect();
+    opponents.sort_by(|a, b| (b.won + b.lost).cmp(&(a.won + a.lost)).then(b.last.cmp(&a.last)).then(a.name.cmp(&b.name)));
+    opponents.truncate(OPPONENTS_SHOWN);
+    let mut maps: Vec<RglMapRecord> = maps.into_values().collect();
+    maps.sort_by(|a, b| (b.won + b.lost).cmp(&(a.won + a.lost)).then(a.map.cmp(&b.map)));
+    RglTeamHistory {
+        team_ids: reads.iter().map(|r| r.team_id).collect(),
+        first_season: reads.last().map(|r| r.season_name.clone()),
+        seasons,
+        total,
+        former_names: former,
+        capped,
+        opponents,
+        maps,
+        matches,
+    }
+}
+
+/// A team across its linked seasons: records, titles, former names, most
+/// played opponents and map pool. RGL requests, all through the helpers
+/// above: one for the season list (shared with the rest of the tab), then
+/// per season one `/teams/{id}` and one `/matches/{id}` per match, with the
+/// finished-or-not check of the season on top. A finished season is all on
+/// disk afterwards, so a team with N seasons (N at most 12) costs roughly 13
+/// requests a season the first time, at four a second, and none the second
+/// time; the live season's decided matches are on disk as well, only its
+/// matches still to be played are asked for again, as on the team page,
+/// whose own reads (the same ids) this one shares.
+pub async fn team_history(db: &Db, sources: &Sources, id: i64) -> Result<Option<RglTeamHistory>> {
+    let Some(now) = team_raw(db, sources, id).await? else { return Ok(None) };
+    let mut ids = now.linked_teams.clone();
+    ids.push(id);
+    ids.sort_by_key(|i| std::cmp::Reverse(*i));
+    ids.dedup();
+    let capped = ids.len() > HISTORY_SEASONS;
+    if capped {
+        ids.truncate(HISTORY_SEASONS);
+        // The team being looked at is always in its own history.
+        if !ids.contains(&id) {
+            ids.pop();
+            ids.push(id);
+        }
+    }
+    let names: HashMap<i64, String> = seasons(sources).await?.into_iter().map(|s| (s.id, s.name)).collect();
+    let mut reads = Vec::new();
+    for tid in ids {
+        let Some(t) = (if tid == id { Some(now.clone()) } else { team_raw(db, sources, tid).await? }) else { continue };
+        // Another format's season is not NA Highlander's.
+        let Some(season_name) = names.get(&t.season_id).cloned() else { continue };
+        let matches = read_matches(db, sources, &t.match_ids).await?.into_iter().filter(decided).collect();
+        reads.push(SeasonRead { team_id: t.team_id, name: t.name, tag: t.tag, season_id: t.season_id, season_name, division: t.division_name, final_rank: t.final_rank, matches });
+    }
+    Ok(Some(build_history(&now.name, reads, capped)))
 }
 
 // ---- A season's matches, and the league's bans -------------------------------
@@ -1314,6 +1555,93 @@ mod tests {
         let (a, b) = tokio::join!(once("test:once", KEEP, ask), once("test:once", KEEP, ask));
         assert_eq!((a.unwrap(), b.unwrap()), (Some("body".into()), Some("body".into())));
         assert_eq!(asked.load(std::sync::atomic::Ordering::SeqCst), 1);
+    }
+
+fn played(id: i64, date: &str, us: (i64, &str), them: (i64, &str), winner: Option<i64>, forfeit: bool, maps: &[(&str, i64, i64)]) -> RglMatch {
+        RglMatch {
+            match_id: id,
+            match_date: Some(date.into()),
+            match_name: None,
+            division_name: None,
+            season_id: None,
+            season_name: None,
+            is_forfeit: forfeit,
+            winner,
+            teams: vec![
+                RglMatchTeam { team_id: us.0, team_name: us.1.into(), team_tag: None, is_home: true },
+                RglMatchTeam { team_id: them.0, team_name: them.1.into(), team_tag: None, is_home: false },
+            ],
+            maps: maps.iter().map(|(m, h, a)| RglMatchMap { map_name: (*m).into(), home_score: Some(*h), away_score: Some(*a) }).collect(),
+        }
+    }
+
+    fn read(team: i64, name: &str, season: i64, rank: Option<i64>, matches: Vec<RglMatch>) -> SeasonRead {
+        SeasonRead { team_id: team, name: name.into(), tag: None, season_id: season, season_name: format!("HL Season {season}"), division: Some("Advanced".into()), final_rank: rank, matches }
+    }
+
+    #[test]
+    fn a_history_counts_each_season_and_keeps_forfeits_apart() {
+        let h = build_history(
+            "Duds",
+            vec![
+                read(2, "Duds", 24, Some(1), vec![played(1, "2026-06-01", (2, "Duds"), (9, "Rib"), Some(2), false, &[("pl_vigil", 2, 0)]), played(2, "2026-06-08", (2, "Duds"), (8, "Cats"), Some(8), true, &[])]),
+                read(1, "Old Duds", 23, Some(2), vec![played(3, "2026-01-01", (1, "Old Duds"), (7, "RIB "), Some(7), false, &[("pl_vigil", 1, 2)])]),
+            ],
+            false,
+        );
+        assert_eq!(h.seasons.iter().map(|s| (s.season_id, s.record.won, s.record.lost, s.record.forfeits_lost)).collect::<Vec<_>>(), [(24, 1, 0, 1), (23, 0, 1, 0)]);
+        assert_eq!((h.total.won, h.total.lost, h.total.forfeits_lost), (1, 1, 1));
+        assert_eq!(h.former_names, ["Old Duds"]);
+        assert_eq!(h.first_season.as_deref(), Some("HL Season 23"));
+        assert_eq!(h.team_ids, [2, 1]);
+        // Newest first.
+        assert_eq!(h.matches.iter().map(|m| m.match_id).collect::<Vec<_>>(), [2, 1, 3]);
+    }
+
+    #[test]
+    fn an_opponent_is_the_same_team_across_seasons_by_name_and_a_forfeit_is_no_meeting() {
+        let h = build_history(
+            "Duds",
+            vec![
+                read(2, "Duds", 24, None, vec![played(1, "2026-06-01", (2, "Duds"), (9, "Run It Back"), Some(2), false, &[]), played(2, "2026-06-08", (2, "Duds"), (8, "Cats"), Some(8), true, &[])]),
+                read(1, "Duds", 23, None, vec![played(3, "2026-01-01", (1, "Duds"), (7, " run it back"), Some(7), false, &[])]),
+            ],
+            false,
+        );
+        assert_eq!(h.opponents.len(), 1);
+        let o = &h.opponents[0];
+        assert_eq!((o.won, o.lost, o.team_id, o.name.as_str()), (1, 1, 9, "Run It Back"));
+        assert!(h.former_names.is_empty());
+    }
+
+    #[test]
+    fn the_map_pool_counts_maps_and_rounds_from_the_teams_side() {
+        // The team is away in the second match: its rounds are the away score.
+        let mut away = played(2, "2026-06-08", (9, "Rib"), (2, "Duds"), Some(2), false, &[("pl_vigil", 0, 2), ("cp_gullywash", 1, 1)]);
+        away.teams[0].is_home = true;
+        let h = build_history("Duds", vec![read(2, "Duds", 24, None, vec![played(1, "2026-06-01", (2, "Duds"), (9, "Rib"), Some(9), false, &[("pl_vigil", 1, 2)]), away])], false);
+        let vigil = h.maps.iter().find(|m| m.map == "pl_vigil").unwrap();
+        assert_eq!((vigil.won, vigil.lost, vigil.rounds_for, vigil.rounds_against), (1, 1, 3, 2));
+        let gully = h.maps.iter().find(|m| m.map == "cp_gullywash").unwrap();
+        assert_eq!((gully.won, gully.lost), (0, 0));
+    }
+
+    #[test]
+    fn a_bye_week_and_an_undecided_match_are_no_games() {
+        let bye = played(1, "2026-06-01", (2, "Duds"), (0, "Bye Week"), Some(2), false, &[]);
+        let open = played(2, "2026-06-08", (2, "Duds"), (9, "Rib"), None, false, &[]);
+        let h = build_history("Duds", vec![read(2, "Duds", 24, None, vec![bye, open])], true);
+        assert_eq!((h.total.won, h.total.lost, h.matches.len(), h.capped), (0, 0, 0, true));
+    }
+
+    /// Kept matches and a kept finished team come from disk: no request (this test has no network).
+    #[tokio::test]
+    async fn a_kept_history_reads_from_disk() {
+        let db = Db::connect_in_memory().await.unwrap();
+        db.store_rgl_match(5, r#"{"matchId":5,"matchDate":"2026-06-02T01:30:00.000Z","winner":7,"teams":[{"teamId":7,"teamName":"A"},{"teamId":8,"teamName":"B"}],"maps":[]}"#).await.unwrap();
+        let got = read_matches(&db, &Sources::new().unwrap(), &[5]).await.unwrap();
+        let h = build_history("A", vec![read(7, "A", 24, Some(1), got)], false);
+        assert_eq!((h.total.won, h.seasons[0].final_rank), (1, Some(1)));
     }
 
     #[test]

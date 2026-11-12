@@ -134,6 +134,7 @@ pub fn run() {
             sync_commands::get_rgl_match_more,
             sync_commands::get_rgl_team,
             sync_commands::get_rgl_team_seasons,
+            sync_commands::get_rgl_team_history,
             sync_commands::get_rgl_player,
             sync_commands::get_rgl_season_card,
             sync_commands::search_rgl_players,

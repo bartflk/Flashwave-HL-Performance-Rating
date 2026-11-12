@@ -547,6 +547,41 @@ export interface RglPlayer {
   seasons: RglPlayerSeason[];
 }
 
+/** Wins and losses, forfeits apart (hl_ingest::rgl::RglRecord). */
+export interface RglRecord {
+  won: number;
+  lost: number;
+  forfeitsWon: number;
+  forfeitsLost: number;
+}
+
+/** A team across its linked seasons (hl_ingest::rgl::team_history). */
+export interface RglTeamHistory {
+  /** Every id the team played under in the seasons read. */
+  teamIds: number[];
+  /** Newest first. */
+  seasons: {
+    teamId: number;
+    name: string;
+    tag: string | null;
+    seasonId: number;
+    seasonName: string;
+    division: string | null;
+    tier: string | null;
+    finalRank: number | null;
+    record: RglRecord;
+  }[];
+  total: RglRecord;
+  formerNames: string[];
+  firstSeason: string | null;
+  /** More seasons exist than were read, so totals cover the newest only. */
+  capped: boolean;
+  opponents: { name: string; tag: string | null; won: number; lost: number; teamId: number; last: string | null }[];
+  maps: { map: string; won: number; lost: number; roundsFor: number; roundsAgainst: number }[];
+  /** Every decided match of the seasons read, newest first. */
+  matches: RglMatch[];
+}
+
 /** One of ETF2L's other Highlander tournaments: a one-night, Experimental,
  *  Nations' or preseason cup (hl_ingest::cups). */
 export interface LeagueCup {

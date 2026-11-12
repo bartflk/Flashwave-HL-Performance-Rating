@@ -2297,6 +2297,12 @@ pub async fn get_rgl_team_seasons(state: State<'_, AppState>, ids: Vec<i64>) -> 
     Ok(hl_ingest::rgl::team_seasons(&state.db, &state.sources, ids).await?)
 }
 
+/// An RGL team across its linked seasons: records, titles, opponents, maps.
+#[tauri::command]
+pub async fn get_rgl_team_history(state: State<'_, AppState>, id: i64) -> CmdResult<Option<hl_ingest::rgl::RglTeamHistory>> {
+    Ok(hl_ingest::rgl::team_history(&state.db, &state.sources, id).await?)
+}
+
 /// An RGL season's card: its best division's top three.
 #[tauri::command]
 pub async fn get_rgl_season_card(state: State<'_, AppState>, id: i64) -> CmdResult<hl_ingest::rgl::RglSeasonCard> {

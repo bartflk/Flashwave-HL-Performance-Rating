@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { RglMatch, RglTeamPage } from "../../api/types";
+import type { RglMatch, RglRecord, RglTeamHistory, RglTeamPage } from "../../api/types";
 import { t, tx } from "../../lib/i18n";
 import { openOnKey } from "../../lib/rows";
 import { standings } from "../../lib/rglstandings";
+import { form, medals, trophyCount, winRate } from "../../lib/rglteam";
 import { ApiError } from "../ApiError";
 import { Loading } from "../Spinner";
 import { Monogram } from "../etf2l/Teams";
@@ -223,14 +224,303 @@ export function MapRecord({ team }: { team: RglTeamPage }) {
 
 // ---- The league's bans ---------------------------------------------------------
 
-export function TeamView({ id, onTeam, onPlayer, onMatch }: { id: number; onTeam: (id: number) => void; onPlayer: (s: string) => void; onMatch: (id: number) => void }) {
+/**
+ * A team across its seasons (hl_ingest::rgl::team_history), for the page's
+ * cards, trophies, opponents and map pool. It asks RGL for each linked
+ * season's team and matches, newest 12 at most: about 13 requests a season
+ * the first time (4 a second, so a long-lived team takes a minute or two,
+ * and the page's own parts show meanwhile), and none the second time for a
+ * finished season, which is kept on disk. Held for half an hour, shared by
+ * every view of the same team, the Compare page's included.
+ */
+export const useTeamHistory = (id: number | null) =>
+  useQuery({ queryKey: ["rgl_team_history", id], queryFn: () => api.getRglTeamHistory(id!), enabled: id !== null, staleTime: KEEP });
+
+type Tab = "overview" | "matches" | "roster" | "history";
+
+/** A big figure with what it is and a line under it; `…` while it is being read. */
+export function StatCard({ label, value, sub, title, wait }: { label: string; value: ReactNode; sub?: ReactNode; title?: string; wait?: boolean }) {
+  return (
+    <div className="panel rgl-card" title={title}>
+      <span className="e2-label">{label}</span>
+      <strong className={wait ? "rgl-card-v wait" : "rgl-card-v"}>{wait ? "…" : value}</strong>
+      <span className="muted rgl-card-sub">{wait ? "" : sub}</span>
+    </div>
+  );
+}
+
+/** "1 forfeit won" / "2 forfeits lost", for the line under a record. */
+export function forfeitNote(r: RglRecord): string {
+  const parts = [r.forfeitsWon > 0 && (r.forfeitsWon === 1 ? t("1 forfeit won") : tx("{0} forfeits won", { "0": r.forfeitsWon })), r.forfeitsLost > 0 && (r.forfeitsLost === 1 ? t("1 forfeit lost") : tx("{0} forfeits lost", { "0": r.forfeitsLost }))];
+  return parts.filter(Boolean).join(" · ");
+}
+
+/** What the team's page leads with: this season, its record, its trophies, how long it has been around. */
+function Cards({ v, h }: { v: RglTeamPage; h: ReturnType<typeof useTeamHistory> }) {
+  const d = h.data;
+  const wait = h.isPending;
+  const trophies = d ? trophyCount(d.seasons) : { titles: 0, podiums: 0 };
+  const rate = d ? winRate(d.total) : null;
+  const note = d ? forfeitNote(d.total) : "";
+  return (
+    <div className="rgl-cards">
+      <StatCard
+        label={t("This season")}
+        value={placing(v.finalRank) || t("In progress")}
+        sub={[v.seasonName, v.division && (v.tier ? `${v.division} ≈ ${t(v.tier)}` : v.division)].filter(Boolean).join(" · ")}
+        title={t("Its place in the division this season, as RGL ranks it")}
+      />
+      <StatCard
+        label={t("Record")}
+        wait={wait}
+        value={
+          d && (
+            <>
+              <span className="team-won">{d.total.won}</span>–<span className="team-lost">{d.total.lost}</span>
+              {rate !== null && <em className="rgl-card-rate"> {rate.toFixed(0)}%</em>}
+            </>
+          )
+        }
+        sub={[d && (d.seasons.length === 1 ? t("1 season") : tx("{0} seasons", { "0": d.seasons.length })), note].filter(Boolean).join(" · ")}
+        title={t("Matches won and lost across the seasons read, forfeits apart")}
+      />
+      <StatCard
+        label={t("Titles")}
+        wait={wait}
+        value={trophies.titles}
+        sub={trophies.podiums === 1 ? t("1 podium") : tx("{0} podiums", { "0": trophies.podiums })}
+        title={t("Seasons finished first, and in the top three")}
+      />
+      <StatCard
+        label={t("Active since")}
+        wait={wait}
+        value={d?.firstSeason ?? "–"}
+        sub={d?.capped ? t("or earlier: only its newest seasons are read") : t("Its first NA Highlander season")}
+        title={t("The oldest season read for this team")}
+      />
+    </div>
+  );
+}
+
+/** The last ten results as squares, newest first, and the results under them. */
+function Form({ matches, us, onMatch }: { matches: RglMatch[]; us: number[]; onMatch: (id: number) => void }) {
+  const rows = useMemo(() => form(matches, us), [matches, us]);
+  const mine = new Set(us);
+  return (
+    <section className="panel e2-panel">
+      <div className="e2-panel-head">
+        <h2>{t("Recent form")}</h2>
+        <span className="muted">{t("newest first")}</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="hint">{t("No results yet.")}</p>
+      ) : (
+        <>
+          <div className="rgl-form">
+            {rows.map(({ match: m, won }) => {
+              const them = m.teams.find((x) => !mine.has(x.teamId));
+              return (
+                <button key={m.matchId} className={won ? "rgl-sq won" : "rgl-sq lost"} title={`${won ? t("Won") : t("Lost")} · ${them?.teamName ?? "–"} · ${day(m.matchDate)}`} onClick={() => onMatch(m.matchId)}>
+                  {won ? t("W") : t("L")}
+                </button>
+              );
+            })}
+          </div>
+          <ul className="rgl-formlist">
+            {rows.map(({ match: m, won }) => {
+              const them = m.teams.find((x) => !mine.has(x.teamId));
+              const home = m.teams.find((x) => mine.has(x.teamId))?.isHome ?? true;
+              const ours = m.maps.reduce((n, x) => n + ((home ? x.homeScore : x.awayScore) ?? 0), 0);
+              const theirs = m.maps.reduce((n, x) => n + ((home ? x.awayScore : x.homeScore) ?? 0), 0);
+              const open = () => onMatch(m.matchId);
+              return (
+                <li key={m.matchId} className="rgl-open" tabIndex={0} onClick={open} onKeyDown={openOnKey(open)} title={t("Open the match")}>
+                  <span className="muted rgl-wl-day">{day(m.matchDate)}</span>
+                  <span className="rgl-formlist-vs">{them?.teamName ?? "–"}</span>
+                  <span className={won ? "rgl-formlist-s team-won" : "rgl-formlist-s team-lost"}>{m.isForfeit ? t("forfeit") : `${ours}:${theirs}`}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+    </section>
+  );
+}
+
+/** Every podium place of the team's seasons, newest first. */
+function Trophies({ d }: { d: RglTeamHistory }) {
+  const rows = medals(d.seasons);
+  const tone = { 1: "pp-gold", 2: "pp-silver", 3: "pp-bronze" } as const;
+  const word = { 1: t("Champions"), 2: t("Runners-up"), 3: t("Third place") } as const;
+  return (
+    <section className="panel e2-panel">
+      <div className="e2-panel-head">
+        <h2>{t("Trophy cabinet")}</h2>
+        <span className="muted">{rows.length}</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="hint">{t("No podium finish in the seasons read.")}</p>
+      ) : (
+        <ul className="rgl-trophies">
+          {rows.map((s) => (
+            <li key={s.teamId}>
+              <span className={`pp-medal-tile rgl-medal ${tone[s.place]}`} title={word[s.place]}>
+                {s.place}
+              </span>
+              <span className="rgl-trophy-text">
+                <strong>{s.seasonName}</strong>
+                <span className="muted">{[word[s.place], s.division].filter(Boolean).join(" · ")}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** The opponents met most, with the record against each: forfeits are not meetings. */
+function Opponents({ d, onTeam }: { d: RglTeamHistory; onTeam: (id: number) => void }) {
+  return (
+    <section className="panel e2-panel">
+      <div className="e2-panel-head">
+        <h2>{t("Most played opponents")}</h2>
+        <span className="muted">{t("won – lost")}</span>
+      </div>
+      {d.opponents.length === 0 ? (
+        <p className="hint">{t("No matches played yet.")}</p>
+      ) : (
+        <ul className="rgl-maprec">
+          {d.opponents.map((o) => (
+            <li key={o.name.toLowerCase()}>
+              <button className="linkish" onClick={() => onTeam(o.teamId)}>
+                {o.name}
+              </button>
+              <span className="rgl-maprec-wl">
+                <span className="team-won">{o.won}</span>–<span className="team-lost">{o.lost}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="hint">{t("Teams are told apart by name across seasons, as RGL gives each season's team a new id.")}</p>
+    </section>
+  );
+}
+
+/** Record and rounds on each map across the seasons. */
+export function MapPool({ d }: { d: RglTeamHistory }) {
+  return (
+    <section className="panel e2-panel">
+      <div className="e2-panel-head">
+        <h2>{t("Map pool")}</h2>
+        <span className="muted">{t("across its seasons")}</span>
+      </div>
+      {d.maps.length === 0 ? (
+        <p className="hint">{t("No maps played yet.")}</p>
+      ) : (
+        <ul className="rgl-pool">
+          <li className="rgl-pool-head" aria-hidden>
+            <span>{t("Map")}</span>
+            <span title={t("Maps won and lost")}>{t("W–L")}</span>
+            <span title={t("Rounds won and lost")}>{t("Rounds")}</span>
+            <span title={t("Maps won, of those decided")}>{t("Win %")}</span>
+          </li>
+          {d.maps.map((m) => {
+            const rate = winRate(m);
+            return (
+              <li key={m.map}>
+                <span className="rgl-pool-map">{m.map}</span>
+                <span className="rgl-maprec-wl">
+                  <span className="team-won">{m.won}</span>–<span className="team-lost">{m.lost}</span>
+                </span>
+                <span className="muted rgl-pool-n">
+                  {m.roundsFor}–{m.roundsAgainst}
+                </span>
+                <span className="rgl-pool-n">{rate === null ? "–" : `${rate.toFixed(0)}%`}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** Each season the team played: its name then, division, place and record. */
+function SeasonsTable({ d, now, onTeam }: { d: RglTeamHistory; now: number; onTeam: (id: number) => void }) {
+  return (
+    <section className="panel e2-panel">
+      <div className="e2-panel-head">
+        <h2>{t("Seasons")}</h2>
+        {d.capped && <span className="muted">{t("the newest 12")}</span>}
+      </div>
+      <div className="table-wrap">
+        <table className="match-table">
+          <thead>
+            <tr>
+              <th>{t("Season")}</th>
+              <th>{t("Team")}</th>
+              <th>{t("Division")}</th>
+              <th className="num">{t("Place")}</th>
+              <th className="num">{t("W–L")}</th>
+              <th className="num">{t("Win %")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {d.seasons.map((s) => {
+              const rate = winRate(s.record);
+              const open = () => onTeam(s.teamId);
+              return (
+                <tr key={s.teamId} className={s.teamId === now ? undefined : "rgl-open"} tabIndex={s.teamId === now ? undefined : 0} onClick={s.teamId === now ? undefined : open} onKeyDown={s.teamId === now ? undefined : openOnKey(open)}>
+                  <td className="nowrap">{s.seasonName}</td>
+                  <td>{s.name}</td>
+                  <td className="nowrap muted">{s.division ? (s.tier ? `${s.division} ≈ ${t(s.tier)}` : s.division) : "–"}</td>
+                  <td className="num">{placing(s.finalRank) || "–"}</td>
+                  <td className="num">
+                    {s.record.won}–{s.record.lost}
+                  </td>
+                  <td className="num">{rate === null ? "–" : `${rate.toFixed(0)}%`}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="hint">{t("A forfeit is left out of the win rate.")}</p>
+    </section>
+  );
+}
+
+/** The wait for a team's other seasons, said as long as it is. */
+function HistoryWait() {
+  return (
+    <section className="panel e2-panel">
+      <Loading>{t("Reading the team's other seasons from RGL… a minute or two the first time for a team with many seasons. You can look at another page meanwhile: the read carries on and is kept.")}</Loading>
+    </section>
+  );
+}
+
+export function TeamView({ id, onTeam, onPlayer, onMatch, onCompare }: { id: number; onTeam: (id: number) => void; onPlayer: (s: string) => void; onMatch: (id: number) => void; onCompare: (a: number) => void }) {
   const q = useTeam(id);
+  const h = useTeamHistory(id);
+  const [tab, setTab] = useState<Tab>("overview");
   const v = q.data;
   if (q.error) return <ApiError error={q.error} />;
   if (q.isPending) return <Loading>{t("Loading the team and its matches…")}</Loading>;
   if (!v) return <p className="hint">{t("RGL has no such team.")}</p>;
   const won = v.matches.filter((m) => m.winner === v.id).length;
   const played = v.matches.filter((m) => m.winner !== null).length;
+  const d = h.data;
+  // Form from every season read once they are in, this season's till then.
+  const formOf = d ? { matches: d.matches, us: d.teamIds } : { matches: v.matches, us: [v.id] };
+  const tabs: [Tab, string][] = [
+    ["overview", t("Overview")],
+    ["matches", t("Matches")],
+    ["roster", t("Players")],
+    ["history", t("History")],
+  ];
   return (
     <>
       <div className="panel pp-head">
@@ -244,25 +534,74 @@ export function TeamView({ id, onTeam, onPlayer, onMatch }: { id: number; onTeam
               {v.tag && <span className="ts-tag">{v.tag}</span>}
               <BookmarkButton b={{ kind: "rgl_team", id: v.id, label: v.name, sub: [t("RGL"), v.seasonName, v.division].filter(Boolean).join(" · ") }} />
             </div>
+            {d && d.formerNames.length > 0 && (
+              <span className="muted rgl-aka">
+                {t("Also known as")} {d.formerNames.join(", ")}
+              </span>
+            )}
             <span className="muted">
               {[v.seasonName, v.division && (v.tier ? `${v.division} ≈ ${t(v.tier)}` : v.division), placing(v.finalRank), played > 0 && `${won}-${played - won}`].filter(Boolean).join(" · ")}
             </span>
           </div>
-          <OnRgl href={`https://rgl.gg/Public/Team?t=${v.id}`} />
+          <div className="rgl-head-links">
+            <button onClick={() => onCompare(v.id)} title={t("Set this team against another one")}>
+              {t("Compare")}
+            </button>
+            <OnRgl href={`https://rgl.gg/Public/Team?t=${v.id}`} />
+          </div>
         </div>
       </div>
-      <div className="rgl-cols">
-        <section className="panel e2-panel">
-          <div className="e2-panel-head">
-            <h2>{t("Results")}</h2>
+      {h.error ? <ApiError error={h.error} /> : <Cards v={v} h={h} />}
+      <div className="rgl-tabbed">
+        <nav className="pp-tabs" role="tablist">
+          {tabs.map(([k, label]) => (
+            <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "pp-tab on" : "pp-tab"} onClick={() => setTab(k)}>
+              {label}
+            </button>
+          ))}
+        </nav>
+        {tab === "overview" && (
+          <div className="rgl-cols">
+            <div className="e2-rail">
+              {h.error ? null : d ? (
+                <>
+                  <Trophies d={d} />
+                  <Opponents d={d} onTeam={onTeam} />
+                  <MapPool d={d} />
+                </>
+              ) : (
+                <HistoryWait />
+              )}
+            </div>
+            <div className="e2-rail">
+              <Form matches={formOf.matches} us={formOf.us} onMatch={onMatch} />
+            </div>
           </div>
-          {v.matches.length === 0 ? <p className="hint">{t("No matches yet.")}</p> : <Results team={v} onTeam={onTeam} onMatch={onMatch} />}
-        </section>
-        <div className="e2-rail">
-          <Roster team={v} onPlayer={onPlayer} />
-          <MapRecord team={v} />
-          {v.linked.length > 0 && <OtherSeasons ids={v.linked} onTeam={onTeam} />}
-        </div>
+        )}
+        {tab === "matches" && (
+          <div className="rgl-cols">
+            <section className="panel e2-panel">
+              <div className="e2-panel-head">
+                <h2>{t("Results")}</h2>
+              </div>
+              {v.matches.length === 0 ? <p className="hint">{t("No matches yet.")}</p> : <Results team={v} onTeam={onTeam} onMatch={onMatch} />}
+            </section>
+            <div className="e2-rail">
+              <MapRecord team={v} />
+            </div>
+          </div>
+        )}
+        {tab === "roster" && (
+          <div className="rgl-narrow">
+            <Roster team={v} onPlayer={onPlayer} />
+          </div>
+        )}
+        {tab === "history" && (
+          <div className="rgl-cols">
+            {h.error ? null : d ? <SeasonsTable d={d} now={v.id} onTeam={onTeam} /> : <HistoryWait />}
+            <div className="e2-rail">{v.linked.length > 0 && <OtherSeasons ids={v.linked} onTeam={onTeam} />}</div>
+          </div>
+        )}
       </div>
     </>
   );

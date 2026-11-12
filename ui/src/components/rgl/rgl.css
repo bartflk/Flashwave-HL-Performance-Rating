@@ -148,3 +148,57 @@
 /* Earlier meetings open their match. */
 .rgl-meetings li { cursor: pointer; border-radius: 6px; padding-left: 6px; padding-right: 6px; margin: 0 -6px; }
 .rgl-meetings li:hover, .rgl-meetings li:focus-visible { background: rgba(var(--accent-rgb), 0.1); }
+
+/* ---- A team's page: head links, headline cards, tabs, form, trophies, pool ---- */
+.rgl-head-links { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+.rgl-aka { font-size: var(--fs-small); }
+.rgl-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin: 16px 0 20px; }
+.rgl-card { display: flex; flex-direction: column; gap: 6px; padding: 16px 20px; min-width: 0; }
+.rgl-card-v { font: 700 var(--fs-num-m) var(--font-display); letter-spacing: var(--ls-heading); font-variant-numeric: tabular-nums; color: var(--tf2-cream); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rgl-card-v.wait { color: var(--faint); }
+.rgl-card-rate { font: 400 var(--fs-ui) var(--font-text); font-style: normal; color: var(--muted); }
+.rgl-card-sub { font-size: var(--fs-small); line-height: var(--lh-snug); }
+.rgl-tabbed .pp-tabs { margin-bottom: 20px; }
+.rgl-narrow { max-width: 720px; }
+.rgl-cols > .e2-rail { align-self: start; }
+
+/* The last ten results: W and L squares in the fixed won and lost colours. */
+.rgl-form { display: flex; flex-wrap: wrap; gap: 6px; }
+.rgl-sq { width: 32px; height: 32px; min-height: 0; padding: 0; border-radius: 6px; display: grid; place-items: center; font: 700 var(--fs-small) var(--font-display); box-shadow: none; }
+.rgl-sq.won { color: var(--ok); background: rgba(var(--ok-rgb), 0.16); border: 1px solid rgba(var(--ok-rgb), 0.6); }
+.rgl-sq.lost { color: var(--bad); background: rgba(var(--bad-rgb), 0.16); border: 1px solid rgba(var(--bad-rgb), 0.6); }
+.rgl-sq:hover:not(:disabled) { background: rgba(var(--accent-rgb), 0.1); }
+.rgl-formlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rgl-formlist li { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 4px; border-top: 1px solid var(--rule); font-size: var(--fs-ui); }
+.rgl-formlist li:first-child { border-top: 0; }
+.rgl-formlist-vs { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rgl-formlist-s { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+
+/* The trophy cabinet: a medal tile (the player pages') and the season beside it. */
+.rgl-trophies { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.rgl-trophies li { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.rgl-medal { flex: none; width: 40px; height: 40px; border-radius: 10px; font: 700 var(--fs-heading) var(--font-display); }
+.rgl-trophy-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rgl-trophy-text strong, .rgl-trophy-text .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rgl-trophy-text .muted { font-size: var(--fs-small); }
+
+/* The map pool: a row a map, columns that line up from the head to the last row. */
+.rgl-pool { list-style: none; margin: 0; padding: 0; }
+.rgl-pool li { display: grid; grid-template-columns: minmax(0, 1fr) 64px 72px 52px; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--rule); font-size: var(--fs-ui); }
+.rgl-pool li:first-child { border-top: 0; }
+.rgl-pool li > :nth-child(n + 2) { text-align: right; font-variant-numeric: tabular-nums; }
+.rgl-pool-head { font: 700 var(--fs-xs) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+.rgl-pool-map { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rgl-pool-n { font-size: var(--fs-small); }
+.rgl-cmp-maps li { grid-template-columns: minmax(0, 1fr) 84px 84px; }
+.rgl-cmp-maps .rgl-pool-head > :nth-child(n + 2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Compare: a metric column, then one column a team, equal widths. */
+.rgl-cmp { table-layout: fixed; }
+.rgl-cmp th:first-child, .rgl-cmp td.rgl-cmp-label { width: 22%; }
+.rgl-cmp-label { font: 700 var(--fs-xs) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+.rgl-cmp-team { display: inline-flex; align-items: center; gap: 10px; min-height: 0; padding: 0; font: 700 var(--fs-ui) var(--font-display); text-transform: none; letter-spacing: 0; }
+.rgl-cmp-team .teams-avatar { width: 28px; height: 28px; border-radius: 6px; flex: none; }
+.rgl-cmp-note { display: block; font-size: var(--fs-small); margin-top: 2px; }
+.rgl-cmp-lead { font-weight: 700; color: var(--text); }
+.rgl-cmp-cols { margin-top: 20px; }
