@@ -2086,7 +2086,7 @@ export const mockApi: Api = {
     if (!base) return null;
     const url = OVERVIEW_URLS[`../../../overviews/${base}.png`];
     if (!url) return null;
-    return { mapBase: base, ...mockPlacement(base)!, aspect: 1, image: url };
+    return { mapBase: base, ...mockPlacement(base)!, aspect: 1, image: url, source: "more.tf" };
   },
 
   mapsOverview: () =>

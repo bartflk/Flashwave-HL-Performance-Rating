@@ -239,7 +239,7 @@ export function Settings({
             </SettingsSection>
             <SettingsSection id="maps" icon="map" title={t("Maps")} keywords="maps images callouts overview"
               summary={t("Map images and callouts for the kill maps")} hideIntro
-              info={t("The default top-down images are more.tf's. Import your own for any map and line it up; callouts export as a file to share, and a .callouts.json dropped on the window imports.")}>
+              info={t("The default top-down images are more.tf's, demos.tf's and maps.tf2.lol's. Import your own for any map and line it up; callouts export as a file to share, and a .callouts.json dropped on the window imports.")}>
               <MapsPanel />
             </SettingsSection>
 

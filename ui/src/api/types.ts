@@ -2089,6 +2089,8 @@ export interface Overview {
   aspect: number;
   /** A data URL (or, in the browser mock, a plain URL). */
   image: string;
+  /** Whose image it is, for the line under the map. */
+  source: "yours" | "maps.tf2.lol" | "more.tf";
 }
 
 /** Where an overview image sits, in game units (Q31). */

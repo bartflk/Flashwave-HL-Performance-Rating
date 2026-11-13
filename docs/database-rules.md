@@ -99,7 +99,7 @@ To start the dev folder from real data, with no app running:
 (through the same merged view, so the hidden `-wal` is included) and writes a
 consistent copy. `dev-data/` is ignored by git.
 
-Copy the map images too: `overviews/*.png` from the installed app's folder
+Copy the map images too: `overviews/*` (PNG and WebP) from the installed app's folder
 into `dev-data/overviews/`. They sit beside the database, not in it, and
 without them every kill map falls back to the outline drawn from kills --
 which is what happened the first time, and looked like one map being
