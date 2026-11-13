@@ -39,6 +39,10 @@ pub struct Side {
     pub victims: Vec<(String, i64, f64)>,
     /// Kills on the other player of the pair.
     pub on_other: i64,
+    /// The scale this rating was put on: its class's (RA-3), so the working
+    /// shown is the one that gave the number.
+    pub scale_mean: Option<f64>,
+    pub scale_sd: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -57,7 +61,8 @@ pub struct H2hLog {
 pub struct HeadToHead {
     pub accounts: [u32; 2],
     pub logs: Vec<H2hLog>,
-    /// The rating scale: rating = 1 + (score - mean) / sd x 0.25.
+    /// The pooled rating scale: rating = 1 + (score - mean) / sd x 0.25, where
+    /// a side has none of its own.
     pub scale_mean: f64,
     pub scale_sd: f64,
 }
@@ -104,6 +109,7 @@ pub async fn head_to_head(db: &Db, w: &Weights, log_id: i64, a: u32, b: u32) -> 
             let line = class.and_then(|c| p.classes.iter().find(|l| l.class == c));
             let perf = perfs.iter().find(|x| x.account_id == acc);
             let r = perf.and_then(|x| rate(x, &baseline, w));
+            let own_scale = r.as_ref().map(|r| *scale.of_rating(r));
             let mut victims: Vec<(String, i64, f64)> =
                 p.vs.iter().filter(|v| v.kills > 0).map(|v| (v.other_class.as_str().to_string(), v.kills, w.victim(v.other_class))).collect();
             victims.sort_by_key(|v| std::cmp::Reverse(v.1));
@@ -112,7 +118,7 @@ pub async fn head_to_head(db: &Db, w: &Weights, log_id: i64, a: u32, b: u32) -> 
                 team: format!("{:?}", p.team),
                 class: class.map(|c| c.as_str().to_string()),
                 minutes: line.map_or(0.0, |l| l.time_s as f64 / 60.0),
-                rating: r.as_ref().map(|r| scale.rating(r.score)),
+                rating: r.as_ref().zip(own_scale).map(|(r, s)| s.rating(r.score)),
                 score: r.as_ref().map(|r| r.score),
                 parts: r.map(|r| r.parts).unwrap_or_default(),
                 impact: impact.get(&acc).copied(),
@@ -122,6 +128,8 @@ pub async fn head_to_head(db: &Db, w: &Weights, log_id: i64, a: u32, b: u32) -> 
                 dmg: line.map_or(p.stats.dmg, |l| l.dmg),
                 victims,
                 on_other: duel.get(&(acc, other)).copied().unwrap_or(0),
+                scale_mean: own_scale.map(|s| s.mean),
+                scale_sd: own_scale.map(|s| s.sd),
             })
         };
         let winner = match log.red_score.cmp(&log.blue_score) {
@@ -131,5 +139,5 @@ pub async fn head_to_head(db: &Db, w: &Weights, log_id: i64, a: u32, b: u32) -> 
         };
         logs.push(H2hLog { log_id: id, map: log.map.clone(), minutes: log.duration_s as f64 / 60.0, winner, sides: [side(a, b), side(b, a)] });
     }
-    Ok(HeadToHead { accounts: [a, b], logs, scale_mean: scale.mean, scale_sd: scale.sd })
+    Ok(HeadToHead { accounts: [a, b], logs, scale_mean: scale.pooled.mean, scale_sd: scale.pooled.sd })
 }

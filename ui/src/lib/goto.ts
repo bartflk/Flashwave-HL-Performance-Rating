@@ -5,7 +5,7 @@
  */
 const EVENT = "hl:goto";
 
-export type Destination = "rating" | "etf2l" | "settings";
+export type Destination = "rating" | "etf2l" | "rgl" | "settings";
 
 const SETTINGS_EVENT = "hl:settings-section";
 let pendingSettingsSection: string | null = null;
@@ -34,27 +34,42 @@ export function onOpenSettingsSection(open: (id: string) => void): () => void {
   return () => window.removeEventListener(SETTINGS_EVENT, handler);
 }
 
+/*
+ * What the ETF2L tab was last asked to open, for when it is not shown yet.
+ * One request at a time: a newer one replaces an older, so a request the tab
+ * never took cannot come back at a later mount, and the tab never has two
+ * kinds to choose between.
+ */
+type Asked = { kind: "player" | "team" | "season" | "tournament" | "league-match"; value: number | string };
+let pending: Asked | null = null;
+const ask = (kind: Asked["kind"], value: number | string) => {
+  pending = { kind, value };
+};
+function take<T extends number | string>(kind: Asked["kind"]): T | null {
+  if (pending?.kind !== kind) return null;
+  const v = pending.value as T;
+  pending = null;
+  return v;
+}
+
 const PLAYER_EVENT = "hl:player";
-let pendingPlayer: number | null = null;
 
 /** The ETF2L tab's Players, on one player's profile (Q40's "Open profile"). */
 export function openPlayer(accountId: number) {
-  pendingPlayer = accountId;
+  ask("player", accountId);
   goTo("etf2l");
   window.dispatchEvent(new CustomEvent<number>(PLAYER_EVENT, { detail: accountId }));
 }
 
 /** For the Players page: the player asked for before it was first shown. */
 export function takePendingPlayer(): number | null {
-  const p = pendingPlayer;
-  pendingPlayer = null;
-  return p;
+  return take<number>("player");
 }
 
 /** For the ETF2L tab: whether a player is waiting to be shown, so it opens
  *  on Players. Leaves the player for the Players page to take. */
 export function hasPendingPlayer(): boolean {
-  return pendingPlayer !== null;
+  return pending?.kind === "player";
 }
 
 /** For the ETF2L tab: a player was asked for, so show Players. Unlike
@@ -68,7 +83,7 @@ export function onPlayerAsked(show: () => void): () => void {
 /** For the Players page: a player asked for while it is mounted. */
 export function onOpenPlayer(open: (accountId: number) => void): () => void {
   const handler = (e: Event) => {
-    pendingPlayer = null;
+    pending = null;
     open((e as CustomEvent<number>).detail);
   };
   window.addEventListener(PLAYER_EVENT, handler);
@@ -76,26 +91,23 @@ export function onOpenPlayer(open: (accountId: number) => void): () => void {
 }
 
 const TEAM_EVENT = "hl:team";
-let pendingTeam: number | null = null;
 
 /** The ETF2L tab, on one team's page (from a match header). */
 export function openTeam(teamId: number) {
-  pendingTeam = teamId;
+  ask("team", teamId);
   goTo("etf2l");
   window.dispatchEvent(new CustomEvent<number>(TEAM_EVENT, { detail: teamId }));
 }
 
 /** For the ETF2L tab: the team asked for before it was first shown. */
 export function takePendingTeam(): number | null {
-  const id = pendingTeam;
-  pendingTeam = null;
-  return id;
+  return take<number>("team");
 }
 
 /** For the ETF2L tab: a team asked for while it is mounted. */
 export function onOpenTeam(open: (teamId: number) => void): () => void {
   const handler = (e: Event) => {
-    pendingTeam = null;
+    pending = null;
     open((e as CustomEvent<number>).detail);
   };
   window.addEventListener(TEAM_EVENT, handler);
@@ -103,54 +115,100 @@ export function onOpenTeam(open: (teamId: number) => void): () => void {
 }
 
 const SEASON_EVENT = "hl:season";
-let pendingSeason: number | null = null;
 
 /** The ETF2L tab, on one season's page (Q60: from a bookmark). */
 export function openSeason(season: number) {
-  pendingSeason = season;
+  ask("season", season);
   goTo("etf2l");
   window.dispatchEvent(new CustomEvent<number>(SEASON_EVENT, { detail: season }));
 }
 
 /** For the ETF2L tab: the season asked for before it was first shown. */
 export function takePendingSeason(): number | null {
-  const s = pendingSeason;
-  pendingSeason = null;
-  return s;
+  return take<number>("season");
 }
 
 /** For the ETF2L tab: a season asked for while it is mounted. */
 export function onOpenSeason(open: (season: number) => void): () => void {
   const handler = (e: Event) => {
-    pendingSeason = null;
+    pending = null;
     open((e as CustomEvent<number>).detail);
   };
   window.addEventListener(SEASON_EVENT, handler);
   return () => window.removeEventListener(SEASON_EVENT, handler);
 }
 
+const RGL_EVENT = "hl:rgl";
+export type RglPlace = { kind: "team" | "season"; id: number };
+let pendingRgl: RglPlace | null = null;
+
+/** The RGL tab, on one team's or season's page (from a bookmark). */
+export function openRgl(to: RglPlace) {
+  pendingRgl = to;
+  goTo("rgl");
+  window.dispatchEvent(new CustomEvent<RglPlace>(RGL_EVENT, { detail: to }));
+}
+
+/** For the RGL tab: the page asked for before it was first shown. */
+export function takePendingRgl(): RglPlace | null {
+  const p = pendingRgl;
+  pendingRgl = null;
+  return p;
+}
+
+/** For the RGL tab: a page asked for while it is mounted. */
+export function onOpenRgl(open: (to: RglPlace) => void): () => void {
+  const handler = (e: Event) => {
+    pendingRgl = null;
+    open((e as CustomEvent<RglPlace>).detail);
+  };
+  window.addEventListener(RGL_EVENT, handler);
+  return () => window.removeEventListener(RGL_EVENT, handler);
+}
+
+const TOURNAMENT_EVENT = "hl:tournament";
+
+/** The ETF2L tab, on one tournament's page (from a player's tournaments). */
+export function openTournament(name: string) {
+  ask("tournament", name);
+  goTo("etf2l");
+  window.dispatchEvent(new CustomEvent<string>(TOURNAMENT_EVENT, { detail: name }));
+}
+
+/** For the ETF2L tab: the tournament asked for before it was first shown. */
+export function takePendingTournament(): string | null {
+  return take<string>("tournament");
+}
+
+/** For the ETF2L tab: a tournament asked for while it is mounted. */
+export function onOpenTournament(open: (name: string) => void): () => void {
+  const handler = (e: Event) => {
+    pending = null;
+    open((e as CustomEvent<string>).detail);
+  };
+  window.addEventListener(TOURNAMENT_EVENT, handler);
+  return () => window.removeEventListener(TOURNAMENT_EVENT, handler);
+}
+
 const LEAGUE_MATCH_EVENT = "hl:league-match";
-let pendingLeagueMatch: number | null = null;
 
 /** The ETF2L tab, on one official's match page, with its logs (Flashy: a
  *  player's or team's latest officials could not be opened). */
 export function openLeagueMatch(matchId: number) {
-  pendingLeagueMatch = matchId;
+  ask("league-match", matchId);
   goTo("etf2l");
   window.dispatchEvent(new CustomEvent<number>(LEAGUE_MATCH_EVENT, { detail: matchId }));
 }
 
 /** For the ETF2L tab: the official asked for before it was first shown. */
 export function takePendingLeagueMatch(): number | null {
-  const id = pendingLeagueMatch;
-  pendingLeagueMatch = null;
-  return id;
+  return take<number>("league-match");
 }
 
 /** For the ETF2L tab: an official asked for while it is mounted. */
 export function onOpenLeagueMatch(open: (matchId: number) => void): () => void {
   const handler = (e: Event) => {
-    pendingLeagueMatch = null;
+    pending = null;
     open((e as CustomEvent<number>).detail);
   };
   window.addEventListener(LEAGUE_MATCH_EVENT, handler);

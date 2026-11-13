@@ -43,12 +43,18 @@ function write(id: string, s: SortState) {
   }
 }
 
+/** Nothing to sort by: missing, empty, or not a number. One definition for
+ *  `compare` and for the "blanks last" rule in `useSort`, which disagreed
+ *  about NaN and sent it to the top of a descending table. */
+export function blank(v: SortValue): boolean {
+  return v === null || v === undefined || (typeof v === "number" && Number.isNaN(v)) || v === "";
+}
+
 export function compare(x: SortValue, y: SortValue): number {
-  const blank = (v: SortValue) => v === null || v === undefined || (typeof v === "number" && Number.isNaN(v)) || v === "";
   if (blank(x) && blank(y)) return 0;
   if (blank(x)) return 1;
   if (blank(y)) return -1;
-  if (typeof x === "number" && typeof y === "number") return x - y;
+  if (typeof x === "number" && typeof y === "number") return x === y ? 0 : x < y ? -1 : 1; // not x - y: two infinities give NaN
   return String(x).localeCompare(String(y), undefined, { numeric: true, sensitivity: "base" });
 }
 
@@ -71,9 +77,7 @@ export function useSort<R>(id: string, rows: R[], columns: Record<string, (r: R)
       const x = get(a);
       const y = get(b);
       const c = compare(x, y);
-      const blankX = x === null || x === undefined || x === "";
-      const blankY = y === null || y === undefined || y === "";
-      return blankX || blankY ? c : c * sign;
+      return blank(x) || blank(y) ? c : c * sign;
     });
   }, [rows, sort]);
   const toggle = (key: string) => {
@@ -82,7 +86,7 @@ export function useSort<R>(id: string, rows: R[], columns: Record<string, (r: R)
       if (s?.key === key) next = { key, dir: s.dir === "asc" ? "desc" : "asc" };
       else {
         // Numbers start biggest first, text A to Z.
-        const first = rows.map((r) => cols.current[key]?.(r)).find((v) => v !== null && v !== undefined && v !== "");
+        const first = rows.map((r) => cols.current[key]?.(r)).find((v) => !blank(v));
         next = { key, dir: typeof first === "number" ? "desc" : "asc" };
       }
       write(id, next);

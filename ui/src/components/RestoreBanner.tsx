@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import { type RestoreOffer } from "../api/types";
 import { formatDate } from "../lib/format";
 import { t, tx } from "../lib/i18n";
+import { toastError } from "../lib/toast";
 
 /**
  * Something is wrong with the database, and it is worth saying so before the
@@ -73,7 +74,7 @@ export function RestoreBanner({ offer, onSettled }: { offer: RestoreOffer; onSet
         {offer.backup && (
           <p className="restore-path">
             <code>{offer.backup.path}</code>
-            <button className="linkish" onClick={() => void api.revealPath(offer.backup!.path)}>{t("Show me")}</button>
+            <button className="linkish" onClick={() => void api.revealPath(offer.backup!.path).catch(toastError)}>{t("Show me")}</button>
           </p>
         )}
 
@@ -81,7 +82,7 @@ export function RestoreBanner({ offer, onSettled }: { offer: RestoreOffer; onSet
           <p className="restore-path">
             <span className="muted">{t("The old one:")}</span>
             <code title={why}>{movedTo}</code>
-            <button className="linkish" onClick={() => void api.revealPath(movedTo)}>{t("Show me")}</button>
+            <button className="linkish" onClick={() => void api.revealPath(movedTo).catch(toastError)}>{t("Show me")}</button>
           </p>
         )}
 

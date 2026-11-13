@@ -12,7 +12,8 @@
 //!
 //! Only a player's **main class** is rated. `classkills` is recorded per
 //! player, not per class played, so a flexer's kills cannot be split across
-//! classes honestly; rating only the main class keeps every number attributable.
+//! classes honestly. Deaths and damage are the main class's, over its minutes;
+//! every whole-player total is read over the whole game (see `extract`).
 
 use crate::impact::Impact;
 use crate::weights::Weights;
@@ -40,7 +41,12 @@ use std::collections::HashMap;
 /// v13: deaths on payload and attack/defend maps weighed apart; a Sniper's
 /// there count a third of a KOTH death (measured: under a kill each, a KOTH
 /// death about 1.4).
-pub const MODEL_VERSION: &str = "v13";
+/// v14: the audit's rating fixes (RA-1 to RA-15): a player who switched class
+/// is rated on whole-game numbers over the whole game; the Medic's model
+/// carries less round impact and less dying; every class (and every game with
+/// or without a server log) is put on the 1.00 scale by its own mean and
+/// spread; Season MVP counts the stages once. Stored ratings are re-rated.
+pub const MODEL_VERSION: &str = "v14";
 
 /// How far one standard deviation moves the rating.
 ///
@@ -68,6 +74,78 @@ impl Rating {
     pub fn scaled(mut self, scale: &Scale) -> Rating {
         self.score = scale.rating(self.score);
         self
+    }
+
+    /// The same, on the scale of this rating's own class and kind of log.
+    pub fn scaled_for(self, scales: &Scales) -> Rating {
+        let scale = *scales.of_rating(&self);
+        self.scaled(&scale)
+    }
+
+    /// Whether the server log's round impact is among the parts: a game with
+    /// it is rated on a different mix, and spreads differently.
+    pub fn has_round_impact(&self) -> bool {
+        self.parts.iter().any(|p| p.component == Component::RoundImpact)
+    }
+}
+
+/// A scale per class, and per kind of game, over the pooled one (RA-3).
+///
+/// One mean and spread for all nine classes favoured the classes whose models
+/// have few correlated parts (a Sniper's percentiles spread wider than a
+/// Medic's), and a game with no server log, rated on half a model, spreads
+/// wider still. Each class's own scale puts a typical game of every class at
+/// 1.00 and a deviation at the same distance; a class with too few games to
+/// measure borrows the next wider scale.
+#[derive(Debug, Clone, Default)]
+pub struct Scales {
+    pub pooled: Scale,
+    /// `(class, with a server log)`; `None` for the class's games of both kinds.
+    by: HashMap<(TfClass, Option<bool>), Scale>,
+}
+
+/// Fewest games a class's scale is measured from. Below it the next wider
+/// scale is used: a spread drawn from a few dozen games moves too far on one.
+pub const MIN_SCALE_POOL: usize = 200;
+
+impl Scales {
+    /// Measure every scale from `(class, has a server log, score)`; `None`
+    /// when even the pooled scale cannot be measured.
+    pub fn of(samples: &[(TfClass, bool, f64)]) -> Option<Scales> {
+        let all: Vec<f64> = samples.iter().map(|s| s.2).collect();
+        let pooled = Scale::of(&all)?;
+        let mut groups: HashMap<(TfClass, Option<bool>), Vec<f64>> = HashMap::new();
+        for &(class, log, score) in samples {
+            groups.entry((class, None)).or_default().push(score);
+            groups.entry((class, Some(log))).or_default().push(score);
+        }
+        let by = groups
+            .into_iter()
+            .filter(|(_, v)| v.len() >= MIN_SCALE_POOL)
+            .filter_map(|(k, v)| Some((k, Scale::of(&v)?)))
+            .collect();
+        Some(Scales { pooled, by })
+    }
+
+    /// The scale for a game of `class`, with or without a server log.
+    pub fn for_game(&self, class: TfClass, with_log: bool) -> &Scale {
+        self.by.get(&(class, Some(with_log))).or_else(|| self.by.get(&(class, None))).unwrap_or(&self.pooled)
+    }
+
+    pub fn of_rating(&self, r: &Rating) -> &Scale {
+        self.for_game(r.class, r.has_round_impact())
+    }
+
+    /// The measured scales for storing: `(class, log, mean, sd)`, `log` being
+    /// `None` for the class's games of both kinds.
+    pub fn stored(&self) -> Vec<(TfClass, Option<bool>, f64, f64)> {
+        let mut v: Vec<_> = self.by.iter().map(|(&(c, l), s)| (c, l, s.mean, s.sd)).collect();
+        v.sort_by_key(|(c, l, _, _)| (c.as_str(), *l));
+        v
+    }
+
+    pub fn from_stored(pooled: Scale, rows: impl IntoIterator<Item = (TfClass, Option<bool>, f64, f64)>) -> Scales {
+        Scales { pooled, by: rows.into_iter().map(|(c, l, mean, sd)| ((c, l), Scale { mean, sd })).collect() }
     }
 }
 
@@ -330,40 +408,50 @@ pub fn extract(
     if minutes < w.general.min_minutes {
         return None;
     }
+    // Two clocks (RA-1). What logs.tf and the server log count per class --
+    // deaths and damage -- is read over the main class's minutes. Everything
+    // else is a whole-player total (kills, assists, heals, ubers, caps, the
+    // fights pass, round impact) and is read over the whole game, so twelve
+    // minutes of Spy and ten of Sniper are not rated as twenty-two minutes of
+    // kills in twelve.
     let per10 = 10.0 / minutes;
+    let total_minutes = (player.total_time() as f64 / 60.0).max(minutes);
+    let all10 = 10.0 / total_minutes;
     let s = &player.stats;
     let vs = |c: TfClass| player.vs.iter().find(|v| v.other_class == c);
 
+    // Headshots are the whole player's, so they are shared over all their kills.
+    let kills_all: i64 = player.classes.iter().map(|c| c.kills).sum();
     let mut values = Vec::new();
     for (component, _) in w.model_for(class) {
         let v = match component {
             Component::ImpactKills => Some(
                 impact.map(|i| i.kills).unwrap_or_else(|| {
                     player.vs.iter().map(|v| v.kills as f64 * w.victim(v.other_class)).sum::<f64>()
-                }) * per10,
+                }) * all10,
             ),
             Component::ImpactAssists => Some(
                 impact.map(|i| i.assists).unwrap_or_else(|| {
                     player.vs.iter().map(|v| v.assists as f64 * w.victim(v.other_class)).sum::<f64>()
                 }) * w.general.assist_share
-                    * per10,
+                    * all10,
             ),
-            Component::MedicPicks => Some(vs(TfClass::Medic).map_or(0, |v| v.kills) as f64 * per10),
+            Component::MedicPicks => Some(vs(TfClass::Medic).map_or(0, |v| v.kills) as f64 * all10),
             Component::Duel => {
                 let v = vs(TfClass::Sniper);
                 let diff = v.map_or(0, |v| v.kills) - v.map_or(0, |v| v.deaths);
-                Some(diff as f64 * per10)
+                Some(diff as f64 * all10)
             }
             // Undefined without kills, and meaningless where the log did not
             // record headshots: skipped rather than scored as zero.
             Component::HeadshotShare => {
-                (flags.hs && line.kills > 0).then(|| s.headshots as f64 / line.kills as f64 * 100.0)
+                (flags.hs && kills_all > 0).then(|| s.headshots as f64 / kills_all as f64 * 100.0)
             }
-            Component::Backstabs => flags.bs.then_some(s.backstabs as f64 * per10),
-            Component::Heal => Some(s.heal as f64 / minutes),
-            Component::Ubers => Some(s.ubers as f64 * per10),
-            Component::Drops => Some(s.drops as f64 * per10),
-            Component::Caps => flags.cp.then_some(s.cpc as f64 * per10),
+            Component::Backstabs => flags.bs.then_some(s.backstabs as f64 * all10),
+            Component::Heal => Some(s.heal as f64 / total_minutes),
+            Component::Ubers => Some(s.ubers as f64 * all10),
+            Component::Drops => Some(s.drops as f64 * all10),
+            Component::Caps => flags.cp.then_some(s.cpc as f64 * all10),
             // v13: one count, read under one name or the other by the map's
             // mode, so a class can weigh payload deaths apart from KOTH ones.
             Component::Deaths => (!flags.attack_defend).then_some(line.deaths as f64 * per10),
@@ -372,7 +460,7 @@ pub fn extract(
             // Both need the fights pass, so a log without a raw log skips
             // them and the other weights take up the slack.
             Component::Opening => {
-                impact.and_then(|i| i.fights).map(|f| (f64::from(f.opening_kills) - f64::from(f.opening_deaths)) * per10)
+                impact.and_then(|i| i.fights).map(|f| (f64::from(f.opening_kills) - f64::from(f.opening_deaths)) * all10)
             }
             Component::Untraded => impact
                 .and_then(|i| i.fights)
@@ -380,9 +468,9 @@ pub fn extract(
                 .map(|f| (1.0 - f64::from(f.traded_kills) / f64::from(f.kills)) * 100.0),
             Component::UntradedDeaths => impact
                 .and_then(|i| i.fights)
-                .map(|f| f64::from(f.deaths.saturating_sub(f.traded_deaths)) * per10),
-            Component::FlankDeaths => impact.and_then(|i| i.fights).map(|f| f64::from(f.flank_deaths) * per10),
-            Component::StationaryDeaths => impact.and_then(|i| i.fights).map(|f| f64::from(f.stationary_deaths) * per10),
+                .map(|f| f64::from(f.deaths.saturating_sub(f.traded_deaths)) * all10),
+            Component::FlankDeaths => impact.and_then(|i| i.fights).map(|f| f64::from(f.flank_deaths) * all10),
+            Component::StationaryDeaths => impact.and_then(|i| i.fights).map(|f| f64::from(f.stationary_deaths) * all10),
             Component::FightKast => impact
                 .and_then(|i| i.fights)
                 .filter(|f| f.fights_present > 0)
@@ -395,13 +483,13 @@ pub fn extract(
             Component::SituationKills => Some(
                 impact.map(|i| i.kills_situation).unwrap_or_else(|| {
                     player.vs.iter().map(|v| v.kills as f64 * w.victim(v.other_class)).sum::<f64>()
-                }) * per10,
+                }) * all10,
             ),
             // Measured from the raw log or not at all: without one there is
             // no state to value a kill in, so the component is missing and
             // the other weights take up the slack.
             Component::FightSwing => {
-                impact.and_then(|i| i.swing).map(|s| s * 100.0 * per10)
+                impact.and_then(|i| i.swing).map(|s| s * 100.0 * all10)
             }
             // Both only exist where the raw log was read, and only mean
             // anything on a map with points, like `Caps` itself.
@@ -409,12 +497,12 @@ pub fn extract(
                 .cp
                 .then(|| impact.and_then(|i| i.fights))
                 .flatten()
-                .map(|f| f64::from(f.caps_contested) * per10),
+                .map(|f| f64::from(f.caps_contested) * all10),
             Component::CapsMatesDead => flags
                 .cp
                 .then(|| impact.and_then(|i| i.fights))
                 .flatten()
-                .map(|f| f64::from(f.caps_mates_dead) * per10),
+                .map(|f| f64::from(f.caps_mates_dead) * all10),
             // KOTH and 5CP only. On payload and attack/defend a capture
             // moves the attackers' spawn up, so the wait it adds to their
             // dead is the mode working, not a cost (Flashy): left out, like
@@ -422,11 +510,11 @@ pub fn extract(
             Component::CapsSpawnDelay => (flags.cp && !flags.attack_defend)
                 .then(|| impact.and_then(|i| i.fights))
                 .flatten()
-                .map(|f| f64::from(f.caps_spawn_delay) * per10),
-            Component::FightSwingShared => impact.and_then(|i| i.swing_shared).map(|s| s * 100.0 * per10),
+                .map(|f| f64::from(f.caps_spawn_delay) * all10),
+            Component::FightSwingShared => impact.and_then(|i| i.swing_shared).map(|s| s * 100.0 * all10),
             // Needs the server log: without one the other half of the model
             // carries the rating, as for every server-log part.
-            Component::RoundImpact => impact.and_then(|i| i.round).map(|r| r * per10),
+            Component::RoundImpact => impact.and_then(|i| i.round).map(|r| r * all10),
         };
         if let Some(v) = v {
             values.push((*component, v));
@@ -610,10 +698,21 @@ pub fn rate(perf: &Performance, baseline: &Baseline, w: &Weights) -> Option<Rati
     let weights: HashMap<Component, f64> = w.model_for(perf.class).iter().copied().collect();
 
     let mut parts = Vec::new();
+    // The unrounded percentile of each part, for the score: only what is
+    // shown is rounded (RA-7). Rounded weights summed to 0.99 for a Scout or
+    // a Spy and took a hundredth off every game.
+    let mut exact = Vec::new();
     for &(c, raw) in &perf.values {
+        // A value that is not a number has no place in a pool and none in a
+        // rating: left to `percentile` it would count as the lowest of all,
+        // which for a lower-is-better stat is the best.
+        if !raw.is_finite() {
+            continue;
+        }
         let Some(&weight) = weights.get(&c).filter(|w| **w > 0.0) else { continue };
         let Some(p) = baseline.percentile(perf.class, c, perf.map.as_deref(), raw) else { continue };
         let p = if c.higher_is_better() { p } else { 1.0 - p };
+        exact.push(p * 100.0);
         parts.push(Part {
             component: c,
             label: c.label().to_string(),
@@ -628,10 +727,10 @@ pub fn rate(perf: &Performance, baseline: &Baseline, w: &Weights) -> Option<Rati
     if total <= 0.0 {
         return None;
     }
+    let score = parts.iter().zip(&exact).map(|(p, x)| x * p.weight / total).sum::<f64>();
     for p in &mut parts {
         p.weight = round2(p.weight / total);
     }
-    let score = parts.iter().map(|p| p.percentile * p.weight).sum::<f64>();
 
     Some(Rating {
         class: perf.class,
@@ -738,5 +837,105 @@ mod tests {
         let r = rate(&perf(0, 10.0), &b, &w).unwrap();
         let total: f64 = r.parts.iter().map(|p| p.weight).sum();
         assert!((total - 1.0).abs() < 0.02, "weights renormalise to 1, got {total}");
+    }
+
+    use hl_core::matchdata::{ClassLine, PlayerStats, Team, VsLine};
+    use hl_core::SteamId;
+
+    fn class_line(class: TfClass, secs: i64, deaths: i64) -> ClassLine {
+        ClassLine { class, time_s: secs, kills: 0, assists: 0, deaths, dmg: 0, shots: 0, hits: 0 }
+    }
+
+    fn player(classes: Vec<ClassLine>) -> PlayerLine {
+        PlayerLine {
+            id: SteamId::from_account_id(7),
+            name: None,
+            team: Team::Red,
+            stats: PlayerStats::default(),
+            classes,
+            vs: vec![VsLine { other_class: TfClass::Scout, kills: 11, deaths: 0, assists: 0 }],
+        }
+    }
+
+    fn value_of(p: &Performance, c: Component) -> f64 {
+        p.values.iter().find(|(x, _)| *x == c).map(|(_, v)| *v).unwrap()
+    }
+
+    #[test]
+    fn a_class_switchers_totals_are_read_over_the_whole_game() {
+        // RA-1: 12 minutes of Soldier and 10 of Sniper, 11 Scout kills in all.
+        // The kills are the whole game's, so they are per 22 minutes, not per
+        // the Soldier's 12 (which rated them 1.8 times too high).
+        let w = Weights::default_weights();
+        let flags = LogFlags::default();
+        let switcher = player(vec![class_line(TfClass::Soldier, 12 * 60, 6), class_line(TfClass::Sniper, 10 * 60, 3)]);
+        let perf = extract(&switcher, &flags, &w, None, None).unwrap();
+        assert_eq!(perf.class, TfClass::Soldier);
+        let per10 = 11.0 * w.victim(TfClass::Scout) * 10.0 / 22.0;
+        assert!((value_of(&perf, Component::ImpactKills) - per10).abs() < 1e-9);
+        // Deaths are the class's own, over the class's minutes.
+        assert!((value_of(&perf, Component::Deaths) - 6.0 * 10.0 / 12.0).abs() < 1e-9);
+        // A player who stayed on the Soldier for all 22 minutes is rated alike.
+        let stayer = extract(&player(vec![class_line(TfClass::Soldier, 22 * 60, 6)]), &flags, &w, None, None).unwrap();
+        assert!((value_of(&stayer, Component::ImpactKills) - per10).abs() < 1e-9);
+    }
+
+    #[test]
+    fn scores_come_from_unrounded_weights() {
+        // RA-7: a Scout's displayed weights round to 0.99, which took a
+        // hundredth off every Scout game. Every part at the top of its pool
+        // must score exactly 100.
+        let w = Weights::default_weights();
+        let model: Vec<(Component, f64)> =
+            w.model_for(TfClass::Scout).iter().copied().filter(|(c, _)| *c != Component::DeathsAttackDefend).collect();
+        let at = |x: f64| model.iter().map(|(c, _)| (*c, x)).collect::<Vec<_>>();
+        let pool: Vec<Performance> = (0..4).map(|i| Performance { class: TfClass::Scout, values: at(10.0 + i as f64), ..perf(i, 0.0) }).collect();
+        let b = Baseline::build(&pool, None);
+        // Better than the whole pool on every part: high where more is better, low where less is.
+        let values = model.iter().map(|(c, _)| (*c, if c.higher_is_better() { 1e6 } else { -1e6 })).collect();
+        let top = Performance { class: TfClass::Scout, values, ..perf(99, 0.0) };
+        let r = rate(&top, &b, &w).unwrap();
+        assert_eq!(r.score, 100.0);
+        let shown: f64 = r.parts.iter().map(|p| p.weight).sum();
+        assert!(shown < 1.0, "the displayed weights still round ({shown}); the score no longer depends on it");
+    }
+
+    #[test]
+    fn every_class_is_scaled_by_its_own_spread() {
+        // RA-3: Snipers' scores spread over 0..100, Medics' over 40..60. A
+        // Sniper at 90 and a Medic at 55 are each one deviation up in their
+        // own class and rate alike; on one shared scale the Medic never
+        // leaves the middle.
+        let mut samples = Vec::new();
+        for i in 0..MIN_SCALE_POOL {
+            let x = i as f64 / (MIN_SCALE_POOL - 1) as f64;
+            samples.push((TfClass::Sniper, true, x * 100.0));
+            samples.push((TfClass::Medic, true, 40.0 + x * 20.0));
+        }
+        let s = Scales::of(&samples).unwrap();
+        let sniper = s.for_game(TfClass::Sniper, true);
+        let medic = s.for_game(TfClass::Medic, true);
+        assert!(sniper.sd > 2.0 * medic.sd);
+        let (a, b) = (sniper.rating(50.0 + sniper.sd), medic.rating(50.0 + medic.sd));
+        assert!((a - b).abs() < 0.011, "{a} vs {b}");
+        assert!(s.pooled.rating(55.0) < 1.1, "the shared scale leaves a strong Medic game near average");
+        // A class with too few games borrows the pooled scale.
+        assert_eq!(s.for_game(TfClass::Heavy, true), &s.pooled);
+        // And a game without a server log has no scale of its own here, so it
+        // takes the class's.
+        assert_eq!(s.for_game(TfClass::Sniper, false).sd, s.for_game(TfClass::Sniper, true).sd);
+    }
+
+    #[test]
+    fn stored_scales_come_back_as_they_went_in() {
+        let mut samples = Vec::new();
+        for i in 0..MIN_SCALE_POOL {
+            samples.push((TfClass::Pyro, i % 2 == 0, i as f64 % 90.0));
+        }
+        let s = Scales::of(&samples).unwrap();
+        let back = Scales::from_stored(s.pooled, s.stored());
+        for log in [true, false] {
+            assert_eq!(back.for_game(TfClass::Pyro, log), s.for_game(TfClass::Pyro, log));
+        }
     }
 }

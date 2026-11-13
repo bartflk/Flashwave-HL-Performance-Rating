@@ -94,7 +94,7 @@ pub async fn rate_new(db: &Db, w: &Weights, tried: &mut std::collections::HashSe
         let rows: Vec<(i64, u32, &str, f64, f64, String)> = perfs
             .iter()
             .filter_map(|p| {
-                let r = hl_rating::model::rate(p, &baseline, w)?.scaled(&scale);
+                let r = hl_rating::model::rate(p, &baseline, w)?.scaled_for(&scale);
                 Some((log_id, p.account_id, p.class.as_str(), r.score, r.minutes, hl_rating::guide::group_scores_json(&r.parts)))
             })
             .collect();

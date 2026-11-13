@@ -290,7 +290,7 @@ pub async fn search_match_logs(db: &Db, sources: &Sources, match_id: i64, time: 
 /// would count the map twice. So per map at most one log a half -- two on
 /// a stopwatch map, one on king of the hill -- the server's own uploads
 /// first.
-fn matching_logs(logs: &[(i64, String, String, i64, i64)], time: i64) -> Vec<(i64, String, String, i64, i64)> {
+pub(crate) fn matching_logs(logs: &[(i64, String, String, i64, i64)], time: i64) -> Vec<(i64, String, String, i64, i64)> {
     let near: Vec<&(i64, String, String, i64, i64)> =
         logs.iter().filter(|(_, _, map, date, players)| (16..=22).contains(players) && played_map(map) && (date - time).abs() <= SEARCH_WINDOW_S).collect();
     let auto = |title: &str| {

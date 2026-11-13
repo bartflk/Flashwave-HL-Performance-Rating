@@ -63,7 +63,7 @@ function valid(p: unknown): p is Period {
 export function setPeriod(p: Period) {
   // Two dates the wrong way round select nothing at all, which looks like
   // the app is broken rather than like a typo. Read them as a range.
-  if (p.kind === "custom" && time(p.from) && time(p.to) && p.from > p.to) {
+  if (p?.kind === "custom" && time(p.from) && time(p.to) && p.from > p.to) {
     p = { ...p, from: p.to, to: p.from };
   }
   if (!valid(p)) p = { kind: "all" };
@@ -74,6 +74,21 @@ export function setPeriod(p: Period) {
     // As above.
   }
   listeners.forEach((l) => l());
+}
+
+/**
+ * A picked season keeps the key it was picked by, and its dates follow the
+ * seasons as they are now: the live season's end moves with every official,
+ * and a stored copy would stop the list at the old end. Called whenever the
+ * season list loads; a season no longer in the list keeps what it had.
+ */
+export function refreshSeason(list: ReadonlyArray<{ key: string; name: string; from: number; to: number }>) {
+  if (current.kind !== "season") return;
+  const key = current.key;
+  const s = list.find((x) => x.key === key);
+  if (s && (s.from !== current.from || s.to !== current.to || s.name !== current.name)) {
+    setPeriod({ kind: "season", key: s.key, name: s.name, from: s.from, to: s.to });
+  }
 }
 
 /** The period shared by the match list and the profile. */

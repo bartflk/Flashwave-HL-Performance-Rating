@@ -16,7 +16,7 @@ import {
   type PlayerProfile,
   type Profile,
 } from "../../api/types";
-import { Achievements, DivisionBadge, PlayerHeader, RecentOfficials, RosterChip, SeasonsTable, TeamAvatar, TeamStays, TrendsCareer } from "../players/PlayerProfile";
+import { Achievements, DivisionBadge, PlayerHeader, RecentOfficials, RosterChip, SeasonsTable, TeamAvatar, TournamentsTable, TeamStays, TrendsCareer } from "../players/PlayerProfile";
 import { Etf2lMark } from "../Etf2lMark";
 import { LogsTfCareer } from "../players/LogsTfCareer";
 import { openLeagueMatch } from "../../lib/goto";
@@ -646,6 +646,10 @@ function Career({ me }: { me: PlayerProfile }) {
         <section className="panel">
           <h2>{t("Teams by season")}</h2>
           <SeasonsTable p={me} />
+        </section>
+        <section className="panel">
+          <h2>{t("Tournaments")}</h2>
+          <TournamentsTable p={me} />
         </section>
         <section className="panel">
           <h2>{t("ETF2L officials on trends.tf")}</h2>

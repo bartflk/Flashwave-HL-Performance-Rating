@@ -180,9 +180,18 @@ pub(crate) fn parse_comments(page: &str) -> Vec<RecruitComment> {
     for item in list.split("<li ").skip(1) {
         let raw_cite = between(item, "<cite>", "</cite>").unwrap_or("");
         let cite = text(raw_cite);
-        let (author, teams) = match cite.split_once(':') {
-            Some((a, t)) => (a.trim().to_string(), t.trim().to_string()),
-            None => (cite.clone(), String::new()),
+        // "Name: Team, Team". The name is the cite's first link when it has
+        // one, so a name with a colon in it (":pregnant_man:" is a real
+        // team and player name) is not cut at its own colon.
+        let (author, teams) = match raw_cite.find("</a>") {
+            Some(i) if raw_cite.trim_start().starts_with("<a") => {
+                let (name, rest) = raw_cite.split_at(i + "</a>".len());
+                (text(name), text(rest).trim_start_matches(':').trim().to_string())
+            }
+            _ => match cite.split_once(':') {
+                Some((a, t)) => (a.trim().to_string(), t.trim().to_string()),
+                None => (cite.clone(), String::new()),
+            },
         };
         let meta_end = item.find("class=\"postmeta\"").and_then(|i| item[i..].find("</p>").map(|j| i + j + "</p>".len()));
         let body = meta_end.map_or("", |i| &item[i..]);
@@ -261,10 +270,41 @@ pub fn parse_detail(page: &str, link: &str) -> Option<RecruitDetail> {
 }
 
 /// One post's page, read when it is opened. `id` is the number in its link.
+///
+/// Kept in memory for ten minutes (a post has comments, but not by the
+/// minute), and a failed read is not repeated for a quarter of an hour:
+/// reopening a post, or hovering through a list of them, does not ask
+/// ETF2L each time.
 pub async fn detail(sources: &Sources, id: i64) -> Result<Option<RecruitDetail>> {
+    static HELD: std::sync::Mutex<Option<std::collections::HashMap<i64, (i64, Option<RecruitDetail>)>>> = std::sync::Mutex::new(None);
+    const KEEP_S: i64 = 10 * 60;
+    let held = |at_most: i64| HELD.lock().unwrap().as_ref().and_then(|m| m.get(&id).filter(|(at, _)| now() - at < at_most).map(|(_, d)| d.clone()));
+    if let Some(d) = held(KEEP_S) {
+        return Ok(d);
+    }
+    let key = format!("etf2l-recruit-post:{id}");
+    if crate::backoff::waiting(&key) {
+        return Ok(held(i64::MAX).unwrap_or(None));
+    }
     let link = format!("https://etf2l.org/recruitment/{id}/");
-    let Some(page) = sources.fetch_text_interactive(&link).await? else { return Ok(None) };
-    Ok(parse_detail(&page, &link))
+    let page = match sources.fetch_text_interactive(&link).await {
+        Ok(page) => {
+            crate::backoff::worked(&key);
+            page
+        }
+        Err(e) => {
+            crate::backoff::failed(&key);
+            return Err(e);
+        }
+    };
+    let parsed = page.and_then(|p| parse_detail(&p, &link));
+    let mut map = HELD.lock().unwrap();
+    let map = map.get_or_insert_with(Default::default);
+    if map.len() > 500 {
+        map.clear();
+    }
+    map.insert(id, (now(), parsed.clone()));
+    Ok(parsed)
 }
 
 #[cfg(test)]

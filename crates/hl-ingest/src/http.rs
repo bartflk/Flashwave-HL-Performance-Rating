@@ -9,7 +9,7 @@ use anyhow::{bail, Context, Result};
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::time::Duration;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, Semaphore};
 use tokio::time::Instant;
 
 /// Who is asking, and where to find out more: a server admin seeing these
@@ -52,10 +52,30 @@ const VALIDATED_MAX_TOTAL: usize = 8 << 20;
 /// Backoff between attempts. Three tries total.
 const RETRY_DELAYS: [Duration; 2] = [Duration::from_secs(3), Duration::from_secs(10)];
 
+/// How long a host is left alone after it answers 429 or 503, when it did
+/// not say for how long (or said less): its bans lift on their own, and
+/// asking during one is what keeps them going.
+const REST_MIN: Duration = Duration::from_secs(10 * 60);
+/// And the longest we believe a `Retry-After` for: a day.
+const REST_MAX: Duration = Duration::from_secs(24 * 3600);
+/// A `Retry-After` up to this is waited out within the retries; a longer one
+/// is a rest, not a pause.
+const RETRY_WAIT_MAX: Duration = Duration::from_secs(90);
+
+/// The most a plain answer may be (JSON, HTML, a zipped raw log).
+pub const BODY_MAX: usize = 50 << 20;
+
+/// Requests at once to one host: the gap sets the pace, this keeps a slow
+/// answer from piling up behind it (a sync and a screen together).
+const IN_FLIGHT: usize = 2;
+
 pub struct Throttled {
     client: reqwest::Client,
     gap: Duration,
     next_slot: Mutex<Instant>,
+    in_flight: Semaphore,
+    /// Until when this host is left alone after a 429 or 503.
+    rest_until: std::sync::Mutex<Option<Instant>>,
     /// By URL, for this run only.
     validated: std::sync::Mutex<(HashMap<String, Validated>, u64)>,
 }
@@ -68,7 +88,14 @@ impl Throttled {
             .gzip(true)
             .build()
             .context("building HTTP client")?;
-        Ok(Throttled { client, gap, next_slot: Mutex::new(Instant::now()), validated: Default::default() })
+        Ok(Throttled {
+            client,
+            gap,
+            next_slot: Mutex::new(Instant::now()),
+            in_flight: Semaphore::new(IN_FLIGHT),
+            rest_until: Default::default(),
+            validated: Default::default(),
+        })
     }
 
     /// Wait for our slot. Holding the lock while sleeping serializes callers,
@@ -109,21 +136,85 @@ impl Throttled {
         self.fetch(url, false).await
     }
 
+    /// As [`get_bytes_opt`](Self::get_bytes_opt), refusing more than `max`
+    /// bytes: for a picture from a page's own HTML, which is not ours to trust.
+    pub async fn get_bytes_capped(&self, url: &str, max: usize) -> Result<Option<Vec<u8>>> {
+        self.send(url, false, true, max, || self.conditional(url)).await
+    }
+
+    /// How long this host still rests after a refusal, if it does.
+    pub fn rest_left(&self) -> Option<Duration> {
+        let until = (*self.rest_until.lock().unwrap())?;
+        until.checked_duration_since(Instant::now())
+    }
+
+    /// Leave this host alone for `how_long` (never shortening a rest already
+    /// running), and say so.
+    fn rest_for(&self, url: &str, how_long: Duration) {
+        let until = Instant::now() + how_long;
+        let mut held = self.rest_until.lock().unwrap();
+        if held.is_none_or(|h| h < until) {
+            *held = Some(until);
+        }
+        tracing::warn!(url, minutes = how_long.as_secs() / 60, "the server is refusing requests; leaving it alone");
+    }
+
     /// The request itself. `interactive` gives up at once on a connect error
     /// (offline, DNS failing, the host down): a sync can wait out a blip, but
     /// a screen would sit on a spinner for the 13 s of backoff only to show
     /// its offline state anyway. Other failures retry either way.
     async fn fetch(&self, url: &str, interactive: bool) -> Result<Option<Vec<u8>>> {
+        self.send(url, interactive, true, BODY_MAX, || self.conditional(url)).await
+    }
+
+    /// POST a JSON body and return the answer as text; a 404 is `None`. Same
+    /// throttle and retries, for a screen waiting on it. RGL's search and
+    /// its paged match list are POSTs.
+    pub async fn post_json_opt_interactive(&self, url: &str, body: &serde_json::Value) -> Result<Option<String>> {
+        let body = serde_json::to_vec(body).context("writing a request body")?;
+        let post = || self.client.post(url).header(reqwest::header::CONTENT_TYPE, "application/json").body(body.clone());
+        text(url, self.send(url, true, false, BODY_MAX, post).await?)
+    }
+
+    /// A server's own count of what is left (`RateLimit-Remaining`, the IETF
+    /// draft RGL sends, or the older `X-RateLimit-*`): when it says none,
+    /// the next request waits for its window to reset, whatever our pace.
+    async fn heed_limit(&self, headers: &reqwest::header::HeaderMap) {
+        let num = |names: [&str; 2]| names.iter().find_map(|n| headers.get(*n)?.to_str().ok()?.trim().parse::<u64>().ok());
+        if num(["ratelimit-remaining", "x-ratelimit-remaining"]) != Some(0) {
+            return;
+        }
+        // Seconds to the reset; a value past a day is an epoch time, not a delay.
+        let reset = num(["ratelimit-reset", "x-ratelimit-reset"]).unwrap_or(1);
+        let reset = if reset > 86_400 {
+            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+            reset.saturating_sub(now)
+        } else {
+            reset
+        };
+        let mut next = self.next_slot.lock().await;
+        *next = (*next).max(Instant::now() + Duration::from_secs(reset.clamp(1, 90)));
+    }
+
+    async fn send(&self, url: &str, interactive: bool, validate: bool, max_body: usize, request: impl Fn() -> reqwest::RequestBuilder) -> Result<Option<Vec<u8>>> {
         let mut last_err = None;
         let mut wait = Duration::ZERO;
         for attempt in 0..=RETRY_DELAYS.len() {
             if attempt > 0 {
                 tokio::time::sleep(wait.max(RETRY_DELAYS[attempt - 1])).await;
             }
+            // A host that said "not now" is not asked again until it is over,
+            // by anything: a sync, a screen, a second pass.
+            if let Some(left) = self.rest_left() {
+                return Err(anyhow::Error::new(Refused { status: reqwest::StatusCode::TOO_MANY_REQUESTS })
+                    .context(format!("{url}: the server asked us to wait; {} more minutes", left.as_secs() / 60 + 1)));
+            }
+            let _slot = self.in_flight.acquire().await.expect("the semaphore is never closed");
             self.wait_turn().await;
 
-            match self.conditional(url).send().await {
+            match request().send().await {
                 Ok(resp) => {
+                    self.heed_limit(resp.headers()).await;
                     let status = resp.status();
                     if status == reqwest::StatusCode::NOT_MODIFIED {
                         if let Some(body) = self.revalidated(url) {
@@ -135,8 +226,10 @@ impl Throttled {
                         let header = |name| resp.headers().get(name).and_then(|v| v.to_str().ok()).map(str::to_string);
                         let etag = header(reqwest::header::ETAG).map(|e| closed_etag(&e));
                         let last_modified = header(reqwest::header::LAST_MODIFIED);
-                        let body = resp.bytes().await.map(|b| b.to_vec()).with_context(|| format!("reading body of {url}"))?;
-                        self.keep(url, etag, last_modified, &body);
+                        let body = read_capped(resp, max_body).await.with_context(|| format!("reading body of {url}"))?;
+                        if validate {
+                            self.keep(url, etag, last_modified, &body);
+                        }
                         return Ok(Some(body));
                     }
                     if status.as_u16() == 404 {
@@ -151,13 +244,21 @@ impl Throttled {
                     if status.is_client_error() && status.as_u16() != 429 {
                         bail!("{url}: HTTP {status}");
                     }
-                    // A rate limit says how long to back off; honour it, within reason.
-                    wait = resp
+                    // A rate limit or an overloaded server says how long to
+                    // back off: seconds or a date. Up to 90 s is waited out
+                    // here; longer, or once the retries are spent, the host
+                    // rests for as long as it asked, and at least ten minutes.
+                    let asked = resp
                         .headers()
                         .get(reqwest::header::RETRY_AFTER)
-                        .and_then(|v| v.to_str().ok()?.parse::<u64>().ok())
-                        .map(|s| Duration::from_secs(s.min(90)))
-                        .unwrap_or(Duration::ZERO);
+                        .and_then(|v| v.to_str().ok())
+                        .and_then(|v| retry_after(v, chrono::Utc::now()));
+                    let pushed_back = status.as_u16() == 429 || status.as_u16() == 503;
+                    if pushed_back && (attempt == RETRY_DELAYS.len() || asked.is_some_and(|a| a > RETRY_WAIT_MAX)) {
+                        self.rest_for(url, asked.unwrap_or_default().clamp(REST_MIN, REST_MAX));
+                        return Err(anyhow::Error::new(Refused { status }).context(url.to_string()));
+                    }
+                    wait = asked.map_or(Duration::ZERO, |a| a.min(RETRY_WAIT_MAX));
                     tracing::warn!(url, %status, attempt, "transient HTTP failure");
                     last_err = Some(if status.as_u16() == 429 {
                         anyhow::Error::new(Refused { status }).context(url.to_string())
@@ -177,6 +278,34 @@ impl Throttled {
         }
         Err(last_err.unwrap_or_else(|| anyhow::anyhow!("{url}: failed")))
     }
+}
+
+/// How long a `Retry-After` asks for: a number of seconds, or an HTTP date
+/// (`Wed, 21 Oct 2026 07:28:00 GMT`), which is the time from `now`.
+fn retry_after(value: &str, now: chrono::DateTime<chrono::Utc>) -> Option<Duration> {
+    let value = value.trim();
+    if let Ok(secs) = value.parse::<u64>() {
+        return Some(Duration::from_secs(secs));
+    }
+    let at = chrono::DateTime::parse_from_rfc2822(value).ok()?;
+    Some(at.signed_duration_since(now).to_std().unwrap_or_default())
+}
+
+/// A response's body, stopping with an error at `max` bytes: whatever a
+/// server says it is sending (or does not say), a hostile or broken one
+/// cannot fill the memory.
+async fn read_capped(mut resp: reqwest::Response, max: usize) -> Result<Vec<u8>> {
+    if resp.content_length().is_some_and(|n| n > max as u64) {
+        bail!("the answer is larger than the {} MB this app will read", max >> 20);
+    }
+    let mut body = Vec::new();
+    while let Some(chunk) = resp.chunk().await? {
+        if body.len() + chunk.len() > max {
+            bail!("the answer is larger than the {} MB this app will read", max >> 20);
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body)
 }
 
 impl Throttled {
@@ -241,6 +370,19 @@ fn text(url: &str, body: Option<Vec<u8>>) -> Result<Option<String>> {
     body.map(|b| String::from_utf8(b).with_context(|| format!("{url}: body is not UTF-8"))).transpose()
 }
 
+/// Whether `url` is on one of `hosts` or a subdomain of one, whatever the scheme.
+pub fn is_on(url: &str, hosts: &[&str]) -> bool {
+    let Some(host) = reqwest::Url::parse(url).ok().and_then(|u| u.host_str().map(str::to_ascii_lowercase)) else { return false };
+    hosts.iter().any(|h| host == *h || host.ends_with(&format!(".{h}")))
+}
+
+/// Whether `url` is https on `host` or a subdomain of it: the only places a
+/// file named by a remote answer is fetched from. A link in JSON or HTML is
+/// whatever its author wrote, a LAN address or a plain-http server included.
+pub fn is_https_on(url: &str, hosts: &[&str]) -> bool {
+    url.get(..8).is_some_and(|p| p.eq_ignore_ascii_case("https://")) && is_on(url, hosts)
+}
+
 /// A client for large files: no overall timeout (a big demo can legitimately
 /// take minutes), but a read timeout so a stalled transfer still fails.
 pub fn download_client() -> Result<reqwest::Client> {
@@ -260,6 +402,7 @@ pub async fn download_to(
     client: &reqwest::Client,
     url: &str,
     dest: &std::path::Path,
+    max: u64,
     mut progress: impl FnMut(u64, Option<u64>),
 ) -> Result<u64> {
     use tokio::io::AsyncWriteExt;
@@ -269,9 +412,13 @@ pub async fn download_to(
         bail!("{url}: HTTP {}", resp.status());
     }
     let total = resp.content_length();
+    if total.is_some_and(|t| t > max) {
+        bail!("{url}: the file is larger than the {} MB this app will download", max >> 20);
+    }
     if let Some(parent) = dest.parent() {
         tokio::fs::create_dir_all(parent).await?;
     }
+    hl_demos::scan::mark_own_write(dest);
     let part = dest.with_extension("dem.part");
     let mut file = tokio::fs::File::create(&part)
         .await
@@ -282,6 +429,10 @@ pub async fn download_to(
         while let Some(chunk) = resp.chunk().await.context("reading download")? {
             file.write_all(&chunk).await?;
             done += chunk.len() as u64;
+            // A server may not say how big it is, or lie; the count is ours.
+            if done > max {
+                bail!("{url}: the file is larger than the {} MB this app will download", max >> 20);
+            }
             progress(done, total);
         }
         file.flush().await?;
@@ -369,6 +520,77 @@ mod tests {
     }
 
     #[test]
+    fn retry_after_is_read_as_seconds_or_as_a_date() {
+        let now = chrono::DateTime::parse_from_rfc2822("Wed, 21 Oct 2026 07:00:00 GMT").unwrap().with_timezone(&chrono::Utc);
+        assert_eq!(retry_after("120", now), Some(Duration::from_secs(120)));
+        assert_eq!(retry_after(" 3600 ", now), Some(Duration::from_secs(3600)));
+        assert_eq!(retry_after("Wed, 21 Oct 2026 07:28:00 GMT", now), Some(Duration::from_secs(28 * 60)));
+        // A date already past is no wait at all; nonsense is not an answer.
+        assert_eq!(retry_after("Wed, 21 Oct 2026 06:00:00 GMT", now), Some(Duration::ZERO));
+        assert_eq!(retry_after("soon", now), None);
+    }
+
+    #[test]
+    fn a_file_is_fetched_only_over_https_from_a_listed_host() {
+        let demos = ["demos.tf"];
+        assert!(is_https_on("https://freezer.demos.tf/ab/cd/x.dem", &demos));
+        assert!(is_https_on("https://demos.tf/x.dem", &demos));
+        assert!(!is_https_on("http://freezer.demos.tf/x.dem", &demos));
+        assert!(!is_https_on("https://evildemos.tf/x.dem", &demos));
+        assert!(!is_https_on("https://demos.tf.evil.example/x.dem", &demos));
+        assert!(!is_https_on("https://192.168.1.5/x.dem", &demos));
+        assert!(!is_https_on("not a url", &demos));
+    }
+
+    /// One 429 with a long Retry-After: the host rests, and the next call
+    /// fails at once without reaching the server (which accepts only one).
+    #[tokio::test]
+    async fn a_host_that_says_wait_is_left_alone() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = std::thread::spawn(move || {
+            let (mut conn, _) = listener.accept().unwrap();
+            let mut request = Vec::new();
+            let mut buf = [0u8; 1024];
+            while !request.windows(4).any(|w| w == b"\r\n\r\n") {
+                let n = conn.read(&mut buf).unwrap();
+                request.extend_from_slice(&buf[..n]);
+            }
+            conn.write_all(b"HTTP/1.1 429 Too Many Requests\r\nRetry-After: 3600\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").unwrap();
+        });
+        let client = Throttled::new(Duration::ZERO).unwrap();
+        let at = format!("http://127.0.0.1:{port}/x");
+        let first = client.get_text(&at).await.unwrap_err();
+        assert!(refused(&first));
+        assert!(client.rest_left().unwrap() > Duration::from_secs(3500));
+        let started = std::time::Instant::now();
+        let second = client.get_text(&at).await.unwrap_err();
+        assert!(refused(&second));
+        assert!(started.elapsed() < Duration::from_secs(1));
+        server.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn an_answer_past_the_cap_is_refused() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = std::thread::spawn(move || {
+            let (mut conn, _) = listener.accept().unwrap();
+            let mut request = Vec::new();
+            let mut buf = [0u8; 1024];
+            while !request.windows(4).any(|w| w == b"\r\n\r\n") {
+                let n = conn.read(&mut buf).unwrap();
+                request.extend_from_slice(&buf[..n]);
+            }
+            conn.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 20\r\nConnection: close\r\n\r\n01234567890123456789").unwrap();
+        });
+        let client = Throttled::new(Duration::ZERO).unwrap();
+        let at = format!("http://127.0.0.1:{port}/x");
+        assert!(client.get_bytes_capped(&at, 10).await.is_err());
+        server.join().unwrap();
+    }
+
+    #[test]
     fn a_query_is_encoded_by_the_parser() {
         assert_eq!(
             url("https://etf2l.org/wp-json/wp/v2/posts", [("search", "Highlander Fall & Winter #2"), ("_fields", "title,content")]),
@@ -383,6 +605,35 @@ mod tests {
         assert_eq!(closed_etag("W/\"831f\""), "W/\"831f\"");
         assert_eq!(closed_etag("\"abc\""), "\"abc\"");
         assert_eq!(closed_etag("\"abc"), "\"abc\"");
+    }
+
+    /// A server saying no requests are left this window (RGL's
+    /// `RateLimit-*`): the next one waits for the reset, though our own pace
+    /// would let it go at once.
+    #[tokio::test]
+    async fn a_spent_rate_limit_is_waited_out() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = std::thread::spawn(move || {
+            for _ in 0..2 {
+                let (mut conn, _) = listener.accept().unwrap();
+                let mut request = Vec::new();
+                let mut buf = [0u8; 1024];
+                while !request.windows(4).any(|w| w == b"\r\n\r\n") {
+                    let n = conn.read(&mut buf).unwrap();
+                    request.extend_from_slice(&buf[..n]);
+                }
+                let reply = "HTTP/1.1 200 OK\r\nRateLimit-Limit: 5\r\nRateLimit-Remaining: 0\r\nRateLimit-Reset: 1\r\nContent-Length: 2\r\nConnection: close\r\n\r\n[]";
+                conn.write_all(reply.as_bytes()).unwrap();
+            }
+        });
+        let client = Throttled::new(Duration::ZERO).unwrap();
+        let at = format!("http://127.0.0.1:{port}/v0/regions");
+        client.get_text(&at).await.unwrap();
+        let started = std::time::Instant::now();
+        client.get_text(&at).await.unwrap();
+        assert!(started.elapsed() >= Duration::from_millis(900), "{:?}", started.elapsed());
+        server.join().unwrap();
     }
 
     /// A one-off server on localhost: the first request gets a body with an

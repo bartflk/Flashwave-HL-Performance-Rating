@@ -41,6 +41,8 @@ import fightsSniper from "./fixtures/fights_sniper.json";
 import leagues from "./fixtures/leagues.json";
 import team37805 from "./fixtures/team_37805.json";
 import type {
+  Diagnostics,
+  ModelShift,
   Tournament,
   SeasonTable,
   PlayerDeep,
@@ -75,10 +77,15 @@ import type {
   NewsItem,
   NewsPost,
   RglPlayer,
+  RglPlayerMore,
+  RglPlayerHit,
+  RglSeasonCard,
+  RglTeamHit,
   RglSeason,
-  RglSeasonItem,
+  RglSeasonItem, RglBan, RglMatch, RglMatchMore, RglMatchStats, RglAward, RglSideTotals,
   RglTeamPage,
   RglTeamSeason,
+  RglTeamHistory,
   ResultRow,
   TeamHit,
   LeagueMatch,
@@ -129,7 +136,7 @@ import type {
   Teammates,
   TfPathInfo,
   FightsCard,
-  SeasonsView, StvStage, RatingGuide, LeagueSample, LeagueActivity, CatalogueHit, PlayerProfile, PlayerStats, Rankings, MatchDivisions, CareerView, SeasonTile, Podium, TeamHonours, TeamEtf2l } from "./types";
+  SeasonsView, StvStage, RatingGuide, LeagueSample, LeagueActivity, CatalogueHit, PlayerProfile, PlayerStats, Rankings, LeagueCup, LeagueCupPage, CupResult, MatchDivisions, CareerView, SeasonTile, Podium, TeamHonours, TeamEtf2l } from "./types";
 
 // Starts configured, since setup is not what you are usually iterating on.
 // Append `?setup` to the URL to start from the first-run screen instead.
@@ -383,6 +390,9 @@ function mockProfile(accountId: number): PlayerProfile {
     officials: [
       { matchId: 93055, competition: "Highlander Season 36", tier: 2, time: 1_790_532_000, season: 36, division: "High", stage: "regular", round: "Week 5", team: dd, opponent: mockTeam(1, "TWS"), scoreFor: 4, scoreAgainst: 2, won: true },
       { matchId: 92011, competition: "Highlander Season 36", tier: 2, time: 1_789_900_000, season: 36, division: "High", stage: "regular", round: "Week 4", team: dd, opponent: mockTeam(2, "ЭТО МОЁ БОЛОТО"), scoreFor: 1, scoreAgainst: 5, won: false },
+      { matchId: 98003, competition: "Crit or Treat! Highlander One-Night-Cup", tier: null, time: 1_793_476_600, season: 36, division: "Werewolves", stage: "Cup", round: "Grand Final", team: dd, opponent: mockTeam(5, "Gibus and The Gang"), scoreFor: 2, scoreAgainst: 1, won: true },
+      { matchId: 98001, competition: "Crit or Treat! Highlander One-Night-Cup", tier: null, time: 1_793_473_000, season: 36, division: "Werewolves", stage: "Cup", round: "Round 1", team: dd, opponent: mockTeam(2, "TWS"), scoreFor: 2, scoreAgainst: 0, won: true },
+      { matchId: 97002, competition: "Highlander Experimental Cup #10", tier: null, time: 1_780_600_000, season: 35, division: "Open", stage: "Cup", round: "Round 2", team: sbq, opponent: mockTeam(10, "Huntsmen"), scoreFor: 1, scoreAgainst: 3, won: false },
       { matchId: 85001, competition: "Highlander Season 33 Playoffs", tier: 4, time: 1_757_000_000, season: 33, division: "Low", stage: "Playoffs", round: "Grand Final", team: sbq, opponent: mockTeam(3, "Gibus and The Gang"), scoreFor: 6, scoreAgainst: 3, won: true },
     ],
     etf2lId: 97913,
@@ -576,7 +586,7 @@ let pending = 24;
 let syncTimers: number[] = [];
 let demoFolders: string[] = ["E:/TF2 archive/demoreviews"];
 
-function simulateSync(kind: "sync" | "reprocess") {
+function simulateSync(kind: "sync" | "reprocess" | "rerate" | "demos") {
   busy = true;
   const steps: Array<() => void> = [];
   if (kind === "sync") {
@@ -623,9 +633,24 @@ function simulateSync(kind: "sync" | "reprocess") {
     for (let done = 0; done <= 666; done += 111) {
       steps.push(() => handlers?.onProgress({ kind: "rating", done, total: 666 }));
     }
-  } else {
+  } else if (kind === "reprocess") {
     for (let done = 0; done <= 759; done += 69) {
       steps.push(() => handlers?.onProgress({ kind: "reprocessing", done, total: 759 }));
+    }
+    for (let done = 0; done <= 3_200; done += 800) {
+      steps.push(() => handlers?.onProgress({ kind: "playerNumbers", done, total: 3_200 }));
+    }
+    steps.push(() => handlers?.onProgress({ kind: "stage", what: "Reading every player's numbers" }));
+    steps.push(() => handlers?.onProgress({ kind: "rating", done: 759, total: 759 }));
+  } else if (kind === "rerate") {
+    steps.push(() => handlers?.onProgress({ kind: "stage", what: "Reading every player's numbers" }));
+    steps.push(() => handlers?.onProgress({ kind: "stage", what: "Rating the league sample" }));
+    steps.push(() => handlers?.onProgress({ kind: "rating", done: 759, total: 759 }));
+  } else {
+    for (let done = 0; done <= 3; done++) {
+      steps.push(() =>
+        handlers?.onProgress({ kind: "readingDemos", done, total: 3, logId: 4_122_234, what: { map: "pl_upward", playedAt: 1789401600, kind: "official", opponent: "Kebab" } }),
+      );
     }
   }
   steps.push(() => {
@@ -1432,7 +1457,208 @@ export const mockApi: Api = {
         },
       ],
     }),
+  // A round robin of an Invite, and some of the league's bans.
+  getRglSeasonMatches: (id: number) => delay<RglMatch[]>(mockRglMatches(id)),
+  getRglMatch: (id: number) => delay<RglMatch | null>([...mockRglMatches(198), ...mockRglMatches(193)].find((m) => m.matchId === id) ?? null),
+  getRglMatchMore: (id: number) => {
+    const all = [...mockRglMatches(198), ...mockRglMatches(193)];
+    const m = all.find((x) => x.matchId === id);
+    if (!m) return delay<RglMatchMore | null>(null);
+    const roster = (teamId: number) =>
+      ["nyxi", "Joey Lemons", "civ.", "b4nny", "Ash", "corsa", "kaidus", "yomps", "habib"].map((name, i) => ({
+        name: i === 0 ? name : `${name}${teamId % 7 === 0 ? "" : ` ${teamId % 100}`}`,
+        steamId: `7656119800${teamId}${i}`,
+        isLeader: i === 0,
+        joinedAt: "2026-05-03T03:14:05.557Z",
+        leftAt: null,
+      }));
+    const ids = new Set(m.teams.map((x) => x.teamId));
+    const meetings = all
+      .filter((x) => x.matchId !== id && x.teams.every((t) => ids.has(t.teamId)))
+      .sort((a, b) => (b.matchDate ?? "").localeCompare(a.matchDate ?? ""));
+    const played = m.winner !== null && !m.isForfeit;
+    const at = m.matchDate ? Date.parse(m.matchDate) / 1000 : 0;
+    return delay<RglMatchMore | null>({
+      lineups: m.teams.map((x) => ({ teamId: x.teamId, ids: [x.teamId], players: roster(x.teamId) })),
+      meetings,
+      logs: played
+        ? m.maps.flatMap((x, i) => [
+            { logId: 4_100_000 + id * 2, title: "serveme.tf #1 - RED vs BLU", map: x.mapName, playedAt: at + 1800 + i * 3600, stored: id % 2 === 0 },
+            ...(x.mapName.startsWith("koth_") ? [] : [{ logId: 4_100_001 + id * 2, title: "serveme.tf #1 - BLU vs RED", map: x.mapName, playedAt: at + 3600 + i * 3600, stored: false }]),
+          ])
+        : [],
+      logsWhy: m.isForfeit ? "forfeit" : m.winner === null ? "notPlayed" : null,
+    });
+  },
+  saveCalendar: async (text: string, suggested: string) => {
+    console.info("would save the calendar", suggested, `(${text.length} characters)`);
+    return delay(`C:\\Users\\you\\Downloads\\${suggested}`);
+  },
+  getRglMatchStats: (id: number) => {
+    const all = [...mockRglMatches(198), ...mockRglMatches(193)];
+    const m = all.find((x) => x.matchId === id);
+    if (!m) return delay<RglMatchStats | null>(null);
+    if (m.winner === null || m.isForfeit) return delay<RglMatchStats | null>({ maps: [], unread: [] });
+    const classes = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
+    const names = ["nyxi", "Joey Lemons", "civ.", "b4nny", "Ash", "corsa", "kaidus", "yomps", "habib"];
+    const typical: Record<string, number> = { scout: 230, soldier: 290, pyro: 170, demoman: 350, heavy: 420, engineer: 150, medic: 40, sniper: 240, spy: 150 };
+    // The same few numbers every time for a match: a hash of its id, the player and the map.
+    const roll = (a: number, b: number, c: number) => ((Math.sin(a * 12.9898 + b * 78.233 + c * 37.719) * 43758.5453) % 1 + 1) % 1;
+    const logIds = m.maps.flatMap((x, i) => [{ logId: 4_100_000 + id * 2, map: x.mapName, i }, ...(x.mapName.startsWith("koth_") ? [] : [{ logId: 4_100_001 + id * 2, map: x.mapName, i }])]);
+    const maps = logIds.map(({ logId, map, i }) => {
+      const minutes = 22 + Math.round(roll(logId, 1, i) * 8);
+      const players = m.teams.flatMap((team, ti) =>
+        classes.map((cls, ci) => {
+          const r = roll(logId, ti * 9 + ci, 2);
+          const dpm = typical[cls] * (0.75 + r * 0.55);
+          const damage = Math.round(dpm * minutes);
+          const medic = cls === "medic";
+          const kills = medic ? Math.round(r * 3) : Math.round((dpm / 11) * (0.8 + r * 0.5));
+          const deaths = Math.round(8 + roll(logId, ti * 9 + ci, 3) * 12);
+          return {
+            steamId: `7656119800${team.teamId}${ci}`,
+            name: ci === 0 ? names[ci] : `${names[ci]}${team.teamId % 7 === 0 ? "" : ` ${team.teamId % 100}`}`,
+            side: (ti === 0 ? "Red" : "Blue") as "Red" | "Blue",
+            teamId: team.teamId,
+            class: cls,
+            minutes,
+            kills,
+            assists: Math.round(kills * (medic ? 6 : 0.5)),
+            deaths,
+            damage,
+            dpm,
+            dtpm: (damage * (0.9 + roll(logId, ci, 4) * 0.3)) / minutes,
+            dpmVs: dpm - typical[cls],
+            dpmVsBasis: "archive" as const,
+            headshots: cls === "sniper" || cls === "spy" ? Math.round(r * 6) : 0,
+            heals: medic ? Math.round(minutes * (380 + r * 140)) : 0,
+            ubers: medic ? 3 + Math.round(r * 5) : 0,
+            drops: medic ? Math.round(r * 2) : 0,
+            rating: Math.round((0.7 + roll(logId, ti * 9 + ci, 5) * 0.75) * 100) / 100,
+          };
+        }),
+      );
+      const sum = (side: "Red" | "Blue", f: (p: (typeof players)[number]) => number) => players.filter((p) => p.side === side).reduce((n, p) => n + f(p), 0);
+      const total = (side: "Red" | "Blue", teamId: number, score: number) => ({
+        side,
+        teamId,
+        score,
+        kills: sum(side, (p) => p.kills),
+        deaths: sum(side, (p) => p.deaths),
+        damage: sum(side, (p) => p.damage),
+        heals: sum(side, (p) => p.heals),
+        ubers: sum(side, (p) => p.ubers),
+        drops: sum(side, (p) => p.drops),
+      });
+      const best = (list: typeof players, f: (p: (typeof players)[number]) => number) => list.reduce((a, b) => (f(b) > f(a) ? b : a));
+      const award = (p: (typeof players)[number], value: number, basis: RglAward["basis"], extra: number | null): RglAward => ({ steamId: p.steamId, name: p.name, side: p.side, class: p.class, value, basis, extra });
+      const mvp = best(players, (p) => p.rating ?? 0);
+      const medic = best(players.filter((p) => p.class === "medic"), (p) => p.heals + 500 * p.ubers);
+      const frag = best(players, (p) => p.kills);
+      const hs = best(players, (p) => p.headshots);
+      const home = m.maps[i]?.homeScore ?? 0;
+      const away = m.maps[i]?.awayScore ?? 0;
+      return {
+        logId,
+        map,
+        minutes,
+        sides: [total("Red", m.teams[0].teamId, home), total("Blue", m.teams[1].teamId, away)] as [RglSideTotals, RglSideTotals],
+        players,
+        awards: { mvp: award(mvp, mvp.rating ?? 0, "rating", null), medicMvp: award(medic, medic.heals, "heals", medic.ubers), topFragger: award(frag, frag.kills, "kills", frag.deaths), mostHeadshots: hs.headshots > 0 ? award(hs, hs.headshots, "headshots", null) : null },
+        rated: true,
+      };
+    });
+    return delay<RglMatchStats | null>({ maps, unread: [] });
+  },
+  getRglBans: (skip: number) =>
+    delay<RglBan[]>(
+      skip > 0
+        ? []
+        : [
+            { steamId: "76561199122247797", alias: "Goose", createdAt: "2026-10-30T08:22:16.103Z", expiresAt: "2026-11-06T08:22:00.000Z", reason: "Failure to Submit Demos: 1st Offense" },
+            { steamId: "76561199884326268", alias: "freak", createdAt: "2026-10-30T00:21:22.293Z", expiresAt: "3026-03-01T00:00:00.000Z", reason: "Permanently banned due to a VAC ban." },
+            { steamId: "76561198000000001", alias: "oldtimer", createdAt: "2026-03-01T00:00:00.000Z", expiresAt: "2026-04-01T00:00:00.000Z", reason: "Toxicity" },
+          ],
+    ),
+  getRglSeasonCard: (id: number) =>
+    delay<RglSeasonCard>({
+      id,
+      maps: 6,
+      teams: id === 198 ? 8 : 10,
+      division: "Invite",
+      over: id !== 198,
+      matches: id === 198 ? 12 : 90,
+      podium: id === 198 ? [] : [
+        { id: 14908 + id, name: id === 193 ? "The Amiable Duds" : "Witness Gaming", tag: id === 193 ? "AD." : "wG", finalRank: 1, seeding: null, teamStatus: "Ready" },
+        { id: 14954 + id, name: id === 193 ? "Witness Gaming" : "The Family", tag: id === 193 ? "wG" : "folk", finalRank: 2, seeding: null, teamStatus: "Ready" },
+        { id: 14839 + id, name: id === 193 ? "The Family" : "mandem", tag: id === 193 ? "folk" : "mndm", finalRank: 3, seeding: null, teamStatus: "Ready" },
+      ],
+    }),
+  searchRglPlayers: (q: string) =>
+    delay<RglPlayerHit[]>(
+      [
+        { steamId: "76561198072302537", name: "nyxi", avatar: null },
+        { steamId: "76561197970669109", name: "b4nny", avatar: null },
+      ].filter((p) => p.name.toLowerCase().includes(q.trim().toLowerCase())),
+    ),
+  searchRglTeams: (q: string) =>
+    delay<RglTeamHit[]>(
+      [
+        { id: 14908, name: "The Amiable Duds", tag: "AD.", seasonId: 193, seasonName: "HL Season 24", division: "Invite", finalRank: 1 },
+        { id: 12734, name: "The Amiable Duds", tag: "AD.", seasonId: 183, seasonName: "HL Season 23", division: "Advanced", finalRank: 2 },
+      ].filter((x) => x.name.toLowerCase().includes(q.trim().toLowerCase()) || x.tag.toLowerCase().includes(q.trim().toLowerCase())),
+    ),
   getRglTeamSeasons: () => delay<RglTeamSeason[]>([{ id: 12734, name: "The Amiable Duds", tag: "AD.", seasonId: 183, seasonName: "HL Season 23", division: "Advanced", finalRank: 2 }]),
+  getRglTeamHistory: (id: number, all = false) =>
+    delay<RglTeamHistory | null>({
+      teamIds: [id, 12734, 11102],
+      seasons: [
+        { teamId: id, name: "The Amiable Duds", tag: "AD.", seasonId: 193, seasonName: "HL Season 24", division: "Invite", tier: "Premiership", finalRank: 1, record: { won: 8, lost: 1, forfeitsWon: 1, forfeitsLost: 0 } },
+        { teamId: 12734, name: "The Amiable Duds", tag: "AD.", seasonId: 183, seasonName: "HL Season 23", division: "Advanced", tier: "High", finalRank: 2, record: { won: 6, lost: 3, forfeitsWon: 0, forfeitsLost: 1 } },
+        { teamId: 11102, name: "Duds Inc", tag: "DI", seasonId: 173, seasonName: "HL Season 22", division: "Advanced", tier: "High", finalRank: 3, record: { won: 5, lost: 4, forfeitsWon: 0, forfeitsLost: 0 } },
+      ],
+      total: { won: 19, lost: 8, forfeitsWon: 1, forfeitsLost: 1 },
+      formerNames: ["Duds Inc"],
+      firstSeason: "HL Season 22",
+      seasonsLinked: all ? 3 : 5,
+      capped: false,
+      opponents: [
+        { name: "Run It Back", tag: "Rib.", won: 4, lost: 1, teamId: 14956, last: "2026-06-02T01:30:00.000Z" },
+        { name: "Cat Herders", tag: "CH", won: 2, lost: 3, teamId: 14950, last: "2026-05-12T01:30:00.000Z" },
+        { name: "Pocket Aces", tag: null, won: 2, lost: 1, teamId: 14951, last: "2026-04-21T01:30:00.000Z" },
+      ],
+      maps: [
+        { map: "pl_vigil_rc10", won: 9, lost: 2, roundsFor: 22, roundsAgainst: 9 },
+        { map: "cp_gullywash_f9", won: 4, lost: 4, roundsFor: 14, roundsAgainst: 15 },
+        { map: "koth_product_final", won: 3, lost: 5, roundsFor: 11, roundsAgainst: 16 },
+      ],
+      matches: [
+        {
+          matchId: 34332,
+          matchDate: "2026-06-02T01:30:00.000Z",
+          matchName: "Week 1 - Vigil",
+          isForfeit: false,
+          winner: id,
+          teams: [
+            { teamId: 14956, teamName: "Run It Back", teamTag: "Rib.", isHome: false },
+            { teamId: id, teamName: "The Amiable Duds", teamTag: "AD.", isHome: true },
+          ],
+          maps: [{ mapName: "pl_vigil_rc10", homeScore: 2, awayScore: 0 }],
+        },
+        {
+          matchId: 30011,
+          matchDate: "2026-02-10T01:30:00.000Z",
+          matchName: "Week 4 - Product",
+          isForfeit: false,
+          winner: 14000,
+          teams: [
+            { teamId: 14000, teamName: "Run It Back", teamTag: "Rib.", isHome: true },
+            { teamId: 12734, teamName: "The Amiable Duds", teamTag: "AD.", isHome: false },
+          ],
+          maps: [{ mapName: "koth_product_final", homeScore: 3, awayScore: 1 }],
+        },
+      ],
+    }),
   getRglPlayer: (input: string) =>
     delay<RglPlayer | null>(
       input.includes("7656119") || /^\d+$/.test(input.trim())
@@ -1449,6 +1675,34 @@ export const mockApi: Api = {
           }
         : null,
     ),
+  getRglPlayerMore: () => {
+    const side = (id: number, name: string, home: boolean) => ({ teamId: id, teamName: name, teamTag: null, isHome: home });
+    const game = (matchId: number, date: string, week: string, mine: boolean, won: boolean, scores: [number, number], other: [number, string]) => ({
+      teamId: 14908,
+      match: {
+        matchId,
+        matchDate: date,
+        matchName: week,
+        divisionName: "Invite",
+        seasonId: 193,
+        seasonName: "HL Season 24",
+        isForfeit: false,
+        winner: won ? 14908 : other[0],
+        teams: mine ? [side(14908, "The Amiable Duds", true), side(other[0], other[1], false)] : [side(other[0], other[1], true), side(14908, "The Amiable Duds", false)],
+        maps: [{ mapName: "pl_vigil_rc10", homeScore: scores[0], awayScore: scores[1] }],
+      },
+    });
+    return delay<RglPlayerMore>({
+      medals: [{ seasonId: 193, seasonName: "HL Season 24", teamId: 14908, teamName: "The Amiable Duds", division: "Invite", place: 1 }],
+      form: [
+        game(9005, "2026-08-02T02:00:00Z", "Week 8 - Process", true, true, [3, 1], [15001, "Sunday Drivers"]),
+        game(9004, "2026-07-26T02:00:00Z", "Week 7 - Gullywash", false, false, [3, 2], [15002, "Hit the Griddy"]),
+        game(9003, "2026-07-19T02:00:00Z", "Week 6 - Product", true, true, [2, 0], [15003, "Tea Time"]),
+        game(9002, "2026-07-12T02:00:00Z", "Week 5 - Metalworks", true, true, [3, 0], [15004, "Spawn Campers"]),
+        game(9001, "2026-07-05T02:00:00Z", "Week 4 - Vigil", false, true, [0, 2], [15005, "Late Night Pugs"]),
+      ],
+    });
+  },
   // ETF2L's Highlander posts, 16 October 2026.
   getNews: () => delay(newsPosts as unknown as NewsItem[]),
   getNewsPost: (id: number) => {
@@ -1463,10 +1717,29 @@ export const mockApi: Api = {
         .filter((n) => new RegExp(`season ${season}(?!\\d)`, "i").test(n.title))
         .sort((a, b) => a.time - b.time),
     ),
+  getTournaments: () => delay<LeagueCup[]>(MOCK_CUPS.map(({ results: _r, ...x }) => x)),
+  getTournament: (name: string) => delay<LeagueCupPage | null>(MOCK_CUPS.find((x) => x.name === name) ?? null),
   // DD14's season so far, read as everyone's results.
   getRecentResults: (limit = 10) =>
-    delay<ResultRow[]>(
-      (team37805 as unknown as TeamView).results.slice(0, limit).map((r) => ({
+    delay<ResultRow[]>([
+      // A one-night fun cup's brackets, as ETF2L's Halloween cup had them.
+      ...(["Werewolves", "Zombies", "Vampires"] as const).map((division, i) => ({
+        matchId: 99000 + i,
+        time: 1_793_480_000 - i * 3600,
+        season: 36,
+        division,
+        tier: i,
+        round: "Round 1",
+        week: null,
+        stage: "Cup",
+        competition: "Crit or Treat! Highlander One-Night-Cup",
+        clan1: { id: 37805, name: "DD14", avatar: null },
+        clan2: { id: 1, name: "TWS", avatar: null },
+        r1: 2,
+        r2: 1,
+        defaultWin: false,
+      })),
+      ...(team37805 as unknown as TeamView).results.slice(0, limit).map((r) => ({
         matchId: r.matchId,
         time: r.time ?? 0,
         season: r.season,
@@ -1475,13 +1748,14 @@ export const mockApi: Api = {
         round: r.round,
         week: null,
         stage: r.stage,
+        competition: `Highlander Season ${r.season}`,
         clan1: { id: 37805, name: "DD14", avatar: "https://etf2l.org/wp-content/uploads/avatars/6a18b9b147176.png" },
         clan2: { id: r.opponentId, name: r.opponent, avatar: null },
         r1: r.scoreFor,
         r2: r.scoreAgainst,
         defaultWin: r.defaultWin,
       })),
-    ),
+    ]),
   // One of DD14's officials, with DD14's roster as its lineup; a fixture's
   // id is not in the database, so the page reads it from the fixtures.
   // DD14's grand final as etf2l.org showed it on 17 October 2026.
@@ -1522,6 +1796,7 @@ export const mockApi: Api = {
     const half = (n: number | null) => (n === null ? 0 : Math.round(n / 2));
     return delay<LeagueMatch | null>({
       matchId: r.matchId,
+      competition: `Highlander Season ${r.season}`,
       time: r.time ?? 0,
       season: r.season,
       division: r.division,
@@ -1583,6 +1858,7 @@ export const mockApi: Api = {
     const add = (division: string, tier: number, stage: string, round: string, week: number | null, at: number, a: T, b: T, aWins: boolean | null) => {
       rows.push({
         matchId: id++,
+        competition: `Highlander Season ${season}`,
         time: at,
         season,
         division,
@@ -1915,6 +2191,8 @@ export const mockApi: Api = {
     return () => {};
   },
 
+  onDemosIndexed: async () => () => {},
+
   onStv: async (h) => {
     stvHandlers = h;
     return () => {
@@ -2167,6 +2445,67 @@ export const mockApi: Api = {
     return delay(undefined);
   },
 
+  rerateStart: () => {
+    if (busy) return Promise.reject({ kind: "busy", message: "A sync is already running." });
+    simulateSync("rerate");
+    return delay(undefined);
+  },
+
+  rereadDemosStart: () => {
+    if (busy) return Promise.reject({ kind: "busy", message: "A sync is already running." });
+    simulateSync("demos");
+    return delay(undefined);
+  },
+
+  getDiagnostics: () =>
+    delay<Diagnostics>({
+      version: "0.13.0-mock beta",
+      model: "v14",
+      dataDir: "C:/Users/you/AppData/Roaming/tf.flashwave.app",
+      logFile: "C:/Users/you/AppData/Roaming/tf.flashwave.app/logs/flashwave.log",
+      logDir: "C:/Users/you/AppData/Roaming/tf.flashwave.app/logs",
+      stats: fakeStats(pending),
+      rated: [["v13", 742], ["v14", 759]],
+      sources: [
+        { source: "logstf_search", cursor: null, lastRunAt: "2026-11-11 21:04:12", lastError: null },
+        { source: "trends", cursor: "1789512000", lastRunAt: "2026-11-12 08:31:40", lastError: "error sending request for url (https://trends.tf/api/v1/logs): operation timed out" },
+      ],
+      runs: [
+        { kind: "sync", at: 1789633900, seconds: 134, fetched: 3, failed: 0, error: null, problems: ["demos.tf: error sending request: operation timed out"] },
+        { kind: "rerate", at: 1789630000, seconds: 21, fetched: 0, failed: 0, error: null, problems: [] },
+        { kind: "sync", at: 1789547500, seconds: 96, fetched: 0, failed: 1, error: null, problems: [] },
+        { kind: "reprocess", at: 1789461000, seconds: 412, fetched: 0, failed: 0, error: "database is locked", problems: [] },
+      ],
+    }),
+
+  recentLog: () =>
+    delay(
+      [
+        "2026-11-12T08:31:02.114Z  INFO hl_app_lib: Flashwave.tf starting version=\"0.13.0 beta\" model=\"v14\"",
+        "2026-11-12T08:31:02.180Z  INFO hl_db: database ready",
+        "2026-11-12T08:31:40.502Z  WARN hl_ingest::sync: trends.tf index failed error=operation timed out",
+        "2026-11-12T08:32:11.007Z  WARN hl_app_lib::sync_commands: sync step failed; carrying on error=operation timed out step=\"demos.tf\"",
+      ].join("\n"),
+    ),
+
+  getModelShift: () =>
+    delay<ModelShift | null>({
+      before: "v13",
+      after: "v14",
+      classes: [
+        { class: "soldier", games: 412, before: 1.08, after: 1.02 },
+        { class: "medic", games: 188, before: 0.91, after: 1.04 },
+        { class: "demoman", games: 96, before: 1.12, after: 1.1 },
+      ],
+      games: [
+        { logId: 4_121_877, class: "medic", map: "koth_product_final", playedAt: 1789401600, before: 0.62, after: 1.21 },
+        { logId: 4_098_331, class: "soldier", map: "pl_upward_f12", playedAt: 1788796800, before: 1.74, after: 1.31 },
+        { logId: 4_060_102, class: "medic", map: "cp_steel_f12", playedAt: 1788192000, before: 0.88, after: 1.24 },
+      ],
+    }),
+
+  onStartupRating: async () => () => {},
+
   onSync: async (h: SyncHandlers) => {
     handlers = h;
     return () => {
@@ -2180,3 +2519,97 @@ const MOCK_LOGSTF: LogsTfPlayer[] = [
   { accountId: 40001, steamid64: "76561197960305729", name: "flashbang", aliases: ["fb"], logs: 212, competitive: 40, pickup: 172, firstYear: 2015, lastYear: 2017, mainClass: "soldier" },
   { accountId: 40002, steamid64: "76561197960305730", name: "proximo", aliases: [], logs: 1404, competitive: 1210, pickup: 194, firstYear: 2014, lastYear: 2018, mainClass: "demoman" },
 ];
+
+
+/** Two of ETF2L's other tournaments: a one-night fun cup and an Experimental Cup. */
+const MOCK_CUPS: LeagueCupPage[] = (() => {
+  const team = (id: number, name: string) => ({ id, name, avatar: null });
+  const row = (matchId: number, time: number, competition: string, bracket: string, round: string, a: [number, string], b: [number, string], s: [number, number] | null): CupResult => ({
+    matchId,
+    time,
+    season: 36,
+    division: bracket,
+    tier: null,
+    round,
+    week: null,
+    stage: "Cup",
+    competition,
+    clan1: team(...a),
+    clan2: team(...b),
+    r1: s ? s[0] : null,
+    r2: s ? s[1] : null,
+    defaultWin: false,
+    bracket,
+  });
+  const crit = "Crit or Treat! Highlander One-Night-Cup";
+  const ec = "Highlander Experimental Cup #10";
+  const critRows = [
+    row(98001, 1_793_473_000, crit, "Werewolves", "Round 1", [37805, "DD14"], [2, "TWS"], [2, 0]),
+    row(98002, 1_793_473_000, crit, "Zombies", "Round 1", [3, "Kebab"], [4, "mpreg"], [1, 2]),
+    row(98003, 1_793_476_600, crit, "Werewolves", "Grand Final", [37805, "DD14"], [5, "Gibus and The Gang"], [2, 1]),
+    row(98004, 1_793_476_600, crit, "Zombies", "Grand Final", [4, "mpreg"], [6, "Sandvich Express"], [0, 2]),
+  ];
+  const ecRows = [
+    row(97001, 1_780_000_000, ec, "Mid", "Round 1", [7, "Pyro Pals"], [8, "Ubercharged"], [3, 1]),
+    row(97002, 1_780_600_000, ec, "Open", "Round 1", [9, "Bonk Squad"], [10, "Huntsmen"], [2, 2]),
+    row(97003, 1_781_200_000, `${ec}: Mid Grand Final`, "Mid", "Grand Final", [7, "Pyro Pals"], [11, "Gunslingers"], [4, 2]),
+  ];
+  const head = (name: string, kind: LeagueCup["kind"], rows: CupResult[], winners: LeagueCup["winners"]): LeagueCupPage => ({
+    name,
+    kind,
+    first: rows[0].time,
+    last: rows[rows.length - 1].time,
+    matches: rows.length,
+    teams: new Set(rows.flatMap((r) => [r.clan1.id, r.clan2.id])).size,
+    brackets: [...new Set(rows.map((r) => r.bracket))],
+    winners,
+    results: rows,
+  });
+  return [
+    head(crit, "one-night", critRows, [
+      { bracket: "Werewolves", team: team(37805, "DD14") },
+      { bracket: "Zombies", team: team(6, "Sandvich Express") },
+    ]),
+    head(ec, "experimental", ecRows, [{ bracket: "Mid", team: team(7, "Pyro Pals") }]),
+  ];
+})();
+
+/** A round robin of four Invite teams over three weeks: Season 24 played
+ *  out, Season 25 (the live one) from two weeks ago, its last week to come. */
+function mockRglMatches(id: number): RglMatch[] {
+  const teams = [
+    [14908, "The Amiable Duds", "AD."],
+    [14954, "Witness Gaming", "wG"],
+    [14839, "The Family", "folk"],
+    [14820, "mandem", "mndm"],
+  ] as const;
+  const pairs = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]];
+  const maps = ["pl_vigil_rc10", "koth_product_final", "pl_upward_f12"];
+  const live = id === 198;
+  // The live season is on its third week right now: one match started 45 minutes ago, the next in 15.
+  const start = live ? Date.now() - 14 * 86_400_000 - 45 * 60_000 : Date.UTC(2026, 5, 2, 1, 30);
+  let n = live ? 35000 : 34000;
+  return pairs.flatMap((week, w) =>
+    week.map(([a, b], i) => {
+      const home = (w + i) % 2 === 0;
+      const hs = (a + w) % 3 === 0 ? 1 : 3;
+      const as = 4 - hs;
+      const toCome = live && w === 2;
+      return {
+        matchId: n++,
+        matchDate: new Date(start + 7 * w * 86_400_000 + i * 3_600_000).toISOString(),
+        matchName: `Week ${w + 1} - ${maps[w].split("_")[1].replace(/^./, (c) => c.toUpperCase())}`,
+        divisionName: "Invite",
+        seasonId: id,
+        seasonName: live ? "HL Season 25" : "HL Season 24",
+        isForfeit: !live && w === 2 && i === 1,
+        winner: toCome ? null : hs > as ? teams[a][0] : teams[b][0],
+        teams: [
+          { teamId: teams[a][0], teamName: teams[a][1], teamTag: teams[a][2], isHome: home },
+          { teamId: teams[b][0], teamName: teams[b][1], teamTag: teams[b][2], isHome: !home },
+        ],
+        maps: [{ mapName: maps[w], homeScore: toCome ? null : home ? hs : as, awayScore: toCome ? null : home ? as : hs }],
+      };
+    }),
+  );
+}

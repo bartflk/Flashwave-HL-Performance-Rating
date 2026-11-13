@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { ApiError } from "./ApiError";
 import { friendlyText } from "../lib/apierror";
 import { RatingValue } from "./RatingValue";
@@ -15,12 +15,15 @@ import { RankBySwitch, useRankBy } from "./RankBy";
 import { TierPill } from "./TierPill";
 import { tierOf, useStatScales } from "../lib/tiers";
 import { startSync, useSyncStatus } from "../lib/sync";
-import { bounds, usePeriod } from "../lib/period";
+import { bounds, setPeriod, usePeriod } from "../lib/period";
+import { toastError } from "../lib/toast";
 import { KindPicker } from "./ContextBadge";
 import { ClassIcon } from "./ClassIcon";
 import { PeriodPicker } from "./PeriodPicker";
-import { t, k } from "../lib/i18n";
+import { t, k, locale } from "../lib/i18n";
 import { Refreshing, Spinner } from "./Spinner";
+import { useSaved } from "../lib/saved";
+import { balanceWrap } from "../lib/balance";
 
 const PAGE = 50;
 
@@ -63,7 +66,7 @@ const STAT_COLS: StatCol[] = [
   { key: "medkits_hp", label: k("Pack HP"), name: k("Health from packs"), group: k("Totals"), title: k("Health gained from health packs"), value: (me) => me.medkitsHp, fmt: thousands, on: false },
   { key: "sentries", label: k("SG"), name: k("Sentries built"), group: k("Totals"), title: k("Sentries built"), value: (me) => me.sentries, on: false },
   { key: "cpc", label: k("CAP"), name: k("Points captured"), group: k("Totals"), title: k("Points captured"), value: (me) => me.cpc, on: false },
-  { key: "sentries", label: k("SG"), name: k("Sentries destroyed"), group: k("Totals"), title: k("Sentries destroyed, from the server log"), value: (me) => me.sentryKills ?? null, on: false },
+  { key: "sentry_kills", label: k("SG kills"), name: k("Sentries destroyed"), group: k("Totals"), title: k("Sentries destroyed, from the server log"), value: (me) => me.sentryKills ?? null, on: false },
   { key: "lks", label: k("Streak"), name: k("Longest killstreak"), group: k("Totals"), title: k("Longest killstreak"), value: (me) => me.lks, on: false },
   { key: "suicides", label: k("Suicides"), name: k("Suicides"), group: k("Totals"), title: k("Suicides"), value: (me) => me.suicides, on: false },
   { key: "time", label: k("Time"), name: k("Time played"), group: k("Totals"), title: k("Time played"), value: (me) => me.timeS, fmt: (v) => clock(v), on: false },
@@ -81,16 +84,24 @@ const STAT_COLS: StatCol[] = [
   { key: "rating", label: k("Rating"), name: k("Your rating"), group: k("Rating"), title: k("Sort by your rating on your main class"), value: (_me, m) => m.rating },
 ];
 
+const isView = (v: unknown): v is View => VIEWS.some((w) => w.id === v);
+const isNameOrNull = (v: unknown): v is string | null => v === null || (typeof v === "string" && v.length > 0);
+const isSort = (v: unknown): v is { key: string; ascending: boolean } =>
+  !!v && typeof v === "object" && typeof (v as { key: unknown }).key === "string" && typeof (v as { ascending: unknown }).ascending === "boolean";
+
 export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
-  const [view, setView] = useState<View>("highlander");
+  // The filters and the order are remembered (useSaved): set once, they hold
+  // across tabs and restarts.
+  const [view, setView] = useSaved<View>("matches.view", "highlander", isView);
   const [pages, setPages] = useState(1);
   // What you played on, and where: both narrow the whole history, not the
   // rows already on screen.
-  const [cls, setCls] = useState<string | null>(null);
-  const [map, setMap] = useState<string | null>(null);
-  const [sort, setSort] = useState<{ key: string; ascending: boolean }>({ key: "date", ascending: false });
+  const [cls, setCls] = useSaved<string | null>("matches.class", null, isNameOrNull);
+  const [map, setMap] = useSaved<string | null>("matches.map", null, isNameOrNull);
+  const [sort, setSort] = useSaved<{ key: string; ascending: boolean }>("matches.sort", { key: "date", ascending: false }, isSort);
   // Q56 (Emiel): straight to the matches with everyone's movement and aim.
-  const [stvOnly, setStvOnly] = useState(false);
+  const [stvOnly, setStvOnly] = useSaved<boolean>("matches.stv", false, (v): v is boolean => typeof v === "boolean");
+  const filtered = view !== "highlander" || cls !== null || map !== null || stvOnly;
   const classSort = parseClassSort(sort.key);
   const picker = useColumns("matches", STAT_COLS);
   const statCols = STAT_COLS.filter(picker.shown);
@@ -147,7 +158,18 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
   // when it finishes.
   const syncing = useSyncStatus().state === "running";
   const refresh = async () => {
-    if (!(await api.syncBusy())) await startSync(false);
+    try {
+      if (!(await api.syncBusy())) await startSync(false);
+    } catch (e) {
+      toastError(e);
+    }
+  };
+  const resetFilters = () => {
+    setView("highlander");
+    setCls(null);
+    setMap(null);
+    setStvOnly(false);
+    setPages(1);
   };
 
   // What is picked stays on offer when the other filters leave it at none,
@@ -188,7 +210,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
             </button>
           ))}
         </div>
-        <PeriodPicker />
+        <PeriodPicker range={false} />
         {mapRows.length > 0 && (
           <label className="an-field fi-map">
             <span className="an-label">{t("Map")}</span>
@@ -210,6 +232,18 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
         )}
         <span className="fi-count">
           {matches.isPending ? <><Spinner /> {t("Loading…")}</> : stale ? <><Spinner /> {t("Sorting…")}</> : t("{0} match{1}", { "0": total.toLocaleString(), "1": total === 1 ? "" : "es" })}
+          {/* The filters are remembered, so a short list says why, and the
+              way back is beside it. The period is the whole app's, and the
+              order narrows nothing: both stay. */}
+          {filtered && (
+            <button
+              className="linkish fi-reset"
+              title={t("Back to every Highlander match: any class, any map, with or without STV")}
+              onClick={resetFilters}
+            >
+              {t("Reset filters")}
+            </button>
+          )}
         </span>
         <div className="fi-actions">
         <button
@@ -225,8 +259,10 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
         </div>
         </div>
 
-      {classRows.length > 0 && (
-        <div className="class-filter" role="tablist" aria-label={t("Class")}>
+      {/* The row stays when no class matches: With STV is the way out of a
+          filter that leaves nothing, so it must not go with the classes. */}
+      <div className="class-filter" role="tablist" aria-label={t("Class")} ref={balanceWrap}>
+          {classRows.length > 0 && <>
           <button
             role="tab"
             aria-selected={cls === null}
@@ -253,6 +289,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
             </button>
           ))}
           <ClassSortPicker sort={sort} onSort={setSort} />
+          </>}
           <button
             className={stvOnly ? "km-chip on cf-stv" : "km-chip cf-stv"}
             aria-pressed={stvOnly}
@@ -266,8 +303,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
           </button>
           {hasPct && <RankBySwitch value={rankBy} onPick={pickRank} stat="DPM" />}
           <ColumnPicker cols={STAT_COLS} state={picker} />
-        </div>
-      )}
+      </div>
       </div>
 
       {matches.isError && <ApiError error={matches.error} />}
@@ -278,6 +314,21 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
             <>
               <p>{t("No match here has its SourceTV demo on this machine.")}</p>
               <p className="hint">{t("Download one from a match's Demo linking panel, or turn off With STV.")}</p>
+            </>
+          ) : filtered || period.kind !== "all" ? (
+            <>
+              <p>{t("No matches for these filters.")}</p>
+              <p className="hint">
+                <button
+                  className="linkish"
+                  onClick={() => {
+                    resetFilters();
+                    setPeriod({ kind: "all" });
+                  }}
+                >
+                  {t("Reset filters")}
+                </button>
+              </p>
             </>
           ) : (
             <>
@@ -306,6 +357,14 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
               </tr>
             </thead>
             <tbody>
+              {/* The season picked as the period, on a divider like a
+                  tournament's: where the date order's own dividers already
+                  name it, they say it. */}
+              {period.kind === "season" && !dividers && <PeriodRow name={period.name} from={period.from} to={period.to} total={total} span={5 + statCols.length + (classSort ? 1 : 0)} />}
+              {/* Custom dates too: no tournament divider names those. */}
+              {period.kind === "custom" && (period.from !== null || period.to !== null) && (
+                <PeriodRow name={t("Custom dates")} from={period.from} to={period.to} total={total} span={5 + statCols.length + (classSort ? 1 : 0)} />
+              )}
               {items.map((m, i) => {
                 // A divider where the list enters a tournament's stretch,
                 // or leaves it (by date only: another order mixes them).
@@ -412,6 +471,33 @@ function TournamentRow({ t: x, span }: { t: Tournament | null; span: number }) {
   );
 }
 
+/** The period's season above the rows, in a tournament divider's look. */
+function PeriodRow({ name, from, to, total, span }: { name: string; from: number | null; to: number | null; total: number; span: number }) {
+  // A period's days are UTC days (lib/period), so they are written in UTC:
+  // in local time a day's last second is already the next day east of
+  // Greenwich, and 10 Sept read as 11. Custom dates may have one end open.
+  const day = (x: number, year: boolean) =>
+    new Date(x * 1000).toLocaleDateString(locale(), { day: "numeric", month: "short", ...(year ? { year: "numeric" } : {}), timeZone: "UTC" });
+  const when =
+    from !== null && to !== null
+      ? `${day(from, new Date(from * 1000).getUTCFullYear() !== new Date(to * 1000).getUTCFullYear())} – ${day(to, true)}`
+      : from !== null
+        ? t("from {0}", { "0": day(from, true) })
+        : t("up to {0}", { "0": day(to as number, true) });
+  return (
+    <tr className="tourney-row tourney-period">
+      <td colSpan={span}>
+        <span className="tourney-head">
+          <strong className="tourney-name">{name}</strong>
+          <span className="tourney-meta">
+            {when} · {t("{0} match{1}", { "0": total.toLocaleString(), "1": total === 1 ? "" : "es" })}
+          </span>
+        </span>
+      </td>
+    </tr>
+  );
+}
+
 /** A column heading that sorts: click to use it, click again to flip it. */
 function SortHead(props: {
   col: { key: string; label: string; num?: boolean; title?: string };
@@ -425,7 +511,14 @@ function SortHead(props: {
       className={`sortable${col.num ? " num" : ""}${on ? " sorted" : ""}`}
       title={col.title ? t(col.title) : t("Sort by date")}
       aria-sort={on ? (sort.ascending ? "ascending" : "descending") : "none"}
+      tabIndex={0}
       onClick={() => onSort({ key: col.key, ascending: on ? !sort.ascending : false })}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSort({ key: col.key, ascending: on ? !sort.ascending : false });
+        }
+      }}
     >
       {t(col.label)}
       {on && <span className="sort-arrow">{sort.ascending ? " ▴" : " ▾"}</span>}
@@ -447,6 +540,24 @@ function ImportLog({ onOpen }: { onOpen: (logId: number) => void }) {
   // Opens toward the room it has: leftward from the row's right end, or
   // rightward when a narrow window has wrapped the button to the left.
   const [toRight, setToRight] = useState(false);
+
+  // A click anywhere else, or Escape with the focus anywhere, closes it (as
+  // the column picker does); the input is disabled while fetching, so its own
+  // Escape handler was not enough.
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
 
   async function add() {
     if (!text.trim()) return;
@@ -474,7 +585,7 @@ function ImportLog({ onOpen }: { onOpen: (logId: number) => void }) {
   }
 
   return (
-    <div className="fi-import">
+    <div className="fi-import" ref={box}>
       <button
         className={open ? "km-chip on" : "km-chip"}
         onClick={(e) => {
@@ -494,7 +605,7 @@ function ImportLog({ onOpen }: { onOpen: (logId: number) => void }) {
               void add();
             }}
           >
-            <input autoFocus value={text} placeholder="https://logs.tf/4042136" onChange={(e) => setText(e.target.value)} disabled={busy} onKeyDown={(e) => e.key === "Escape" && setOpen(false)} />
+            <input autoFocus value={text} placeholder="https://logs.tf/4042136" onChange={(e) => setText(e.target.value)} disabled={busy} />
             <button type="submit" className="primary" disabled={busy || !text.trim()}>{busy ? <><Spinner /> {t("Fetching…")}</> : t("Add it")}</button>
           </form>
           <span className="hint">{t("A log id or logs.tf link. Fetched now, not at the next sync.")}</span>

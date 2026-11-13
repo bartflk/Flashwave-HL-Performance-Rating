@@ -196,7 +196,7 @@ export function HeadToHead({ d }: { d: MatchDetail }) {
                       <td colSpan={9}>
                         <div className="hh-parts">
                           {[x, y].map((s, i) => (
-                            <Breakdown key={i} s={s} who={name(h.accounts[i])} mean={h.scaleMean} sd={h.scaleSd} />
+                            <Breakdown key={i} s={s} who={name(h.accounts[i])} mean={s?.scaleMean ?? h.scaleMean} sd={s?.scaleSd ?? h.scaleSd} />
                           ))}
                         </div>
                       </td>

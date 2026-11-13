@@ -12,6 +12,7 @@ import { ClassIcon } from "../ClassIcon";
 import { HtmlBody } from "./News";
 import { Etf2lMark } from "../Etf2lMark";
 import { Loading } from "../Spinner";
+import { balanceWrap } from "../../lib/balance";
 
 /**
  * ETF2L's recruitment, Highlander only (Q74; Flashy: "recruitments would be
@@ -56,7 +57,7 @@ export function RecruitmentPage({ onOpen }: { onOpen: (p: RecruitPost, kind: Kin
         <h1>{t("Recruitment")}</h1>
         <p className="hint">{t("The newest posts on ETF2L: players looking for a team, and teams looking for players.")}</p>
       </header>
-      <div className="e2-filters">
+      <div className="e2-filters" ref={balanceWrap}>
         <Seg
           label={t("Recruitment")}
           value={kind}

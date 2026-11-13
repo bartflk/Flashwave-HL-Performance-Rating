@@ -3,7 +3,10 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { open, save } from "@tauri-apps/plugin-dialog";
+import { t } from "../lib/i18n";
 import type {
+  Diagnostics,
+  ModelShift,
   StvStage,
   LanguageFiles,
   SavedLanguageFile,
@@ -58,11 +61,20 @@ import type {
   Fixture,
   NewsItem,
   NewsPost,
+  RglBan,
+  RglMatch,
+  RglMatchMore,
+  RglMatchStats,
   RglPlayer,
+  RglPlayerMore,
+  RglPlayerHit,
+  RglSeasonCard,
+  RglTeamHit,
   RglSeason,
   RglSeasonItem,
   RglTeamPage,
   RglTeamSeason,
+  RglTeamHistory,
   ResultRow,
   TeamHit,
   LeagueMatch,
@@ -132,6 +144,8 @@ import type {
   HeadToHead,
   SeasonBreakdown,
   StatScales,
+  LeagueCup,
+  LeagueCupPage,
 } from "./types";
 import { withChosenNames } from "../lib/names";
 
@@ -192,6 +206,22 @@ const realApi = {
     invoke<SeasonBreakdown>("get_season_breakdown", { season, tier, class: cls, accountId }),
   syncStart: (full: boolean) => invoke<void>("sync_start", { full }),
   reprocessStart: () => invoke<void>("reprocess_start"),
+  /** The rating pass alone. */
+  rerateStart: () => invoke<void>("rerate_start"),
+  /** Every demo on this machine read again. */
+  rereadDemosStart: () => invoke<void>("reread_demos_start"),
+  getDiagnostics: () => invoke<Diagnostics>("get_diagnostics"),
+  /** The last lines of this run's log file. */
+  recentLog: (lines?: number) => invoke<string>("recent_log", { lines: lines ?? null }),
+  getModelShift: () => invoke<ModelShift | null>("get_model_shift"),
+  /** The rating the app runs at startup for a new model: its progress, and its end. */
+  onStartupRating: async (h: { onProgress: (p: Progress) => void; onDone: () => void }): Promise<UnlistenFn> => {
+    const offs = await Promise.all([
+      listen<Progress>("startup://progress", (e) => h.onProgress(e.payload)),
+      listen<null>("startup://rated", () => h.onDone()),
+    ]);
+    return () => offs.forEach((off) => off());
+  },
   getMatch: (logId: number) => invoke<MatchDetail | null>("get_match", { logId }),
   getProfile: (cls: string | null, kind: ContextKind | null = null, from: number | null = null, to: number | null = null) =>
     invoke<ProfileResponse>("get_profile", { class: cls, kind, from, to }),
@@ -254,9 +284,9 @@ const realApi = {
    */
   saveBackupAs: async (suggested: string): Promise<Backup | null> => {
     const path = await save({
-      title: "Save a copy of the database",
+      title: t("Save a copy of the database"),
       defaultPath: suggested,
-      filters: [{ name: "SQLite database", extensions: ["sqlite3"] }],
+      filters: [{ name: t("SQLite database"), extensions: ["sqlite3"] }],
     });
     if (!path) return null;
     return invoke<Backup>("save_backup_as", { path });
@@ -285,12 +315,36 @@ const realApi = {
   getNews: () => invoke<NewsItem[]>("get_news"),
   getRglSeasons: () => invoke<RglSeasonItem[]>("get_rgl_seasons"),
   getRglSeason: (id: number) => invoke<RglSeason>("get_rgl_season", { id }),
+  getRglSeasonMatches: (id: number) => invoke<RglMatch[]>("get_rgl_season_matches", { id }),
+  getRglBans: (skip: number) => invoke<RglBan[]>("get_rgl_bans", { skip }),
+  /** Matches as a calendar file: asks where to save it; the path, or null if cancelled. */
+  saveCalendar: async (text: string, suggested: string): Promise<string | null> => {
+    const path = await save({
+      title: t("Save the calendar"),
+      defaultPath: suggested,
+      filters: [{ name: t("Calendar"), extensions: ["ics"] }],
+    });
+    if (!path) return null;
+    await invoke<void>("export_calendar", { path, text });
+    return path;
+  },
+  getRglMatch: (id: number) => invoke<RglMatch | null>("get_rgl_match", { id }),
+  getRglMatchMore: (id: number) => invoke<RglMatchMore | null>("get_rgl_match_more", { id }),
+  getRglMatchStats: (id: number) => invoke<RglMatchStats | null>("get_rgl_match_stats", { id }),
   getRglTeam: (id: number) => invoke<RglTeamPage | null>("get_rgl_team", { id }),
   getRglTeamSeasons: (ids: number[]) => invoke<RglTeamSeason[]>("get_rgl_team_seasons", { ids }),
+  /** `all`: every linked season (up to 12), not only the newest three. */
+  getRglTeamHistory: (id: number, all = false) => invoke<RglTeamHistory | null>("get_rgl_team_history", { id, all }),
   getRglPlayer: (input: string) => invoke<RglPlayer | null>("get_rgl_player", { input }),
+  getRglPlayerMore: (input: string) => invoke<RglPlayerMore>("get_rgl_player_more", { input }),
+  getRglSeasonCard: (id: number) => invoke<RglSeasonCard>("get_rgl_season_card", { id }),
+  searchRglPlayers: (q: string) => invoke<RglPlayerHit[]>("search_rgl_players", { q }),
+  searchRglTeams: (q: string) => invoke<RglTeamHit[]>("search_rgl_teams", { q }),
   getNewsPost: (id: number) => invoke<NewsPost | null>("get_news_post", { id }),
   getSeasonNews: (season: number, seasonName: string) => invoke<NewsItem[]>("get_season_news", { season, seasonName }),
   getRecentResults: (limit?: number) => invoke<ResultRow[]>("get_recent_results", { limit }),
+  getTournaments: () => invoke<LeagueCup[]>("get_tournaments"),
+  getTournament: (name: string) => invoke<LeagueCupPage | null>("get_tournament", { name }),
   searchTeams: (query: string) => invoke<TeamHit[]>("search_teams", { query }),
   getLeagueMatch: (matchId: number) => invoke<LeagueMatch | null>("get_league_match", { matchId }),
   getMatchPage: (matchId: number) => invoke<Etf2lMatchPage | null>("get_match_page", { matchId }),
@@ -318,10 +372,10 @@ const realApi = {
   /** Pick an image and put it in for this map; false when the dialog was closed. */
   importOverview: async (map: string): Promise<boolean> => {
     const path = await open({
-      title: "Top-down image of the map",
+      title: t("Top-down image of the map"),
       multiple: false,
       directory: false,
-      filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp"] }],
+      filters: [{ name: t("Images"), extensions: ["png", "jpg", "jpeg", "webp"] }],
     });
     if (typeof path !== "string") return false;
     await invoke<void>("import_overview", { map, path });
@@ -332,16 +386,16 @@ const realApi = {
   /** Q32: a map's callouts to a preset file; the path, or null if cancelled. */
   exportCallouts: async (map: string): Promise<string | null> => {
     const path = await save({
-      title: "Save the callouts",
+      title: t("Save the callouts"),
       defaultPath: `${map}.callouts.json`,
-      filters: [{ name: "Callouts", extensions: ["json"] }],
+      filters: [{ name: t("Callouts"), extensions: ["json"] }],
     });
     if (!path) return null;
     await invoke<void>("export_callouts", { map, path });
     return path;
   },
   pickCalloutFile: async (): Promise<string | null> => {
-    const path = await open({ title: "Callouts to import", multiple: false, directory: false, filters: [{ name: "Callouts", extensions: ["json"] }] });
+    const path = await open({ title: t("Callouts to import"), multiple: false, directory: false, filters: [{ name: t("Callouts"), extensions: ["json"] }] });
     return typeof path === "string" ? path : null;
   },
   /** What importing would do; with no map, onto the map the file names. */
@@ -447,6 +501,12 @@ const realApi = {
    */
   onNewDemo: async (h: (d: NewDemo) => void): Promise<UnlistenFn> =>
     listen<NewDemo>("demos://new", (e) => h(e.payload)),
+
+  /**
+   * The startup index of the demos folder finished (it runs after the window
+   * is up), so the demo links on screen may be out of date.
+   */
+  onDemosIndexed: async (h: () => void): Promise<UnlistenFn> => listen("demos://indexed", () => h()),
 
   /** Subscribe to sync events. Returns a function that unsubscribes all three. */
   syncCancel: () => invoke<boolean>("sync_cancel"),

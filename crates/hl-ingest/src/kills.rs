@@ -72,9 +72,18 @@ pub async fn fetch(
             Ok(Some(zip)) => match rawlog::unzip(&zip) {
                 Ok(text) => {
                     unreachable_run = 0;
-                    db.store_rawlog(log_id, &zip).await?;
-                    s.kills += store(db, log_id, rawlog::parse(&text)).await?;
-                    s.fetched += 1;
+                    // The zip and its kills in one write, and a failure is
+                    // this log's: it used to end the whole pass (audit SY-1).
+                    match store(db, log_id, &zip, rawlog::parse(&text)).await {
+                        Ok(kills) => {
+                            s.kills += kills;
+                            s.fetched += 1;
+                        }
+                        Err(e) => {
+                            tracing::warn!(log_id, error = %format!("{e:#}"), "storing a raw log failed");
+                            s.failed += 1;
+                        }
+                    }
                 }
                 Err(e) => {
                     tracing::warn!(log_id, error = %format!("{e:#}"), "raw log unreadable");
@@ -117,7 +126,11 @@ pub async fn rederive_all(db: &Db, mut progress: impl FnMut(Progress)) -> Result
         }
         let Some(zip) = db.rawlog(log_id).await? else { continue };
         match rawlog::unzip(&zip) {
-            Ok(text) => group.push((log_id, shifted(db, log_id, rawlog::parse(&text)).await?)),
+            Ok(text) => {
+                let (log, aligned) = shifted(db, log_id, rawlog::parse(&text)).await?;
+                db.set_rawlog_aligned(log_id, aligned).await?;
+                group.push((log_id, log));
+            }
             Err(e) => tracing::warn!(log_id, error = %format!("{e:#}"), "stored raw log unreadable"),
         }
         if group.len() == REBUILD_GROUP {
@@ -146,16 +159,18 @@ async fn write_group(db: &Db, group: &[(i64, RawLog)]) -> Result<usize> {
     Ok(batch.iter().map(|(_, k, _)| k.len()).sum())
 }
 
-/// Store a parsed raw log's kills and chat, shifted into logs.tf's round-time
-/// frame (see [`rawlog::frame_offset`]).
+/// Store a raw log's zip with its parsed kills and chat, shifted into logs.tf's
+/// round-time frame (see [`rawlog::frame_offset`]), in one transaction: the zip
+/// is what takes the log out of the raw-log queue, so it must not be stored
+/// without its kills (audit SY-1).
 ///
 /// Takes the log by value and shifts it in place. It used to borrow it and
 /// clone the whole thing -- every kill, chat line and event -- only to shift
 /// the copy, 755 times a rebuild, while the caller dropped the original.
-async fn store(db: &Db, log_id: i64, log: RawLog) -> Result<usize> {
-    let log = shifted(db, log_id, log).await?;
+pub(crate) async fn store(db: &Db, log_id: i64, zip: &[u8], log: RawLog) -> Result<usize> {
+    let (log, aligned) = shifted(db, log_id, log).await?;
     let (kills, chat) = rows(&log);
-    db.replace_kill_events(log_id, &kills, &chat).await.with_context(|| format!("storing kills of {log_id}"))?;
+    db.store_rawlog_with_kills(log_id, zip, &kills, &chat, aligned).await.with_context(|| format!("storing kills of {log_id}"))?;
     Ok(kills.len())
 }
 
@@ -171,8 +186,7 @@ pub async fn ensure_one(db: &Db, sources: &Sources, log_id: i64) -> Result<bool>
         return Ok(false);
     };
     let text = rawlog::unzip(&zip)?;
-    db.store_rawlog(log_id, &zip).await?;
-    store(db, log_id, rawlog::parse(&text)).await?;
+    store(db, log_id, &zip, rawlog::parse(&text)).await?;
     Ok(true)
 }
 
@@ -180,20 +194,27 @@ pub async fn ensure_one(db: &Db, sources: &Sources, log_id: i64) -> Result<bool>
 /// come through the fetch (Q18: one built from a demo).
 pub async fn derive_log(db: &Db, log_id: i64) -> Result<usize> {
     let zip = db.rawlog(log_id).await?.with_context(|| format!("log {log_id} has no raw log"))?;
-    store(db, log_id, rawlog::parse(&rawlog::unzip(&zip)?)).await
+    store(db, log_id, &zip, rawlog::parse(&rawlog::unzip(&zip)?)).await
 }
 
-/// A parsed raw log moved into logs.tf's round-time frame, in place.
-async fn shifted(db: &Db, log_id: i64, mut log: RawLog) -> Result<RawLog> {
+/// A parsed raw log moved into logs.tf's round-time frame, in place, and
+/// whether it could be: `false` when logs.tf has rounds and none of them lines
+/// up, so the times stay as the server wrote them, hours off. That is noted
+/// beside the kills (audit SY-8) so nothing joins them to a demo's clock.
+async fn shifted(db: &Db, log_id: i64, mut log: RawLog) -> Result<(RawLog, bool)> {
     let logstf_starts = logstf_round_starts(db, log_id).await?;
-    match rawlog::frame_offset(&log.round_starts, &logstf_starts) {
-        Some(shift) => log.shift(shift),
-        None if !logstf_starts.is_empty() => {
-            tracing::warn!(log_id, "raw log rounds do not line up with logs.tf's; times left as the server wrote them")
+    let aligned = match rawlog::frame_offset(&log.round_starts, &logstf_starts) {
+        Some(shift) => {
+            log.shift(shift);
+            true
         }
-        None => {}
-    }
-    Ok(log)
+        None if !logstf_starts.is_empty() => {
+            tracing::warn!(log_id, "raw log rounds do not line up with logs.tf's; times left as the server wrote them");
+            false
+        }
+        None => true,
+    };
+    Ok((log, aligned))
 }
 
 /// The rows a log's kills and chat are stored as, borrowing from it.
@@ -252,6 +273,7 @@ pub fn stored_kills(log: &RawLog) -> Vec<hl_db::StoredKill> {
             live: k.live,
             killer: k.killer.account,
             killer_class: k.killer.class.map(|c| c.as_str().to_string()),
+            killer_team: k.killer.team.map(|t| t.as_str().to_string()),
             victim: k.victim.account,
             victim_team: k.victim.team.map(|t| t.as_str().to_string()),
             victim_class: k.victim.class.map(|c| c.as_str().to_string()),
@@ -292,13 +314,37 @@ pub fn impacts_for(
     if kills.is_empty() {
         return HashMap::new();
     }
+    // Some raw logs write a kill line twice, and a team kill is not a kill:
+    // the fights pass drops both, so the kills valued here must too, or the
+    // impact kills and assists of such a log double while round impact does not
+    // (RA-4). A repeat is the same second, pair and weapon.
+    let mut seen = std::collections::HashSet::new();
     impacts(
         kills.iter().enumerate().map(|(seq, k)| {
             let s = situations.and_then(|m| m.get(&(seq as i64)).copied());
-            (ctx(k, s), map_at(windows, k.at_raw).or(log_map))
+            let mut c = ctx(k, s);
+            if !is_real_kill(k, &mut seen) {
+                c.counts = false;
+                c.assist_counts = false;
+            }
+            (c, map_at(windows, k.at_raw).or(log_map))
         }),
         w,
     )
+}
+
+/// False for a repeat of a kill line already seen, a kill of oneself and a
+/// kill of a teammate: the same rules as `fights::analyse_on`. Only a kill
+/// that counts is remembered, so a feign death does not hide the real kill
+/// written after it.
+pub fn is_real_kill(k: &StoredKill, seen: &mut std::collections::HashSet<(i64, u32, u32, String)>) -> bool {
+    if !(k.live && k.custom.as_deref() != Some("feign_death")) {
+        return true;
+    }
+    if k.killer == k.victim || (k.killer_team.is_some() && k.killer_team == k.victim_team) {
+        return false;
+    }
+    seen.insert((k.at_raw, k.killer, k.victim, k.weapon.clone()))
 }
 
 /// Add each player's fight counts (from `Db::fight_counts`) to their impact,
@@ -420,4 +466,45 @@ pub fn enrich(log: &NormalizedLog, kills: &[StoredKill], me: Option<SteamId>, de
 
 fn now_s() -> i64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64)
+}
+
+#[cfg(test)]
+#[path = "kills_edge_tests.rs"]
+mod edge_tests;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn kill(at: i64, killer: u32, killer_team: &str, victim: u32, victim_team: &str) -> StoredKill {
+        StoredKill {
+            at_raw: at,
+            live: true,
+            killer,
+            killer_class: Some("scout".into()),
+            killer_team: Some(killer_team.into()),
+            victim,
+            victim_team: Some(victim_team.into()),
+            victim_class: Some("soldier".into()),
+            weapon: "scattergun".into(),
+            custom: None,
+            assister: Some(9),
+        }
+    }
+
+    #[test]
+    fn a_repeated_kill_line_and_a_team_kill_are_not_kills() {
+        // RA-4: some raw logs write a line twice; the fights pass drops the
+        // repeat and the team kill, and the impact kills and assists must too.
+        let w = Weights::default_weights();
+        let once = vec![kill(100, 1, "Red", 2, "Blue")];
+        let noisy = vec![kill(100, 1, "Red", 2, "Blue"), kill(100, 1, "Red", 2, "Blue"), kill(130, 1, "Red", 3, "Red"), kill(140, 1, "Red", 1, "Red")];
+        let a = impacts_for(&once, None, &[], Some("koth_product_final"), &w);
+        let b = impacts_for(&noisy, None, &[], Some("koth_product_final"), &w);
+        assert_eq!(a[&1].kills, b[&1].kills);
+        assert_eq!(a[&9].assists, b[&9].assists);
+        // A second kill of the same player in another second is a kill.
+        let two = vec![kill(100, 1, "Red", 2, "Blue"), kill(101, 1, "Red", 2, "Blue")];
+        assert_eq!(impacts_for(&two, None, &[], None, &w)[&1].kills, 2.0 * a[&1].kills);
+    }
 }

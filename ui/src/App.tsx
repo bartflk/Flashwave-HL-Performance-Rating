@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { checkStorage } from "./lib/storagewatch";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { checkEtf2lDaily } from "./lib/etf2lcheck";
 import { lookForNewLogs } from "./lib/newlogs";
 import { api } from "./api/client";
@@ -23,6 +23,7 @@ import { watchSync } from "./lib/sync";
 import { watchDemos } from "./lib/demowatch";
 import { checkForUpdate } from "./lib/update";
 import { useNavigation } from "./lib/navigation";
+import { refreshSeason } from "./lib/period";
 import { onGoTo } from "./lib/goto";
 import { RatingGuidePage } from "./components/rating/RatingGuide";
 import { OwnerBadge } from "./components/OwnerBadge";
@@ -31,6 +32,7 @@ import { BookmarksMenu } from "./components/Bookmarks";
 import "./App.css";
 import "./components/match/match.css";
 import { Etf2lMark } from "./components/Etf2lMark";
+import { RglMark } from "./components/RglMark";
 import { Logo } from "./components/Logo";
 
 type Tab = "matches" | "profile" | "etf2l" | "rgl" | "settings" | "rating";
@@ -84,6 +86,28 @@ export default function App() {
 
   const go = nav.go;
 
+  // Scroll, per place (Flashy audit UI-8): a match opens at its top and Back
+  // lands where the list was left. The page itself scrolls, and hiding a
+  // page clamps scrollY before an effect can read it, so the last position
+  // comes from the scroll events, which only fire a frame later.
+  const scrollAt = useRef(new Map<string, number>());
+  const lastY = useRef(0);
+  const placeKey = `${tab}:${openLog ?? ""}`;
+  const placeRef = useRef(placeKey);
+  useEffect(() => {
+    const onScroll = () => (lastY.current = window.scrollY);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  useLayoutEffect(() => {
+    if (placeRef.current === placeKey) return;
+    scrollAt.current.set(placeRef.current, lastY.current);
+    placeRef.current = placeKey;
+    const y = openLog !== null ? 0 : (scrollAt.current.get(placeKey) ?? 0);
+    window.scrollTo(0, y);
+    lastY.current = y;
+  }, [placeKey, openLog]);
+
   const status = useQuery({
     queryKey: ["app_status"],
     queryFn: api.appStatus,
@@ -104,6 +128,12 @@ export default function App() {
     }, 8_000);
     return () => window.clearTimeout(id);
   }, [ready, qc]);
+
+  // The saved season's dates follow the live ones (see refreshSeason).
+  const seasons = useQuery({ queryKey: ["seasons"], queryFn: api.listSeasons, staleTime: 60_000, enabled: ready });
+  useEffect(() => {
+    if (seasons.data) refreshSeason(seasons.data);
+  }, [seasons.data]);
 
   if (status.isPending) {
     return (
@@ -152,7 +182,20 @@ export default function App() {
       <div className="shell">
         <Setup
           status={data}
-          onDone={() => void status.refetch()}
+          onDone={() => {
+            void status.refetch();
+            // A changed SteamID must not leave the old account's data on screen.
+            if (forceSetup) void qc.invalidateQueries();
+          }}
+          onClose={
+            forceSetup
+              ? () => {
+                  setForceSetup(false);
+                  setOnboarding(false);
+                  void qc.invalidateQueries();
+                }
+              : undefined
+          }
           onFinish={() => {
             setForceSetup(false);
             setOnboarding(false);
@@ -177,6 +220,7 @@ export default function App() {
             {TABS.map(([id, label]) => (
               <button key={id} className={tab === id ? "tab active" : "tab"} onClick={() => go(id)}>
                 {id === "etf2l" && <Etf2lMark size={15} />}
+                {id === "rgl" && <RglMark size={15} />}
                 {t(label)}
               </button>
             ))}
@@ -213,7 +257,7 @@ export default function App() {
       )}
       {visited.has("rgl") && (
         <div hidden={tab !== "rgl" || openLog !== null}>
-          <ErrorBoundary what="RGL"><RglPage active={tab === "rgl" && openLog === null} steamid={data.config.steamid} /></ErrorBoundary>
+          <ErrorBoundary what="RGL"><RglPage active={tab === "rgl" && openLog === null} steamid={data.config.steamid} onOpenMatch={setOpenLog} /></ErrorBoundary>
         </div>
       )}
       {tab === "rating" && openLog === null && (

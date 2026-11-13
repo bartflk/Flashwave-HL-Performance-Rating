@@ -693,12 +693,13 @@
   box-shadow: inset 0 -2px 0 var(--accent);
 }
 
-/* The class and filters, as one bar the tabs below read from. */
+/* The class and filters, as one bar the tabs below read from. 16px inside
+   and 14px between the rows, as every control panel has. */
 .pf-toolbar {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 14px;
+  padding: 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--sunken);

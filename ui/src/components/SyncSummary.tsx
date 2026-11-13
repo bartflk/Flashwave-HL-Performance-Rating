@@ -24,6 +24,11 @@ export function SyncSummary() {
   const note = !s
     ? undefined
     : [
+        // Said out loud too, except in a narrow window, where only this is left.
+        [
+          s.highlander === 1 ? t("1 match") : t("{0} matches", { "0": s.highlander.toLocaleString() }),
+          s.officials === 1 ? t("1 official") : t("{0} officials", { "0": s.officials }),
+        ].join(" · "),
         s.pending > 0 ? t("{0} not fetched yet (about {1})", { "0": s.pending.toLocaleString(), "1": eta(s.pending) }) : null,
         s.outsideWindow > 0
           ? t("{0} older matches kept out — Settings, How far back", { "0": s.outsideWindow.toLocaleString() })
@@ -32,11 +37,16 @@ export function SyncSummary() {
         .filter(Boolean)
         .join("\n") || undefined;
 
+  const more = (s?.pending ?? 0) > 0 || (s?.outsideWindow ?? 0) > 0 ? !running && <span className="ss-more">•</span> : false;
+
   return (
     <div className="sync-summary" title={note}>
       {s ? (
         <span className="ss-counts">
-          {tx("{0} matches{1}{2} official{3}{4}", { "0": <strong>{s.highlander.toLocaleString()}</strong>, "1": <span className="sep">·</span>, "2": <strong>{s.officials}</strong>, "3": s.officials === 1 ? "" : "s", "4": (s.pending > 0 || s.outsideWindow > 0) && !running && <span className="ss-more">•</span> })}
+          {s.highlander === 1 ? tx("{0} match", { "0": <strong>1</strong> }) : tx("{0} matches", { "0": <strong>{s.highlander.toLocaleString()}</strong> })}
+          <span className="sep">·</span>
+          {s.officials === 1 ? tx("{0} official", { "0": <strong>1</strong> }) : tx("{0} officials", { "0": <strong>{s.officials}</strong> })}
+          {more}
         </span>
       ) : (
         <span className="ss-counts muted"><Spinner /> {t("Loading…")}</span>

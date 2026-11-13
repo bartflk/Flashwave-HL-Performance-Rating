@@ -93,14 +93,24 @@ pub fn set_aside(db_path: &Path) -> Result<PathBuf> {
     let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
     let to = db_path.with_extension(format!("unreadable-{stamp}.sqlite3"));
     rename_when_free(db_path, &to).with_context(|| format!("moving {} aside", db_path.display()))?;
-    for ext in ["sqlite3-wal", "sqlite3-shm"] {
-        let from = db_path.with_extension(ext);
-        if from.exists() {
-            let _ = rename_when_free(&from, &to.with_extension(format!("{ext}.old")));
-        }
-    }
+    move_journals(db_path, &to);
     tracing::error!(from = %db_path.display(), to = %to.display(), "database would not open; moved aside");
     Ok(to)
+}
+
+/// Move the write-ahead log and shared-memory file along with a database
+/// that has just been renamed, under the names SQLite would look for beside
+/// its new name (`<file>-wal`, `<file>-shm`). A journal under any other name
+/// is dead weight: the commits it holds are lost to whoever opens the moved
+/// file.
+fn move_journals(db_path: &Path, moved_to: &Path) {
+    for suffix in ["-wal", "-shm"] {
+        let from = PathBuf::from(format!("{}{suffix}", db_path.display()));
+        if from.exists() {
+            let to = PathBuf::from(format!("{}{suffix}", moved_to.display()));
+            let _ = rename_when_free(&from, &to);
+        }
+    }
 }
 
 /// Rename, waiting while Windows says the file is in use (error 32). The
@@ -136,6 +146,16 @@ pub fn request(db_path: &Path, backup_path: &Path) -> Result<()> {
     if !backup_path.is_file() {
         bail!("{} is not a file", backup_path.display());
     }
+    // A backup is a `.sqlite3` file that is a SQLite database: the path
+    // comes from the window, and what it names replaces the database.
+    if !backup_path.extension().is_some_and(|x| x.eq_ignore_ascii_case("sqlite3")) {
+        bail!("{} is not a .sqlite3 backup", backup_path.display());
+    }
+    let mut head = [0u8; 16];
+    let read = std::fs::File::open(backup_path).and_then(|mut f| std::io::Read::read_exact(&mut f, &mut head));
+    if read.is_err() || &head != b"SQLite format 3\0" {
+        bail!("{} is not a SQLite database", backup_path.display());
+    }
     let marker = db_path.with_file_name(MARKER);
     std::fs::write(&marker, backup_path.to_string_lossy().as_bytes())
         .with_context(|| format!("writing {}", marker.display()))?;
@@ -167,25 +187,46 @@ pub fn apply_pending(db_path: &Path) -> Result<Option<PathBuf>> {
     Ok(Some(from))
 }
 
-/// Replace the database with `from`, keeping what was there under `.replaced`.
+/// Replace the database with `from`, keeping what was there under a
+/// `.replaced-<time>` name, journals and all.
 ///
-/// The old file is kept rather than deleted: this runs on a database believed
-/// to be empty, and "believed" is not "known" — a mistake here would be the
-/// second data loss in a feature written because of the first.
+/// The old file is kept rather than deleted: a restore can now replace a
+/// database with matches in it, and its write-ahead log may hold commits not
+/// yet in the main file, so the log goes with it. The name carries the time,
+/// so a second restore never overwrites the copy the first one kept (which
+/// may be the only original). The new file is copied to a `.part` name and
+/// renamed into place, so a cut-off copy never looks like a database.
 fn swap(db_path: &Path, from: &Path) -> Result<()> {
-    // The write-ahead log and shared-memory file belong to the old database.
-    // Left behind, SQLite would replay them over the restored one.
-    for ext in ["sqlite3-wal", "sqlite3-shm"] {
-        let _ = std::fs::remove_file(db_path.with_extension(ext));
-    }
+    let mut aside_to = None;
     if db_path.exists() {
-        let aside = db_path.with_extension("sqlite3.replaced");
-        let _ = std::fs::remove_file(&aside);
-        std::fs::rename(db_path, &aside)
+        let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
+        let aside = db_path.with_extension(format!("replaced-{stamp}.sqlite3"));
+        rename_when_free(db_path, &aside)
             .with_context(|| format!("moving the old database to {}", aside.display()))?;
+        move_journals(db_path, &aside);
+        aside_to = Some(aside);
+    } else {
+        // No database, but journals of one that was moved by hand would be
+        // replayed over the restored file.
+        for suffix in ["-wal", "-shm"] {
+            let _ = std::fs::remove_file(format!("{}{suffix}", db_path.display()));
+        }
     }
-    std::fs::copy(from, db_path)
-        .with_context(|| format!("copying to {}", db_path.display()))?;
+    let part = db_path.with_extension("sqlite3.part");
+    let _ = std::fs::remove_file(&part);
+    if let Err(e) = std::fs::copy(from, &part) {
+        // A copy that failed (disk full) must not leave the app with no
+        // database: the half-written file goes and the old one comes back.
+        let _ = std::fs::remove_file(&part);
+        if let Some(aside) = &aside_to {
+            let _ = std::fs::rename(aside, db_path);
+            for suffix in ["-wal", "-shm"] {
+                let _ = std::fs::rename(format!("{}{suffix}", aside.display()), format!("{}{suffix}", db_path.display()));
+            }
+        }
+        return Err(e).with_context(|| format!("copying to {}", part.display()));
+    }
+    std::fs::rename(&part, db_path).with_context(|| format!("putting {} in place", db_path.display()))?;
     tracing::info!(from = %from.display(), "database restored from a backup");
     Ok(())
 }
@@ -201,14 +242,41 @@ mod tests {
         dir
     }
 
+    /// Restoring twice must not delete the copy the first restore kept.
+    #[test]
+    fn a_second_restore_keeps_the_first_replaced_copy() {
+        let dir = temp("twice");
+        let db = dir.join("hl.sqlite3");
+        let backup = dir.join("copy.sqlite3");
+        std::fs::write(&db, b"the original").unwrap();
+        std::fs::write(&backup, b"the backup").unwrap();
+        swap(&db, &backup).unwrap();
+        // Same second on a fast machine: the names must still not collide.
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        swap(&db, &backup).unwrap();
+        let originals = std::fs::read_dir(&dir)
+            .unwrap()
+            .flatten()
+            .filter(|e| std::fs::read(e.path()).is_ok_and(|b| b == b"the original"))
+            .count();
+        assert_eq!(originals, 1, "the original is still there after two restores");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     #[test]
     fn a_request_names_the_file_and_a_missing_one_is_refused() {
         let dir = temp("request");
         let db = dir.join("hl.sqlite3");
         let backup = dir.join("copy.sqlite3");
-        std::fs::write(&backup, b"not really a database").unwrap();
+        std::fs::write(&backup, b"SQLite format 3\0 and then not really a database").unwrap();
+        let text = dir.join("notes.sqlite3");
+        std::fs::write(&text, b"just some words, long enough").unwrap();
+        let wrong_kind = dir.join("copy.txt");
+        std::fs::write(&wrong_kind, b"SQLite format 3\0 but named for something else").unwrap();
 
         assert!(request(&db, &dir.join("gone.sqlite3")).is_err(), "a missing file is an error");
+        assert!(request(&db, &text).is_err(), "a file that is not a SQLite database is refused");
+        assert!(request(&db, &wrong_kind).is_err(), "and so is one not named .sqlite3");
         assert_eq!(pending(&db), None, "and leaves nothing behind");
 
         request(&db, &backup).unwrap();
@@ -222,7 +290,7 @@ mod tests {
         let db = dir.join("hl.sqlite3");
         let backup = dir.join("copy.sqlite3");
         std::fs::write(&db, b"the empty one").unwrap();
-        std::fs::write(&backup, b"the good one").unwrap();
+        std::fs::write(&backup, b"SQLite format 3\0 the good one").unwrap();
         // Stale journal files from the database being replaced.
         std::fs::write(dir.join("hl.sqlite3-wal"), b"stale").unwrap();
 
@@ -230,9 +298,18 @@ mod tests {
         let done = apply_pending(&db).unwrap();
 
         assert_eq!(done.as_deref(), Some(backup.as_path()));
-        assert_eq!(std::fs::read(&db).unwrap(), b"the good one");
-        assert_eq!(std::fs::read(dir.join("hl.sqlite3.replaced")).unwrap(), b"the empty one");
-        assert!(!dir.join("hl.sqlite3-wal").exists(), "the old write-ahead log is gone");
+        assert_eq!(std::fs::read(&db).unwrap(), b"SQLite format 3\0 the good one");
+        let kept: Vec<_> = std::fs::read_dir(&dir)
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .filter(|n| n.starts_with("hl.replaced-"))
+            .collect();
+        let old = kept.iter().find(|n| n.ends_with(".sqlite3")).expect("the old database is kept");
+        assert_eq!(std::fs::read(dir.join(old)).unwrap(), b"the empty one");
+        assert_eq!(std::fs::read(dir.join(format!("{old}-wal"))).unwrap(), b"stale", "its log goes with it, under the matching name");
+        assert!(!dir.join("hl.sqlite3-wal").exists(), "and none is left to be replayed over the restored one");
+        assert!(!dir.join("hl.sqlite3.part").exists());
         assert_eq!(pending(&db), None, "and the marker is cleared");
         assert!(apply_pending(&db).unwrap().is_none(), "a second start does nothing");
         let _ = std::fs::remove_dir_all(&dir);
@@ -248,15 +325,20 @@ mod tests {
         let good = hl_db::Db::connect(&db_path).await.unwrap();
         good.close().await;
         // Now break it the way it broke: a header that is not a database.
-        std::fs::write(&db_path, b"SQLite format 3  and then nonsense").unwrap();
-        std::fs::write(dir.join("hl.sqlite3-wal"), b"a journal for a file that is gone").unwrap();
-
+        std::fs::write(&db_path, b"SQLite format 3\0 and then nonsense").unwrap();
         assert!(hl_db::Db::connect(&db_path).await.is_err(), "the broken file must not open");
+        // The journal is written after the failed open, which may itself
+        // clear away a journal it finds beside a broken file.
+        std::fs::write(dir.join("hl.sqlite3-wal"), b"a journal for a file that is gone").unwrap();
 
         let moved = set_aside(&db_path).unwrap();
         assert!(moved.exists(), "the old file is kept, not deleted");
         assert!(!db_path.exists(), "and is out of the way");
         assert!(!dir.join("hl.sqlite3-wal").exists(), "its journal went with it");
+        assert!(
+            std::path::PathBuf::from(format!("{}-wal", moved.display())).exists(),
+            "under the name SQLite would look for beside the moved file"
+        );
 
         // A fresh one takes its place, which is the whole point.
         let fresh = hl_db::Db::connect(&db_path).await.unwrap();
@@ -311,5 +393,116 @@ mod tests {
 
         let _ = std::fs::remove_dir_all(&dir);
         let _ = std::fs::remove_dir_all(&fresh);
+    }
+}
+
+#[cfg(test)]
+mod older_backups {
+    use super::*;
+
+    static MIGRATIONS: sqlx::migrate::Migrator = sqlx::migrate!("../hl-db/migrations");
+
+    fn temp(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("hl-restore-old-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    /// A database an older version made: its first `n` migrations, one log.
+    async fn old_database(path: &Path, n: usize) {
+        use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
+        let opts = SqliteConnectOptions::new().filename(path).create_if_missing(true);
+        let pool = SqlitePoolOptions::new().max_connections(1).connect_with(opts).await.unwrap();
+        let partial = sqlx::migrate::Migrator {
+            migrations: std::borrow::Cow::Owned(MIGRATIONS.migrations[..n].to_vec()),
+            ignore_missing: false,
+            locking: true,
+            no_tx: false,
+        };
+        partial.run(&pool).await.unwrap();
+        if n >= 2 {
+            sqlx::query("INSERT INTO log_index (log_id, title) VALUES (77, 'Zoë ☃')").execute(&pool).await.unwrap();
+        }
+        sqlx::query("INSERT INTO app_config (key, value) VALUES ('steamid', '76561197960265735')").execute(&pool).await.unwrap();
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn a_backup_from_an_older_schema_is_offered_untouched_and_restores_into_the_newest() {
+        let dir = temp("schema");
+        let db_path = dir.join("hl.sqlite3");
+        let folder = backup::dir(&db_path);
+        std::fs::create_dir_all(&folder).unwrap();
+        let backup_path = folder.join("hl-20260101-000000.sqlite3");
+        old_database(&backup_path, 12).await;
+        let before = std::fs::read(&backup_path).unwrap();
+
+        // Looking at it does not migrate it: the copy stays as it was kept.
+        assert_eq!(hl_db::Db::peek_matches(&backup_path).await, 1);
+        assert_eq!(std::fs::read(&backup_path).unwrap(), before);
+
+        // A new install beside it is offered it.
+        let fresh = hl_db::Db::connect(&db_path).await.unwrap();
+        let found = offer(&fresh, &db_path).await.unwrap().expect("a copy with a match in it");
+        assert_eq!(found.backup.unwrap().matches, 1);
+        fresh.close().await;
+
+        request(&db_path, &backup_path).unwrap();
+        apply_pending(&db_path).unwrap().expect("restored");
+        let kept = std::fs::read_dir(&dir).unwrap().flatten().any(|e| e.file_name().to_string_lossy().starts_with("hl.replaced-"));
+        assert!(kept, "the empty one is kept");
+
+        // Opened by this version it is brought up to date and loses nothing.
+        let db = hl_db::Db::connect(&db_path).await.unwrap();
+        assert_eq!(db.index_stats().await.unwrap().indexed, 1);
+        assert_eq!(db.get_setting("steamid").await.unwrap().as_deref(), Some("76561197960265735"));
+        db.close().await;
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn peeking_at_something_that_is_not_a_database_counts_nothing_and_makes_nothing() {
+        let dir = temp("peek");
+        let text = dir.join("text.sqlite3");
+        std::fs::write(&text, b"just some words, long enough to be read as a header").unwrap();
+        assert_eq!(hl_db::Db::peek_matches(&text).await, 0);
+        assert_eq!(hl_db::Db::peek_matches(&dir.join("missing.sqlite3")).await, 0);
+        assert!(!dir.join("missing.sqlite3").exists(), "looking does not create it");
+        assert_eq!(hl_db::Db::peek_matches(&dir).await, 0, "a folder is not a database");
+        // A database too old to have the table is empty, not an error.
+        let old = dir.join("old.sqlite3");
+        old_database(&old, 1).await;
+        assert_eq!(hl_db::Db::peek_matches(&old).await, 0);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_swap_that_fails_puts_the_old_database_back() {
+        let dir = temp("rollback");
+        let db = dir.join("hl.sqlite3");
+        std::fs::write(&db, b"the one I have").unwrap();
+        let err = swap(&db, &dir.join("gone.sqlite3")).unwrap_err();
+        assert!(format!("{err:#}").contains("copying"), "{err:#}");
+        assert_eq!(std::fs::read(&db).unwrap(), b"the one I have", "not left with nothing");
+        assert!(!db.with_extension("sqlite3.replaced").exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_marker_with_a_trailing_newline_works_and_one_naming_a_missing_file_is_dropped() {
+        let dir = temp("marker");
+        let db = dir.join("hl.sqlite3");
+        let backup = dir.join("cöpy ☃.sqlite3");
+        std::fs::write(&backup, b"good").unwrap();
+        std::fs::write(dir.join(MARKER), format!("{}\r\n", backup.display())).unwrap();
+        assert_eq!(pending(&db), Some(backup.clone()));
+
+        std::fs::write(dir.join(MARKER), dir.join("vanished.sqlite3").to_string_lossy().as_bytes()).unwrap();
+        assert_eq!(pending(&db), None);
+        assert!(apply_pending(&db).unwrap().is_none());
+        assert!(!dir.join(MARKER).exists(), "a restore that cannot be done is not retried on every start");
+        assert!(!db.exists(), "and nothing was made");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

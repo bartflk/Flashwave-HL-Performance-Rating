@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { friendlyText } from "./apierror";
+import { t as tr } from "./i18n";
 
 /**
  * One app-wide confirmation line. Copying a demo command is invisible
@@ -17,13 +19,18 @@ export function toast(text: string, detail?: string, kind: Toast["kind"] = "ok")
   listeners.forEach((l) => l(t));
 }
 
-/** Copy to the clipboard and say so. */
+/** A failed click, said out loud: an action that throws must not look like nothing happened. */
+export function toastError(e: unknown) {
+  toast(friendlyText(e), undefined, "error");
+}
+
+/** Copy to the clipboard and say so. `what` is already in the user's language. */
 export async function copy(text: string, what: string) {
   try {
     await api.copyText(text);
-    toast(`Copied ${what}`, text);
+    toast(tr("Copied {0}", { "0": what }), text);
   } catch (e) {
-    toast("Could not copy to the clipboard", String(e), "error");
+    toast(tr("Could not copy to the clipboard"), String(e), "error");
   }
 }
 

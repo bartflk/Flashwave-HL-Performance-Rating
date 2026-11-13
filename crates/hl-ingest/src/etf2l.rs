@@ -118,20 +118,37 @@ pub async fn fetch(
         .collect();
 
     let (total, mut fetched, mut failed) = (todo.len(), 0, 0);
+    // A refusal ends the pass, and so do three failures to reach ETF2L in a
+    // row: the matches left are read at the next sync, not asked for now,
+    // one request each, into a server that is not answering.
+    let mut unreachable_run = 0;
     for (i, id) in todo.into_iter().enumerate() {
         progress(i, total);
         match sources.etf2l_get(&format!("/matches/{id}")).await {
             Ok(Some(body)) if serde_json::from_str::<Value>(&body).is_ok_and(|v| v.get("match").is_some()) => {
+                unreachable_run = 0;
                 db.store_etf2l_raw("match", id, &body).await?;
                 fetched += 1;
             }
             Ok(_) => {
+                unreachable_run = 0;
                 tracing::warn!(match_id = id, "ETF2L match missing or malformed");
                 failed += 1;
             }
             Err(e) => {
                 tracing::warn!(match_id = id, error = %format!("{e:#}"), "ETF2L match fetch failed");
                 failed += 1;
+                if crate::http::refused(&e) {
+                    break;
+                }
+                if crate::http::unreachable(&e) {
+                    unreachable_run += 1;
+                    if unreachable_run >= 3 {
+                        break;
+                    }
+                } else {
+                    unreachable_run = 0;
+                }
             }
         }
     }
@@ -170,6 +187,7 @@ pub async fn derive_context(db: &Db, me: SteamId) -> Result<ContextSummary> {
                 log_id: g.log_id,
                 played_at: g.played_at,
                 trends_match: g.trends_match,
+                title: g.title.clone(),
                 mates: mates.into_iter().map(|(a, _)| *a).collect(),
                 opponents: opponents.into_iter().map(|(a, _)| *a).collect(),
             })
@@ -324,8 +342,8 @@ pub fn match_by_time(logs: &[(i64, i64)], matches: &[(i64, i64)]) -> Vec<(i64, i
     for &(log_id, played_at) in logs {
         let best = matches
             .iter()
-            .filter(|(_, t)| played_at >= *t && played_at - *t <= OFFICIAL_WINDOW_S)
-            .min_by_key(|(_, t)| played_at - *t);
+            .filter(|(_, t)| played_at >= *t && played_at.saturating_sub(*t) <= OFFICIAL_WINDOW_S)
+            .min_by_key(|(_, t)| played_at.saturating_sub(*t));
         if let Some((match_id, _)) = best {
             out.push((log_id, *match_id));
         }

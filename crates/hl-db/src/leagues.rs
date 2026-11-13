@@ -6,6 +6,7 @@ use crate::Db;
 use anyhow::Result;
 use serde::Serialize;
 use sqlx::Row;
+use std::collections::HashMap;
 
 pub struct CompetitionRow<'a> {
     pub competition_id: i64,
@@ -273,7 +274,7 @@ impl Db {
         Ok(sqlx::query_scalar(
             "SELECT m.match_id FROM etf2l_season_match m JOIN etf2l_competition c ON c.competition_id = m.competition_id
              WHERE m.detail_fetched = 0 AND m.default_win = 0 AND c.season >= ?2
-             ORDER BY m.time DESC LIMIT ?1",
+             ORDER BY m.time DESC, m.match_id DESC LIMIT ?1",
         )
         .bind(limit)
         .bind(min_season)
@@ -388,7 +389,7 @@ impl Db {
              LEFT JOIN etf2l_team t1 ON t1.team_id = m.clan1_id
              LEFT JOIN etf2l_team t2 ON t2.team_id = m.clan2_id
              WHERE (?1 IS NULL OR c.season = ?1) AND (?2 IS NULL OR m.clan1_id = ?2 OR m.clan2_id = ?2)
-             ORDER BY m.time DESC",
+             ORDER BY m.time DESC, m.match_id DESC",
         )
         .bind(season)
         .bind(team)
@@ -577,7 +578,7 @@ impl Db {
             "SELECT m.match_id, m.time, c.season, m.division, m.round, m.clan1_id, m.r1, m.r2, m.default_win
                FROM etf2l_season_match m JOIN etf2l_competition c ON c.competition_id = m.competition_id
               WHERE (m.clan1_id = ?1 AND m.clan2_id = ?2) OR (m.clan1_id = ?2 AND m.clan2_id = ?1)
-              ORDER BY m.time DESC",
+              ORDER BY m.time DESC, m.match_id DESC",
         )
         .bind(a)
         .bind(b)
@@ -616,6 +617,9 @@ pub struct ResultRow {
     pub week: Option<i64>,
     /// "regular", "Playoffs", "3rd Place", "Qualifiers", "Cup".
     pub stage: String,
+    /// ETF2L's name for the competition: a league season's, or a cup's
+    /// ("Crit or Treat! Highlander One-Night-Cup").
+    pub competition: String,
     pub clan1: TeamRef,
     pub clan2: TeamRef,
     pub r1: Option<i64>,
@@ -689,7 +693,7 @@ pub struct MatchLog {
 
 // A playoff kept as its own competition ("Low Playoffs") has no division on
 // its matches: the competition's is theirs.
-const RESULT_SELECT: &str = "SELECT m.match_id, m.time, c.season, COALESCE(m.division, NULLIF(c.division, '')) AS division, m.tier, m.round, m.week, c.stage,
+const RESULT_SELECT: &str = "SELECT m.match_id, m.time, c.season, c.name AS competition, COALESCE(m.division, NULLIF(c.division, '')) AS division, m.tier, m.round, m.week, c.stage,
         m.r1, m.r2, m.default_win,
         m.clan1_id, t1.name AS n1, t1.avatar AS a1, m.clan2_id, t2.name AS n2, t2.avatar AS a2
    FROM etf2l_season_match m
@@ -708,6 +712,7 @@ fn result_row(r: &sqlx::sqlite::SqliteRow) -> ResultRow {
         round: r.get("round"),
         week: r.get("week"),
         stage: r.get("stage"),
+        competition: r.get::<Option<String>, _>("competition").unwrap_or_default(),
         clan1: TeamRef { id: r.get("clan1_id"), name: r.get::<Option<String>, _>("n1").unwrap_or_default(), avatar: r.get("a1") },
         clan2: TeamRef { id: r.get("clan2_id"), name: r.get::<Option<String>, _>("n2").unwrap_or_default(), avatar: r.get("a2") },
         r1: r.get("r1"),
@@ -723,12 +728,21 @@ impl Db {
         let rows = sqlx::query(&format!(
             "{RESULT_SELECT}
               WHERE m.time IS NOT NULL AND (m.r1 IS NOT NULL OR m.default_win <> 0)
-              ORDER BY m.time DESC
+              ORDER BY m.time DESC, m.match_id DESC
               LIMIT ?1"
         ))
         .bind(limit)
         .fetch_all(self.pool())
         .await?;
+        Ok(rows.iter().map(result_row).collect())
+    }
+
+    /// Every official of ETF2L's other Highlander tournaments (stage `Cup`:
+    /// the one-night, Experimental, Nations' and preseason cups), by time.
+    pub async fn cup_results(&self) -> Result<Vec<ResultRow>> {
+        let rows = sqlx::query(&format!("{RESULT_SELECT} WHERE c.stage = 'Cup' ORDER BY m.time IS NULL, m.time, m.match_id"))
+            .fetch_all(self.pool())
+            .await?;
         Ok(rows.iter().map(result_row).collect())
     }
 
@@ -788,7 +802,7 @@ impl Db {
                JOIN etf2l_competition c ON c.competition_id = m.competition_id
                JOIN etf2l_team t ON t.team_id = p.team_id
               WHERE p.account_id = ?1 AND p.team_id IS NOT NULL AND m.time > ?2
-              ORDER BY p.team_id IS ?3 DESC, m.time
+              ORDER BY p.team_id IS ?3 DESC, m.time, m.match_id
               LIMIT 1",
         )
         .bind(i64::from(account))
@@ -820,14 +834,28 @@ impl Db {
     }
 
     /// Teams whose name holds `query`, any case: exact and prefix matches
-    /// first, then the ones that played most recently.
+    /// first, then the ones that played most recently. The names are
+    /// compared here, not in SQL: SQLite's `lower()` and `LIKE` fold only
+    /// ASCII, so a Cyrillic name was found by its own case alone (LG-14).
     pub async fn search_teams(&self, query: &str, limit: i64) -> Result<Vec<TeamHit>> {
         let q = query.trim().to_lowercase();
         if q.is_empty() {
             return Ok(Vec::new());
         }
-        // `!` escapes, so a % or _ in a name is a character, not a wildcard.
-        let like = format!("%{}%", q.replace('!', "!!").replace('%', "!%").replace('_', "!_"));
+        let names: Vec<(i64, String)> = sqlx::query("SELECT team_id, name FROM etf2l_team").fetch_all(self.pool()).await?.into_iter().map(|r| (r.get("team_id"), r.get("name"))).collect();
+        // (rank, id): 0 exact, 1 starts with, 2 holds.
+        let found: Vec<(u8, i64)> = names
+            .iter()
+            .filter_map(|(id, name)| {
+                let n = name.to_lowercase();
+                n.contains(&q).then(|| (if n == q { 0 } else if n.starts_with(&q) { 1 } else { 2 }, *id))
+            })
+            .collect();
+        if found.is_empty() {
+            return Ok(Vec::new());
+        }
+        let rank: HashMap<i64, u8> = found.iter().map(|(r, id)| (*id, *r)).collect();
+        let ids = serde_json::to_string(&found.iter().map(|(_, id)| *id).collect::<Vec<_>>())?;
         let rows = sqlx::query(
             "SELECT t.team_id, t.name, t.country, t.avatar,
                     (SELECT COUNT(*) FROM etf2l_season_match m WHERE m.clan1_id = t.team_id OR m.clan2_id = t.team_id) AS officials,
@@ -835,17 +863,12 @@ impl Db {
                       WHERE (m.clan1_id = t.team_id OR m.clan2_id = t.team_id) AND c.season < 100) AS last_season,
                     (SELECT MAX(m.time) FROM etf2l_season_match m WHERE m.clan1_id = t.team_id OR m.clan2_id = t.team_id) AS last_played
                FROM etf2l_team t
-              WHERE lower(t.name) LIKE ?1 ESCAPE '!'
-              ORDER BY (lower(t.name) = ?2) DESC, (lower(t.name) LIKE ?3 ESCAPE '!') DESC, last_played DESC
-              LIMIT ?4",
+              WHERE t.team_id IN (SELECT value FROM json_each(?1))",
         )
-        .bind(&like)
-        .bind(&q)
-        .bind(format!("{}%", &like[1..like.len() - 1]))
-        .bind(limit)
+        .bind(ids)
         .fetch_all(self.pool())
         .await?;
-        Ok(rows
+        let mut hits: Vec<TeamHit> = rows
             .into_iter()
             .map(|r| TeamHit {
                 team_id: r.get("team_id"),
@@ -856,7 +879,22 @@ impl Db {
                 last_season: r.get("last_season"),
                 last_played: r.get("last_played"),
             })
-            .collect())
+            .collect();
+        hits.sort_by(|a, b| rank[&a.team_id].cmp(&rank[&b.team_id]).then(b.last_played.cmp(&a.last_played)).then(a.team_id.cmp(&b.team_id)));
+        hits.truncate(limit.max(0) as usize);
+        Ok(hits)
+    }
+
+    /// How many played matches (from `min_season` on) have not had their own
+    /// page read: a count, not the rows (LG-8).
+    pub async fn count_season_matches_without_detail(&self, min_season: i64) -> Result<i64> {
+        Ok(sqlx::query_scalar(
+            "SELECT COUNT(*) FROM etf2l_season_match m JOIN etf2l_competition c ON c.competition_id = m.competition_id
+             WHERE m.detail_fetched = 0 AND m.default_win = 0 AND c.season >= ?1",
+        )
+        .bind(min_season)
+        .fetch_one(self.pool())
+        .await?)
     }
 }
 
@@ -898,6 +936,8 @@ mod tests {
         assert_eq!(t.iter().map(|x| x.team_id).collect::<Vec<_>>(), vec![2, 1], "prefix first");
         assert_eq!((t[1].officials, t[1].last_season), (2, Some(36)));
         assert_eq!(db.search_teams("%", 10).await.unwrap().len(), 1, "a % is a character, not a wildcard");
+        sqlx::query("INSERT INTO etf2l_team (team_id, name) VALUES (77, 'Команда ЁЖ')").execute(db.pool()).await.unwrap();
+        assert_eq!(db.search_teams("команда", 10).await.unwrap().len(), 1, "any case, not only ASCII");
         sqlx::query("INSERT INTO etf2l_competition (competition_id, season, season_name, division, stage, name, fetched_at) VALUES (2, 36, 'Autumn 2026', 'Low', 'Playoffs', 'HL 36 Low Playoffs', 0)").execute(db.pool()).await.unwrap();
         sqlx::query("INSERT INTO etf2l_season_match (match_id, competition_id, time, clan1_id, clan2_id, r1, r2, round) VALUES (13, 2, 600, 3, 4, 6, 0, 'Grand Final')").execute(db.pool()).await.unwrap();
         let playoff = db.league_match(13).await.unwrap().unwrap();

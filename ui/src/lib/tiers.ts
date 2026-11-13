@@ -35,6 +35,9 @@ const TOP = "#000000";
 /** A percentile as a star rating: the average game near yellow (3.3), the
  *  top tenth in the purples and navy, the top 1% at the edge of black. */
 function starsOf(pct: number): number {
+  // A NaN would fall through to the last colour, the black kept for the
+  // top 1%.
+  if (Number.isNaN(pct)) pct = 0;
   return 0.1 + 7.6 * Math.pow(Math.min(Math.max(pct, 0), 100) / 100, 1.4);
 }
 
@@ -89,6 +92,9 @@ const RG: [number, string][] = [
 
 /** The red-to-green colour at a percentile. */
 export function redGreen(pct: number): string {
+  // Past either end is the end colour: mixing beyond a stop gives channel
+  // values below 0 or above 255, which is not a colour.
+  pct = Number.isNaN(pct) ? 0 : Math.min(Math.max(pct, 0), 100);
   for (let i = 1; i < RG.length; i++) {
     if (pct <= RG[i][0]) return mix(RG[i - 1][1], RG[i][1], (pct - RG[i - 1][0]) / (RG[i][0] - RG[i - 1][0]));
   }

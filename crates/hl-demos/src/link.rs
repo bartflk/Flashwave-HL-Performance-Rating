@@ -208,6 +208,116 @@ mod tests {
         assert!(link(&[demo], &[l]).is_empty());
     }
 
+    fn demo(map: &str, start: f64, len: f64) -> DemoSpan {
+        DemoSpan { demo_id: 1, map: map.into(), start_utc: start, duration_s: len }
+    }
+
+    #[test]
+    fn the_overlap_threshold_is_inclusive_at_half_of_the_shorter_span() {
+        // Log on the real clock: 1000..2000 (offset 0, uploaded 5 s after).
+        let l = log(7, Some("pl_upward_f12"), 1000, 2000, 2005);
+        // A 1000 s demo starting at 1500 overlaps 500 s: half of the shorter (both 1000 s).
+        assert_eq!(link(&[demo("pl_upward_f12", 1500.0, 1000.0)], std::slice::from_ref(&l)).len(), 1);
+        // One second less overlap: no link.
+        assert!(link(&[demo("pl_upward_f12", 1501.0, 1000.0)], std::slice::from_ref(&l)).is_empty());
+        // Touching but not overlapping.
+        assert!(link(&[demo("pl_upward_f12", 2000.0, 1000.0)], std::slice::from_ref(&l)).is_empty());
+        assert!(link(&[demo("pl_upward_f12", 0.0, 1000.0)], &[l]).is_empty());
+    }
+
+    #[test]
+    fn a_short_demo_inside_a_long_match_is_judged_against_itself() {
+        let l = log(7, Some("pl_upward_f12"), 0, 3600, 3610);
+        let links = link(&[demo("pl_upward_f12", 1000.0, 600.0)], &[l]);
+        assert_eq!(links.len(), 1);
+        // But it holds only a sixth of the match.
+        assert_eq!(links[0].log_share, 0.17);
+    }
+
+    #[test]
+    fn a_log_with_no_map_needs_a_stricter_overlap() {
+        let l = log(7, None, 1000, 2000, 2005);
+        // 70% of the shorter: enough with a map, not without one.
+        assert!(link(&[demo("anything", 1300.0, 1000.0)], std::slice::from_ref(&l)).is_empty());
+        let links = link(&[demo("anything", 1200.0, 1000.0)], &[l]);
+        assert_eq!(links[0].method, "nomap");
+    }
+
+    #[test]
+    fn empty_and_backwards_spans_never_link() {
+        let l = log(7, Some("pl_upward_f12"), 1000, 2000, 2005);
+        assert!(link(&[], std::slice::from_ref(&l)).is_empty());
+        assert!(link(&[demo("pl_upward_f12", 1000.0, 1000.0)], &[]).is_empty());
+        assert!(link(&[demo("pl_upward_f12", 1000.0, 0.0)], std::slice::from_ref(&l)).is_empty());
+        assert!(link(&[demo("pl_upward_f12", 1000.0, -5.0)], &[l]).is_empty());
+        // A log whose end is not after its start.
+        let flat = log(8, Some("pl_upward_f12"), 1000, 1000, 1005);
+        assert!(link(&[demo("pl_upward_f12", 900.0, 300.0)], &[flat]).is_empty());
+    }
+
+    #[test]
+    fn the_upload_delay_limit_is_inclusive() {
+        let demo = demo("pl_upward_f12", 0.0, 3000.0);
+        let on_time = log(1, Some("pl_upward_f12"), 100, 1000, 1000 + MAX_UPLOAD_DELAY_S);
+        let late = log(2, Some("pl_upward_f12"), 100, 1000, 1000 + MAX_UPLOAD_DELAY_S + 1);
+        assert_eq!(link(std::slice::from_ref(&demo), &[on_time]).len(), 1);
+        assert!(link(&[demo], &[late]).is_empty());
+    }
+
+    /// The same raw end time in winter (CET, one hour behind UTC) and summer
+    /// (CEST, two hours): the whole-hour floor puts each on the right side,
+    /// also when the match crosses midnight on the server.
+    #[test]
+    fn winter_and_summer_servers_get_their_own_hour() {
+        // Raw end 23:58:00 on the server's clock, read as UTC.
+        let raw_end = 1_798_588_680_i64 / 86_400 * 86_400 + 23 * 3600 + 58 * 60;
+        let winter = log(1, None, raw_end - 1800, raw_end, raw_end + 3600 + 25);
+        let summer = log(2, None, raw_end - 1800, raw_end, raw_end + 7200 + 25);
+        assert_eq!((winter.offset_s(), winter.upload_delay_s()), (3600, 25));
+        assert_eq!((summer.offset_s(), summer.upload_delay_s()), (7200, 25));
+        // A server already on UTC.
+        let utc = log(3, None, raw_end - 1800, raw_end, raw_end + 25);
+        assert_eq!((utc.offset_s(), utc.upload_delay_s()), (0, 25));
+        // An upload a second after the match, with a server two hours behind,
+        // crossing midnight in UTC: still the right hour.
+        let crossing = log(4, None, raw_end - 1800, raw_end, raw_end + 7200 + 2);
+        assert_eq!(crossing.end_utc() - raw_end, 7200);
+        assert_eq!(crossing.start_utc() - (raw_end - 1800), 7200);
+    }
+
+    #[test]
+    fn a_demo_is_matched_to_a_log_in_the_other_time_zone_only_by_the_real_clock() {
+        // The same raw times, two servers an hour apart. The demo was recorded
+        // at the real time of the CET one; it must not link to the CEST one.
+        let cet = log(1, Some("pl_upward_f12"), 1000, 2000, 2000 + 3600 + 20);
+        let cest = log(2, Some("pl_upward_f12"), 1000, 2000, 2000 + 7200 + 20);
+        let links = link(&[demo("pl_upward_f12", 1000.0 + 3600.0, 1000.0)], &[cet, cest]);
+        assert_eq!(links.iter().map(|l| l.log_id).collect::<Vec<_>>(), vec![1]);
+    }
+
+    #[test]
+    fn map_matching_edges() {
+        assert_eq!(map_match("PL_UPWARD_F12", Some("pl_upward_f12")), Some("exact"));
+        // A different version of the same map is a label match, not exact.
+        assert_eq!(map_match("pl_upward_f10", Some("pl_upward_f12")), Some("label"));
+        assert_eq!(map_match("pl_upward_f10", Some("")), None);
+        // A demo with no map matches nothing that names one.
+        assert_eq!(map_match("", Some("pl_upward_f12")), None);
+    }
+
+    #[test]
+    fn ticks_at_the_edges_of_the_recording() {
+        // Exactly at the start and at the last tick: inside. One past: outside.
+        assert_eq!(tick_for(1000, 0, 1000.0, 66.0, 6600, 0.0), Some(0));
+        assert_eq!(tick_for(1100, 0, 1000.0, 66.0, 6600, 0.0), Some(6600));
+        assert_eq!(tick_for(1101, 0, 1000.0, 66.0, 6600, 0.0), None);
+        // The log's offset moves the moment into the demo's clock.
+        assert_eq!(tick_for(1000 - 7200, 7200, 1000.0, 66.0, 6600, 0.0), Some(0));
+        // A demo with no ticks holds only tick 0.
+        assert_eq!(tick_for(1000, 0, 1000.0, 66.0, 0, 0.0), Some(0));
+        assert_eq!(tick_for(1001, 0, 1000.0, 66.0, 0, 0.0), None);
+    }
+
     #[test]
     fn ticks_rewind_by_the_lead_but_stay_in_the_demo() {
         // Event 120 s into the recording at 66.67 tick/s, 5 s lead.

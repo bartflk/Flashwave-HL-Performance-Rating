@@ -183,7 +183,7 @@ impl AwardRules {
     }
     /// Enough officials on the class: EVPs, and the first half of the class award.
     pub fn enough(&self, l: &SeasonLine) -> bool {
-        l.officials.len() >= self.need(l.season, l.tier)
+        l.units() + 1e-9 >= self.need(l.season, l.tier) as f64
     }
     /// Best of the class: enough officials, on one of the division's three
     /// medal teams.
@@ -191,6 +191,23 @@ impl AwardRules {
         self.enough(l) && self.podium.contains(&(l.season, l.tier, l.team))
     }
 }
+/// Minutes in an official at which it counts in full. A shorter appearance
+/// (a substitute's six minutes) counts in proportion, so it cannot weigh as
+/// much as a whole match in a season rating, in the shrinkage or in an
+/// award's eligibility (RA-6).
+pub const FULL_OFFICIAL_MINUTES: f64 = 30.0;
+
+/// How much of a full official `minutes` on the class are.
+pub fn official_share(minutes: f64) -> f64 {
+    (minutes / FULL_OFFICIAL_MINUTES).clamp(0.0, 1.0)
+}
+
+/// Officials counted in full ones, from the minutes played in each (an
+/// official on several classes is its minutes over all of them).
+pub fn official_units(minutes: impl IntoIterator<Item = f64>) -> f64 {
+    minutes.into_iter().map(official_share).sum()
+}
+
 /// The Season MVP's blend: season, Grand Final, the rest of the playoffs.
 /// With no other playoff games, their share goes to the season.
 pub const SEASON_MVP_WEIGHTS: (f64, f64, f64) = (0.50, 0.35, 0.15);
@@ -208,9 +225,17 @@ pub const AWARD_TIE: f64 = 0.005;
 /// (within [`AWARD_TIE`] of the first of a run) by their typical official's
 /// output -- kills per 30 and damage per minute, each as a share of the
 /// run's best, added. A candidate with no output counted keeps its place
-/// behind those with one.
+/// behind those with one. Candidates equal in all of it go by account and
+/// class, so the same season always gives the same award: the rows come out
+/// of a HashMap, whose order is different on every run.
 pub fn award_order(rows: &mut [&SeasonLine]) {
-    rows.sort_by(|a, b| b.rating().total_cmp(&a.rating()).then(b.officials.len().cmp(&a.officials.len())));
+    rows.sort_by(|a, b| {
+        b.rating()
+            .total_cmp(&a.rating())
+            .then(b.officials.len().cmp(&a.officials.len()))
+            .then(a.account_id.cmp(&b.account_id))
+            .then(a.class.cmp(&b.class))
+    });
     let mut i = 0;
     while i < rows.len() {
         let head = rows[i].rating();
@@ -291,6 +316,12 @@ impl OfficialGame {
     pub fn rating(&self) -> f64 {
         if self.minutes > 0.0 { self.score_minutes / self.minutes } else { 1.0 }
     }
+
+    /// Its weight in a season: the stage's, by how much of a full official
+    /// it was (RA-6).
+    pub fn weight(&self) -> f64 {
+        self.stage * official_share(self.minutes)
+    }
 }
 
 /// An official's when, round, opponent and result: [`Catalogue::official_info`].
@@ -334,7 +365,14 @@ impl SeasonLine {
 
     /// One rated log into its official.
     pub fn add(&mut self, g: &hl_db::RatedGame, stage: f64) {
-        let key = g.etf2l_match_id.unwrap_or(-g.log_id);
+        // An official with no ETF2L match is told apart by its day, not its
+        // log: a three-map official uploaded as three logs is one official,
+        // not three (RA-14). Its number is negative so it cannot be a match's.
+        let key = match g.etf2l_match_id {
+            Some(id) => id,
+            None if g.played_at > 0 => i64::MIN / 2 + g.played_at / 86_400,
+            None => -g.log_id,
+        };
         self.officials.insert(key);
         let e = self.games.entry(key).or_insert_with(|| OfficialGame { stage, ..Default::default() });
         let m = if g.minutes > 0.0 { g.minutes } else { 1.0 };
@@ -362,6 +400,12 @@ impl SeasonLine {
         (self.opponents.1 > 0).then(|| self.opponents.0 / self.opponents.1 as f64)
     }
 
+    /// Their officials in full ones: a short appearance counts for part of
+    /// one. An official with no games recorded counts in full.
+    pub fn units(&self) -> f64 {
+        official_units(self.officials.iter().map(|id| self.games.get(id).map_or(FULL_OFFICIAL_MINUTES, |o| o.minutes)))
+    }
+
     /// The plain average over their officials.
     pub fn average(&self) -> f64 {
         if self.games.is_empty() { 1.0 } else { self.games.values().map(OfficialGame::rating).sum::<f64>() / self.games.len() as f64 }
@@ -369,7 +413,19 @@ impl SeasonLine {
     /// The season rating: one rating per official, weighted by stage and
     /// pulled towards 1.00 by [`SHRINK_OFFICIALS`].
     pub fn rating(&self) -> f64 {
-        let (sw, w) = self.games.values().fold((0.0, 0.0), |(sw, w), o| (sw + o.stage * o.rating(), w + o.stage));
+        let (sw, w) = self.games.values().fold((0.0, 0.0), |(sw, w), o| (sw + o.weight() * o.rating(), w + o.weight()));
+        (sw + SHRINK_OFFICIALS) / (w + SHRINK_OFFICIALS)
+    }
+
+    /// The same over the regular season alone: no playoff and no final. The
+    /// Season MVP's season term, since its blend already counts the final and
+    /// the playoffs apart (RA-8).
+    pub fn regular_rating(&self) -> f64 {
+        let (sw, w) = self
+            .games
+            .values()
+            .filter(|o| (o.stage - 1.0).abs() < 1e-9)
+            .fold((0.0, 0.0), |(sw, w), o| (sw + o.weight() * o.rating(), w + o.weight()));
         (sw + SHRINK_OFFICIALS) / (w + SHRINK_OFFICIALS)
     }
 }
@@ -565,9 +621,11 @@ impl Catalogue {
                 *votes.entry(d.clone()).or_default().entry(t).or_default() += 1;
             }
         }
-        let tier_by_name = votes.into_iter().filter_map(|(d, v)| Some((d, v.into_iter().max_by_key(|(_, n)| *n)?.0))).collect();
-        // The newest numbered season: 134 (AFA 2025) is older than 35.
-        let newest_season = matches.values().map(|m| m.season).filter(|s| *s < crate::leagues::OFF_SEASON).max().unwrap_or(0);
+        let tier_by_name = votes.into_iter().filter_map(|(d, v)| Some((d, v.into_iter().max_by(|a, b| a.1.cmp(&b.1).then_with(|| b.0.cmp(&a.0)))?.0))).collect();
+        // The newest numbered season: 134 (AFA 2025) is older than 35. Read
+        // from its regular matches: a preseason cup is filed under the season
+        // it precedes, and would make the season before it look over early.
+        let newest_season = matches.values().filter(|m| m.stage == "regular").map(|m| m.season).filter(|s| *s < crate::leagues::OFF_SEASON).max().unwrap_or(0);
         let mercs = db.catalogue_mercs().await?.into_iter().collect();
         let mut transfers: HashMap<(i64, u32), Vec<(i64, bool)>> = HashMap::new();
         for (team, account, time, joined) in db.catalogue_transfers().await? {
@@ -589,6 +647,20 @@ impl Catalogue {
             }
         }
         Ok(Catalogue { matches, rosters, teams: db.etf2l_teams().await?, tiers, tier_by_name, newest_season, mercs, transfers, season_end, final_colours, official_places, results_fit: Default::default() })
+    }
+
+    /// [`Catalogue::load`], kept for a few seconds: the team, honours and
+    /// podium pages each loaded the whole catalogue, and a page asks for
+    /// several of them (LG-8). Pages that only read use this; what a sync or
+    /// a rating run changes shows within the time it is kept.
+    pub async fn shared(db: &Db) -> Result<std::sync::Arc<Catalogue>> {
+        const LIFE: std::time::Duration = std::time::Duration::from_secs(20);
+        if let Some(c) = db.shared::<Catalogue>(LIFE) {
+            return Ok(c);
+        }
+        let c = std::sync::Arc::new(Self::load(db).await?);
+        db.keep_shared(c.clone());
+        Ok(c)
     }
 
     /// Each team's last decided match of each season.
@@ -700,7 +772,7 @@ impl Catalogue {
                     }
                 }
             }
-            if let Some((d, _)) = seen.into_iter().max_by_key(|(_, n)| *n) {
+            if let Some((d, _)) = seen.into_iter().max_by(|a, b| a.1.cmp(&b.1).then_with(|| b.0.cmp(&a.0))) {
                 name = d;
             }
         }
@@ -732,9 +804,10 @@ impl Catalogue {
         let n = n.strip_suffix(" Division").unwrap_or(n);
         match n.rsplit_once(' ') {
             Some((head, last)) if last.len() == 1 && last.chars().all(|c| c.is_ascii_alphabetic()) => head.to_string(),
-            Some((head, last))
-                if last.len() >= 2 && last[..last.len() - 1].chars().all(|c| c.is_ascii_digit()) && last.ends_with(|c: char| c.is_ascii_alphabetic()) =>
-            {
+            // "2A" -> "2". The letter is cut off as a character, not a byte:
+            // a last word like an accented letter is two bytes, and slicing
+            // it in half panics.
+            Some((head, last)) if last.strip_suffix(|c: char| c.is_ascii_alphabetic()).is_some_and(|d| !d.is_empty() && d.chars().all(|c| c.is_ascii_digit())) => {
                 format!("{head} {}", &last[..last.len() - 1])
             }
             _ => n.to_string(),
@@ -921,7 +994,8 @@ impl Catalogue {
                     e.push((1, w, format!("Grand Final {}", score(m, w))));
                     e.push((2, l, format!("Grand Final {}", score(m, l))));
                 }
-            } else if m.stage == "Cup" {
+            } else if matches!(m.stage.as_str(), "Cup" | "Qualifiers") {
+                // Neither is the league's: a qualifier's 3rd place is not a medal.
                 continue;
             } else if m.stage == "3rd Place" || Self::round_kind(m.round.as_deref()) == Some(RoundKind::Third) {
                 if let Some((w, _)) = winner_loser(m) {
@@ -955,23 +1029,48 @@ impl Catalogue {
                 }
             }
         }
-        // Divisions without a final: the table, once the season is over.
+        // Divisions without a final: the table, once the season is over. A
+        // forfeit is a win and counts. A division that ran in groups (2A, 2B)
+        // has a table for each, and only a final could say which group's
+        // winner is first, so it gets none.
         let mut tables: HashMap<(i64, String), HashMap<i64, (u32, i64)>> = HashMap::new();
-        for m in self.matches.values().filter(|m| Self::played(m) && m.stage == "regular" && season_order(m.season) < season_order(self.newest_season)) {
-            let t = tables.entry((m.season, self.medal_division(m))).or_default();
+        let mut groups: HashMap<(i64, String), std::collections::BTreeSet<String>> = HashMap::new();
+        // Wins over each other, for a tie.
+        let mut head_to_head: HashMap<(i64, i64), u32> = HashMap::new();
+        for m in self.matches.values().filter(|m| (Self::played(m) || m.default_win) && m.stage == "regular" && season_order(m.season) < season_order(self.newest_season)) {
+            let key = (m.season, self.medal_division(m));
+            groups.entry(key.clone()).or_default().insert(self.division_of(m).0);
+            let t = tables.entry(key).or_default();
             for team in [m.clan1, m.clan2] {
                 let (f, a, won) = Self::result_for(m, team);
                 let e = t.entry(team).or_default();
                 e.0 += u32::from(won == Some(true));
                 e.1 += f.unwrap_or(0) - a.unwrap_or(0);
+                if won == Some(true) {
+                    *head_to_head.entry((team, if team == m.clan1 { m.clan2 } else { m.clan1 })).or_default() += 1;
+                }
             }
         }
         for (key, table) in tables {
-            if out.contains_key(&key) || table.len() < 4 {
+            if out.contains_key(&key) || table.len() < 4 || groups.get(&key).is_some_and(|g| g.len() > 1) {
                 continue;
             }
             let mut rows: Vec<(i64, (u32, i64))> = table.into_iter().collect();
             rows.sort_by(|a, b| (b.1).cmp(&a.1).then(a.0.cmp(&b.0)));
+            // Two teams level on wins: the one that beat the other is first,
+            // as ETF2L ranks them, before the round difference.
+            for i in 0..rows.len().saturating_sub(1) {
+                let (a, b) = (rows[i].0, rows[i + 1].0);
+                let level_before = i > 0 && rows[i - 1].1 .0 == rows[i].1 .0;
+                let level_after = i + 2 < rows.len() && rows[i + 2].1 .0 == rows[i + 1].1 .0;
+                if rows[i].1 .0 == rows[i + 1].1 .0
+                    && !level_before
+                    && !level_after
+                    && head_to_head.get(&(b, a)).copied().unwrap_or(0) > head_to_head.get(&(a, b)).copied().unwrap_or(0)
+                {
+                    rows.swap(i, i + 1);
+                }
+            }
             let e = out.entry(key).or_default();
             for (i, (team, _)) in rows.into_iter().take(3).enumerate() {
                 e.push((i as u8 + 1, team, "League table".to_string()));
@@ -1169,20 +1268,28 @@ impl Catalogue {
             }
         }
         // Each player's officials in the season, on any class.
-        let mut per_player: HashMap<(i64, i64, u32), std::collections::HashSet<i64>> = HashMap::new();
+        // Minutes in each, over every class they played it on, to count them
+        // in full officials (RA-6).
+        let mut per_player: HashMap<(i64, i64, u32), HashMap<i64, f64>> = HashMap::new();
         for l in lines.values() {
-            per_player.entry((l.season, l.tier, l.account_id)).or_default().extend(l.officials.iter().copied());
+            let e = per_player.entry((l.season, l.tier, l.account_id)).or_default();
+            for id in &l.officials {
+                *e.entry(*id).or_default() += l.games.get(id).map_or(FULL_OFFICIAL_MINUTES, |o| o.minutes);
+            }
             if rules.playoff_teams.contains(&(l.season, l.team)) {
                 rules.has_playoffs.insert((l.season, l.tier));
             }
         }
-        let mut most: HashMap<(i64, i64), usize> = HashMap::new();
+        let mut most: HashMap<(i64, i64), f64> = HashMap::new();
         for ((season, tier, _), o) in per_player {
             let e = most.entry((season, tier)).or_default();
-            *e = (*e).max(o.len());
+            *e = e.max(official_units(o.values().copied()));
         }
         for (key, n) in most {
-            rules.need.insert(key, AWARD_MIN_OFFICIALS.max((n as f64 * AWARD_SHARE_OF_SEASON).ceil() as usize));
+            // Rounded to a hundredth first: 10 officials of 30 minutes are
+            // 10 units however the floats add up, and 60% of it is 6.
+            let n = (n * 100.0).round() / 100.0;
+            rules.need.insert(key, AWARD_MIN_OFFICIALS.max((n * AWARD_SHARE_OF_SEASON - 1e-9).ceil() as usize));
         }
         rules
     }
@@ -1274,16 +1381,20 @@ impl Catalogue {
                 if by_class.values().sum::<f64>() * 2.0 <= longest {
                     continue;
                 }
-                let Some((class, _)) = by_class.iter().max_by(|x, y| x.1.total_cmp(y.1)) else { continue };
+                // Equal minutes on two classes: the first by name, not by
+                // whichever the map happens to list first.
+                let Some((class, _)) = by_class.iter().max_by(|x, y| x.1.total_cmp(y.1).then(y.0.cmp(x.0))) else { continue };
                 let Some(line) = lines.get(&(season, tier, class.to_string(), a)) else { continue };
                 let Some(final_game) = line.games.get(&f.match_id) else { continue };
-                // Officials in the season, on any class.
-                let officials: std::collections::HashSet<i64> = lines
-                    .iter()
-                    .filter(|((s, t, _, acc), _)| *s == season && *t == tier && *acc == a)
-                    .flat_map(|(_, l)| l.officials.iter().copied())
-                    .collect();
-                if officials.len() < rules.need(season, tier) {
+                // Officials in the season, on any class, and the minutes in each.
+                let mut official_minutes: HashMap<i64, f64> = HashMap::new();
+                for (_, l) in lines.iter().filter(|((s, t, _, acc), _)| *s == season && *t == tier && *acc == a) {
+                    for id in &l.officials {
+                        *official_minutes.entry(*id).or_default() += l.games.get(id).map_or(FULL_OFFICIAL_MINUTES, |o| o.minutes);
+                    }
+                }
+                let officials: std::collections::HashSet<i64> = official_minutes.keys().copied().collect();
+                if official_units(official_minutes.values().copied()) + 1e-9 < rules.need(season, tier) as f64 {
                     continue;
                 }
                 // The rest of the playoffs: each official once, by its maps.
@@ -1291,7 +1402,11 @@ impl Catalogue {
                 let maps_of = |o: &OfficialGame| o.maps.len().max(1) as f64;
                 let final_maps = maps_of(final_game);
                 let playoff_maps: f64 = playoff.iter().map(|o| maps_of(o)).sum();
-                let s_rating = line.rating();
+                // The season term is the regular season: the final and the
+                // playoffs are the blend's other two terms, and a game in both
+                // would count twice, once at its stage weight and once here
+                // (RA-8). The season rating shown stays the table's.
+                let s_rating = line.regular_rating();
                 let f_rating = shrunk(final_game.rating() * final_maps, final_maps);
                 let p_rating = (!playoff.is_empty()).then(|| shrunk(playoff.iter().map(|o| o.rating() * maps_of(o)).sum(), playoff_maps));
                 let (ws, wf, wp) = SEASON_MVP_WEIGHTS;
@@ -1311,7 +1426,7 @@ impl Catalogue {
                     event: true,
                     kind: "season".into(),
                     score,
-                    season_rating: s_rating,
+                    season_rating: line.rating(),
                     officials: officials.len(),
                     season_maps: line.maps(),
                     final_rating: Some(final_game.rating()),
@@ -1319,10 +1434,11 @@ impl Catalogue {
                     playoffs_rating: (!playoff.is_empty()).then(|| playoff.iter().map(|o| o.rating() * maps_of(o)).sum::<f64>() / playoff_maps),
                     playoffs_maps: playoff_maps as usize,
                 };
-                // Ties: more officials, then more final maps.
-                let better = best
-                    .as_ref()
-                    .is_none_or(|b| m.score.total_cmp(&b.score).then(m.officials.cmp(&b.officials)).then(m.final_maps.cmp(&b.final_maps)).is_gt());
+                // Ties: more officials, then more final maps, then the lower
+                // account, so a dead heat is settled the same way every run.
+                let better = best.as_ref().is_none_or(|b| {
+                    m.score.total_cmp(&b.score).then(m.officials.cmp(&b.officials)).then(m.final_maps.cmp(&b.final_maps)).then(b.account_id.cmp(&m.account_id)).is_gt()
+                });
                 if better {
                     best = Some(m);
                 }
@@ -1356,7 +1472,8 @@ impl Catalogue {
                 playoffs_maps: 0,
             }
         };
-        let better = |a: &&SeasonLine, b: &&SeasonLine| a.rating().total_cmp(&b.rating()).then(a.officials.len().cmp(&b.officials.len()));
+        // A player's best class for the EVPs: equal on both, the first by name.
+        let better = |a: &&SeasonLine, b: &&SeasonLine| a.rating().total_cmp(&b.rating()).then(a.officials.len().cmp(&b.officials.len())).then(b.class.cmp(&a.class));
 
         // EVPs: each player's best class; the division's best seasons.
         let mut teams: HashMap<(i64, i64, &str), std::collections::HashSet<i64>> = HashMap::new();
@@ -1412,6 +1529,9 @@ impl Catalogue {
                 .then(a.tier.cmp(&b.tier))
                 .then(order(&a.kind).cmp(&order(&b.kind)))
                 .then(b.score.total_cmp(&a.score))
+                .then(a.division.cmp(&b.division))
+                .then(a.class.cmp(&b.class))
+                .then(a.account_id.cmp(&b.account_id))
         });
         out
     }
@@ -1566,8 +1686,9 @@ impl Catalogue {
             }
             let (division, tier) = self.division_of(m);
             let (f, a, won) = Self::result_for(m, team);
-            // A tournament is their official, not their season.
-            if m.stage != "Cup" || m.comp_name.is_empty() || crate::leagues::parse_name(&m.comp_name).is_some() {
+            // A tournament is their official, not their season; a preseason
+            // cup too (Flashy: "preseason cups under tournaments").
+            if m.stage != "Cup" || m.comp_name.is_empty() {
                 let e = seasons.entry((m.season, team)).or_default();
                 *e.0.entry((division.clone(), tier)).or_default() += 1;
                 e.1 += 1;
@@ -1810,6 +1931,19 @@ fn now() -> i64 {
 /// the first's answer instead of asking again.
 static ETF2L_PLAYER_LOOKUP: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
+/// Someone ETF2L has no account for is not asked about again for a week
+/// (a pug player never will have one, and every profile and pop-card opening
+/// asked): the setting holds when ETF2L last said so.
+fn etf2l_none_key(account: u32) -> String {
+    format!("etf2l_no_account:{account}")
+}
+
+/// Whether ETF2L said, within the week, that this player has no account.
+pub async fn etf2l_has_no_account(db: &Db, account: u32) -> Result<bool> {
+    let at = db.get_setting(&etf2l_none_key(account)).await?.and_then(|v| v.parse::<i64>().ok());
+    Ok(at.is_some_and(|at| now() - at < ETF2L_PLAYER_KEEP_S))
+}
+
 /// A player's ETF2L profile: the one held if under a week old, else ETF2L's
 /// page read now and kept. A failed read is not tried again for a quarter
 /// of an hour ([`crate::backoff`]); what was held is given meanwhile.
@@ -1825,7 +1959,7 @@ pub async fn etf2l_player(db: &Db, sources: &Sources, account: u32) -> Result<Op
         }
     }
     let key = format!("etf2l-player:{account}");
-    if crate::backoff::waiting(&key) {
+    if crate::backoff::waiting(&key) || (held.is_none() && etf2l_has_no_account(db, account).await?) {
         return Ok(held);
     }
     let steamid = SteamId::from_account_id(account);
@@ -1842,6 +1976,8 @@ pub async fn etf2l_player(db: &Db, sources: &Sources, account: u32) -> Result<Op
         }
         Ok(None) => {
             crate::backoff::worked(&key);
+            // ETF2L answered, and has no one by this SteamID: remembered.
+            db.set_setting(&etf2l_none_key(account), &now().to_string()).await?;
             held
         }
         Err(e) => {
@@ -2406,7 +2542,7 @@ pub async fn opponent_divisions(db: &Db, games: &[(i64, u32, i64)]) -> Result<Ha
     if games.is_empty() {
         return Ok(HashMap::new());
     }
-    let cat = Catalogue::load(db).await?;
+    let cat = Catalogue::shared(db).await?;
     let windows = cat.season_windows();
     let divisions = cat.divisions();
     Ok(games
@@ -2423,7 +2559,7 @@ pub async fn match_divisions(db: &Db, log_id: i64) -> Result<MatchDivisions> {
     let Some((played_at, accounts)) = db.match_accounts(log_id).await? else {
         return Ok(MatchDivisions { players: HashMap::new(), tier_names: BTreeMap::new() });
     };
-    let cat = Catalogue::load(db).await?;
+    let cat = Catalogue::shared(db).await?;
     let windows = cat.season_windows();
     let divisions = cat.divisions();
     let mut players = HashMap::new();
@@ -2517,7 +2653,7 @@ impl Catalogue {
 
 /// Every league season, newest first, as tiles.
 pub async fn seasons_overview(db: &Db) -> Result<Vec<SeasonTile>> {
-    let cat = Catalogue::load(db).await?;
+    let cat = Catalogue::shared(db).await?;
     let medals = cat.medals();
     let windows = cat.season_windows();
     let me = db.get_me().await?.map(|s| s.account_id());
@@ -2568,7 +2704,7 @@ pub async fn seasons_overview(db: &Db) -> Result<Vec<SeasonTile>> {
 
 /// One season's podiums, top tier first, each with its event MVP.
 pub async fn season_podiums(db: &Db, season: i64) -> Result<Vec<Podium>> {
-    let cat = Catalogue::load(db).await?;
+    let cat = Catalogue::shared(db).await?;
     let rated = rated_officials(db, None).await?;
     let mvps = cat.mvps(&rated);
     let mut out: Vec<Podium> = cat
@@ -2615,7 +2751,7 @@ pub async fn season_podiums(db: &Db, season: i64) -> Result<Vec<Podium>> {
 
 /// A team's medals and its seasons, newest first.
 pub async fn team_honours(db: &Db, team: i64) -> Result<TeamHonours> {
-    let cat = Catalogue::load(db).await?;
+    let cat = Catalogue::shared(db).await?;
     let all = cat.medals();
     let mut medals: Vec<Medal> = Vec::new();
     for ((season, division), list) in &all {
@@ -2649,7 +2785,7 @@ pub async fn team_honours(db: &Db, team: i64) -> Result<TeamHonours> {
     let mut seasons: Vec<TeamSeason> = by
         .into_iter()
         .map(|(season, (divs, played, won, lost))| {
-            let ((division, tier), _) = divs.into_iter().max_by_key(|(_, n)| *n).unwrap_or(((String::new(), None), 0));
+            let ((division, tier), _) = divs.into_iter().max_by(|a, b| a.1.cmp(&b.1).then_with(|| b.0.cmp(&a.0))).unwrap_or(((String::new(), None), 0));
             let place = medals.iter().filter(|m| m.season == season).map(|m| m.place).min();
             TeamSeason { season, season_name: cat.season_name(season), division, tier, played, won, lost, place }
         })
@@ -2745,7 +2881,15 @@ pub async fn season_banner_image(db: &Db, sources: &Sources, season: i64, season
 
 /// A picture no wider than `width`, as a JPEG at quality 80.
 fn shrink_to_jpeg(bytes: &[u8], width: u32) -> Result<Vec<u8>> {
-    let img = image::load_from_memory(bytes).context("reading the picture")?;
+    // A picture from a page's own HTML is not ours to trust: no more than
+    // 64 megapixels' worth of memory goes to decoding it.
+    let mut reader = image::ImageReader::new(std::io::Cursor::new(bytes)).with_guessed_format().context("reading the picture")?;
+    let mut limits = image::Limits::default();
+    limits.max_image_width = Some(8192);
+    limits.max_image_height = Some(8192);
+    limits.max_alloc = Some(256 << 20);
+    reader.limits(limits);
+    let img = reader.decode().context("reading the picture")?;
     let img = if img.width() > width { img.resize(width, u32::MAX, image::imageops::FilterType::Triangle) } else { img };
     let mut out = Vec::new();
     image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 80).encode_image(&img.to_rgb8())?;
@@ -3119,7 +3263,7 @@ mod tests {
             official: true,
             etf2l_match_id: Some(match_id),
             listed: true,
-            minutes: 15.0,
+            minutes: 30.0,
             map: None,
             ..Default::default()
         };
@@ -3420,6 +3564,35 @@ mod tests {
     }
 
     #[test]
+    fn a_division_name_with_an_accented_last_word_does_not_panic() {
+        // "Open \u{e9}": the last word is two bytes, and cutting a byte off it
+        // was a slice through the middle of a character.
+        assert_eq!(Catalogue::ungrouped("Open \u{e9}"), "Open \u{e9}");
+        assert_eq!(Catalogue::ungrouped("Division 2\u{e9}"), "Division 2\u{e9}");
+        assert_eq!(Catalogue::ungrouped("\u{e9}"), "\u{e9}");
+        assert_eq!(Catalogue::ungrouped("Premi\u{e8}re Division"), "Premi\u{e8}re");
+    }
+
+    #[test]
+    fn groups_fold_to_one_division_in_every_spelling() {
+        for (name, base) in [
+            ("", ""),
+            ("  Mid B ", "Mid"),
+            ("Mid b", "Mid"),
+            ("Division 10C", "Division 10"),
+            ("Division 2", "Division 2"),
+            ("Division A", "Division"),
+            ("Division 2AB", "Division 2AB"),
+            ("2A", "2A"),
+            ("High", "High"),
+            ("Open Division", "Open"),
+            ("Open B Division", "Open"),
+        ] {
+            assert_eq!(Catalogue::ungrouped(name), base, "{name:?}");
+        }
+    }
+
+    #[test]
     fn a_numbered_division_keeps_its_number_and_groups_fold() {
         assert_eq!(Catalogue::ungrouped("Division 2A"), "Division 2");
         assert_eq!(Catalogue::ungrouped("Division 2"), "Division 2");
@@ -3563,6 +3736,24 @@ mod tests {
         assert!(!medals.contains_key(&(31, "Low A".to_string())), "a preseason cup is not the league");
     }
 
+    #[test]
+    fn a_league_table_counts_forfeits_and_breaks_a_tie_head_to_head() {
+        let mut forfeit = m(5, 34, "regular", Some("High"), "", None, 1, 4, 1, 0);
+        forfeit.default_win = true;
+        let c = cat(vec![
+            m(1, 34, "regular", Some("High"), "", None, 1, 2, 6, 0),
+            m(2, 34, "regular", Some("High"), "", None, 1, 3, 6, 0),
+            m(3, 34, "regular", Some("High"), "", None, 3, 2, 6, 5),
+            m(4, 34, "regular", Some("High"), "", None, 2, 4, 6, 0),
+            forfeit,
+            m(99, 35, "regular", Some("High"), "", None, 20, 21, 6, 0),
+        ]);
+        // Teams 2 and 3 each won once; 2 has the better round difference, 3
+        // beat 2 (LG-6).
+        let places: Vec<(u8, i64)> = c.medals()[&(34, "High".to_string())].iter().map(|x| (x.0, x.1)).collect();
+        assert_eq!(places, vec![(1, 1), (2, 3), (3, 2)]);
+    }
+
     /// Matches with their own tier, and one roster: player 1 for team 10.
     fn tiered(ms: Vec<(i64, i64, &str, Option<&str>, i64)>) -> Catalogue {
         let matches: Vec<CatMatch> = ms
@@ -3620,5 +3811,341 @@ mod tests {
         ms.push((5, 32, "Playoffs", Some("Grand Final"), 2));
         let c = tiered(ms);
         assert_eq!(c.divisions()[&(1, 32)].0, 1, "a Mid finalist counts as High");
+    }
+
+    fn rated(log_id: i64, match_id: Option<i64>, score: f64, minutes: f64, played_at: i64) -> hl_db::RatedGame {
+        hl_db::RatedGame { account_id: 1, log_id, played_at, class: "sniper".into(), score, official: true, etf2l_match_id: match_id, listed: true, minutes, ..Default::default() }
+    }
+
+    #[test]
+    fn a_short_appearance_counts_for_part_of_an_official() {
+        // RA-6: six minutes as a substitute at 2.00, beside a full official at 1.00.
+        let mut l = SeasonLine::default();
+        l.add(&rated(10, Some(1), 1.0, 30.0, 0), 1.0);
+        l.add(&rated(11, Some(2), 2.0, 6.0, 0), 1.0);
+        assert!((l.units() - 1.2).abs() < 1e-9, "{}", l.units());
+        let want = (1.0 + 2.0 * 0.2 + SHRINK_OFFICIALS) / (1.2 + SHRINK_OFFICIALS);
+        assert!((l.rating() - want).abs() < 1e-9, "{} vs {want}", l.rating());
+        // Five short appearances are not five officials for an award.
+        let mut subs = SeasonLine::default();
+        for i in 0..5 {
+            subs.add(&rated(20 + i, Some(100 + i), 1.0, 6.0, 0), 1.0);
+        }
+        assert_eq!(subs.officials.len(), 5);
+        assert!((subs.units() - 1.0).abs() < 1e-9);
+        let rules = AwardRules { need: [((1, 1), 4)].into_iter().collect(), ..Default::default() };
+        subs.season = 1;
+        subs.tier = 1;
+        assert!(!rules.enough(&subs), "one official's worth of minutes");
+    }
+
+    #[test]
+    fn the_season_term_of_the_mvp_leaves_the_final_out() {
+        // RA-8: a final at 2.00 already weighs double inside the season
+        // rating; the MVP's season term is the regular season alone, because
+        // the blend counts the final and the playoffs as terms of their own.
+        let mut l = SeasonLine::default();
+        for i in 0..4 {
+            l.add(&rated(10 + i, Some(i), 1.0, 30.0, 0), 1.0);
+        }
+        l.add(&rated(50, Some(50), 2.0, 30.0, 0), FINAL_WEIGHT);
+        assert!((l.regular_rating() - 1.0).abs() < 1e-9, "{}", l.regular_rating());
+        assert!(l.rating() > 1.1, "the table's rating still counts the final, doubled");
+    }
+
+    #[test]
+    fn logs_of_an_official_with_no_match_id_are_one_official_a_day() {
+        // RA-14: three maps of one unlinked official, uploaded as three logs.
+        let day = 1_700_000_000;
+        let mut l = SeasonLine::default();
+        for (i, at) in [day, day + 1800, day + 3600].into_iter().enumerate() {
+            l.add(&rated(300 + i as i64, None, 1.0, 10.0, at), 1.0);
+        }
+        assert_eq!(l.officials.len(), 1);
+        assert_eq!(l.games.len(), 1);
+        assert_eq!(l.logs(), 3);
+        // The next week's is another.
+        l.add(&rated(400, None, 1.0, 10.0, day + 7 * 86_400), 1.0);
+        assert_eq!(l.officials.len(), 2);
+    }
+
+    #[test]
+    fn an_opponent_adjustment_moves_a_rating_part_of_the_way() {
+        // The adjustment is OPPONENT_SLOPE times how far the opponent was from average.
+        let s = 1.25;
+        let adjusted = 1.0 + OPPONENT_SLOPE * (s - 1.0);
+        assert!(adjusted > 1.0 && adjusted < s, "{adjusted}");
+    }
+
+    // ---- Season lines, awards and their ties ---------------------------------
+
+    fn rated_as(account: u32, log_id: i64, class: &str, score: f64, minutes: f64, match_id: Option<i64>, map: Option<&str>) -> hl_db::RatedGame {
+        hl_db::RatedGame {
+            account_id: account,
+            log_id,
+            class: class.into(),
+            score,
+            official: true,
+            etf2l_match_id: match_id,
+            listed: true,
+            minutes,
+            map: map.map(str::to_string),
+            ..Default::default()
+        }
+    }
+
+    fn official_line(account: u32, class: &str, rating: f64, officials: i64) -> SeasonLine {
+        let mut l = SeasonLine { account_id: account, class: class.into(), season: 34, tier: 2, team: 11, ..Default::default() };
+        for id in 0..officials {
+            l.officials.insert(id);
+            l.games.insert(id, OfficialGame { score_minutes: rating * 30.0, minutes: 30.0, stage: 1.0, ..Default::default() });
+        }
+        l
+    }
+
+    #[test]
+    fn a_player_with_no_officials_has_a_season_of_exactly_one() {
+        let l = SeasonLine::default();
+        assert_eq!(l.rating(), 1.0, "no games pull to the average, not to 0 and not to NaN");
+        assert_eq!(l.average(), 1.0);
+        assert_eq!((l.maps(), l.logs()), (0, 0));
+        assert_eq!(l.opponent_strength(), None);
+        assert_eq!(l.output(), None);
+        assert_eq!(OfficialGame::default().rating(), 1.0, "an official with no minutes");
+        assert_eq!(shrunk(0.0, 0.0), 1.0);
+    }
+
+    #[test]
+    fn a_season_is_pulled_towards_one_by_its_shortness() {
+        // One official at 2.00: (2 + 3) / (1 + 3). Nine at 2.00 stay closer to it.
+        let one = official_line(1, "sniper", 2.0, 1);
+        let nine = official_line(2, "sniper", 2.0, 9);
+        assert!((one.rating() - 1.25).abs() < 1e-9);
+        assert!((nine.rating() - (18.0 + 3.0) / 12.0).abs() < 1e-9);
+        assert!(one.rating() < nine.rating() && nine.rating() < 2.0);
+        // And a poor short season is pulled up, never past 1.00.
+        let poor = official_line(3, "sniper", 0.5, 1);
+        assert!(poor.rating() > 0.5 && poor.rating() < 1.0);
+    }
+
+    #[test]
+    fn the_playoffs_weigh_more_in_a_season_than_a_regular_week() {
+        let mut l = official_line(1, "sniper", 1.0, 0);
+        l.games.insert(1, OfficialGame { score_minutes: 30.0, minutes: 30.0, stage: 1.0, ..Default::default() });
+        l.games.insert(2, OfficialGame { score_minutes: 60.0, minutes: 30.0, stage: FINAL_WEIGHT, ..Default::default() });
+        let plain = (1.0 + 2.0 + SHRINK_OFFICIALS) / (2.0 + SHRINK_OFFICIALS);
+        let weighed = (1.0 + FINAL_WEIGHT * 2.0 + SHRINK_OFFICIALS) / (1.0 + FINAL_WEIGHT + SHRINK_OFFICIALS);
+        assert!(weighed > plain);
+        assert!((l.rating() - weighed).abs() < 1e-9);
+    }
+
+    #[test]
+    fn logs_of_one_official_weigh_by_minutes_and_split_logs_count_once() {
+        // One match uploaded as a 20-minute log at 1.50 and a 5-minute one at
+        // 0.50: 1.30 by minutes, 1.00 by log. Another uploaded as one log.
+        let mut l = SeasonLine { account_id: 1, class: "sniper".into(), ..Default::default() };
+        l.add(&rated_as(1, 1, "sniper", 1.5, 20.0, Some(7), Some("pl_upward_f12")), 1.0);
+        l.add(&rated_as(1, 2, "sniper", 0.5, 5.0, Some(7), Some("koth_product_final")), 1.0);
+        l.add(&rated_as(1, 3, "sniper", 1.0, 30.0, Some(8), None), 1.0);
+        assert_eq!(l.officials.len(), 2, "two matches");
+        assert_eq!(l.logs(), 3);
+        assert!((l.games[&7].rating() - 1.3).abs() < 1e-9);
+        assert_eq!(l.maps(), 3, "two maps in one official, one with no name counted once");
+        assert_eq!(l.games[&7].log_ids, vec![1, 2]);
+        // Not a mean of logs: the two-log official is one official.
+        assert!((l.average() - (1.3 + 1.0) / 2.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_log_with_no_minutes_counts_as_a_minute_not_as_nothing() {
+        let mut l = SeasonLine::default();
+        l.add(&rated_as(1, 1, "scout", 1.4, 0.0, Some(1), None), 1.0);
+        l.add(&rated_as(1, 2, "scout", 1.4, -3.0, Some(2), None), 1.0);
+        assert!(l.games.values().all(|o| o.minutes == 1.0 && (o.rating() - 1.4).abs() < 1e-9));
+    }
+
+    #[test]
+    fn map_names_in_a_combined_log_are_split_and_deduplicated() {
+        let mut l = SeasonLine::default();
+        l.add(&rated_as(1, 1, "scout", 1.0, 10.0, Some(1), Some("pl_upward_f12, pl_upward_f10 / koth_product_final")), 1.0);
+        assert_eq!(l.maps(), 2, "two versions of one map are one map");
+        l.add(&rated_as(1, 2, "scout", 1.0, 10.0, Some(2), Some("")), 1.0);
+        assert_eq!(l.maps(), 3, "an official whose map is unknown still counts one");
+    }
+
+    #[test]
+    fn the_typical_output_is_a_median_and_leaves_out_short_games() {
+        let mut l = SeasonLine::default();
+        let game = |kills: i64, dmg: i64, secs: i64| OfficialGame { kills, dmg, secs, stage: 1.0, ..Default::default() };
+        // Three real games and one of 4 minutes that must not count.
+        l.games.insert(1, game(30, 9000, 1800));
+        l.games.insert(2, game(10, 3000, 1800));
+        l.games.insert(3, game(20, 6000, 1800));
+        l.games.insert(4, game(99, 99_999, 240));
+        let (k, d) = l.output().unwrap();
+        assert!((k - 20.0).abs() < 1e-9, "kills per 30 minutes: {k}");
+        assert!((d - 200.0).abs() < 1e-9, "damage per minute: {d}");
+        // An even count averages the middle two.
+        l.games.remove(&3);
+        assert!((l.output().unwrap().0 - 20.0).abs() < 1e-9);
+        // Nothing long enough: no output rather than a division by zero.
+        l.games.retain(|_, o| o.secs < 300);
+        assert_eq!(l.output(), None);
+    }
+
+    #[test]
+    fn an_award_order_does_not_depend_on_the_order_rows_arrive_in() {
+        // Three players with the very same season: nothing but their account
+        // tells them apart, and the rows come out of a HashMap.
+        let lines = [official_line(30, "sniper", 1.2, 6), official_line(10, "sniper", 1.2, 6), official_line(20, "sniper", 1.2, 6)];
+        let want: Vec<u32> = {
+            let mut rows: Vec<&SeasonLine> = lines.iter().collect();
+            award_order(&mut rows);
+            rows.iter().map(|l| l.account_id).collect()
+        };
+        for perm in [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]] {
+            let mut rows: Vec<&SeasonLine> = perm.iter().map(|i| &lines[*i]).collect();
+            award_order(&mut rows);
+            assert_eq!(rows.iter().map(|l| l.account_id).collect::<Vec<_>>(), want, "arrival order {perm:?}");
+        }
+    }
+
+    #[test]
+    fn a_tie_with_output_still_resolves_the_same_way_every_time() {
+        // Same rating, same output: the cut for third place must not move.
+        let with_output = |account: u32| {
+            let mut l = official_line(account, "sniper", 1.2, 6);
+            for o in l.games.values_mut() {
+                o.kills = 30;
+                o.dmg = 9000;
+                o.secs = 1800;
+            }
+            l
+        };
+        let lines = [with_output(3), with_output(1), with_output(2)];
+        let mut first: Vec<&SeasonLine> = lines.iter().collect();
+        award_order(&mut first);
+        let mut second: Vec<&SeasonLine> = lines.iter().rev().collect();
+        award_order(&mut second);
+        assert_eq!(first.iter().map(|l| l.account_id).collect::<Vec<_>>(), second.iter().map(|l| l.account_id).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn award_order_copes_with_nothing_and_with_one() {
+        let mut none: Vec<&SeasonLine> = vec![];
+        award_order(&mut none);
+        let one = official_line(1, "sniper", 1.0, 0);
+        let mut rows = vec![&one];
+        award_order(&mut rows);
+        assert_eq!(rows.len(), 1);
+        // A candidate with no output counted stays behind one with output at a tie.
+        let bare = official_line(2, "sniper", 1.2, 6);
+        let mut counted = official_line(3, "sniper", 1.2, 6);
+        for o in counted.games.values_mut() {
+            (o.kills, o.dmg, o.secs) = (20, 6000, 1800);
+        }
+        let mut rows = vec![&bare, &counted];
+        award_order(&mut rows);
+        assert_eq!(rows[0].account_id, 3);
+    }
+
+    #[test]
+    fn more_officials_win_a_dead_heat_before_the_output_is_asked() {
+        let few = official_line(1, "sniper", 1.2, 5);
+        let many = official_line(2, "sniper", 1.2, 8);
+        // More officials pull less towards 1.00, so the longer season of the
+        // same level rates higher already.
+        let mut rows = vec![&few, &many];
+        award_order(&mut rows);
+        assert_eq!(rows[0].account_id, 2);
+    }
+
+    #[test]
+    fn the_season_mvp_between_two_equal_champions_is_the_same_every_time() {
+        // Two players of the winning team with the very same final and
+        // season: the pick must not depend on a HashMap's order.
+        let build = || {
+            let mut ms: Vec<CatMatch> = (101..=104).map(|id| m(id, 34, "regular", Some("Mid"), "", None, 11, 12, 6, 3)).collect();
+            ms.push(m(3, 34, "Playoffs", None, "Mid", Some("Grand Final"), 12, 11, 3, 6));
+            let mut c = cat(ms);
+            for roster in c.rosters.values_mut() {
+                roster.push((211, Some(11), "x".into()));
+                roster.push((212, Some(11), "x".into()));
+                roster.push((312, Some(12), "x".into()));
+            }
+            c
+        };
+        let mut games = Vec::new();
+        for (i, id) in [101, 102, 103, 104, 3].into_iter().enumerate() {
+            for account in [211, 212, 312] {
+                games.push(rated_as(account, (i as i64) * 1000 + i64::from(account), if account == 211 { "soldier" } else { "scout" }, 1.2, 30.0, Some(id), None));
+            }
+        }
+        let pick = |c: &Catalogue| c.mvps(&games).iter().find(|x| x.kind == "season").map(|x| x.account_id).expect("a Season MVP");
+        let first = pick(&build());
+        for _ in 0..12 {
+            assert_eq!(pick(&build()), first, "equal champions: the same one every time");
+        }
+    }
+
+    #[test]
+    fn a_player_who_played_two_classes_equally_in_the_final_gets_the_same_class_every_time() {
+        let build = || {
+            let mut ms: Vec<CatMatch> = (101..=104).map(|id| m(id, 34, "regular", Some("Mid"), "", None, 11, 12, 6, 3)).collect();
+            ms.push(m(3, 34, "Playoffs", None, "Mid", Some("Grand Final"), 12, 11, 3, 6));
+            let mut c = cat(ms);
+            for roster in c.rosters.values_mut() {
+                roster.push((211, Some(11), "x".into()));
+            }
+            c
+        };
+        let mut games = Vec::new();
+        for (i, id) in [101, 102, 103, 104].into_iter().enumerate() {
+            games.push(rated_as(211, i as i64 + 1, "soldier", 1.3, 30.0, Some(id), None));
+        }
+        // Equal time on two classes in the final, a log each.
+        games.push(rated_as(211, 50, "soldier", 1.3, 30.0, Some(3), None));
+        games.push(rated_as(211, 51, "scout", 1.3, 30.0, Some(3), None));
+        let pick = |c: &Catalogue| c.mvps(&games).iter().find(|x| x.kind == "season").map(|x| x.class.clone());
+        let first = pick(&build());
+        assert!(first.is_some(), "the player is a candidate");
+        for _ in 0..12 {
+            assert_eq!(pick(&build()), first);
+        }
+    }
+
+    #[test]
+    fn team_strength_is_finite_for_no_games_one_game_and_a_sweep() {
+        assert!(bradley_terry(&[], None, 30, None).is_empty());
+        // One team beat another 6-0: finite, ordered, and the prior keeps it from running away.
+        let one = bradley_terry(&[(1, 1, 2, 1.0)], None, 60, None);
+        assert!(one[&1].is_finite() && one[&2].is_finite() && one[&1] > one[&2]);
+        assert!(one[&1].abs() < 5.0, "a ridge keeps a 6-0 from being infinite: {}", one[&1]);
+        // Teams that only ever drew are level.
+        let level = bradley_terry(&[(1, 1, 2, 0.5)], None, 30, None);
+        assert!((level[&1] - level[&2]).abs() < 1e-9);
+        // The same result with the teams in either seat gives the same answer.
+        let swapped = bradley_terry(&[(1, 2, 1, 0.0)], None, 60, None);
+        assert!((swapped[&1] - one[&1]).abs() < 1e-9 && (swapped[&2] - one[&2]).abs() < 1e-9);
+    }
+
+    #[test]
+    fn the_mvp_score_stays_between_the_final_and_the_run() {
+        assert_eq!(mvp_score(1.3, None, 5), 1.3);
+        assert_eq!(mvp_score(1.3, Some(0.5), 0), 1.3, "a run of no maps adds nothing");
+        for maps in 0..8 {
+            let s = mvp_score(1.0, Some(2.0), maps);
+            assert!((1.0..=2.0).contains(&s), "{maps}: {s}");
+        }
+    }
+
+    #[test]
+    fn the_award_rules_ask_for_four_officials_at_the_least_and_know_unseen_divisions() {
+        let rules = AwardRules::default();
+        assert_eq!(rules.need(1, 1), AWARD_MIN_OFFICIALS, "a division nobody has played yet");
+        let few = official_line(1, "sniper", 1.0, AWARD_MIN_OFFICIALS as i64 - 1);
+        let enough = official_line(1, "sniper", 1.0, AWARD_MIN_OFFICIALS as i64);
+        assert!(!rules.enough(&few) && rules.enough(&enough));
+        assert!(!rules.class_award(&enough), "no medals yet, no best of the class");
     }
 }

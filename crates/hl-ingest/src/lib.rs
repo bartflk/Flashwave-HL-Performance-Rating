@@ -12,6 +12,8 @@ pub mod sources;
 pub mod sync;
 
 pub use sources::Sources;
+/// Whether the app itself wrote this demo (for the folder watcher).
+pub use hl_demos::scan::is_own_write as app_wrote_demo;
 pub use sync::{import_log, parse_log_id, reprocess, sync, Imported, Progress, SyncOptions, SyncSummary};
 
 pub use detail::{match_detail, view_of, MatchView};
@@ -52,6 +54,7 @@ pub mod maps;
 pub mod combined;
 pub mod etf2l;
 pub mod rgl;
+pub mod rgl_stats;
 pub mod teammates;
 pub mod demos;
 pub mod demostf;
@@ -62,6 +65,7 @@ pub mod spawns;
 pub mod cart;
 pub mod demo_import;
 pub mod leagues;
+pub mod cups;
 pub mod callouts;
 pub mod snapshot;
 pub mod mapsettings;

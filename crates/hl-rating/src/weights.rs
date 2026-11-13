@@ -105,6 +105,9 @@ fn class_values(table: &toml::Table, at: &str, allow: &[&str]) -> Result<HashMap
             .as_float()
             .or_else(|| value.as_integer().map(|i| i as f64))
             .with_context(|| format!("[{at}]: `{key}` must be a number"))?;
+        if !v.is_finite() {
+            bail!("[{at}]: `{key}` is not a finite number");
+        }
         if v < 0.0 {
             bail!("[{at}]: `{key}` is negative");
         }
@@ -172,6 +175,11 @@ impl Weights {
             for (name, &w) in table {
                 let c = Component::parse(name)
                     .with_context(|| format!("[model.{key}]: unknown component `{name}`"))?;
+                // `inf` would turn every renormalised share into NaN, `nan`
+                // would sit in the file doing nothing.
+                if !w.is_finite() {
+                    bail!("[model.{key}]: `{name}` is not a finite number");
+                }
                 if w < 0.0 {
                     bail!("[model.{key}]: `{name}` has a negative weight");
                 }
@@ -219,6 +227,16 @@ impl Weights {
             }
         };
 
+        for (name, v) in [
+            ("assist_share", raw.general.assist_share),
+            ("min_minutes", raw.general.min_minutes),
+            ("even_margin", raw.general.even_margin),
+        ] {
+            if !v.is_finite() || v < 0.0 {
+                bail!("[general]: `{name}` must be a number, zero or more");
+            }
+        }
+
         Ok(Weights {
             situation,
             swing,
@@ -253,9 +271,15 @@ impl Weights {
 
     /// Whether this map has an attacking and a defending side: every payload
     /// map, and the control-point maps listed in `[attack_defend]`.
+    ///
+    /// The shared list (`hl_core::maps`) always counts, so the log's own flag
+    /// and this agree; the file's `[attack_defend]` can add maps to it.
     pub fn attack_defend(&self, map: &str) -> bool {
+        if hl_core::maps::is_attack_defend(map) {
+            return true;
+        }
         let map = map.to_ascii_lowercase();
-        map.starts_with("pl_") || self.attack_defend.iter().any(|p| map.starts_with(p.as_str()))
+        self.attack_defend.iter().any(|p| map.starts_with(p.as_str()))
     }
 
     /// The value of a kill in context. `defending` is whether the victim was
@@ -525,11 +549,29 @@ dpm = 0.0
             let model: Vec<(Component, f64)> = w.model_for(c).iter().copied().filter(|(x, _)| *x != Component::DeathsAttackDefend).collect();
             let total: f64 = model.iter().map(|(_, x)| x).sum();
             let share = |k: Component| model.iter().filter(|(x, _)| *x == k).map(|(_, x)| x).sum::<f64>() / total;
-            assert!((share(Component::RoundImpact) - 0.5).abs() < 0.01, "{} round impact {}", c.as_str(), share(Component::RoundImpact));
+            // The Medic's is smaller: see the note on his model (RA-2).
+            let want = if c == TfClass::Medic { 0.4 / 1.4 } else { 0.5 };
+            assert!((share(Component::RoundImpact) - want).abs() < 0.01, "{} round impact {}", c.as_str(), share(Component::RoundImpact));
             if c != TfClass::Medic {
                 let dying = share(Component::Deaths) + share(Component::UntradedDeaths) + share(Component::FlankDeaths) + share(Component::StationaryDeaths);
                 assert!(dying <= 0.20, "{} gives dying {dying}", c.as_str());
             }
+        }
+    }
+
+    #[test]
+    fn one_list_of_attack_defend_maps() {
+        // RA-9: the log's flag (and the situation tables behind it) and the
+        // weights' victim values used to hold different lists.
+        let w = Weights::default_weights();
+        for m in ["cp_dustbowl", "cp_egypt_final", "cp_gorge", "cp_junction_final", "cp_mountainlab", "cp_steel_f12", "pl_upward_f12"] {
+            assert!(w.attack_defend(m), "{m} for the weights");
+            assert_eq!(hl_core::maps::is_attack_defend(m), w.attack_defend(m), "{m}: one list");
+        }
+        assert!(!w.attack_defend("cp_gullywash_final1") && !hl_core::maps::is_attack_defend("koth_product_final"));
+        // Every map the shipped file lists is in the shared list.
+        for m in &w.attack_defend {
+            assert!(hl_core::maps::ATTACK_DEFEND_CP.contains(&m.as_str()), "{m} is only in the weights file");
         }
     }
 
@@ -539,13 +581,17 @@ dpm = 0.0
         // not the player. Q8 holds dying to half of any model.
         let w = Weights::default_weights();
         for c in TfClass::ALL {
-            let model = w.model_for(c);
+            // As on a KOTH map: deaths there, not their attack/defend twin (v13).
+            let model: Vec<(Component, f64)> = w.model_for(c).iter().copied().filter(|(x, _)| *x != Component::DeathsAttackDefend).collect();
             let total: f64 = model.iter().map(|(_, x)| x).sum();
+            // RA-2: a Medic's round impact is mostly what his own deaths cost
+            // (he has few kills to add any), so it counts as dying for him.
+            let death_shaped = |k: &Component| c == TfClass::Medic && *k == Component::RoundImpact;
             let survival: f64 = model
                 .iter()
                 // Lower-is-better, less the cap costs (Q25): a spawn you
                 // delayed is a teammate's death wait, not your own dying.
-                .filter(|(k, _)| !k.higher_is_better() && !matches!(k, Component::CapsMatesDead | Component::CapsSpawnDelay))
+                .filter(|(k, _)| (!k.higher_is_better() && !matches!(k, Component::CapsMatesDead | Component::CapsSpawnDelay)) || death_shaped(k))
                 .map(|(_, x)| x)
                 .sum();
             assert!(survival / total <= 0.5 + 1e-9, "{} gives dying {survival}", c.as_str());

@@ -57,6 +57,15 @@ const BUILT_IN: &[(&str, &str)] = &[
     ("vigil", include_str!("../../../callouts/vigil.json")),
 ];
 
+/// The base a map's files are named by, or an error when the name could not
+/// be a file name: a log's map is its uploader's word, and `../../x` must not
+/// reach outside the callouts folder.
+fn checked_base(map: &str) -> Result<String> {
+    let base = map_base(map);
+    anyhow::ensure!(hl_core::maps::is_safe_map_base(&base), "`{map}` is not a map name");
+    Ok(base)
+}
+
 fn user_path(data: &Path, base: &str) -> PathBuf {
     data.join("callouts").join(format!("{base}.json"))
 }
@@ -81,8 +90,9 @@ pub fn user_bases(data: &Path) -> Vec<String> {
 /// an empty file to start drawing on.
 pub fn load(data: &Path, map: &str) -> Result<CalloutFile> {
     let base = map_base(map);
+    // A name that is no file name has no copy of the player's to read.
     let path = user_path(data, &base);
-    if path.exists() {
+    if hl_core::maps::is_safe_map_base(&base) && path.exists() {
         let text = std::fs::read_to_string(&path).with_context(|| format!("reading {}", path.display()))?;
         let mut f: CalloutFile = serde_json::from_str(&text).with_context(|| format!("{} is not a callout file", path.display()))?;
         f.origin = "yours".into();
@@ -99,7 +109,7 @@ pub fn load(data: &Path, map: &str) -> Result<CalloutFile> {
 /// Save the owner's copy. Written whole, through a temporary file, so a crash
 /// mid-write cannot leave half a map.
 pub fn save(data: &Path, map: &str, file: &CalloutFile) -> Result<CalloutFile> {
-    let base = map_base(map);
+    let base = checked_base(map)?;
     let path = user_path(data, &base);
     std::fs::create_dir_all(path.parent().context("no folder")?)?;
     let mut f = file.clone();
@@ -114,11 +124,12 @@ pub fn save(data: &Path, map: &str, file: &CalloutFile) -> Result<CalloutFile> {
 
 /// Drop the owner's copy and go back to the built-in one.
 pub fn reset(data: &Path, map: &str) -> Result<CalloutFile> {
-    let path = user_path(data, &map_base(map));
+    let base = checked_base(map)?;
+    let path = user_path(data, &base);
     if path.exists() {
         std::fs::remove_file(&path)?;
     }
-    forget_undo(data, &map_base(map))?;
+    forget_undo(data, &base)?;
     load(data, map)
 }
 
@@ -150,11 +161,18 @@ fn forget_undo(data: &Path, base: &str) -> Result<()> {
 
 /// Whether the last import on this map can still be taken back.
 pub fn has_undo(data: &Path, base: &str) -> bool {
+    if !hl_core::maps::is_safe_map_base(base) {
+        return false;
+    }
     undo_path(data, base).exists()
 }
 
 /// Write a map's callouts, as this player has them, to a preset file.
 pub fn export(data: &Path, map: &str, to: &Path) -> Result<()> {
+    // The path comes from the window's save dialog, for a `.json` file, and
+    // not into the app's own data (its database sits there).
+    anyhow::ensure!(to.extension().is_some_and(|x| x.eq_ignore_ascii_case("json")), "{} is not a .json file", to.display());
+    anyhow::ensure!(!in_folder(data, to), "{} is in the app's own data folder; pick another place", to.display());
     let f = load(data, map)?;
     let mut v = serde_json::to_value(&f)?;
     let o = v.as_object_mut().context("callouts as an object")?;
@@ -164,9 +182,19 @@ pub fn export(data: &Path, map: &str, to: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Whether `path` is in `folder` (or under it), looked at through the file
+/// system, so `..` and links do not hide it. A file not yet there is judged
+/// by the folder it would be in.
+fn in_folder(folder: &Path, path: &Path) -> bool {
+    let Ok(folder) = folder.canonicalize() else { return false };
+    let at = path.canonicalize().ok().or_else(|| path.parent()?.canonicalize().ok());
+    at.is_some_and(|p| p.starts_with(&folder))
+}
+
 /// Read a preset and check it is one: the right format, every zone named
 /// with at least three real corners, and not absurdly large.
 pub fn read_preset(from: &Path) -> Result<CalloutFile> {
+    anyhow::ensure!(from.extension().is_some_and(|x| x.eq_ignore_ascii_case("json")), "{} is not a .json file", from.display());
     let len = std::fs::metadata(from).with_context(|| format!("reading {}", from.display()))?.len();
     anyhow::ensure!(len <= PRESET_MAX_BYTES, "{} is larger than 1 MB: not a callout file", from.display());
     let text = std::fs::read_to_string(from).with_context(|| format!("reading {}", from.display()))?;
@@ -229,7 +257,7 @@ pub fn inspect(data: &Path, map: Option<&str>, from: &Path) -> Result<PresetChec
 /// replaces for one Undo. A file for another map is refused unless
 /// `any_map`: Product's zones on Vigil would sit in the wrong places.
 pub fn import(data: &Path, map: &str, from: &Path, any_map: bool) -> Result<CalloutFile> {
-    let base = map_base(map);
+    let base = checked_base(map)?;
     let mut f = read_preset(from)?;
     anyhow::ensure!(any_map || f.map == base, "this file is for {}, not {base}", f.map);
     let dir = data.join("callouts");
@@ -247,7 +275,7 @@ pub fn import(data: &Path, map: &str, from: &Path, any_map: bool) -> Result<Call
 /// Take the last import back: the player's previous copy, or the built-in
 /// callouts if there was none.
 pub fn undo(data: &Path, map: &str) -> Result<CalloutFile> {
-    let base = map_base(map);
+    let base = checked_base(map)?;
     let path = undo_path(data, &base);
     let previous = std::fs::read_to_string(&path).context("there is no import to undo")?;
     let mine = user_path(data, &base);
@@ -682,6 +710,20 @@ mod tests {
     }
 
     #[test]
+    fn a_map_named_like_a_path_touches_no_file() {
+        let dir = scratch("traversal");
+        let file = CalloutFile { zones: vec![square("Cliff")], ..Default::default() };
+        for map in ["../../x", "a/b", "..\\x"] {
+            assert!(save(&dir, map, &file).is_err(), "{map}");
+            assert!(reset(&dir, map).is_err(), "{map}");
+            assert!(undo(&dir, map).is_err(), "{map}");
+            // Reading is harmless: nothing of the player's, an empty file.
+            assert_eq!(load(&dir, map).unwrap().origin, "none");
+        }
+        assert!(!dir.join("callouts").exists());
+    }
+
+    #[test]
     fn proot_and_product_are_published_and_the_rest_are_drafts() {
         let dir = scratch("seeds");
         let proot = load(&dir, "koth_proot_b5b").unwrap();
@@ -696,7 +738,9 @@ mod tests {
         let dir = scratch("roundtrip");
         let mine = CalloutFile { map: "vigil".into(), zones: vec![square("Cliff"), square("House")], names: vec!["Lobby".into()], ..Default::default() };
         save(&dir, "pl_vigil_rc10", &mine).unwrap();
-        let out = dir.join("vigil.callouts.json");
+        let elsewhere = scratch("roundtrip-out");
+        let out = elsewhere.join("vigil.callouts.json");
+        assert!(export(&dir, "vigil", &dir.join("vigil.callouts.json")).is_err(), "not into the app's own data folder");
         export(&dir, "vigil", &out).unwrap();
         let text = std::fs::read_to_string(&out).unwrap();
         assert!(text.contains("\"format\": 1") && !text.contains("origin"), "{text}");

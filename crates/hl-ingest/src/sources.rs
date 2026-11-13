@@ -7,8 +7,18 @@ use crate::http::{download_client, download_to, refused, url, Refused, Throttled
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use serde_json::Value;
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
+
+/// How long a page of a player's demos is held: new demos land at the top, so
+/// not for long, but a few minutes covers a fetch, its second look and the
+/// screen's.
+const DEMO_LIST_KEEP: Duration = Duration::from_secs(10 * 60);
+/// Pages and demos held at most.
+const DEMO_LISTS_MAX: usize = 400;
+const DEMO_PLAYERS_MAX: usize = 3000;
 
 /// How long logs.tf is left alone after it refuses us. Its bans lift on
 /// their own; asking during one is what keeps them going.
@@ -55,8 +65,21 @@ pub struct Sources {
     logstf_refused_at: Mutex<Option<Instant>>,
     moretf: Throttled,
     demostf: Throttled,
+    /// demos.tf's pages of a player's demos, by address, for [`DEMO_LIST_KEEP`]:
+    /// a match's parts, the screen asking the same, and a second search on
+    /// another class all walk the same pages.
+    demo_lists: Mutex<HashMap<String, (Instant, Vec<DemosTfMeta>)>>,
+    /// Who played what in a demo, by demos.tf id: a finished demo does not
+    /// change, so this is kept for the run.
+    demo_players: Mutex<HashMap<i64, Vec<(String, String, String)>>>,
+    /// Every etf2l.org address: the API, the pages, the news, the banners.
+    /// One limit is ETF2L's, however it is asked.
     etf2l: Throttled,
-    /// RGL's API: 5 requests a second published; we keep to 4.
+    /// Set once the second address of [`etf2l_hosts`] answered when the first
+    /// could not be reached: asked first from then on.
+    etf2l_swapped: AtomicBool,
+    /// RGL's API: 5 requests a second, as its `RateLimit-*` headers say; we
+    /// keep to 4, and wait out the window if they say none are left.
     rgl: Throttled,
     /// Steam profiles and avatar images, for the owner's picture.
     web: Throttled,
@@ -107,8 +130,11 @@ impl Sources {
             // A single volunteer's server: as slow as logs.tf.
             moretf: Throttled::new(Duration::from_millis(2000))?,
             demostf: Throttled::new(Duration::from_millis(1000))?,
+            demo_lists: Default::default(),
+            demo_players: Default::default(),
             // ETF2L does publish a limit: 60 requests a minute. Stay under it.
             etf2l: Throttled::new(Duration::from_millis(1500))?,
+            etf2l_swapped: AtomicBool::new(false),
             rgl: Throttled::new(Duration::from_millis(250))?,
             web: Throttled::new(Duration::from_millis(1000))?,
             downloads: download_client()?,
@@ -135,10 +161,14 @@ impl Sources {
             let body = self.trends.get_text(&next).await?;
             let page: Value = serde_json::from_str(&body).context("parsing trends.tf page")?;
 
+            // One row trends.tf cannot describe the usual way (a null field,
+            // a new shape) is skipped, not allowed to fail the whole index:
+            // the rest of the history is still good (audit SY-7).
             for raw in page.get("logs").and_then(Value::as_array).into_iter().flatten() {
-                let row: TrendsRow =
-                    serde_json::from_value(raw.clone()).context("parsing trends.tf row")?;
-                rows.push((row, raw.to_string()));
+                match serde_json::from_value::<TrendsRow>(raw.clone()) {
+                    Ok(row) => rows.push((row, raw.to_string())),
+                    Err(e) => tracing::warn!(error = %e, row = %raw, "skipping a trends.tf row that would not parse"),
+                }
             }
             on_page(rows.len());
 
@@ -427,19 +457,29 @@ impl Sources {
         self.trends.get_text_opt_interactive(&crate::trends_career::page_url(steamid64)).await
     }
 
+    /// The throttle a page is asked through: ETF2L's for anything on
+    /// etf2l.org (its API and its site share one limit), the web's for the rest.
+    fn web_for(&self, url: &str) -> &Throttled {
+        if crate::http::is_on(url, &["etf2l.org"]) {
+            &self.etf2l
+        } else {
+            &self.web
+        }
+    }
+
     pub async fn fetch_text(&self, url: &str) -> Result<Option<String>> {
-        self.web.get_text_opt(url).await
+        self.web_for(url).get_text_opt(url).await
     }
 
     /// As [`fetch_text`](Self::fetch_text), for a screen waiting on it: no
     /// retries when the connection cannot be made.
     pub async fn fetch_text_interactive(&self, url: &str) -> Result<Option<String>> {
-        self.web.get_text_opt_interactive(url).await
+        self.web_for(url).get_text_opt_interactive(url).await
     }
 
     /// A small file (an avatar image); `None` when it does not exist.
     pub async fn fetch_bytes(&self, url: &str) -> Result<Option<Vec<u8>>> {
-        self.web.get_bytes_opt(url).await
+        self.web_for(url).get_bytes_capped(url, IMAGE_MAX).await
     }
 
     /// A path of RGL's API (`/seasons?regionId=24`); `None` on a 404. For a
@@ -448,34 +488,68 @@ impl Sources {
         self.rgl.get_text_opt_interactive(&format!("https://api.rgl.gg/v0{path}")).await
     }
 
-    pub async fn etf2l_get(&self, path: &str) -> Result<Option<String>> {
-        let [first, second] = etf2l_hosts(unix_now());
-        match self.etf2l.get_text_opt(&format!("{first}{path}")).await {
-            Ok(Some(body)) => Ok(Some(body)),
-            first_try => etf2l_fallback(first_try, self.etf2l.get_text_opt(&format!("{second}{path}")).await),
+    /// A POST to RGL's API with a JSON body: its searches and its paged match
+    /// list. Same pace as [`rgl_get`](Self::rgl_get).
+    pub async fn rgl_post(&self, path: &str, body: &Value) -> Result<Option<String>> {
+        self.rgl.post_json_opt_interactive(&format!("https://api.rgl.gg/v0{path}"), body).await
+    }
+
+    /// One ask of the ETF2L API, `interactive` for a screen waiting on it.
+    ///
+    /// The second address is asked only when the first cannot be reached at
+    /// all (down, DNS gone): a 404, a refusal or a server error is the
+    /// answer, and asking the other address as well doubles the load on a
+    /// service that may be turning us away. Whichever answered after such a
+    /// failure is asked first from then on.
+    async fn etf2l_ask(&self, path: &str, query: Option<&[(&str, &str)]>, interactive: bool) -> Result<Option<String>> {
+        let mut hosts = etf2l_hosts(unix_now());
+        if hosts.len() == 2 && self.etf2l_swapped.load(Ordering::Relaxed) {
+            hosts.reverse();
         }
+        let ask = |host: &str| {
+            let at = query.map_or_else(|| format!("{host}{path}"), |q| url(&format!("{host}{path}"), q));
+            async move {
+                if interactive {
+                    self.etf2l.get_text_opt_interactive(&at).await
+                } else {
+                    self.etf2l.get_text_opt(&at).await
+                }
+            }
+        };
+        let first = ask(hosts[0]).await;
+        match (&first, hosts.get(1)) {
+            (Err(e), Some(second)) if connect_failed(e) => match ask(second).await {
+                Ok(answer) => {
+                    self.etf2l_swapped.fetch_xor(true, Ordering::Relaxed);
+                    Ok(answer)
+                }
+                Err(_) => first,
+            },
+            _ => first,
+        }
+    }
+
+    pub async fn etf2l_get(&self, path: &str) -> Result<Option<String>> {
+        self.etf2l_ask(path, None, false).await
     }
 
     /// One page of a paged ETF2L list, [`ETF2L_PAGE`] rows at a time rather
     /// than its default 20.
     pub async fn etf2l_page(&self, path: &str, page: i64) -> Result<Option<String>> {
         let page = page.to_string();
-        let query = [("page", page.as_str()), ("limit", ETF2L_PAGE)];
-        let [first, second] = etf2l_hosts(unix_now());
-        match self.etf2l.get_text_opt(&url(&format!("{first}{path}"), query)).await {
-            Ok(Some(body)) => Ok(Some(body)),
-            first_try => etf2l_fallback(first_try, self.etf2l.get_text_opt(&url(&format!("{second}{path}"), query)).await),
-        }
+        self.etf2l_ask(path, Some(&[("page", page.as_str()), ("limit", ETF2L_PAGE)]), false).await
     }
 
     /// As [`etf2l_get`](Self::etf2l_get), for a screen waiting on it: no
     /// retries when the connection cannot be made.
     pub async fn etf2l_get_interactive(&self, path: &str) -> Result<Option<String>> {
-        let [first, second] = etf2l_hosts(unix_now());
-        match self.etf2l.get_text_opt_interactive(&format!("{first}{path}")).await {
-            Ok(Some(body)) => Ok(Some(body)),
-            first_try => etf2l_fallback(first_try, self.etf2l.get_text_opt_interactive(&format!("{second}{path}")).await),
-        }
+        self.etf2l_ask(path, None, true).await
+    }
+
+    /// Whether ETF2L has told us to wait: a pass over its pages stops here
+    /// rather than counting off the calls that would fail at once.
+    pub fn etf2l_resting(&self) -> bool {
+        self.etf2l.rest_left().is_some()
     }
 
     /// Every SourceTV demo demos.tf holds for one player, newest first.
@@ -498,8 +572,23 @@ impl Sources {
         if let Some(t) = before {
             query.push(("before", t.to_string()));
         }
-        let body = self.demostf.get_text(&url("https://api.demos.tf/demos", &query)).await?;
-        serde_json::from_str(&body).context("parsing the demos.tf demo list")
+        let at = url("https://api.demos.tf/demos", &query);
+        if let Some((when, page)) = self.demo_lists.lock().unwrap().get(&at) {
+            if when.elapsed() < DEMO_LIST_KEEP {
+                return Ok(page.clone());
+            }
+        }
+        let body = self.demostf.get_text(&at).await?;
+        let page: Vec<DemosTfMeta> = serde_json::from_str(&body).context("parsing the demos.tf demo list")?;
+        let mut held = self.demo_lists.lock().unwrap();
+        if held.len() >= DEMO_LISTS_MAX {
+            held.retain(|_, (when, _)| when.elapsed() < DEMO_LIST_KEEP);
+            if held.len() >= DEMO_LISTS_MAX {
+                held.clear();
+            }
+        }
+        held.insert(at, (Instant::now(), page.clone()));
+        Ok(page)
     }
 
     /// Who played what in a demos.tf demo, from its page: `(steamid64, class,
@@ -507,9 +596,12 @@ impl Sources {
     /// list endpoint has no players, so finding a player's demos on one class
     /// asks this once per demo (Q69).
     pub async fn demostf_players(&self, demo_id: i64) -> Result<Vec<(String, String, String)>> {
+        if let Some(held) = self.demo_players.lock().unwrap().get(&demo_id) {
+            return Ok(held.clone());
+        }
         let body = self.demostf.get_text(&format!("https://api.demos.tf/demos/{demo_id}")).await?;
         let v: Value = serde_json::from_str(&body).with_context(|| format!("parsing demos.tf demo {demo_id}"))?;
-        Ok(v["players"]
+        let players: Vec<(String, String, String)> = v["players"]
             .as_array()
             .into_iter()
             .flatten()
@@ -517,7 +609,13 @@ impl Sources {
                 let id = p["steamid"].as_str().map(str::to_string).or_else(|| p["steamid"].as_i64().map(|n| n.to_string()))?;
                 Some((id, p["class"].as_str().unwrap_or("").to_string(), p["team"].as_str().unwrap_or("").to_string()))
             })
-            .collect())
+            .collect();
+        let mut held = self.demo_players.lock().unwrap();
+        if held.len() >= DEMO_PLAYERS_MAX {
+            held.clear();
+        }
+        held.insert(demo_id, players.clone());
+        Ok(players)
     }
 
     pub async fn demostf_meta(&self, demo_id: i64) -> Result<DemosTfMeta> {
@@ -525,14 +623,37 @@ impl Sources {
         serde_json::from_str(&body).with_context(|| format!("parsing demos.tf metadata for {demo_id}"))
     }
 
-    pub async fn download(
-        &self,
-        url: &str,
-        dest: &std::path::Path,
-        progress: impl FnMut(u64, Option<u64>),
-    ) -> Result<u64> {
-        download_to(&self.downloads, url, dest, progress).await
+    /// A demo from demos.tf's own servers (its file links are on `demos.tf`
+    /// subdomains), at most [`DEMO_MAX`].
+    pub async fn download_demostf(&self, url: &str, dest: &std::path::Path, progress: impl FnMut(u64, Option<u64>)) -> Result<u64> {
+        self.download_from(&["demos.tf"], url, dest, progress).await
     }
+
+    /// A demo ETF2L's match page links: from etf2l.org, or demos.tf where
+    /// uploaders put it there.
+    pub async fn download_etf2l(&self, url: &str, dest: &std::path::Path, progress: impl FnMut(u64, Option<u64>)) -> Result<u64> {
+        self.download_from(&["etf2l.org", "demos.tf"], url, dest, progress).await
+    }
+
+    /// A link out of a remote JSON is whatever its author wrote: only https
+    /// on the expected hosts is followed, and only up to [`DEMO_MAX`].
+    async fn download_from(&self, hosts: &[&str], url: &str, dest: &std::path::Path, progress: impl FnMut(u64, Option<u64>)) -> Result<u64> {
+        if !crate::http::is_https_on(url, hosts) {
+            anyhow::bail!("{url}: not a place this app downloads demos from ({})", hosts.join(", "));
+        }
+        download_to(&self.downloads, url, dest, DEMO_MAX, progress).await
+    }
+}
+
+/// The largest demo (or demo archive) downloaded: a Highlander SourceTV demo
+/// is 50 to 300 MB.
+pub const DEMO_MAX: u64 = 600 << 20;
+/// And the largest picture read from a page.
+pub const IMAGE_MAX: usize = 8 << 20;
+
+/// Whether a request never reached the server: not "it said no".
+fn connect_failed(e: &anyhow::Error) -> bool {
+    e.chain().any(|c| c.downcast_ref::<reqwest::Error>().is_some_and(|r| r.is_connect()))
 }
 
 /// drops.tf's name, as a log's source is stored and shown.
@@ -576,25 +697,20 @@ const ETF2L_MOVE: i64 = 1_793_538_000; // 2026-11-01 13:00 UTC
 const ETF2L_NEW: &str = "https://api.etf2l.org";
 const ETF2L_OLD: &str = "https://api-v2.etf2l.org";
 
-/// The ETF2L API's addresses in the order to ask them: the old one until
-/// the move, the new one after, each the other's fallback.
-pub fn etf2l_hosts(now: i64) -> [&'static str; 2] {
-    if now >= ETF2L_MOVE {
-        [ETF2L_NEW, ETF2L_OLD]
-    } else {
-        [ETF2L_OLD, ETF2L_NEW]
-    }
-}
+/// After this the old address is gone (ETF2L: "until the end of the year"):
+/// 1 January 2027, and it is no longer asked even when the new one fails.
+const ETF2L_OLD_GONE: i64 = 1_798_761_600;
 
-/// The first address's answer unless it failed or had nothing, then the
-/// second's; when both fail, the first's error.
-fn etf2l_fallback(first: Result<Option<String>>, second: Result<Option<String>>) -> Result<Option<String>> {
-    match (first, second) {
-        (_, Ok(Some(body))) => Ok(Some(body)),
-        (Ok(None), _) => Ok(None),
-        (Err(e), Ok(None)) => Err(e),
-        (Err(e), Err(_)) => Err(e),
-        (Ok(Some(body)), _) => Ok(Some(body)),
+/// The ETF2L API's addresses in the order to ask them: the old one until
+/// the move, the new one after, each the other's fallback; the new one alone
+/// once the old is retired.
+pub fn etf2l_hosts(now: i64) -> Vec<&'static str> {
+    if now >= ETF2L_OLD_GONE {
+        vec![ETF2L_NEW]
+    } else if now >= ETF2L_MOVE {
+        vec![ETF2L_NEW, ETF2L_OLD]
+    } else {
+        vec![ETF2L_OLD, ETF2L_NEW]
     }
 }
 
@@ -629,12 +745,22 @@ mod tests {
     }
 
     #[test]
-    fn the_other_etf2l_address_answers_when_the_first_cannot() {
-        let body = |s: &str| Ok(Some(s.to_string()));
-        assert_eq!(etf2l_fallback(Err(anyhow::anyhow!("down")), body("b")).unwrap().as_deref(), Some("b"));
-        assert_eq!(etf2l_fallback(Ok(None), body("b")).unwrap().as_deref(), Some("b"), "missing on one, there on the other");
-        assert_eq!(etf2l_fallback(Ok(None), Ok(None)).unwrap(), None, "missing on both: missing");
-        assert!(etf2l_fallback(Err(anyhow::anyhow!("down")), Err(anyhow::anyhow!("down too"))).is_err());
+    fn the_old_etf2l_address_is_dropped_after_the_year_ends() {
+        assert_eq!(etf2l_hosts(ETF2L_OLD_GONE - 1), [ETF2L_NEW, ETF2L_OLD]);
+        assert_eq!(etf2l_hosts(ETF2L_OLD_GONE), [ETF2L_NEW]);
+        assert_eq!(chrono::DateTime::from_timestamp(ETF2L_OLD_GONE, 0).unwrap().to_rfc3339(), "2027-01-01T00:00:00+00:00");
+    }
+
+    /// The other address is for an address that cannot be reached, not for
+    /// every answer that is not a page: a refusal there doubles the load.
+    #[tokio::test]
+    async fn the_other_etf2l_address_is_asked_only_when_the_first_cannot_be_reached() {
+        assert!(!connect_failed(&anyhow::anyhow!("HTTP 404")));
+        assert!(!connect_failed(&anyhow::Error::new(Refused { status: reqwest::StatusCode::FORBIDDEN })));
+        // Nothing listens on a port that was just freed.
+        let port = std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+        let err = reqwest::get(format!("http://127.0.0.1:{port}/")).await.unwrap_err();
+        assert!(connect_failed(&anyhow::Error::new(err)));
     }
 
     /// The real response for the S36 official against TWS.

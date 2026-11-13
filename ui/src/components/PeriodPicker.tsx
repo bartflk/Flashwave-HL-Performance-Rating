@@ -23,8 +23,12 @@ const shortDate = (t: number) =>
  * All time, one season, or two dates of your choosing. Seasons come from
  * your ETF2L officials; each runs from the week before its first official
  * to the day after its last, and counts every game in it.
+ *
+ * `range` off leaves out a season's dates under the select, for a page that
+ * shows them itself: the match list puts them on a divider in its table
+ * (Flashy: "the date appears behind the buttons on the right").
  */
-export function PeriodPicker() {
+export function PeriodPicker({ range = true }: { range?: boolean }) {
   const period = usePeriod();
   const seasons = useQuery({ queryKey: ["seasons"], queryFn: api.listSeasons, staleTime: 60_000 });
   const list = seasons.data ?? [];
@@ -49,7 +53,7 @@ export function PeriodPicker() {
         >
           <option value="all">{tr("All time")}</option>
           {list.length > 0 && (
-            <optgroup label="Seasons">
+            <optgroup label={tr("Seasons")}>
               {list.map((s) => (
                 <option key={s.key} value={`s:${s.key}`}>
                   {s.name}
@@ -61,7 +65,7 @@ export function PeriodPicker() {
           <option value="custom">{tr("Custom dates…")}</option>
         </select>
       </label>
-      {period.kind === "season" && (
+      {range && period.kind === "season" && (
         <span className="period-range hint">
           {shortDate(period.from)} – {shortDate(period.to)}
         </span>
@@ -77,7 +81,7 @@ export function PeriodPicker() {
           <span className="hint">{tr("to")}</span>
           <input
             type="date"
-            aria-label="To"
+            aria-label={tr("To")}
             value={toInput(period.to)}
             onChange={(e) => setPeriod({ ...period, to: fromInput(e.target.value, true) })}
           />

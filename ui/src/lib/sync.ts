@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { noteError } from "./problems";
-import { errorMessage, type Progress, type SyncDone } from "../api/types";
+import { errorMessage, type JobKind, type Progress, type SyncDone } from "../api/types";
 import { t } from "./i18n";
 import { formatDate } from "./format";
 import { loadEtf2lNames } from "./etf2lNames";
@@ -20,11 +20,11 @@ import { checkStorage } from "./storagewatch";
 
 export type SyncState =
   | { state: "idle" }
-  | { state: "running"; progress: Progress | null; failures: number; notes: string[] }
+  | { state: "running"; job: JobKind; progress: Progress | null; failures: number; notes: string[] }
   | { state: "done"; result: SyncDone; notes: string[] }
   | { state: "error"; message: string }
   /** Stopped with Cancel: what landed before is kept. */
-  | { state: "cancelled" };
+  | { state: "cancelled"; job: JobKind };
 
 /** How often the match list may refresh while logs are arriving. Newest are
  *  fetched first, so last night's game shows up within seconds — but a
@@ -48,6 +48,13 @@ function secondsPerLog(done: number): number {
 let status: SyncState = { state: "idle" };
 let listeners: Array<() => void> = [];
 let started = false;
+/**
+ * What was started last: a sync, a rebuild, a re-rate or the demos. The card
+ * used to tell a rebuild from a sync by its progress ("reprocessing"), so a
+ * rebuild that had moved on to its fights and rating said "Syncing, step 7
+ * of 9" (audit, 12 Nov 2026).
+ */
+let job: JobKind = "sync";
 let refreshTimer: number | null = null;
 
 function set(next: SyncState) {
@@ -67,6 +74,14 @@ function invalidateAll(qc: QueryClient) {
     "rawlog_stats",
     "played_filters",
     "all_history",
+    // The Period picker's seasons, the Seasons tab, the tournament dividers
+    // and the map tendencies are all built from the matches a sync stores:
+    // after a first sync the picker would have no seasons until a restart.
+    "seasons",
+    "seasons-view",
+    "my_tournaments",
+    "tendencies",
+    "stat_scales",
   ]) {
     void qc.invalidateQueries({ queryKey: [key] });
   }
@@ -80,7 +95,33 @@ export function watchSync(qc: QueryClient) {
   // A sync may already be running: one started before the window reloaded.
   void api.syncBusy().then((busy) => {
     if (busy && status.state === "idle") {
-      set({ state: "running", progress: null, failures: 0, notes: [] });
+      set({ state: "running", job, progress: null, failures: 0, notes: [] });
+    }
+  });
+
+  // The rating the app runs at startup when the model has changed: shown on
+  // the same card, without a Cancel (it is not a sync, and nothing stops it).
+  void api.onStartupRating({
+    onProgress: (p) => {
+      if (status.state === "idle" || (status.state === "running" && status.job === "startup")) {
+        set({ state: "running", job: "startup", progress: p, failures: 0, notes: [] });
+      }
+    },
+    onDone: () => {
+      if (status.state !== "running" || status.job !== "startup") return;
+      invalidateAll(qc);
+      void api
+        .indexStats()
+        .then((stats) => set({ state: "done", result: { kind: "startup", fetched: 0, failed: 0, stats, report: null }, notes: [] }))
+        .catch(() => set({ state: "idle" }));
+    },
+  });
+
+  // The demo index at startup finishes after the window is up: refresh what
+  // shows demo links once it has.
+  void api.onDemosIndexed(() => {
+    for (const key of ["matches", "match", "demo_stats", "demostats", "downloaded_demos"]) {
+      void qc.invalidateQueries({ queryKey: [key] });
     }
   });
 
@@ -109,6 +150,7 @@ export function watchSync(qc: QueryClient) {
       }
       set({
         state: "running",
+        job: was?.job ?? job,
         progress: p,
         failures: (was?.failures ?? 0) + (p.kind === "fetchFailed" ? 1 : 0),
         notes: note && !was?.notes.includes(note) ? [...(was?.notes ?? []), note] : (was?.notes ?? []),
@@ -137,12 +179,14 @@ export function watchSync(qc: QueryClient) {
     },
     onError: (e) => {
       if (e.kind === "cancelled") {
-        set({ state: "cancelled" });
+        set({ state: "cancelled", job });
         invalidateAll(qc);
         return;
       }
       noteError({ what: "the sync", message: explain(e.message), detail: e.message });
       set({ state: "error", message: e.message });
+      // What landed before the failure is stored and rated, so it shows.
+      invalidateAll(qc);
     },
   });
 }
@@ -192,23 +236,35 @@ export async function cancelSync() {
   }
 }
 
-export async function startSync(full = false) {
-  set({ state: "running", progress: null, failures: 0, notes: [] });
+async function startJob(kind: JobKind, run: () => Promise<void>) {
+  job = kind;
+  pace = null;
+  set({ state: "running", job: kind, progress: null, failures: 0, notes: [] });
   try {
-    await api.syncStart(full);
+    await run();
   } catch (e) {
     set({ state: "error", message: errorMessage(e) });
   }
 }
 
+/** `full` goes through every source's whole history again, not only what is new. */
+export function startSync(full = false) {
+  return startJob("sync", () => api.syncStart(full));
+}
+
 /** The same, for rebuilding every match from stored data. */
-export async function startRebuild() {
-  set({ state: "running", progress: null, failures: 0, notes: [] });
-  try {
-    await api.reprocessStart();
-  } catch (e) {
-    set({ state: "error", message: errorMessage(e) });
-  }
+export function startRebuild() {
+  return startJob("reprocess", () => api.reprocessStart());
+}
+
+/** The rating pass alone. */
+export function startRerate() {
+  return startJob("rerate", () => api.rerateStart());
+}
+
+/** Every demo on this machine read again. */
+export function startRereadDemos() {
+  return startJob("demos", () => api.rereadDemosStart());
 }
 
 export function dismissSync() {
@@ -239,6 +295,7 @@ export function fractionOf(p: Progress | null): number | null {
     case "fights":
     case "readingDemos":
     case "standIns":
+    case "playerNumbers":
       return p.total > 0 ? p.done / p.total : 1;
     case "etf2l":
       return p.total > 0 ? p.done / p.total : null;
@@ -288,7 +345,10 @@ function stageAbout(what: string): string {
  * a name for it, and one sentence on what it does -- so a sync that takes
  * minutes says why. `null` for a rebuild, which names itself.
  */
-export function phaseOf(p: Progress | null): { step: number; of: number; title: string; about: string } | null {
+export function phaseOf(p: Progress | null, kind: JobKind = "sync"): { step: number; of: number; title: string; about: string } | null {
+  // A sync's steps only: the other jobs send some of the same progress
+  // (fights, rating, demos) and name themselves on the card.
+  if (kind !== "sync") return null;
   const at = (step: number, title: string, about: string) => ({ step, of: STEPS, title, about });
   if (!p) return at(1, t("Finding your logs"), t("Asking trends.tf and logs.tf which logs you are in, to spot the ones not stored yet."));
   switch (p.kind) {
@@ -385,6 +445,8 @@ export function labelOf(p: Progress | null): string {
       return t("{source} stopped answering after {1} of {2} {what}; the rest waits for the next sync.", { "1": n(p.done), "2": n(p.total), source: p.source, what: gaveUpWhat(p.what) });
     case "standIns":
       return p.total === 0 ? t("Nothing new on more.tf.") : t("logs.tf is refusing us: new matches from more.tf, {done} of {total}", { done: n(p.done), total: n(p.total) });
+    case "playerNumbers":
+      return t("Player numbers {done} of {total} logs", { done: n(p.done), total: n(p.total) });
   }
 }
 

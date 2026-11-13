@@ -164,6 +164,8 @@ export interface IndexStats {
   normalized: number;
   pending: number;
   failed: number;
+  /** Deleted on logs.tf, or out of tries: no longer asked for. */
+  givenUp?: number;
   /** Old logs the two-year window is holding back; 0 on full history. */
   outsideWindow: number;
 }
@@ -198,7 +200,52 @@ export type Progress =
   /** Downloading stopped early because the server stopped answering. */
   | { kind: "gaveUp"; source: string; done: number; total: number; what: "logs" | "raw server logs" | "combined logs' parts" }
   /** logs.tf refused us: new logs come from more.tf's copy instead. */
-  | { kind: "standIns"; done: number; total: number };
+  | { kind: "standIns"; done: number; total: number }
+  /** A rebuild reading every log's player numbers again. */
+  | { kind: "playerNumbers"; done: number; total: number };
+
+/** One source's last sync, from `sync_state`. */
+export interface SourceState {
+  source: string;
+  cursor: string | null;
+  /** UTC, "YYYY-MM-DD HH:MM:SS". */
+  lastRunAt: string | null;
+  lastError: string | null;
+}
+
+/** One finished sync, rebuild or re-rate. */
+export interface RunRecord {
+  kind: JobKind;
+  /** Unix seconds, when it finished. */
+  at: number;
+  seconds: number;
+  fetched: number;
+  failed: number;
+  error: string | null;
+  problems: string[];
+}
+
+/** Settings > Diagnostics. */
+export interface Diagnostics {
+  version: string;
+  model: string;
+  dataDir: string;
+  logFile: string | null;
+  logDir: string;
+  stats: IndexStats;
+  /** [model version, the owner's rated games], oldest first. */
+  rated: Array<[string, number]>;
+  sources: SourceState[];
+  runs: RunRecord[];
+}
+
+/** The owner's games under the model before this one and this one. */
+export interface ModelShift {
+  before: string;
+  after: string;
+  classes: Array<{ class: string; games: number; before: number; after: number }>;
+  games: Array<{ logId: number; class: string; map: string | null; playedAt: number | null; before: number; after: number }>;
+}
 
 /** One component of a class's model, for "How ratings work". */
 export interface ComponentGuide {
@@ -383,10 +430,37 @@ export interface RglMatch {
   matchDate: string | null;
   /** "Week 1 - Vigil". */
   matchName: string | null;
+  /** RGL's name for the division ("Advanced"). */
+  divisionName?: string | null;
+  seasonId?: number | null;
+  /** "HL Season 25". */
+  seasonName?: string | null;
   isForfeit: boolean;
   winner: number | null;
   teams: { teamId: number; teamName: string; teamTag: string | null; isHome: boolean }[];
   maps: { mapName: string; homeScore: number | null; awayScore: number | null }[];
+}
+
+/** A match page's lineups, earlier meetings and logs. */
+export interface RglMatchMore {
+  /** Each team's roster on the match's date, in the match's team order. */
+  /** `ids`: the team's ids in the seasons read for meetings, its own first. */
+  lineups: { teamId: number; ids: number[]; players: RglMember[] }[];
+  /** Earlier matches between the two teams, newest first. */
+  meetings: RglMatch[];
+  logs: { logId: number; title: string; map: string; playedAt: number; stored: boolean }[];
+  /** Why there are no logs, when they were not looked for. */
+  logsWhy: "notPlayed" | "forfeit" | "tooSoon" | "resting" | "unavailable" | "noRoster" | null;
+}
+
+/** One of RGL's bans. */
+export interface RglBan {
+  steamId: string;
+  alias: string | null;
+  createdAt: string | null;
+  /** Far in the future (3026) for a permanent ban. */
+  expiresAt: string | null;
+  reason: string | null;
 }
 
 /** An RGL team's page: roster, results, and its other seasons' ids. */
@@ -429,6 +503,40 @@ export interface RglPlayerSeason {
   losses: number;
 }
 
+/** An RGL season's card: its best division's top three, best first;
+ *  empty while it is played. */
+export interface RglSeasonCard {
+  id: number;
+  maps: number;
+  /** Teams in its best division (`division`), not the season's. */
+  teams: number;
+  /** The best division's name ("Invite"), which `teams` counts. */
+  division: string | null;
+  /** Every division decided. */
+  over: boolean;
+  /** Matches played or scheduled so far; 0 means it has not started. */
+  matches: number;
+  podium: RglTeam[];
+}
+
+/** A player RGL's name search found. */
+export interface RglPlayerHit {
+  steamId: string;
+  name: string;
+  avatar: string | null;
+}
+
+/** An NA Highlander team RGL's name search found. */
+export interface RglTeamHit {
+  id: number;
+  name: string;
+  tag: string | null;
+  seasonId: number;
+  seasonName: string;
+  division: string | null;
+  finalRank: number | null;
+}
+
 /** An RGL player, NA Highlander's seasons newest first. */
 export interface RglPlayer {
   steamId: string;
@@ -437,6 +545,92 @@ export interface RglPlayer {
   banned: boolean;
   probation: boolean;
   seasons: RglPlayerSeason[];
+}
+
+/** Wins and losses, forfeits apart (hl_ingest::rgl::RglRecord). */
+export interface RglRecord {
+  won: number;
+  lost: number;
+  forfeitsWon: number;
+  forfeitsLost: number;
+}
+
+/** A team across its linked seasons (hl_ingest::rgl::team_history). */
+export interface RglTeamHistory {
+  /** Every id the team played under in the seasons read. */
+  teamIds: number[];
+  /** Newest first. */
+  seasons: {
+    teamId: number;
+    name: string;
+    tag: string | null;
+    seasonId: number;
+    seasonName: string;
+    division: string | null;
+    tier: string | null;
+    finalRank: number | null;
+    record: RglRecord;
+  }[];
+  total: RglRecord;
+  formerNames: string[];
+  /** Seasons the team has in all, read or not. */
+  seasonsLinked: number;
+  firstSeason: string | null;
+  /** More seasons exist than were read, so totals cover the newest only. */
+  capped: boolean;
+  opponents: { name: string; tag: string | null; won: number; lost: number; teamId: number; last: string | null }[];
+  maps: { map: string; won: number; lost: number; roundsFor: number; roundsAgainst: number }[];
+  /** Every decided match of the seasons read, newest first. */
+  matches: RglMatch[];
+}
+
+/** A podium finish of a team the player was on at the season's end. */
+export interface RglMedal {
+  seasonId: number;
+  seasonName: string;
+  teamId: number;
+  teamName: string;
+  division: string | null;
+  /** 1, 2 or 3. */
+  place: number;
+}
+
+/** A decided match of a team the player was on, played while they were. */
+export interface RglFormMatch {
+  /** The player's team in it. */
+  teamId: number;
+  match: RglMatch;
+}
+
+/** What a player's RGL page reads beyond their profile: podiums and recent results. */
+export interface RglPlayerMore {
+  medals: RglMedal[];
+  /** Newest first. */
+  form: RglFormMatch[];
+}
+
+/** One of ETF2L's other Highlander tournaments: a one-night, Experimental,
+ *  Nations' or preseason cup (hl_ingest::cups). */
+export interface LeagueCup {
+  name: string;
+  kind: "preseason" | "one-night" | "experimental" | "nations" | "open" | "other";
+  first: number | null;
+  last: number | null;
+  matches: number;
+  teams: number;
+  /** Each bracket's name, in the order its first match was played. */
+  brackets: string[];
+  /** Whoever won each bracket's Grand Final. */
+  winners: Array<{ bracket: string; team: { id: number; name: string; avatar: string | null } }>;
+}
+
+export interface CupResult extends ResultRow {
+  bracket: string;
+}
+
+export interface LeagueCupPage extends LeagueCup {
+  /** Every match, oldest first. */
+  results: CupResult[];
 }
 
 /** A played official, any team's (Q74). */
@@ -450,6 +644,8 @@ export interface ResultRow {
   week: number | null;
   /** "regular", "Playoffs", "3rd Place", "Qualifiers", "Cup". */
   stage: string;
+  /** ETF2L's name for the competition: a league season's, or a cup's. */
+  competition: string;
   clan1: { id: number; name: string; avatar: string | null };
   clan2: { id: number; name: string; avatar: string | null };
   r1: number | null;
@@ -788,9 +984,13 @@ export interface NewestLog {
   known: boolean;
 }
 
+/** What a sync or job is: the sync, a rebuild, the rating pass alone, every
+ *  demo read again, or the rating the app runs at startup for a new model. */
+export type JobKind = "sync" | "reprocess" | "rerate" | "demos" | "startup";
+
 /** Sent once on `sync://done`. */
 export interface SyncDone {
-  kind: "sync" | "reprocess";
+  kind: JobKind;
   fetched: number;
   failed: number;
   stats: IndexStats;
@@ -989,7 +1189,7 @@ export interface MassBatch {
 }
 
 /** Q60: a page kept to come back to. */
-export type BookmarkKind = "match" | "player" | "team" | "season";
+export type BookmarkKind = "match" | "player" | "team" | "season" | "rgl_team" | "rgl_season";
 export interface Bookmark {
   kind: BookmarkKind;
   /** The log, account, team or season number. */
@@ -1080,6 +1280,10 @@ export interface Matchup {
   winner: "left" | "right" | "even" | null;
   decisive: boolean;
   involvesMe: boolean;
+  /** One percentile point of a part as a rating on this class's own scale
+   *  (every class has its own mean and spread); the match's pooled value
+   *  where the server did not send it. */
+  ratingPerPercentile?: number;
 }
 
 export interface PlayerRow {
@@ -2926,6 +3130,9 @@ export interface H2hSide {
   /** Kills on each class, and what a kill of that class is worth. */
   victims: [string, number, number][];
   onOther: number;
+  /** The scale this side's rating was put on: its class's own. */
+  scaleMean?: number | null;
+  scaleSd?: number | null;
 }
 
 /** Each class's DPM and accuracy at fixed percentiles (stat_scale.rs). */
@@ -3011,4 +3218,76 @@ export interface Tournament {
   from: number;
   to: number;
   officials: number;
+}
+
+/** An RGL match's statistics, from its logs (read once, kept on disk). */
+export interface RglMatchStats {
+  maps: RglMapStats[];
+  /** Logs that could not be read; asked for again next time. */
+  unread: number[];
+}
+
+export interface RglMapStats {
+  logId: number;
+  map: string;
+  minutes: number;
+  /** RED's and BLU's totals, in that order. */
+  sides: [RglSideTotals, RglSideTotals];
+  players: RglStatPlayer[];
+  awards: RglAwards;
+  /** The players carry the app's rating. */
+  rated: boolean;
+}
+
+export interface RglSideTotals {
+  side: "Red" | "Blue";
+  /** The RGL team that played this colour, when the rosters say. */
+  teamId: number | null;
+  score: number;
+  kills: number;
+  deaths: number;
+  damage: number;
+  heals: number;
+  ubers: number;
+  drops: number;
+}
+
+export interface RglStatPlayer {
+  steamId: string;
+  name: string;
+  side: "Red" | "Blue";
+  teamId: number | null;
+  class: string | null;
+  minutes: number;
+  kills: number;
+  assists: number;
+  deaths: number;
+  damage: number;
+  dpm: number | null;
+  dtpm: number | null;
+  /** DPM minus the class's typical DPM; the basis says what that is. */
+  dpmVs: number | null;
+  dpmVsBasis: "archive" | "opponent" | null;
+  headshots: number;
+  heals: number;
+  ubers: number;
+  drops: number;
+  rating: number | null;
+}
+
+export interface RglAward {
+  steamId: string;
+  name: string;
+  side: "Red" | "Blue";
+  class: string | null;
+  value: number;
+  basis: "rating" | "kapd" | "heals" | "kills" | "headshots";
+  extra: number | null;
+}
+
+export interface RglAwards {
+  mvp: RglAward | null;
+  medicMvp: RglAward | null;
+  topFragger: RglAward | null;
+  mostHeadshots: RglAward | null;
 }

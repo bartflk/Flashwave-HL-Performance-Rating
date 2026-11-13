@@ -43,6 +43,8 @@ pub struct ContextGameRow {
     pub log_id: i64,
     pub played_at: i64,
     pub trends_match: Option<i64>,
+    /// The log's title, which names a pug server's games.
+    pub title: Option<String>,
     /// `(account_id, team)` for every player, owner included.
     pub players: Vec<(u32, String)>,
 }
@@ -429,7 +431,8 @@ impl Db {
     /// Every kept Highlander match the owner played, oldest first.
     pub async fn context_games(&self, me: u32) -> Result<Vec<ContextGameRow>> {
         let games = sqlx::query(
-            "SELECT m.log_id, COALESCE(m.played_at, 0) AS played_at, i.etf2l_match_id
+            "SELECT m.log_id, COALESCE(m.played_at, 0) AS played_at, i.etf2l_match_id,
+                    COALESCE(m.title, i.title) AS title
              FROM match m
              JOIN log_index i    ON i.log_id = m.log_id
              JOIN match_player p ON p.log_id = m.log_id AND p.account_id = ?1
@@ -461,6 +464,7 @@ impl Db {
                     log_id,
                     played_at: r.get("played_at"),
                     trends_match: r.get("etf2l_match_id"),
+                    title: r.get("title"),
                     players: by_log.remove(&log_id).unwrap_or_default(),
                 }
             })

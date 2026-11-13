@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && node ../scripts/check-type.mjs && vite build",
     "lint": "node ../scripts/check-type.mjs && oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --import ./test/register.mjs --test \"test/*.test.ts\""
   },
   "dependencies": {
     "@tanstack/react-query": "^5.103.1",

@@ -39,6 +39,26 @@ impl Drop for BusyGuard {
     }
 }
 
+/// Watch a background job and say so when it panics. The busy guard is
+/// released by the unwinding, but without this no event ever reached the
+/// window, so the sync card spun until the app was restarted. The
+/// `JoinHandle` used to be thrown away.
+pub(crate) fn watch_panic(
+    app: AppHandle,
+    handle: tauri::async_runtime::JoinHandle<()>,
+    cancel_slot: Option<Arc<std::sync::Mutex<Option<tokio::sync::oneshot::Sender<()>>>>>,
+) {
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = handle.await {
+            tracing::error!(error = %e, "a background job stopped unexpectedly");
+            if let Some(slot) = cancel_slot {
+                *slot.lock().unwrap_or_else(|p| p.into_inner()) = None;
+            }
+            let _ = app.emit(EV_ERROR, CmdError::new("internal", "The job stopped unexpectedly. See the log in the data folder; try again."));
+        }
+    });
+}
+
 /// What `sync://done` carries. Reprocess reuses it with `fetched = 0`.
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -182,21 +202,29 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
     *state.sync_cancel.lock().unwrap() = Some(cancel);
     let cancel_slot = state.sync_cancel.clone();
 
-    tauri::async_runtime::spawn(async move {
+    let startup = state.startup.clone();
+    let watch_app = app.clone();
+    let handle = tauri::async_runtime::spawn(async move {
         let _guard = guard;
+        // The jobs the app starts with (rating, fights, the demo index) are
+        // still running for a little after launch; two of them at once
+        // would rewrite the same tables.
+        let _startup = startup.lock().await;
         let emitter = app.clone();
         let opts = SyncOptions { full, max_fetch: None };
         let began = std::time::Instant::now();
+        let mut report = SyncReport::default();
+        let (weights, _) = hl_rating::Weights::load(&weights_path);
+        // Cancelling stops the work up to the demo pass. The last two steps
+        // -- deleting the demos that were read, and re-rating everything --
+        // are not cancellable: dropped midway, the first leaves files and
+        // rows out of step and the second leaves ratings partly rewritten.
         let work = async {
-            let mut report = SyncReport::default();
             // A copy first: a sync rewrites derived tables, and the file is
             // the only thing here that cannot be fetched again.
             if let Err(e) = hl_ingest::backup::run(&db, &db_path, false).await {
                 tracing::warn!(error = %format!("{e:#}"), "database backup failed");
             }
-            // Loaded once: the fetch loop rates each log as it lands, and
-            // the pass at the end re-rates everything.
-            let (weights, _) = hl_rating::Weights::load(&weights_path);
             let summary = hl_ingest::sync(&db, &sources, me, &opts, &weights, |p: Progress| {
                 let _ = emitter.emit(EV_PROGRESS, p);
             })
@@ -221,20 +249,32 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             }
             // Raw logs: every kill with time, classes and positions. Newest
             // first; the first sync fetches the whole history (~15 min).
-            let raw = hl_ingest::kills::fetch(&db, &sources, Some(hl_ingest::RAW_PER_SYNC), |p: Progress| {
+            //
+            // From here on every step is best effort, like the sources above
+            // (audit, 12 Nov 2026): one of them failing used to end the whole
+            // sync, so the logs it had just stored were never re-rated and
+            // the card showed one error instead of what had worked.
+            match hl_ingest::kills::fetch(&db, &sources, Some(hl_ingest::RAW_PER_SYNC), |p: Progress| {
                 let _ = emitter.emit(EV_PROGRESS, p);
             })
-            .await?;
-            if raw.failed > 0 {
-                tracing::warn!(failed = raw.failed, "some raw logs could not be fetched; next sync retries");
+            .await
+            {
+                Ok(raw) => {
+                    if raw.failed > 0 {
+                        tracing::warn!(failed = raw.failed, "some raw logs could not be fetched; next sync retries");
+                    }
+                    report.raw_fetched = raw.fetched;
+                    report.raw_kills = raw.kills;
+                }
+                Err(e) => problem(&mut report.problems, "raw logs", &e),
             }
-            report.raw_fetched = raw.fetched;
-            report.raw_kills = raw.kills;
             // ETF2L itself was fetched inside the sync, before the queue:
             // what it says decides which logs are worth downloading. Sorting
             // the downloaded ones into officials, scrims and pugs needs their
             // player lists, so that part happens here.
-            hl_ingest::etf2l::derive_context(&db, me).await?;
+            if let Err(e) = hl_ingest::etf2l::derive_context(&db, me).await {
+                problem(&mut report.problems, "sorting matches into officials, scrims and pugs", &e);
+            }
             // Your name and picture for the top bar; a failure keeps the old ones.
             let stage = |what| {
                 let _ = emitter.emit(EV_PROGRESS, Progress::Stage { what });
@@ -269,20 +309,34 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                 let since = now - 60 * 86_400;
                 let done: std::collections::HashSet<i64> =
                     db.get_setting("parts_searched").await.ok().flatten().map(|s| s.split(',').filter_map(|x| x.parse().ok()).collect()).unwrap_or_default();
-                let mut searched = done.clone();
+                let listed = db.combined_without_parts(since).await;
+                let candidates = listed.as_ref().cloned().unwrap_or_default();
+                // Only the ids still waiting are kept: one older than the
+                // window, or whose parts turned up, is never asked about
+                // again, and the list used to grow by every one for good.
+                let mut searched: std::collections::HashSet<i64> = done.iter().copied().filter(|l| candidates.contains(l)).collect();
                 let (weights, _) = hl_rating::Weights::load(&weights_path);
-                for log_id in db.combined_without_parts(since).await.unwrap_or_default().into_iter().filter(|l| !done.contains(l)).take(3) {
+                for log_id in candidates.iter().copied().filter(|l| !done.contains(l)).take(3) {
                     match hl_ingest::sync::find_parts(&db, &sources, &weights, log_id).await {
                         Ok(f) => {
                             tracing::info!(log_id, candidates = f.candidates, added = f.added, "combined log: parts looked for");
                             report.combined_parts += f.added;
-                            searched.insert(log_id);
+                            // Only when every candidate was looked at: one
+                            // logs.tf could not give this time may be the part
+                            // that is missing, so it is searched again.
+                            if f.failed == 0 {
+                                searched.insert(log_id);
+                            }
                         }
                         Err(e) => tracing::warn!(log_id, error = %format!("{e:#}"), "combined log: parts not looked for"),
                     }
                 }
-                let list: Vec<String> = searched.iter().map(|x| x.to_string()).collect();
-                let _ = db.set_setting("parts_searched", &list.join(",")).await;
+                // Not written when the list could not be read: an empty one
+                // would forget every log already searched.
+                if listed.is_ok() {
+                    let list: Vec<String> = searched.iter().map(|x| x.to_string()).collect();
+                    let _ = db.set_setting("parts_searched", &list.join(",")).await;
+                }
             }
 
             // Q29: every team's season, from ETF2L. Best effort, and a few
@@ -325,17 +379,26 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             // every log on the real clock, which the round maps use.
             if let Some(tf) = db.get_config().await?.tf_path {
                 stage("Scanning your demos folder");
-                let s = hl_ingest::index_demos(&db, std::path::Path::new(&tf)).await?;
-                report.demos_linked = s.links;
-                let _ = emitter.emit(EV_DEMOS_INDEXED, &s);
+                match hl_ingest::index_demos(&db, std::path::Path::new(&tf)).await {
+                    Ok(s) => {
+                        report.demos_linked = s.links;
+                        let _ = emitter.emit(EV_DEMOS_INDEXED, &s);
+                    }
+                    Err(e) => problem(&mut report.problems, "scanning your demos folder", &e),
+                }
             }
             // Every round's map, then the rating: kills are valued on their map.
             stage("Resolving each round's map");
-            hl_ingest::maps::resolve_all(&db).await?;
-            hl_ingest::fights::derive_all(&db, false, |done, total| {
+            if let Err(e) = hl_ingest::maps::resolve_all(&db).await {
+                problem(&mut report.problems, "each round's map", &e);
+            }
+            if let Err(e) = hl_ingest::fights::derive_all(&db, false, |done, total| {
                 let _ = emitter.emit(EV_PROGRESS, Progress::Fights { done, total });
             })
-            .await?;
+            .await
+            {
+                problem(&mut report.problems, "fights", &e);
+            }
             // Aim from any newly linked demo. Seconds a demo, and a demo the
             // parser cannot read must not fail the whole sync.
             match hl_ingest::aim::derive_all(&db, me, false, |done, total, log_id, what| {
@@ -354,28 +417,7 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                     report.problems.push(format!("reading demos: {e:#}"));
                 }
             }
-            // Asked for in Settings: a demo that has been read is 80 MB
-            // doing nothing. It is swept here, right after the pass, and
-            // nowhere else -- this is the only point where "the app has
-            // finished with it" is certainly true.
-            if db.auto_delete_demos().await.unwrap_or(false) {
-                match sweep_read_demos(&db).await {
-                    Ok(n) => {
-                        report.demos_cleaned = n;
-                        if n > 0 {
-                            tracing::info!(deleted = n, "downloaded demos cleaned up");
-                        }
-                    }
-                    Err(e) => tracing::warn!(error = %format!("{e:#}"), "demo cleanup failed"),
-                }
-            }
-            // Every sync ends by re-rating: new matches shift the baselines.
-            hl_ingest::rate_all(&db, Some(me), &weights, |p: Progress| {
-                let _ = emitter.emit(EV_PROGRESS, p);
-            })
-            .await?;
-            report.seconds = began.elapsed().as_secs();
-            anyhow::Ok((summary, report))
+            anyhow::Ok(summary)
         };
         let result = tokio::select! {
             r = work => r,
@@ -386,10 +428,50 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                 return;
             }
         };
+        // From here on there is nothing to cancel: the button has nothing to
+        // reach, and `sync_cancel` says so.
         *cancel_slot.lock().unwrap() = None;
+        drop(cancelled);
+
+        // Asked for in Settings: a demo that has been read is 80 MB doing
+        // nothing. It is swept here, right after the pass, and nowhere else
+        // -- this is the only point where "the app has finished with it" is
+        // certainly true. Not after a failed sync: the demo pass may not
+        // have run.
+        if result.is_ok() && db.auto_delete_demos().await.unwrap_or(false) {
+            match sweep_read_demos(&db).await {
+                Ok(n) => {
+                    report.demos_cleaned = n;
+                    if n > 0 {
+                        tracing::info!(deleted = n, "downloaded demos cleaned up");
+                    }
+                }
+                Err(e) => tracing::warn!(error = %format!("{e:#}"), "demo cleanup failed"),
+            }
+        }
+        // Every sync ends by re-rating: new matches shift the baselines. A
+        // sync that failed part-way re-rates too (audit, 12 Nov 2026): the
+        // logs it stored before the failure are kept, and were left on the
+        // stored baselines until the next sync that got all the way through.
+        let rated = hl_ingest::rate_all(&db, Some(me), &weights, |p: Progress| {
+            let _ = emitter.emit(EV_PROGRESS, p);
+        })
+        .await;
+        let result = match (result, rated) {
+            (Ok(summary), Ok(_)) => Ok(summary),
+            (Ok(_), Err(e)) => Err(e),
+            (Err(e), rated) => {
+                if let Err(r) = rated {
+                    tracing::warn!(error = %format!("{r:#}"), "re-rating after a failed sync failed too");
+                }
+                Err(e)
+            }
+        };
+        report.seconds = began.elapsed().as_secs();
+        remember_run(&db, "sync", &result.as_ref().map(|s| (s.fetched, s.failed)).map_err(|e| format!("{e:#}")), &report).await;
 
         match result {
-            Ok((SyncSummary { fetched, failed, stats }, report)) => {
+            Ok(SyncSummary { fetched, failed, stats }) => {
                 let _ = app.emit(EV_DONE, Done { kind: "sync", fetched, failed, stats, report: Some(report) });
             }
             Err(e) => {
@@ -397,6 +479,7 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             }
         }
     });
+    watch_panic(watch_app, handle, Some(state.sync_cancel.clone()));
     Ok(())
 }
 
@@ -404,19 +487,14 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
 pub async fn reprocess_start(app: AppHandle, state: State<'_, AppState>) -> CmdResult<()> {
     let guard = BusyGuard::acquire(&state.busy)
         .ok_or_else(|| CmdError::new("busy", "A sync is already running."))?;
-    let db = state.db.clone();
     let db_path = state.db_path.clone();
-    let weights_path = state.db_path.with_file_name("weights.toml");
-
-    tauri::async_runtime::spawn(async move {
-        let _guard = guard;
-        let emitter = app.clone();
-        let result = async {
+    spawn_job(app, &state, guard, "reprocess", true, move |db, emitter| {
+        Box::pin(async move {
             // A rebuild rewrites every derived table; keep a copy of what was.
             if let Err(e) = hl_ingest::backup::run(&db, &db_path, false).await {
                 tracing::warn!(error = %format!("{e:#}"), "database backup failed");
             }
-            let stats = hl_ingest::reprocess(&db, |p: Progress| {
+            hl_ingest::reprocess(&db, |p: Progress| {
                 let _ = emitter.emit(EV_PROGRESS, p);
             })
             .await?;
@@ -424,8 +502,7 @@ pub async fn reprocess_start(app: AppHandle, state: State<'_, AppState>) -> CmdR
                 let _ = emitter.emit(EV_PROGRESS, p);
             })
             .await?;
-            let me = db.get_me().await?;
-            if let Some(me) = me {
+            if let Some(me) = db.get_me().await? {
                 let _ = emitter.emit(EV_PROGRESS, Progress::Stage { what: "Reading ETF2L" });
                 hl_ingest::etf2l::derive_context(&db, me).await?;
             }
@@ -435,25 +512,255 @@ pub async fn reprocess_start(app: AppHandle, state: State<'_, AppState>) -> CmdR
                 let _ = emitter.emit(EV_PROGRESS, Progress::Fights { done, total });
             })
             .await?;
-            let (weights, _) = hl_rating::Weights::load(&weights_path);
-            hl_ingest::rate_all(&db, me, &weights, |p: Progress| {
-                let _ = emitter.emit(EV_PROGRESS, p);
+            // Every log's player numbers, the league sample's too (audit, 12
+            // Nov 2026): they were only ever filled where missing, so a fix to
+            // how they are read never reached the season tables of the logs
+            // already stored, however many rebuilds ran.
+            hl_ingest::logstat::refill_all(&db, |done, total| {
+                let _ = emitter.emit(EV_PROGRESS, Progress::PlayerNumbers { done, total });
             })
             .await?;
-            anyhow::Ok(stats)
-        }
-        .await;
+            anyhow::Ok(())
+        })
+    });
+    Ok(())
+}
 
-        match result {
+/// Settings > Data: the rating pass alone (audit, 12 Nov 2026). A rebuild
+/// re-reads every log first, which is the long part; after a change to the
+/// weights, or to see a new model's numbers, the rating is all that moves.
+#[tauri::command]
+pub async fn rerate_start(app: AppHandle, state: State<'_, AppState>) -> CmdResult<()> {
+    let guard = BusyGuard::acquire(&state.busy)
+        .ok_or_else(|| CmdError::new("busy", "A sync is already running."))?;
+    spawn_job(app, &state, guard, "rerate", true, |_, _| Box::pin(async { anyhow::Ok(()) }));
+    Ok(())
+}
+
+/// Settings > Demos: every demo on this machine read again for aim, routes
+/// and deaths, not only the ones read at an older version. About 16 s a demo,
+/// so it says which match it is on, and it stops when asked. The rating
+/// reads none of this, so nothing is re-rated after.
+#[tauri::command]
+pub async fn reread_demos_start(app: AppHandle, state: State<'_, AppState>) -> CmdResult<()> {
+    let me = state
+        .db
+        .get_me()
+        .await?
+        .ok_or_else(|| CmdError::new("missing_config", "Set your SteamID first."))?;
+    let guard = BusyGuard::acquire(&state.busy)
+        .ok_or_else(|| CmdError::new("busy", "A sync is already running."))?;
+    spawn_job(app, &state, guard, "demos", false, move |db, emitter| {
+        Box::pin(async move {
+            let s = hl_ingest::aim::derive_all(&db, me, true, |done, total, log_id, what| {
+                let _ = emitter.emit(EV_PROGRESS, Progress::ReadingDemos { done, total, log_id, what });
+            })
+            .await?;
+            tracing::info!(read = s.read, kills = s.kills, "every demo read again");
+            anyhow::Ok(())
+        })
+    });
+    Ok(())
+}
+
+type JobFuture = std::pin::Pin<Box<dyn std::future::Future<Output = anyhow::Result<()>> + Send>>;
+
+/// Runs a rebuild-like job in the background: `work`, stoppable from the
+/// sync card, then -- when `rate` -- the rating pass, which is not.
+///
+/// The rating is written in four steps (baselines, scales, ratings, the
+/// league's ratings). The rebuild used to be stoppable anywhere, the rating
+/// included, so a stop between two of them left the new baselines next to
+/// the old ratings (audit, 12 Nov 2026). A sync already kept its re-rating
+/// out of reach of the button; the rebuild now does too.
+fn spawn_job(
+    app: AppHandle,
+    state: &AppState,
+    guard: BusyGuard,
+    kind: &'static str,
+    rate: bool,
+    work: impl FnOnce(hl_db::Db, AppHandle) -> JobFuture + Send + 'static,
+) {
+    let db = state.db.clone();
+    let weights_path = state.db_path.with_file_name("weights.toml");
+    // Stoppable like a sync, through the same `sync_cancel` command: only one
+    // of them runs at a time (the busy guard), so one slot serves them all.
+    let (cancel, mut cancelled) = tokio::sync::oneshot::channel::<()>();
+    *state.sync_cancel.lock().unwrap() = Some(cancel);
+    let cancel_slot = state.sync_cancel.clone();
+    let watch_slot = state.sync_cancel.clone();
+    let startup = state.startup.clone();
+    let watch_app = app.clone();
+    let handle = tauri::async_runtime::spawn(async move {
+        let _guard = guard;
+        let _startup = startup.lock().await;
+        let began = std::time::Instant::now();
+        let result = tokio::select! {
+            r = work(db.clone(), app.clone()) => r,
+            Ok(()) = &mut cancelled => {
+                // What was done so far is stored; the next run brings the rest
+                // up to date, and a rebuild's backup is there if it matters.
+                tracing::info!(kind, "job cancelled");
+                *cancel_slot.lock().unwrap() = None;
+                let _ = app.emit(EV_ERROR, CmdError::new("cancelled", "Stopped."));
+                return;
+            }
+        };
+        *cancel_slot.lock().unwrap() = None;
+        drop(cancelled);
+        let result = match result {
+            Ok(()) if rate => {
+                let (weights, _) = hl_rating::Weights::load(&weights_path);
+                let me = db.get_me().await.ok().flatten();
+                hl_ingest::rate_all(&db, me, &weights, |p: Progress| {
+                    let _ = app.emit(EV_PROGRESS, p);
+                })
+                .await
+                .map(|_| ())
+            }
+            other => other,
+        };
+        let report = SyncReport { seconds: began.elapsed().as_secs(), ..SyncReport::default() };
+        let outcome = result.as_ref().map(|()| (0, 0)).map_err(|e| format!("{e:#}"));
+        remember_run(&db, kind, &outcome, &report).await;
+        match result.and(db.index_stats().await) {
             Ok(stats) => {
-                let _ = app.emit(EV_DONE, Done { kind: "reprocess", fetched: 0, failed: 0, stats, report: None });
+                let _ = app.emit(EV_DONE, Done { kind, fetched: 0, failed: 0, stats, report: None });
             }
             Err(e) => {
                 let _ = app.emit(EV_ERROR, CmdError::from(e));
             }
         }
     });
-    Ok(())
+    watch_panic(watch_app, handle, Some(watch_slot));
+}
+
+/// One finished sync or job, for Settings > Diagnostics' history.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RunRecord {
+    pub kind: String,
+    /// Unix seconds, when it finished.
+    pub at: i64,
+    pub seconds: u64,
+    pub fetched: usize,
+    pub failed: usize,
+    /// Why it stopped, when it failed.
+    pub error: Option<String>,
+    /// The steps that failed while the rest carried on.
+    pub problems: Vec<String>,
+}
+
+const RUN_HISTORY_KEY: &str = "run_history";
+/// The newest this many are kept.
+const RUN_HISTORY_KEEP: usize = 20;
+
+/// Each sync's card used to be the only record of it, gone once dismissed:
+/// "drops.tf failed three syncs running" could not be seen anywhere.
+async fn remember_run(db: &hl_db::Db, kind: &str, outcome: &Result<(usize, usize), String>, report: &SyncReport) {
+    let at = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64);
+    let (fetched, failed, error) = match outcome {
+        Ok((f, x)) => (*f, *x, None),
+        Err(e) => (0, 0, Some(e.clone())),
+    };
+    let record = RunRecord { kind: kind.to_string(), at, seconds: report.seconds, fetched, failed, error, problems: report.problems.clone() };
+    let runs = with_run(run_history(db).await, record);
+    if let Ok(json) = serde_json::to_string(&runs) {
+        if let Err(e) = db.set_setting(RUN_HISTORY_KEY, &json).await {
+            tracing::warn!(error = %format!("{e:#}"), "sync history not saved");
+        }
+    }
+}
+
+/// The history with `record` first, the oldest dropped past the cap.
+fn with_run(mut runs: Vec<RunRecord>, record: RunRecord) -> Vec<RunRecord> {
+    runs.insert(0, record);
+    runs.truncate(RUN_HISTORY_KEEP);
+    runs
+}
+
+async fn run_history(db: &hl_db::Db) -> Vec<RunRecord> {
+    db.get_setting(RUN_HISTORY_KEY).await.ok().flatten().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default()
+}
+
+/// A step that failed while the sync carried on: in the log, and on the card.
+fn problem(problems: &mut Vec<String>, what: &str, e: &anyhow::Error) {
+    tracing::warn!(error = %format!("{e:#}"), step = what, "sync step failed; carrying on");
+    problems.push(format!("{what}: {e:#}"));
+}
+
+/// Settings > Diagnostics: what a tester can copy into Discord when
+/// something is off (audit, 12 Nov 2026), in one place.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Diagnostics {
+    pub version: &'static str,
+    pub model: &'static str,
+    pub data_dir: String,
+    /// This run's log file; `None` when it could not be opened.
+    pub log_file: Option<String>,
+    pub log_dir: String,
+    pub stats: IndexStats,
+    /// The owner's ratings under each model this database holds, oldest first.
+    pub rated: Vec<(String, i64)>,
+    pub sources: Vec<hl_db::SourceState>,
+    /// The newest syncs, rebuilds and re-rates, newest first.
+    pub runs: Vec<RunRecord>,
+}
+
+#[tauri::command]
+pub async fn get_diagnostics(state: State<'_, AppState>) -> CmdResult<Diagnostics> {
+    let data_dir = state.db_path.parent().map(std::path::Path::to_path_buf).unwrap_or_default();
+    let rated = match state.db.get_me().await? {
+        Some(me) => state.db.rating_versions(me.account_id()).await?,
+        None => Vec::new(),
+    };
+    Ok(Diagnostics {
+        version: crate::DISPLAY_VERSION,
+        model: hl_rating::MODEL_VERSION,
+        data_dir: data_dir.display().to_string(),
+        log_file: crate::applog::path().map(|p| p.display().to_string()),
+        log_dir: crate::applog::dir(&data_dir).display().to_string(),
+        stats: state.db.index_stats().await?,
+        rated,
+        sources: state.db.sync_states().await?,
+        runs: run_history(&state.db).await,
+    })
+}
+
+/// The last lines of this run's log file, for the Problems page's report.
+#[tauri::command]
+pub async fn recent_log(lines: Option<usize>) -> CmdResult<String> {
+    let lines = lines.unwrap_or(200).min(2000);
+    Ok(tauri::async_runtime::spawn_blocking(move || crate::applog::recent(lines)).await.unwrap_or_default())
+}
+
+/// How the owner's ratings moved from one model to another.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelShift {
+    pub before: String,
+    pub after: String,
+    pub classes: Vec<hl_db::ClassShift>,
+    pub games: Vec<hl_db::GameShift>,
+}
+
+/// The owner's games under the model before this one and this one (Flashy:
+/// "more features tacked on some of the data"). Older ratings are kept when
+/// the model changes, so this costs one query. `None` when there is no older
+/// model to compare with.
+#[tauri::command]
+pub async fn get_model_shift(state: State<'_, AppState>) -> CmdResult<Option<ModelShift>> {
+    let Some(me) = state.db.get_me().await? else { return Ok(None) };
+    let versions = state.db.rating_versions(me.account_id()).await?;
+    let after = hl_rating::MODEL_VERSION;
+    let now = hl_db::model_number(after);
+    let Some((before, _)) = versions.iter().rev().find(|(v, _)| hl_db::model_number(v) < now) else { return Ok(None) };
+    let (classes, games) = state.db.model_shift(me.account_id(), before, after, 8).await?;
+    if classes.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(ModelShift { before: before.clone(), after: after.to_string(), classes, games }))
 }
 
 /// Every class's model as the rating uses it, for the "How ratings work"
@@ -540,7 +847,8 @@ pub async fn newest_log(state: State<'_, AppState>) -> CmdResult<Option<NewestLo
 }
 
 /// Stop the running sync. `false` when there is none to stop (a rebuild is
-/// not stopped this way: it rewrites every table and must finish).
+/// not stopped this way: it rewrites every table and must finish), or when
+/// the sync has reached its last steps, which must finish too.
 #[tauri::command]
 pub async fn sync_cancel(state: State<'_, AppState>) -> CmdResult<bool> {
     Ok(state.sync_cancel.lock().unwrap().take().is_some_and(|tx| tx.send(()).is_ok()))
@@ -1098,6 +1406,9 @@ pub(crate) async fn tf_path(state: &AppState) -> CmdResult<std::path::PathBuf> {
 /// this is quick (~0.6 s for 100 demos) and safe to run on every sync.
 #[tauri::command]
 pub async fn scan_demos(app: AppHandle, state: State<'_, AppState>) -> CmdResult<hl_ingest::DemoIndexSummary> {
+    // A sync indexes the folder itself; scanning at the same time rewrites
+    // the same links. Nothing to report then, which is not an error.
+    let Some(_guard) = BusyGuard::acquire(&state.busy) else { return Ok(Default::default()) };
     let tf = tf_path(&state).await?;
     let summary = hl_ingest::index_demos(&state.db, &tf).await?;
     let _ = app.emit(EV_DEMOS_INDEXED, &summary);
@@ -1375,6 +1686,7 @@ pub async fn retry_failed(state: State<'_, AppState>, log_id: Option<i64>) -> Cm
 /// exists. Runs in the foreground — it is one log, and the person is watching.
 #[tauri::command]
 pub async fn import_log(state: State<'_, AppState>, text: String) -> CmdResult<hl_ingest::Imported> {
+    let _guard = BusyGuard::acquire(&state.busy).ok_or_else(|| CmdError::new("busy", "A sync is running; add the log when it has finished."))?;
     let log_id = hl_ingest::parse_log_id(&text).ok_or_else(|| {
         CmdError::new("bad_input", "That is not a log id or a logs.tf link.")
     })?;
@@ -1414,6 +1726,8 @@ pub async fn known_maps(state: State<'_, AppState>) -> CmdResult<Vec<String>> {
 /// to take it back.
 #[tauri::command]
 pub async fn set_round_map(state: State<'_, AppState>, log_id: i64, rounds: Vec<i64>, map: Option<String>) -> CmdResult<()> {
+    // It rewrites rounds that a running sync is also resolving.
+    let _guard = BusyGuard::acquire(&state.busy).ok_or_else(|| CmdError::new("busy", "A sync is running; set the map when it has finished."))?;
     Ok(hl_ingest::maps::set_round_map(&state.db, log_id, &rounds, map.as_deref()).await?)
 }
 
@@ -1616,6 +1930,7 @@ pub async fn find_parts(state: State<'_, AppState>, log_id: i64) -> CmdResult<hl
 /// log was read (Flashy). Nothing found is not an error: `matched` is 0.
 #[tauri::command]
 pub async fn refresh_demostf(state: State<'_, AppState>, log_id: i64) -> CmdResult<hl_ingest::demostf::Found> {
+    let _guard = BusyGuard::acquire(&state.busy).ok_or_else(|| CmdError::new("busy", "A sync is running; look again when it has finished."))?;
     let me = state.db.get_me().await?.ok_or_else(|| CmdError::new("missing_config", "Set your Steam account in Settings first."))?;
     Ok(hl_ingest::demostf::index_one(&state.db, &state.sources, me, log_id).await?)
 }
@@ -1771,6 +2086,37 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_calendar_is_written_only_as_an_ics_file_of_calendar_text() {
+        assert!(check_calendar("C:\\x\\rgl.ics", "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n").is_ok());
+        assert!(check_calendar("C:\\x\\RGL.ICS", "BEGIN:VCALENDAR").is_ok());
+        assert!(check_calendar("C:\\x\\startup.bat", "BEGIN:VCALENDAR").is_err());
+        assert!(check_calendar("C:\\x\\rgl.ics", "echo hi").is_err());
+        assert!(check_calendar("rgl.ics", &format!("BEGIN:VCALENDAR{}", "x".repeat(1_000_000))).is_err());
+    }
+
+    fn run(at: i64) -> RunRecord {
+        RunRecord { kind: "sync".into(), at, seconds: 1, fetched: 0, failed: 0, error: None, problems: vec![] }
+    }
+
+    #[test]
+    fn the_run_history_keeps_the_newest_twenty_newest_first() {
+        let mut runs = Vec::new();
+        for at in 0..25 {
+            runs = with_run(runs, run(at));
+        }
+        assert_eq!(runs.len(), RUN_HISTORY_KEEP);
+        assert_eq!(runs.first().map(|r| r.at), Some(24));
+        assert_eq!(runs.last().map(|r| r.at), Some(5));
+    }
+
+    #[test]
+    fn a_failed_step_is_written_down_with_its_name() {
+        let mut problems = Vec::new();
+        problem(&mut problems, "raw logs", &anyhow::anyhow!("timed out"));
+        assert_eq!(problems, ["raw logs: timed out"]);
+    }
+
+    #[test]
     fn a_queue_keeps_the_order_it_was_asked_in() {
         let q = DemoQueue::default();
         assert_eq!(q.join(1), Some(0), "the first one runs straight away");
@@ -1918,28 +2264,113 @@ pub async fn get_rgl_seasons(state: State<'_, AppState>) -> CmdResult<Vec<hl_ing
     Ok(hl_ingest::rgl::seasons(&state.sources).await?)
 }
 
+/// Every match of an RGL season, for its standings and results.
+#[tauri::command]
+pub async fn get_rgl_season_matches(state: State<'_, AppState>, id: i64) -> CmdResult<Vec<hl_ingest::rgl::RglMatch>> {
+    Ok(hl_ingest::rgl::season_matches(&state.db, &state.sources, id).await?)
+}
+
+/// One RGL match, for its page.
+#[tauri::command]
+pub async fn get_rgl_match(state: State<'_, AppState>, id: i64) -> CmdResult<Option<hl_ingest::rgl::RglMatch>> {
+    Ok(hl_ingest::rgl::one_match(&state.db, &state.sources, id).await?)
+}
+
+/// An RGL match's lineups, earlier meetings and logs, for its page.
+#[tauri::command]
+pub async fn get_rgl_match_more(state: State<'_, AppState>, id: i64) -> CmdResult<Option<hl_ingest::rgl::RglMatchMore>> {
+    Ok(hl_ingest::rgl::match_more(&state.db, &state.sources, id).await?)
+}
+
+/// An RGL match's statistics from its logs (read from the database or drops.tf
+/// once, then kept), for the match page's Statistics section.
+#[tauri::command]
+pub async fn get_rgl_match_stats(state: State<'_, AppState>, id: i64) -> CmdResult<Option<hl_ingest::rgl_stats::RglMatchStats>> {
+    let (weights, _) = hl_rating::Weights::load(&state.db_path.with_file_name("weights.toml"));
+    Ok(hl_ingest::rgl_stats::match_stats(&state.db, &state.sources, &weights, id).await?)
+}
+
+/// RGL's bans, a page of 50 from `skip`.
+#[tauri::command]
+pub async fn get_rgl_bans(state: State<'_, AppState>, skip: Option<i64>) -> CmdResult<Vec<hl_ingest::rgl::RglBan>> {
+    Ok(hl_ingest::rgl::bans(&state.sources, skip.unwrap_or(0)).await?)
+}
+
+/// Write a calendar file (.ics) the user chose a place for in the save dialog.
+/// Only that one file is written, and only calendar text: the name must end in
+/// `.ics`, and the text must be a calendar of a size a season's matches can be.
+#[tauri::command]
+pub async fn export_calendar(path: String, text: String) -> CmdResult<()> {
+    check_calendar(&path, &text).map_err(|why| CmdError::new("calendar_refused", why))?;
+    std::fs::write(&path, text).map_err(|e| CmdError::new("calendar_write", format!("Could not write `{path}`: {e}")))
+}
+
+fn check_calendar(path: &str, text: &str) -> Result<(), String> {
+    if !path.to_ascii_lowercase().ends_with(".ics") {
+        return Err(format!("`{path}` is not an .ics file"));
+    }
+    if !text.starts_with("BEGIN:VCALENDAR") || text.len() > 1_000_000 {
+        return Err("That is not a calendar".into());
+    }
+    Ok(())
+}
+
 /// One RGL season: its maps and each division's teams.
 #[tauri::command]
 pub async fn get_rgl_season(state: State<'_, AppState>, id: i64) -> CmdResult<hl_ingest::rgl::RglSeason> {
-    Ok(hl_ingest::rgl::season(&state.sources, id).await?)
+    Ok(hl_ingest::rgl::season(&state.db, &state.sources, id).await?)
 }
 
 /// An RGL team: roster, results and its other seasons' ids.
 #[tauri::command]
 pub async fn get_rgl_team(state: State<'_, AppState>, id: i64) -> CmdResult<Option<hl_ingest::rgl::RglTeamPage>> {
-    Ok(hl_ingest::rgl::team(&state.sources, id).await?)
+    Ok(hl_ingest::rgl::team(&state.db, &state.sources, id).await?)
 }
 
 /// An RGL team's other Highlander seasons.
 #[tauri::command]
 pub async fn get_rgl_team_seasons(state: State<'_, AppState>, ids: Vec<i64>) -> CmdResult<Vec<hl_ingest::rgl::RglTeamSeason>> {
-    Ok(hl_ingest::rgl::team_seasons(&state.sources, ids).await?)
+    Ok(hl_ingest::rgl::team_seasons(&state.db, &state.sources, ids).await?)
+}
+
+/// An RGL team across its linked seasons: records, titles, opponents, maps.
+#[tauri::command]
+pub async fn get_rgl_team_history(state: State<'_, AppState>, id: i64, all: Option<bool>) -> CmdResult<Option<hl_ingest::rgl::RglTeamHistory>> {
+    // The newest few on their own; the rest when the page asks (RGL's API is
+    // a free service: see HISTORY_SEASONS_FIRST).
+    let seasons = if all.unwrap_or(false) { usize::MAX } else { hl_ingest::rgl::HISTORY_SEASONS_FIRST };
+    Ok(hl_ingest::rgl::team_history(&state.db, &state.sources, id, seasons).await?)
+}
+
+/// An RGL season's card: its best division's top three.
+#[tauri::command]
+pub async fn get_rgl_season_card(state: State<'_, AppState>, id: i64) -> CmdResult<hl_ingest::rgl::RglSeasonCard> {
+    Ok(hl_ingest::rgl::season_card(&state.db, &state.sources, id).await?)
+}
+
+/// RGL players whose name holds `q`.
+#[tauri::command]
+pub async fn search_rgl_players(state: State<'_, AppState>, q: String) -> CmdResult<Vec<hl_ingest::rgl::RglPlayerHit>> {
+    Ok(hl_ingest::rgl::search_players(&state.sources, &q).await?)
+}
+
+/// RGL Highlander teams whose name or tag holds `q`.
+#[tauri::command]
+pub async fn search_rgl_teams(state: State<'_, AppState>, q: String) -> CmdResult<Vec<hl_ingest::rgl::RglTeamHit>> {
+    Ok(hl_ingest::rgl::search_teams(&state.db, &state.sources, &q).await?)
 }
 
 /// An RGL player by SteamID or profile link; `None` when not on RGL.
 #[tauri::command]
 pub async fn get_rgl_player(state: State<'_, AppState>, input: String) -> CmdResult<Option<hl_ingest::rgl::RglPlayer>> {
     Ok(hl_ingest::rgl::player(&state.sources, &input).await?)
+}
+
+/// A player's podium finishes and recent results with their teams (a handful of
+/// team reads, kept on disk once their seasons are over).
+#[tauri::command]
+pub async fn get_rgl_player_more(state: State<'_, AppState>, input: String) -> CmdResult<hl_ingest::rgl::RglPlayerMore> {
+    Ok(hl_ingest::rgl::player_more(&state.db, &state.sources, &input).await?)
 }
 
 /// ETF2L's latest Highlander news (Q74), read at most every half hour.
@@ -1964,6 +2395,19 @@ pub async fn get_season_news(state: State<'_, AppState>, season: i64, season_nam
 #[tauri::command]
 pub async fn get_recent_results(state: State<'_, AppState>, limit: Option<i64>) -> CmdResult<Vec<hl_db::ResultRow>> {
     Ok(state.db.recent_results(limit.unwrap_or(10).clamp(1, 300)).await?)
+}
+
+/// ETF2L's other Highlander tournaments, newest first: the one-night,
+/// Experimental, Nations' and preseason cups.
+#[tauri::command]
+pub async fn get_tournaments(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::cups::Tournament>> {
+    Ok(hl_ingest::cups::list(&state.db).await?)
+}
+
+/// One tournament with all its matches.
+#[tauri::command]
+pub async fn get_tournament(state: State<'_, AppState>, name: String) -> CmdResult<Option<hl_ingest::cups::TournamentPage>> {
+    Ok(hl_ingest::cups::page(&state.db, &name).await?)
 }
 
 /// ETF2L's Highlander recruitment posts (Q74), read at most every half hour.

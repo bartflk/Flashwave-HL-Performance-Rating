@@ -190,6 +190,21 @@ pub fn derive(log_id: i64, json: &str, zip: Option<&[u8]>) -> anyhow::Result<(Ve
     Ok(rows(log_id, &value, &log, Some(FromRaw { fights: &fights, impact: &impact, buildings: &buildings })))
 }
 
+/// Every log's rows read again, league or the owner's, whether it had them
+/// or not: a rebuild's step, so a change to how they are read reaches the
+/// logs already stored. Each log's rows are replaced in one transaction, so
+/// the tables are never empty while it runs.
+pub async fn refill_all(db: &hl_db::Db, mut progress: impl FnMut(usize, usize)) -> anyhow::Result<usize> {
+    let ids = db.logs_with_files().await?;
+    let mut n = 0;
+    for (i, chunk) in ids.chunks(50).enumerate() {
+        progress(i * 50, ids.len());
+        n += fill(db, chunk).await?;
+    }
+    progress(ids.len(), ids.len());
+    Ok(n)
+}
+
 /// Derives and stores the rows of the given logs, league or the owner's,
 /// skipping any whose files are gone. Returns how many were written.
 pub async fn fill(db: &hl_db::Db, ids: &[i64]) -> anyhow::Result<usize> {

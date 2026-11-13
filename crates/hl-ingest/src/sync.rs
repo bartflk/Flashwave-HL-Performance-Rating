@@ -87,6 +87,9 @@ pub enum Progress {
     /// Fights: who was in each one, and what each kill's state was.
     #[serde(rename_all = "camelCase")]
     Fights { done: usize, total: usize },
+    /// Every log's player numbers read again (a rebuild).
+    #[serde(rename_all = "camelCase")]
+    PlayerNumbers { done: usize, total: usize },
     /// Demos being read for aim, routes and deaths (PLAN Q24).
     ///
     /// The slowest thing the app does -- about 16 s a demo, and 396 s for
@@ -245,14 +248,21 @@ pub async fn sync(
                     None => return Ok(false),
                 }
             };
-            db.store_raw_log(log_id, &json).await?;
-            process_raw(db, log_id, &json).await?;
+            store_fetched(db, log_id, &json).await?;
             anyhow::Ok(true)
         }
         .await;
 
         match result {
-            Ok(false) => left.push(log_id),
+            Ok(false) => {
+                left.push(log_id);
+                // A log a day old that drops.tf does not have is asked for
+                // again after a day, then a week, then a month, not on every
+                // sync (audit API-3). A fresher one may only be late there.
+                if db.log_played_at(log_id).await?.is_none_or(|t| now_s() - t >= 86_400) {
+                    db.record_log_miss(log_id).await?;
+                }
+            }
             Err(e) if !logstf_out && crate::http::refused(&e) => {
                 tracing::warn!(log_id, error = %format!("{e:#}"), "logs.tf refused us; drops.tf only for the rest of the pass");
                 progress(Progress::SourceFailed { source: "logs.tf", error: "refusing requests for now; carrying on with drops.tf".into() });
@@ -348,11 +358,14 @@ async fn stand_ins(db: &Db, sources: &Sources, w: &hl_rating::Weights, ids: &[i6
             let v: serde_json::Value = serde_json::from_str(&body)?;
             let s = crate::moretf::stand_in(&v)?;
             let json = serde_json::to_string(&s.json)?;
-            db.store_raw_log(log_id, &json).await?;
-            db.store_rawlog(log_id, &crate::demo_import::zip_text(&s.text)?).await?;
+            // Read before anything is written, so a log that will not read
+            // leaves nothing behind. The stand-in mark goes first: it is what
+            // keeps the log queued for logs.tf's real one, so a failure after
+            // it cannot leave a stored copy that is never replaced (audit SY-1).
+            let log = normalize(log_id, &serde_json::from_str(&json)?)?;
             db.mark_stand_in(log_id, crate::moretf::SOURCE).await?;
-            process_raw(db, log_id, &json).await?;
-            crate::kills::derive_log(db, log_id).await?;
+            db.store_log(&log, &json, classify(&log)).await?;
+            crate::kills::store(db, log_id, &crate::demo_import::zip_text(&s.text)?, crate::rawlog::parse(&s.text)).await?;
             anyhow::Ok(true)
         }
         .await;
@@ -390,10 +403,19 @@ pub async fn reprocess(db: &Db, mut progress: impl FnMut(Progress)) -> Result<In
     // Re-derive the index columns from the stored trends.tf rows, so a change
     // to how those rows are interpreted takes effect too.
     let raw_rows = db.trends_raw_rows().await?;
+    // A stored row that no longer reads is passed over, as the sync passes
+    // over one that arrives that way (audit SY-7): one row used to stop the
+    // whole rebuild before a single log was read (audit, 12 Nov 2026).
     let parsed: Vec<(TrendsRow, &str)> = raw_rows
         .iter()
-        .map(|raw| Ok((serde_json::from_str(raw).context("stored trends.tf row")?, raw.as_str())))
-        .collect::<Result<_>>()?;
+        .filter_map(|raw| match serde_json::from_str(raw) {
+            Ok(row) => Some((row, raw.as_str())),
+            Err(e) => {
+                tracing::warn!(error = %e, "skipping a stored trends.tf row that would not parse");
+                None
+            }
+        })
+        .collect();
     store_trends(db, &parsed).await?;
     recompute_supersessions(db).await?;
 
@@ -411,6 +433,20 @@ pub async fn reprocess(db: &Db, mut progress: impl FnMut(Progress)) -> Result<In
     recompute_supersessions(db).await?;
 
     db.index_stats().await
+}
+
+fn now_s() -> i64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64)
+}
+
+/// A log just downloaded: its raw JSON and everything normalized from it,
+/// written together. A log that does not read is stored nowhere, so it stays
+/// in the queue (audit SY-1).
+async fn store_fetched(db: &Db, log_id: i64, json: &str) -> Result<()> {
+    let value: serde_json::Value =
+        serde_json::from_str(json).with_context(|| format!("log {log_id} is not valid JSON"))?;
+    let log = normalize(log_id, &value)?;
+    db.store_log(&log, json, classify(&log)).await
 }
 
 /// Normalize one stored log, write it, and classify it where trends.tf could not.
@@ -532,7 +568,9 @@ pub fn parse_log_id(text: &str) -> Option<i64> {
     let t = text.trim().trim_end_matches('/');
     let tail = t.rsplit('/').next().unwrap_or(t);
     let digits: String = tail.chars().take_while(char::is_ascii_digit).collect();
-    digits.parse().ok().filter(|id| *id > 0)
+    // A logs.tf profile link ends in a SteamID64, which is not a log: no log
+    // id is anywhere near that size.
+    digits.parse().ok().filter(|id| *id > 0 && *id < 1_000_000_000_000)
 }
 
 /// Fetch one log now, whatever the index thinks of it.
@@ -582,9 +620,7 @@ pub async fn store_log_json(db: &Db, w: &hl_rating::Weights, log_id: i64, json: 
         raw_json: json,
     }])
     .await?;
-    db.store_raw_log(log_id, json).await?;
-    db.write_match(&log).await?;
-    db.set_heuristic_format(log_id, classify(&log)).await?;
+    db.store_log(&log, json, classify(&log)).await?;
     recompute_supersessions(db).await?;
 
     let yours = match db.get_me().await? {
@@ -617,6 +653,10 @@ pub struct FoundParts {
     /// Of those, the ones whose every round is one of the match's: stored,
     /// and folded into it.
     pub added: usize,
+    /// Candidates logs.tf would not give this time. The search is marked
+    /// done only when this is 0: a log that failed to download may be the
+    /// missing part (audit SY-5).
+    pub failed: usize,
 }
 
 /// Round starts of a log, to the second, from its logs.tf JSON.
@@ -671,7 +711,7 @@ pub async fn find_parts(db: &Db, sources: &Sources, w: &hl_rating::Weights, log_
         .filter(|(id, _, _, date, n)| *id != log_id && (16..=22).contains(n) && *date >= first - 300 && *date <= uploaded + 60)
         .map(|(id, ..)| id)
         .collect();
-    let mut found = FoundParts { candidates: near.len(), added: 0 };
+    let mut found = FoundParts { candidates: near.len(), added: 0, failed: 0 };
     for id in near {
         let body = match db.raw_log(id).await? {
             Some(b) => b,
@@ -679,6 +719,7 @@ pub async fn find_parts(db: &Db, sources: &Sources, w: &hl_rating::Weights, log_
                 Ok((b, _)) => b,
                 Err(e) => {
                     tracing::info!(log_id = id, error = %format!("{e:#}"), "a possible part could not be fetched");
+                    found.failed += 1;
                     continue;
                 }
             },
@@ -720,6 +761,32 @@ mod import_tests {
         assert_eq!(parse_log_id("logs.tf/4042136"), Some(4042136));
         // logs.tf puts a player anchor on the link you get from a row.
         assert_eq!(parse_log_id("https://logs.tf/4042136#76561198099396919"), Some(4042136));
+    }
+
+    #[test]
+    fn a_profile_link_or_a_steam_id_is_not_a_log() {
+        assert_eq!(parse_log_id("https://logs.tf/profile/76561198099396919"), None);
+        assert_eq!(parse_log_id("76561198099396919"), None);
+        assert_eq!(parse_log_id("99999999999999999999999"), None);
+        assert_eq!(parse_log_id("https://logs.tf/4042136?title=x"), Some(4042136));
+    }
+
+    #[test]
+    fn a_combined_log_is_told_by_its_title_map_length_or_rounds() {
+        use serde_json::json;
+        let plain = json!({ "info": { "title": "HL scrim", "map": "koth_product_final", "total_length": 1500 }, "rounds": [{"start_time": 1}, {"start_time": 2}] });
+        assert!(!super::looks_combined(&plain));
+        assert!(!super::looks_combined(&json!({})));
+        for (k, v) in [("title", json!("Combined logs")), ("map", json!("a + b")), ("map", json!("a/b")), ("total_length", json!(45 * 60))] {
+            let mut x = plain.clone();
+            x["info"][k] = v;
+            assert!(super::looks_combined(&x), "{k}");
+        }
+        let mut x = plain.clone();
+        x["info"]["total_length"] = json!(45 * 60 - 1);
+        assert!(!super::looks_combined(&x));
+        x["rounds"] = json!([1, 2, 3, 4, 5].map(|i| json!({ "start_time": i })));
+        assert!(super::looks_combined(&x), "more rounds than one map has");
     }
 
     #[test]

@@ -392,6 +392,23 @@ impl Db {
 
     /// Logs with their files stored but no `log_stat` rows yet, the
     /// league sample's and the owner's, newest first.
+    /// Every log whose files are stored, league or the owner's, newest first.
+    pub async fn logs_with_files(&self) -> Result<Vec<i64>> {
+        Ok(sqlx::query_scalar(
+            "SELECT log_id FROM (
+                 SELECT l.log_id, l.played_at FROM league_log l
+                 WHERE EXISTS (SELECT 1 FROM league_log_json j WHERE j.log_id = l.log_id)
+                 UNION
+                 SELECT r.log_id, COALESCE(m.played_at, 0) FROM log_raw r LEFT JOIN match m ON m.log_id = r.log_id
+             ) x
+             -- A log in both the league sample and the owner's matches once.
+             GROUP BY log_id
+             ORDER BY MAX(played_at) DESC, log_id DESC",
+        )
+        .fetch_all(self.pool())
+        .await?)
+    }
+
     pub async fn logs_without_stats(&self, limit: i64) -> Result<Vec<i64>> {
         Ok(sqlx::query_scalar(
             "SELECT log_id FROM (
@@ -401,7 +418,7 @@ impl Db {
                  SELECT r.log_id, COALESCE(m.played_at, 0) FROM log_raw r LEFT JOIN match m ON m.log_id = r.log_id
              ) x
              WHERE NOT EXISTS (SELECT 1 FROM log_stat s WHERE s.log_id = x.log_id)
-             ORDER BY played_at DESC LIMIT ?1",
+             ORDER BY played_at DESC, log_id DESC LIMIT ?1",
         )
         .bind(limit)
         .fetch_all(self.pool())
