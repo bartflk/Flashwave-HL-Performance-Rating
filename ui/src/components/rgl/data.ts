@@ -4,7 +4,7 @@ import { api } from "../../api/client";
 import type { RglMatch } from "../../api/types";
 import { locale, t } from "../../lib/i18n";
 
-export type Section = "home" | "matches" | "seasons" | "teams" | "players" | "bans";
+export type Section = "home" | "matches" | "seasons" | "teams" | "rankings" | "players" | "bans";
 
 export type Loc =
   | { at: "home" }
@@ -15,6 +15,7 @@ export type Loc =
   | { at: "team"; id: number; from: Loc }
   | { at: "compare"; a: number; b: number | null; from: Loc }
   | { at: "teams" }
+  | { at: "rankings" }
   | { at: "players" }
   | { at: "bans" }
   | { at: "player"; steamId: string; from: Loc };
@@ -24,6 +25,12 @@ export const KEEP = 30 * 60_000;
 export const useSeasons = () => useQuery({ queryKey: ["rgl_seasons"], queryFn: api.getRglSeasons, staleTime: KEEP });
 export const useSeason = (id: number | null) =>
   useQuery({ queryKey: ["rgl_season", id], queryFn: () => api.getRglSeason(id!), enabled: id !== null, staleTime: KEEP });
+/**
+ * The power ranking, held for half an hour. It is worked out from matches
+ * the app already has (hl_ingest::rgl_rank), so reading it asks RGL for
+ * nothing beyond what Home has read; it is left alone while results are hidden.
+ */
+export const useRanking = (on = true) => useQuery({ queryKey: ["rgl_ranking"], queryFn: () => api.getRglRanking(), staleTime: KEEP, retry: false, enabled: on });
 export const useTeam = (id: number | null) => useQuery({ queryKey: ["rgl_team", id], queryFn: () => api.getRglTeam(id!), enabled: id !== null, staleTime: KEEP });
 export const useMatch = (id: number | null) => useQuery({ queryKey: ["rgl_match", id], queryFn: () => api.getRglMatch(id!), enabled: id !== null, staleTime: KEEP });
 /**

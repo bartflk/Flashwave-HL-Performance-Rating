@@ -20,6 +20,7 @@ import { TeamsLanding, TeamView } from "./Team";
 import { CompareView } from "./Compare";
 import { PlayersLanding, PlayerView, YourRgl } from "./Players";
 import { BansPage } from "./Bans";
+import { Rankings } from "./Rankings";
 
 /**
  * The RGL tab (PLAN §30), in the ETF2L tab's frame (Flashy: "i do want to
@@ -200,6 +201,7 @@ export function RglPage({ active, steamid, onOpenMatch }: { active: boolean; ste
     ["matches", t("Matches")],
     ["seasons", t("Seasons")],
     ["teams", t("Teams")],
+    ["rankings", t("Rankings")],
     ["players", t("Players")],
     ["bans", t("Bans")],
   ];
@@ -238,6 +240,7 @@ export function RglPage({ active, steamid, onOpenMatch }: { active: boolean; ste
         </>
       )}
       {loc.at === "teams" && <TeamsLanding steamid={steamid} onTeam={openTeam} />}
+      {loc.at === "rankings" && <Rankings steamid={steamid} onTeam={openTeam} />}
       {loc.at === "bans" && <BansPage onPlayer={openPlayer} />}
       {loc.at === "team" && <TeamView key={loc.id} id={loc.id} onTeam={openTeam} onPlayer={openPlayer} onMatch={openMatch} onCompare={openCompare} />}
       {loc.at === "compare" && <CompareView key={loc.a} a={loc.a} b={loc.b} onTeam={openTeam} onMatch={openMatch} onPick={pickCompare} />}
@@ -288,7 +291,7 @@ function Crumbs({ loc, go }: { loc: Loc; go: (l: Loc) => void }) {
       trail.push([t("Seasons"), { at: "seasons" }]);
       trail.push([<CrumbName key={trail.length} loc={l} />, l]);
     } else if (l.at !== "home") {
-      trail.push([{ matches: t("Matches"), seasons: t("Seasons"), teams: t("Teams"), players: t("Players"), bans: t("Bans") }[l.at], l]);
+      trail.push([{ matches: t("Matches"), seasons: t("Seasons"), teams: t("Teams"), rankings: t("Rankings"), players: t("Players"), bans: t("Bans") }[l.at], l]);
     }
   };
   add(loc);

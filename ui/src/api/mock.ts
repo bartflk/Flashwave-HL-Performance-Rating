@@ -79,6 +79,7 @@ import type {
   RglPlayer,
   RglPlayerMore,
   RglPlayerHit,
+  RglRanking,
   RglSeasonCard,
   RglTeamHit,
   RglSeason,
@@ -1396,6 +1397,27 @@ export const mockApi: Api = {
     ),
   // RGL's NA Highlander, as its API answered on 31 October 2026 (cut down).
   getRglSeasons: () => delay<RglSeasonItem[]>([{ id: 198, name: "HL Season 25" }, { id: 193, name: "HL Season 24" }, { id: 183, name: "HL Season 23" }]),
+  getRglRanking: (read: number | null = null) => {
+    const row = (rank: number, id: number, name: string, tag: string, division: string, tier: string, points: number, change: number | null, pointsChange: number, matches: number, players: string[]) => ({ rank, id, ids: [id], name, tag, division, tier, points, change, pointsChange, matches, players });
+    return delay<RglRanking>({
+      season: { id: 198, name: "HL Season 25" },
+      used: read === 183 ? [{ id: 198, name: "HL Season 25" }, { id: 193, name: "HL Season 24" }, { id: 183, name: "HL Season 23" }] : [{ id: 198, name: "HL Season 25" }, { id: 193, name: "HL Season 24" }],
+      offer: read === 183 ? null : { id: 183, name: "HL Season 23" },
+      updated: Math.floor(Date.now() / 1000) - 26 * 3600,
+      rows: [
+        row(1, 14908, "The Amiable Duds", "AD.", "Invite", "Premiership", 1668, 0, 4, 22, ["tonic", "Dr. Phil", "ejs", "Hawk", "mango", "pazzo", "Kaidus", "Syc"]),
+        row(2, 14954, "Witness Gaming", "wG", "Invite", "Premiership", 1641, 1, 11, 20, ["zeta", "Rylai", "Bunny", "ohmymaus", "Nort", "cyan"]),
+        row(3, 14839, "The Family", "folk", "Invite", "Premiership", 1630, -1, -9, 20, []),
+        row(4, 14820, "mandem", "mndm", "Invite", "Premiership", 1584, 2, 18, 18, ["lbz", "Kane", "wiz", "Ridge", "Fable"]),
+        row(5, 15215, "BigBrainComp?", "BBC", "Invite", "Premiership", 1561, null, 0, 0, []),
+        row(6, 14895, "Never Knows Best", "NKB", "Advanced", "High", 1527, -1, -6, 19, ["Orlo", "dane", "Mika", "nubs"]),
+        row(7, 15102, "Cold Open", "CO", "Advanced", "High", 1506, 0, 2, 17, []),
+        row(8, 15140, "Sunday Scaries", "SS", "Main", "Mid", 1433, 3, 24, 16, ["jules", "Hopper", "ash"]),
+        row(9, 15163, "Late Night Medics", "LNM", "Intermediate", "Low", 1342, -2, -15, 15, []),
+        row(10, 15188, "Fresh Spawn", "FS", "Newcomer", "Open", 1221, 1, 7, 12, []),
+      ],
+    });
+  },
   getRglSeason: (id: number) =>
     delay<RglSeason>({
       id,

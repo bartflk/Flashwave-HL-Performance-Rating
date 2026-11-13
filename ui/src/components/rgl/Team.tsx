@@ -13,8 +13,9 @@ import { Monogram } from "../etf2l/Teams";
 import { tierOf } from "../etf2l/Brackets";
 import { DivisionBadge } from "../players/PlayerProfile";
 import { BookmarkButton } from "../Bookmarks";
-import { KEEP, useSeason, useTeam, useLive, LADDER, useSettled, SEARCH_FROM, usePlayer, day, placing } from "./data";
+import { KEEP, useSeason, useTeam, useLive, LADDER, useSettled, SEARCH_FROM, usePlayer, day, placing, useRanking } from "./data";
 import { Reading, OnRgl } from "./bits";
+import { rowOf } from "../../lib/rglrank";
 
 /**
  * Teams, as the ETF2L tab's (Flashy: "up to parity with etf2l"): a name
@@ -279,6 +280,10 @@ function Cards({ v, h }: { v: RglTeamPage; h: ReturnType<typeof useTeamHistory> 
   const trophies = d ? trophyCount(d.seasons) : { titles: 0, podiums: 0 };
   const rate = d ? winRate(d.total) : null;
   const note = d ? forfeitNote(d.total) : "";
+  // The power ranking, once it is worked out; its points are results, so they hide with them.
+  const [shown] = useShowResults();
+  const ranking = useRanking(shown);
+  const ranked = shown ? rowOf(ranking.data?.rows, v.id) : null;
   return (
     <div className="rgl-cards">
       <StatCard
@@ -287,6 +292,14 @@ function Cards({ v, h }: { v: RglTeamPage; h: ReturnType<typeof useTeamHistory> 
         sub={[v.seasonName, v.division && (v.tier ? `${v.division} ≈ ${t(v.tier)}` : v.division)].filter(Boolean).join(" · ")}
         title={t("Its place in the division this season, as RGL ranks it")}
       />
+      {ranked && (
+        <StatCard
+          label={t("Ranking")}
+          value={`#${ranked.rank}`}
+          sub={tx("{0} points · of {1} teams", { "0": ranked.points, "1": ranking.data?.rows.length ?? 0 })}
+          title={t("Its place in the app's RGL power ranking, an Elo rating from the matches the app has")}
+        />
+      )}
       <StatCard
         label={t("Record")}
         wait={wait}
