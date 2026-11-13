@@ -55,6 +55,7 @@ pub mod combined;
 pub mod etf2l;
 pub mod rgl;
 pub mod rgl_stats;
+pub mod sixes;
 pub mod teammates;
 pub mod demos;
 pub mod demostf;

@@ -453,6 +453,35 @@ export interface RglMatchMore {
   logsWhy: "notPlayed" | "forfeit" | "tooSoon" | "resting" | "unavailable" | "noRoster" | null;
 }
 
+/** ETF2L 6v6's current season (prototype). */
+export interface SixesRow {
+  id: number;
+  name: string;
+  country: string | null;
+  mapsPlayed: number;
+  mapsWon: number;
+  mapsLost: number;
+  gcWon: number;
+  gcLost: number;
+  penalty: number;
+  score: number;
+  byes: number;
+  seededPoints: number;
+  dropped: boolean;
+}
+export interface SixesDivision {
+  name: string;
+  system: "roundRobin" | "swiss";
+  competitionId: number;
+  teams: SixesRow[];
+}
+export interface SixesSeason {
+  name: string;
+  competitions: { id: number; name: string; system: "roundRobin" | "swiss" }[];
+  pool: string[];
+  divisions: SixesDivision[];
+}
+
 /** One of RGL's bans. */
 export interface RglBan {
   steamId: string;

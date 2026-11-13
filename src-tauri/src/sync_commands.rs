@@ -763,6 +763,12 @@ pub async fn get_model_shift(state: State<'_, AppState>) -> CmdResult<Option<Mod
     Ok(Some(ModelShift { before: before.clone(), after: after.to_string(), classes, games }))
 }
 
+/// The current ETF2L 6v6 season's tables (prototype: hl_ingest::sixes).
+#[tauri::command]
+pub async fn get_sixes_season(state: State<'_, AppState>) -> CmdResult<Option<hl_ingest::sixes::SixesSeason>> {
+    Ok(hl_ingest::sixes::current_season(&state.sources).await?)
+}
+
 /// Every class's model as the rating uses it, for the "How ratings work"
 /// page: built from the live weights, so the page follows every retune.
 #[tauri::command]

@@ -34,6 +34,8 @@ import "./components/match/match.css";
 import { Etf2lMark } from "./components/Etf2lMark";
 import { RglMark } from "./components/RglMark";
 import { Logo } from "./components/Logo";
+import { SixesPage } from "./components/sixes/SixesPage";
+import { useGameFormat } from "./lib/gameformat";
 
 type Tab = "matches" | "profile" | "etf2l" | "rgl" | "settings" | "rating";
 
@@ -52,6 +54,7 @@ export default function App() {
   // Subscribed here, once: nothing below is memoised, so a language change
   // re-renders the whole tree and every `t()` in it reads the new table.
   useLanguage();
+  const [fmt, setFmt] = useGameFormat();
   // Set when the user chooses to revisit setup after it is already complete.
   const [forceSetup, setForceSetup] = useState(false);
   // A first run keeps the setup screen up until its last step, even once the
@@ -227,6 +230,16 @@ export default function App() {
           </nav>
         </div>
         <div className="topbar-right">
+          {/* Highlander or 6v6, for the whole app (prototype: only the ETF2L
+              tab has 6v6 so far). */}
+          <div className="fmt-switch" role="group" aria-label={t("Format")}>
+            <button className={fmt === "hl" ? "on" : undefined} aria-pressed={fmt === "hl"} onClick={() => setFmt("hl")} title={t("Highlander: nine a side, one of each class")}>
+              {t("HL")}
+            </button>
+            <button className={fmt === "6s" ? "on" : undefined} aria-pressed={fmt === "6s"} onClick={() => setFmt("6s")} title={t("6v6: two Scouts, two Soldiers, a Demoman and a Medic")}>
+              {t("6s")}
+            </button>
+          </div>
           <SyncSummary />
           <BookmarksMenu onOpenMatch={setOpenLog} />
           <OwnerBadge steamid={data.config.steamid} />
@@ -242,6 +255,9 @@ export default function App() {
         </div>
       </header>
 
+      {fmt === "6s" && tab !== "etf2l" && tab !== "settings" && openLog === null && (
+        <p className="hint fmt-banner">{t("6v6 is a prototype: the ETF2L tab shows the 6v6 season. This page is still Highlander's.")}</p>
+      )}
       <div hidden={tab !== "matches" || openLog !== null}>
         <ErrorBoundary what="The match list"><Matches onOpen={setOpenLog} /></ErrorBoundary>
       </div>
@@ -252,7 +268,9 @@ export default function App() {
       )}
       {visited.has("etf2l") && (
         <div hidden={tab !== "etf2l" || openLog !== null}>
-          <ErrorBoundary what="ETF2L"><Etf2lPage active={tab === "etf2l" && openLog === null} onOpenMatch={setOpenLog} /></ErrorBoundary>
+          <ErrorBoundary what="ETF2L">
+            {fmt === "6s" ? <SixesPage /> : <Etf2lPage active={tab === "etf2l" && openLog === null} onOpenMatch={setOpenLog} />}
+          </ErrorBoundary>
         </div>
       )}
       {visited.has("rgl") && (
