@@ -379,25 +379,6 @@
   display: flex;
   align-items: center;
   gap: 18px;
-  /* When the bar wraps, this half keeps to the right on its own line. */
-  margin-left: auto;
-}
-
-/* A narrow window: the gaps close up and you are your avatar (the button's
-   tooltip and its menu still say who). Whatever still doesn't fit wraps:
-   the right half onto a line of its own, then the tabs under the wordmark,
-   never past the window's edge. */
-.topbar,
-.brand {
-  flex-wrap: wrap;
-  row-gap: 10px;
-}
-
-@media (max-width: 1100px) {
-  .brand { column-gap: 16px; }
-  .topbar-right { gap: 12px; }
-  .topbar .owner-text { display: none; }
-  .topbar .owner-button { padding: 3px; }
 }
 
 .sync-summary {
@@ -595,18 +576,6 @@
 
   .fi-actions {
     grid-column: 3;
-  }
-}
-
-/* Not wide enough for one line (five cells need about 1100 px): the format
-   tabs take a line of their own and the rest share the next. */
-@media (max-width: 1200px) {
-  .filter-row {
-    grid-template-columns: minmax(230px, auto) 210px 1fr auto;
-  }
-
-  .filter-row .segmented {
-    grid-column: 1 / -1;
   }
 }
 
