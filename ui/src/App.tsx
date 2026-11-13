@@ -35,7 +35,9 @@ import { Etf2lMark } from "./components/Etf2lMark";
 import { RglMark } from "./components/RglMark";
 import { Logo } from "./components/Logo";
 import { SixesPage } from "./components/sixes/SixesPage";
-import { useGameFormat } from "./lib/gameformat";
+import { FORMAT_TABS, useFormatsPlayed, useTabFormats, type FormatTab as FormatTabId } from "./lib/gameformat";
+import { FormatTab } from "./components/FormatTab";
+import { SixesSoon } from "./components/sixes/SixesSoon";
 
 type Tab = "matches" | "profile" | "etf2l" | "rgl" | "settings" | "rating";
 
@@ -54,7 +56,9 @@ export default function App() {
   // Subscribed here, once: nothing below is memoised, so a language change
   // re-renders the whole tree and every `t()` in it reads the new table.
   useLanguage();
-  const [fmt, setFmt] = useGameFormat();
+  // Highlander or 6v6 on each tab that has both (the 6v6 plan, P0).
+  const played = useFormatsPlayed();
+  const fmt = useTabFormats();
   // Set when the user chooses to revisit setup after it is already complete.
   const [forceSetup, setForceSetup] = useState(false);
   // A first run keeps the setup screen up until its last step, even once the
@@ -220,26 +224,28 @@ export default function App() {
             <span className="beta-tag" title={tr("Early build: expect rough edges, and please report them")}>{tr("beta")}</span>
           </h1>
           <nav className="tabs">
-            {TABS.map(([id, label]) => (
-              <button key={id} className={tab === id ? "tab active" : "tab"} onClick={() => go(id)}>
-                {id === "etf2l" && <Etf2lMark size={15} />}
-                {id === "rgl" && <RglMark size={15} />}
-                {t(label)}
-              </button>
-            ))}
+            {TABS.map(([id, label]) =>
+              (FORMAT_TABS as readonly string[]).includes(id) ? (
+                <FormatTab
+                  key={id}
+                  id={id as FormatTabId}
+                  label={t(label)}
+                  icon={id === "etf2l" ? <Etf2lMark size={15} /> : undefined}
+                  active={tab === id}
+                  fmt={fmt[id as FormatTabId]}
+                  played={played}
+                  onOpen={() => go(id)}
+                />
+              ) : (
+                <button key={id} className={tab === id ? "tab active" : "tab"} onClick={() => go(id)}>
+                  {id === "rgl" && <RglMark size={15} />}
+                  {t(label)}
+                </button>
+              ),
+            )}
           </nav>
         </div>
         <div className="topbar-right">
-          {/* Highlander or 6v6, for the whole app (prototype: only the ETF2L
-              tab has 6v6 so far). */}
-          <div className="fmt-switch" role="group" aria-label={t("Format")}>
-            <button className={fmt === "hl" ? "on" : undefined} aria-pressed={fmt === "hl"} onClick={() => setFmt("hl")} title={t("Highlander: nine a side, one of each class")}>
-              {t("HL")}
-            </button>
-            <button className={fmt === "6s" ? "on" : undefined} aria-pressed={fmt === "6s"} onClick={() => setFmt("6s")} title={t("6v6: two Scouts, two Soldiers, a Demoman and a Medic")}>
-              {t("6s")}
-            </button>
-          </div>
           <SyncSummary />
           <BookmarksMenu onOpenMatch={setOpenLog} />
           <OwnerBadge steamid={data.config.steamid} />
@@ -255,21 +261,18 @@ export default function App() {
         </div>
       </header>
 
-      {fmt === "6s" && tab !== "etf2l" && tab !== "settings" && openLog === null && (
-        <p className="hint fmt-banner">{t("6v6 is a prototype: the ETF2L tab shows the 6v6 season. This page is still Highlander's.")}</p>
-      )}
       <div hidden={tab !== "matches" || openLog !== null}>
-        <ErrorBoundary what="The match list"><Matches onOpen={setOpenLog} /></ErrorBoundary>
+        <ErrorBoundary what="The match list">{fmt.matches === "6s" ? <SixesSoon what="matches" /> : <Matches onOpen={setOpenLog} />}</ErrorBoundary>
       </div>
       {visited.has("profile") && (
         <div hidden={tab !== "profile" || openLog !== null}>
-          <ErrorBoundary what="The profile"><ProfilePage steamid={data.config.steamid} onOpenMatch={setOpenLog} /></ErrorBoundary>
+          <ErrorBoundary what="The profile">{fmt.profile === "6s" ? <SixesSoon what="profile" /> : <ProfilePage steamid={data.config.steamid} onOpenMatch={setOpenLog} />}</ErrorBoundary>
         </div>
       )}
       {visited.has("etf2l") && (
         <div hidden={tab !== "etf2l" || openLog !== null}>
           <ErrorBoundary what="ETF2L">
-            {fmt === "6s" ? <SixesPage /> : <Etf2lPage active={tab === "etf2l" && openLog === null} onOpenMatch={setOpenLog} />}
+            {fmt.etf2l === "6s" ? <SixesPage /> : <Etf2lPage active={tab === "etf2l" && openLog === null} onOpenMatch={setOpenLog} />}
           </ErrorBoundary>
         </div>
       )}

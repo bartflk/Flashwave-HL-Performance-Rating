@@ -65,6 +65,8 @@ import type {
   RglMatch,
   RglMatchMore,
   SixesSeason,
+  FormatsPlayed,
+  StoredFormat,
   RglMatchStats,
   RglPlayer,
   RglPlayerMore,
@@ -333,6 +335,8 @@ const realApi = {
   getRglMatchMore: (id: number) => invoke<RglMatchMore | null>("get_rgl_match_more", { id }),
   /** ETF2L 6v6's current season (prototype). */
   getSixesSeason: () => invoke<SixesSeason | null>("get_sixes_season"),
+  formatsPlayed: () => invoke<FormatsPlayed>("formats_played"),
+  setFormatsPlayed: (formats: StoredFormat[]) => invoke<FormatsPlayed>("set_formats_played", { formats }),
   getRglMatchStats: (id: number) => invoke<RglMatchStats | null>("get_rgl_match_stats", { id }),
   getRglTeam: (id: number) => invoke<RglTeamPage | null>("get_rgl_team", { id }),
   getRglTeamSeasons: (ids: number[]) => invoke<RglTeamSeason[]>("get_rgl_team_seasons", { ids }),

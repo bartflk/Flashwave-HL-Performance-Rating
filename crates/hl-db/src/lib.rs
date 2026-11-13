@@ -585,6 +585,7 @@ mod frozen_migrations {
         ("0044_rgl_match.sql", 0xab210f21f3748b38),
         ("0045_rgl_answer.sql", 0x9eb7f3f9e42ee692),
         ("0047_audit_sync.sql", 0xe1ca0035dedfc4e2),
+        ("0048_formats.sql", 0xf639046bf5a554b8),
     ];
 
     fn fnv1a(bytes: &[u8]) -> u64 {

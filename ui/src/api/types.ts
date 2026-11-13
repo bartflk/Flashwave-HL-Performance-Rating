@@ -475,6 +475,15 @@ export interface SixesDivision {
   competitionId: number;
   teams: SixesRow[];
 }
+/** A format as the backend stores it (the 6v6 plan, P0). */
+export type StoredFormat = "highlander" | "sixes";
+
+export interface FormatsPlayed {
+  formats: StoredFormat[];
+  /** False in a build with 6v6 switched off (release builds until its rating ships). */
+  sixesEnabled: boolean;
+}
+
 export interface SixesSeason {
   name: string;
   competitions: { id: number; name: string; system: "roundRobin" | "swiss" }[];

@@ -83,7 +83,7 @@ import type {
   RglSeasonCard,
   RglTeamHit,
   RglSeason,
-  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, RglMatchStats, RglAward, RglSideTotals,
+  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
   RglTeamPage,
   RglTeamSeason,
   RglTeamHistory,
@@ -527,6 +527,7 @@ const fakeStats = (pending: number): IndexStats => ({
 // The full-history setting, for the Settings panel's dialog.
 let allHistory = false;
 let autoDelete = false;
+let mockFormats: StoredFormat[] = ["highlander", "sixes"];
 
 let handlers: SyncHandlers | null = null;
 let stvHandlers: StvHandlers | null = null;
@@ -1462,6 +1463,13 @@ export const mockApi: Api = {
   getRglSeasonMatches: (id: number) => delay<RglMatch[]>(mockRglMatches(id)),
   getRglMatch: (id: number) => delay<RglMatch | null>([...mockRglMatches(198), ...mockRglMatches(193)].find((m) => m.matchId === id) ?? null),
   getSixesSeason: () => delay(sixesSeason53 as unknown as SixesSeason),
+  // The mock plays both, so the tab menus can be seen without setup.
+  formatsPlayed: () => delay<FormatsPlayed>({ formats: [...mockFormats], sixesEnabled: true }),
+  setFormatsPlayed: (formats: StoredFormat[]) => {
+    const kept = (["highlander", "sixes"] as const).filter((f) => formats.includes(f));
+    mockFormats = kept.length ? kept : ["highlander"];
+    return delay<FormatsPlayed>({ formats: [...mockFormats], sixesEnabled: true });
+  },
   getRglMatchMore: (id: number) => {
     const all = [...mockRglMatches(198), ...mockRglMatches(193)];
     const m = all.find((x) => x.matchId === id);

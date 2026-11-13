@@ -6,6 +6,7 @@
 
 pub mod config;
 pub mod error;
+pub mod format;
 pub mod maps;
 pub mod matchdata;
 pub mod steamid;
@@ -14,6 +15,7 @@ pub mod tfpath;
 
 pub use config::AppConfig;
 pub use error::{Error, Result};
+pub use format::{GameFormat, Role};
 pub use maps::map_base;
 pub use steamid::SteamId;
 pub use tfclass::TfClass;

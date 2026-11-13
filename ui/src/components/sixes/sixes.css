@@ -67,28 +67,9 @@
 .sx-rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .sx-rules li { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-ui); }
 
-/* The header's format switch. */
-.fmt-switch {
-  display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 2px;
-  background: var(--sunken);
-}
-.fmt-switch button {
-  border: 0;
-  box-shadow: none;
-  background: none;
-  border-radius: 999px;
-  padding: 3px 10px;
-  font: 700 var(--fs-xs) var(--font-display);
-  letter-spacing: var(--ls-caps);
-  text-transform: uppercase;
-  color: var(--muted);
-  cursor: pointer;
-}
-.fmt-switch button.on { background: var(--accent-2); color: var(--bg); }
-.fmt-banner { margin: 12px 24px 0; }
+/* Matches or Profile in 6v6 before their phase is built. */
+.sx-soon-panel { max-width: 720px; display: flex; flex-direction: column; gap: 10px; }
+.sx-soon-panel p { margin: 0; max-width: 68ch; }
 
 @media (max-width: 900px) {
   .sx-grid { grid-template-columns: minmax(0, 1fr); }

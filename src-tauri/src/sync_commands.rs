@@ -1130,6 +1130,27 @@ pub async fn set_auto_delete_demos(state: State<'_, AppState>, on: bool) -> CmdR
     Ok(on)
 }
 
+/// The formats the owner plays, and whether this build has 6v6 at all (the
+/// 6v6 plan, P0: 6v6 stays hidden in release builds until its rating ships).
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FormatsPlayed {
+    pub formats: Vec<hl_core::GameFormat>,
+    pub sixes_enabled: bool,
+}
+
+#[tauri::command]
+pub async fn formats_played(state: State<'_, AppState>) -> CmdResult<FormatsPlayed> {
+    Ok(FormatsPlayed { formats: state.db.formats_played().await?, sixes_enabled: hl_core::format::SIXES_ENABLED })
+}
+
+#[tauri::command]
+pub async fn set_formats_played(state: State<'_, AppState>, formats: Vec<hl_core::GameFormat>) -> CmdResult<FormatsPlayed> {
+    let formats = state.db.set_formats_played(&formats).await?;
+    tracing::info!(?formats, "formats played changed");
+    Ok(FormatsPlayed { formats, sixes_enabled: hl_core::format::SIXES_ENABLED })
+}
+
 /// Delete every downloaded demo the pass has finished with.
 ///
 /// Shared by the sweep after a sync and by the Settings button, so "has

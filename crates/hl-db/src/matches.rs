@@ -532,6 +532,19 @@ impl Db {
         self.set_setting(keys::AUTO_DELETE_DEMOS, if on { "1" } else { "0" }).await
     }
 
+    /// The formats the owner plays, chosen in setup (the 6v6 plan, P0).
+    /// Highlander alone until they choose, and in a build with 6v6 off.
+    pub async fn formats_played(&self) -> Result<Vec<hl_core::GameFormat>> {
+        Ok(hl_core::format::formats_played(self.get_setting(keys::FORMATS_PLAYED).await?.as_deref()))
+    }
+
+    /// Store the formats played; an empty list is stored as Highlander.
+    pub async fn set_formats_played(&self, formats: &[hl_core::GameFormat]) -> Result<Vec<hl_core::GameFormat>> {
+        let stored = hl_core::format::formats_stored(formats);
+        self.set_setting(keys::FORMATS_PLAYED, &stored).await?;
+        self.formats_played().await
+    }
+
     /// Logs the window is holding back: old, not officials, never downloaded.
     /// What Settings offers to fetch, and what it costs.
     pub async fn outside_window(&self) -> Result<i64> {
@@ -1377,6 +1390,18 @@ mod tests {
         }])
         .await
         .unwrap();
+    }
+
+    #[tokio::test]
+    async fn formats_played_starts_as_highlander_and_keeps_what_setup_chose() {
+        use hl_core::GameFormat::{Highlander, Sixes};
+        let db = Db::connect_in_memory().await.unwrap();
+        assert_eq!(db.formats_played().await.unwrap(), [Highlander]);
+        let both = db.set_formats_played(&[Sixes, Highlander]).await.unwrap();
+        let expect: &[hl_core::GameFormat] = if hl_core::format::SIXES_ENABLED { &[Highlander, Sixes] } else { &[Highlander] };
+        assert_eq!(both, expect);
+        assert_eq!(db.formats_played().await.unwrap(), expect);
+        assert_eq!(db.set_formats_played(&[]).await.unwrap(), [Highlander], "never none");
     }
 
     #[tokio::test]

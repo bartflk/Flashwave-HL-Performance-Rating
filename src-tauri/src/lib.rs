@@ -196,6 +196,8 @@ pub fn run() {
             sync_commands::downloaded_demos,
             sync_commands::auto_delete_demos,
             sync_commands::set_auto_delete_demos,
+            sync_commands::formats_played,
+            sync_commands::set_formats_played,
             sync_commands::delete_downloaded_demos,
             sync_commands::all_history,
             sync_commands::set_all_history,

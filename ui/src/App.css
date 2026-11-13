@@ -106,6 +106,26 @@
   gap: 10px;
 }
 
+/* Setup's formats step: two equal choices side by side, a tick on each one
+   played (the 6v6 plan, P0). */
+.fmt-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.fmt-pick-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; text-align: left;
+}
+.fmt-pick-item.on { border-color: var(--accent-dim); }
+.fmt-pick-item:disabled { opacity: 1; cursor: default; }
+.fmt-pick-box {
+  flex: none; width: 18px; height: 18px; margin-top: 2px;
+  display: grid; place-items: center;
+  border: 1px solid var(--border); border-radius: 4px;
+  font-size: var(--fs-small); line-height: 1; color: var(--accent-text);
+}
+.fmt-pick-item.on .fmt-pick-box { border-color: var(--accent-dim); background: var(--sunken); }
+.fmt-pick-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.fmt-pick-text .hint { font-size: var(--fs-small); white-space: normal; }
+@media (max-width: 560px) { .fmt-pick { grid-template-columns: minmax(0, 1fr); } }
+
 .hint {
   color: var(--muted);
   font-size: var(--fs-ui);
@@ -331,6 +351,42 @@
   border-bottom-color: var(--accent);
   box-shadow: none;
 }
+
+/* A tab with more than one format (the 6v6 plan, P0): a chip for the format
+   it shows, and a menu of the formats played on hover or focus. The menu
+   hangs from the tab; its padding bridges the gap so the pointer can reach it. */
+.fmt-chip {
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font: 700 var(--fs-xs) var(--font-display);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+  vertical-align: 1px;
+}
+.fmt-chip.six { border-color: var(--accent-dim); color: var(--accent-text); }
+.tab-fmt { position: relative; display: flex; }
+.tab-fmt-menu {
+  position: absolute; left: 0; top: 100%; z-index: 60;
+  display: none; flex-direction: column; gap: 4px;
+  min-width: 170px; margin-top: 6px; padding: 6px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--panel); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+}
+.tab-fmt-menu::before { content: ""; position: absolute; inset: -8px 0 auto 0; height: 8px; }
+.tab-fmt:hover .tab-fmt-menu, .tab-fmt:focus-within .tab-fmt-menu { display: flex; }
+.tab-fmt-item {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 7px 10px; text-align: left; white-space: nowrap;
+  border: 1px solid transparent; border-radius: var(--ctl-radius);
+  background: none; box-shadow: none; color: var(--text);
+}
+.tab-fmt-item:hover:not(:disabled) { background: var(--panel-2); }
+.tab-fmt-item.on { border-color: var(--accent-dim); background: var(--sunken); }
+.tab-fmt-name { font-weight: 600; }
+.tab-fmt-size { font-size: var(--fs-small); color: var(--muted); }
 
 /* A filling bar. The demo panel uses it; so does the corner card. */
 .progress {

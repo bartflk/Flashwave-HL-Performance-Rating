@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toStored, useFormatsPlayed, type GameFormat } from "../lib/gameformat";
 import { friendlyText } from "../lib/apierror";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../api/client";
@@ -17,6 +19,10 @@ export function Setup(props: { status: AppStatus; onDone: () => void; onFinish: 
   const steamidDone = status.config.steamid !== null;
   const tfDone = status.config.tfPath !== null;
   const [tfSkipped, setTfSkipped] = useState(false);
+  // Which formats you play, once this build has more than Highlander (the
+  // 6v6 plan, P0; question 14: "ask in setup which formats you play").
+  const played = useFormatsPlayed();
+  const n = played.sixesEnabled ? 1 : 0;
 
   return (
     <div className="centered">
@@ -31,21 +37,23 @@ export function Setup(props: { status: AppStatus; onDone: () => void; onFinish: 
         </div>
 
         <SteamIdStep done={steamidDone} current={status.config.steamid} onSaved={onDone} />
+        {played.sixesEnabled && <FormatsStep num={2} />}
         <TfPathStep
+          num={2 + n}
           done={tfDone}
           skipped={tfSkipped && !tfDone}
           current={status.config.tfPath}
           onSaved={onDone}
           onSkip={() => setTfSkipped(true)}
         />
-        <FirstSyncStep ready={steamidDone && (tfDone || tfSkipped || onClose !== undefined)} onFinish={onFinish} onClose={onClose} />
+        <FirstSyncStep num={3 + n} ready={steamidDone && (tfDone || tfSkipped || onClose !== undefined)} onFinish={onFinish} onClose={onClose} />
       </div>
     </div>
   );
 }
 
 /** Start the first sync and hand over to the app, where the sync strip shows progress. */
-function FirstSyncStep({ ready, onFinish, onClose }: { ready: boolean; onFinish: () => void; onClose?: () => void }) {
+function FirstSyncStep({ num, ready, onFinish, onClose }: { num: number; ready: boolean; onFinish: () => void; onClose?: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -64,7 +72,7 @@ function FirstSyncStep({ ready, onFinish, onClose }: { ready: boolean; onFinish:
 
   return (
     <section className={ready ? "step" : "step waiting"}>
-      <div className="step-num">3</div>
+      <div className="step-num">{num}</div>
       <div className="step-body">
         <h2>{t("Get your matches")}</h2>
         <p className="hint">{tx("The first sync finds every match you played on logs.tf and trends.tf, then fetches them one every 2 seconds to go easy on logs.tf. Detailed kill data comes 100 matches per sync, so a long history takes a few syncs: press {0} again later to fetch the rest. You can use the app while it runs.", { "0": <strong>{t("Sync")}</strong> })}</p>
@@ -147,12 +155,14 @@ function SteamIdStep({
 }
 
 function TfPathStep({
+  num,
   done,
   skipped,
   current,
   onSaved,
   onSkip,
 }: {
+  num: number;
   done: boolean;
   skipped: boolean;
   current: string | null;
@@ -217,7 +227,7 @@ function TfPathStep({
 
   return (
     <section className={done || skipped ? "step done" : "step"}>
-      <div className="step-num">2</div>
+      <div className="step-num">{num}</div>
       <div className="step-body">
         <h2>{tx("Your TF2 folder {0}", { "0": <span className="optional">{t("optional")}</span> })}
         </h2>
@@ -259,6 +269,63 @@ function TfPathStep({
             </div>
           </>
         )}
+        {error && <p className="error">{error}</p>}
+      </div>
+    </section>
+  );
+}
+
+// Each string is its own t() call, so the translation script finds it.
+const FORMAT_INFO: Array<[GameFormat, () => string, () => string]> = [
+  ["hl", () => t("Highlander"), () => t("Nine a side, one of each class.")],
+  ["6s", () => t("6v6"), () => t("Six a side: two Scouts, two Soldiers, a Demoman and a Medic.")],
+];
+
+/**
+ * Which formats you play. Only those are shown in the tabs' menus (and,
+ * from the 6v6 plan's P1, downloaded). At least one stays chosen.
+ */
+function FormatsStep({ num }: { num: number }) {
+  const played = useFormatsPlayed();
+  const qc = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function toggle(f: GameFormat) {
+    const has = played.formats.includes(f);
+    if (has && played.formats.length === 1) return;
+    const next = has ? played.formats.filter((x) => x !== f) : [...played.formats, f];
+    setBusy(true);
+    setError(null);
+    try {
+      qc.setQueryData(["formats_played"], await api.setFormatsPlayed(next.map(toStored)));
+    } catch (e) {
+      setError(friendlyText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="step done">
+      <div className="step-num">{num}</div>
+      <div className="step-body">
+        <h2>{t("The formats you play")}</h2>
+        <p className="hint">{t("Each format keeps its own matches and ratings: nothing from one counts towards the other. Playing both adds a menu to the Matches, Profile and ETF2L tabs.")}</p>
+        <div className="fmt-pick" role="group" aria-label={t("The formats you play")}>
+          {FORMAT_INFO.map(([f, name, about]) => {
+            const on = played.formats.includes(f);
+            return (
+              <button key={f} className={on ? "fmt-pick-item on" : "fmt-pick-item"} aria-pressed={on} disabled={busy || (on && played.formats.length === 1)} onClick={() => void toggle(f)}>
+                <span className="fmt-pick-box" aria-hidden="true">{on ? "✓" : ""}</span>
+                <span className="fmt-pick-text">
+                  <strong>{name()}</strong>
+                  <span className="hint">{about()}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
         {error && <p className="error">{error}</p>}
       </div>
     </section>
