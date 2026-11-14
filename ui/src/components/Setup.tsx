@@ -32,7 +32,12 @@ export function Setup(props: { status: AppStatus; onDone: () => void; onFinish: 
           <Logo className="setup-logo" />
           <div>
             <h1>{t("Welcome to Flashwave.tf")}</h1>
-            <p className="sub">{t("Ratings for your TF2 Highlander games, built from your logs.tf history. Everything is stored on this PC.")}</p>
+            {/* Format-neutral once the app has more than Highlander (question 16). */}
+            <p className="sub">
+              {played.sixesEnabled
+                ? t("Ratings for your competitive TF2 games, Highlander and 6v6, built from your logs.tf history. Everything is stored on this PC.")
+                : t("Ratings for your TF2 Highlander games, built from your logs.tf history. Everything is stored on this PC.")}
+            </p>
           </div>
         </div>
 

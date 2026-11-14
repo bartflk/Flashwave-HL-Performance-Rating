@@ -19,20 +19,16 @@ import { RecruitmentPage, RecruitPostPage, type Kind } from "../etf2l/Recruitmen
 import type { RecruitPost } from "../../api/types";
 
 /**
- * The ETF2L tab in 6v6 (prototype; Flashy: "make a prototype for etf2l
- * 6v6"). The current season's tables, read live from ETF2L's API: the
- * round-robin groups (Premiership to Division 3, and Fresh) and the Swiss
- * divisions (Division 4, Low, Open) since Season 53, with the map pool and
- * the match rules that make 6v6's tables read differently from Highlander's
- * (two maps a week, 5CP maps that can be drawn, golden caps).
- *
- * Everything else the Highlander tab has (matches, teams, players, news,
- * recruitment, seasons, tournaments) is listed under "Coming in 6v6", with
- * the plan in the 6v6 artifact.
+ * The ETF2L tab in 6v6 (the 6v6 plan, P2). The current season's tables,
+ * read live from ETF2L's API: the round-robin groups (Premiership to
+ * Division 3, and Fresh) and the Swiss divisions (Division 4, Low, Open)
+ * since Season 53, with the map pool and the match rules that make 6v6's
+ * tables read differently from Highlander's (two maps a week, 5CP maps that
+ * can be drawn, golden caps); its matches by week, its teams, ETF2L's 6v6
+ * news and recruitment. What is still to come is listed in the rail.
  */
 export function SixesPage() {
   const q = useQuery({ queryKey: ["sixes_season"], queryFn: api.getSixesSeason, staleTime: 30 * 60_000, retry: false });
-  const stats = useQuery({ queryKey: ["index_stats"], queryFn: api.indexStats });
   const s = q.data;
   const groups = useMemo(() => (s?.divisions ?? []).filter((d) => d.system === "roundRobin"), [s]);
   const swiss = useMemo(() => (s?.divisions ?? []).filter((d) => d.system === "swiss"), [s]);
@@ -80,8 +76,8 @@ export function SixesPage() {
             ))}
           </nav>
         </div>
-        <span className="sx-proto" data-fit="" title={t("A first look at 6v6: the season's tables are live, the rest is planned")}>
-          {t("Prototype")}
+        <span className="sx-proto" data-fit="" title={t("6v6 is in preview: it ships once its rating is ready")}>
+          {t("Preview")}
         </span>
       </LeagueHead>
 
@@ -206,16 +202,8 @@ export function SixesPage() {
               </div>
               <ul className="sx-rules">
                 <li>
-                  <strong>{t("Your 6v6 matches")}</strong>
-                  <span className="muted">
-                    {stats.data
-                      ? tx("Your index lists {0} 6v6 logs; they are not downloaded yet.", { "0": stats.data.sixes.toLocaleString() })
-                      : t("Your 6v6 logs, downloaded and read like your Highlander ones.")}
-                  </span>
-                </li>
-                <li>
-                  <strong>{t("A 6v6 rating")}</strong>
-                  <span className="muted">{t("Its own pools, roles (pocket and roamer, flank and combo Scout) and 6v6's stats: midfights, uber advantage, forced drops.")}</span>
+                  <strong>{t("The 6v6 rating")}</strong>
+                  <span className="muted">{t("Fitted on every ETF2L 6v6 official, with round impact. Until then, your preview ratings by role are on the Profile tab in 6v6.")}</span>
                 </li>
                 <li>
                   <strong>{t("The rest of this tab")}</strong>
