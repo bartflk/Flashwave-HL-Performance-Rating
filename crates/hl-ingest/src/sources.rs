@@ -185,7 +185,13 @@ impl Sources {
     /// the path of the next page. For the league sample, which needs every
     /// official's logs, not only the owner's.
     pub async fn trends_league_page(&self, path: Option<&str>) -> Result<(Vec<TrendsRow>, Option<String>)> {
-        let first = || url("https://trends.tf/api/v1/logs", [("league", "etf2l"), ("format", "highlander"), ("limit", "100")]);
+        self.trends_league_page_of(path, "highlander").await
+    }
+
+    /// One page of trends.tf's ETF2L logs of one format: "highlander" or
+    /// "sixes" (the 6v6 league sample, the 6v6 plan P5).
+    pub async fn trends_league_page_of(&self, path: Option<&str>, format: &str) -> Result<(Vec<TrendsRow>, Option<String>)> {
+        let first = || url("https://trends.tf/api/v1/logs", [("league", "etf2l"), ("format", format), ("limit", "100")]);
         let body = self.trends.get_text(&path.map_or_else(first, |p| format!("https://trends.tf{p}"))).await?;
         let page: Value = serde_json::from_str(&body).context("parsing trends.tf league page")?;
         let rows = page

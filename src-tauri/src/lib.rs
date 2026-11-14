@@ -140,6 +140,8 @@ pub fn run() {
             sync_commands::get_sixes_match_stats,
             sync_commands::get_sixes_ratings,
             sync_commands::get_sixes_profile,
+            sync_commands::get_sixes_sample,
+            sync_commands::set_sixes_sample,
             sync_commands::get_rgl_match_stats,
             sync_commands::get_rgl_team,
             sync_commands::get_rgl_team_seasons,
@@ -532,6 +534,7 @@ Look for its window in the taskbar, or close the other one and start again.".to_
     if cfg!(debug_assertions) {
         league::spawn(db.clone(), sources.clone(), busy.clone(), league_activity.clone(), db_path.with_file_name("weights.toml"));
         league::spawn_transfers(db.clone(), sources.clone());
+        league::spawn_sixes(db.clone(), sources.clone(), busy.clone());
     }
 
     app.manage(AppState {

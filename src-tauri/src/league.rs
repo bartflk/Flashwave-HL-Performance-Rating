@@ -141,6 +141,62 @@ pub fn spawn_transfers(db: Db, sources: Arc<Sources>) {
     });
 }
 
+/// The 6v6 league sample's own loop (the 6v6 plan, P5): idle until it is
+/// switched on (on the ETF2L tab in 6v6), and only in a build with 6v6; a
+/// step at a time with the same gaps as Highlander's, never during a sync.
+/// When a batch of logs has come in, the 6v6 rating preview is rebuilt so
+/// its pools hold them.
+pub fn spawn_sixes(db: Db, sources: Arc<Sources>, busy: Arc<AtomicBool>) {
+    if !hl_core::format::SIXES_ENABLED {
+        return;
+    }
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(45)).await;
+        let mut since_rating = 0;
+        loop {
+            let on = hl_ingest::sixes_sample::enabled(&db).await.unwrap_or(false);
+            let gap = if !on || busy.load(Ordering::Acquire) {
+                IDLE_GAP
+            } else {
+                match hl_ingest::sixes_sample::step(&db, &sources).await {
+                    Ok(hl_ingest::sixes_sample::Step::Discovered { listed, competitions }) => {
+                        tracing::info!(listed, competitions, "6v6 league sample listed");
+                        STEP_GAP
+                    }
+                    Ok(hl_ingest::sixes_sample::Step::Json { .. }) => {
+                        since_rating += 1;
+                        DROPS_GAP
+                    }
+                    Ok(hl_ingest::sixes_sample::Step::Missing { log_id }) => {
+                        tracing::debug!(log_id, "6v6 sample log not on drops.tf");
+                        DROPS_GAP
+                    }
+                    Ok(hl_ingest::sixes_sample::Step::Failed { what }) => {
+                        tracing::warn!(%what, "6v6 league sample step failed");
+                        FAILED_GAP
+                    }
+                    Ok(hl_ingest::sixes_sample::Step::Done) => DONE_GAP,
+                    Err(e) => {
+                        tracing::warn!(error = %format!("{e:#}"), "6v6 league sample step failed");
+                        FAILED_GAP * 4
+                    }
+                }
+            };
+            // The preview's pools follow the sample, every 200 logs or when done.
+            if since_rating >= 200 || (since_rating > 0 && gap == DONE_GAP) {
+                since_rating = 0;
+                if !busy.load(Ordering::Acquire) {
+                    match hl_ingest::sixes_rating::rate_all(&db).await {
+                        Ok(n) => tracing::info!(ratings = n, "6v6 preview rebuilt on the league sample"),
+                        Err(e) => tracing::warn!(error = %format!("{e:#}"), "6v6 preview rating failed"),
+                    }
+                }
+            }
+            tokio::time::sleep(gap).await;
+        }
+    });
+}
+
 pub fn spawn(db: Db, sources: Arc<Sources>, busy: Arc<AtomicBool>, activity: SharedActivity, weights_path: std::path::PathBuf) {
     activity.lock().unwrap().state = "starting";
     tauri::async_runtime::spawn(async move {

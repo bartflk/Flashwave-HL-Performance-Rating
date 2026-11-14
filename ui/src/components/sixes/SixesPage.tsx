@@ -15,6 +15,7 @@ import "./sixes.css";
 import { SixesMatches } from "./SixesMatches";
 import { SixesTeam, SixesTeamsList } from "./SixesTeams";
 import { SixesSeasons } from "./SixesSeasons";
+import { SixesSample } from "./SixesSample";
 import { NewsList, NewsReader } from "../etf2l/News";
 import { RecruitmentPage, RecruitPostPage, type Kind } from "../etf2l/Recruitment";
 import type { RecruitPost } from "../../api/types";
@@ -199,6 +200,8 @@ export function SixesPage() {
               </ul>
               <p className="hint">{t("From ETF2L's 6v6 rules and the Season 53 home page.")}</p>
             </section>
+
+            <SixesSample />
 
             <section className="panel e2-panel">
               <div className="e2-panel-head">

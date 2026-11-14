@@ -225,9 +225,12 @@ fn rate(perfs: &[Perf]) -> Vec<SixesRating> {
 }
 
 /// Rate every stored 6v6 log again and store the preview; how many ratings.
+/// The pools hold the 6v6 league sample's performances too, once it has
+/// some (the 6v6 plan, P5): the owner's games are then read against the
+/// league, not only against the players in them.
 pub async fn rate_all(db: &hl_db::Db) -> Result<usize> {
     let mut perfs = Vec::new();
-    for (log_id, body) in db.sixes_log_jsons().await? {
+    for (log_id, body) in db.sixes_log_jsons().await?.into_iter().chain(db.sixes_league_jsons().await?) {
         let Ok(v) = serde_json::from_str::<Value>(&body) else { continue };
         perfs.extend(perfs_of(log_id, &v));
     }

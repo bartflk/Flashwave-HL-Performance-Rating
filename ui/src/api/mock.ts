@@ -84,7 +84,7 @@ import type {
   RglSeasonCard,
   RglTeamHit,
   RglSeason,
-  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, SixesMatches, StoredRole, Stint, SixesMatchStats, SixesRatingRow, SixesProfile, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
+  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, SixesMatches, StoredRole, Stint, SixesMatchStats, SixesRatingRow, SixesProfile, SixesSampleStatus, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
   RglTeamPage,
   RglTeamSeason,
   RglTeamHistory,
@@ -621,6 +621,12 @@ const fakeStats = (pending: number): IndexStats => ({
 let allHistory = false;
 let autoDelete = false;
 let mockFormats: StoredFormat[] = ["highlander", "sixes"];
+let mockSixesSample: SixesSampleStatus = {
+  enabled: false,
+  seasonsBack: 12,
+  counts: { listed: 9412, downloaded: 3180, missing: 41, oldest: 1_605_000_000, newest: 1_794_590_000 },
+  discoveredAt: 1_794_600_000,
+};
 
 let handlers: SyncHandlers | null = null;
 let stvHandlers: StvHandlers | null = null;
@@ -1583,6 +1589,12 @@ export const mockApi: Api = {
   getSixesSeason: () => delay(sixesSeason53 as unknown as SixesSeason),
   // The mock plays both, so the tab menus can be seen without setup.
   getSixesMatches: () => delay(sixesMatches53 as unknown as SixesMatches),
+  // The 6v6 league sample, part way through, off until started.
+  getSixesSample: () => delay<SixesSampleStatus>({ ...mockSixesSample }),
+  setSixesSample: (on: boolean) => {
+    mockSixesSample = { ...mockSixesSample, enabled: on };
+    return delay<SixesSampleStatus>({ ...mockSixesSample });
+  },
   // The owner's 6v6 profile: their best mock 6v6 games and a season line.
   getSixesProfile: () => {
     const sixes = FAKE_MATCHES.filter((m) => m.format === "sixes").slice(0, 5);

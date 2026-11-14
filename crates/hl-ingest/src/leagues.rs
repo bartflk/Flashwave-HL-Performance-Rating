@@ -383,7 +383,7 @@ pub fn parse_sixes_name(name: &str) -> Option<(i64, String, String, String)> {
 /// 6v6 plan, P2): the newest season and the two before it, their playoffs
 /// and the current Nations' Cup, with `details` match pages a pass. Run by a
 /// sync only for someone who plays 6v6.
-pub async fn fetch_sixes(db: &Db, sources: &Sources, details: i64, mut progress: impl FnMut(usize, usize)) -> Result<FetchSummary> {
+pub async fn fetch_sixes(db: &Db, sources: &Sources, seasons_back: i64, details: i64, mut progress: impl FnMut(usize, usize)) -> Result<FetchSummary> {
     let mut out = FetchSummary::default();
     let mut found: Vec<Found> = Vec::new();
     let mut newest: Option<i64> = None;
@@ -408,7 +408,7 @@ pub async fn fetch_sixes(db: &Db, sources: &Sources, details: i64, mut progress:
                 "6v6 Season" => {
                     let Some((season, ..)) = parse_sixes_name(name) else { continue };
                     let top = *newest.get_or_insert(season);
-                    if season >= top - SEASONS_BACK {
+                    if season >= top - seasons_back {
                         wanted = true;
                         found.push((id, name.to_string(), archived, None));
                     } else {

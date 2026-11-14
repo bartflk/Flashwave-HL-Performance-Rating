@@ -72,6 +72,7 @@ import type {
   SixesMatchStats,
   SixesRatingRow,
   SixesProfile,
+  SixesSampleStatus,
   StoredFormat,
   RglMatchStats,
   RglPlayer,
@@ -346,6 +347,8 @@ const realApi = {
   getMatchStints: (logId: number) => invoke<Stint[]>("get_match_stints", { logId }),
   getSixesMatchStats: (logId: number) => invoke<SixesMatchStats | null>("get_sixes_match_stats", { logId }),
   getSixesProfile: () => invoke<SixesProfile>("get_sixes_profile"),
+  getSixesSample: () => invoke<SixesSampleStatus>("get_sixes_sample"),
+  setSixesSample: (on: boolean) => invoke<SixesSampleStatus>("set_sixes_sample", { on }),
   getSixesRatings: (q: { logId?: number; accountId?: number }) =>
     invoke<SixesRatingRow[]>("get_sixes_ratings", { logId: q.logId ?? null, accountId: q.accountId ?? null }),
   formatsPlayed: () => invoke<FormatsPlayed>("formats_played"),

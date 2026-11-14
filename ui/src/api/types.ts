@@ -563,6 +563,14 @@ export interface SixesMatchStats {
   medics: SixesMedicStats[];
 }
 
+/** Where the 6v6 league sample stands (the 6v6 plan, P5). */
+export interface SixesSampleStatus {
+  enabled: boolean;
+  seasonsBack: number;
+  counts: { listed: number; downloaded: number; missing: number; oldest: number | null; newest: number | null };
+  discoveredAt: number | null;
+}
+
 /** The owner's 6v6 profile beyond ratings by role (the 6v6 plan, P7). */
 export interface SixesProfile {
   best: Array<{ logId: number; role: string; rating: number; map: string | null; playedAt: number | null }>;

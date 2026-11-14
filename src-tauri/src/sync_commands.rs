@@ -369,7 +369,7 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                     Err(e) => report.problems.push(format!("6v6 ratings: {e:#}")),
                 }
                 stage("Reading ETF2L's 6v6 seasons");
-                match hl_ingest::leagues::fetch_sixes(&db, &sources, hl_ingest::leagues::DETAILS_PER_SYNC / 2, |_, _| {}).await {
+                match hl_ingest::leagues::fetch_sixes(&db, &sources, hl_ingest::leagues::SEASONS_BACK, hl_ingest::leagues::DETAILS_PER_SYNC / 2, |_, _| {}).await {
                     Ok(s) => {
                         tracing::info!(competitions = s.competitions, results = s.results, details = s.details, "ETF2L 6v6 seasons read");
                         report.etf2l_results += s.results;
@@ -829,6 +829,20 @@ pub async fn get_sixes_ratings(state: State<'_, AppState>, log_id: Option<i64>, 
 pub async fn get_sixes_profile(state: State<'_, AppState>) -> CmdResult<hl_ingest::sixes_rating::SixesProfile> {
     let me = state.db.get_me().await?.ok_or_else(|| anyhow::anyhow!("no owner set"))?;
     Ok(hl_ingest::sixes_rating::profile(&state.db, me.account_id()).await?)
+}
+
+/// Where the 6v6 league sample stands (the 6v6 plan, P5).
+#[tauri::command]
+pub async fn get_sixes_sample(state: State<'_, AppState>) -> CmdResult<hl_ingest::sixes_sample::Status> {
+    Ok(hl_ingest::sixes_sample::status(&state.db).await?)
+}
+
+/// Start or pause the 6v6 league sample's background download.
+#[tauri::command]
+pub async fn set_sixes_sample(state: State<'_, AppState>, on: bool) -> CmdResult<hl_ingest::sixes_sample::Status> {
+    hl_ingest::sixes_sample::set_enabled(&state.db, on).await?;
+    tracing::info!(on, "6v6 league sample switched");
+    Ok(hl_ingest::sixes_sample::status(&state.db).await?)
 }
 
 /// The current ETF2L 6v6 season's officials by week (the 6v6 plan, P2).

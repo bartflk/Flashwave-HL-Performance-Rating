@@ -111,6 +111,9 @@
 .sx-best-go:hover span:nth-child(2) { color: var(--accent-text); }
 .sx-best-rating { font-variant-numeric: tabular-nums; }
 
+/* The 6v6 league sample's panel (the 6v6 plan, P5). */
+.sx-sample-text { margin: 0 0 10px; font-size: var(--fs-ui); }
+
 /* Teams and team pages (the 6v6 plan, P2). */
 .sx-team-link { font: inherit; color: var(--text); text-align: left; padding: 0; }
 .sx-team-link:hover { color: var(--accent-text); }
