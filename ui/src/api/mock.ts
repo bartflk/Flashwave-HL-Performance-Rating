@@ -84,7 +84,7 @@ import type {
   RglSeasonCard,
   RglTeamHit,
   RglSeason,
-  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, SixesMatches, StoredRole, Stint, SixesMatchStats, SixesRatingRow, SixesProfile, SixesSampleStatus, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
+  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, SixesMatches, StoredRole, Stint, SixesMatchStats, SixesRatingRow, SixesProfile, SixesSampleStatus, SixesBoardRow, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
   RglTeamPage,
   RglTeamSeason,
   RglTeamHistory,
@@ -1589,6 +1589,13 @@ export const mockApi: Api = {
   getSixesSeason: () => delay(sixesSeason53 as unknown as SixesSeason),
   // The mock plays both, so the tab menus can be seen without setup.
   getSixesMatches: () => delay(sixesMatches53 as unknown as SixesMatches),
+  // A 6v6 board from the mock 6v6 match's players, ratings spread around 1.00.
+  getSixesBoard: (role: string) =>
+    delay<SixesBoardRow[]>(
+      FIXTURES[0].players
+        .map((p, i) => ({ accountId: p.accountId, name: p.name, games: 3 + ((p.accountId + role.length) % 12), average: Math.round((1.35 - i * 0.04) * 100) / 100, best: Math.round((1.7 - i * 0.03) * 100) / 100 }))
+        .slice(0, 12),
+    ),
   // The 6v6 league sample, part way through, off until started.
   getSixesSample: () => delay<SixesSampleStatus>({ ...mockSixesSample }),
   setSixesSample: (on: boolean) => {

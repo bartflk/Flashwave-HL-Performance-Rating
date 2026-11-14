@@ -831,6 +831,12 @@ pub async fn get_sixes_profile(state: State<'_, AppState>) -> CmdResult<hl_inges
     Ok(hl_ingest::sixes_rating::profile(&state.db, me.account_id()).await?)
 }
 
+/// The 6v6 Players board for one role or off-class (the 6v6 plan, P7).
+#[tauri::command]
+pub async fn get_sixes_board(state: State<'_, AppState>, role: String) -> CmdResult<Vec<hl_ingest::sixes_rating::BoardRow>> {
+    Ok(hl_ingest::sixes_rating::board(&state.db, &role).await?)
+}
+
 /// Where the 6v6 league sample stands (the 6v6 plan, P5).
 #[tauri::command]
 pub async fn get_sixes_sample(state: State<'_, AppState>) -> CmdResult<hl_ingest::sixes_sample::Status> {

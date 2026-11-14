@@ -16,6 +16,7 @@ import { SixesMatches } from "./SixesMatches";
 import { SixesTeam, SixesTeamsList } from "./SixesTeams";
 import { SixesSeasons } from "./SixesSeasons";
 import { SixesSample } from "./SixesSample";
+import { SixesPlayers } from "./SixesPlayers";
 import { NewsList, NewsReader } from "../etf2l/News";
 import { RecruitmentPage, RecruitPostPage, type Kind } from "../etf2l/Recruitment";
 import type { RecruitPost } from "../../api/types";
@@ -36,7 +37,7 @@ export function SixesPage() {
   const swiss = useMemo(() => (s?.divisions ?? []).filter((d) => d.system === "swiss"), [s]);
   // The sections built so far: the season's tables, and its matches by week
   // (the 6v6 plan, P2). The rest of the menu waits for its step.
-  type Section = "season" | "matches" | "teams" | "seasons" | "news" | "recruitment";
+  type Section = "season" | "matches" | "teams" | "seasons" | "players" | "news" | "recruitment";
   const [section, setSection] = useState<Section>("season");
   // A page opened over the section: a team (from a table, a match or the
   // Teams list), a news post, or a recruitment post.
@@ -70,13 +71,9 @@ export function SixesPage() {
             {tab("matches", t("Matches"))}
             {tab("teams", t("Teams"))}
             {tab("seasons", t("Seasons"))}
+            {tab("players", t("Players"))}
             {tab("news", t("News"))}
             {tab("recruitment", t("Recruitment"))}
-            {[t("Players")].map((x) => (
-              <button key={x} disabled title={t("Coming in 6v6")}>
-                {x}
-              </button>
-            ))}
           </nav>
         </div>
         <span className="sx-proto" data-fit="" title={t("6v6 is in preview: it ships once its rating is ready")}>
@@ -117,6 +114,8 @@ export function SixesPage() {
               <>
                 <RecruitmentPage format="sixes" onOpen={(p, kind) => setRecruit({ p, kind })} />
               </>
+            ) : section === "players" ? (
+              <SixesPlayers />
             ) : section === "seasons" ? (
               <SixesSeasons onTeam={setTeamId} />
             ) : section === "teams" ? (
@@ -214,7 +213,7 @@ export function SixesPage() {
                 </li>
                 <li>
                   <strong>{t("The rest of this tab")}</strong>
-                  <span className="muted">{t("Player pages with 6v6 careers, from the 6v6 league sample.")}</span>
+                  <span className="muted">{t("6v6 player pages with seasons and teams, from the 6v6 league sample.")}</span>
                 </li>
               </ul>
             </section>

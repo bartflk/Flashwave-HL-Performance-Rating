@@ -275,6 +275,40 @@ pub struct SixesProfile {
     pub seasons: Vec<SeasonLine>,
 }
 
+/// One row of the 6v6 Players board.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct BoardRow {
+    pub account_id: u32,
+    pub name: Option<String>,
+    pub games: i64,
+    pub average: f64,
+    pub best: f64,
+}
+
+/// Games a player needs in a role to be on its board.
+pub const BOARD_MIN_GAMES: i64 = 3;
+
+/// The 6v6 Players board for one role or off-class (the 6v6 plan, P7): the
+/// best average preview ratings over everyone rated -- the players in your
+/// 6v6 logs and, once it is downloading, the whole league sample. Names are
+/// ETF2L's where a stored lineup has them, else the latest a log gave.
+pub async fn board(db: &hl_db::Db, role: &str) -> Result<Vec<BoardRow>> {
+    let rows = db.sixes_board(&model_version(), role, BOARD_MIN_GAMES, 100).await?;
+    let etf2l = db.etf2l_names().await?;
+    let logs = db.log_names().await?;
+    Ok(rows
+        .into_iter()
+        .map(|(a, games, average, best)| BoardRow {
+            account_id: a,
+            name: etf2l.get(&a).cloned().or_else(|| logs.get(&a).and_then(|n| n.first().cloned())),
+            games,
+            average: (average * 100.0).round() / 100.0,
+            best: (best * 100.0).round() / 100.0,
+        })
+        .collect())
+}
+
 /// The owner's 6v6 profile beyond their ratings by role (the 6v6 plan, P7):
 /// their best games by the preview rating (ten minutes or more in a main
 /// role), and their officials by season and division.

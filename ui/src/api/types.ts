@@ -563,6 +563,15 @@ export interface SixesMatchStats {
   medics: SixesMedicStats[];
 }
 
+/** One row of the 6v6 Players board (the 6v6 plan, P7). */
+export interface SixesBoardRow {
+  accountId: number;
+  name: string | null;
+  games: number;
+  average: number;
+  best: number;
+}
+
 /** Where the 6v6 league sample stands (the 6v6 plan, P5). */
 export interface SixesSampleStatus {
   enabled: boolean;

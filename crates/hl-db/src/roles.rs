@@ -123,6 +123,25 @@ impl Db {
         Ok(())
     }
 
+    /// The best players in one 6v6 role or off-class by their average
+    /// rating, with at least `min_games` rated: `(account, games, average,
+    /// best)`, best first (the 6v6 plan, P7: the Players board).
+    pub async fn sixes_board(&self, version: &str, role: &str, min_games: i64, limit: i64) -> Result<Vec<(u32, i64, f64, f64)>> {
+        let rows: Vec<(i64, i64, f64, f64)> = sqlx::query_as(
+            "SELECT account_id, COUNT(*), AVG(rating), MAX(rating) FROM sixes_rating
+              WHERE model_version = ?1 AND role = ?2
+              GROUP BY account_id HAVING COUNT(*) >= ?3
+              ORDER BY AVG(rating) DESC, COUNT(*) DESC, account_id LIMIT ?4",
+        )
+        .bind(version)
+        .bind(role)
+        .bind(min_games)
+        .bind(limit)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows.into_iter().map(|(a, n, avg, best)| (a as u32, n, avg, best)).collect())
+    }
+
     /// One log's 6v6 ratings, or one player's, of a model version.
     pub async fn sixes_ratings(&self, version: &str, log_id: Option<i64>, account: Option<u32>) -> Result<Vec<SixesRatingRow>> {
         let rows = sqlx::query(
@@ -153,6 +172,18 @@ impl Db {
 #[cfg(test)]
 mod tests {
     use crate::Db;
+
+    #[tokio::test]
+    async fn the_board_ranks_a_role_by_average_rating_with_enough_games() {
+        let db = Db::connect_in_memory().await.unwrap();
+        let row = |log: i64, acc: u32, role: &str, r: f64| (log, acc, role.to_string(), r, 50.0, 20.0, "[]".to_string());
+        db.replace_sixes_ratings("s0", &[row(1, 7, "pocket", 1.2), row(2, 7, "pocket", 1.0), row(1, 8, "pocket", 1.5), row(2, 9, "pocket", 0.9), row(3, 9, "pocket", 0.9), row(1, 7, "roamer", 2.0)])
+            .await
+            .unwrap();
+        let b = db.sixes_board("s0", "pocket", 2, 10).await.unwrap();
+        assert_eq!(b.iter().map(|x| (x.0, x.1)).collect::<Vec<_>>(), vec![(7, 2), (9, 2)], "8 has one game; the roamer game is another role");
+        assert!((b[0].2 - 1.1).abs() < 1e-9 && (b[0].3 - 1.2).abs() < 1e-9);
+    }
 
     #[tokio::test]
     async fn a_role_set_by_hand_outlasts_the_pass() {
