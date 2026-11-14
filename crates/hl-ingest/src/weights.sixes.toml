@@ -5,7 +5,8 @@
 #
 # Components not measured yet are left out and the rest scaled up, the same
 # rule as a Highlander component a log did not record:
-#   round_impact      needs a 6v6 round-win table, from the league sample
+#   round_impact      until 6v6's round-win table is measured on the league
+#                     sample's raw logs (300 rounds): then it counts, by itself
 #   space, forces     need an agreed definition (questions 17 and the reviewers)
 #   opening           first kills of a fight: needs every log's raw log
 #   untraded_deaths   needs every log's raw log

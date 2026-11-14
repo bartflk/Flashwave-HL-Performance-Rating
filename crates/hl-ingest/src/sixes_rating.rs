@@ -229,10 +229,30 @@ fn rate(perfs: &[Perf]) -> Vec<SixesRating> {
 /// some (the 6v6 plan, P5): the owner's games are then read against the
 /// league, not only against the players in them.
 pub async fn rate_all(db: &hl_db::Db) -> Result<usize> {
+    // 6v6's round-win table, once measured on the league sample: each
+    // performance then has its round impact, half of most roles' weight.
+    let table: Option<crate::sixes_round_win::WinTable> =
+        db.get_setting(crate::sixes_round_win::SETTING).await?.and_then(|s| serde_json::from_str(&s).ok());
+    let sample_raws: HashMap<i64, Vec<u8>> = if table.is_some() { db.sixes_league_raws().await?.into_iter().collect() } else { HashMap::new() };
     let mut perfs = Vec::new();
     for (log_id, body) in db.sixes_log_jsons().await?.into_iter().chain(db.sixes_league_jsons().await?) {
         let Ok(v) = serde_json::from_str::<Value>(&body) else { continue };
-        perfs.extend(perfs_of(log_id, &v));
+        let mut these = perfs_of(log_id, &v);
+        if let Some(t) = &table {
+            let zip = match sample_raws.get(&log_id) {
+                Some(z) => Some(z.clone()),
+                None => db.rawlog(log_id).await?,
+            };
+            if let Some(raw) = zip.and_then(|z| crate::rawlog::unzip(&z).ok()).map(|t| crate::rawlog::parse(&t)) {
+                let impact = crate::sixes_round_win::impacts(&raw, t);
+                for p in these.iter_mut().filter(|p| !p.role.starts_with("off:")) {
+                    if let Some(x) = impact.get(&p.account_id) {
+                        p.values.insert("round_impact", x / p.minutes.max(1.0) * 10.0);
+                    }
+                }
+            }
+        }
+        perfs.extend(these);
     }
     let ratings = rate(&perfs);
     let rows: Vec<(i64, u32, String, f64, f64, f64, String)> = ratings

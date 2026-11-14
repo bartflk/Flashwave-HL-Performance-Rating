@@ -604,6 +604,7 @@ mod frozen_migrations {
         ("0048_formats.sql", 0xf639046bf5a554b8),
         ("0049_sixes_rating.sql", 0x95ee17c8470ff125),
         ("0050_sixes_sample.sql", 0xfd439bd36b2c4402),
+        ("0051_sixes_sample_raw.sql", 0x2c85488106f7da6e),
     ];
 
     fn fnv1a(bytes: &[u8]) -> u64 {

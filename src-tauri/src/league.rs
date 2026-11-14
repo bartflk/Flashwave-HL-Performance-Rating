@@ -171,6 +171,10 @@ pub fn spawn_sixes(db: Db, sources: Arc<Sources>, busy: Arc<AtomicBool>) {
                         tracing::debug!(log_id, "6v6 sample log not on drops.tf");
                         DROPS_GAP
                     }
+                    Ok(hl_ingest::sixes_sample::Step::Raw { .. }) => {
+                        since_rating += 1;
+                        DROPS_GAP
+                    }
                     Ok(hl_ingest::sixes_sample::Step::Failed { what }) => {
                         tracing::warn!(%what, "6v6 league sample step failed");
                         FAILED_GAP
@@ -186,6 +190,12 @@ pub fn spawn_sixes(db: Db, sources: Arc<Sources>, busy: Arc<AtomicBool>) {
             if since_rating >= 200 || (since_rating > 0 && gap == DONE_GAP) {
                 since_rating = 0;
                 if !busy.load(Ordering::Acquire) {
+                    // The round-win table first, once there are enough rounds.
+                    match hl_ingest::sixes_sample::measure_round_win(&db).await {
+                        Ok(Some(t)) => tracing::info!(rounds = t.rounds, kills = t.kills, "6v6 round-win table measured"),
+                        Ok(None) => {}
+                        Err(e) => tracing::warn!(error = %format!("{e:#}"), "6v6 round-win table failed"),
+                    }
                     match hl_ingest::sixes_rating::rate_all(&db).await {
                         Ok(n) => tracing::info!(ratings = n, "6v6 preview rebuilt on the league sample"),
                         Err(e) => tracing::warn!(error = %format!("{e:#}"), "6v6 preview rating failed"),

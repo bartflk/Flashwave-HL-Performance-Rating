@@ -54,6 +54,7 @@ pub enum Step {
     Discovered { listed: usize, competitions: usize },
     Json { log_id: i64 },
     Missing { log_id: i64 },
+    Raw { log_id: i64, found: bool },
     Failed { what: String },
     Done,
 }
@@ -116,7 +117,17 @@ pub async fn step(db: &Db, sources: &Sources) -> Result<Step> {
             }
         }
     }
-    let Some(log_id) = db.sixes_league_todo(1, MAX_ATTEMPTS).await?.first().copied() else { return Ok(Step::Done) };
+    let Some(log_id) = db.sixes_league_todo(1, MAX_ATTEMPTS).await?.first().copied() else {
+        // Then each log's raw server log, for the round-win table (P6).
+        let Some(log_id) = db.sixes_league_raw_todo(1).await?.first().copied() else { return Ok(Step::Done) };
+        return Ok(match sources.drops_rawlog(log_id).await {
+            Ok(found) => {
+                db.put_sixes_league_raw(log_id, found.as_deref()).await?;
+                Step::Raw { log_id, found: found.is_some() }
+            }
+            Err(e) => Step::Failed { what: format!("drops.tf raw log: {e:#}") },
+        });
+    };
     match sources.drops_log(log_id).await {
         Ok(Some(body)) => {
             db.put_sixes_league_json(log_id, &body, crate::sources::DROPS).await?;
@@ -129,6 +140,20 @@ pub async fn step(db: &Db, sources: &Sources) -> Result<Step> {
         // drops.tf not answering is not the log's fault: no attempt spent.
         Err(e) => Ok(Step::Failed { what: format!("drops.tf: {e:#}") }),
     }
+}
+
+/// Measure 6v6's round-win table on the sample's raw logs and keep it;
+/// `None` (and nothing kept) until there are enough rounds.
+pub async fn measure_round_win(db: &Db) -> Result<Option<crate::sixes_round_win::WinTable>> {
+    let raws: Vec<crate::rawlog::RawLog> = db
+        .sixes_league_raws()
+        .await?
+        .into_iter()
+        .filter_map(|(_, zip)| crate::rawlog::unzip(&zip).ok().map(|t| crate::rawlog::parse(&t)))
+        .collect();
+    let Some(table) = crate::sixes_round_win::measure(raws.iter()) else { return Ok(None) };
+    db.set_setting(crate::sixes_round_win::SETTING, &serde_json::to_string(&table)?).await?;
+    Ok(Some(table))
 }
 
 /// Where the 6v6 sample stands, for the ETF2L tab in 6v6.

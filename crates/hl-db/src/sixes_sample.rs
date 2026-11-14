@@ -86,6 +86,33 @@ impl Db {
         Ok(SixesSampleCounts { listed: r.0, downloaded: r.1, missing: r.2, oldest: r.3, newest: r.4 })
     }
 
+    /// Downloaded logs whose raw log is not tried yet, newest first.
+    pub async fn sixes_league_raw_todo(&self, limit: i64) -> Result<Vec<i64>> {
+        Ok(sqlx::query_scalar(
+            "SELECT log_id FROM sixes_league_log WHERE json_source IS NOT NULL AND raw_state IS NULL
+              ORDER BY played_at DESC, log_id DESC LIMIT ?1",
+        )
+        .bind(limit)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    /// A raw log, or that there is none to have.
+    pub async fn put_sixes_league_raw(&self, log_id: i64, zip: Option<&[u8]>) -> Result<()> {
+        sqlx::query("UPDATE sixes_league_log SET raw = ?2, raw_state = ?3 WHERE log_id = ?1")
+            .bind(log_id)
+            .bind(zip)
+            .bind(if zip.is_some() { "ok" } else { "missing" })
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
+
+    /// Every stored sample raw log, zipped, by log.
+    pub async fn sixes_league_raws(&self) -> Result<Vec<(i64, Vec<u8>)>> {
+        Ok(sqlx::query_as("SELECT log_id, raw FROM sixes_league_log WHERE raw IS NOT NULL").fetch_all(self.pool()).await?)
+    }
+
     /// The oldest and newest listed, to list only what is new next time.
     pub async fn sixes_league_span(&self) -> Result<(i64, Option<i64>, Option<i64>)> {
         Ok(sqlx::query_as("SELECT COUNT(*), MIN(played_at), MAX(played_at) FROM sixes_league_log").fetch_one(self.pool()).await?)
@@ -121,5 +148,10 @@ mod tests {
         let c = db.sixes_league_counts(3).await.unwrap();
         assert_eq!((c.listed, c.downloaded, c.missing), (2, 1, 1));
         assert_eq!(db.sixes_league_jsons().await.unwrap(), vec![(2, "{}".to_string())]);
+        // Its raw log next, once its JSON is in.
+        assert_eq!(db.sixes_league_raw_todo(10).await.unwrap(), vec![2]);
+        db.put_sixes_league_raw(2, Some(b"zip")).await.unwrap();
+        assert!(db.sixes_league_raw_todo(10).await.unwrap().is_empty());
+        assert_eq!(db.sixes_league_raws().await.unwrap(), vec![(2, b"zip".to_vec())]);
     }
 }
