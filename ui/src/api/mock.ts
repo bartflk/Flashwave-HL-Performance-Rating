@@ -84,7 +84,7 @@ import type {
   RglSeasonCard,
   RglTeamHit,
   RglSeason,
-  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, SixesMatches, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
+  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, SixesMatches, StoredRole, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
   RglTeamPage,
   RglTeamSeason,
   RglTeamHistory,
@@ -1554,6 +1554,22 @@ export const mockApi: Api = {
   getSixesSeason: () => delay(sixesSeason53 as unknown as SixesSeason),
   // The mock plays both, so the tab menus can be seen without setup.
   getSixesMatches: () => delay(sixesMatches53 as unknown as SixesMatches),
+  // A 6v6 match's roles, in the shape the pass stores them: per team, the
+  // first Soldier and Scout healed most.
+  getMatchRoles: (logId: number) => {
+    const row = FAKE_MATCHES.find((m) => m.logId === logId);
+    if (row?.format !== "sixes") return delay<StoredRole[]>([]);
+    const players = FIXTURES[0].players;
+    const roles: StoredRole[] = [];
+    for (const team of ["Red", "Blue"]) {
+      const side = players.filter((p) => p.team === team);
+      side.forEach((p, i) => {
+        const role = ["pocket", "roamer", "pocket_scout", "flank_scout", "demoman", "medic"][i];
+        if (role) roles.push({ accountId: p.accountId, role, method: i < 4 ? "healspread" : "class", confidence: i < 4 ? 0.31 : null, seconds: p.timeS, byHand: false });
+      });
+    }
+    return delay(roles);
+  },
   formatsPlayed: () => delay<FormatsPlayed>({ formats: [...mockFormats], sixesEnabled: true }),
   setFormatsPlayed: (formats: StoredFormat[]) => {
     const kept = (["highlander", "sixes"] as const).filter((f) => formats.includes(f));

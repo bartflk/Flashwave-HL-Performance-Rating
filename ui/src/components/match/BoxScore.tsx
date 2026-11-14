@@ -3,7 +3,7 @@ import { RatingValue } from "../RatingValue";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { ClassStat, LogFlags, MatchDetail, PlayerPing, PlayerRow } from "../../api/types";
+import type { ClassStat, LogFlags, MatchDetail, PlayerPing, PlayerRow, StoredRole } from "../../api/types";
 import { clock, rating, teamLabel } from "../../lib/format";
 import { ClassIcon } from "../ClassIcon";
 import { t as tr, tx, k } from "../../lib/i18n";
@@ -16,7 +16,7 @@ import { tierOf, useStatScales } from "../../lib/tiers";
 import { TierPill } from "../TierPill";
 import { ColumnPicker, useColumns } from "../ColumnPicker";
 import { RankBySwitch, useRankBy } from "../RankBy";
-import { offClassTime } from "../../lib/gameformat";
+import { offClassTime, roleLabel } from "../../lib/gameformat";
 
 const CLASS_ORDER = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
 
@@ -189,6 +189,13 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
       (c.key !== "as" || flags.airshots),
   );
   const picker = useColumns("scoreboard", available);
+  // 6v6 roles, by player (the 6v6 plan, P3).
+  const roleQ = useQuery({ queryKey: ["match_roles", d.logId], queryFn: () => api.getMatchRoles(d.logId), enabled: d.format === "sixes", staleTime: 5 * 60_000 });
+  const roles = useMemo(() => {
+    const m = new Map<number, StoredRole>();
+    for (const r of roleQ.data ?? []) if (roleLabel(r.role)) m.set(r.accountId, r);
+    return m;
+  }, [roleQ.data]);
   const cols = available.filter(picker.shown);
   const scales = useStatScales().data;
   const [sort, setSort] = useState<{ key: Key; desc: boolean }>({ key: "team", desc: false });
@@ -271,6 +278,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
                     {p.name}
                   </span>
                   <DivTag divisions={divisions} accountId={p.accountId} />
+                  {d.format === "sixes" && <RoleTag role={roles.get(p.accountId)} />}
                   {p.isMe && <span className="you-tag">{tr("you")}</span>}
                 </td>
                 <td className="sb-classes">
@@ -329,6 +337,23 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
  * Pyro, Heavy, Engineer, Sniper or Spy, each class in the tooltip (the 6v6
  * plan, P1). The rating will rate each off-class on its own (question 6).
  */
+/** A 6v6 player's role beside their name (the 6v6 plan, P3), with how it
+ *  was told: the Medic's heals, or set by hand. */
+function RoleTag({ role }: { role: StoredRole | undefined }) {
+  const l = role ? roleLabel(role.role) : null;
+  if (!role || !l) return null;
+  const how = role.byHand
+    ? tr("Set by hand")
+    : role.confidence !== null
+      ? tr("From the Medic's heals; {0}% clear", { "0": Math.round(role.confidence * 100) })
+      : "";
+  return (
+    <span className={role.confidence !== null && role.confidence < 0.1 && !role.byHand ? "role-tag unsure" : "role-tag"} title={[l.long, how].filter(Boolean).join("\n")}>
+      {l.short}
+    </span>
+  );
+}
+
 function OffClass({ p }: { p: PlayerRow }) {
   const off = offClassTime(p.classes, p.mainClass);
   if (off.length === 0) return null;

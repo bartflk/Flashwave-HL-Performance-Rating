@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { StoredFormat } from "../api/types";
+import { t } from "./i18n";
 
 /**
  * Which format a tab shows: Highlander or 6v6 (the 6v6 plan, P0).
@@ -108,6 +109,22 @@ export function midfights(d: { format: string | null; map: string | null; rounds
   const out = { Red: 0, Blue: 0 };
   for (const r of d.rounds) if (r.firstcap) out[r.firstcap] += 1;
   return out.Red + out.Blue > 0 ? out : null;
+}
+
+/** A 6v6 role's short label for the scoreboard, translated, or null for an off-class. */
+export function roleLabel(role: string): { short: string; long: string } | null {
+  switch (role) {
+    case "pocket":
+      return { short: t("Pocket"), long: t("Pocket Soldier: stays with the Medic") };
+    case "roamer":
+      return { short: t("Roamer"), long: t("Roamer: the Soldier who plays ahead") };
+    case "pocket_scout":
+      return { short: t("Combo"), long: t("Pocket Scout: plays with the combo") };
+    case "flank_scout":
+      return { short: t("Flank"), long: t("Flank Scout: plays off the side") };
+    default:
+      return null;
+  }
 }
 
 /** The five classes outside 6v6's six: brought out for a moment, then swapped back. */

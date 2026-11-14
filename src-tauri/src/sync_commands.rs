@@ -357,6 +357,12 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
             // its seasons' teams, results and lineups, and the rosters that
             // find a 6v6 official trends.tf did not link.
             if db.formats_played().await.is_ok_and(|f| f.contains(&hl_core::GameFormat::Sixes)) {
+                // Each 6v6 log's roles (P3): from its own JSON, no request.
+                match hl_ingest::roles::refresh(&db, 2000).await {
+                    Ok(n) if n > 0 => tracing::info!(logs = n, "6v6 roles worked out"),
+                    Ok(_) => {}
+                    Err(e) => report.problems.push(format!("6v6 roles: {e:#}")),
+                }
                 stage("Reading ETF2L's 6v6 seasons");
                 match hl_ingest::leagues::fetch_sixes(&db, &sources, hl_ingest::leagues::DETAILS_PER_SYNC / 2, |_, _| {}).await {
                     Ok(s) => {
@@ -784,6 +790,13 @@ pub async fn get_model_shift(state: State<'_, AppState>) -> CmdResult<Option<Mod
 #[tauri::command]
 pub async fn get_sixes_season(state: State<'_, AppState>) -> CmdResult<Option<hl_ingest::sixes::SixesSeason>> {
     Ok(hl_ingest::sixes::current_season(&state.sources).await?)
+}
+
+/// A 6v6 log's roles: pocket, roamer, flank and pocket Scout, off-class
+/// time (the 6v6 plan, P3).
+#[tauri::command]
+pub async fn get_match_roles(state: State<'_, AppState>, log_id: i64) -> CmdResult<Vec<hl_db::StoredRole>> {
+    Ok(state.db.roles_of_log(log_id).await?)
 }
 
 /// The current ETF2L 6v6 season's officials by week (the 6v6 plan, P2).

@@ -896,6 +896,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* A 6v6 player's role beside their name (the 6v6 plan, P3). */
+.role-tag {
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font: 700 var(--fs-micro) var(--font-display);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.role-tag.unsure { border-style: dashed; }
+
 /* 6v6's off-class time beside a player's class icons (the 6v6 plan, P1). */
 .sb-off {
   margin-left: 6px;

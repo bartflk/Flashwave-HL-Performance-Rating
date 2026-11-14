@@ -33,6 +33,8 @@ pub(crate) const OWNER_COVERED: &str = "SELECT i.log_id FROM log_index i JOIN lo
       SELECT i.log_id FROM log_index i JOIN log_raw x ON x.log_id = i.log_id
        WHERE i.superseded_by IS NULL AND COALESCE(i.format_override, i.format) = 'highlander')";
 mod context;
+mod roles;
+pub use roles::StoredRole;
 mod demos;
 mod diagnostics;
 mod fights;

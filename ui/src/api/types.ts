@@ -509,6 +509,18 @@ export interface SixesMatches {
   matches: SixesMatch[];
 }
 
+/** One player's role in a 6v6 log (the 6v6 plan, P3). */
+export interface StoredRole {
+  accountId: number;
+  /** "pocket", "roamer", "pocket_scout", "flank_scout", "demoman", "medic" or "off:<class>". */
+  role: string;
+  /** "healspread", "class" or "hand". */
+  method: string;
+  confidence: number | null;
+  seconds: number | null;
+  byHand: boolean;
+}
+
 /** A format as the backend stores it (the 6v6 plan, P0). */
 export type StoredFormat = "highlander" | "sixes";
 
