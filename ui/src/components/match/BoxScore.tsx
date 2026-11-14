@@ -16,6 +16,7 @@ import { tierOf, useStatScales } from "../../lib/tiers";
 import { TierPill } from "../TierPill";
 import { ColumnPicker, useColumns } from "../ColumnPicker";
 import { RankBySwitch, useRankBy } from "../RankBy";
+import { offClassTime } from "../../lib/gameformat";
 
 const CLASS_ORDER = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
 
@@ -274,6 +275,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
                 </td>
                 <td className="sb-classes">
                   <ClassCard p={p} flags={flags} />
+                  {d.format === "sixes" && <OffClass p={p} />}
                 </td>
                 {cols.map((c) => {
                   const v = c.value(p, flags);
@@ -322,6 +324,22 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
  * per class, airshots beside Soldier and Demoman, backstabs beside Spy. The
  * scoreboard keeps one column fewer for each.
  */
+/**
+ * 6v6's off-class time, beside the class icons: how long a player spent on
+ * Pyro, Heavy, Engineer, Sniper or Spy, each class in the tooltip (the 6v6
+ * plan, P1). The rating will rate each off-class on its own (question 6).
+ */
+function OffClass({ p }: { p: PlayerRow }) {
+  const off = offClassTime(p.classes, p.mainClass);
+  if (off.length === 0) return null;
+  const total = off.reduce((a, [, s]) => a + s, 0);
+  return (
+    <span className="sb-off" title={off.map(([c, s]) => `${classLabel(c)} ${clock(s)}`).join("\n")}>
+      {tr("off {0}", { "0": clock(total) })}
+    </span>
+  );
+}
+
 function ClassCard({ p, flags }: { p: PlayerRow; flags: Flags }) {
   const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
   const box = useRef<HTMLSpanElement>(null);

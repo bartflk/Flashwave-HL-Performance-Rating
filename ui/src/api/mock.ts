@@ -803,7 +803,18 @@ export const mockApi: Api = {
     const base = exact ?? { ...FIXTURES[0], logId, standIn: logId === FAKE_MATCHES[1]?.logId ? "more.tf" : null };
     // A made-up 6v6 row opens as 6v6 on its own map, with midfights (P1).
     const d = !exact && row?.format === "sixes"
-      ? { ...base, format: "sixes", map: row.map, title: row.title, rounds: base.rounds.map((r, i) => ({ ...r, firstcap: (i * 7 + logId) % 3 === 0 ? ("Blue" as const) : ("Red" as const) })) }
+      ? {
+          ...base,
+          format: "sixes",
+          map: row.map,
+          title: row.title,
+          rounds: base.rounds.map((r, i) => ({ ...r, firstcap: (i * 7 + logId) % 3 === 0 ? ("Blue" as const) : ("Red" as const) })),
+          // Two players brought out an off-class for a moment.
+          players: base.players.map((p, i) =>
+            i === 1 ? { ...p, mainClass: "soldier", classes: [["soldier", 1500], ["engineer", 140], ["heavy", 95]] as Array<[string, number]> }
+            : i === 4 ? { ...p, mainClass: "scout", classes: [["scout", 1610], ["sniper", 75]] as Array<[string, number]> }
+            : p),
+        }
       : base;
     // Fixtures stored before accuracy was read carry none: a spread from
     // the player's id, so the column and its colours can be seen.

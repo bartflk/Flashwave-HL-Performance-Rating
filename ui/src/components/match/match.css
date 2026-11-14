@@ -896,6 +896,16 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 6v6's off-class time beside a player's class icons (the 6v6 plan, P1). */
+.sb-off {
+  margin-left: 6px;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 /* 6v6 on 5CP: the midfight count under the rounds' heading, and the team
    that won each round's midfight (the 6v6 plan, P1). */
 .mid-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin: 0 0 10px; font-size: var(--fs-ui); font-variant-numeric: tabular-nums; }

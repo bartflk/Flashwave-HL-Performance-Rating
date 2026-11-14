@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { drawn, mapMode, midfights, tabFormat, type FormatsPlayed } from "../src/lib/gameformat.ts";
+import { drawn, mapMode, midfights, offClassTime, tabFormat, type FormatsPlayed } from "../src/lib/gameformat.ts";
 
 const both: FormatsPlayed = { formats: ["hl", "6s"], sixesEnabled: true, multi: true };
 const hlOnly: FormatsPlayed = { formats: ["hl"], sixesEnabled: false, multi: false };
@@ -24,4 +24,11 @@ test("midfights count who capped mid first, on 6v6 5CP only", () => {
 test("maps' modes and drawn maps", () => {
   assert.deepEqual(["cp_gullywash_f9", "koth_bagel_rc13", "pl_upward"].map(mapMode), ["5cp", "koth", "other"]);
   assert.equal(drawn({ mapsPlayed: 8, mapsWon: 6, mapsLost: 1 }), 1);
+});
+
+test("off-class time is a 6v6 main class's time on the other five", () => {
+  const classes: Array<[string, number]> = [["soldier", 1500], ["heavy", 90], ["engineer", 130], ["scout", 20]];
+  assert.deepEqual(offClassTime(classes, "soldier"), [["engineer", 130], ["heavy", 90]]);
+  assert.deepEqual(offClassTime([["sniper", 1600], ["scout", 40]], "sniper"), [], "a Sniper all map is not off-classing");
+  assert.deepEqual(offClassTime(classes, null), []);
 });

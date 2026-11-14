@@ -110,6 +110,19 @@ export function midfights(d: { format: string | null; map: string | null; rounds
   return out.Red + out.Blue > 0 ? out : null;
 }
 
+/** The five classes outside 6v6's six: brought out for a moment, then swapped back. */
+export const OFF_CLASSES = ["pyro", "heavy", "engineer", "sniper", "spy"] as const;
+
+/**
+ * A 6v6 player's time on off-classes, longest first, when their main class
+ * is one of the six (a Sniper who played the whole map is not "off" it:
+ * question 19). Empty for everyone else.
+ */
+export function offClassTime(classes: Array<[string, number]>, main: string | null): Array<[string, number]> {
+  if (main === null || (OFF_CLASSES as readonly string[]).includes(main)) return [];
+  return classes.filter(([c, s]) => (OFF_CLASSES as readonly string[]).includes(c) && s > 0).sort((a, b) => b[1] - a[1]);
+}
+
 /** Maps neither won nor lost: draws (a 5CP map level at the time limit). */
 export function drawn(r: { mapsPlayed: number; mapsWon: number; mapsLost: number }): number {
   return Math.max(0, r.mapsPlayed - r.mapsWon - r.mapsLost);
