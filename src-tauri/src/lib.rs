@@ -191,6 +191,7 @@ pub fn run() {
             sync_commands::get_profile,
             sync_commands::get_profile_sixes,
             sync_commands::get_activity,
+            sync_commands::get_etf2l_bans,
             sync_commands::set_activity_verbose,
             sync_commands::list_seasons,
             sync_commands::get_owner,

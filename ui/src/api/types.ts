@@ -3521,3 +3521,12 @@ export interface ActivityView {
   sites: ActivitySite[];
   verbose: boolean;
 }
+
+/** An active ETF2L ban (hl_ingest::bans). */
+export interface EtfBan {
+  accountId: number;
+  start: number | null;
+  /** null for a permanent ban. */
+  end: number | null;
+  reason: string | null;
+}

@@ -6,6 +6,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { t } from "../lib/i18n";
 import type {
   ActivityView,
+  EtfBan,
   Diagnostics,
   ModelShift,
   StvStage,
@@ -229,6 +230,8 @@ const realApi = {
   /** The activity feed after line `since`, and every site's requests this run. */
   getActivity: (since: number, limit?: number) => invoke<ActivityView>("get_activity", { since, limit: limit ?? null }),
   setActivityVerbose: (on: boolean) => invoke<boolean>("set_activity_verbose", { on }),
+  /** Every active ETF2L ban, read from ETF2L once a day. */
+  getEtf2lBans: () => invoke<EtfBan[]>("get_etf2l_bans"),
   getModelShift: () => invoke<ModelShift | null>("get_model_shift"),
   /** The rating the app runs at startup for a new model: its progress, and its end. */
   onStartupRating: async (h: { onProgress: (p: Progress) => void; onDone: () => void }): Promise<UnlistenFn> => {

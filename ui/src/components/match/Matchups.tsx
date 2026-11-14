@@ -8,6 +8,7 @@ import { goTo } from "../../lib/goto";
 import { DivTag, SideDivisions, useMatchDivisions } from "./Divisions";
 import { PlayerPopCard, nameProps, usePlayerCard } from "../players/PlayerPopCard";
 import { Help, ComponentTip, StatTip } from "../StatTip";
+import { BanTag } from "../BanTag";
 
 /**
  * The nine class matchups: the headline of the match page.
@@ -193,6 +194,7 @@ function SideCell({
   const name = (
     <span className="mu-name" title={side.subs.length ? t("Also played: {0}", { "0": side.subs.join(", ") }) : undefined}>
       {onName ? <span {...nameProps(onName)}>{side.name}</span> : side.name}
+      <BanTag accountId={side.accountId} short />
       <DivTag divisions={divisions} accountId={side.accountId} />
       {side.subs.length > 0 && <span className="sub-tag">+{side.subs.length}</span>}
     </span>

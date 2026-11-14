@@ -15,6 +15,7 @@ import { Loading, Refreshing } from "../Spinner";
 import { SeasonBreakdown } from "./SeasonBreakdown";
 import { StatTip } from "../StatTip";
 import { ColumnPicker, useColumns, type PickerCol } from "../ColumnPicker";
+import { BanTag } from "../BanTag";
 
 /**
  * Season rankings (the MVP research, October 2026): every player of one
@@ -277,6 +278,7 @@ export function SeasonRankings({ season, onTeam }: { season: number; onTeam: (id
                       <button className="linkish" onClick={() => openPlayer(r.accountId)}>
                         {r.name}
                       </button>
+                      <BanTag accountId={r.accountId} short />
                       {!r.eligible && r.rank !== null && (
                         <span className="sr-noaward" title={t("Not eligible for the best of the class: fewer than {0} officials for their own team, or not on a medal team", { "0": v.awardOfficials })}>
                           ·

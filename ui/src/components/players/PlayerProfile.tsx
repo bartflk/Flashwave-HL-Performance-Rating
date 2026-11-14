@@ -23,6 +23,7 @@ import { SortTh, useSort } from "../../lib/sort";
 import { Loading } from "../Spinner";
 import { StatTip } from "../StatTip";
 import { Backdrop } from "../Backdrop";
+import { BanTag } from "../BanTag";
 
 /**
  * A player's profile, HLTV-style (Q35, Flashy; PLAN §26): who they are,
@@ -108,10 +109,13 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
             <BookmarkButton b={{ kind: "player", id: p.accountId, label: p.name, sub: p.highest?.name ?? null }} />
             {p.highest && <DivisionBadge d={p.highest} />}
             {p.etf2lTitle && p.etf2lTitle !== "Player" && <span className="pp-role">{p.etf2lTitle}</span>}
-            {banned && (
+            {banned ? (
               <span className="pp-banned" title={banned.reason ?? undefined}>
                 {banned.end ? t("Banned until {0}", { "0": formatDate(banned.end, true) }) : t("Banned")}
               </span>
+            ) : (
+              // ETF2L's list of every active ban, for a page read before it.
+              <BanTag accountId={p.accountId} />
             )}
           </div>
           {shownAliases.length > 0 && (

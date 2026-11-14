@@ -1176,6 +1176,26 @@ pub async fn get_activity(since: Option<u64>, limit: Option<usize>) -> CmdResult
     })
 }
 
+/// Every active ETF2L ban, for the "Banned" tag beside names (Flashy: "we
+/// need to add etf2l bans and have them applied if they have them active").
+/// Answers from what is stored at once; a list over a day old is read again
+/// in the background, one pass at a time.
+#[tauri::command]
+pub async fn get_etf2l_bans(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::bans::Ban>> {
+    static READING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    let (bans, stale) = hl_ingest::bans::active(&state.db).await?;
+    if stale && !READING.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        let (db, sources) = (state.db.clone(), state.sources.clone());
+        tauri::async_runtime::spawn(async move {
+            if let Err(e) = hl_ingest::bans::refresh(&db, &sources).await {
+                tracing::warn!(error = %e, "ETF2L bans could not be read");
+            }
+            READING.store(false, std::sync::atomic::Ordering::SeqCst);
+        });
+    }
+    Ok(bans)
+}
+
 /// Debug lines into the feed too, or not; for this run.
 #[tauri::command]
 pub async fn set_activity_verbose(on: bool) -> CmdResult<bool> {

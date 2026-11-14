@@ -24,6 +24,7 @@ import { SortTh, useSort } from "../../lib/sort";
 import { FixtureStrength, RosterStrength } from "../match/OpponentStrength";
 import { Loading, Refreshing } from "../Spinner";
 import { Backdrop } from "../Backdrop";
+import { BanTag } from "../BanTag";
 
 /**
  * The league's screens (Q29, and Flashy's UX passes), shown inside the ETF2L
@@ -669,6 +670,7 @@ function TeamOverview({
                 <button className="linkish ts-lineup-name" onClick={() => openPlayer(r.accountId)}>
                   {r.name}
                 </button>
+                <BanTag accountId={r.accountId} short />
                 <RoleChip role={roles.get(r.accountId)} />
               </span>
               <span className="muted">{tx("{0} officials", { "0": s!.officials })}</span>
@@ -769,7 +771,7 @@ function Lineup({ v, roles }: { v: TeamView; roles: Map<number, string> }) {
             {rows.map(({ r, officials, cls, rating: score }) => (
               <tr key={r.accountId} className="teams-row" onClick={() => openPlayer(r.accountId)} title={t("Open {0}'s profile", { "0": r.name })}>
                 <td className="nowrap">
-                  <strong>{r.name}</strong> <RoleChip role={roles.get(r.accountId)} />
+                  <strong>{r.name}</strong> <BanTag accountId={r.accountId} short /> <RoleChip role={roles.get(r.accountId)} />
                 </td>
                 <td className="nowrap">
                   {cls ? (

@@ -140,7 +140,7 @@ import type {
   Teammates,
   TfPathInfo,
   FightsCard,
-  SeasonsView, StvStage, RatingGuide, LeagueSample, LeagueActivity, CatalogueHit, PlayerProfile, PlayerStats, Rankings, LeagueCup, LeagueCupPage, CupResult, MatchDivisions, CareerView, SeasonTile, Podium, TeamHonours, TeamEtf2l, ActivityLine, ActivitySite } from "./types";
+  SeasonsView, StvStage, RatingGuide, LeagueSample, LeagueActivity, CatalogueHit, PlayerProfile, PlayerStats, Rankings, LeagueCup, LeagueCupPage, CupResult, MatchDivisions, CareerView, SeasonTile, Podium, TeamHonours, TeamEtf2l, ActivityLine, ActivitySite, EtfBan } from "./types";
 
 // Starts configured, since setup is not what you are usually iterating on.
 // Append `?setup` to the URL to start from the first-run screen instead.
@@ -2825,6 +2825,12 @@ export const mockApi: Api = {
       verbose: mockActivity.verbose,
     });
   },
+  // Two of the fixtures' players banned, to see the tag: one until a date, one for good.
+  getEtf2lBans: () =>
+    delay<EtfBan[]>([
+      { accountId: 198698486, start: 1790000000, end: 1800000000, reason: "Toxicity" },
+      { accountId: 90819112, start: 1790000000, end: null, reason: "Cheating" },
+    ]),
   setActivityVerbose: (on: boolean) => {
     mockActivity.verbose = on;
     return delay(on);

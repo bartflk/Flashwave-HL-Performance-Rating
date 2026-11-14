@@ -58,6 +58,7 @@ pub mod rgl_stats;
 pub mod roles;
 pub mod sixes;
 pub mod activity;
+pub mod bans;
 pub mod sixes_profile;
 pub mod sixes_rating;
 pub mod sixes_round_win;

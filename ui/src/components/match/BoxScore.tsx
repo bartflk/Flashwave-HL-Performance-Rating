@@ -17,6 +17,7 @@ import { TierPill } from "../TierPill";
 import { ColumnPicker, useColumns } from "../ColumnPicker";
 import { RankBySwitch, useRankBy } from "../RankBy";
 import { offClassTime, roleLabel } from "../../lib/gameformat";
+import { BanTag } from "../BanTag";
 
 const CLASS_ORDER = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
 
@@ -279,6 +280,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
                   <span {...nameProps(card.open({ accountId: p.accountId, name: p.name, cls: p.classes[0]?.[0] ?? null, isMe: p.isMe }))} title={tr("Their card")}>
                     {p.name}
                   </span>
+                  <BanTag accountId={p.accountId} short />
                   <DivTag divisions={divisions} accountId={p.accountId} />
                   {d.format === "sixes" && (p.isMe ? <OwnRole logId={d.logId} role={roles.get(p.accountId)} cls={p.mainClass} /> : <RoleTag role={roles.get(p.accountId)} />)}
                   {p.isMe && <span className="you-tag">{tr("you")}</span>}

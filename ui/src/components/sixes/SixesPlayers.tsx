@@ -6,6 +6,7 @@ import { roleLabel } from "../../lib/gameformat";
 import { classLabel } from "../analysis/common";
 import { ClassIcon } from "../ClassIcon";
 import { Loading } from "../Spinner";
+import { BanTag } from "../BanTag";
 
 const ROLES = ["pocket", "roamer", "pocket_scout", "flank_scout", "demoman", "medic", "off:engineer", "off:heavy", "off:sniper", "off:pyro", "off:spy"];
 const CLASS: Record<string, string> = { pocket: "soldier", roamer: "soldier", pocket_scout: "scout", flank_scout: "scout", demoman: "demoman", medic: "medic" };
@@ -60,6 +61,7 @@ export function SixesPlayers() {
                       <button className="linkish sx-team-link" onClick={() => setPlayer({ id: r.accountId, name: r.name ?? String(r.accountId) })}>
                         {r.name ?? r.accountId}
                       </button>
+                      <BanTag accountId={r.accountId} short />
                     </td>
                     <td className="num muted">{r.games}</td>
                     <td className="num">
