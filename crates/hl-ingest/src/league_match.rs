@@ -96,7 +96,7 @@ pub async fn league_match(db: &Db, match_id: i64) -> Result<Option<LeagueMatch>>
         let name = p.name.filter(|n| !n.trim().is_empty()).or_else(|| names.get(&p.account_id).cloned()).unwrap_or_else(|| p.account_id.to_string());
         let merc = p.team_id.is_none();
         let team_id = p.team_id.or_else(|| sides.get(&(match_id, i64::from(p.account_id))).copied());
-        let joined = if merc { db.later_team(p.account_id, head.time, team_id).await? } else { None };
+        let joined = if merc { db.later_team(p.account_id, head.time, team_id, hl_core::GameFormat::Highlander).await? } else { None };
         players.push(MatchPlayer { account_id: p.account_id, name, team_id, class, rating, merc, joined });
     }
     let meetings = db

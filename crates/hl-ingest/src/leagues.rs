@@ -326,7 +326,7 @@ pub async fn fetch_seasons(
 
     // 3. Match pages: who played, and each map's score.
     let recent = newest.unwrap_or(0) - SEASONS_BACK;
-    for match_id in db.season_matches_without_detail(details, recent).await? {
+    for match_id in db.season_matches_without_detail(details, recent, hl_core::GameFormat::Highlander).await? {
         if !fetch_match_detail(db, sources, match_id).await? {
             out.failed += 1;
             continue;
@@ -343,7 +343,7 @@ type Found = (i64, String, bool, Option<i64>);
 /// Each competition's pool, results and (for a league) table, into the
 /// database. An archived one already held is settled and not asked for again.
 async fn fetch_competitions(db: &Db, sources: &Sources, found: &[Found], newest: Option<i64>, out: &mut FetchSummary, progress: &mut impl FnMut(usize, usize)) -> Result<()> {
-    let held: HashMap<i64, bool> = db.competitions().await?.into_iter().map(|c| (c.competition_id, c.archived)).collect();
+    let held: HashMap<i64, bool> = db.competitions(hl_core::GameFormat::Highlander).await?.into_iter().map(|c| (c.competition_id, c.archived)).collect();
     let todo: Vec<&(i64, String, bool, Option<i64>)> = found.iter().filter(|(id, _, archived, _)| !(*archived && held.get(id) == Some(&true))).collect();
     for (i, (id, name, archived, cup_season)) in todo.iter().enumerate() {
         progress(i, todo.len());
@@ -371,6 +371,7 @@ async fn fetch_competitions(db: &Db, sources: &Sources, found: &[Found], newest:
             name,
             archived: *archived,
             pool: pool.as_deref(),
+            format: hl_core::GameFormat::Highlander,
         })
         .await?;
         out.competitions += 1;
@@ -485,7 +486,7 @@ pub async fn fetch_season(db: &Db, sources: &Sources, season: i64, mut progress:
     }
     let mut each = |done: usize, total: usize| progress(&format!("Reading results, competition {} of {total}", done + 1));
     fetch_competitions(db, sources, &found, Some(season), &mut out, &mut each).await?;
-    let todo = db.season_matches_without_detail_in(season).await?;
+    let todo = db.season_matches_without_detail_in(season, hl_core::GameFormat::Highlander).await?;
     for (i, match_id) in todo.iter().enumerate() {
         progress(&format!("Reading who played, match {} of {}", i + 1, todo.len()));
         if fetch_match_detail(db, sources, *match_id).await? {
@@ -642,12 +643,12 @@ fn seasons_of(comps: &[hl_db::Competition]) -> Vec<SeasonInfo> {
 
 /// One season's division tables, regular season only. `None` picks the newest.
 pub async fn season(db: &Db, season: Option<i64>) -> Result<SeasonView> {
-    let comps = db.competitions().await?;
+    let comps = db.competitions(hl_core::GameFormat::Highlander).await?;
     let seasons = seasons_of(&comps);
     let Some(chosen) = season.and_then(|s| seasons.iter().find(|x| x.season == s)).or(seasons.first()).cloned() else {
         return Ok(SeasonView { seasons, season: None, divisions: Vec::new(), pending_details: 0 });
     };
-    let matches = db.season_matches(Some(chosen.season), None).await?;
+    let matches = db.season_matches(Some(chosen.season), None, hl_core::GameFormat::Highlander).await?;
     // Divisions from the matches, top tier first.
     let mut order: Vec<(i64, String)> = Vec::new();
     for m in matches.iter().filter(|m| m.stage == "regular" && !m.division.is_empty()) {
@@ -688,7 +689,7 @@ pub async fn season(db: &Db, season: Option<i64>) -> Result<SeasonView> {
         divisions.push(DivisionTable { division: div.clone(), teams });
     }
     let recent = db.newest_etf2l_season().await?.unwrap_or(0) - SEASONS_BACK;
-    let pending_details = db.count_season_matches_without_detail(recent).await?.max(0) as usize;
+    let pending_details = db.count_season_matches_without_detail(recent, hl_core::GameFormat::Highlander).await?.max(0) as usize;
     Ok(SeasonView { seasons, season: Some(chosen), divisions, pending_details })
 }
 
@@ -762,9 +763,9 @@ pub struct TeamView {
 
 pub async fn team(db: &Db, team_id: i64) -> Result<Option<TeamView>> {
     let Some((name, country, avatar)) = db.etf2l_team(team_id).await? else { return Ok(None) };
-    let comps = db.competitions().await?;
+    let comps = db.competitions(hl_core::GameFormat::Highlander).await?;
     let pool: Vec<String> = seasons_of(&comps).first().map(|s| s.pool.clone()).unwrap_or_default();
-    let matches = db.season_matches(None, Some(team_id)).await?;
+    let matches = db.season_matches(None, Some(team_id), hl_core::GameFormat::Highlander).await?;
     let map_rows = db.season_maps(Some(team_id)).await?;
     let mut by_match: HashMap<i64, Vec<&hl_db::SeasonMap>> = HashMap::new();
     for r in &map_rows {
@@ -988,7 +989,7 @@ pub async fn league_sides(db: &Db, sources: &Sources, log_id: i64) -> Result<Opt
     let mut best: Option<(usize, i64, i64, i64)> = None; // (players placed, match, red team, blue team)
     // One failure to reach ETF2L ends the asking; the rosters stored are used.
     let mut asking = true;
-    for (match_id, c1, c2, fetched) in db.season_matches_before(at, LEAGUE_LOG_WINDOW_S).await? {
+    for (match_id, c1, c2, fetched) in db.season_matches_before(at, LEAGUE_LOG_WINDOW_S, hl_core::GameFormat::Highlander).await? {
         if !fetched && asking {
             asking = fetch_match_detail(db, sources, match_id).await.is_ok();
         }

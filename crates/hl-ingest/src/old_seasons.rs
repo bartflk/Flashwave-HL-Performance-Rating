@@ -211,9 +211,9 @@ fn pick(
 pub async fn import(db: &Db, sources: &crate::sources::Sources, w: &hl_rating::Weights, dump: &Path, season: i64, mut progress: impl FnMut(&str)) -> Result<Imported> {
     let fetched = crate::leagues::fetch_season(db, sources, season, &mut progress).await?;
     let index = DumpIndex::open(dump).await?;
-    let matches = db.season_matches(Some(season), None).await?;
+    let matches = db.season_matches(Some(season), None, hl_core::GameFormat::Highlander).await?;
     let mut lineups: HashMap<i64, Vec<(i64, Option<i64>)>> = HashMap::new();
-    for (m, account, team) in db.season_lineups(season).await? {
+    for (m, account, team) in db.season_lineups(season, hl_core::GameFormat::Highlander).await? {
         lineups.entry(m).or_default().push((account, team));
     }
     let mut out = Imported { season, competitions: fetched.competitions, matches: matches.len(), ..Default::default() };

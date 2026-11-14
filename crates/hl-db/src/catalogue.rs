@@ -86,7 +86,9 @@ impl Db {
         let rows = sqlx::query(
             "SELECT m.match_id, m.competition_id, c.season, c.season_name, c.name AS comp_name, c.division AS comp_division, c.stage,
                     m.division, m.tier, m.round, m.time, m.clan1_id, m.clan2_id, m.r1, m.r2, m.default_win
-             FROM etf2l_season_match m JOIN etf2l_competition c ON c.competition_id = m.competition_id",
+             FROM etf2l_season_match m JOIN etf2l_competition c ON c.competition_id = m.competition_id
+             -- The player catalogue is Highlander's (the 6v6 plan, P2).
+             WHERE c.format = 'highlander'",
         )
         .fetch_all(self.pool())
         .await?;

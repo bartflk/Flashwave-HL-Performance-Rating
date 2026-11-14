@@ -638,7 +638,7 @@ impl Catalogue {
             final_colours.entry(m).or_default().entry(log).or_default().push((account, colour));
         }
         // ETF2L's own placings, per season and division.
-        let seasons: HashMap<i64, i64> = db.competitions().await?.into_iter().map(|c| (c.competition_id, c.season)).collect();
+        let seasons: HashMap<i64, i64> = db.competitions(hl_core::GameFormat::Highlander).await?.into_iter().map(|c| (c.competition_id, c.season)).collect();
         let mut official_places: HashMap<(i64, String), Vec<(u8, i64)>> = HashMap::new();
         for (competition, _, json) in db.etf2l_raw("tables").await? {
             let Some(&season) = seasons.get(&competition) else { continue };
@@ -2826,7 +2826,7 @@ pub async fn season_banner(db: &Db, sources: &Sources, season: i64, season_name:
     // posts of S36 and S24 to S27 had none (Flashy, 31 Oct 2026). The search
     // after, unless those weeks gave a picture naming the season; the better
     // picture kept.
-    if let Some(span) = db.season_span(season).await? {
+    if let Some(span) = db.season_span(season, hl_core::GameFormat::Highlander).await? {
         let url = season_posts_url(span, "title,content");
         if let Ok(Some(body)) = sources.fetch_text_interactive(&url).await {
             found = banner_in(&body, title_number(season), season_name);

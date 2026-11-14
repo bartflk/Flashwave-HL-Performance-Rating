@@ -38,7 +38,7 @@ impl Db {
         Ok(sqlx::query(
             "SELECT m.match_id, c.stage, COALESCE(NULLIF(m.division, ''), c.division), m.tier, m.week, m.round, m.clan1_id, m.clan2_id, m.maps
              FROM etf2l_season_match m JOIN etf2l_competition c ON c.competition_id = m.competition_id
-             WHERE c.season = ?1 AND c.stage != 'Cup' AND m.default_win = 0 AND COALESCE(m.r1, 0) + COALESCE(m.r2, 0) > 0
+             WHERE c.season = ?1 AND c.format = 'highlander' AND c.stage != 'Cup' AND m.default_win = 0 AND COALESCE(m.r1, 0) + COALESCE(m.r2, 0) > 0
              ORDER BY m.time",
         )
         .bind(season)

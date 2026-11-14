@@ -2427,7 +2427,7 @@ pub async fn get_season_news(state: State<'_, AppState>, season: i64, season_nam
 /// The latest played officials of every team (Q74's results).
 #[tauri::command]
 pub async fn get_recent_results(state: State<'_, AppState>, limit: Option<i64>) -> CmdResult<Vec<hl_db::ResultRow>> {
-    Ok(state.db.recent_results(limit.unwrap_or(10).clamp(1, 300)).await?)
+    Ok(state.db.recent_results(limit.unwrap_or(10).clamp(1, 300), hl_core::GameFormat::Highlander).await?)
 }
 
 /// ETF2L's other Highlander tournaments, newest first: the one-night,
@@ -2459,7 +2459,7 @@ pub async fn get_recruit_post(state: State<'_, AppState>, id: i64) -> CmdResult<
 /// Every official of one season, played or to come (Q74's fixtures by week).
 #[tauri::command]
 pub async fn get_season_results(state: State<'_, AppState>, season: i64) -> CmdResult<Vec<hl_db::ResultRow>> {
-    Ok(state.db.season_results(season).await?)
+    Ok(state.db.season_results(season, hl_core::GameFormat::Highlander).await?)
 }
 
 /// An official's own etf2l.org page: schedule, per-map results, demos and

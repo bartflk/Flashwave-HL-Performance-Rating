@@ -149,7 +149,7 @@ struct SeasonHeld {
 pub async fn season(db: &Db, sources: &Sources, season: i64, season_name: &str) -> Result<Vec<NewsItem>> {
     let key = format!("season_news:{season}");
     let held: Option<SeasonHeld> = db.get_setting(&key).await?.and_then(|v| serde_json::from_str(&v).ok());
-    let Some(span) = db.season_span(season).await? else { return Ok(held.map(|h| h.items).unwrap_or_default()) };
+    let Some(span) = db.season_span(season, hl_core::GameFormat::Highlander).await? else { return Ok(held.map(|h| h.items).unwrap_or_default()) };
     if let Some(h) = &held {
         let over = now() - span.1 > 30 * 86_400;
         if (over && h.at > span.1 + 30 * 86_400) || now() - h.at < 6 * 3600 {
