@@ -329,6 +329,63 @@ pub async fn board(db: &hl_db::Db, role: &str) -> Result<Vec<BoardRow>> {
         .collect())
 }
 
+/// A 6v6 season's honours in one division (the 6v6 plan, P7).
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DivisionHonours {
+    pub division: String,
+    /// ETF2L's own placings from its table, once the season is over:
+    /// `(place, team, name)`.
+    pub medals: Vec<(u8, i64, String)>,
+    pub mvp: Option<Mvp>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Mvp {
+    pub account_id: u32,
+    pub name: Option<String>,
+    pub role: String,
+    pub games: i64,
+    pub average: f64,
+}
+
+/// Games in a season's division to be its MVP.
+pub const MVP_MIN_GAMES: i64 = 3;
+
+/// One 6v6 season's medals and MVPs by division: the medals ETF2L's tables
+/// give (1st, 2nd, 3rd), and the MVP the best average preview rating with
+/// [`MVP_MIN_GAMES`] games or more in a main role -- from your logs and the
+/// league sample, so it fills in as the sample downloads.
+pub async fn season_honours(db: &hl_db::Db, season: i64) -> Result<Vec<DivisionHonours>> {
+    let comps: HashMap<i64, i64> = db.competitions(hl_core::GameFormat::Sixes).await?.into_iter().map(|c| (c.competition_id, c.season)).collect();
+    let mut by: BTreeMap<String, DivisionHonours> = BTreeMap::new();
+    for (competition, _, json) in db.etf2l_raw("tables").await? {
+        if comps.get(&competition) != Some(&season) {
+            continue;
+        }
+        for (division, place, team) in crate::catalogue::table_places(&json) {
+            let name = db.etf2l_team(team).await?.map(|t| t.0).unwrap_or_default();
+            by.entry(division.clone()).or_insert_with(|| DivisionHonours { division, medals: Vec::new(), mvp: None }).medals.push((place, team, name));
+        }
+    }
+    let names = db.etf2l_names().await?;
+    for (division, account, role, games, average) in db.sixes_season_ratings(&model_version(), season).await? {
+        if games < MVP_MIN_GAMES {
+            continue;
+        }
+        let e = by.entry(division.clone()).or_insert_with(|| DivisionHonours { division, medals: Vec::new(), mvp: None });
+        if e.mvp.as_ref().is_none_or(|m| average > m.average) {
+            e.mvp = Some(Mvp { account_id: account, name: names.get(&account).cloned(), role, games, average: (average * 100.0).round() / 100.0 });
+        }
+    }
+    let mut out: Vec<DivisionHonours> = by.into_values().collect();
+    for d in &mut out {
+        d.medals.sort();
+    }
+    Ok(out)
+}
+
 /// The owner's 6v6 profile beyond their ratings by role (the 6v6 plan, P7):
 /// their best games by the preview rating (ten minutes or more in a main
 /// role), and their officials by season and division.
@@ -374,6 +431,31 @@ mod tests {
     fn fixture() -> Value {
         let body = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/sixes_4115969.json")).unwrap();
         serde_json::from_str(&body).unwrap()
+    }
+
+    #[tokio::test]
+    async fn a_6v6_season_s_honours_are_etf2l_s_placings_and_the_best_rated_with_enough_games() {
+        let db = hl_db::Db::connect_in_memory().await.unwrap();
+        for sql in [
+            "INSERT INTO etf2l_competition (competition_id, season, season_name, division, stage, name, fetched_at, format) VALUES (2, 52, 'Summer 2026', '', 'regular', '6v6 Season 52', 0, 'sixes')",
+            "INSERT INTO etf2l_competition (competition_id, season, season_name, division, stage, name, fetched_at) VALUES (5, 52, 'x', 'High', 'regular', 'HL 52', 0)",
+            "INSERT INTO etf2l_team (team_id, name) VALUES (3, 'Six One'), (4, 'Six Two')",
+            "INSERT INTO etf2l_season_match (match_id, competition_id, division, time, clan1_id, clan2_id, r1, r2) VALUES (20, 2, 'Division 3', 200, 3, 4, 3, 1)",
+            r#"INSERT INTO etf2l_raw (kind, id, fetched_at, json) VALUES ('tables', 2, 0, '{"tables":{"Division 3":[{"id":3,"ach":1},{"id":4,"ach":"2"}]}}'), ('tables', 5, 0, '{"tables":{"High":[{"id":9,"ach":1}]}}')"#,
+        ] {
+            sqlx::query(sql).execute(db.pool()).await.unwrap();
+        }
+        let row = |log: i64, sample: bool| (log, sample);
+        for (log, _) in [row(11, true), row(12, true), row(13, true)] {
+            sqlx::query("INSERT INTO sixes_league_log (log_id, etf2l_match_id, map, played_at) VALUES (?1, 20, 'cp_process_f12', 100)").bind(log).execute(db.pool()).await.unwrap();
+        }
+        let r = |log: i64, acc: u32, v: f64| (log, acc, "pocket".to_string(), v, 50.0, 20.0, "[]".to_string());
+        db.replace_sixes_ratings(&model_version(), &[r(11, 7, 1.2), r(12, 7, 1.3), r(13, 7, 1.1), r(11, 8, 2.0), r(12, 8, 2.0)]).await.unwrap();
+        let h = season_honours(&db, 52).await.unwrap();
+        assert_eq!(h.len(), 1, "Highlander's table of the same season number is not 6v6's");
+        assert_eq!(h[0].medals, vec![(1, 3, "Six One".to_string()), (2, 4, "Six Two".to_string())]);
+        let mvp = h[0].mvp.as_ref().unwrap();
+        assert_eq!((mvp.account_id, mvp.games, mvp.average), (7, 3, 1.2), "8 rates higher but has two games");
     }
 
     #[tokio::test]

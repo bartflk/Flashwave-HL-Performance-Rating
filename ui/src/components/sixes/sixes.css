@@ -111,6 +111,13 @@
 .sx-best-go:hover span:nth-child(2) { color: var(--accent-text); }
 .sx-best-rating { font-variant-numeric: tabular-nums; }
 
+/* A 6v6 season's medals and MVP (the 6v6 plan, P7). */
+.sx-medal { margin-left: 6px; padding: 0 5px; border-radius: 3px; border: 1px solid currentColor; font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.sx-medal-1 { color: #e3b341; }
+.sx-medal-2 { color: #b9c2cc; }
+.sx-medal-3 { color: #c98a55; }
+.sx-mvp { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 10px 0 0; font-size: var(--fs-ui); }
+
 /* The 6v6 league sample's panel (the 6v6 plan, P5). */
 .sx-sample-text { margin: 0 0 10px; font-size: var(--fs-ui); }
 

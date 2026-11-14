@@ -7,6 +7,7 @@ import { formatDate } from "../../lib/format";
 import { Loading } from "../Spinner";
 import { DivisionBadge } from "../players/PlayerProfile";
 import { tierOf } from "../etf2l/Brackets";
+import { roleLabel } from "../../lib/gameformat";
 
 /**
  * The 6v6 seasons the sync has read (the 6v6 plan, P2): the newest and the
@@ -25,6 +26,9 @@ export function SixesSeasons({ onTeam }: { onTeam: (id: number) => void }) {
     enabled: chosen !== null,
     staleTime: 5 * 60_000,
   }).data;
+  // Medals (ETF2L's placings, once the season is over) and MVPs.
+  const honours = useQuery({ queryKey: ["sixes_honours", chosen], queryFn: () => api.getSixesHonours(chosen!), enabled: chosen !== null, staleTime: 5 * 60_000 }).data ?? [];
+  const honoursOf = (division: string) => honours.find((h) => h.division === division);
   // Playoffs and third-place matches by division, and the Nations' Cup.
   const later = useMemo(() => {
     const by = new Map<string, ResultRow[]>();
@@ -76,13 +80,20 @@ export function SixesSeasons({ onTeam }: { onTeam: (id: number) => void }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {d.teams.map((r, i) => (
+                    {d.teams.map((r, i) => {
+                      const medal = honoursOf(d.division)?.medals.find(([, id]) => id === r.teamId)?.[0];
+                      return (
                       <tr key={r.teamId}>
                         <td className="num muted">{i + 1}</td>
                         <td className="sx-team">
                           <button className="linkish sx-team-link" onClick={() => onTeam(r.teamId)}>
                             {r.name}
                           </button>
+                          {medal && (
+                            <span className={`sx-medal sx-medal-${medal}`} title={t("ETF2L's final placing")}>
+                              {medal === 1 ? t("1st") : medal === 2 ? t("2nd") : t("3rd")}
+                            </span>
+                          )}
                         </td>
                         <td className="num team-won">{r.record.won}</td>
                         <td className="num muted">{r.record.drawn}</td>
@@ -92,10 +103,24 @@ export function SixesSeasons({ onTeam }: { onTeam: (id: number) => void }) {
                           <span className="muted">–{r.scoreAgainst}</span>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
+              {honoursOf(d.division)?.mvp && (
+                <p className="sx-mvp">
+                  <span className="ts-eyebrow">{t("MVP")}</span>
+                  <strong>{honoursOf(d.division)!.mvp!.name ?? honoursOf(d.division)!.mvp!.accountId}</strong>
+                  <span className="muted">
+                    {tx("{0}, {1} over {2} games", {
+                      "0": roleLabel(honoursOf(d.division)!.mvp!.role)?.short ?? honoursOf(d.division)!.mvp!.role,
+                      "1": honoursOf(d.division)!.mvp!.average.toFixed(2),
+                      "2": honoursOf(d.division)!.mvp!.games,
+                    })}
+                  </span>
+                </p>
+              )}
             </section>
           ))}
       </div>

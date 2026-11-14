@@ -142,6 +142,28 @@ impl Db {
         Ok(rows.into_iter().map(|(a, n, avg, best)| (a as u32, n, avg, best)).collect())
     }
 
+    /// Each player's main-role 6v6 ratings in one 6v6 season, by division:
+    /// `(division, account, role, games, average)`, the owner's logs and the
+    /// league sample's, placed by the ETF2L match each belongs to.
+    pub async fn sixes_season_ratings(&self, version: &str, season: i64) -> Result<Vec<(String, u32, String, i64, f64)>> {
+        let rows: Vec<(String, i64, String, i64, f64)> = sqlx::query_as(
+            "SELECT m.division, r.account_id, r.role, COUNT(*), AVG(r.rating)
+               FROM sixes_rating r
+               JOIN (SELECT log_id, etf2l_match_id FROM sixes_league_log
+                     UNION SELECT log_id, etf2l_match_id FROM log_index WHERE etf2l_match_id IS NOT NULL) l ON l.log_id = r.log_id
+               JOIN etf2l_season_match m ON m.match_id = l.etf2l_match_id
+               JOIN etf2l_competition c ON c.competition_id = m.competition_id
+              WHERE c.format = 'sixes' AND c.season = ?2 AND r.model_version = ?1 AND r.role NOT LIKE 'off:%'
+                AND m.division IS NOT NULL AND m.division != ''
+              GROUP BY m.division, r.account_id, r.role",
+        )
+        .bind(version)
+        .bind(season)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows.into_iter().map(|(d, a, role, n, avg)| (d, a as u32, role, n, avg)).collect())
+    }
+
     /// One log's 6v6 ratings, or one player's, of a model version.
     pub async fn sixes_ratings(&self, version: &str, log_id: Option<i64>, account: Option<u32>) -> Result<Vec<SixesRatingRow>> {
         let rows = sqlx::query(

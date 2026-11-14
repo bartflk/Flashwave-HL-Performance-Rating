@@ -563,6 +563,14 @@ export interface SixesMatchStats {
   medics: SixesMedicStats[];
 }
 
+/** A 6v6 season's honours in one division (the 6v6 plan, P7). */
+export interface SixesHonours {
+  division: string;
+  /** [place, teamId, name], ETF2L's own placings. */
+  medals: Array<[number, number, string]>;
+  mvp: { accountId: number; name: string | null; role: string; games: number; average: number } | null;
+}
+
 /** One row of the 6v6 Players board (the 6v6 plan, P7). */
 export interface SixesBoardRow {
   accountId: number;

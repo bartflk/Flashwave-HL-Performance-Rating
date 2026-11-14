@@ -831,6 +831,12 @@ pub async fn get_sixes_profile(state: State<'_, AppState>) -> CmdResult<hl_inges
     Ok(hl_ingest::sixes_rating::profile(&state.db, me.account_id()).await?)
 }
 
+/// One 6v6 season's medals and MVPs by division (the 6v6 plan, P7).
+#[tauri::command]
+pub async fn get_sixes_honours(state: State<'_, AppState>, season: i64) -> CmdResult<Vec<hl_ingest::sixes_rating::DivisionHonours>> {
+    Ok(hl_ingest::sixes_rating::season_honours(&state.db, season).await?)
+}
+
 /// The 6v6 Players board for one role or off-class (the 6v6 plan, P7).
 #[tauri::command]
 pub async fn get_sixes_board(state: State<'_, AppState>, role: String) -> CmdResult<Vec<hl_ingest::sixes_rating::BoardRow>> {
