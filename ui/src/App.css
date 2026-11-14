@@ -1498,6 +1498,10 @@ th.num {
   align-self: flex-start;
 }
 
+/* Two choices on one card (the 6v6 notice): side by side, wrapping together. */
+.dl-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.dl-actions .dl-go { align-self: auto; flex: 1 1 auto; }
+
 /* --- the match list's class filter --- */
 
 .class-filter {

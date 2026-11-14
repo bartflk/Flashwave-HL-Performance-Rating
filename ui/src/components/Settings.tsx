@@ -33,6 +33,8 @@ import { clearProblems, markProblemsSeen, report, useProblems } from "../lib/pro
 import { Spinner } from "./Spinner";
 import { ApiError } from "./ApiError";
 import { SortTh, useSort } from "../lib/sort";
+import { FormatsPicker } from "./FormatsPicker";
+import { useFormatsPlayed } from "../lib/gameformat";
 
 /** The groups of Settings, in order, for the side menu and the page. */
 type Group = { id: string; title: string; sections: { id: string; title: string; icon: IconName }[] };
@@ -76,6 +78,7 @@ export function Settings({
   const report = useCallback((id: string, m: boolean) => setMatched((x) => (x[id] === m ? x : { ...x, [id]: m })), []);
   const shared = useMemo(() => ({ query, foldAll, report, focus }), [query, foldAll, report, focus]);
 
+  const played = useFormatsPlayed();
   const groups: Group[] = [
     {
       id: "general",
@@ -94,6 +97,7 @@ export function Settings({
       id: "matches",
       title: t("Matches and data"),
       sections: [
+        ...(played.sixesEnabled ? [{ id: "formats", title: t("Formats you play"), icon: "list" as const }] : []),
         { id: "history", title: t("How far back"), icon: "clock" },
         { id: "import", title: t("Logs that didn't import"), icon: "fileX" },
         { id: "etf2l", title: t("ETF2L and match types"), icon: "shield" },
@@ -217,6 +221,16 @@ export function Settings({
             </SettingsSection>
 
             {shows("matches") && <h2 className="settings-group">{t("Matches and data")}</h2>}
+            {played.sixesEnabled && (
+              <SettingsSection id="formats" icon="list" title={t("Formats you play")} keywords="6v6 6s sixes highlander hl format formats mode"
+                summary={t("Highlander, 6v6: which ones the app shows")}
+                info={t("Each format keeps its own matches and ratings: nothing from one counts towards the other. Playing both adds a menu to the Matches, Profile and ETF2L tabs.")}>
+                <div className="panel">
+                  <h2>{t("Formats you play")}</h2>
+                  <FormatsPicker />
+                </div>
+              </SettingsSection>
+            )}
             <SettingsSection id="history" icon="clock" title={t("How far back")} keywords="history years old scrims pugs"
               summary={t("Which of your older matches are downloaded")}
               info={t("Officials always count, however old. Older scrims and pugs are only listed: they cost nothing until you open one.")}>

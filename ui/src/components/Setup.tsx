@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { toStored, useFormatsPlayed, type GameFormat } from "../lib/gameformat";
+import { useFormatsPlayed } from "../lib/gameformat";
 import { friendlyText } from "../lib/apierror";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../api/client";
@@ -8,6 +7,7 @@ import { type AppStatus, type TfPathInfo } from "../api/types";
 import { t, tx } from "../lib/i18n";
 import { Logo } from "./Logo";
 import { Backdrop } from "./Backdrop";
+import { FormatsPicker } from "./FormatsPicker";
 
 /**
  * First-run setup: who you are (required), where TF2 lives (optional, only
@@ -280,58 +280,15 @@ function TfPathStep({
   );
 }
 
-// Each string is its own t() call, so the translation script finds it.
-const FORMAT_INFO: Array<[GameFormat, () => string, () => string]> = [
-  ["hl", () => t("Highlander"), () => t("Nine a side, one of each class.")],
-  ["6s", () => t("6v6"), () => t("Six a side: two Scouts, two Soldiers, a Demoman and a Medic.")],
-];
-
-/**
- * Which formats you play. Only those are shown in the tabs' menus (and,
- * from the 6v6 plan's P1, downloaded). At least one stays chosen.
- */
+/** Which formats you play; Settings › Formats you play has the same picker. */
 function FormatsStep({ num }: { num: number }) {
-  const played = useFormatsPlayed();
-  const qc = useQueryClient();
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function toggle(f: GameFormat) {
-    const has = played.formats.includes(f);
-    if (has && played.formats.length === 1) return;
-    const next = has ? played.formats.filter((x) => x !== f) : [...played.formats, f];
-    setBusy(true);
-    setError(null);
-    try {
-      qc.setQueryData(["formats_played"], await api.setFormatsPlayed(next.map(toStored)));
-    } catch (e) {
-      setError(friendlyText(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <section className="step done">
       <div className="step-num">{num}</div>
       <div className="step-body">
         <h2>{t("The formats you play")}</h2>
         <p className="hint">{t("Each format keeps its own matches and ratings: nothing from one counts towards the other. Playing both adds a menu to the Matches, Profile and ETF2L tabs.")}</p>
-        <div className="fmt-pick" role="group" aria-label={t("The formats you play")}>
-          {FORMAT_INFO.map(([f, name, about]) => {
-            const on = played.formats.includes(f);
-            return (
-              <button key={f} className={on ? "fmt-pick-item on" : "fmt-pick-item"} aria-pressed={on} disabled={busy || (on && played.formats.length === 1)} onClick={() => void toggle(f)}>
-                <span className="fmt-pick-box" aria-hidden="true">{on ? "✓" : ""}</span>
-                <span className="fmt-pick-text">
-                  <strong>{name()}</strong>
-                  <span className="hint">{about()}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        {error && <p className="error">{error}</p>}
+        <FormatsPicker />
       </div>
     </section>
   );
