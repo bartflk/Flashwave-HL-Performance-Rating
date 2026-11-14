@@ -12,6 +12,7 @@ import { DivisionBadge } from "../players/PlayerProfile";
 import { tierOf } from "../etf2l/Brackets";
 import "../etf2l/etf2l.css";
 import "./sixes.css";
+import { SixesMatches } from "./SixesMatches";
 
 /**
  * The ETF2L tab in 6v6 (prototype; Flashy: "make a prototype for etf2l
@@ -31,6 +32,9 @@ export function SixesPage() {
   const s = q.data;
   const groups = useMemo(() => (s?.divisions ?? []).filter((d) => d.system === "roundRobin"), [s]);
   const swiss = useMemo(() => (s?.divisions ?? []).filter((d) => d.system === "swiss"), [s]);
+  // The sections built so far: the season's tables, and its matches by week
+  // (the 6v6 plan, P2). The rest of the menu waits for its step.
+  const [section, setSection] = useState<"season" | "matches">("season");
 
   return (
     <div className="content e2-page sx-page">
@@ -40,10 +44,13 @@ export function SixesPage() {
             <Etf2lMark size={16} /> {t("ETF2L 6v6")}
           </span>
           <nav className="e2-menu" data-fit="" aria-label={t("ETF2L 6v6")}>
-            <button className="on" aria-current="page">
+            <button className={section === "season" ? "on" : undefined} aria-current={section === "season" ? "page" : undefined} onClick={() => setSection("season")}>
               {t("Season")}
             </button>
-            {[t("Matches"), t("Teams"), t("Players"), t("News"), t("Recruitment")].map((x) => (
+            <button className={section === "matches" ? "on" : undefined} aria-current={section === "matches" ? "page" : undefined} onClick={() => setSection("matches")}>
+              {t("Matches")}
+            </button>
+            {[t("Teams"), t("Players"), t("News"), t("Recruitment")].map((x) => (
               <button key={x} disabled title={t("Coming in 6v6")}>
                 {x}
               </button>
@@ -64,6 +71,13 @@ export function SixesPage() {
       ) : (
         <div className="e2-match-grid">
           <div className="e2-main">
+            {section === "matches" ? (
+              <>
+                <h2 className="ts-section">{tx("{0}: matches", { "0": s.name })}</h2>
+                <SixesMatches />
+              </>
+            ) : (
+            <>
             <header className="panel pp-head sx-head">
               <span className="ts-eyebrow">{t("ETF2L 6v6")}</span>
               <h1 className="sx-title">{s.name}</h1>
@@ -103,6 +117,8 @@ export function SixesPage() {
                   ))}
                 </div>
               </>
+            )}
+            </>
             )}
           </div>
 
@@ -151,7 +167,7 @@ export function SixesPage() {
                 </li>
                 <li>
                   <strong>{t("The rest of this tab")}</strong>
-                  <span className="muted">{t("Matches, teams, players, playoffs, Nations' Cup, news and recruitment, as the Highlander tab has them.")}</span>
+                  <span className="muted">{t("Teams, players, playoffs, Nations' Cup, news and recruitment, as the Highlander tab has them.")}</span>
                 </li>
               </ul>
             </section>

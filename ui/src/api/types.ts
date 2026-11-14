@@ -478,6 +478,37 @@ export interface SixesDivision {
   competitionId: number;
   teams: SixesRow[];
 }
+export interface SixesTeam {
+  id: number;
+  name: string;
+  avatar: string | null;
+}
+
+/** One official of the current 6v6 season, played or to come (the 6v6 plan, P2). */
+export interface SixesMatch {
+  id: number;
+  competitionId: number;
+  system: "roundRobin" | "swiss";
+  division: string | null;
+  tier: number | null;
+  week: number | null;
+  round: string | null;
+  time: number | null;
+  clan1: SixesTeam;
+  clan2: SixesTeam;
+  /** ETF2L's score: league points over the two maps (a map won 2, drawn 1). */
+  r1: number | null;
+  r2: number | null;
+  defaultWin: boolean;
+  maps: string[];
+  played: boolean;
+}
+
+export interface SixesMatches {
+  season: string;
+  matches: SixesMatch[];
+}
+
 /** A format as the backend stores it (the 6v6 plan, P0). */
 export type StoredFormat = "highlander" | "sixes";
 

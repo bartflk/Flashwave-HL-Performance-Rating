@@ -376,7 +376,9 @@ function shortDivision(d: string): string {
 
 export function DivisionBadge({ d }: { d: CatDivision }) {
   return (
-    <span className={`div-badge div-t${Math.min(d.tier, 4)}`} title={t("Highest division with three or more officials played")}>
+    // Fresh, 6v6's division for new teams, sits apart from the ladder
+    // (the 6v6 plan, question 10).
+    <span className={/^fresh/i.test(d.name) ? "div-badge div-fresh" : `div-badge div-t${Math.min(d.tier, 4)}`} title={t("Highest division with three or more officials played")}>
       {shortDivision(d.name)}
     </span>
   );

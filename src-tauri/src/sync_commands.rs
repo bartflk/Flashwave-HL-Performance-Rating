@@ -769,6 +769,12 @@ pub async fn get_sixes_season(state: State<'_, AppState>) -> CmdResult<Option<hl
     Ok(hl_ingest::sixes::current_season(&state.sources).await?)
 }
 
+/// The current ETF2L 6v6 season's officials by week (the 6v6 plan, P2).
+#[tauri::command]
+pub async fn get_sixes_matches(state: State<'_, AppState>) -> CmdResult<Option<hl_ingest::sixes::SixesMatches>> {
+    Ok(hl_ingest::sixes::season_matches(&state.sources).await?)
+}
+
 /// Every class's model as the rating uses it, for the "How ratings work"
 /// page: built from the live weights, so the page follows every retune.
 #[tauri::command]

@@ -198,10 +198,147 @@ pub fn division_order(name: &str) -> u8 {
     }
 }
 
+/// One official of the current 6v6 season, played or to come (the 6v6 plan,
+/// P2: "Matches by week", question 12).
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SixesMatch {
+    pub id: i64,
+    pub competition_id: i64,
+    /// "roundRobin" or "swiss".
+    pub system: &'static str,
+    pub division: Option<String>,
+    pub tier: Option<i64>,
+    pub week: Option<i64>,
+    pub round: Option<String>,
+    pub time: Option<i64>,
+    pub clan1: SixesTeam,
+    pub clan2: SixesTeam,
+    /// ETF2L's score, as it gives it: league points over the two maps (a
+    /// map won 2, drawn 1), so 3-1 is a win and a draw. None until played.
+    pub r1: Option<i64>,
+    pub r2: Option<i64>,
+    pub default_win: bool,
+    pub maps: Vec<String>,
+    pub played: bool,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SixesTeam {
+    pub id: i64,
+    pub name: String,
+    pub avatar: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SixesMatches {
+    pub season: String,
+    /// By week, then time.
+    pub matches: Vec<SixesMatch>,
+}
+
+static HELD_MATCHES: Mutex<Option<(Instant, SixesMatches)>> = Mutex::new(None);
+
+/// The current 6v6 season's officials: each competition's results, and the
+/// season's scheduled matches not yet played. Held for half an hour, read
+/// only when asked for (the 6v6 Matches section): about four requests, at
+/// a hundred rows a page.
+pub async fn season_matches(sources: &Sources) -> Result<Option<SixesMatches>> {
+    if let Some((at, m)) = HELD_MATCHES.lock().unwrap().as_ref() {
+        if at.elapsed() < KEEP {
+            return Ok(Some(m.clone()));
+        }
+    }
+    let Some(season) = current_season(sources).await? else { return Ok(None) };
+    let systems: std::collections::HashMap<i64, &'static str> = season.competitions.iter().map(|c| (c.id, c.system)).collect();
+    let mut by_id: std::collections::BTreeMap<i64, SixesMatch> = std::collections::BTreeMap::new();
+    for c in &season.competitions {
+        for page in 1..=10 {
+            let Some(body) = sources.etf2l_page(&format!("/competition/{}/results", c.id), page).await? else { break };
+            let v: Value = serde_json::from_str(&body).context("reading ETF2L's 6v6 results")?;
+            for m in v.pointer("/results/data").and_then(Value::as_array).into_iter().flatten() {
+                if let Some(x) = match_of(m, &systems, true) {
+                    by_id.insert(x.id, x);
+                }
+            }
+            if page >= v.pointer("/results/last_page").and_then(Value::as_i64).unwrap_or(1) {
+                break;
+            }
+        }
+    }
+    for page in 1..=5 {
+        let Some(body) = sources.etf2l_page("/matches?scheduled=1", page).await? else { break };
+        let v: Value = serde_json::from_str(&body).context("reading ETF2L's scheduled matches")?;
+        let list = v.get("results").or_else(|| v.get("matches"));
+        for m in list.and_then(|l| l.get("data")).and_then(Value::as_array).into_iter().flatten() {
+            if let Some(x) = match_of(m, &systems, false) {
+                by_id.entry(x.id).or_insert(x);
+            }
+        }
+        if page >= list.and_then(|l| l.get("last_page")).and_then(Value::as_i64).unwrap_or(1) {
+            break;
+        }
+    }
+    let mut matches: Vec<SixesMatch> = by_id.into_values().collect();
+    matches.sort_by_key(|m| (m.week.unwrap_or(0), m.time.unwrap_or(0), m.id));
+    let out = SixesMatches { season: season.name, matches };
+    *HELD_MATCHES.lock().unwrap() = Some((Instant::now(), out.clone()));
+    Ok(Some(out))
+}
+
+/// One match of this season's competitions, from a results or scheduled
+/// list; any other competition's is left out.
+fn match_of(m: &Value, systems: &std::collections::HashMap<i64, &'static str>, played: bool) -> Option<SixesMatch> {
+    let comp = m.pointer("/competition/id").and_then(Value::as_i64)?;
+    let system = *systems.get(&comp)?;
+    let team = |c: &Value| -> Option<SixesTeam> {
+        Some(SixesTeam {
+            id: c.get("id")?.as_i64()?,
+            name: c.get("name").and_then(Value::as_str).unwrap_or("").to_string(),
+            avatar: c.pointer("/steam/avatar").and_then(Value::as_str).filter(|a| !a.ends_with('/')).map(str::to_string),
+        })
+    };
+    Some(SixesMatch {
+        id: m.get("id")?.as_i64()?,
+        competition_id: comp,
+        system,
+        division: m.pointer("/division/name").and_then(Value::as_str).map(str::to_string),
+        tier: m.pointer("/division/tier").and_then(Value::as_i64),
+        week: m.get("week").and_then(Value::as_i64),
+        round: m.get("round").and_then(Value::as_str).map(str::to_string),
+        time: m.get("time").and_then(Value::as_i64),
+        clan1: team(m.get("clan1")?)?,
+        clan2: team(m.get("clan2")?)?,
+        r1: if played { m.get("r1").and_then(Value::as_i64) } else { None },
+        r2: if played { m.get("r2").and_then(Value::as_i64) } else { None },
+        default_win: m.get("defaultwin").and_then(Value::as_bool).unwrap_or(false),
+        maps: m.get("maps").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).filter(|x| *x != "variable").map(str::to_string).collect(),
+        played,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn a_match_of_this_season_is_read_with_etf2ls_score_and_others_are_left_out() {
+        let systems = [(1062, "roundRobin"), (1053, "swiss")].into_iter().collect();
+        let m = json!({"id": 93121, "competition": {"id": 1062}, "division": {"name": "Division 1", "tier": 1},
+            "week": 5, "round": "Week 5", "time": 1794596400, "r1": 3, "r2": 1, "defaultwin": false,
+            "maps": ["cp_granary_pro_rc17a3", "cp_gullywash_f9"],
+            "clan1": {"id": 1, "name": "A", "steam": {"avatar": "https://x/a.jpg"}}, "clan2": {"id": 2, "name": "B", "steam": {"avatar": "https://x/"}}});
+        let x = match_of(&m, &systems, true).unwrap();
+        assert_eq!((x.system, x.week, x.r1, x.r2, x.played), ("roundRobin", Some(5), Some(3), Some(1), true));
+        assert_eq!((x.clan1.avatar.as_deref(), x.clan2.avatar.as_deref()), (Some("https://x/a.jpg"), None), "a bare avatar folder is no picture");
+        let upcoming = match_of(&json!({"id": 9, "competition": {"id": 1053}, "r1": 0, "r2": 0, "maps": ["variable"],
+            "clan1": {"id": 1, "name": "A"}, "clan2": {"id": 2, "name": "B"}}), &systems, false).unwrap();
+        assert_eq!((upcoming.r1, upcoming.maps.len(), upcoming.system), (None, 0, "swiss"), "no score before it is played");
+        assert!(match_of(&json!({"id": 10, "competition": {"id": 999}, "clan1": {"id": 1}, "clan2": {"id": 2}}), &systems, true).is_none());
+    }
 
     fn list() -> Vec<Value> {
         json!([

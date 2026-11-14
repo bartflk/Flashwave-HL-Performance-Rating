@@ -17,6 +17,7 @@ import playerDeepFlashy from "./fixtures/player_deep_flashy.json";
 import dataAudit31 from "./fixtures/data_audit_31_low.json";
 import headToHeadS33 from "./fixtures/head_to_head_s33_final.json";
 import sixesSeason53 from "./fixtures/sixes_season_53.json";
+import sixesMatches53 from "./fixtures/sixes_matches_53.json";
 import seasonBreakdown33 from "./fixtures/season_breakdown_flashy_33.json";
 import statScales from "./fixtures/stat_scales.json";
 import teamHonours35600 from "./fixtures/team_honours_35600.json";
@@ -83,7 +84,7 @@ import type {
   RglSeasonCard,
   RglTeamHit,
   RglSeason,
-  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
+  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, SixesMatches, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
   RglTeamPage,
   RglTeamSeason,
   RglTeamHistory,
@@ -1552,6 +1553,7 @@ export const mockApi: Api = {
   getRglMatch: (id: number) => delay<RglMatch | null>([...mockRglMatches(198), ...mockRglMatches(193)].find((m) => m.matchId === id) ?? null),
   getSixesSeason: () => delay(sixesSeason53 as unknown as SixesSeason),
   // The mock plays both, so the tab menus can be seen without setup.
+  getSixesMatches: () => delay(sixesMatches53 as unknown as SixesMatches),
   formatsPlayed: () => delay<FormatsPlayed>({ formats: [...mockFormats], sixesEnabled: true }),
   setFormatsPlayed: (formats: StoredFormat[]) => {
     const kept = (["highlander", "sixes"] as const).filter((f) => formats.includes(f));
