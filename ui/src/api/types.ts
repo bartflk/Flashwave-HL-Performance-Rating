@@ -585,6 +585,8 @@ export interface Stint {
   round: number;
   /** Teammates on an off-class at some moment of it. */
   matesOff: number;
+  /** On 5CP, the points the team held when it began: 1 is defending their last, 4 attacking the enemy's. */
+  pointsHeld?: number | null;
 }
 
 /** A format as the backend stores it (the 6v6 plan, P0). */

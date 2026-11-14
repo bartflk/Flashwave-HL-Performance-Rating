@@ -1653,7 +1653,7 @@ export const mockApi: Api = {
     if (row?.format !== "sixes") return delay<Stint[]>([]);
     const ps = FIXTURES[0].players;
     return delay<Stint[]>([
-      { accountId: ps[1].accountId, class: "engineer", startS: 512, endS: 652, round: 3, matesOff: 1 },
+      { accountId: ps[1].accountId, class: "engineer", startS: 512, endS: 652, round: 3, matesOff: 1, pointsHeld: 1 },
       { accountId: ps[1].accountId, class: "heavy", startS: 1180, endS: 1275, round: 5, matesOff: 0 },
       { accountId: ps[4].accountId, class: "sniper", startS: 530, endS: 605, round: 3, matesOff: 1 },
     ]);

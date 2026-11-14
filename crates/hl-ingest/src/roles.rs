@@ -126,6 +126,10 @@ pub struct Stint {
     pub round: u32,
     /// Teammates on an off-class at some moment of it.
     pub mates_off: u32,
+    /// On 5CP, the points the player's team held when it began: 1 is
+    /// defending their last, 4 attacking the enemy's (question 6: "on attack
+    /// or defense"). None on KOTH, or where the log's caps cannot tell.
+    pub points_held: Option<u8>,
 }
 
 /// Every off-class stint in a raw log, from each player's spawns: one
@@ -136,31 +140,68 @@ pub fn stints(raw: &crate::rawlog::RawLog, mains: &HashMap<u32, TfClass>) -> Vec
     use crate::rawlog::EventKind;
     let t0 = raw.round_starts.first().copied().unwrap_or(0);
     let round_of = |at: i64| raw.round_starts.iter().filter(|&&s| s <= at).count().max(1) as u32;
-    let mut open: HashMap<u32, (TfClass, i64, Option<hl_core::matchdata::Team>)> = HashMap::new();
-    let mut out: Vec<(Stint, Option<hl_core::matchdata::Team>)> = Vec::new();
-    let close = |acc: u32, at: i64, open: &mut HashMap<u32, (TfClass, i64, Option<hl_core::matchdata::Team>)>, out: &mut Vec<(Stint, Option<hl_core::matchdata::Team>)>| {
-        if let Some((class, start, team)) = open.remove(&acc) {
+    use hl_core::matchdata::Team;
+    type Open = HashMap<u32, (TfClass, i64, Option<Team>, Option<u8>)>;
+    let mut open: Open = HashMap::new();
+    let mut out: Vec<(Stint, Option<Team>)> = Vec::new();
+    let close = |acc: u32, at: i64, open: &mut Open, out: &mut Vec<(Stint, Option<Team>)>| {
+        if let Some((class, start, team, held)) = open.remove(&acc) {
             if at > start {
-                out.push((Stint { account_id: acc, class, start_s: start - t0, end_s: at - t0, round: round_of(start), mates_off: 0 }, team));
+                out.push((Stint { account_id: acc, class, start_s: start - t0, end_s: at - t0, round: round_of(start), mates_off: 0, points_held: held }, team));
             }
         }
     };
+    // 5CP's points held by each team this round: two each and the middle
+    // neutral at the start; a capture gives the capper one, and takes one
+    // from the other team unless it was the neutral middle (the round's
+    // first capture) -- a point not yet captured this round was the other
+    // side's from the start.
+    let mut held: HashMap<Team, i32> = HashMap::new();
+    let mut owner: HashMap<u32, Team> = HashMap::new();
+    let mut caps_this_round = 0;
+    let mut cps_seen: std::collections::HashSet<u32> = std::collections::HashSet::new();
+    let reset = |held: &mut HashMap<Team, i32>, owner: &mut HashMap<u32, Team>| {
+        held.clear();
+        held.insert(Team::Red, 2);
+        held.insert(Team::Blue, 2);
+        owner.clear();
+    };
+    reset(&mut held, &mut owner);
     for e in &raw.events {
         match &e.kind {
+            EventKind::RoundStart => {
+                reset(&mut held, &mut owner);
+                caps_this_round = 0;
+            }
+            EventKind::PointCaptured { team: Some(t), cp, .. } => {
+                cps_seen.insert(*cp);
+                let other = if *t == Team::Red { Team::Blue } else { Team::Red };
+                let took = match owner.get(cp) {
+                    Some(o) => *o != *t,
+                    None => caps_this_round > 0,
+                };
+                *held.entry(*t).or_insert(2) += 1;
+                if took {
+                    *held.entry(other).or_insert(2) -= 1;
+                }
+                owner.insert(*cp, *t);
+                caps_this_round += 1;
+            }
             EventKind::Spawn(a) => {
                 let Some(class) = a.class else { continue };
                 let main = mains.get(&a.account).copied();
                 let off = Role::off_class(class).is_some() && main.is_some_and(|m| Role::off_class(m).is_none());
+                let now = a.team.and_then(|t| held.get(&t)).map(|h| (*h).clamp(0, 5) as u8);
                 match open.get(&a.account) {
                     Some((c, ..)) if *c == class => {}
                     Some(_) => {
                         close(a.account, e.at, &mut open, &mut out);
                         if off {
-                            open.insert(a.account, (class, e.at, a.team));
+                            open.insert(a.account, (class, e.at, a.team, now));
                         }
                     }
                     None if off => {
-                        open.insert(a.account, (class, e.at, a.team));
+                        open.insert(a.account, (class, e.at, a.team, now));
                     }
                     None => {}
                 }
@@ -178,6 +219,12 @@ pub fn stints(raw: &crate::rawlog::RawLog, mains: &HashMap<u32, TfClass>) -> Vec
     let accs: Vec<u32> = open.keys().copied().collect();
     for acc in accs {
         close(acc, end, &mut open, &mut out);
+    }
+    // Points held mean nothing on KOTH's one point.
+    if cps_seen.len() < 3 {
+        for (s, _) in &mut out {
+            s.points_held = None;
+        }
     }
     // Teammates off-classing at the same time.
     let all = out.clone();
@@ -292,12 +339,33 @@ mod tests {
         let raw = crate::rawlog::parse(&text);
         let mains: HashMap<u32, TfClass> = [(10, TfClass::Soldier), (20, TfClass::Scout), (30, TfClass::Sniper)].into_iter().collect();
         let s = stints(&raw, &mains);
+        assert!(s.iter().all(|x| x.points_held.is_none()), "no captures: not told");
         let got: Vec<(u32, TfClass, i64, i64, u32, u32)> = s.iter().map(|x| (x.account_id, x.class, x.start_s, x.end_s, x.round, x.mates_off)).collect();
         assert_eq!(
             got,
             vec![(10, TfClass::Heavy, 120, 240, 1, 1), (20, TfClass::Engineer, 150, 300, 1, 1)],
             "Heavy from 2:00 until the swap back (a second Heavy spawn is the same stint); the Engineer until the round's end; a Sniper main is not off-classing"
         );
+    }
+
+    #[test]
+    fn a_stint_knows_whether_its_team_was_holding_its_last() {
+        // Blue takes the middle and Red's second: Red holds one point, its
+        // last, when its Soldier goes Heavy.
+        let text = [
+            r#"L 11/13/2026 - 20:00:00: World triggered "Round_Start""#,
+            r#"L 11/13/2026 - 20:00:01: "a<1><[U:1:10]><Red>" spawned as "soldier""#,
+            r#"L 11/13/2026 - 20:00:30: Team "Blue" triggered "pointcaptured" (cp "2") (cpname "Mid") (numcappers "1") (player1 "b<2><[U:1:20]><Blue>") (position1 "0 0 0")"#,
+            r#"L 11/13/2026 - 20:01:30: Team "Blue" triggered "pointcaptured" (cp "1") (cpname "Red 2nd") (numcappers "1") (player1 "b<2><[U:1:20]><Blue>") (position1 "0 0 0")"#,
+            r#"L 11/13/2026 - 20:02:00: "a<1><[U:1:10]><Red>" spawned as "heavyweapons""#,
+            r#"L 11/13/2026 - 20:03:00: Team "Red" triggered "pointcaptured" (cp "3") (cpname "Blue 2nd") (numcappers "1") (player1 "a<1><[U:1:10]><Red>") (position1 "0 0 0")"#,
+            r#"L 11/13/2026 - 20:04:00: World triggered "Round_Win" (winner "Blue")"#,
+        ]
+        .join("\n");
+        let raw = crate::rawlog::parse(&text);
+        let mains: HashMap<u32, TfClass> = [(10, TfClass::Soldier), (20, TfClass::Scout)].into_iter().collect();
+        let s = stints(&raw, &mains);
+        assert_eq!(s.iter().map(|x| (x.class, x.points_held)).collect::<Vec<_>>(), vec![(TfClass::Heavy, Some(1))]);
     }
 
     #[test]

@@ -367,6 +367,7 @@ function OffClass({ p, stints }: { p: PlayerRow; stints: Stint[] }) {
         [
           tr("{0}, round {1}, {2}–{3}", { "0": classLabel(s.class), "1": s.round, "2": clock(s.startS), "3": clock(s.endS) }),
           s.matesOff > 0 ? (s.matesOff === 1 ? tr("one teammate off-class too") : tr("{0} teammates off-class too", { "0": s.matesOff })) : "",
+          s.pointsHeld === 1 ? tr("holding their last") : s.pointsHeld === 4 ? tr("attacking the enemy's last") : "",
         ]
           .filter(Boolean)
           .join(", "),
