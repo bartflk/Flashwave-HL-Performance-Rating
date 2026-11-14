@@ -63,6 +63,10 @@ export function Matchups({ d }: { d: MatchDetail }) {
         </div>
       </header>
 
+      {/* Held to a readable width and centred (Flashy: "the class matchups
+          dont have to be spread that wide"): on a wide window the names sat
+          far from their bars. */}
+      <div className="mu-table">
       <div className="mu-cols" aria-hidden>
         <span />
         <span className={`team-${left.toLowerCase()} mu-col-l`}>
@@ -75,7 +79,9 @@ export function Matchups({ d }: { d: MatchDetail }) {
         <span />
       </div>
 
-      {d.matchups.map((m) => (
+      {/* A class nobody played on either side says nothing: a 6v6 match had
+          five rows of "nobody". */}
+      {d.matchups.filter((m) => m.left || m.right).map((m) => (
         <MatchupRow
           key={m.class}
           m={m}
@@ -89,6 +95,7 @@ export function Matchups({ d }: { d: MatchDetail }) {
           onName={(side, cls) => card.open({ accountId: side.accountId, name: side.name, cls, isMe: isMe(side.accountId) })}
         />
       ))}
+      </div>
       {card.target && <PlayerPopCard target={card.target} divisions={divisions} onClose={card.close} />}
 
       {d.weightsWarning && <p className="error mu-warn">{d.weightsWarning}</p>}

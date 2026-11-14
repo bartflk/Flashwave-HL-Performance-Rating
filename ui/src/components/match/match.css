@@ -142,6 +142,8 @@
   cursor: help;
 }
 
+.mu-table { max-width: 980px; margin: 0 auto; }
+
 .mu-cols,
 .mu-row {
   display: grid;
@@ -901,7 +903,8 @@
 .sx6-stats > .hint { margin: -4px 0 0; }
 /* One line a row: the table scrolls inside its frame rather than wrap a cell. */
 .sx6-stats th, .sx6-stats td { white-space: nowrap; }
-.sx6-duel { display: flex; flex-direction: column; gap: 8px; max-width: 560px; }
+.sx6-duel { display: flex; flex-direction: column; gap: 8px; max-width: 560px; margin: 0 auto; }
+.sx6-duel h3 { text-align: center; }
 .sx6-duel h3 { margin: 6px 0 0; font: 700 var(--fs-xs) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .sx6-duel-grid { display: grid; grid-template-columns: 1fr minmax(0, 1.6fr) 1fr; align-items: baseline; gap: 4px 14px; }
 .sx6-duel-name { font-weight: 700; text-align: center; }
