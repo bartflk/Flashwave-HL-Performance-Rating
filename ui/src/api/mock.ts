@@ -84,7 +84,7 @@ import type {
   RglSeasonCard,
   RglTeamHit,
   RglSeason,
-  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, SixesMatches, StoredRole, Stint, SixesMatchStats, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
+  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, SixesMatches, StoredRole, Stint, SixesMatchStats, SixesRatingRow, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
   RglTeamPage,
   RglTeamSeason,
   RglTeamHistory,
@@ -1554,6 +1554,30 @@ export const mockApi: Api = {
   getSixesSeason: () => delay(sixesSeason53 as unknown as SixesSeason),
   // The mock plays both, so the tab menus can be seen without setup.
   getSixesMatches: () => delay(sixesMatches53 as unknown as SixesMatches),
+  // Preview ratings: a spread around 1.00 for the mock 6v6 match, and the
+  // owner's by role for the 6v6 profile.
+  getSixesRatings: (q: { logId?: number; accountId?: number }) => {
+    const roles = ["pocket", "roamer", "pocket_scout", "flank_scout", "demoman", "medic"];
+    if (q.logId !== undefined) {
+      const row = FAKE_MATCHES.find((m) => m.logId === q.logId);
+      if (row?.format !== "sixes") return delay<SixesRatingRow[]>([]);
+      return delay<SixesRatingRow[]>(
+        FIXTURES[0].players.map((p, i) => ({
+          logId: q.logId!,
+          accountId: p.accountId,
+          role: roles[i % 6],
+          rating: Math.round((0.7 + ((p.accountId * 7) % 60) / 100) * 100) / 100,
+          score: 50,
+          minutes: p.timeS / 60,
+          parts: JSON.stringify([["dpm", 62, 0.4], ["deaths", 48, 0.3], ["airshots", 71, 0.3]]),
+        })),
+      );
+    }
+    const sixes = FAKE_MATCHES.filter((m) => m.format === "sixes");
+    return delay<SixesRatingRow[]>(
+      sixes.map((m, i) => ({ logId: m.logId, accountId: q.accountId ?? 0, role: i % 3 === 0 ? "roamer" : "pocket", rating: Math.round((0.85 + (i % 7) * 0.06) * 100) / 100, score: 50, minutes: 25, parts: "[]" })),
+    );
+  },
   // The mock 6v6 match's numbers, from its players (see getMatch).
   getSixesMatchStats: (logId: number) => {
     const row = FAKE_MATCHES.find((m) => m.logId === logId);

@@ -563,6 +563,18 @@ export interface SixesMatchStats {
   medics: SixesMedicStats[];
 }
 
+/** A 6v6 preview rating (the 6v6 plan, P6). */
+export interface SixesRatingRow {
+  logId: number;
+  accountId: number;
+  role: string;
+  rating: number;
+  score: number;
+  minutes: number;
+  /** JSON: [component, percentile, share]. */
+  parts: string;
+}
+
 /** One stretch on an off-class (the 6v6 plan, P3). */
 export interface Stint {
   accountId: number;

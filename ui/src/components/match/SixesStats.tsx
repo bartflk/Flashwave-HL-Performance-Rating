@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { MatchDetail, SixesMedicStats, SixesPlayerStats } from "../../api/types";
+import type { MatchDetail, SixesMedicStats, SixesPlayerStats, SixesRatingRow } from "../../api/types";
 import { t } from "../../lib/i18n";
 import { teamLabel } from "../../lib/format";
 import { roleLabel } from "../../lib/gameformat";
@@ -16,6 +16,9 @@ import { ClassIcon } from "../ClassIcon";
 export function SixesStats({ d }: { d: MatchDetail }) {
   const q = useQuery({ queryKey: ["sixes_match_stats", d.logId], queryFn: () => api.getSixesMatchStats(d.logId), staleTime: 5 * 60_000 });
   const roles = useQuery({ queryKey: ["match_roles", d.logId], queryFn: () => api.getMatchRoles(d.logId), staleTime: 5 * 60_000 }).data ?? [];
+  // The preview rating of each player's main role (the 6v6 plan, P6).
+  const ratings = useQuery({ queryKey: ["sixes_ratings", d.logId], queryFn: () => api.getSixesRatings({ logId: d.logId }), staleTime: 5 * 60_000 }).data ?? [];
+  const ratingOf = (id: number) => ratings.find((r) => r.accountId === id && !r.role.startsWith("off:")) ?? null;
   const names = useMemo(() => new Map(d.players.map((p) => [p.accountId, p.name])), [d.players]);
   const roleOf = (id: number) => roles.map((r) => (r.accountId === id ? roleLabel(r.role) : null)).find(Boolean) ?? null;
   const s = q.data;
@@ -32,13 +35,14 @@ export function SixesStats({ d }: { d: MatchDetail }) {
   return (
     <section className="panel sx6-stats">
       <h2>{t("6v6 numbers")}</h2>
-      <p className="hint">{t("What each 6v6 role is judged on that the log records. The 6v6 rating will weigh them by role.")}</p>
+      <p className="hint">{t("What each 6v6 role is judged on that the log records. The rating is a preview: weighed by role against the other players in your stored 6v6 logs, without round impact yet.")}</p>
       <div className="table-wrap">
         <table className="match-table">
           <thead>
             <tr>
               <th>{t("Team")}</th>
               <th>{t("Player")}</th>
+              {ratings.length > 0 && <th className="num" title={t("The 6v6 rating's preview: 1.00 is an average game in the role")}>{t("Rating")}</th>}
               <th className="num" title={t("Damage per minute")}>{t("DPM")}</th>
               <th className="num" title={t("Damage taken per minute")}>{t("DTM")}</th>
               <th className="num" title={t("Damage dealt over damage taken")}>{t("Ratio")}</th>
@@ -55,7 +59,15 @@ export function SixesStats({ d }: { d: MatchDetail }) {
           </thead>
           <tbody>
             {players.map((p) => (
-              <Row key={p.accountId} p={p} name={names.get(p.accountId) ?? String(p.accountId)} role={roleOf(p.accountId)} cols={[anySticky, anyReflect, anySentry, anySaps, anyDenies, hasPicks]} f={f} />
+              <Row
+                key={p.accountId}
+                p={p}
+                name={names.get(p.accountId) ?? String(p.accountId)}
+                role={roleOf(p.accountId)}
+                rating={ratings.length > 0 ? ratingOf(p.accountId) : undefined}
+                cols={[anySticky, anyReflect, anySentry, anySaps, anyDenies, hasPicks]}
+                f={f}
+              />
             ))}
           </tbody>
         </table>
@@ -69,12 +81,15 @@ function Row({
   p,
   name,
   role,
+  rating,
   cols,
   f,
 }: {
   p: SixesPlayerStats;
   name: string;
   role: { short: string; long: string } | null;
+  /** Undefined when no rating is shown at all; null for a player not rated. */
+  rating: SixesRatingRow | null | undefined;
   cols: [boolean, boolean, boolean, boolean, boolean, boolean];
   f: (v: number | null, digits?: number) => string;
 }) {
@@ -91,6 +106,11 @@ function Row({
           </span>
         )}
       </td>
+      {rating !== undefined && (
+        <td className="num" title={rating ? partsText(rating.parts) : undefined}>
+          {rating ? <strong>{rating.rating.toFixed(2)}</strong> : "–"}
+        </td>
+      )}
       <td className="num">{f(p.dpm)}</td>
       <td className="num muted">{f(p.dtm)}</td>
       <td className="num">{f(p.damageRatio, 2)}</td>
@@ -108,6 +128,16 @@ function Row({
       {cols[4] && <td className="num">{p.denies || ""}</td>}
     </tr>
   );
+}
+
+/** A rating's breakdown for its tooltip: each component's percentile and share. */
+function partsText(parts: string): string {
+  try {
+    const rows = JSON.parse(parts) as Array<[string, number, number]>;
+    return rows.map(([c, pct, share]) => `${c.replace(/_/g, " ")}: ${Math.round(pct)} (${Math.round(share * 100)}%)`).join("\n");
+  } catch {
+    return "";
+  }
 }
 
 /** The two Medics' numbers side by side, the better of each marked. */

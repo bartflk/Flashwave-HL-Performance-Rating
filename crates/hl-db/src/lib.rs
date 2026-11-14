@@ -34,7 +34,7 @@ pub(crate) const OWNER_COVERED: &str = "SELECT i.log_id FROM log_index i JOIN lo
        WHERE i.superseded_by IS NULL AND COALESCE(i.format_override, i.format) = 'highlander')";
 mod context;
 mod roles;
-pub use roles::StoredRole;
+pub use roles::{SixesRatingRow, StoredRole};
 mod demos;
 mod diagnostics;
 mod fights;
@@ -600,6 +600,7 @@ mod frozen_migrations {
         ("0045_rgl_answer.sql", 0x9eb7f3f9e42ee692),
         ("0047_audit_sync.sql", 0xe1ca0035dedfc4e2),
         ("0048_formats.sql", 0xf639046bf5a554b8),
+        ("0049_sixes_rating.sql", 0x95ee17c8470ff125),
     ];
 
     fn fnv1a(bytes: &[u8]) -> u64 {

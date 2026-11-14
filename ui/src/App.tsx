@@ -266,7 +266,7 @@ export default function App() {
       </div>
       {visited.has("profile") && (
         <div hidden={tab !== "profile" || openLog !== null}>
-          <ErrorBoundary what="The profile">{fmt.profile === "6s" ? <SixesSoon /> : <ProfilePage steamid={data.config.steamid} onOpenMatch={setOpenLog} />}</ErrorBoundary>
+          <ErrorBoundary what="The profile">{fmt.profile === "6s" ? <SixesSoon steamid={data.config.steamid} /> : <ProfilePage steamid={data.config.steamid} onOpenMatch={setOpenLog} />}</ErrorBoundary>
         </div>
       )}
       {visited.has("etf2l") && (

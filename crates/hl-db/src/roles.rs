@@ -75,6 +75,81 @@ impl Db {
     }
 }
 
+/// One stored 6v6 preview rating (the 6v6 plan, P6).
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SixesRatingRow {
+    pub log_id: i64,
+    pub account_id: u32,
+    pub role: String,
+    pub rating: f64,
+    pub score: f64,
+    pub minutes: f64,
+    /// JSON: `[component, percentile, share]`.
+    pub parts: String,
+}
+
+impl Db {
+    /// Every stored 6v6 log's logs.tf JSON, for the rating pass.
+    pub async fn sixes_log_jsons(&self) -> Result<Vec<(i64, String)>> {
+        Ok(sqlx::query_as(
+            "SELECT r.log_id, r.json FROM log_raw r JOIN log_index i ON i.log_id = r.log_id
+              WHERE COALESCE(i.format_override, i.format) = 'sixes' AND i.superseded_by IS NULL ORDER BY r.log_id",
+        )
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    /// Replace a model version's 6v6 ratings: `(log, account, role, rating, score, minutes, parts)`.
+    pub async fn replace_sixes_ratings(&self, version: &str, rows: &[(i64, u32, String, f64, f64, f64, String)]) -> Result<()> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("DELETE FROM sixes_rating WHERE model_version = ?1").bind(version).execute(&mut *tx).await?;
+        for (log, account, role, rating, score, minutes, parts) in rows {
+            sqlx::query(
+                "INSERT INTO sixes_rating (log_id, account_id, role, model_version, rating, score, minutes, parts) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            )
+            .bind(log)
+            .bind(i64::from(*account))
+            .bind(role)
+            .bind(version)
+            .bind(rating)
+            .bind(score)
+            .bind(minutes)
+            .bind(parts)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// One log's 6v6 ratings, or one player's, of a model version.
+    pub async fn sixes_ratings(&self, version: &str, log_id: Option<i64>, account: Option<u32>) -> Result<Vec<SixesRatingRow>> {
+        let rows = sqlx::query(
+            "SELECT log_id, account_id, role, rating, score, minutes, parts FROM sixes_rating
+              WHERE model_version = ?1 AND (?2 IS NULL OR log_id = ?2) AND (?3 IS NULL OR account_id = ?3)
+              ORDER BY log_id, account_id, role",
+        )
+        .bind(version)
+        .bind(log_id)
+        .bind(account.map(i64::from))
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| SixesRatingRow {
+                log_id: r.get("log_id"),
+                account_id: r.get::<i64, _>("account_id") as u32,
+                role: r.get("role"),
+                rating: r.get("rating"),
+                score: r.get("score"),
+                minutes: r.get("minutes"),
+                parts: r.get("parts"),
+            })
+            .collect())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::Db;

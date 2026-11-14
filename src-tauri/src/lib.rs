@@ -138,6 +138,7 @@ pub fn run() {
             sync_commands::get_match_roles,
             sync_commands::get_match_stints,
             sync_commands::get_sixes_match_stats,
+            sync_commands::get_sixes_ratings,
             sync_commands::get_rgl_match_stats,
             sync_commands::get_rgl_team,
             sync_commands::get_rgl_team_seasons,

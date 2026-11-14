@@ -363,6 +363,11 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                     Ok(_) => {}
                     Err(e) => report.problems.push(format!("6v6 roles: {e:#}")),
                 }
+                // The 6v6 rating's preview (P6), on the stored 6v6 logs.
+                match hl_ingest::sixes_rating::rate_all(&db).await {
+                    Ok(n) => tracing::info!(ratings = n, "6v6 preview ratings"),
+                    Err(e) => report.problems.push(format!("6v6 ratings: {e:#}")),
+                }
                 stage("Reading ETF2L's 6v6 seasons");
                 match hl_ingest::leagues::fetch_sixes(&db, &sources, hl_ingest::leagues::DETAILS_PER_SYNC / 2, |_, _| {}).await {
                     Ok(s) => {
@@ -811,6 +816,12 @@ pub async fn get_match_stints(state: State<'_, AppState>, log_id: i64) -> CmdRes
 #[tauri::command]
 pub async fn get_sixes_match_stats(state: State<'_, AppState>, log_id: i64) -> CmdResult<Option<hl_ingest::sixes_stats::SixesMatchStats>> {
     Ok(hl_ingest::sixes_stats::of_log(&state.db, log_id).await?)
+}
+
+/// The 6v6 preview ratings of one log, or of one player (the 6v6 plan, P6).
+#[tauri::command]
+pub async fn get_sixes_ratings(state: State<'_, AppState>, log_id: Option<i64>, account_id: Option<u32>) -> CmdResult<Vec<hl_db::SixesRatingRow>> {
+    Ok(state.db.sixes_ratings(&hl_ingest::sixes_rating::model_version(), log_id, account_id).await?)
 }
 
 /// The current ETF2L 6v6 season's officials by week (the 6v6 plan, P2).

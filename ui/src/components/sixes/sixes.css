@@ -103,6 +103,9 @@
 /* Two panels a row only where both have room for full team names. */
 @media (max-width: 1280px) { .sx-week-groups { grid-template-columns: minmax(0, 1fr); } }
 
+/* The 6v6 profile's preview ratings by role (the 6v6 plan, P6). */
+.sx-roles { max-width: 520px; }
+
 /* Teams and team pages (the 6v6 plan, P2). */
 .sx-team-link { font: inherit; color: var(--text); text-align: left; padding: 0; }
 .sx-team-link:hover { color: var(--accent-text); }
