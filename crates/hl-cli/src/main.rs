@@ -65,6 +65,9 @@ COMMANDS:
                            component, picks the side that won, over every stored
                            6v6 log (own and league sample), or over the games
                            `logsdump-sixes` wrote (officials unless --kinds)
+    sixes-sample [on|off|status]
+                           Switch the 6v6 league sample on or off while the app
+                           is closed; it downloads from the app's next start
     logsdump-sixes <DUMP.sql> <INDEX.sqlite3> <OUT.sqlite3> [--limit ROWS]
                            Every 6v6 official, scrim and pug in the dump (each
                            game once, as the index decided): each player's role
@@ -457,6 +460,22 @@ async fn run() -> Result<()> {
         ["rate"] => {
             let db = Db::connect(&db_path).await?;
             rate(&db, &db_path).await
+        }
+
+        // The 6v6 league sample's switch (the 6v6 plan, P5), for when the
+        // app is closed; the app's own Start does the same.
+        ["sixes-sample", rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            match rest {
+                ["on"] => hl_ingest::sixes_sample::set_enabled(&db, true).await?,
+                ["off"] => hl_ingest::sixes_sample::set_enabled(&db, false).await?,
+                [] | ["status"] => {}
+                _ => bail!("usage: hl sixes-sample [on|off|status]"),
+            }
+            let s = hl_ingest::sixes_sample::status(&db).await?;
+            println!("6v6 league sample: {}, {} seasons back", if s.enabled { "on" } else { "off" }, s.seasons_back);
+            println!("{}", serde_json::to_string(&s.counts)?);
+            Ok(())
         }
 
         ["sixes-validate", rest @ ..] => {
