@@ -62,7 +62,8 @@ fn n(v: &Value, k: &str) -> Option<f64> {
     v.get(k).and_then(|x| x.as_f64().or_else(|| x.as_str().and_then(|s| s.parse().ok())))
 }
 
-/// Every rateable performance in one 6v6 log.
+/// Every rateable performance in one 6v6 log, kills unvalued (the tests').
+#[cfg(test)]
 fn perfs_of(log_id: i64, json: &Value) -> Vec<Perf> {
     perfs_valued(log_id, json, None)
 }
