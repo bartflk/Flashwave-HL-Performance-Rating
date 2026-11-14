@@ -57,6 +57,7 @@ pub mod rgl;
 pub mod rgl_stats;
 pub mod roles;
 pub mod sixes;
+pub mod sixes_stats;
 pub mod teammates;
 pub mod demos;
 pub mod demostf;

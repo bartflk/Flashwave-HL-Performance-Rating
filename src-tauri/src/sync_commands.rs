@@ -806,6 +806,13 @@ pub async fn get_match_stints(state: State<'_, AppState>, log_id: i64) -> CmdRes
     Ok(hl_ingest::roles::match_stints(&state.db, log_id).await?)
 }
 
+/// A 6v6 log's own numbers by role and the Medics side by side (the 6v6
+/// plan, P4).
+#[tauri::command]
+pub async fn get_sixes_match_stats(state: State<'_, AppState>, log_id: i64) -> CmdResult<Option<hl_ingest::sixes_stats::SixesMatchStats>> {
+    Ok(hl_ingest::sixes_stats::of_log(&state.db, log_id).await?)
+}
+
 /// The current ETF2L 6v6 season's officials by week (the 6v6 plan, P2).
 #[tauri::command]
 pub async fn get_sixes_matches(state: State<'_, AppState>) -> CmdResult<Option<hl_ingest::sixes::SixesMatches>> {

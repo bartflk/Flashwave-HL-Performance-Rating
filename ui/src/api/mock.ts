@@ -84,7 +84,7 @@ import type {
   RglSeasonCard,
   RglTeamHit,
   RglSeason,
-  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, SixesMatches, StoredRole, Stint, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
+  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, SixesMatches, StoredRole, Stint, SixesMatchStats, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
   RglTeamPage,
   RglTeamSeason,
   RglTeamHistory,
@@ -1554,6 +1554,42 @@ export const mockApi: Api = {
   getSixesSeason: () => delay(sixesSeason53 as unknown as SixesSeason),
   // The mock plays both, so the tab menus can be seen without setup.
   getSixesMatches: () => delay(sixesMatches53 as unknown as SixesMatches),
+  // The mock 6v6 match's numbers, from its players (see getMatch).
+  getSixesMatchStats: (logId: number) => {
+    const row = FAKE_MATCHES.find((m) => m.logId === logId);
+    if (row?.format !== "sixes") return delay<SixesMatchStats | null>(null);
+    const ps = FIXTURES[0].players;
+    const medics = ps.filter((p) => p.mainClass === "medic");
+    const deathsOf = (team: string) => medics.find((m) => m.team === team)?.deaths ?? null;
+    return delay<SixesMatchStats>({
+      players: ps.map((p) => ({
+        accountId: p.accountId,
+        team: p.team,
+        mainClass: p.mainClass,
+        minutes: p.timeS / 60,
+        dpm: Math.round((p.dmg * 60) / p.timeS),
+        dtm: Math.round((p.dmg * 0.9 * 60) / p.timeS),
+        damageRatio: 1.11,
+        airshots: p.mainClass === "soldier" || p.mainClass === "demoman" ? 3 : 0,
+        deaths: p.deaths,
+        medicDeaths: p.mainClass === "medic" ? null : deathsOf(p.team),
+        stickyKills: p.mainClass === "demoman" ? 9 : 0,
+        reflectKills: p.mainClass === "pyro" ? 2 : 0,
+        sentryKills: p.mainClass === "engineer" ? 4 : 0,
+      })),
+      medics: medics.slice(0, 2).map((m, i) => ({
+        accountId: m.accountId,
+        team: m.team,
+        ubers: 9 - i,
+        drops: i,
+        deaths: m.deaths,
+        healPerMin: 1180 + i * 40,
+        advantagesLost: i,
+        deathsAfterUber: 1 + i,
+        avgBuildS: 66.4 + i * 3,
+      })),
+    });
+  },
   // The mock 6v6 match's two off-classers (see getMatch): when, and beside whom.
   getMatchStints: (logId: number) => {
     const row = FAKE_MATCHES.find((m) => m.logId === logId);

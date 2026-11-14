@@ -521,6 +521,40 @@ export interface StoredRole {
   byHand: boolean;
 }
 
+/** A 6v6 match's numbers (the 6v6 plan, P4). */
+export interface SixesPlayerStats {
+  accountId: number;
+  team: string;
+  mainClass: string | null;
+  minutes: number;
+  dpm: number | null;
+  dtm: number | null;
+  damageRatio: number | null;
+  airshots: number | null;
+  deaths: number;
+  medicDeaths: number | null;
+  stickyKills: number;
+  reflectKills: number;
+  sentryKills: number;
+}
+
+export interface SixesMedicStats {
+  accountId: number;
+  team: string;
+  ubers: number;
+  drops: number;
+  deaths: number;
+  healPerMin: number | null;
+  advantagesLost: number | null;
+  deathsAfterUber: number | null;
+  avgBuildS: number | null;
+}
+
+export interface SixesMatchStats {
+  players: SixesPlayerStats[];
+  medics: SixesMedicStats[];
+}
+
 /** One stretch on an off-class (the 6v6 plan, P3). */
 export interface Stint {
   accountId: number;
