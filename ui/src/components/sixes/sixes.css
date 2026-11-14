@@ -87,10 +87,9 @@
 }
 .sx-fx:first-child { border-top: 0; }
 .sx-fx-when { grid-area: when; font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
-.sx-fx > .sx-fx-team:nth-of-type(1) { grid-area: a; justify-content: flex-end; text-align: right; }
-.sx-fx > .sx-fx-team:nth-of-type(3) { grid-area: b; }
-.sx-fx-team { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--text); text-decoration: none; }
-.sx-fx > .sx-fx-team:nth-of-type(1) { flex-direction: row-reverse; }
+.sx-fx > .sx-fx-team:nth-of-type(1) { grid-area: a; justify-content: flex-start; text-align: right; flex-direction: row-reverse; }
+.sx-fx > .sx-fx-team:nth-of-type(2) { grid-area: b; }
+.sx-fx-team { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--text); text-decoration: none; background: none; border: 0; box-shadow: none; padding: 0; font: inherit; cursor: pointer; }
 .sx-fx-team:hover .sx-fx-name { color: var(--accent-text); }
 .sx-fx-team img, .sx-fx-noav { width: 18px; height: 18px; border-radius: 3px; flex: none; object-fit: cover; background: var(--sunken); }
 .sx-fx-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -104,6 +103,16 @@
 /* Two panels a row only where both have room for full team names. */
 @media (max-width: 1280px) { .sx-week-groups { grid-template-columns: minmax(0, 1fr); } }
 
+/* Teams and team pages (the 6v6 plan, P2). */
+.sx-team-link { font: inherit; color: var(--text); text-align: left; padding: 0; }
+.sx-team-link:hover { color: var(--accent-text); }
+.sx-teams { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.sx-team-list { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: 16px; }
+.sx-team-list li { padding: 3px 0; break-inside: avoid; }
+.sx-team-page { display: flex; flex-direction: column; gap: 12px; }
+.sx-back { align-self: flex-start; }
+@media (max-width: 1280px) { .sx-teams { grid-template-columns: minmax(0, 1fr); } }
+
 /* Matches or Profile in 6v6 before their phase is built. */
 .sx-soon-panel { max-width: 720px; display: flex; flex-direction: column; gap: 10px; }
 .sx-soon-panel p { margin: 0; max-width: 68ch; }
@@ -112,3 +121,5 @@
   .sx-grid { grid-template-columns: minmax(0, 1fr); }
   .sx-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+.sx-ext { color: var(--accent-text); align-self: flex-start; }
+.sx-ext:hover { color: var(--text); }

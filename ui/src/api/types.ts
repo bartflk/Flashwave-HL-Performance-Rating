@@ -2750,6 +2750,8 @@ export interface TeamView {
   name: string;
   country: string | null;
   avatar: string | null;
+  /** The format the team plays (the 6v6 plan, P2); missing from older builds. */
+  format?: "highlander" | "sixes";
   /** [season, division], newest first. */
   seasons: Array<[number, string]>;
   record: LeagueRecord;

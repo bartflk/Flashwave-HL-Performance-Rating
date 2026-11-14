@@ -1276,7 +1276,7 @@ async fn run() -> Result<()> {
         ["leagues", rest @ ..] => {
             let db = Db::connect(&db_path).await?;
             let season = rest.first().and_then(|s| s.parse::<i64>().ok());
-            let v = hl_ingest::leagues::season(&db, season).await?;
+            let v = hl_ingest::leagues::season(&db, season, hl_core::GameFormat::Highlander).await?;
             if rest.contains(&"--json") {
                 println!("{}", serde_json::to_string(&v)?);
                 return Ok(());

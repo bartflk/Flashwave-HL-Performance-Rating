@@ -13,6 +13,7 @@ import { tierOf } from "../etf2l/Brackets";
 import "../etf2l/etf2l.css";
 import "./sixes.css";
 import { SixesMatches } from "./SixesMatches";
+import { SixesTeam, SixesTeamsList } from "./SixesTeams";
 
 /**
  * The ETF2L tab in 6v6 (prototype; Flashy: "make a prototype for etf2l
@@ -34,7 +35,13 @@ export function SixesPage() {
   const swiss = useMemo(() => (s?.divisions ?? []).filter((d) => d.system === "swiss"), [s]);
   // The sections built so far: the season's tables, and its matches by week
   // (the 6v6 plan, P2). The rest of the menu waits for its step.
-  const [section, setSection] = useState<"season" | "matches">("season");
+  const [section, setSection] = useState<"season" | "matches" | "teams">("season");
+  // A team page opened from a table, a match or the Teams list, over the section.
+  const [teamId, setTeamId] = useState<number | null>(null);
+  const open = (sec: "season" | "matches" | "teams") => {
+    setSection(sec);
+    setTeamId(null);
+  };
 
   return (
     <div className="content e2-page sx-page">
@@ -44,13 +51,16 @@ export function SixesPage() {
             <Etf2lMark size={16} /> {t("ETF2L 6v6")}
           </span>
           <nav className="e2-menu" data-fit="" aria-label={t("ETF2L 6v6")}>
-            <button className={section === "season" ? "on" : undefined} aria-current={section === "season" ? "page" : undefined} onClick={() => setSection("season")}>
+            <button className={section === "season" ? "on" : undefined} aria-current={section === "season" ? "page" : undefined} onClick={() => open("season")}>
               {t("Season")}
             </button>
-            <button className={section === "matches" ? "on" : undefined} aria-current={section === "matches" ? "page" : undefined} onClick={() => setSection("matches")}>
+            <button className={section === "matches" ? "on" : undefined} aria-current={section === "matches" ? "page" : undefined} onClick={() => open("matches")}>
               {t("Matches")}
             </button>
-            {[t("Teams"), t("Players"), t("News"), t("Recruitment")].map((x) => (
+            <button className={section === "teams" ? "on" : undefined} aria-current={section === "teams" ? "page" : undefined} onClick={() => open("teams")}>
+              {t("Teams")}
+            </button>
+            {[t("Players"), t("News"), t("Recruitment")].map((x) => (
               <button key={x} disabled title={t("Coming in 6v6")}>
                 {x}
               </button>
@@ -71,10 +81,17 @@ export function SixesPage() {
       ) : (
         <div className="e2-match-grid">
           <div className="e2-main">
-            {section === "matches" ? (
+            {teamId !== null ? (
+              <SixesTeam teamId={teamId} onTeam={setTeamId} onBack={() => setTeamId(null)} />
+            ) : section === "teams" ? (
+              <>
+                <h2 className="ts-section">{tx("{0}: teams", { "0": s.name })}</h2>
+                <SixesTeamsList s={s} onTeam={setTeamId} />
+              </>
+            ) : section === "matches" ? (
               <>
                 <h2 className="ts-section">{tx("{0}: matches", { "0": s.name })}</h2>
-                <SixesMatches />
+                <SixesMatches onTeam={setTeamId} />
               </>
             ) : (
             <>
@@ -102,7 +119,7 @@ export function SixesPage() {
                 <p className="hint sx-explain">{t("Groups of eight: every team plays every other once over the seven weeks.")}</p>
                 <div className="sx-grid">
                   {groups.map((d) => (
-                    <DivisionTable key={d.name} d={d} />
+                    <DivisionTable key={d.name} d={d} onTeam={setTeamId} />
                   ))}
                 </div>
               </>
@@ -113,7 +130,7 @@ export function SixesPage() {
                 <p className="hint sx-explain">{t("Each week a team plays one with a similar record, so the big divisions need no groups. Teams level on points are split by head-to-head, then the Sonneborn-Berger score, then rounds.")}</p>
                 <div className="sx-stack">
                   {swiss.map((d) => (
-                    <DivisionTable key={d.name} d={d} wide />
+                    <DivisionTable key={d.name} d={d} wide onTeam={setTeamId} />
                   ))}
                 </div>
               </>
@@ -191,7 +208,7 @@ function Fact({ label, value, sub }: { label: string; value: string; sub: ReactN
 type SortKey = "place" | "won" | "score";
 
 /** One division's table: maps won, drawn and lost, golden caps, points. */
-function DivisionTable({ d, wide }: { d: SixesDivision; wide?: boolean }) {
+function DivisionTable({ d, wide, onTeam }: { d: SixesDivision; wide?: boolean; onTeam: (id: number) => void }) {
   const [open, setOpen] = useState(!wide || d.teams.length <= 12);
   const [sort, setSort] = useState<SortKey>("place");
   const rows = useMemo(() => {
@@ -238,7 +255,7 @@ function DivisionTable({ d, wide }: { d: SixesDivision; wide?: boolean }) {
           </thead>
           <tbody>
             {shown.map(({ r, place }) => (
-              <Row key={r.id} r={r} place={place} hasPen={hasPen} hasBye={hasBye} hasSeed={hasSeed} />
+              <Row key={r.id} r={r} place={place} hasPen={hasPen} hasBye={hasBye} hasSeed={hasSeed} onTeam={onTeam} />
             ))}
           </tbody>
         </table>
@@ -252,14 +269,14 @@ function DivisionTable({ d, wide }: { d: SixesDivision; wide?: boolean }) {
   );
 }
 
-function Row({ r, place, hasPen, hasBye, hasSeed }: { r: SixesRow; place: number | null; hasPen: boolean; hasBye: boolean; hasSeed: boolean }) {
+function Row({ r, place, hasPen, hasBye, hasSeed, onTeam }: { r: SixesRow; place: number | null; hasPen: boolean; hasBye: boolean; hasSeed: boolean; onTeam: (id: number) => void }) {
   return (
     <tr className={r.dropped ? "sx-dropped" : undefined}>
       <td className="num muted">{place ?? "–"}</td>
       <td className="sx-team">
-        <a href={`https://etf2l.org/teams/${r.id}/`} target="_blank" rel="noreferrer" title={t("Open on ETF2L")}>
+        <button className="linkish sx-team-link" onClick={() => onTeam(r.id)} title={t("Open the team's page")}>
           {r.name}
-        </a>
+        </button>
         {r.dropped && <span className="muted"> {t("dropped")}</span>}
       </td>
       <td className="num muted">{r.mapsPlayed}</td>

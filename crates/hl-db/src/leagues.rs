@@ -991,5 +991,9 @@ mod tests {
         assert_eq!(db.season_lineups(53, Highlander).await.unwrap().len(), 0);
         assert_eq!(db.later_team(7, 0, None, Highlander).await.unwrap().map(|t| t.team_id), Some(1), "the 6v6 team is not a Highlander move");
         assert_eq!(db.newest_etf2l_season().await.unwrap(), Some(36), "the newest Highlander season, not 6v6's 53");
+        // The owner's 6v6 officials, with their rosters, find a 6v6 log's match.
+        let six = db.season_officials_of(7, Sixes).await.unwrap();
+        assert_eq!((six.len(), six[0].match_id, six[0].roster.get(&7)), (1, 20, Some(&3)));
+        assert_eq!(db.season_officials_of(7, Highlander).await.unwrap().iter().map(|o| o.match_id).collect::<Vec<_>>(), vec![10]);
     }
 }

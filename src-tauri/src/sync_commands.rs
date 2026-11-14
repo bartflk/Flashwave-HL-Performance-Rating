@@ -353,6 +353,23 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                     report.problems.push(format!("ETF2L seasons: {e:#}"));
                 }
             }
+            // The same for 6v6, for someone who plays it (the 6v6 plan, P2):
+            // its seasons' teams, results and lineups, and the rosters that
+            // find a 6v6 official trends.tf did not link.
+            if db.formats_played().await.is_ok_and(|f| f.contains(&hl_core::GameFormat::Sixes)) {
+                stage("Reading ETF2L's 6v6 seasons");
+                match hl_ingest::leagues::fetch_sixes(&db, &sources, hl_ingest::leagues::DETAILS_PER_SYNC / 2, |_, _| {}).await {
+                    Ok(s) => {
+                        tracing::info!(competitions = s.competitions, results = s.results, details = s.details, "ETF2L 6v6 seasons read");
+                        report.etf2l_results += s.results;
+                        report.etf2l_details += s.details;
+                    }
+                    Err(e) => {
+                        tracing::warn!(error = %format!("{e:#}"), "ETF2L 6v6 seasons could not be read");
+                        report.problems.push(format!("ETF2L 6v6 seasons: {e:#}"));
+                    }
+                }
+            }
 
             // The league's newest officials (Flashy): everyone's logs of the
             // officials played since the last sync, so the season tables,
@@ -1851,8 +1868,9 @@ pub async fn get_tendencies(state: State<'_, AppState>, class: String) -> CmdRes
 /// Q29: one ETF2L Highlander season's division tables; the newest when
 /// `season` is not given.
 #[tauri::command]
-pub async fn get_leagues(state: State<'_, AppState>, season: Option<i64>) -> CmdResult<hl_ingest::leagues::SeasonView> {
-    Ok(hl_ingest::leagues::season(&state.db, season).await?)
+pub async fn get_leagues(state: State<'_, AppState>, season: Option<i64>, format: Option<String>) -> CmdResult<hl_ingest::leagues::SeasonView> {
+    let format = format.as_deref().and_then(hl_core::GameFormat::parse).unwrap_or(hl_core::GameFormat::Highlander);
+    Ok(hl_ingest::leagues::season(&state.db, season, format).await?)
 }
 
 /// Q29: one team's page.

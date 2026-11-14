@@ -16,7 +16,7 @@ import { mapMode } from "../../lib/gameformat";
  * kept for half an hour. Opens on the week still being played; every
  * division at once, or one.
  */
-export function SixesMatches() {
+export function SixesMatches({ onTeam }: { onTeam: (id: number) => void }) {
   const q = useQuery({ queryKey: ["sixes_matches"], queryFn: api.getSixesMatches, staleTime: 30 * 60_000, retry: false });
   const all = useMemo(() => q.data?.matches ?? [], [q.data]);
   const weeks = useMemo(() => [...new Set(all.map((m) => m.week).filter((w): w is number => w !== null))].sort((a, b) => a - b), [all]);
@@ -85,7 +85,7 @@ export function SixesMatches() {
               </div>
               <ul className="sx-fixtures">
                 {rows.map((m) => (
-                  <Fixture key={m.id} m={m} />
+                  <Fixture key={m.id} m={m} onTeam={onTeam} />
                 ))}
               </ul>
             </section>
@@ -96,16 +96,16 @@ export function SixesMatches() {
   );
 }
 
-function Fixture({ m }: { m: SixesMatch }) {
+function Fixture({ m, onTeam }: { m: SixesMatch; onTeam: (id: number) => void }) {
   const won = m.played && m.r1 !== null && m.r2 !== null && m.r1 !== m.r2 ? (m.r1 > m.r2 ? 1 : 2) : 0;
   const team = (side: 1 | 2) => {
     const c = side === 1 ? m.clan1 : m.clan2;
     const cls = won === 0 ? "sx-fx-team" : won === side ? "sx-fx-team sx-fx-won" : "sx-fx-team sx-fx-lost";
     return (
-      <a className={cls} href={`https://etf2l.org/teams/${c.id}/`} target="_blank" rel="noreferrer" title={t("Open on ETF2L")}>
+      <button className={cls} onClick={() => onTeam(c.id)} title={t("Open the team's page")}>
         {c.avatar ? <img src={c.avatar} alt="" /> : <span className="sx-fx-noav" aria-hidden="true" />}
         <span className="sx-fx-name">{c.name}</span>
-      </a>
+      </button>
     );
   };
   return (

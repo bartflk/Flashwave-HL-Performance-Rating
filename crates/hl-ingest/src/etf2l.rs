@@ -194,11 +194,17 @@ pub async fn derive_context(db: &Db, me: SteamId) -> Result<ContextSummary> {
     };
     let games = games_of(db.context_games(me_id, GameFormat::Highlander).await?);
     let ctx = context::classify(&games, &officials);
-    // 6v6 apart (the 6v6 plan, P1), with its own headcounts. Its officials
-    // are the ones trends.tf links for now: the ETF2L rosters stored are
-    // Highlander's, and a Highlander roster must not make a 6v6 official.
+    // 6v6 apart (the 6v6 plan, P1), with its own headcounts and its own
+    // officials: the 6v6 seasons' lineups the owner is in (P2), never a
+    // Highlander roster.
     let sixes = games_of(db.context_games(me_id, GameFormat::Sixes).await?);
-    let sixes_ctx = context::classify_sized(&sixes, &[], context::Sizes::SIXES);
+    let sixes_officials: Vec<Official> = db
+        .season_officials_of(me_id, GameFormat::Sixes)
+        .await?
+        .into_iter()
+        .map(|o| Official { match_id: o.match_id, time: o.time, clan1: o.clan1, clan2: o.clan2, roster: o.roster })
+        .collect();
+    let sixes_ctx = context::classify_sized(&sixes, &sixes_officials, context::Sizes::SIXES);
 
     let mut s = ContextSummary::default();
     for c in &ctx {
