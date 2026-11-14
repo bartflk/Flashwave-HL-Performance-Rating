@@ -14,6 +14,9 @@ import "../etf2l/etf2l.css";
 import "./sixes.css";
 import { SixesMatches } from "./SixesMatches";
 import { SixesTeam, SixesTeamsList } from "./SixesTeams";
+import { NewsList, NewsReader } from "../etf2l/News";
+import { RecruitmentPage, RecruitPostPage, type Kind } from "../etf2l/Recruitment";
+import type { RecruitPost } from "../../api/types";
 
 /**
  * The ETF2L tab in 6v6 (prototype; Flashy: "make a prototype for etf2l
@@ -35,13 +38,27 @@ export function SixesPage() {
   const swiss = useMemo(() => (s?.divisions ?? []).filter((d) => d.system === "swiss"), [s]);
   // The sections built so far: the season's tables, and its matches by week
   // (the 6v6 plan, P2). The rest of the menu waits for its step.
-  const [section, setSection] = useState<"season" | "matches" | "teams">("season");
-  // A team page opened from a table, a match or the Teams list, over the section.
-  const [teamId, setTeamId] = useState<number | null>(null);
-  const open = (sec: "season" | "matches" | "teams") => {
+  type Section = "season" | "matches" | "teams" | "news" | "recruitment";
+  const [section, setSection] = useState<Section>("season");
+  // A page opened over the section: a team (from a table, a match or the
+  // Teams list), a news post, or a recruitment post.
+  const [teamId, setTeamIdRaw] = useState<number | null>(null);
+  const [postId, setPostId] = useState<number | null>(null);
+  const [recruit, setRecruit] = useState<{ p: RecruitPost; kind: Kind } | null>(null);
+  const setTeamId = (id: number | null) => {
+    setTeamIdRaw(id);
+    setPostId(null);
+    setRecruit(null);
+  };
+  const open = (sec: Section) => {
     setSection(sec);
     setTeamId(null);
   };
+  const tab = (sec: Section, label: string) => (
+    <button className={section === sec ? "on" : undefined} aria-current={section === sec ? "page" : undefined} onClick={() => open(sec)}>
+      {label}
+    </button>
+  );
 
   return (
     <div className="content e2-page sx-page">
@@ -51,16 +68,12 @@ export function SixesPage() {
             <Etf2lMark size={16} /> {t("ETF2L 6v6")}
           </span>
           <nav className="e2-menu" data-fit="" aria-label={t("ETF2L 6v6")}>
-            <button className={section === "season" ? "on" : undefined} aria-current={section === "season" ? "page" : undefined} onClick={() => open("season")}>
-              {t("Season")}
-            </button>
-            <button className={section === "matches" ? "on" : undefined} aria-current={section === "matches" ? "page" : undefined} onClick={() => open("matches")}>
-              {t("Matches")}
-            </button>
-            <button className={section === "teams" ? "on" : undefined} aria-current={section === "teams" ? "page" : undefined} onClick={() => open("teams")}>
-              {t("Teams")}
-            </button>
-            {[t("Players"), t("News"), t("Recruitment")].map((x) => (
+            {tab("season", t("Season"))}
+            {tab("matches", t("Matches"))}
+            {tab("teams", t("Teams"))}
+            {tab("news", t("News"))}
+            {tab("recruitment", t("Recruitment"))}
+            {[t("Players")].map((x) => (
               <button key={x} disabled title={t("Coming in 6v6")}>
                 {x}
               </button>
@@ -83,6 +96,28 @@ export function SixesPage() {
           <div className="e2-main">
             {teamId !== null ? (
               <SixesTeam teamId={teamId} onTeam={setTeamId} onBack={() => setTeamId(null)} />
+            ) : postId !== null ? (
+              <div className="sx-team-page">
+                <button className="linkish sx-back" onClick={() => setPostId(null)}>
+                  {t("‹ Back to the news")}
+                </button>
+                <NewsReader id={postId} />
+              </div>
+            ) : recruit !== null ? (
+              <div className="sx-team-page">
+                <button className="linkish sx-back" onClick={() => setRecruit(null)}>
+                  {t("‹ Back to recruitment")}
+                </button>
+                <RecruitPostPage p={recruit.p} kind={recruit.kind} onTeam={setTeamId} />
+              </div>
+            ) : section === "news" ? (
+              <>
+                <NewsList format="sixes" onPost={setPostId} />
+              </>
+            ) : section === "recruitment" ? (
+              <>
+                <RecruitmentPage format="sixes" onOpen={(p, kind) => setRecruit({ p, kind })} />
+              </>
             ) : section === "teams" ? (
               <>
                 <h2 className="ts-section">{tx("{0}: teams", { "0": s.name })}</h2>
@@ -184,7 +219,7 @@ export function SixesPage() {
                 </li>
                 <li>
                   <strong>{t("The rest of this tab")}</strong>
-                  <span className="muted">{t("Teams, players, playoffs, Nations' Cup, news and recruitment, as the Highlander tab has them.")}</span>
+                  <span className="muted">{t("Players, playoffs and the Nations' Cup, as the Highlander tab has them.")}</span>
                 </li>
               </ul>
             </section>

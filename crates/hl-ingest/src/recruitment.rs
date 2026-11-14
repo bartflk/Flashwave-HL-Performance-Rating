@@ -60,15 +60,20 @@ fn last_number(url: &str) -> Option<i64> {
     url.trim_end_matches('/').rsplit('/').next()?.parse().ok()
 }
 
-/// One page of `/recruitment/players` or `/recruitment/teams`.
+/// One page of `/recruitment/players` or `/recruitment/teams`, Highlander's posts.
 pub fn parse_page(body: &str) -> Option<Vec<RecruitPost>> {
+    parse_page_of(body, "Highlander")
+}
+
+/// One page's posts of one ETF2L type: "Highlander" or "6v6" (the 6v6 plan, P2).
+pub fn parse_page_of(body: &str, kind_type: &str) -> Option<Vec<RecruitPost>> {
     let v: Value = serde_json::from_str(body).ok()?;
     let page = v.get("recruitment")?;
     // The new API pages under "data"; the old one is a plain list.
     let rows = page.get("data").and_then(Value::as_array).or_else(|| page.as_array())?;
     Some(
         rows.iter()
-            .filter(|r| r["type"].as_str() == Some("Highlander"))
+            .filter(|r| r["type"].as_str() == Some(kind_type))
             .filter_map(|r| {
                 Some(RecruitPost {
                     id: r["id"].as_i64()?,
@@ -87,11 +92,11 @@ pub fn parse_page(body: &str) -> Option<Vec<RecruitPost>> {
     )
 }
 
-async fn read(sources: &Sources, kind: &str) -> Result<Vec<RecruitPost>> {
+async fn read(sources: &Sources, kind: &str, kind_type: &str) -> Result<Vec<RecruitPost>> {
     let mut out: Vec<RecruitPost> = Vec::new();
     for page in 1..=PAGES {
-        let Some(body) = sources.etf2l_get_interactive(&format!("/recruitment/{kind}?type=Highlander&page={page}")).await? else { break };
-        let Some(rows) = parse_page(&body) else { anyhow::bail!("ETF2L's recruitment did not parse") };
+        let Some(body) = sources.etf2l_get_interactive(&format!("/recruitment/{kind}?type={kind_type}&page={page}")).await? else { break };
+        let Some(rows) = parse_page_of(&body, kind_type) else { anyhow::bail!("ETF2L's recruitment did not parse") };
         if rows.is_empty() {
             break;
         }
@@ -104,18 +109,22 @@ async fn read(sources: &Sources, kind: &str) -> Result<Vec<RecruitPost>> {
     Ok(out)
 }
 
-/// The latest Highlander recruitment posts, players and teams.
-pub async fn latest(db: &Db, sources: &Sources) -> Result<Recruitment> {
-    let held: Option<(i64, Recruitment)> = db.get_setting(KEY).await?.and_then(|v| serde_json::from_str(&v).ok());
+/// The latest recruitment posts of one format, players and teams.
+pub async fn latest(db: &Db, sources: &Sources, format: hl_core::GameFormat) -> Result<Recruitment> {
+    let (kind_type, key) = match format {
+        hl_core::GameFormat::Highlander => ("Highlander", KEY),
+        hl_core::GameFormat::Sixes => ("6v6", "etf2l_recruitment_6v6"),
+    };
+    let held: Option<(i64, Recruitment)> = db.get_setting(key).await?.and_then(|v| serde_json::from_str(&v).ok());
     if let Some((at, r)) = &held {
         if now() - at < FRESH {
             return Ok(r.clone());
         }
     }
-    let fresh = async { Ok::<_, anyhow::Error>(Recruitment { players: read(sources, "players").await?, teams: read(sources, "teams").await? }) }.await;
+    let fresh = async { Ok::<_, anyhow::Error>(Recruitment { players: read(sources, "players", kind_type).await?, teams: read(sources, "teams", kind_type).await? }) }.await;
     match fresh {
         Ok(r) => {
-            db.set_setting(KEY, &serde_json::to_string(&(now(), &r))?).await?;
+            db.set_setting(key, &serde_json::to_string(&(now(), &r))?).await?;
             Ok(r)
         }
         Err(e) => {

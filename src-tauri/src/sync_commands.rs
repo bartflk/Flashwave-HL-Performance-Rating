@@ -2426,8 +2426,9 @@ pub async fn get_rgl_player_more(state: State<'_, AppState>, input: String) -> C
 
 /// ETF2L's latest Highlander news (Q74), read at most every half hour.
 #[tauri::command]
-pub async fn get_news(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::news::NewsItem>> {
-    Ok(hl_ingest::news::latest(&state.db, &state.sources).await?)
+pub async fn get_news(state: State<'_, AppState>, format: Option<String>) -> CmdResult<Vec<hl_ingest::news::NewsItem>> {
+    let format = format.as_deref().and_then(hl_core::GameFormat::parse).unwrap_or(hl_core::GameFormat::Highlander);
+    Ok(hl_ingest::news::latest(&state.db, &state.sources, format).await?)
 }
 
 /// One ETF2L news post to read in the app (Q74).
@@ -2463,8 +2464,9 @@ pub async fn get_tournament(state: State<'_, AppState>, name: String) -> CmdResu
 
 /// ETF2L's Highlander recruitment posts (Q74), read at most every half hour.
 #[tauri::command]
-pub async fn get_recruitment(state: State<'_, AppState>) -> CmdResult<hl_ingest::recruitment::Recruitment> {
-    Ok(hl_ingest::recruitment::latest(&state.db, &state.sources).await?)
+pub async fn get_recruitment(state: State<'_, AppState>, format: Option<String>) -> CmdResult<hl_ingest::recruitment::Recruitment> {
+    let format = format.as_deref().and_then(hl_core::GameFormat::parse).unwrap_or(hl_core::GameFormat::Highlander);
+    Ok(hl_ingest::recruitment::latest(&state.db, &state.sources, format).await?)
 }
 
 /// One recruitment post as its etf2l.org page has it: the message, when it
