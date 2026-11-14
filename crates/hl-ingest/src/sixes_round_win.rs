@@ -13,6 +13,11 @@
 //! **A kill's worth** ([`impacts`]): `W[after] - W[before]` for the killer's
 //! side, and the same taken from the victim; summed per player.
 //!
+//! **What killing each class is worth** (`WinTable::victims`): how much more
+//! often the killer's side went on to win the round than the state alone
+//! says, per victim class, scaled so the average kill is 1 (the plan: "a
+//! Medic pick even more decisive than in Highlander", measured, not set).
+//!
 //! Pure; the table is stored as a setting once measured.
 
 use crate::rawlog::{EventKind, RawLog};
@@ -32,6 +37,9 @@ pub struct WinTable {
     pub by_diff: Vec<f64>,
     pub rounds: usize,
     pub kills: usize,
+    /// Each victim class's value, the average kill 1; empty until measured.
+    #[serde(default)]
+    pub victims: std::collections::BTreeMap<String, f64>,
 }
 
 impl WinTable {
@@ -46,6 +54,7 @@ impl WinTable {
 struct KillState {
     killer: u32,
     victim: u32,
+    victim_class: Option<hl_core::TfClass>,
     side: Team,
     round: u32,
     us: i32,
@@ -103,7 +112,7 @@ fn walk(raw: &RawLog) -> (Vec<KillState>, HashMap<u32, Team>) {
         }
         let us = alive.get(&side).map_or(0, |s| s.len()) as i32;
         let them = alive.get(&vside).map_or(0, |s| s.len()) as i32;
-        out.push(KillState { killer: k.killer.account, victim: k.victim.account, side, round, us, them });
+        out.push(KillState { killer: k.killer.account, victim: k.victim.account, victim_class: k.victim.class, side, round, us, them });
         if let Some(s) = alive.get_mut(&vside) {
             s.remove(&k.victim.account);
         }
@@ -113,11 +122,11 @@ fn walk(raw: &RawLog) -> (Vec<KillState>, HashMap<u32, Team>) {
 }
 
 /// The table from many raw logs; `None` until [`MIN_ROUNDS`] rounds.
-pub fn measure<'a>(raws: impl IntoIterator<Item = &'a RawLog>) -> Option<WinTable> {
+pub fn measure<'a>(raws: impl IntoIterator<Item = &'a RawLog> + Clone) -> Option<WinTable> {
     let mut won = vec![0f64; (2 * SPAN + 1) as usize];
     let mut seen = vec![0f64; (2 * SPAN + 1) as usize];
     let (mut rounds, mut kills) = (0, 0);
-    for raw in raws {
+    for raw in raws.clone() {
         let (states, winners) = walk(raw);
         rounds += winners.len();
         for k in states {
@@ -155,7 +164,44 @@ pub fn measure<'a>(raws: impl IntoIterator<Item = &'a RawLog>) -> Option<WinTabl
             by[i] = by[i - 1];
         }
     }
-    Some(WinTable { by_diff: by.into_iter().map(|x| (x * 1000.0).round() / 1000.0).collect(), rounds, kills })
+    let mut table = WinTable { by_diff: by.into_iter().map(|x| (x * 1000.0).round() / 1000.0).collect(), rounds, kills, victims: Default::default() };
+    table.victims = victim_values(raws, &table);
+    Some(table)
+}
+
+/// Kills a class needs before its value is trusted.
+const MIN_VICTIM_KILLS: usize = 200;
+
+/// Each victim class's value: the killer's side's round wins over what the
+/// state after the kill predicts, plus that prediction, over its average
+/// across all kills -- so 1 is an ordinary kill. Classes with fewer than
+/// [`MIN_VICTIM_KILLS`] kills are left out (counted as 1).
+fn victim_values<'a>(raws: impl IntoIterator<Item = &'a RawLog>, table: &WinTable) -> std::collections::BTreeMap<String, f64> {
+    let mut by: HashMap<hl_core::TfClass, (f64, usize)> = HashMap::new();
+    let (mut all, mut n) = (0f64, 0usize);
+    for raw in raws {
+        let (states, winners) = walk(raw);
+        for k in states {
+            let (Some(c), Some(w)) = (k.victim_class, winners.get(&k.round)) else { continue };
+            let after = k.us - (k.them - 1);
+            // What the kill was worth: the round-win chance it bought, plus
+            // how far the result beat the state's prediction.
+            let worth = (table.w(after) - table.w(k.us - k.them)) + (if *w == k.side { 1.0 } else { 0.0 } - table.w(after));
+            let e = by.entry(c).or_default();
+            e.0 += worth;
+            e.1 += 1;
+            all += worth;
+            n += 1;
+        }
+    }
+    let mean = if n > 0 { all / n as f64 } else { 0.0 };
+    if mean <= 0.0 {
+        return Default::default();
+    }
+    by.into_iter()
+        .filter(|(_, (_, k))| *k >= MIN_VICTIM_KILLS)
+        .map(|(c, (sum, k))| (c.as_str().to_string(), (((sum / k as f64) / mean).clamp(0.25, 4.0) * 100.0).round() / 100.0))
+        .collect()
 }
 
 /// Each player's round impact in one raw log: the round-win chance their
@@ -198,6 +244,7 @@ mod tests {
         let raw = crate::rawlog::parse(&text.join("\n"));
         let table = measure([&raw]).expect("300 rounds");
         assert_eq!((table.rounds, table.kills), (300, 300));
+        assert_eq!(table.victims.get("soldier"), Some(&1.0), "one victim class: the average kill");
         assert_eq!((table.w(1), table.w(-1)), (1.0, 0.0), "one up won them all, one down lost them all");
         assert_eq!(table.w(0), 0.5, "never seen: even");
         let one = crate::rawlog::parse(&round(&[("1", "Red", "101", "Blue")], "Red"));

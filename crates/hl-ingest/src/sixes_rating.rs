@@ -64,6 +64,13 @@ fn n(v: &Value, k: &str) -> Option<f64> {
 
 /// Every rateable performance in one 6v6 log.
 fn perfs_of(log_id: i64, json: &Value) -> Vec<Perf> {
+    perfs_valued(log_id, json, None)
+}
+
+/// [`perfs_of`], with kills valued by their victim's class once those values
+/// are measured (`sixes_round_win`): a main role's valued kills are its
+/// kills by victim class, each worth its class's value.
+fn perfs_valued(log_id: i64, json: &Value, victims: Option<&BTreeMap<String, f64>>) -> Vec<Perf> {
     let stats = match_stats(json);
     let roles = roles_of(json);
     let players = json.get("players").and_then(Value::as_object);
@@ -140,6 +147,18 @@ fn perfs_of(log_id: i64, json: &Value) -> Vec<Perf> {
                         v.insert("deaths_vs", (m.deaths - o.deaths) as f64);
                     }
                 }
+            }
+        }
+        if let (Some(values), false) = (victims.filter(|m| !m.is_empty()), off) {
+            if let Some(by_class) = json.get("classkills").and_then(|k| k.get(sid)).and_then(Value::as_object) {
+                let valued: f64 = by_class
+                    .iter()
+                    .map(|(c, k)| {
+                        let class = TfClass::parse(c).map(|t| t.as_str().to_string()).unwrap_or_else(|_| c.clone());
+                        k.as_f64().unwrap_or(0.0) * values.get(&class).copied().unwrap_or(1.0)
+                    })
+                    .sum();
+                v.insert("impact_kills", per10(valued));
             }
         }
         out.push(Perf { log_id, account_id: r.account_id, role: r.role.key(), minutes: (min * 10.0).round() / 10.0, values: v });
@@ -237,7 +256,7 @@ pub async fn rate_all(db: &hl_db::Db) -> Result<usize> {
     let mut perfs = Vec::new();
     for (log_id, body) in db.sixes_log_jsons().await?.into_iter().chain(db.sixes_league_jsons().await?) {
         let Ok(v) = serde_json::from_str::<Value>(&body) else { continue };
-        let mut these = perfs_of(log_id, &v);
+        let mut these = perfs_valued(log_id, &v, table.as_ref().map(|t| &t.victims));
         if let Some(t) = &table {
             let zip = match sample_raws.get(&log_id) {
                 Some(z) => Some(z.clone()),
@@ -475,6 +494,17 @@ mod tests {
         let p = profile(&db, 7).await.unwrap();
         assert_eq!(p.seasons.iter().map(|l| (l.season, l.team.as_str(), l.won, l.drawn, l.lost)).collect::<Vec<_>>(), vec![(53, "Six One", 1, 1, 1)], "from their own side: a win, a loss and a draw");
         assert_eq!(p.best.iter().map(|b| b.log_id).collect::<Vec<_>>(), vec![1], "ten minutes in a main role; an off-class and a short game left out");
+    }
+
+    #[test]
+    fn measured_victim_values_weigh_a_role_s_kills_by_whom_they_killed() {
+        let plain = perfs_of(1, &fixture());
+        // Blue's pocket killed 2 Medics among 19: Medics worth three times.
+        let values: BTreeMap<String, f64> = [("medic".to_string(), 3.0)].into_iter().collect();
+        let valued = perfs_valued(1, &fixture(), Some(&values));
+        let pk = |ps: &[Perf]| ps.iter().find(|p| p.account_id == 209920373 && p.role == "pocket").unwrap().values["impact_kills"];
+        let (a, b) = (pk(&plain), pk(&valued));
+        assert!(b > a, "{a} -> {b}");
     }
 
     #[test]
