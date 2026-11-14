@@ -2301,7 +2301,7 @@ async fn run() -> Result<()> {
             let me = db.get_me().await?.context("no owner set")?;
             let class = TfClass::parse(class)?;
             let data = db_path.parent().context("no data folder")?.to_path_buf();
-            for m in hl_ingest::callouts::tendencies(&db, &data, me.account_id(), class.as_str()).await? {
+            for m in hl_ingest::callouts::tendencies(&db, &data, me.account_id(), class.as_str(), false).await? {
                 println!("{}{} -- {} matches, {} STVs ({} min alive)", m.map, if m.draft { " (draft)" } else { "" }, m.matches, m.stvs, m.alive_s / 60);
                 let fights: u32 = m.fights.iter().map(|f| f.kills + f.deaths).sum::<u32>() + m.unzoned;
                 for f in m.fights.iter().take(8) {

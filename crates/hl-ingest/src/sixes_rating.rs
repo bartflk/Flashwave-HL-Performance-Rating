@@ -185,7 +185,8 @@ pub struct SixesRating {
     pub score: f64,
     pub minutes: f64,
     /// Each component's percentile and share, for the breakdown.
-    pub parts: Vec<(String, f64, f64)>,
+    /// Each component: (name, percentile, share, raw value per game).
+    pub parts: Vec<(String, f64, f64, f64)>,
 }
 
 /// Rate every performance against the others in its role.
@@ -221,7 +222,7 @@ fn rate(perfs: &[Perf]) -> Vec<SixesRating> {
             own.values_mut().for_each(|v| v.sort_by(f64::total_cmp));
             dist.insert(c.as_str(), (all, own));
         }
-        let mut scored: Vec<(&Perf, f64, Vec<(String, f64, f64)>)> = Vec::new();
+        let mut scored: Vec<(&Perf, f64, Vec<(String, f64, f64, f64)>)> = Vec::new();
         for p in &group {
             let mut parts = Vec::new();
             for (c, share) in &comps {
@@ -238,15 +239,15 @@ fn rate(perfs: &[Perf]) -> Vec<SixesRating> {
                 let equal = (le(all) - lt(all)) - (le(mine) - lt(mine));
                 let below = if higher_is_better(c) { lt(all) - lt(mine) } else { (all.len() - le(all)) - (mine.len() - le(mine)) };
                 let pct = (below as f64 + equal as f64 / 2.0) / others as f64 * 100.0;
-                parts.push(((*c).clone(), (pct * 10.0).round() / 10.0, *share));
+                parts.push(((*c).clone(), (pct * 10.0).round() / 10.0, *share, x));
             }
-            let total: f64 = parts.iter().map(|(_, _, s)| s).sum();
+            let total: f64 = parts.iter().map(|(_, _, s, _)| s).sum();
             if total <= 0.0 {
                 continue;
             }
-            let score = parts.iter().map(|(_, pct, s)| pct * s).sum::<f64>() / total;
+            let score = parts.iter().map(|(_, pct, s, _)| pct * s).sum::<f64>() / total;
             // Shares as the rating actually used them, after leaving out the unmeasured.
-            let parts = parts.into_iter().map(|(c, pct, s)| (c, pct, ((s / total) * 1000.0).round() / 1000.0)).collect();
+            let parts = parts.into_iter().map(|(c, pct, s, raw)| (c, pct, ((s / total) * 1000.0).round() / 1000.0, (raw * 1000.0).round() / 1000.0)).collect();
             scored.push((p, score, parts));
         }
         if scored.is_empty() {
@@ -502,8 +503,8 @@ fn validate_ratings(ratings: &[SixesRating], results: &HashMap<i64, LogResult>) 
             }
             let l = theirs[0];
             roles.entry(w.role.clone()).or_default().push(w.rating, l.rating);
-            for (c, pct, _) in &w.parts {
-                if let Some((_, other, _)) = l.parts.iter().find(|(lc, _, _)| lc == c) {
+            for (c, pct, _, _) in &w.parts {
+                if let Some((_, other, _, _)) = l.parts.iter().find(|(lc, _, _, _)| lc == c) {
                     comps.entry(w.role.clone()).or_default().entry(c.clone()).or_default().push(*pct, *other);
                 }
             }
@@ -741,7 +742,7 @@ mod tests {
             rating,
             score: pct,
             minutes: 20.0,
-            parts: vec![("dpm".into(), pct, 1.0)],
+            parts: vec![("dpm".into(), pct, 1.0, 0.0)],
         };
         let res = |winner: Option<&str>| LogResult {
             winner: winner.map(str::to_string),
@@ -781,7 +782,7 @@ mod tests {
         // Player 1 twice; against 2, 3 and 4 only.
         let perfs = vec![p(1, 1, 300.0, 5.0), p(2, 1, 900.0, 1.0), p(3, 2, 200.0, 5.0), p(4, 3, 300.0, 6.0), p(5, 4, 400.0, 4.0)];
         let r = rate(&perfs);
-        let part = |log: i64, c: &str| r.iter().find(|x| x.log_id == log).unwrap().parts.iter().find(|(k, _, _)| k == c).unwrap().1;
+        let part = |log: i64, c: &str| r.iter().find(|x| x.log_id == log).unwrap().parts.iter().find(|(k, _, _, _)| k == c).unwrap().1;
         assert_eq!(part(1, "dpm"), 50.0, "above 200, level with 300, below 400; its own 900 left out");
         assert_eq!(part(1, "deaths"), 50.0, "fewer than 6, level with 5, more than 4");
         assert_eq!(part(3, "dpm"), 0.0, "below everyone else");
@@ -850,9 +851,9 @@ mod tests {
         let mean = r.iter().map(|x| x.rating).sum::<f64>() / r.len() as f64;
         assert!((mean - 1.0).abs() < 0.05, "the scale centres on 1.00: {mean}");
         let p = pocket.iter().find(|x| x.log_id == 1).unwrap();
-        assert!(p.parts.iter().all(|(c, _, _)| c != "round_impact" && c != "forces"), "unmeasured components left out");
-        assert!(p.parts.iter().any(|(c, _, _)| c == "space"), "space created is measured (question 17)");
-        let shares: f64 = p.parts.iter().map(|(_, _, s)| s).sum();
+        assert!(p.parts.iter().all(|(c, _, _, _)| c != "round_impact" && c != "forces"), "unmeasured components left out");
+        assert!(p.parts.iter().any(|(c, _, _, _)| c == "space"), "space created is measured (question 17)");
+        let shares: f64 = p.parts.iter().map(|(_, _, s, _)| s).sum();
         assert!((shares - 1.0).abs() < 0.01, "the rest scaled up to the whole: {shares}");
     }
 }

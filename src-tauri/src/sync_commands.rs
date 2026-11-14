@@ -1114,6 +1114,48 @@ pub async fn get_profile(
     })
 }
 
+/// [`ProfileResponse`] for 6v6 (Flashy: "please bring them up to
+/// standard"): `classes` holds the roles played, the profile is the same
+/// summary by role, and what needs 6v6 demos -- fights in context, aim,
+/// lives -- stays empty until they are read.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SixesProfileResponse {
+    pub classes: Vec<(String, i64)>,
+    pub profile: Option<serde_json::Value>,
+    pub fights: Option<()>,
+    pub aim: Option<()>,
+    pub life: Option<()>,
+    pub aim_all: Option<()>,
+    pub life_all: Option<()>,
+    pub headline: Option<hl_ingest::Headline>,
+}
+
+#[tauri::command]
+pub async fn get_profile_sixes(
+    state: State<'_, AppState>,
+    role: Option<String>,
+    kind: Option<String>,
+    from: Option<i64>,
+    to: Option<i64>,
+) -> CmdResult<SixesProfileResponse> {
+    let me = state
+        .db
+        .get_me()
+        .await?
+        .ok_or_else(|| CmdError::new("missing_config", "Set your SteamID first."))?;
+    let roles = hl_ingest::sixes_profile::roles(&state.db, me).await?;
+    let period = match (from, to) {
+        (None, None) => None,
+        (f, t) => Some((f.unwrap_or(i64::MIN), t.unwrap_or(i64::MAX))),
+    };
+    let (profile, headline) = match role.or_else(|| roles.first().map(|(r, _)| r.clone())) {
+        Some(r) => hl_ingest::sixes_profile::load(&state.db, me, &r, kind.as_deref(), period).await?,
+        None => (None, None),
+    };
+    Ok(SixesProfileResponse { classes: roles, profile, fights: None, aim: None, life: None, aim_all: None, life_all: None, headline })
+}
+
 /// The demos the app downloaded and still holds (PLAN Q23).
 #[tauri::command]
 pub async fn downloaded_demos(state: State<'_, AppState>) -> CmdResult<Vec<hl_db::DownloadedDemo>> {
@@ -1336,14 +1378,14 @@ pub async fn get_seasons(state: State<'_, AppState>, class: String) -> CmdResult
 
 /// Your ETF2L teams and regular teammates. `all` includes pugs.
 #[tauri::command]
-pub async fn get_teammates(state: State<'_, AppState>, all: bool) -> CmdResult<hl_ingest::teammates::Teammates> {
+pub async fn get_teammates(state: State<'_, AppState>, all: bool, sixes: Option<bool>) -> CmdResult<hl_ingest::teammates::Teammates> {
     let me = state
         .db
         .get_me()
         .await?
         .ok_or_else(|| CmdError::new("missing_config", "Set your SteamID first."))?;
     let scope = if all { hl_ingest::teammates::Scope::All } else { hl_ingest::teammates::Scope::Team };
-    Ok(hl_ingest::teammates::load(&state.db, me, scope).await?)
+    Ok(hl_ingest::teammates::load_format(&state.db, me, scope, sixes.unwrap_or(false)).await?)
 }
 
 /// The analysis views for one match, built from its raw log. `None` without one.
@@ -1945,9 +1987,9 @@ pub async fn get_positions(state: State<'_, AppState>, log_id: i64, map: String)
 
 /// Q28: the owner's habits on a class, per map, over every match held.
 #[tauri::command]
-pub async fn get_tendencies(state: State<'_, AppState>, class: String) -> CmdResult<Vec<hl_ingest::callouts::MapTendencies>> {
+pub async fn get_tendencies(state: State<'_, AppState>, class: String, sixes: Option<bool>) -> CmdResult<Vec<hl_ingest::callouts::MapTendencies>> {
     let me = state.db.get_me().await?.ok_or_else(|| anyhow::anyhow!("no owner set"))?;
-    Ok(hl_ingest::callouts::tendencies(&state.db, &data_folder(&state), me.account_id(), &class).await?)
+    Ok(hl_ingest::callouts::tendencies(&state.db, &data_folder(&state), me.account_id(), &class, sixes.unwrap_or(false)).await?)
 }
 
 /// Q29: one ETF2L Highlander season's division tables; the newest when

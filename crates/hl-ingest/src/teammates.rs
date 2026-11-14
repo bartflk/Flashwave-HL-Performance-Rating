@@ -93,8 +93,17 @@ pub struct CoreMate {
 }
 
 pub async fn load(db: &Db, me: SteamId, scope: Scope) -> Result<Teammates> {
-    let games = db.own_games(me.account_id(), MODEL_VERSION).await?;
-    let mates = db.mate_rows(me.account_id()).await?;
+    load_format(db, me, scope, false).await
+}
+
+/// [`load`] over Highlander's games, or 6v6's (`sixes`), never both.
+pub async fn load_format(db: &Db, me: SteamId, scope: Scope, sixes: bool) -> Result<Teammates> {
+    let games = if sixes {
+        db.own_sixes_games(me.account_id(), &crate::sixes_rating::model_version()).await?
+    } else {
+        db.own_games(me.account_id(), MODEL_VERSION).await?
+    };
+    let mates = db.mate_rows_of(me.account_id(), sixes).await?;
     Ok(summarize(&games, &mates, scope))
 }
 

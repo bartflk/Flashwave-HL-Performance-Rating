@@ -680,7 +680,9 @@ impl Db {
              JOIN match m        ON m.log_id = c.log_id
              JOIN match_player p ON p.log_id = c.log_id AND p.account_id = ?1
              LEFT JOIN rating r  ON r.log_id = c.log_id AND r.account_id = ?1 AND r.model_version = ?2
-             ORDER BY m.played_at, c.log_id"
+             WHERE {}
+             ORDER BY m.played_at, c.log_id",
+            crate::hl_only("c.log_id")
         ))
         .bind(me as i64)
         .bind(version)
@@ -702,13 +704,18 @@ impl Db {
 
     /// Everyone who was on the owner's side in a classified game.
     pub async fn mate_rows(&self, me: u32) -> Result<Vec<MateRow>> {
+        self.mate_rows_of(me, false).await
+    }
+
+    /// [`Db::mate_rows`] in Highlander's games, or 6v6's (`sixes`).
+    pub async fn mate_rows_of(&self, me: u32, sixes: bool) -> Result<Vec<MateRow>> {
         let rows = sqlx::query(&format!(
             "SELECT q.log_id, q.account_id, q.name, q.main_class, q.time_s
              FROM match_context c
              JOIN match_player p ON p.log_id = c.log_id AND p.account_id = ?1
              JOIN match_player q ON q.log_id = c.log_id AND q.team = p.team AND q.account_id != ?1
              WHERE {}",
-            crate::hl_only("c.log_id")
+            if sixes { crate::sixes_only("c.log_id") } else { crate::hl_only("c.log_id") }
         ))
         .bind(me as i64)
         .fetch_all(self.pool())

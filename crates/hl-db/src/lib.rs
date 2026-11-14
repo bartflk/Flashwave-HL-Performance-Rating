@@ -14,6 +14,14 @@ mod sync_audit_tests;
 /// Highlander-facing query over all stored logs carries it, so 6v6 logs,
 /// once downloaded, never reach a Highlander list, scale, total or pool.
 /// It keeps everything else a query kept before, unclassified logs included.
+/// The opposite of [`hl_only`]: only 6v6 logs, own or the league sample's.
+pub(crate) fn sixes_only(col: &str) -> String {
+    format!(
+        "{col} IN (SELECT log_id FROM log_index WHERE COALESCE(format_override, format) = 'sixes'
+                   UNION ALL SELECT log_id FROM league_log WHERE format = 'sixes')"
+    )
+}
+
 pub(crate) fn hl_only(col: &str) -> String {
     format!(
         "{col} NOT IN (SELECT log_id FROM log_index WHERE COALESCE(format_override, format) = 'sixes'
@@ -35,6 +43,7 @@ pub(crate) const OWNER_COVERED: &str = "SELECT i.log_id FROM log_index i JOIN lo
 mod context;
 mod roles;
 mod sixes_sample;
+mod sixes_profile;
 pub use roles::{SixesRatingRow, StoredRole};
 pub use sixes_sample::{SixesLeagueLogRow, SixesSampleCounts};
 mod demos;

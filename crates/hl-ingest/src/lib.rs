@@ -57,6 +57,7 @@ pub mod rgl;
 pub mod rgl_stats;
 pub mod roles;
 pub mod sixes;
+pub mod sixes_profile;
 pub mod sixes_rating;
 pub mod sixes_round_win;
 pub mod sixes_sample;
