@@ -240,6 +240,76 @@ pub async fn rate_all(db: &hl_db::Db) -> Result<usize> {
     Ok(rows.len())
 }
 
+/// One of the owner's best 6v6 games by the preview rating.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct BestGame {
+    pub log_id: i64,
+    pub role: String,
+    pub rating: f64,
+    pub map: Option<String>,
+    pub played_at: Option<i64>,
+}
+
+/// The owner's 6v6 officials in one season and division, from the stored
+/// 6v6 lineups: matches won, drawn and lost by ETF2L's score.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SeasonLine {
+    pub season: i64,
+    pub division: String,
+    pub team: String,
+    pub won: u32,
+    pub drawn: u32,
+    pub lost: u32,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SixesProfile {
+    pub best: Vec<BestGame>,
+    /// Newest season first.
+    pub seasons: Vec<SeasonLine>,
+}
+
+/// The owner's 6v6 profile beyond their ratings by role (the 6v6 plan, P7):
+/// their best games by the preview rating (ten minutes or more in a main
+/// role), and their officials by season and division.
+pub async fn profile(db: &hl_db::Db, me: u32) -> Result<SixesProfile> {
+    let mut rated: Vec<hl_db::SixesRatingRow> =
+        db.sixes_ratings(&model_version(), None, Some(me)).await?.into_iter().filter(|r| !r.role.starts_with("off:") && r.minutes >= 10.0).collect();
+    rated.sort_by(|a, b| b.rating.total_cmp(&a.rating).then(b.log_id.cmp(&a.log_id)));
+    let mut best = Vec::new();
+    for r in rated.into_iter().take(5) {
+        best.push(BestGame { log_id: r.log_id, role: r.role, rating: r.rating, map: db.match_map(r.log_id).await?, played_at: db.match_played_at(r.log_id).await? });
+    }
+    let mine: HashMap<i64, i64> = db
+        .season_officials_of(me, hl_core::GameFormat::Sixes)
+        .await?
+        .into_iter()
+        .filter_map(|o| o.roster.get(&me).map(|t| (o.match_id, *t)))
+        .collect();
+    let mut lines: BTreeMap<(i64, String, String), (u32, u32, u32)> = BTreeMap::new();
+    for m in db.season_matches(None, None, hl_core::GameFormat::Sixes).await? {
+        let Some(&team) = mine.get(&m.match_id) else { continue };
+        let (Some(r1), Some(r2)) = (m.r1, m.r2) else { continue };
+        if r1 + r2 == 0 && !m.default_win {
+            continue;
+        }
+        let (us, them, name) = if team == m.clan1_id { (r1, r2, m.clan1_name.clone()) } else { (r2, r1, m.clan2_name.clone()) };
+        let e = lines.entry((m.season, m.division.clone(), name)).or_default();
+        match us.cmp(&them) {
+            std::cmp::Ordering::Greater => e.0 += 1,
+            std::cmp::Ordering::Equal => e.1 += 1,
+            std::cmp::Ordering::Less => e.2 += 1,
+        }
+    }
+    let mut seasons: Vec<SeasonLine> =
+        lines.into_iter().map(|((season, division, team), (won, drawn, lost))| SeasonLine { season, division, team, won, drawn, lost }).collect();
+    seasons.sort_by(|a, b| b.season.cmp(&a.season).then(a.division.cmp(&b.division)));
+    Ok(SixesProfile { best, seasons })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -247,6 +317,25 @@ mod tests {
     fn fixture() -> Value {
         let body = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/sixes_4115969.json")).unwrap();
         serde_json::from_str(&body).unwrap()
+    }
+
+    #[tokio::test]
+    async fn the_profile_lists_the_owner_s_6v6_seasons_by_their_own_team_and_their_best_games() {
+        let db = hl_db::Db::connect_in_memory().await.unwrap();
+        for sql in [
+            "INSERT INTO etf2l_competition (competition_id, season, season_name, division, stage, name, fetched_at, format) VALUES (2, 53, 'Autumn 2026', '', 'regular', '6v6 Season 53', 0, 'sixes')",
+            "INSERT INTO etf2l_team (team_id, name) VALUES (3, 'Six One'), (4, 'Six Two')",
+            "INSERT INTO etf2l_season_match (match_id, competition_id, division, time, clan1_id, clan2_id, r1, r2) VALUES (20, 2, 'Division 3', 200, 3, 4, 3, 1), (21, 2, 'Division 3', 300, 4, 3, 4, 0), (22, 2, 'Division 3', 400, 4, 3, 2, 2)",
+            "INSERT INTO etf2l_season_player (match_id, account_id, team_id, name) VALUES (20, 7, 3, 'seven'), (21, 7, 3, 'seven'), (22, 7, 3, 'seven')",
+        ] {
+            sqlx::query(sql).execute(db.pool()).await.unwrap();
+        }
+        db.replace_sixes_ratings(&model_version(), &[(1, 7, "pocket".into(), 1.3, 70.0, 20.0, "[]".into()), (2, 7, "pocket".into(), 1.1, 60.0, 4.0, "[]".into()), (3, 7, "off:heavy".into(), 1.9, 90.0, 2.0, "[]".into())])
+            .await
+            .unwrap();
+        let p = profile(&db, 7).await.unwrap();
+        assert_eq!(p.seasons.iter().map(|l| (l.season, l.team.as_str(), l.won, l.drawn, l.lost)).collect::<Vec<_>>(), vec![(53, "Six One", 1, 1, 1)], "from their own side: a win, a loss and a draw");
+        assert_eq!(p.best.iter().map(|b| b.log_id).collect::<Vec<_>>(), vec![1], "ten minutes in a main role; an off-class and a short game left out");
     }
 
     #[test]

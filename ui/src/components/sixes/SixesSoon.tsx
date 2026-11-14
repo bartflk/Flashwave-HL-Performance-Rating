@@ -4,6 +4,9 @@ import { api } from "../../api/client";
 import { t, tx } from "../../lib/i18n";
 import { roleLabel } from "../../lib/gameformat";
 import { classLabel } from "../analysis/common";
+import { formatDate } from "../../lib/format";
+import { DivisionBadge } from "../players/PlayerProfile";
+import { tierOf } from "../etf2l/Brackets";
 import "./sixes.css";
 
 const STEAM_BASE = 76561197960265728n;
@@ -13,7 +16,8 @@ const STEAM_BASE = 76561197960265728n;
  * your preview ratings by role and off-class, never averaged with your
  * Highlander ones (question 9), and how much of your 6v6 history is in.
  */
-export function SixesSoon({ steamid }: { steamid: string | null }) {
+export function SixesSoon({ steamid, onOpenMatch }: { steamid: string | null; onOpenMatch: (logId: number) => void }) {
+  const profile = useQuery({ queryKey: ["sixes_profile"], queryFn: api.getSixesProfile }).data;
   const stats = useQuery({ queryKey: ["index_stats"], queryFn: api.indexStats });
   const accountId = steamid ? Number(BigInt(steamid) - STEAM_BASE) : null;
   const ratings = useQuery({
@@ -59,6 +63,52 @@ export function SixesSoon({ steamid }: { steamid: string | null }) {
           </>
         ) : (
           <p>{t("Your 6v6 career will be here: ratings by role and off-class, seasons, divisions and best games, next to your Highlander career and never averaged with it.")}</p>
+        )}
+        {profile && profile.best.length > 0 && (
+          <>
+            <h2 className="ts-section">{t("Best games")}</h2>
+            <ul className="sx-best">
+              {profile.best.map((g) => (
+                <li key={g.logId}>
+                  <button className="linkish sx-best-go" onClick={() => onOpenMatch(g.logId)}>
+                    <strong className="sx-best-rating">{g.rating.toFixed(2)}</strong>
+                    <span>{g.map ?? t("Unknown map")}</span>
+                    <span className="muted">{roleLabel(g.role)?.short ?? label(g.role)}</span>
+                    <span className="muted">{g.playedAt ? formatDate(g.playedAt) : ""}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {profile && profile.seasons.length > 0 && (
+          <>
+            <h2 className="ts-section">{t("ETF2L 6v6 seasons")}</h2>
+            <table className="match-table sx-roles">
+              <thead>
+                <tr>
+                  <th>{t("Season")}</th>
+                  <th>{t("Division")}</th>
+                  <th>{t("Team")}</th>
+                  <th className="num" title={t("Matches won, drawn and lost")}>{t("W–D–L")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {profile.seasons.map((l) => (
+                  <tr key={`${l.season}-${l.division}-${l.team}`}>
+                    <td>{tx("Season {0}", { "0": l.season })}</td>
+                    <td>
+                      <DivisionBadge d={{ name: l.division, tier: Math.floor(tierOf(l.division)) }} />
+                    </td>
+                    <td>{l.team}</td>
+                    <td className="num">
+                      <span className="team-won">{l.won}</span>–<span className="muted">{l.drawn}</span>–<span className="team-lost">{l.lost}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
         {s && (
           <p className="muted">

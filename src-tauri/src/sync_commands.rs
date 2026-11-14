@@ -824,6 +824,13 @@ pub async fn get_sixes_ratings(state: State<'_, AppState>, log_id: Option<i64>, 
     Ok(state.db.sixes_ratings(&hl_ingest::sixes_rating::model_version(), log_id, account_id).await?)
 }
 
+/// The owner's 6v6 profile: best games and officials by season (the 6v6 plan, P7).
+#[tauri::command]
+pub async fn get_sixes_profile(state: State<'_, AppState>) -> CmdResult<hl_ingest::sixes_rating::SixesProfile> {
+    let me = state.db.get_me().await?.ok_or_else(|| anyhow::anyhow!("no owner set"))?;
+    Ok(hl_ingest::sixes_rating::profile(&state.db, me.account_id()).await?)
+}
+
 /// The current ETF2L 6v6 season's officials by week (the 6v6 plan, P2).
 #[tauri::command]
 pub async fn get_sixes_matches(state: State<'_, AppState>) -> CmdResult<Option<hl_ingest::sixes::SixesMatches>> {

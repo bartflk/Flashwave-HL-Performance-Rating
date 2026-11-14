@@ -84,7 +84,7 @@ import type {
   RglSeasonCard,
   RglTeamHit,
   RglSeason,
-  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, SixesMatches, StoredRole, Stint, SixesMatchStats, SixesRatingRow, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
+  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, SixesMatches, StoredRole, Stint, SixesMatchStats, SixesRatingRow, SixesProfile, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
   RglTeamPage,
   RglTeamSeason,
   RglTeamHistory,
@@ -1583,6 +1583,17 @@ export const mockApi: Api = {
   getSixesSeason: () => delay(sixesSeason53 as unknown as SixesSeason),
   // The mock plays both, so the tab menus can be seen without setup.
   getSixesMatches: () => delay(sixesMatches53 as unknown as SixesMatches),
+  // The owner's 6v6 profile: their best mock 6v6 games and a season line.
+  getSixesProfile: () => {
+    const sixes = FAKE_MATCHES.filter((m) => m.format === "sixes").slice(0, 5);
+    return delay<SixesProfile>({
+      best: sixes.map((m, i) => ({ logId: m.logId, role: i % 2 ? "roamer" : "pocket", rating: Math.round((1.42 - i * 0.07) * 100) / 100, map: m.map, playedAt: m.playedAt })),
+      seasons: [
+        { season: 53, division: "Division 3", team: "DD14", won: 3, drawn: 1, lost: 1 },
+        { season: 52, division: "Division 3", team: "DD14", won: 4, drawn: 0, lost: 3 },
+      ],
+    });
+  },
   // Preview ratings: a spread around 1.00 for the mock 6v6 match, and the
   // owner's by role for the 6v6 profile.
   getSixesRatings: (q: { logId?: number; accountId?: number }) => {

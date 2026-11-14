@@ -563,6 +563,12 @@ export interface SixesMatchStats {
   medics: SixesMedicStats[];
 }
 
+/** The owner's 6v6 profile beyond ratings by role (the 6v6 plan, P7). */
+export interface SixesProfile {
+  best: Array<{ logId: number; role: string; rating: number; map: string | null; playedAt: number | null }>;
+  seasons: Array<{ season: number; division: string; team: string; won: number; drawn: number; lost: number }>;
+}
+
 /** A 6v6 preview rating (the 6v6 plan, P6). */
 export interface SixesRatingRow {
   logId: number;
