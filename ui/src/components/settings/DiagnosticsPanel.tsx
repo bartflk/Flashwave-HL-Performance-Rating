@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { ModelShift } from "../../api/types";
 import { diagnosticsText, jobName, logTail, sourceName, sqliteTime } from "../../lib/diagnostics";
+import { copy } from "../../lib/toast";
 import { t, tx } from "../../lib/i18n";
 import { formatDate, rating, signed, splitMap } from "../../lib/format";
 import { startRerate, startRereadDemos, startSync } from "../../lib/sync";
@@ -129,7 +130,18 @@ export function DiagnosticsPanel() {
           })}
         </dd>
         <dt>{t("Log file")}</dt>
-        <dd>{d.logFile ? <code>{d.logFile}</code> : <span className="muted">{t("Could not be opened; the folder may be read-only.")}</span>}</dd>
+        <dd>
+          {d.logFile ? (
+            <>
+              <code>{d.logFile}</code>{" "}
+              <button className="linkish" onClick={() => void copy(d.logFile!, t("the log file's location"))}>
+                {t("Copy path")}
+              </button>
+            </>
+          ) : (
+            <span className="muted">{t("Could not be opened; the folder may be read-only.")}</span>
+          )}
+        </dd>
       </dl>
 
       <h3 style={{ marginTop: 22 }}>{t("Sources")}</h3>

@@ -3487,3 +3487,37 @@ export interface RglAwards {
   topFragger: RglAward | null;
   mostHeadshots: RglAward | null;
 }
+
+/** One line of the activity feed (hl_ingest::activity): what the app is doing. */
+export interface ActivityLine {
+  seq: number;
+  /** Unix time in milliseconds. */
+  at: number;
+  level: "error" | "warn" | "info" | "debug" | "http";
+  /** A site for a request, else the part of the app. */
+  source: string;
+  text: string;
+}
+
+/** How one site's requests have gone this run. */
+export interface ActivitySite {
+  host: string;
+  requests: number;
+  ok: number;
+  notModified: number;
+  notFound: number;
+  failed: number;
+  lastStatus: string | null;
+  lastAt: number | null;
+  lastPath: string | null;
+  avgMs: number;
+  rateRemaining: number | null;
+  restingUntil: number | null;
+  lastError: string | null;
+}
+
+export interface ActivityView {
+  lines: ActivityLine[];
+  sites: ActivitySite[];
+  verbose: boolean;
+}

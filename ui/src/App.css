@@ -2060,3 +2060,55 @@ button.mini {
 @media (max-width: 760px) {
   .wordmark > span:not(.beta-tag) { display: none; }
 }
+
+/* The sync card's waterfall (Flashy: "a waterfall 3/4 lines high that fades
+   out"): the newest lines of the activity feed, oldest on top and fading.
+   A click opens Settings › Activity log. */
+.act-fall {
+  display: flex; flex-direction: column; gap: 2px; width: 100%;
+  margin: 2px 0 0; padding: 6px 8px; text-align: left;
+  background: var(--sunken); border: 1px solid var(--border); border-radius: 6px;
+  font-family: var(--font-mono); font-size: var(--fs-xs); line-height: var(--lh-snug);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 40%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 40%);
+  cursor: pointer;
+}
+.act-fall:hover { border-color: var(--accent-dim); }
+.act-fall-line { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); animation: act-in 260ms ease-out; }
+.act-fall-line:last-child { color: var(--text); }
+.act-fall-src { color: var(--accent-text); }
+.act-fall-line.lvl-warn .act-fall-src { color: var(--warn); }
+.act-fall-line.lvl-error .act-fall-src { color: var(--bad); }
+@keyframes act-in { from { transform: translateY(6px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .act-fall-line { animation: none; } }
+
+/* Settings › Activity log. */
+.act-h { margin-top: 20px; }
+.act-h:first-of-type { margin-top: 12px; }
+.act-file { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }
+.act-path { flex: 1 1 320px; min-width: 0; overflow-wrap: anywhere; }
+.act-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.act-sites td.act-good { color: var(--ok); }
+.act-sites td.act-warn { color: var(--warn); }
+.act-sites td.act-bad { color: var(--bad); }
+.act-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.act-tools select, .act-tools input[type="search"] { height: 32px; }
+.act-tools input[type="search"] { flex: 1 1 200px; min-width: 0; }
+.act-verbose { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small); color: var(--muted); }
+.act-count { margin-left: auto; font-size: var(--fs-small); }
+.act-log {
+  margin-top: 10px; max-height: 420px; overflow: auto;
+  padding: 6px 0; background: var(--sunken); border: 1px solid var(--border); border-radius: 6px;
+  font-family: var(--font-mono); font-size: var(--fs-xs); line-height: var(--lh-snug);
+}
+.act-log > .hint { padding: 6px 10px; margin: 0; }
+.act-line { display: grid; grid-template-columns: 64px 44px 110px minmax(0, 1fr); gap: 8px; padding: 1px 10px; }
+.act-line:hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
+.act-time { color: var(--muted); }
+.act-lvl { text-transform: uppercase; color: var(--muted); } /* type-ok: a log level in the log's own monospace */
+.act-src { color: var(--accent-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.act-text { overflow-wrap: anywhere; }
+.act-line.lvl-warn .act-lvl { color: var(--warn); }
+.act-line.lvl-error .act-lvl, .act-line.lvl-error .act-text { color: var(--bad); }
+.act-line.lvl-debug { color: var(--muted); }
+.act-line.lvl-http .act-lvl { color: var(--ok); }

@@ -157,6 +157,8 @@ impl Throttled {
             *held = Some(until);
         }
         tracing::warn!(url, minutes = how_long.as_secs() / 60, "the server is refusing requests; leaving it alone");
+        let until_ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis() as i64) + how_long.as_millis() as i64;
+        crate::activity::resting(url, until_ms);
     }
 
     /// The request itself. `interactive` gives up at once on a connect error
@@ -212,7 +214,19 @@ impl Throttled {
             let _slot = self.in_flight.acquire().await.expect("the semaphore is never closed");
             self.wait_turn().await;
 
-            match request().send().await {
+            let started = Instant::now();
+            let sent = request().send().await;
+            let ms = started.elapsed().as_millis() as u64;
+            match &sent {
+                Ok(resp) => {
+                    let remaining = ["ratelimit-remaining", "x-ratelimit-remaining"]
+                        .iter()
+                        .find_map(|n| resp.headers().get(*n)?.to_str().ok()?.trim().parse::<u64>().ok());
+                    crate::activity::request(url, Some(resp.status().as_u16()), ms, remaining, None);
+                }
+                Err(e) => crate::activity::request(url, None, ms, None, Some(&e.to_string())),
+            }
+            match sent {
                 Ok(resp) => {
                     self.heed_limit(resp.headers()).await;
                     let status = resp.status();
@@ -407,7 +421,14 @@ pub async fn download_to(
 ) -> Result<u64> {
     use tokio::io::AsyncWriteExt;
 
-    let mut resp = client.get(url).send().await.with_context(|| format!("requesting {url}"))?;
+    let started = std::time::Instant::now();
+    let sent = client.get(url).send().await;
+    let ms = started.elapsed().as_millis() as u64;
+    match &sent {
+        Ok(r) => crate::activity::request(url, Some(r.status().as_u16()), ms, None, None),
+        Err(e) => crate::activity::request(url, None, ms, None, Some(&e.to_string())),
+    }
+    let mut resp = sent.with_context(|| format!("requesting {url}"))?;
     if !resp.status().is_success() {
         bail!("{url}: HTTP {}", resp.status());
     }

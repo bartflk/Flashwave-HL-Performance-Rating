@@ -33,6 +33,7 @@ import { clearProblems, markProblemsSeen, report, useProblems } from "../lib/pro
 import { Spinner } from "./Spinner";
 import { ApiError } from "./ApiError";
 import { SortTh, useSort } from "../lib/sort";
+import { ActivityPanel } from "./settings/ActivityPanel";
 import { FormatsPicker } from "./FormatsPicker";
 import { useFormatsPlayed } from "../lib/gameformat";
 
@@ -91,6 +92,7 @@ export function Settings({
         { id: "scale", title: t("Interface size"), icon: "scale" },
         { id: "problems", title: t("Problems"), icon: "alert" },
         { id: "diagnostics", title: t("Diagnostics"), icon: "info" },
+        { id: "activity", title: t("Activity log"), icon: "list" },
       ],
     },
     {
@@ -218,6 +220,11 @@ export function Settings({
               summary={t("The log file, each source's last sync, and recent runs")}
               info={t("Everything the app noticed while it worked is written to a log file in the data folder; the last three runs are kept. Copy diagnostics puts this page and the end of the log on the clipboard for Discord.")}>
               <DiagnosticsPanel />
+            </SettingsSection>
+            <SettingsSection id="activity" icon="list" title={t("Activity log")} keywords="activity log live debug verbose api requests sites status rate limit copy file path waterfall"
+              summary={t("Everything the app does, live: every request and how each site answered")}
+              info={t("Each line the app writes and each request it makes, as it happens, with the log file's location and buttons to copy it. Verbose adds debug lines for tracking a problem down.")}>
+              <ActivityPanel />
             </SettingsSection>
 
             {shows("matches") && <h2 className="settings-group">{t("Matches and data")}</h2>}

@@ -5,6 +5,7 @@ import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { t } from "../lib/i18n";
 import type {
+  ActivityView,
   Diagnostics,
   ModelShift,
   StvStage,
@@ -225,6 +226,9 @@ const realApi = {
   getDiagnostics: () => invoke<Diagnostics>("get_diagnostics"),
   /** The last lines of this run's log file. */
   recentLog: (lines?: number) => invoke<string>("recent_log", { lines: lines ?? null }),
+  /** The activity feed after line `since`, and every site's requests this run. */
+  getActivity: (since: number, limit?: number) => invoke<ActivityView>("get_activity", { since, limit: limit ?? null }),
+  setActivityVerbose: (on: boolean) => invoke<boolean>("set_activity_verbose", { on }),
   getModelShift: () => invoke<ModelShift | null>("get_model_shift"),
   /** The rating the app runs at startup for a new model: its progress, and its end. */
   onStartupRating: async (h: { onProgress: (p: Progress) => void; onDone: () => void }): Promise<UnlistenFn> => {

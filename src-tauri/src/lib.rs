@@ -1,3 +1,4 @@
+mod activity_layer;
 mod applog;
 mod commands;
 mod error;
@@ -62,6 +63,7 @@ pub fn run() {
             .with(filter)
             .with(tracing_subscriber::fmt::layer())
             .with(tracing_subscriber::fmt::layer().with_ansi(false).with_writer(|| applog::FileWriter))
+            .with(activity_layer::ActivityLayer)
             .init();
     }
 
@@ -188,6 +190,8 @@ pub fn run() {
             sync_commands::get_match,
             sync_commands::get_profile,
             sync_commands::get_profile_sixes,
+            sync_commands::get_activity,
+            sync_commands::set_activity_verbose,
             sync_commands::list_seasons,
             sync_commands::get_owner,
             sync_commands::get_seasons,

@@ -1156,6 +1156,34 @@ pub async fn get_profile_sixes(
     Ok(SixesProfileResponse { classes: roles, profile, fights: None, aim: None, life: None, aim_all: None, life_all: None, headline })
 }
 
+/// What the app is doing (Settings › Activity log, the sync card's
+/// waterfall): the feed's lines after `since`, every site's requests this
+/// run, and whether debug lines are in.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityView {
+    pub lines: Vec<hl_ingest::activity::Line>,
+    pub sites: Vec<hl_ingest::activity::Site>,
+    pub verbose: bool,
+}
+
+#[tauri::command]
+pub async fn get_activity(since: Option<u64>, limit: Option<usize>) -> CmdResult<ActivityView> {
+    Ok(ActivityView {
+        lines: hl_ingest::activity::since(since.unwrap_or(0), limit.unwrap_or(hl_ingest::activity::CAP)),
+        sites: hl_ingest::activity::sites(),
+        verbose: hl_ingest::activity::verbose(),
+    })
+}
+
+/// Debug lines into the feed too, or not; for this run.
+#[tauri::command]
+pub async fn set_activity_verbose(on: bool) -> CmdResult<bool> {
+    hl_ingest::activity::set_verbose(on);
+    tracing::info!(on, "verbose activity log switched");
+    Ok(on)
+}
+
 /// The demos the app downloaded and still holds (PLAN Q23).
 #[tauri::command]
 pub async fn downloaded_demos(state: State<'_, AppState>) -> CmdResult<Vec<hl_db::DownloadedDemo>> {

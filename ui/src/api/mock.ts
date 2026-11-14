@@ -5,6 +5,8 @@
 // this file is never used.
 
 import type { Api, StvHandlers, SyncHandlers } from "./client";
+/** The mock activity feed's position, and its verbose switch. */
+const mockActivity = { seq: 0, verbose: false };
 import match4109131 from "./fixtures/match_4109131.json";
 import match4114301 from "./fixtures/match_4114301.json";
 import match4111116 from "./fixtures/match_4111116.json";
@@ -138,7 +140,7 @@ import type {
   Teammates,
   TfPathInfo,
   FightsCard,
-  SeasonsView, StvStage, RatingGuide, LeagueSample, LeagueActivity, CatalogueHit, PlayerProfile, PlayerStats, Rankings, LeagueCup, LeagueCupPage, CupResult, MatchDivisions, CareerView, SeasonTile, Podium, TeamHonours, TeamEtf2l } from "./types";
+  SeasonsView, StvStage, RatingGuide, LeagueSample, LeagueActivity, CatalogueHit, PlayerProfile, PlayerStats, Rankings, LeagueCup, LeagueCupPage, CupResult, MatchDivisions, CareerView, SeasonTile, Podium, TeamHonours, TeamEtf2l, ActivityLine, ActivitySite } from "./types";
 
 // Starts configured, since setup is not what you are usually iterating on.
 // Append `?setup` to the URL to start from the first-run screen instead.
@@ -2786,6 +2788,47 @@ export const mockApi: Api = {
         { kind: "reprocess", at: 1789461000, seconds: 412, fetched: 0, failed: 0, error: "database is locked", problems: [] },
       ],
     }),
+
+  // A made-up feed: a line or two each call, as a sync reading ETF2L and logs.tf would.
+  getActivity: (since: number) => {
+    const now = Date.now();
+    const samples: Array<[ActivityLine["level"], string, string]> = [
+      ["http", "etf2l.org", "/competition/812/matches?page · 200 · 312 ms"],
+      ["info", "league", "6v6 season 52: Division 3 results read matches=48"],
+      ["http", "logs.tf", "/api/v1/log/4115969 · 200 · 188 ms"],
+      ["http", "trends.tf", "/api/v1/matches?player · 304 · 96 ms"],
+      ["info", "sixes_sample", "6v6 league sample: log stored log_id=4115969"],
+      ["http", "drops.tf", "/raw/4115969 · 200 · 441 ms"],
+      ["warn", "http", "transient HTTP failure url=demos.tf/api/demos status=503 attempt=0"],
+      ["info", "rating", "6v6 ratings rebuilt rated=1342"],
+    ];
+    mockActivity.seq = Math.max(mockActivity.seq, since);
+    const n = 1 + (now % 2);
+    const lines: ActivityLine[] = Array.from({ length: n }, () => {
+      const [level, source, text] = samples[mockActivity.seq % samples.length];
+      mockActivity.seq += 1;
+      return { seq: mockActivity.seq, at: now, level, source, text };
+    });
+    const site = (host: string, requests: number, ok: number, notModified: number, failed: number, avgMs: number, rateRemaining: number | null, restingUntil: number | null = null, lastError: string | null = null): ActivitySite => ({
+      host, requests, ok, notModified, notFound: 0, failed, lastStatus: failed && lastError ? "503" : "200", lastAt: now - 2000, lastPath: "/", avgMs, rateRemaining, restingUntil, lastError,
+    });
+    return delay({
+      lines,
+      sites: [
+        site("etf2l.org", 412, 401, 9, 2, 286, 54),
+        site("logs.tf", 1288, 1280, 0, 8, 174, null),
+        site("trends.tf", 96, 41, 55, 0, 102, null),
+        site("drops.tf", 640, 640, 0, 0, 390, null),
+        site("demos.tf", 31, 22, 0, 9, 1210, null, now + 9 * 60_000, "HTTP 503 Service Unavailable"),
+        site("rgl.gg", 18, 18, 0, 0, 240, 4),
+      ],
+      verbose: mockActivity.verbose,
+    });
+  },
+  setActivityVerbose: (on: boolean) => {
+    mockActivity.verbose = on;
+    return delay(on);
+  },
 
   recentLog: () =>
     delay(

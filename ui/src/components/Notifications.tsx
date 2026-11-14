@@ -4,6 +4,7 @@ import { useFormatsPlayed } from "../lib/gameformat";
 import { dismissSixesNotice, useSixesNoticeDismissed } from "../lib/sixesnotice";
 import { friendlyText } from "../lib/apierror";
 import { saveFormats } from "./FormatsPicker";
+import { ActivityWaterfall } from "./ActivityWaterfall";
 import { dismissDownload, useDownloads, type Download } from "../lib/downloads";
 import { cancelSync, dismissSync, fractionOf, labelOf, matchOf, phaseOf, useSyncStatus } from "../lib/sync";
 import { dismissDemoSeen, useDemoSeen } from "../lib/demowatch";
@@ -410,6 +411,7 @@ function SyncCard() {
           )}
           <p className="dl-label">{labelOf(sync.progress)}</p>
           {matchOf(sync.progress) && <p className="dl-sub dl-match">{matchOf(sync.progress)}</p>}
+          <ActivityWaterfall />
           {/* A rebuild stops like a sync: what it has rewritten stays, and
               the backup taken before it is there if that matters. */}
           {/* The rating pass is never stopped half-way (its four writes
