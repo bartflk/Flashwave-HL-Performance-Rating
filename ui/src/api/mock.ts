@@ -506,8 +506,72 @@ const FAKE_MATCHES: MatchSummary[] = (() => {
       },
     });
   }
-  return [...FIXTURE_ROWS, ...out].sort((a, b) => (b.playedAt ?? 0) - (a.playedAt ?? 0));
+  return [...FIXTURE_ROWS, ...out, ...fakeSixes()].sort((a, b) => (b.playedAt ?? 0) - (a.playedAt ?? 0));
 })();
+
+/** Made-up 6v6 matches for the browser build's 6v6 list (the 6v6 plan, P1):
+ *  6v6's maps and classes, tf2pickup and TF2Center pugs, no rating yet. */
+function fakeSixes(): MatchSummary[] {
+  const r = rng(66);
+  const pick = <T,>(xs: T[]) => xs[Math.floor(r() * xs.length)];
+  const maps = ["cp_process_f12", "cp_sunshine", "cp_gullywash_f9", "cp_metalworks_f7", "cp_granary_pro_rc17a3", "koth_product_final", "koth_bagel_rc13"];
+  const out: MatchSummary[] = [];
+  let t = 1_789_600_000;
+  for (let i = 0; i < 36; i++) {
+    t -= Math.floor(3_600 * (6 + r() * 70));
+    const official = r() < 0.12;
+    const kind: ContextKind = official ? "official" : r() < 0.5 ? "scrim" : "pug";
+    const map = pick(maps);
+    const koth = map.startsWith("koth_");
+    const dur = Math.floor(900 + r() * 1_100);
+    const [red, blue] = koth ? (r() < 0.5 ? [3, Math.floor(r() * 3)] : [Math.floor(r() * 3), 3]) : [Math.floor(r() * 6), Math.floor(r() * 6)];
+    const team: "Red" | "Blue" = r() < 0.5 ? "Red" : "Blue";
+    const [mine, theirs] = team === "Red" ? [red, blue] : [blue, red];
+    const kills = Math.floor(6 + r() * 30);
+    out.push({
+      logId: 4_100_000 - i * 23,
+      playedAt: t,
+      map,
+      title: official
+        ? `ETF2L 6v6 S52 Div 3 - DD14 vs ${pick(["Kebab", "fuzzy", "Pandemonium"])}`
+        : kind === "pug"
+          ? pick(["tf2pickup.eu #48211", "TF2Center Lobby #1330950", "tf2pickup.eu #48302"])
+          : "serveme.tf #1570021 RED vs BLU",
+      durationS: dur,
+      parts: 0,
+      rating: null,
+      classCount: null,
+      format: "sixes",
+      league: official ? "etf2l" : null,
+      etf2lMatchId: official ? 91_200 - i : null,
+      demosTfId: r() < 0.6 ? 1_506_000 - i : null,
+      redScore: red,
+      blueScore: blue,
+      hasDemo: false,
+      maps: [],
+      context: {
+        kind,
+        etf2lMatchId: official ? 91_200 - i : null,
+        linkMethod: official ? "trends" : null,
+        teamName: null,
+        oppName: null,
+        regulars: kind === "pug" ? Math.floor(r() * 2) : 3 + Math.floor(r() * 3),
+        official: null,
+      },
+      me: {
+        team,
+        mainClass: pick(["soldier", "soldier", "scout", "demoman", "medic"]),
+        kills,
+        deaths: Math.floor(5 + r() * 22),
+        assists: Math.floor(r() * 14),
+        dmg: Math.floor(kills * (220 + r() * 240)),
+        timeS: dur,
+        result: mine > theirs ? "W" : mine < theirs ? "L" : "T",
+      },
+    });
+  }
+  return out;
+}
 
 const fakeStats = (pending: number): IndexStats => ({
   indexed: 1494,
@@ -519,6 +583,7 @@ const fakeStats = (pending: number): IndexStats => ({
   officials: 58,
   fetched: 759 - pending,
   normalized: 759 - pending,
+  sixesFetched: 117,
   pending,
   failed: 0,
   outsideWindow: allHistory ? 0 : 282,
@@ -714,7 +779,7 @@ export const mockApi: Api = {
   listMatches: (q: MatchQuery): Promise<MatchPage> => {
     const filtered = FAKE_MATCHES.filter(
       (m) =>
-        (q.format === null || m.format === q.format) &&
+        (q.format === null || m.format === q.format || (q.format.startsWith("!") && m.format !== q.format.slice(1))) &&
         (q.kind === null || m.context?.kind === q.kind) &&
         (q.from === null || (m.playedAt ?? 0) >= q.from) &&
         (q.to === null || (m.playedAt ?? 0) <= q.to) &&
@@ -734,7 +799,12 @@ export const mockApi: Api = {
   getMatch: (logId: number) => {
     const exact = FIXTURES.find((f) => f.logId === logId);
     // The list's second match was stored from more.tf, so its banner can be seen.
-    const d = exact ?? { ...FIXTURES[0], logId, standIn: logId === FAKE_MATCHES[1]?.logId ? "more.tf" : null };
+    const row = FAKE_MATCHES.find((m) => m.logId === logId);
+    const base = exact ?? { ...FIXTURES[0], logId, standIn: logId === FAKE_MATCHES[1]?.logId ? "more.tf" : null };
+    // A made-up 6v6 row opens as 6v6 on its own map, with midfights (P1).
+    const d = !exact && row?.format === "sixes"
+      ? { ...base, format: "sixes", map: row.map, title: row.title, rounds: base.rounds.map((r, i) => ({ ...r, firstcap: (i * 7 + logId) % 3 === 0 ? ("Blue" as const) : ("Red" as const) })) }
+      : base;
     // Fixtures stored before accuracy was read carry none: a spread from
     // the player's id, so the column and its colours can be seen.
     return delay({ ...d, players: d.players.map((p) => (p.accuracy !== undefined ? p : { ...p, accuracy: p.mainClass === "heavy" || p.mainClass === "pyro" ? null : 0.2 + ((p.accountId % 37) / 37) * 0.45 })) });
@@ -887,10 +957,17 @@ export const mockApi: Api = {
     );
   },
 
-  playedFilters: (q?: { kind?: string | null; class?: string | null; map?: string | null }) => {
+  playedFilters: (q?: { format?: string | null; kind?: string | null; class?: string | null; map?: string | null }) => {
     // Narrower filters, smaller counts: enough to see them follow.
     const share = (q?.kind ? 0.3 : 1) * (q?.map ? 0.2 : 1);
     const scale = (rows: Array<[string, number]>, by: number) => rows.map(([n, c]) => [n, Math.max(1, Math.round(c * by))] as [string, number]);
+    // The 6v6 list's own classes and maps (the 6v6 plan, P1).
+    if (q?.format === "sixes") {
+      return delay({
+        classes: scale([["soldier", 14], ["scout", 8], ["demoman", 8], ["medic", 6]], share),
+        maps: scale([["process", 7], ["sunshine", 6], ["product", 6], ["gullywash", 5], ["metalworks", 5], ["bagel", 4], ["granary", 3]], (q?.kind ? 0.3 : 1) * (q?.class ? 0.5 : 1)),
+      });
+    }
     return delay({
       classes: scale([
         ["sniper", 646],

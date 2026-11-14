@@ -208,13 +208,15 @@ impl Db {
     /// traded deaths, deaths to flankers, stationary deaths, fights present,
     /// KAST fights, engaged KAST fights])`.
     pub async fn fight_counts(&self, log_id: Option<i64>) -> Result<std::collections::HashMap<i64, Vec<(u32, [u32; 14])>>> {
-        let rows = sqlx::query(
+        // One log is whatever format it is; every log means the Highlander ones.
+        let rows = sqlx::query(&format!(
             "SELECT log_id, account_id, opening_kills, opening_deaths, kills, traded_kills,
                     deaths, traded_deaths, deaths_to_flank, stationary_deaths,
                     fights_present, fights_kast, fights_kast_engaged,
                     caps_contested, caps_mates_dead, caps_spawn_delay
-             FROM fight_stat WHERE ?1 IS NULL OR log_id = ?1",
-        )
+             FROM fight_stat WHERE log_id = ?1 OR (?1 IS NULL AND {})",
+            crate::hl_only("log_id")
+        ))
         .bind(log_id)
         .fetch_all(self.pool())
         .await?;

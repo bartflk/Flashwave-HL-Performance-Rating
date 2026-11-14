@@ -31,8 +31,11 @@ pub struct AimFilter<'a> {
 /// wants. It is the same account the class filter asks about: "their aim in
 /// the matches they played Sniper", not "their aim in the matches I did".
 fn scope(table: &str, who: &str) -> String {
+    // One match is whatever format it is; across matches, Highlander's only.
+    let hl = crate::hl_only(&format!("{table}.log_id"));
     format!(
         "WHERE (?1 IS NULL OR {table}.log_id = ?1)
+           AND (?1 IS NOT NULL OR {hl})
            AND {table}.{who} = ?6
            AND (?2 IS NULL OR EXISTS (SELECT 1 FROM match_player mp
                                       WHERE mp.log_id = {table}.log_id AND mp.account_id = ?6
@@ -368,14 +371,15 @@ impl Db {
     /// The map is the life's round's, as resolved, else the log's own, so a
     /// combined log's lives each fall on the map they were played on.
     pub async fn lives_index(&self, account_id: u32) -> Result<Vec<LifeIndexRow>> {
-        let rows = sqlx::query(
+        let rows = sqlx::query(&format!(
             "SELECT p.log_id, p.demo_id, p.seq, COALESCE(rm.map, m.map) AS map, d.kind, m.played_at
              FROM demo_path p
              JOIN demo d ON d.demo_id = p.demo_id
              JOIN match m ON m.log_id = p.log_id
              LEFT JOIN round_map rm ON rm.log_id = p.log_id AND rm.round_num = p.round_num
-             WHERE p.account_id = ?1",
-        )
+             WHERE p.account_id = ?1 AND {}",
+            crate::hl_only("p.log_id")
+        ))
         .bind(i64::from(account_id))
         .fetch_all(self.pool())
         .await?;
@@ -395,13 +399,14 @@ impl Db {
     /// Everyone with a route in a match whose map's name holds `base`, once
     /// a match each (the caller keeps those whose map is `base` exactly).
     pub async fn map_players(&self, base: &str) -> Result<Vec<MapPlayerRow>> {
-        let rows = sqlx::query(
+        let rows = sqlx::query(&format!(
             "SELECT p.log_id, p.account_id, m.map, mp.name, mp.main_class, m.played_at
              FROM (SELECT DISTINCT log_id, account_id FROM demo_path) p
              JOIN match m ON m.log_id = p.log_id
              LEFT JOIN match_player mp ON mp.log_id = p.log_id AND mp.account_id = p.account_id
-             WHERE m.map LIKE '%' || ?1 || '%'",
-        )
+             WHERE m.map LIKE '%' || ?1 || '%' AND {}",
+            crate::hl_only("p.log_id")
+        ))
         .bind(base)
         .fetch_all(self.pool())
         .await?;

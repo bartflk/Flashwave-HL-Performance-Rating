@@ -428,18 +428,19 @@ impl Db {
             .collect())
     }
 
-    /// Every kept Highlander match the owner played, oldest first.
-    pub async fn context_games(&self, me: u32) -> Result<Vec<ContextGameRow>> {
+    /// Every kept match of one format the owner played, oldest first.
+    pub async fn context_games(&self, me: u32, format: hl_core::GameFormat) -> Result<Vec<ContextGameRow>> {
         let games = sqlx::query(
             "SELECT m.log_id, COALESCE(m.played_at, 0) AS played_at, i.etf2l_match_id,
                     COALESCE(m.title, i.title) AS title
              FROM match m
              JOIN log_index i    ON i.log_id = m.log_id
              JOIN match_player p ON p.log_id = m.log_id AND p.account_id = ?1
-             WHERE i.superseded_by IS NULL AND COALESCE(i.format_override, i.format) = 'highlander'
+             WHERE i.superseded_by IS NULL AND COALESCE(i.format_override, i.format) = ?2
              ORDER BY m.played_at, m.log_id",
         )
         .bind(me as i64)
+        .bind(format.as_str())
         .fetch_all(self.pool())
         .await?;
         let players = sqlx::query(
@@ -613,7 +614,7 @@ impl Db {
     }
 
     pub async fn context_counts(&self, etf2l_player_key: &str) -> Result<ContextCounts> {
-        let r = sqlx::query(
+        let r = sqlx::query(&format!(
             "SELECT
                 COALESCE(SUM(kind = 'official'), 0) AS officials,
                 COALESCE(SUM(kind = 'scrim'), 0) AS scrims,
@@ -621,8 +622,9 @@ impl Db {
                 COALESCE(SUM(link_method = 'roster'), 0) AS roster_officials,
                 (SELECT COUNT(*) FROM etf2l_match) AS etf2l_matches,
                 (SELECT MAX(fetched_at) FROM etf2l_raw) AS last_fetch
-             FROM match_context",
-        )
+             FROM match_context WHERE {}",
+            crate::hl_only("log_id")
+        ))
         .fetch_one(self.pool())
         .await?;
         Ok(ContextCounts {
@@ -667,12 +669,14 @@ impl Db {
 
     /// Everyone who was on the owner's side in a classified game.
     pub async fn mate_rows(&self, me: u32) -> Result<Vec<MateRow>> {
-        let rows = sqlx::query(
+        let rows = sqlx::query(&format!(
             "SELECT q.log_id, q.account_id, q.name, q.main_class, q.time_s
              FROM match_context c
              JOIN match_player p ON p.log_id = c.log_id AND p.account_id = ?1
-             JOIN match_player q ON q.log_id = c.log_id AND q.team = p.team AND q.account_id != ?1",
-        )
+             JOIN match_player q ON q.log_id = c.log_id AND q.team = p.team AND q.account_id != ?1
+             WHERE {}",
+            crate::hl_only("c.log_id")
+        ))
         .bind(me as i64)
         .fetch_all(self.pool())
         .await?;

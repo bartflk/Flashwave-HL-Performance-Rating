@@ -51,7 +51,7 @@ test("diagnosticsText: everything a tester sends, failures included", () => {
     dataDir: "C:/data",
     logFile: "C:/data/logs/flashwave.log",
     logDir: "C:/data/logs",
-    stats: { indexed: 10, superseded: 0, highlander: 9, sixes: 0, other: 1, unclassified: 0, officials: 2, fetched: 9, normalized: 9, pending: 1, failed: 0, outsideWindow: 0 },
+    stats: { indexed: 10, superseded: 0, highlander: 9, sixes: 0, other: 1, unclassified: 0, officials: 2, fetched: 9, normalized: 9, sixesFetched: 0, pending: 1, failed: 0, outsideWindow: 0 },
     rated: [["v13", 8], ["v14", 9]],
     sources: [{ source: "trends", cursor: "1", lastRunAt: null, lastError: "timed out" }],
     runs: [{ kind: "reprocess", at: 1_789_000_000, seconds: 30, fetched: 0, failed: 0, error: "database is locked", problems: ["raw logs: 503"] }],

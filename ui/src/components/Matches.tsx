@@ -34,7 +34,16 @@ const VIEWS: Array<{ id: View; label: string; hint?: string }> = [
   { id: "official", label: k("Officials"), hint: k("ETF2L officials") },
   { id: "scrim", label: k("Scrims"), hint: k("Team games: most of your side are regular teammates or your ETF2L roster") },
   { id: "pug", label: k("Pugs"), hint: k("Pugs, lobbies and mixes: a different team every game") },
-  { id: "all", label: k("All formats") },
+  { id: "all", label: k("All formats"), hint: k("Every format but 6v6, which has its own list") },
+];
+
+/** The 6v6 list's views (the 6v6 plan, P1): 6v6's own officials, scrims and
+ *  pugs, never mixed with Highlander's (question 4: "separate tab like HL"). */
+const SIXES_VIEWS: Array<{ id: View; label: string; hint?: string }> = [
+  { id: "highlander", label: k("6v6"), hint: k("Every 6v6 match") },
+  { id: "official", label: k("Officials"), hint: k("ETF2L officials") },
+  { id: "scrim", label: k("Scrims"), hint: k("Team games: most of your side are regular teammates") },
+  { id: "pug", label: k("Pugs"), hint: k("Pugs and mixes, tf2pickup and TF2Center among them: a different team every game") },
 ];
 
 /** The sortable columns, in table order. `null` sorts by date. */
@@ -89,18 +98,26 @@ const isNameOrNull = (v: unknown): v is string | null => v === null || (typeof v
 const isSort = (v: unknown): v is { key: string; ascending: boolean } =>
   !!v && typeof v === "object" && typeof (v as { key: unknown }).key === "string" && typeof (v as { ascending: unknown }).ascending === "boolean";
 
-export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
+/**
+ * Your matches in one format: Highlander's (the default) or 6v6's, chosen
+ * from the Matches tab's menu (the 6v6 plan, P1). Each format keeps its own
+ * filters; "highlander" is the id of the format's own first view.
+ */
+export function Matches({ onOpen, format = "hl" }: { onOpen: (logId: number) => void; format?: "hl" | "6s" }) {
+  const six = format === "6s";
+  const views = six ? SIXES_VIEWS : VIEWS;
+  const key = (name: string) => (six ? `matches6.${name}` : `matches.${name}`);
   // The filters and the order are remembered (useSaved): set once, they hold
   // across tabs and restarts.
-  const [view, setView] = useSaved<View>("matches.view", "highlander", isView);
+  const [view, setView] = useSaved<View>(key("view"), "highlander", (v): v is View => isView(v) && views.some((w) => w.id === v));
   const [pages, setPages] = useState(1);
   // What you played on, and where: both narrow the whole history, not the
   // rows already on screen.
-  const [cls, setCls] = useSaved<string | null>("matches.class", null, isNameOrNull);
-  const [map, setMap] = useSaved<string | null>("matches.map", null, isNameOrNull);
-  const [sort, setSort] = useSaved<{ key: string; ascending: boolean }>("matches.sort", { key: "date", ascending: false }, isSort);
+  const [cls, setCls] = useSaved<string | null>(key("class"), null, isNameOrNull);
+  const [map, setMap] = useSaved<string | null>(key("map"), null, isNameOrNull);
+  const [sort, setSort] = useSaved<{ key: string; ascending: boolean }>(key("sort"), { key: "date", ascending: false }, isSort);
   // Q56 (Emiel): straight to the matches with everyone's movement and aim.
-  const [stvOnly, setStvOnly] = useSaved<boolean>("matches.stv", false, (v): v is boolean => typeof v === "boolean");
+  const [stvOnly, setStvOnly] = useSaved<boolean>(key("stv"), false, (v): v is boolean => typeof v === "boolean");
   const filtered = view !== "highlander" || cls !== null || map !== null || stvOnly;
   const classSort = parseClassSort(sort.key);
   const picker = useColumns("matches", STAT_COLS);
@@ -113,7 +130,8 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
   const scales = useStatScales().data;
   // Tournament dividers (Flashy: "separates timelines by the tournaments
   // played"), on a date order only.
-  const dividersOn = useTournamentDividers();
+  // Highlander's seasons and cups only, so not in the 6v6 list.
+  const dividersOn = useTournamentDividers() && !six;
   const tourneys = useQuery({ queryKey: ["my_tournaments"], queryFn: api.myTournaments, staleTime: 10 * 60_000, enabled: dividersOn }).data ?? [];
   const dividers = dividersOn && sort.key === "date" && tourneys.length > 0;
   // The tournament whose stretch a match falls in; the latest to start when
@@ -125,7 +143,9 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
   const period = usePeriod();
   // Q59 (Emiel): each class's and map's count is of what the other filters
   // show, not of every log.
-  const counted = { format: view === "all" ? null : "highlander", kind, ...bounds(period), class: cls, map, stvOnly };
+  // 6v6 is its own list; Highlander's "All formats" is every format but 6v6.
+  const fmtParam = six ? "sixes" : view === "all" ? "!sixes" : "highlander";
+  const counted = { format: fmtParam, kind, ...bounds(period), class: cls, map, stvOnly };
   const filters = useQuery({
     queryKey: ["played_filters", counted],
     queryFn: () => api.playedFilters(counted),
@@ -133,7 +153,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
     placeholderData: keepPreviousData,
   });
   const query = {
-    format: view === "all" ? null : "highlander",
+    format: fmtParam,
     kind,
     ...bounds(period),
     limit: PAGE * pages,
@@ -194,7 +214,7 @@ export function Matches({ onOpen }: { onOpen: (logId: number) => void }) {
       <div className="filters">
         <div className="filter-row">
         <div className="segmented" role="tablist">
-          {VIEWS.map((v) => (
+          {views.map((v) => (
             <button
               key={v.id}
               role="tab"

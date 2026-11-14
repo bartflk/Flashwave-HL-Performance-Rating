@@ -12,7 +12,7 @@
 use crate::context::{self, Game, Official};
 use crate::sources::Sources;
 use anyhow::{Context as _, Result};
-use hl_core::SteamId;
+use hl_core::{GameFormat, SteamId};
 use hl_db::{ContextRow, Db, Etf2lMatchRow};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -175,26 +175,31 @@ pub async fn derive_context(db: &Db, me: SteamId) -> Result<ContextSummary> {
         .collect();
 
     let me_id = me.account_id();
-    let games: Vec<Game> = db
-        .context_games(me_id)
-        .await?
-        .into_iter()
-        .filter_map(|g| {
-            let my_team = g.players.iter().find(|(a, _)| *a == me_id)?.1.clone();
-            let (mates, opponents): (Vec<_>, Vec<_>) =
-                g.players.iter().filter(|(a, _)| *a != me_id).partition(|(_, t)| *t == my_team);
-            Some(Game {
-                log_id: g.log_id,
-                played_at: g.played_at,
-                trends_match: g.trends_match,
-                title: g.title.clone(),
-                mates: mates.into_iter().map(|(a, _)| *a).collect(),
-                opponents: opponents.into_iter().map(|(a, _)| *a).collect(),
+    let games_of = |rows: Vec<hl_db::ContextGameRow>| -> Vec<Game> {
+        rows.into_iter()
+            .filter_map(|g| {
+                let my_team = g.players.iter().find(|(a, _)| *a == me_id)?.1.clone();
+                let (mates, opponents): (Vec<_>, Vec<_>) =
+                    g.players.iter().filter(|(a, _)| *a != me_id).partition(|(_, t)| *t == my_team);
+                Some(Game {
+                    log_id: g.log_id,
+                    played_at: g.played_at,
+                    trends_match: g.trends_match,
+                    title: g.title.clone(),
+                    mates: mates.into_iter().map(|(a, _)| *a).collect(),
+                    opponents: opponents.into_iter().map(|(a, _)| *a).collect(),
+                })
             })
-        })
-        .collect();
-
+            .collect()
+    };
+    let games = games_of(db.context_games(me_id, GameFormat::Highlander).await?);
     let ctx = context::classify(&games, &officials);
+    // 6v6 apart (the 6v6 plan, P1), with its own headcounts. Its officials
+    // are the ones trends.tf links for now: the ETF2L rosters stored are
+    // Highlander's, and a Highlander roster must not make a 6v6 official.
+    let sixes = games_of(db.context_games(me_id, GameFormat::Sixes).await?);
+    let sixes_ctx = context::classify_sized(&sixes, &[], context::Sizes::SIXES);
+
     let mut s = ContextSummary::default();
     for c in &ctx {
         match c.kind {
@@ -210,6 +215,7 @@ pub async fn derive_context(db: &Db, me: SteamId) -> Result<ContextSummary> {
     }
     let rows: Vec<ContextRow> = ctx
         .into_iter()
+        .chain(sixes_ctx)
         .map(|c| ContextRow {
             log_id: c.log_id,
             kind: c.kind.as_str(),

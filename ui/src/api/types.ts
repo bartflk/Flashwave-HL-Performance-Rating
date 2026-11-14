@@ -160,8 +160,11 @@ export interface IndexStats {
   other: number;
   unclassified: number;
   officials: number;
+  /** Highlander logs downloaded. */
   fetched: number;
   normalized: number;
+  /** 6v6 logs downloaded (the 6v6 plan, P1). */
+  sixesFetched: number;
   pending: number;
   failed: number;
   /** Deleted on logs.tf, or out of tries: no longer asked for. */

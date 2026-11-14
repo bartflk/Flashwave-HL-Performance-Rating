@@ -98,6 +98,18 @@ export function mapMode(map: string): "5cp" | "koth" | "other" {
   return "other";
 }
 
+/**
+ * A 6v6 5CP match's midfights: each round starts at the middle point, and
+ * the team that capped first won it (logs.tf's `firstcap`). Null for any
+ * other match, or a log that did not record it (the 6v6 plan, P1).
+ */
+export function midfights(d: { format: string | null; map: string | null; rounds: Array<{ firstcap: "Red" | "Blue" | null }> }): { Red: number; Blue: number } | null {
+  if (d.format !== "sixes" || mapMode(d.map ?? "") !== "5cp") return null;
+  const out = { Red: 0, Blue: 0 };
+  for (const r of d.rounds) if (r.firstcap) out[r.firstcap] += 1;
+  return out.Red + out.Blue > 0 ? out : null;
+}
+
 /** Maps neither won nor lost: draws (a 5CP map level at the time limit). */
 export function drawn(r: { mapsPlayed: number; mapsWon: number; mapsLost: number }): number {
   return Math.max(0, r.mapsPlayed - r.mapsWon - r.mapsLost);

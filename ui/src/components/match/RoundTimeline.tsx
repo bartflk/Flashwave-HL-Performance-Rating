@@ -7,6 +7,7 @@ import type { Analysis, EventRow, Jump, MatchDetail, RoundRow, Team } from "../.
 import { copy } from "../../lib/toast";
 import { clock, teamLabel } from "../../lib/format";
 import { t as tr, tx } from "../../lib/i18n";
+import { midfights } from "../../lib/gameformat";
 
 /**
  * Every round on its own track, with caps, ubers, drops and medic deaths
@@ -47,6 +48,8 @@ export function RoundTimeline({ d }: { d: MatchDetail }) {
   const lost = d.rounds.filter((r) => r.winner === right).length;
   const leftName = us ? tr("Us") : teamLabel(left);
   const rightName = us ? tr("Them") : teamLabel(right);
+  // 6v6 on 5CP: who took the middle point first, round by round.
+  const mid = midfights(d);
 
   return (
     <section className="panel rounds">
@@ -59,6 +62,14 @@ export function RoundTimeline({ d }: { d: MatchDetail }) {
         </div>
         <Legend jumps={hasJumps} mine={hasMine} />
       </header>
+      {mid && (
+        <p className="mid-line">
+          <strong>{tr("Midfights")}</strong>
+          <span className={`team-${left.toLowerCase()}`}>{leftName} {mid[left]}</span>
+          <span className={`team-${right.toLowerCase()}`}>{rightName} {mid[right]}</span>
+          <span className="hint">{tr("The team that capped the middle point first each round.")}</span>
+        </p>
+      )}
       <div className="round-list">
         {d.rounds.map((r) => (
           <Round
@@ -72,6 +83,7 @@ export function RoundTimeline({ d }: { d: MatchDetail }) {
             names={[leftName, rightName]}
             showMine={hasMine}
             demoName={demoName}
+            mid={mid !== null}
           />
         ))}
       </div>
@@ -93,8 +105,10 @@ function Round(props: {
   names: [string, string];
   showMine: boolean;
   demoName: (j: Jump) => string | undefined;
+  /** Mark the team that won this round's midfight (6v6 on 5CP). */
+  mid?: boolean;
 }) {
-  const { r, a, myTeam, left, right, us, names, showMine, demoName } = props;
+  const { r, a, myTeam, left, right, us, names, showMine, demoName, mid } = props;
   const len = r.lengthS ?? Math.max(1, ...r.events.map((e) => e.atS));
   const events = r.events.filter((e) => e.kind !== "round_win");
   // An event with no team (rare) goes in the second lane rather than nowhere.
@@ -139,6 +153,15 @@ function Round(props: {
         <span className={resultClass}>{result}</span>
         <span className="round-sub">
           {clock(r.lengthS)}
+          {/* Inside the full-width line, so the grid above keeps its two columns. */}
+          {mid && r.firstcap && (
+            <span
+              className={`mid-chip team-${r.firstcap.toLowerCase()}`}
+              title={tr("{0} won the midfight", { "0": r.firstcap === left ? names[0] : names[1] })}
+            >
+              {tr("Mid")}
+            </span>
+          )}
           {us && (
             <span className={`wore wore-${leftWore.toLowerCase()}`} title={r.coloursSwapped ? tr("Sides swapped this half") : undefined}>
               {teamLabel(leftWore)}

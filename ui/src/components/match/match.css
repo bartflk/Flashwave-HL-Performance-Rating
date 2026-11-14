@@ -896,6 +896,21 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 6v6 on 5CP: the midfight count under the rounds' heading, and the team
+   that won each round's midfight (the 6v6 plan, P1). */
+.mid-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin: 0 0 10px; font-size: var(--fs-ui); font-variant-numeric: tabular-nums; }
+.mid-line strong { font-family: var(--font-display); font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+.mid-line .team-red, .mid-line .team-blue { font-weight: 700; }
+.mid-chip {
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  letter-spacing: var(--ls-heading);
+  text-transform: uppercase;
+  padding: 0 5px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+}
+
 .round-lanes {
   --lane-label-w: 44px;
   position: relative;

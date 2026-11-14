@@ -348,13 +348,15 @@ impl Db {
 
     /// Logs with a parsed STV timeline that this player is in (Q28).
     pub async fn player_stv_logs(&self, account: u32) -> Result<Vec<(i64, String)>> {
-        Ok(sqlx::query_as(
+        Ok(sqlx::query_as(&format!(
             "SELECT DISTINCT l.log_id, COALESCE(m.map, '') FROM demo_link l
              JOIN demo d ON d.demo_id = l.demo_id AND d.kind = 'stv'
              JOIN demo_timeline t ON t.demo_id = d.demo_id
              JOIN match m ON m.log_id = l.log_id
-             JOIN match_player p ON p.log_id = l.log_id AND p.account_id = ?1",
-        )
+             JOIN match_player p ON p.log_id = l.log_id AND p.account_id = ?1
+             WHERE {}",
+            crate::hl_only("l.log_id")
+        ))
         .bind(i64::from(account))
         .fetch_all(self.pool())
         .await?)

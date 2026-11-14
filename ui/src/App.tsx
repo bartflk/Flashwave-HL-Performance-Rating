@@ -262,11 +262,11 @@ export default function App() {
       </header>
 
       <div hidden={tab !== "matches" || openLog !== null}>
-        <ErrorBoundary what="The match list">{fmt.matches === "6s" ? <SixesSoon what="matches" /> : <Matches onOpen={setOpenLog} />}</ErrorBoundary>
+        <ErrorBoundary what="The match list"><Matches key={fmt.matches} format={fmt.matches} onOpen={setOpenLog} /></ErrorBoundary>
       </div>
       {visited.has("profile") && (
         <div hidden={tab !== "profile" || openLog !== null}>
-          <ErrorBoundary what="The profile">{fmt.profile === "6s" ? <SixesSoon what="profile" /> : <ProfilePage steamid={data.config.steamid} onOpenMatch={setOpenLog} />}</ErrorBoundary>
+          <ErrorBoundary what="The profile">{fmt.profile === "6s" ? <SixesSoon /> : <ProfilePage steamid={data.config.steamid} onOpenMatch={setOpenLog} />}</ErrorBoundary>
         </div>
       )}
       {visited.has("etf2l") && (

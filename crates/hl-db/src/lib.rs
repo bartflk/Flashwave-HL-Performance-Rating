@@ -9,6 +9,18 @@ mod audit;
 #[cfg(test)]
 mod sync_audit_tests;
 
+/// SQL: `col` (a log id) is not a 6v6 log, neither the owner's nor the
+/// league sample's (the 6v6 plan, P1: formats are never mixed). Every
+/// Highlander-facing query over all stored logs carries it, so 6v6 logs,
+/// once downloaded, never reach a Highlander list, scale, total or pool.
+/// It keeps everything else a query kept before, unclassified logs included.
+pub(crate) fn hl_only(col: &str) -> String {
+    format!(
+        "{col} NOT IN (SELECT log_id FROM log_index WHERE COALESCE(format_override, format) = 'sixes'
+                       UNION ALL SELECT log_id FROM league_log WHERE format = 'sixes')"
+    )
+}
+
 /// The logs the owner's own rating covers: their rated Highlander logs, and
 /// the per-map logs a rated combined log replaced. A league log among these
 /// is left to the owner's rating, so no game is in the pool twice; any
