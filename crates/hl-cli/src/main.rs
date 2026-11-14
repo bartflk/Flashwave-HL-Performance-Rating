@@ -59,6 +59,10 @@ COMMANDS:
                            nine classes. Ends with a model proposed from the
                            fit and what it is worth cross-validated. --weights
                            takes a TOML file with a [model.CLASS] table; repeatable
+    sixes-validate [--json]
+                           How often the 6v6 rating, each role's and each
+                           component, picks the side that won, over every stored
+                           6v6 log (own and league sample)
     guide [--json]         Every class's model: its components, their share of
                            the rating and what each one means (the app's 'How
                            ratings work' page)
@@ -435,6 +439,17 @@ async fn run() -> Result<()> {
         ["rate"] => {
             let db = Db::connect(&db_path).await?;
             rate(&db, &db_path).await
+        }
+
+        ["sixes-validate", rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            let v = hl_ingest::sixes_rating::validate(&db).await?;
+            if rest.contains(&"--json") {
+                println!("{}", serde_json::to_string(&v)?);
+            } else {
+                print!("{v}");
+            }
+            Ok(())
         }
 
         ["snapshot", rest @ ..] => {

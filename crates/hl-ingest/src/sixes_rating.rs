@@ -255,6 +255,43 @@ fn rate(perfs: &[Perf]) -> Vec<SixesRating> {
 /// some (the 6v6 plan, P5): the owner's games are then read against the
 /// league, not only against the players in them.
 pub async fn rate_all(db: &hl_db::Db) -> Result<usize> {
+    let (perfs, _) = collect(db).await?;
+    let ratings = rate(&perfs);
+    let rows: Vec<(i64, u32, String, f64, f64, f64, String)> = ratings
+        .iter()
+        .map(|r| (r.log_id, r.account_id, r.role.clone(), r.rating, r.score, r.minutes, serde_json::to_string(&r.parts).unwrap_or_else(|_| "[]".into())))
+        .collect();
+    db.replace_sixes_ratings(&model_version(), &rows).await?;
+    Ok(rows.len())
+}
+
+/// Who won one log, and each player's side: what [`validate`] needs.
+#[derive(Debug, Clone, Default)]
+struct LogResult {
+    /// The side with more rounds; `None` for a draw.
+    winner: Option<String>,
+    team: HashMap<u32, String>,
+}
+
+fn result_of(json: &Value) -> LogResult {
+    let score = |t: &str| json.get("teams").and_then(|x| x.get(t)).and_then(|x| n(x, "score"));
+    let winner = match (score("Red"), score("Blue")) {
+        (Some(r), Some(b)) if r > b => Some("Red".to_string()),
+        (Some(r), Some(b)) if b > r => Some("Blue".to_string()),
+        _ => None,
+    };
+    let team = json
+        .get("players")
+        .and_then(Value::as_object)
+        .into_iter()
+        .flatten()
+        .filter_map(|(sid, p)| Some((SteamId::parse(sid).ok()?.account_id(), p.get("team")?.as_str()?.to_string())))
+        .collect();
+    LogResult { winner, team }
+}
+
+/// Every stored 6v6 performance, as [`rate_all`] rates them, and each log's result.
+async fn collect(db: &hl_db::Db) -> Result<(Vec<Perf>, HashMap<i64, LogResult>)> {
     // Roles set by hand on the owner's matches (question 18) stand over the
     // worked-out ones.
     let by_hand: HashMap<(i64, u32), String> = db.roles_by_hand().await?.into_iter().map(|(l, a, r)| ((l, a), r)).collect();
@@ -264,8 +301,10 @@ pub async fn rate_all(db: &hl_db::Db) -> Result<usize> {
         db.get_setting(crate::sixes_round_win::SETTING).await?.and_then(|s| serde_json::from_str(&s).ok());
     let sample_raws: HashMap<i64, Vec<u8>> = if table.is_some() { db.sixes_league_raws().await?.into_iter().collect() } else { HashMap::new() };
     let mut perfs = Vec::new();
+    let mut results = HashMap::new();
     for (log_id, body) in db.sixes_log_jsons().await?.into_iter().chain(db.sixes_league_jsons().await?) {
         let Ok(v) = serde_json::from_str::<Value>(&body) else { continue };
+        results.insert(log_id, result_of(&v));
         let mut these = perfs_valued(log_id, &v, table.as_ref().map(|t| &t.victims));
         for p in these.iter_mut() {
             if let Some(r) = by_hand.get(&(log_id, p.account_id)) {
@@ -290,13 +329,114 @@ pub async fn rate_all(db: &hl_db::Db) -> Result<usize> {
         }
         perfs.extend(these);
     }
-    let ratings = rate(&perfs);
-    let rows: Vec<(i64, u32, String, f64, f64, f64, String)> = ratings
-        .iter()
-        .map(|r| (r.log_id, r.account_id, r.role.clone(), r.rating, r.score, r.minutes, serde_json::to_string(&r.parts).unwrap_or_else(|_| "[]".into())))
-        .collect();
-    db.replace_sixes_ratings(&model_version(), &rows).await?;
-    Ok(rows.len())
+    Ok((perfs, results))
+}
+
+/// How often something picked the side that won: ties count half.
+#[derive(Debug, Clone, Default, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Pick {
+    pub pairs: usize,
+    /// Wins plus half the ties, over pairs: 0.5 is a coin.
+    pub rate: f64,
+}
+
+/// Running count behind a [`Pick`], always seen from the winner's side.
+#[derive(Default)]
+struct Tally(f64, usize);
+
+impl Tally {
+    fn push(&mut self, winner: f64, loser: f64) {
+        self.0 += if winner == loser { 0.5 } else if winner > loser { 1.0 } else { 0.0 };
+        self.1 += 1;
+    }
+    fn pick(&self) -> Pick {
+        Pick { pairs: self.1, rate: if self.1 > 0 { (self.0 / self.1 as f64 * 1000.0).round() / 1000.0 } else { 0.0 } }
+    }
+}
+
+/// `hl sixes-validate`: does the 6v6 rating pick the side that won
+/// (the 6v6 plan, P6, "validated against who won")?
+#[derive(Debug, Clone, Default, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Validation {
+    pub model: String,
+    /// Decided logs with a rated main role on both sides.
+    pub logs: usize,
+    /// The side with the higher minute-weighted average rating (main roles).
+    pub team: Pick,
+    /// Per main role: the side whose player in it rated higher.
+    pub roles: BTreeMap<String, Pick>,
+    /// Per role and component: the side whose player was better at it.
+    pub components: BTreeMap<String, BTreeMap<String, Pick>>,
+}
+
+impl std::fmt::Display for Validation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "6v6 rating {}: {} decided logs", self.model, self.logs)?;
+        writeln!(f, "  team rating picks the winner {:.1}% of {}", self.team.rate * 100.0, self.team.pairs)?;
+        for (role, p) in &self.roles {
+            writeln!(f, "\n{role}: rating {:.1}% of {}", p.rate * 100.0, p.pairs)?;
+            let mut cs: Vec<_> = self.components.get(role).into_iter().flatten().collect();
+            cs.sort_by(|a, b| b.1.rate.total_cmp(&a.1.rate));
+            for (c, p) in cs {
+                writeln!(f, "  {c:<16} {:>5.1}% of {}", p.rate * 100.0, p.pairs)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Rate every stored 6v6 performance and measure who it picks to win.
+pub async fn validate(db: &hl_db::Db) -> Result<Validation> {
+    let (perfs, results) = collect(db).await?;
+    Ok(validate_ratings(&rate(&perfs), &results))
+}
+
+fn validate_ratings(ratings: &[SixesRating], results: &HashMap<i64, LogResult>) -> Validation {
+    let mut by_log: BTreeMap<i64, Vec<&SixesRating>> = BTreeMap::new();
+    for r in ratings.iter().filter(|r| !r.role.starts_with("off:")) {
+        by_log.entry(r.log_id).or_default().push(r);
+    }
+    let (mut logs, mut team) = (0, Tally::default());
+    let mut roles: BTreeMap<String, Tally> = BTreeMap::new();
+    let mut comps: BTreeMap<String, BTreeMap<String, Tally>> = BTreeMap::new();
+    for (log, rs) in by_log {
+        let Some(res) = results.get(&log) else { continue };
+        let Some(winner) = &res.winner else { continue };
+        let (won, lost): (Vec<&SixesRating>, Vec<&SixesRating>) =
+            rs.into_iter().filter(|r| res.team.contains_key(&r.account_id)).partition(|r| res.team.get(&r.account_id) == Some(winner));
+        if won.is_empty() || lost.is_empty() {
+            continue;
+        }
+        logs += 1;
+        let avg = |v: &[&SixesRating]| {
+            let m: f64 = v.iter().map(|r| r.minutes).sum();
+            v.iter().map(|r| r.rating * r.minutes).sum::<f64>() / m.max(1e-9)
+        };
+        team.push(avg(&won), avg(&lost));
+        for w in &won {
+            // One player a role a side, or the role is left out of this log.
+            let theirs: Vec<_> = lost.iter().filter(|l| l.role == w.role).collect();
+            if theirs.len() != 1 || won.iter().filter(|m| m.role == w.role).count() != 1 {
+                continue;
+            }
+            let l = theirs[0];
+            roles.entry(w.role.clone()).or_default().push(w.rating, l.rating);
+            for (c, pct, _) in &w.parts {
+                if let Some((_, other, _)) = l.parts.iter().find(|(lc, _, _)| lc == c) {
+                    comps.entry(w.role.clone()).or_default().entry(c.clone()).or_default().push(*pct, *other);
+                }
+            }
+        }
+    }
+    Validation {
+        model: model_version(),
+        logs,
+        team: team.pick(),
+        roles: roles.into_iter().map(|(k, t)| (k, t.pick())).collect(),
+        components: comps.into_iter().map(|(k, m)| (k, m.into_iter().map(|(c, t)| (c, t.pick())).collect())).collect(),
+    }
 }
 
 /// One of the owner's best 6v6 games by the preview rating.
@@ -511,6 +651,50 @@ mod tests {
         let p = profile(&db, 7).await.unwrap();
         assert_eq!(p.seasons.iter().map(|l| (l.season, l.team.as_str(), l.won, l.drawn, l.lost)).collect::<Vec<_>>(), vec![(53, "Six One", 1, 1, 1)], "from their own side: a win, a loss and a draw");
         assert_eq!(p.best.iter().map(|b| b.log_id).collect::<Vec<_>>(), vec![1], "ten minutes in a main role; an off-class and a short game left out");
+    }
+
+    #[test]
+    fn the_validator_counts_how_often_the_higher_rated_side_won() {
+        let r = |log: i64, acc: u32, role: &str, rating: f64, pct: f64| SixesRating {
+            log_id: log,
+            account_id: acc,
+            role: role.into(),
+            rating,
+            score: pct,
+            minutes: 20.0,
+            parts: vec![("dpm".into(), pct, 1.0)],
+        };
+        let res = |winner: Option<&str>| LogResult {
+            winner: winner.map(str::to_string),
+            team: [(1, "Red".to_string()), (2, "Blue".to_string()), (3, "Red".to_string())].into_iter().collect(),
+        };
+        let ratings = vec![
+            // Log 1: Red won and rated higher; log 2: Red won, Blue rated higher.
+            r(1, 1, "pocket", 1.3, 80.0),
+            r(1, 2, "pocket", 0.9, 20.0),
+            r(2, 1, "pocket", 0.8, 30.0),
+            r(2, 2, "pocket", 1.1, 30.0),
+            // Log 3 is a draw; log 4 has one side only.
+            r(3, 1, "pocket", 1.5, 90.0),
+            r(3, 2, "pocket", 0.5, 10.0),
+            r(4, 1, "pocket", 1.5, 90.0),
+            r(4, 3, "pocket", 0.5, 10.0),
+            // Off-classes are not part of the team's rating.
+            r(2, 3, "off:heavy", 3.0, 99.0),
+        ];
+        let results: HashMap<i64, LogResult> = [(1, res(Some("Red"))), (2, res(Some("Red"))), (3, res(None)), (4, res(Some("Red")))].into_iter().collect();
+        let v = validate_ratings(&ratings, &results);
+        assert_eq!(v.logs, 2);
+        assert_eq!(v.team, Pick { pairs: 2, rate: 0.5 });
+        assert_eq!(v.roles["pocket"], Pick { pairs: 2, rate: 0.5 });
+        assert_eq!(v.components["pocket"]["dpm"], Pick { pairs: 2, rate: 0.75 }, "a tie is half");
+    }
+
+    #[test]
+    fn a_log_s_result_is_its_round_score_and_each_player_s_side() {
+        let res = result_of(&fixture());
+        assert_eq!(res.winner.as_deref(), Some("Blue"));
+        assert_eq!(res.team.len(), fixture()["players"].as_object().unwrap().len());
     }
 
     #[test]

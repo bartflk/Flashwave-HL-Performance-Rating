@@ -53,6 +53,13 @@ players in your own stored 6v6 logs, and the components not measured yet
 (round impact above all) are left out and the rest scaled up. The 6v6 rating
 replaces it once fitted on the 6v6 league sample.
 
+**Checking it against who won:** `hl sixes-validate` rates every stored 6v6
+log and reports how often the side with the higher rating won, the rating
+of each main role head to head, and each role's components on their own
+(ties count half, so 50% is a coin). It reads the database: run it with
+the app closed. Its numbers mean little until the league
+sample has run; they are what the reviewers argue the weights with.
+
 ## 3. Proposed definitions, for the reviewers
 
 Three of boSe.'s numbers have no agreed definition. The app shows a
