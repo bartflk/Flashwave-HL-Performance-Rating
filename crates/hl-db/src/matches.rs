@@ -127,6 +127,14 @@ pub struct MatchFilter {
 /// Every stat the match list can show has one (Flashy: "i want all the
 /// stats possible"): the owner's totals, per minute, per 30 minutes and the
 /// ratios.
+/// The owner's rating in a match: Highlander's by class, or, for a 6v6 log
+/// (which has none in `rating`), their 6v6 main role's from `sixes_rating`
+/// under its newest model -- off-class stints left out. Flashy, with Matches
+/// › 6v6 showing "–" in every Rating cell: "the ratings didn't calculate".
+const MY_RATING: &str = "COALESCE(r.score, (SELECT MAX(s.rating) FROM sixes_rating s
+     WHERE s.log_id = m.log_id AND s.account_id = p.account_id AND s.role NOT LIKE 'off:%'
+       AND s.model_version = (SELECT MAX(model_version) FROM sixes_rating)))";
+
 pub const SORTS: [(&str, &str); 35] = [
     ("date", "m.played_at"),
     ("kills", "p.kills"),
@@ -136,7 +144,7 @@ pub const SORTS: [(&str, &str); 35] = [
     ("dpm", "CASE WHEN COALESCE(p.time_s, 0) > 0 THEN p.dmg * 60.0 / p.time_s END"),
     ("kd", "CASE WHEN COALESCE(p.deaths, 0) > 0 THEN p.kills * 1.0 / p.deaths ELSE p.kills END"),
     ("kad", "CASE WHEN COALESCE(p.deaths, 0) > 0 THEN (p.kills + p.assists) * 1.0 / p.deaths ELSE p.kills + p.assists END"),
-    ("rating", "r.score"),
+    ("rating", MY_RATING),
     ("time", "p.time_s"),
     ("k30", "CASE WHEN COALESCE(p.time_s, 0) > 0 THEN p.kills * 1800.0 / p.time_s END"),
     ("a30", "CASE WHEN COALESCE(p.time_s, 0) > 0 THEN p.assists * 1800.0 / p.time_s END"),
@@ -1072,7 +1080,7 @@ impl Db {
                     ) AS segment_maps,
                     p.team, p.main_class, p.kills, p.deaths, p.assists, p.dmg, p.time_s,
                     p.dt, p.hr, p.heal, p.ubers, p.drops, p.headshots, p.headshots_hit, p.backstabs, p.airshots, p.medkits, p.medkits_hp, p.sentries, p.cpc, p.ic, p.lks, p.suicides,
-                    r.score AS my_rating,
+                    {MY_RATING} AS my_rating,
                     (SELECT SUM(ls.sentry_kills) FROM log_stat ls WHERE ls.log_id = m.log_id AND ls.account_id = p.account_id) AS my_sentries,
                     (SELECT CAST(SUM(w.hits) AS REAL) / SUM(w.shots) FROM log_weapon w WHERE w.log_id = m.log_id AND w.account_id = p.account_id AND w.class = p.main_class HAVING SUM(w.shots) >= 30) AS my_accuracy,
                     {CONTEXT_COLUMNS}
@@ -1376,7 +1384,7 @@ mod tests {
     #[test]
     fn every_sort_is_a_known_column_and_anything_else_falls_back_to_the_date() {
         assert!(order_by(&filter(Some("dpm"), false)).contains("p.dmg * 60.0 / p.time_s"));
-        assert!(order_by(&filter(Some("rating"), true)).contains("r.score) ASC"));
+        assert!(order_by(&filter(Some("rating"), true)).contains("COALESCE(r.score, (SELECT MAX(s.rating) FROM sixes_rating s"));
         // Sentries built and sentries destroyed are two columns with two keys.
         assert!(order_by(&filter(Some("sentries"), false)).contains("p.sentries"));
         assert!(order_by(&filter(Some("sentry_kills"), false)).contains("ls.sentry_kills"));
@@ -1634,7 +1642,7 @@ mod tests {
         // And the list itself, with the STV filter (Q56) and a class sort (Q61).
         let stv = MatchFilter { stv_only: true, ..filter(None, false) };
         assert_eq!(db.list_matches(Some(1), &stv).await.unwrap().total, 0);
-        for key in ["killed:soldier", "diedto:heavyweapons"] {
+        for key in ["killed:soldier", "diedto:heavyweapons", "rating"] {
             db.list_matches(Some(1), &filter(Some(key), false)).await.unwrap();
         }
     }

@@ -14,8 +14,11 @@ use std::fmt;
 
 /// Whether 6v6 is switched on in this build. 6v6 ships only once its rating
 /// is ready (question 15), so until then a release build hides every 6v6
-/// entry; a debug build (`tauri dev`) shows them to build against.
-pub const SIXES_ENABLED: bool = cfg!(debug_assertions);
+/// entry; a debug build (`tauri dev`) shows them to build against. A release
+/// build made with `HL_SIXES=1` in its environment has them too: a preview of
+/// the release as it will ship (Flashy: "build it so i can see all the changes
+/// on the actual app how it will be").
+pub const SIXES_ENABLED: bool = cfg!(debug_assertions) || option_env!("HL_SIXES").is_some();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
