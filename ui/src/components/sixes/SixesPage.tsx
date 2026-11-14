@@ -14,6 +14,7 @@ import "../etf2l/etf2l.css";
 import "./sixes.css";
 import { SixesMatches } from "./SixesMatches";
 import { SixesTeam, SixesTeamsList } from "./SixesTeams";
+import { SixesSeasons } from "./SixesSeasons";
 import { NewsList, NewsReader } from "../etf2l/News";
 import { RecruitmentPage, RecruitPostPage, type Kind } from "../etf2l/Recruitment";
 import type { RecruitPost } from "../../api/types";
@@ -34,7 +35,7 @@ export function SixesPage() {
   const swiss = useMemo(() => (s?.divisions ?? []).filter((d) => d.system === "swiss"), [s]);
   // The sections built so far: the season's tables, and its matches by week
   // (the 6v6 plan, P2). The rest of the menu waits for its step.
-  type Section = "season" | "matches" | "teams" | "news" | "recruitment";
+  type Section = "season" | "matches" | "teams" | "seasons" | "news" | "recruitment";
   const [section, setSection] = useState<Section>("season");
   // A page opened over the section: a team (from a table, a match or the
   // Teams list), a news post, or a recruitment post.
@@ -67,6 +68,7 @@ export function SixesPage() {
             {tab("season", t("Season"))}
             {tab("matches", t("Matches"))}
             {tab("teams", t("Teams"))}
+            {tab("seasons", t("Seasons"))}
             {tab("news", t("News"))}
             {tab("recruitment", t("Recruitment"))}
             {[t("Players")].map((x) => (
@@ -114,6 +116,8 @@ export function SixesPage() {
               <>
                 <RecruitmentPage format="sixes" onOpen={(p, kind) => setRecruit({ p, kind })} />
               </>
+            ) : section === "seasons" ? (
+              <SixesSeasons onTeam={setTeamId} />
             ) : section === "teams" ? (
               <>
                 <h2 className="ts-section">{tx("{0}: teams", { "0": s.name })}</h2>
@@ -207,7 +211,7 @@ export function SixesPage() {
                 </li>
                 <li>
                   <strong>{t("The rest of this tab")}</strong>
-                  <span className="muted">{t("Players, playoffs and the Nations' Cup, as the Highlander tab has them.")}</span>
+                  <span className="muted">{t("Player pages with 6v6 careers, from the 6v6 league sample.")}</span>
                 </li>
               </ul>
             </section>

@@ -309,7 +309,7 @@ const realApi = {
   /** Null for a match with no cart to read (Q11). */
   getCart: (logId: number, map?: string) => invoke<CartView | null>("get_cart", { logId, map: map ?? null }),
   /** Q29: one season's division tables; the newest when no season is given. */
-  getLeagues: (season?: number) => invoke<LeagueView>("get_leagues", { season: season ?? null }),
+  getLeagues: (season?: number, format?: StoredFormat) => invoke<LeagueView>("get_leagues", { season: season ?? null, format: format ?? null }),
   getTeam: (teamId: number) => invoke<TeamView | null>("get_team", { teamId }),
   getSeasonsOverview: () => invoke<SeasonTile[]>("get_seasons_overview"),
   getSeasonBanner: (season: number, seasonName: string, large = false) => invoke<string | null>("get_season_banner", { season, seasonName, large }),
@@ -368,7 +368,7 @@ const realApi = {
   getMatchPage: (matchId: number) => invoke<Etf2lMatchPage | null>("get_match_page", { matchId }),
   getRecruitment: (format?: StoredFormat) => invoke<Recruitment>("get_recruitment", { format: format ?? null }),
   getRecruitPost: (id: number) => invoke<RecruitDetail | null>("get_recruit_post", { id }),
-  getSeasonResults: (season: number) => invoke<ResultRow[]>("get_season_results", { season }),
+  getSeasonResults: (season: number, format?: StoredFormat) => invoke<ResultRow[]>("get_season_results", { season, format: format ?? null }),
   checkNewLogs: () => invoke<NewLogs | null>("check_new_logs"),
   getPlayerTeams: (accountId: number) => invoke<Stay[]>("get_player_teams", { accountId }),
   /** Q28: a map's callouts; the owner's copy wins over the built-in one. */

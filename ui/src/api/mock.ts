@@ -510,6 +510,33 @@ const FAKE_MATCHES: MatchSummary[] = (() => {
   return [...FIXTURE_ROWS, ...out, ...fakeSixes()].sort((a, b) => (b.playedAt ?? 0) - (a.playedAt ?? 0));
 })();
 
+/** Season 53's tables from its real results, as a stored 6v6 season. */
+function sixesLeague(): LeagueView {
+  const ms = (sixesMatches53 as unknown as SixesMatches).matches.filter((m) => m.played && m.r1 !== null && m.r2 !== null);
+  const by = new Map<string, Map<number, LeagueView["divisions"][number]["teams"][number]>>();
+  for (const m of ms) {
+    const d = m.division ?? "";
+    const t = by.get(d) ?? new Map();
+    by.set(d, t);
+    for (const [c, us, them] of [[m.clan1, m.r1!, m.r2!], [m.clan2, m.r2!, m.r1!]] as const) {
+      const row = t.get(c.id) ?? { teamId: c.id, name: c.name, avatar: c.avatar, record: { played: 0, won: 0, lost: 0, drawn: 0 }, scoreFor: 0, scoreAgainst: 0 };
+      row.record.played += 1;
+      if (us > them) row.record.won += 1;
+      else if (us < them) row.record.lost += 1;
+      else row.record.drawn += 1;
+      row.scoreFor += us;
+      row.scoreAgainst += them;
+      t.set(c.id, row);
+    }
+  }
+  const divisions = [...by.entries()].map(([division, t]) => ({
+    division,
+    teams: [...t.values()].sort((a, b) => b.record.won - a.record.won || b.scoreFor - b.scoreAgainst - (a.scoreFor - a.scoreAgainst)),
+  }));
+  const season = { season: 53, name: "Autumn 2026", divisions: divisions.map((d) => d.division), pool: [] };
+  return { seasons: [season], season, divisions, pendingDetails: 0 };
+}
+
 /** Made-up 6v6 matches for the browser build's 6v6 list (the 6v6 plan, P1):
  *  6v6's maps and classes, tf2pickup and TF2Center pugs, no rating yet. */
 function fakeSixes(): MatchSummary[] {
@@ -1440,7 +1467,9 @@ export const mockApi: Api = {
     ),
 
   // From `hl leagues --json` and `hl team 37805 --json` on a real fetch.
-  getLeagues: (_season?: number) => delay(leagues as unknown as LeagueView),
+  // 6v6's stored season, worked out from Season 53's real results the way
+  // the backend works out a stored season's tables.
+  getLeagues: (_season?: number, format?: StoredFormat) => delay(format === "sixes" ? sixesLeague() : (leagues as unknown as LeagueView)),
   // From a copy of the database, 3 October 2026: the tiles, S33's podiums
   // and SBQRRA's honours; the banners ETF2L's news had.
   getSeasonsOverview: () => delay(seasonsOverview as unknown as SeasonTile[]),
@@ -2039,7 +2068,9 @@ export const mockApi: Api = {
   // elimination, Low and Open an eight-team single elimination and a 3rd
   // place match. The higher seed wins, except where a score says otherwise;
   // the last round is still to come.
-  getSeasonResults: (season: number) => {
+  getSeasonResults: (season: number, format?: StoredFormat) => {
+    // The stored 6v6 season has no playoffs yet in the browser build.
+    if (format === "sixes") return delay<ResultRow[]>([]);
     const v = leagues as unknown as LeagueView;
     const now = Math.floor(Date.now() / 1000);
     const rows: ResultRow[] = [];

@@ -2516,8 +2516,9 @@ pub async fn get_recruit_post(state: State<'_, AppState>, id: i64) -> CmdResult<
 
 /// Every official of one season, played or to come (Q74's fixtures by week).
 #[tauri::command]
-pub async fn get_season_results(state: State<'_, AppState>, season: i64) -> CmdResult<Vec<hl_db::ResultRow>> {
-    Ok(state.db.season_results(season, hl_core::GameFormat::Highlander).await?)
+pub async fn get_season_results(state: State<'_, AppState>, season: i64, format: Option<String>) -> CmdResult<Vec<hl_db::ResultRow>> {
+    let format = format.as_deref().and_then(hl_core::GameFormat::parse).unwrap_or(hl_core::GameFormat::Highlander);
+    Ok(state.db.season_results(season, format).await?)
 }
 
 /// An official's own etf2l.org page: schedule, per-map results, demos and
