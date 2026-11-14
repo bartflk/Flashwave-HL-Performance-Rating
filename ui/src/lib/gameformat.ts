@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { StoredFormat } from "../api/types";
 import { t } from "./i18n";
+import { classLabel } from "../components/analysis/common";
 
 /**
  * Which format a tab shows: Highlander or 6v6 (the 6v6 plan, P0).
@@ -124,6 +125,39 @@ export function roleLabel(role: string): { short: string; long: string } | null 
       return { short: t("Flank"), long: t("Flank Scout: plays off the side") };
     default:
       return null;
+  }
+}
+
+/** A 6v6 role's class, for its icon; a class (Highlander) is its own. */
+export function roleClass(unit: string): string {
+  if (unit.startsWith("off:")) return unit.slice(4);
+  switch (unit) {
+    case "pocket":
+    case "roamer":
+      return "soldier";
+    case "pocket_scout":
+    case "flank_scout":
+      return "scout";
+    default:
+      return unit;
+  }
+}
+
+/** What a profile is rated by: a 6v6 role's name, or a class's (Highlander). */
+export function unitLabel(unit: string | null | undefined): string {
+  if (!unit) return "";
+  if (unit.startsWith("off:")) return t("{0} (off-class)", { "0": classLabel(unit.slice(4)) });
+  switch (unit) {
+    case "pocket":
+      return t("Pocket Soldier");
+    case "roamer":
+      return t("Roamer");
+    case "pocket_scout":
+      return t("Pocket Scout");
+    case "flank_scout":
+      return t("Flank Scout");
+    default:
+      return classLabel(unit);
   }
 }
 

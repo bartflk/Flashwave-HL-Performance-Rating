@@ -892,6 +892,46 @@ export const mockApi: Api = {
     });
   },
 
+  // 6v6 by role: the Sniper fixture's history standing in for a pocket's,
+  // with 6v6's own breakdown; what needs 6v6 demos is empty.
+  getProfileSixes: (role: string | null, kind: ContextKind | null = null) => {
+    const base = profileSniper as unknown as ProfileResponse;
+    const r = role ?? "pocket";
+    if (!base.profile || !["pocket", "roamer", "off:sniper"].includes(r)) return delay({ classes: [], profile: null, fights: null, aim: null, life: null, aimAll: null, lifeAll: null });
+    const comp = (component: string, label: string, unit: string, weight: number, formPct: number, careerPct: number, formRaw: number) => ({ component, label, unit, weight, formPct, careerPct, formRaw });
+    const p = base.profile;
+    const trend = kind ? p.trend.filter((x) => x.kind === kind) : p.trend;
+    return delay({
+      classes: [["pocket", 142], ["roamer", 38], ["off:sniper", 6]] as Array<[string, number]>,
+      profile: {
+        ...p,
+        class: r,
+        filter: kind,
+        trend,
+        games: trend.length,
+        extras: [
+          { label: "Airshots, career", value: "312", detail: "2.20 per game", hint: "Enemies you hit in the air, across every rated game in this role." },
+          { label: "Medic picks, career", value: "171", detail: "1.20 per game", hint: "Enemy Medics you killed, across every rated game in this role." },
+        ],
+        byDivision: [],
+        components: [
+          comp("impact_kills", "Kills", "per 10 min", 0.28, 61, 55, 7.4),
+          comp("space", "Space created", "of the team's damage taken", 0.2, 72, 64, 31.5),
+          comp("dpm", "Damage per minute", "dmg/min", 0.16, 58, 52, 262),
+          comp("deaths", "Deaths", "per 10 min", 0.12, 44, 47, 5.1),
+          comp("airshots", "Airshots", "per 10 min", 0.08, 39, 41, 0.8),
+          comp("medic_picks", "Medic picks", "per 10 min", 0.16, 51, 50, 0.6),
+        ],
+      },
+      fights: null,
+      aim: null,
+      life: null,
+      aimAll: null,
+      lifeAll: null,
+      headline: { games: 142, seconds: 290_000, won: 81, lost: 55, tied: 6, kills: 2_410, deaths: 1_620, assists: 1_050, damage: 1_266_000, dpm: 262.0, accuracy: null, accuracyGames: 0 },
+    });
+  },
+
   getOwner: () => {
     // Whoever the SteamID was last set to; only the fixtures' owner has a name.
     const id = state.steamid ?? "76561198099396919";

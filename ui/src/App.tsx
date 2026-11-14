@@ -37,7 +37,6 @@ import { Logo } from "./components/Logo";
 import { SixesPage } from "./components/sixes/SixesPage";
 import { FORMAT_TABS, useFormatsPlayed, useTabFormats, type FormatTab as FormatTabId } from "./lib/gameformat";
 import { FormatTab } from "./components/FormatTab";
-import { SixesSoon } from "./components/sixes/SixesSoon";
 
 type Tab = "matches" | "profile" | "etf2l" | "rgl" | "settings" | "rating";
 
@@ -266,7 +265,7 @@ export default function App() {
       </div>
       {visited.has("profile") && (
         <div hidden={tab !== "profile" || openLog !== null}>
-          <ErrorBoundary what="The profile">{fmt.profile === "6s" ? <SixesSoon steamid={data.config.steamid} onOpenMatch={setOpenLog} /> : <ProfilePage steamid={data.config.steamid} onOpenMatch={setOpenLog} />}</ErrorBoundary>
+          <ErrorBoundary what="The profile"><ProfilePage key={fmt.profile} format={fmt.profile} steamid={data.config.steamid} onOpenMatch={setOpenLog} /></ErrorBoundary>
         </div>
       )}
       {visited.has("etf2l") && (

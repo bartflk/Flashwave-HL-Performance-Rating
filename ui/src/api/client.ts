@@ -237,13 +237,16 @@ const realApi = {
   getMatch: (logId: number) => invoke<MatchDetail | null>("get_match", { logId }),
   getProfile: (cls: string | null, kind: ContextKind | null = null, from: number | null = null, to: number | null = null) =>
     invoke<ProfileResponse>("get_profile", { class: cls, kind, from, to }),
+  /** The same profile for 6v6, by role: `classes` holds the roles played (the 6v6 plan, P7). */
+  getProfileSixes: (role: string | null, kind: ContextKind | null = null, from: number | null = null, to: number | null = null) =>
+    invoke<ProfileResponse>("get_profile_sixes", { role, kind, from, to }),
   /** Your name and picture; null before a SteamID is set. */
   getOwner: () => invoke<Owner | null>("get_owner"),
   /** Seasons from your officials, newest first. */
   listSeasons: () => invoke<Season[]>("list_seasons"),
   getSeasons: (cls: string) => invoke<SeasonsView>("get_seasons", { class: cls }),
   /** `all` includes pugs; otherwise officials and scrims only. */
-  getTeammates: (all: boolean) => invoke<Teammates>("get_teammates", { all }),
+  getTeammates: (all: boolean, sixes = false) => invoke<Teammates>("get_teammates", { all, sixes }),
   contextCounts: () => invoke<ContextCounts>("context_counts"),
   myTournaments: () => invoke<Tournament[]>("my_tournaments"),
   rawlogStats: () => invoke<RawlogStats>("rawlog_stats"),
@@ -389,7 +392,7 @@ const realApi = {
   knownMaps: () => invoke<string[]>("known_maps"),
   setRoundMap: (logId: number, rounds: number[], map: string | null) => invoke<void>("set_round_map", { logId, rounds, map }),
   getPositions: (logId: number, map: string) => invoke<PositionsView | null>("get_positions", { logId, map }),
-  getTendencies: (cls: string) => invoke<MapTendencies[]>("get_tendencies", { class: cls }),
+  getTendencies: (cls: string, sixes = false) => invoke<MapTendencies[]>("get_tendencies", { class: cls, sixes }),
   /** Null when too few kills are stored on the map to draw it. */
   getMapView: (map: string) => invoke<MapView | null>("get_map_view", { map }),
   /** Null when no image for the map is saved in the app's overviews folder. */

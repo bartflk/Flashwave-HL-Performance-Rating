@@ -142,6 +142,7 @@ pub async fn load(
     let headline = headline_of(db, account, class, db_rows.iter().map(clone_row).collect(), kind, period).await?;
 
     let parts: HashMap<i64, Vec<(String, f64, f64, Option<f64>)>> = db_rows.iter().map(|r| (r.log_id, parts_of(&r.parts_json))).collect();
+    let career: Vec<(f64, Vec<(String, f64, f64, Option<f64>)>)> = db_rows.iter().map(|r| (r.minutes, parts_of(&r.parts_json))).collect();
     let history: Vec<HistoryRow> = db_rows
         .into_iter()
         .map(|r| {
@@ -184,10 +185,66 @@ pub async fn load(
     p.opposition = opposition;
     p.filter = kind.map(str::to_string);
     let comps = components(&ordered, p.form_window);
+    // Career records, as Highlander's cards: every game in the role, so a
+    // period shows none.
+    if period.is_none() {
+        p.extras = career_extras(parsed, &career);
+    }
     let mut v = serde_json::to_value(&p)?;
     v["class"] = Value::String(role.to_string());
     v["components"] = serde_json::to_value(comps)?;
     Ok((Some(v), headline))
+}
+
+/// A per-10-minutes component summed back to a count over every game.
+fn career_total(career: &[(f64, Vec<(String, f64, f64, Option<f64>)>)], c: &str) -> Option<(f64, usize)> {
+    let mut total = 0.0;
+    let mut games = 0;
+    for (minutes, parts) in career {
+        if let Some(raw) = parts.iter().find(|(k, ..)| k == c).and_then(|(.., raw)| *raw) {
+            total += raw * minutes / 10.0;
+            games += 1;
+        }
+    }
+    (games > 0).then_some((total, games))
+}
+
+/// A component's career average per game, as stored (a rate, not a count).
+fn career_average(career: &[(f64, Vec<(String, f64, f64, Option<f64>)>)], c: &str) -> Option<(f64, usize)> {
+    let xs: Vec<f64> = career.iter().filter_map(|(_, parts)| parts.iter().find(|(k, ..)| k == c).and_then(|(.., raw)| *raw)).collect();
+    (!xs.is_empty()).then(|| (xs.iter().sum::<f64>() / xs.len() as f64, xs.len()))
+}
+
+/// The two career cards beside form and career, chosen per role: what the
+/// role is asked to do most (boSe.'s answers, the 6v6 plan).
+fn career_extras(role: Role, career: &[(f64, Vec<(String, f64, f64, Option<f64>)>)]) -> Vec<profile::Extra> {
+    let count = |c: &str, label: &str, hint: &str| {
+        career_total(career, c).map(|(n, games)| profile::Extra {
+            label: label.to_string(),
+            value: format!("{}", n.round() as i64),
+            detail: Some(format!("{:.2} per game", n / games as f64)),
+            hint: Some(hint.to_string()),
+        })
+    };
+    let picks = || count("medic_picks", "Medic picks, career", "Enemy Medics you killed, across every rated game in this role.");
+    let airshots = || count("airshots", "Airshots, career", "Enemies you hit in the air, across every rated game in this role.");
+    let kills = || count("impact_kills", "Kills, career", "Kills across every rated game in this role.");
+    let assists = || count("impact_assists", "Assists, career", "Assists across every rated game in this role.");
+    let wanted: Vec<Option<profile::Extra>> = match role {
+        Role::Pocket | Role::Roamer | Role::Demoman => vec![airshots(), picks()],
+        Role::FlankScout | Role::PocketScout => vec![kills(), picks()],
+        Role::Medic => vec![
+            career_average(career, "heal").map(|(h, games)| profile::Extra {
+                label: "Healing per minute, career".to_string(),
+                value: format!("{}", h.round() as i64),
+                detail: Some(format!("over {games} games")),
+                hint: Some("Your healing per minute, averaged over every rated game as Medic.".to_string()),
+            }),
+            assists(),
+        ],
+        Role::OffClass(_) => vec![kills(), picks()],
+    };
+    wanted.into_iter().flatten().collect()
 }
 
 fn clone_row(r: &hl_db::HistoryDbRow) -> hl_db::HistoryDbRow {
@@ -215,6 +272,15 @@ pub async fn roles(db: &hl_db::Db, me: SteamId) -> Result<Vec<(String, i64)>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn career_cards_count_back_from_per_ten_minutes() {
+        let game = |picks: f64| (20.0, vec![("medic_picks".to_string(), 50.0, 0.5, Some(picks)), ("airshots".to_string(), 50.0, 0.5, Some(1.0))]);
+        // 1.5 and 0.5 Medic picks per 10 min over two 20-minute games: 3 + 1.
+        let extras = career_extras(Role::Pocket, &[game(1.5), game(0.5)]);
+        assert_eq!(extras.iter().map(|e| (e.label.as_str(), e.value.as_str())).collect::<Vec<_>>(), vec![("Airshots, career", "4"), ("Medic picks, career", "4")]);
+        assert_eq!(extras[1].detail.as_deref(), Some("2.00 per game"));
+    }
 
     #[test]
     fn parts_read_with_or_without_their_raw_value() {
