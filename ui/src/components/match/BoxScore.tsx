@@ -3,7 +3,7 @@ import { RatingValue } from "../RatingValue";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { ClassStat, LogFlags, MatchDetail, PlayerPing, PlayerRow, StoredRole } from "../../api/types";
+import type { ClassStat, LogFlags, MatchDetail, PlayerPing, PlayerRow, Stint, StoredRole } from "../../api/types";
 import { clock, rating, teamLabel } from "../../lib/format";
 import { ClassIcon } from "../ClassIcon";
 import { t as tr, tx, k } from "../../lib/i18n";
@@ -189,6 +189,8 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
       (c.key !== "as" || flags.airshots),
   );
   const picker = useColumns("scoreboard", available);
+  // 6v6 off-class stints, from the raw log (the 6v6 plan, P3).
+  const stints = useQuery({ queryKey: ["match_stints", d.logId], queryFn: () => api.getMatchStints(d.logId), enabled: d.format === "sixes", staleTime: 5 * 60_000 }).data ?? [];
   // 6v6 roles, by player (the 6v6 plan, P3).
   const roleQ = useQuery({ queryKey: ["match_roles", d.logId], queryFn: () => api.getMatchRoles(d.logId), enabled: d.format === "sixes", staleTime: 5 * 60_000 });
   const roles = useMemo(() => {
@@ -283,7 +285,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
                 </td>
                 <td className="sb-classes">
                   <ClassCard p={p} flags={flags} />
-                  {d.format === "sixes" && <OffClass p={p} />}
+                  {d.format === "sixes" && <OffClass p={p} stints={stints.filter((s) => s.accountId === p.accountId)} />}
                 </td>
                 {cols.map((c) => {
                   const v = c.value(p, flags);
@@ -354,12 +356,24 @@ function RoleTag({ role }: { role: StoredRole | undefined }) {
   );
 }
 
-function OffClass({ p }: { p: PlayerRow }) {
+function OffClass({ p, stints }: { p: PlayerRow; stints: Stint[] }) {
   const off = offClassTime(p.classes, p.mainClass);
   if (off.length === 0) return null;
   const total = off.reduce((a, [, s]) => a + s, 0);
+  // Each stretch when the raw log is stored: its class, round and time, and
+  // whether teammates were off-classing too (question 6); else the totals.
+  const lines = stints.length
+    ? stints.map((s) =>
+        [
+          tr("{0}, round {1}, {2}–{3}", { "0": classLabel(s.class), "1": s.round, "2": clock(s.startS), "3": clock(s.endS) }),
+          s.matesOff > 0 ? (s.matesOff === 1 ? tr("one teammate off-class too") : tr("{0} teammates off-class too", { "0": s.matesOff })) : "",
+        ]
+          .filter(Boolean)
+          .join(", "),
+      )
+    : off.map(([c, s]) => `${classLabel(c)} ${clock(s)}`);
   return (
-    <span className="sb-off" title={off.map(([c, s]) => `${classLabel(c)} ${clock(s)}`).join("\n")}>
+    <span className="sb-off" title={lines.join("\n")}>
       {tr("off {0}", { "0": clock(total) })}
     </span>
   );

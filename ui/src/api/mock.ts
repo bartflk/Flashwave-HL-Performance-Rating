@@ -84,7 +84,7 @@ import type {
   RglSeasonCard,
   RglTeamHit,
   RglSeason,
-  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, SixesMatches, StoredRole, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
+  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, SixesMatches, StoredRole, Stint, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
   RglTeamPage,
   RglTeamSeason,
   RglTeamHistory,
@@ -1554,6 +1554,17 @@ export const mockApi: Api = {
   getSixesSeason: () => delay(sixesSeason53 as unknown as SixesSeason),
   // The mock plays both, so the tab menus can be seen without setup.
   getSixesMatches: () => delay(sixesMatches53 as unknown as SixesMatches),
+  // The mock 6v6 match's two off-classers (see getMatch): when, and beside whom.
+  getMatchStints: (logId: number) => {
+    const row = FAKE_MATCHES.find((m) => m.logId === logId);
+    if (row?.format !== "sixes") return delay<Stint[]>([]);
+    const ps = FIXTURES[0].players;
+    return delay<Stint[]>([
+      { accountId: ps[1].accountId, class: "engineer", startS: 512, endS: 652, round: 3, matesOff: 1 },
+      { accountId: ps[1].accountId, class: "heavy", startS: 1180, endS: 1275, round: 5, matesOff: 0 },
+      { accountId: ps[4].accountId, class: "sniper", startS: 530, endS: 605, round: 3, matesOff: 1 },
+    ]);
+  },
   // A 6v6 match's roles, in the shape the pass stores them: per team, the
   // first Soldier and Scout healed most.
   getMatchRoles: (logId: number) => {

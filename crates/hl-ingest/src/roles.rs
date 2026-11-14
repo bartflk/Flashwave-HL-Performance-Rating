@@ -112,6 +112,118 @@ pub fn roles_of(json: &Value) -> Vec<RoleRow> {
     out
 }
 
+/// One stretch on an off-class (the 6v6 plan, P3; question 6: "check WHEN
+/// the offclasses are done ... and if other offclasses have been made").
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Stint {
+    pub account_id: u32,
+    pub class: TfClass,
+    /// Seconds from the first round's start.
+    pub start_s: i64,
+    pub end_s: i64,
+    /// The round it began in, from 1.
+    pub round: u32,
+    /// Teammates on an off-class at some moment of it.
+    pub mates_off: u32,
+}
+
+/// Every off-class stint in a raw log, from each player's spawns: one
+/// begins when a player whose main class is one of the six spawns as an
+/// off-class, and ends when they spawn as anything else, or the round ends.
+/// `mains` is each player's main class (from logs.tf's class times).
+pub fn stints(raw: &crate::rawlog::RawLog, mains: &HashMap<u32, TfClass>) -> Vec<Stint> {
+    use crate::rawlog::EventKind;
+    let t0 = raw.round_starts.first().copied().unwrap_or(0);
+    let round_of = |at: i64| raw.round_starts.iter().filter(|&&s| s <= at).count().max(1) as u32;
+    let mut open: HashMap<u32, (TfClass, i64, Option<hl_core::matchdata::Team>)> = HashMap::new();
+    let mut out: Vec<(Stint, Option<hl_core::matchdata::Team>)> = Vec::new();
+    let close = |acc: u32, at: i64, open: &mut HashMap<u32, (TfClass, i64, Option<hl_core::matchdata::Team>)>, out: &mut Vec<(Stint, Option<hl_core::matchdata::Team>)>| {
+        if let Some((class, start, team)) = open.remove(&acc) {
+            if at > start {
+                out.push((Stint { account_id: acc, class, start_s: start - t0, end_s: at - t0, round: round_of(start), mates_off: 0 }, team));
+            }
+        }
+    };
+    for e in &raw.events {
+        match &e.kind {
+            EventKind::Spawn(a) => {
+                let Some(class) = a.class else { continue };
+                let main = mains.get(&a.account).copied();
+                let off = Role::off_class(class).is_some() && main.is_some_and(|m| Role::off_class(m).is_none());
+                match open.get(&a.account) {
+                    Some((c, ..)) if *c == class => {}
+                    Some(_) => {
+                        close(a.account, e.at, &mut open, &mut out);
+                        if off {
+                            open.insert(a.account, (class, e.at, a.team));
+                        }
+                    }
+                    None if off => {
+                        open.insert(a.account, (class, e.at, a.team));
+                    }
+                    None => {}
+                }
+            }
+            EventKind::RoundWin(_) | EventKind::RoundStalemate | EventKind::GameOver => {
+                let accs: Vec<u32> = open.keys().copied().collect();
+                for acc in accs {
+                    close(acc, e.at, &mut open, &mut out);
+                }
+            }
+            _ => {}
+        }
+    }
+    let end = raw.events.last().map_or(0, |e| e.at);
+    let accs: Vec<u32> = open.keys().copied().collect();
+    for acc in accs {
+        close(acc, end, &mut open, &mut out);
+    }
+    // Teammates off-classing at the same time.
+    let all = out.clone();
+    let mut stints: Vec<Stint> = out
+        .into_iter()
+        .map(|(mut s, team)| {
+            s.mates_off = all
+                .iter()
+                .filter(|(o, t)| o.account_id != s.account_id && *t == team && team.is_some() && o.start_s < s.end_s && o.end_s > s.start_s)
+                .map(|(o, _)| o.account_id)
+                .collect::<std::collections::HashSet<_>>()
+                .len() as u32;
+            s
+        })
+        .collect();
+    stints.sort_by_key(|s| (s.start_s, s.account_id));
+    stints
+}
+
+/// A stored 6v6 log's off-class stints, from its raw log and its logs.tf
+/// JSON; empty while its raw log is not stored.
+pub async fn match_stints(db: &hl_db::Db, log_id: i64) -> anyhow::Result<Vec<Stint>> {
+    let Some(zip) = db.rawlog(log_id).await? else { return Ok(Vec::new()) };
+    let Some((_, body)) = db.raw_jsons(&[log_id]).await?.into_iter().next() else { return Ok(Vec::new()) };
+    let json: Value = serde_json::from_str(&body)?;
+    let mains: HashMap<u32, TfClass> = json
+        .get("players")
+        .and_then(Value::as_object)
+        .into_iter()
+        .flatten()
+        .filter_map(|(sid, p)| {
+            let id = SteamId::parse(sid).ok()?;
+            let main = p
+                .get("class_stats")?
+                .as_array()?
+                .iter()
+                .filter_map(|c| Some((TfClass::parse(c.get("type")?.as_str()?).ok()?, c.get("total_time")?.as_i64()?)))
+                .max_by_key(|(_, t)| *t)?
+                .0;
+            Some((id.account_id(), main))
+        })
+        .collect();
+    let raw = crate::rawlog::parse(&crate::rawlog::unzip(&zip)?);
+    Ok(stints(&raw, &mains))
+}
+
 /// Work out the roles of stored 6v6 logs that have none, up to `limit`
 /// logs; how many were done. A log whose JSON does not read is skipped.
 pub async fn refresh(db: &hl_db::Db, limit: i64) -> anyhow::Result<usize> {
@@ -161,6 +273,31 @@ mod tests {
         assert_eq!((pocket.method, pocket.confidence), ("healspread", Some(0.288)));
         let heavy = rows.iter().find(|r| r.role == Role::OffClass(TfClass::Heavy)).unwrap();
         assert_eq!(heavy.seconds, 161);
+    }
+
+    #[test]
+    fn an_off_class_stint_runs_from_the_spawn_to_the_swap_back_with_the_mates_beside_it() {
+        let text = [
+            r#"L 11/13/2026 - 20:00:00: World triggered "Round_Start""#,
+            r#"L 11/13/2026 - 20:00:01: "a<1><[U:1:10]><Red>" spawned as "soldier""#,
+            r#"L 11/13/2026 - 20:00:01: "b<2><[U:1:20]><Red>" spawned as "scout""#,
+            r#"L 11/13/2026 - 20:00:01: "c<3><[U:1:30]><Blue>" spawned as "sniper""#,
+            r#"L 11/13/2026 - 20:02:00: "a<1><[U:1:10]><Red>" spawned as "heavyweapons""#,
+            r#"L 11/13/2026 - 20:02:30: "b<2><[U:1:20]><Red>" spawned as "engineer""#,
+            r#"L 11/13/2026 - 20:03:00: "a<1><[U:1:10]><Red>" spawned as "heavyweapons""#,
+            r#"L 11/13/2026 - 20:04:00: "a<1><[U:1:10]><Red>" spawned as "soldier""#,
+            r#"L 11/13/2026 - 20:05:00: World triggered "Round_Win" (winner "Red")"#,
+        ]
+        .join("\n");
+        let raw = crate::rawlog::parse(&text);
+        let mains: HashMap<u32, TfClass> = [(10, TfClass::Soldier), (20, TfClass::Scout), (30, TfClass::Sniper)].into_iter().collect();
+        let s = stints(&raw, &mains);
+        let got: Vec<(u32, TfClass, i64, i64, u32, u32)> = s.iter().map(|x| (x.account_id, x.class, x.start_s, x.end_s, x.round, x.mates_off)).collect();
+        assert_eq!(
+            got,
+            vec![(10, TfClass::Heavy, 120, 240, 1, 1), (20, TfClass::Engineer, 150, 300, 1, 1)],
+            "Heavy from 2:00 until the swap back (a second Heavy spawn is the same stint); the Engineer until the round's end; a Sniper main is not off-classing"
+        );
     }
 
     #[test]

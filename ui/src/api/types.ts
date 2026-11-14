@@ -521,6 +521,18 @@ export interface StoredRole {
   byHand: boolean;
 }
 
+/** One stretch on an off-class (the 6v6 plan, P3). */
+export interface Stint {
+  accountId: number;
+  class: string;
+  /** Seconds from the first round's start. */
+  startS: number;
+  endS: number;
+  round: number;
+  /** Teammates on an off-class at some moment of it. */
+  matesOff: number;
+}
+
 /** A format as the backend stores it (the 6v6 plan, P0). */
 export type StoredFormat = "highlander" | "sixes";
 

@@ -152,8 +152,17 @@ impl Db {
     /// Kept Highlander logs with no raw log yet, newest first. Logs marked
     /// missing are retried after a week, in case logs.tf was having a bad day.
     pub async fn rawlog_queue(&self) -> Result<Vec<i64>> {
+        // 6v6's too, for someone who plays it (the 6v6 plan, P3: when each
+        // off-class was played). Only the queue: every query over all raw
+        // logs -- kill maps, counts -- stays Highlander's.
+        let sixes = if self.formats_played().await?.contains(&hl_core::GameFormat::Sixes) {
+            " UNION SELECT i.log_id FROM log_index i JOIN log_raw r ON r.log_id = i.log_id
+               WHERE i.superseded_by IS NULL AND COALESCE(i.format_override, i.format) = 'sixes'"
+        } else {
+            ""
+        };
         Ok(sqlx::query_scalar(&format!(
-            "SELECT log_id FROM ({WANTED})
+            "SELECT log_id FROM ({WANTED}{sixes})
              WHERE log_id NOT IN (SELECT log_id FROM rawlog)
                -- A zip that would not open is more likely a cut-off download
                -- than a bad file: asked again within the hour, not the week

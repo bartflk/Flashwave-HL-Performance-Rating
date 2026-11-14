@@ -799,6 +799,13 @@ pub async fn get_match_roles(state: State<'_, AppState>, log_id: i64) -> CmdResu
     Ok(state.db.roles_of_log(log_id).await?)
 }
 
+/// A 6v6 log's off-class stints: when, which round, with how many mates
+/// off-classing beside (the 6v6 plan, P3).
+#[tauri::command]
+pub async fn get_match_stints(state: State<'_, AppState>, log_id: i64) -> CmdResult<Vec<hl_ingest::roles::Stint>> {
+    Ok(hl_ingest::roles::match_stints(&state.db, log_id).await?)
+}
+
 /// The current ETF2L 6v6 season's officials by week (the 6v6 plan, P2).
 #[tauri::command]
 pub async fn get_sixes_matches(state: State<'_, AppState>) -> CmdResult<Option<hl_ingest::sixes::SixesMatches>> {
