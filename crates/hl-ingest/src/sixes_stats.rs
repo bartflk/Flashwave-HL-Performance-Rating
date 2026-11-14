@@ -54,6 +54,15 @@ pub struct SixesPlayerStats {
     pub backcaps_proposed: Option<i64>,
     /// PROPOSED: damage as Sniper on the enemy combo (Medic, Demoman, pocket).
     pub sniper_combo_damage: Option<i64>,
+    /// Space created, as Flashy defined it (question 17: "going in first
+    /// and taking high ground and forward positions, taking most of the
+    /// damage and attention"), the parts a log can measure:
+    /// the share of the team's damage taken (the Medic's left out) ...
+    pub damage_taken_share: Option<f64>,
+    /// ... and how often they were their team's first to take damage when a
+    /// fight began (raw log). Positions -- high ground, forward -- need demos.
+    pub first_in: Option<i64>,
+    pub fights: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -147,6 +156,9 @@ pub fn match_stats(json: &Value) -> SixesMatchStats {
             forces_proposed: None,
             backcaps_proposed: None,
             sniper_combo_damage: None,
+            damage_taken_share: None,
+            first_in: None,
+            fights: None,
         });
         if main == Some(TfClass::Medic) {
             let ms = p.get("medicstats");
@@ -161,6 +173,21 @@ pub fn match_stats(json: &Value) -> SixesMatchStats {
                 deaths_after_uber: ms.and_then(|m| n(m, "deaths_within_20s_after_uber")),
                 avg_build_s: ms.and_then(|m| m.get("avg_time_to_build")).and_then(Value::as_f64).map(|s| (s * 10.0).round() / 10.0),
             });
+        }
+    }
+    // Each player's share of their team's damage taken, Medics left out (a
+    // Medic is shielded, not shielding).
+    let team_dt: std::collections::HashMap<String, i64> = players.iter().filter(|p| p.main_class != Some(TfClass::Medic)).fold(Default::default(), |mut m, p| {
+        *m.entry(p.team.clone()).or_default() += p.dtm.map_or(0, |d| (d * p.minutes) as i64);
+        m
+    });
+    for p in &mut players {
+        if p.main_class != Some(TfClass::Medic) {
+            if let (Some(d), Some(&t)) = (p.dtm, team_dt.get(&p.team)) {
+                if t > 0 {
+                    p.damage_taken_share = Some(((d * p.minutes / t as f64) * 1000.0).round() / 1000.0);
+                }
+            }
         }
     }
     // Each team's Medic's deaths, beside every teammate's.
@@ -195,6 +222,35 @@ pub fn add_raw(s: &mut SixesMatchStats, raw: &crate::rawlog::RawLog) {
     for p in &mut s.players {
         p.saps = Some(saps.get(&p.account_id).copied().unwrap_or(0));
         p.denies = Some(denies.get(&p.account_id).copied().unwrap_or(0));
+    }
+}
+
+/// A gap with no damage between the sides this long ends a fight.
+const FIGHT_GAP_S: i64 = 8;
+
+/// "Going in first" (question 17): in each fight -- damage between the two
+/// sides with no gap of [`FIGHT_GAP_S`] -- the first of each team to take
+/// damage. Counts each player's firsts and their team's fights.
+pub fn add_first_in(s: &mut SixesMatchStats, raw: &crate::rawlog::RawLog) {
+    let mut firsts: std::collections::HashMap<u32, i64> = std::collections::HashMap::new();
+    let mut fights: std::collections::HashMap<hl_core::matchdata::Team, i64> = std::collections::HashMap::new();
+    let mut last: Option<i64> = None;
+    let mut seen: std::collections::HashSet<hl_core::matchdata::Team> = std::collections::HashSet::new();
+    for d in raw.damage.iter().filter(|d| d.live && d.attacker.team.is_some() && d.victim.team.is_some() && d.attacker.team != d.victim.team) {
+        if last.is_none_or(|l| d.at - l > FIGHT_GAP_S) {
+            seen.clear();
+        }
+        last = Some(d.at);
+        let team = d.victim.team.unwrap();
+        if seen.insert(team) {
+            *firsts.entry(d.victim.account).or_default() += 1;
+            *fights.entry(team).or_default() += 1;
+        }
+    }
+    for p in &mut s.players {
+        let team = hl_core::matchdata::Team::parse(&p.team);
+        p.first_in = Some(firsts.get(&p.account_id).copied().unwrap_or(0));
+        p.fights = team.and_then(|t| fights.get(&t).copied());
     }
 }
 
@@ -269,6 +325,7 @@ pub async fn of_log(db: &hl_db::Db, log_id: i64) -> anyhow::Result<Option<SixesM
         if let Ok(text) = crate::rawlog::unzip(&zip) {
             let raw = crate::rawlog::parse(&text);
             add_raw(&mut s, &raw);
+            add_first_in(&mut s, &raw);
             add_proposed(&mut s, &raw, &crate::roles::roles_of(&json));
         }
     }
@@ -323,7 +380,7 @@ mod tests {
         let mut s = SixesMatchStats { players: [10, 20, 30].map(|a| SixesPlayerStats {
             account_id: a, team: String::new(), main_class: None, minutes: 1.0, dpm: None, dtm: None, damage_ratio: None, airshots: None,
             deaths: 0, medic_deaths: None, sticky_kills: 0, reflect_kills: 0, sentry_kills: 0, medic_picks: None, picks: None, saps: None, denies: None,
-            forces_proposed: None, backcaps_proposed: None, sniper_combo_damage: None,
+            forces_proposed: None, backcaps_proposed: None, sniper_combo_damage: None, damage_taken_share: None, first_in: None, fights: None,
         }).to_vec(), medics: Vec::new() };
         add_raw(&mut s, &crate::rawlog::parse(&text));
         assert_eq!(s.players.iter().map(|p| (p.saps, p.denies)).collect::<Vec<_>>(), vec![(Some(1), Some(0)), (Some(0), Some(1)), (Some(0), Some(0))]);
@@ -350,7 +407,7 @@ mod tests {
         let blank = |a: u32| SixesPlayerStats {
             account_id: a, team: String::new(), main_class: None, minutes: 1.0, dpm: None, dtm: None, damage_ratio: None, airshots: None,
             deaths: 0, medic_deaths: None, sticky_kills: 0, reflect_kills: 0, sentry_kills: 0, medic_picks: None, picks: None, saps: None, denies: None,
-            forces_proposed: None, backcaps_proposed: None, sniper_combo_damage: None,
+            forces_proposed: None, backcaps_proposed: None, sniper_combo_damage: None, damage_taken_share: None, first_in: None, fights: None,
         };
         let mut s = SixesMatchStats { players: vec![blank(10), blank(11)], medics: Vec::new() };
         let role = |a: u32, role: Role| RoleRow { account_id: a, role, method: "class", confidence: None, seconds: 60 };
@@ -358,5 +415,19 @@ mod tests {
         add_proposed(&mut s, &crate::rawlog::parse(&text), &roles);
         let got: Vec<(Option<i64>, Option<i64>, Option<i64>)> = s.players.iter().map(|p| (p.forces_proposed, p.backcaps_proposed, p.sniper_combo_damage)).collect();
         assert_eq!(got, vec![(Some(1), Some(1), None), (Some(1), Some(0), Some(150))], "both pressured the über out; the Soldier capped without the Medic; the Sniper hit the pocket");
+        // Going in first: Blue's pocket took the fight's first damage.
+        let mut s = SixesMatchStats { players: vec![SixesPlayerStats { team: "Blue".into(), ..blank(21) }, SixesPlayerStats { team: "Red".into(), ..blank(10) }], medics: Vec::new() };
+        add_first_in(&mut s, &crate::rawlog::parse(&text));
+        assert_eq!((s.players[0].first_in, s.players[0].fights), (Some(1), Some(1)));
+        assert_eq!((s.players[1].first_in, s.players[1].fights), (Some(0), None), "Red took no damage");
+    }
+
+    #[test]
+    fn the_damage_taken_share_leaves_the_medic_out() {
+        let s = match_stats(&fixture());
+        let red: Vec<&SixesPlayerStats> = s.players.iter().filter(|p| p.team == "Red").collect();
+        let sum: f64 = red.iter().filter_map(|p| p.damage_taken_share).sum();
+        assert!((sum - 1.0).abs() < 0.01, "{sum}");
+        assert!(red.iter().any(|p| p.main_class == Some(TfClass::Medic) && p.damage_taken_share.is_none()));
     }
 }

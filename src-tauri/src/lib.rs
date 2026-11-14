@@ -143,6 +143,7 @@ pub fn run() {
             sync_commands::get_sixes_sample,
             sync_commands::get_sixes_board,
             sync_commands::get_sixes_honours,
+            sync_commands::set_own_role,
             sync_commands::set_sixes_sample,
             sync_commands::get_rgl_match_stats,
             sync_commands::get_rgl_team,

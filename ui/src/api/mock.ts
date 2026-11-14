@@ -1598,6 +1598,8 @@ export const mockApi: Api = {
         mvp: { accountId: 1000 + i, name: FIXTURES[0].players[i % FIXTURES[0].players.length].name, role: ["pocket", "medic", "demoman", "roamer"][i % 4], games: 4 + i, average: Math.round((1.48 - i * 0.03) * 100) / 100 },
       })),
     ),
+  setOwnRole: (_logId: number, role: string | null) =>
+    delay<StoredRole[]>(role ? [{ accountId: FIXTURES[0].players.find((p) => p.isMe)?.accountId ?? 0, role, method: "hand", confidence: null, seconds: null, byHand: true }] : []),
   // A 6v6 board from the mock 6v6 match's players, ratings spread around 1.00.
   getSixesBoard: (role: string) =>
     delay<SixesBoardRow[]>(
@@ -1672,6 +1674,9 @@ export const mockApi: Api = {
         picks: p.accountId % 5,
         saps: p.mainClass === "spy" ? 2 : 0,
         denies: p.mainClass === "heavy" ? 3 : 0,
+        damageTakenShare: p.mainClass === "medic" ? null : Math.round((0.12 + (p.accountId % 9) / 60) * 1000) / 1000,
+        firstIn: p.accountId % 7,
+        fights: 24,
         forcesProposed: p.accountId % 4,
         backcapsProposed: p.mainClass === "scout" ? 1 : 0,
         sniperComboDamage: p.mainClass === "sniper" ? 1840 : null,

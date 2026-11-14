@@ -41,6 +41,35 @@ impl Db {
         Ok(())
     }
 
+    /// Set a player's main role in one log by hand (question 18: on their
+    /// own matches): the worked-out main role is replaced, off-class rows
+    /// stay. `None` goes back to the worked-out one, which the caller then
+    /// works out again.
+    pub async fn set_role_by_hand(&self, log_id: i64, account: u32, role: Option<&str>) -> Result<()> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("DELETE FROM player_role WHERE log_id = ?1 AND account_id = ?2 AND role NOT LIKE 'off:%'")
+            .bind(log_id)
+            .bind(i64::from(account))
+            .execute(&mut *tx)
+            .await?;
+        if let Some(role) = role {
+            sqlx::query("INSERT INTO player_role (log_id, account_id, role, method, by_hand) VALUES (?1, ?2, ?3, 'hand', 1)")
+                .bind(log_id)
+                .bind(i64::from(account))
+                .bind(role)
+                .execute(&mut *tx)
+                .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Every role set by hand: `(log, account, role)`.
+    pub async fn roles_by_hand(&self) -> Result<Vec<(i64, u32, String)>> {
+        let rows: Vec<(i64, i64, String)> = sqlx::query_as("SELECT log_id, account_id, role FROM player_role WHERE by_hand = 1").fetch_all(self.pool()).await?;
+        Ok(rows.into_iter().map(|(l, a, r)| (l, a as u32, r)).collect())
+    }
+
     /// One log's roles.
     pub async fn roles_of_log(&self, log_id: i64) -> Result<Vec<StoredRole>> {
         let rows = sqlx::query("SELECT account_id, role, method, confidence, seconds, by_hand FROM player_role WHERE log_id = ?1 ORDER BY account_id, role")
@@ -205,6 +234,18 @@ mod tests {
         let b = db.sixes_board("s0", "pocket", 2, 10).await.unwrap();
         assert_eq!(b.iter().map(|x| (x.0, x.1)).collect::<Vec<_>>(), vec![(7, 2), (9, 2)], "8 has one game; the roamer game is another role");
         assert!((b[0].2 - 1.1).abs() < 1e-9 && (b[0].3 - 1.2).abs() < 1e-9);
+    }
+
+    #[tokio::test]
+    async fn setting_a_role_by_hand_replaces_the_main_role_and_keeps_off_class_time() {
+        let db = Db::connect_in_memory().await.unwrap();
+        db.put_roles(1, &[(7, "pocket".into(), "healspread", Some(0.3), 900), (7, "off:heavy".into(), "class", None, 60)]).await.unwrap();
+        db.set_role_by_hand(1, 7, Some("roamer")).await.unwrap();
+        let r: Vec<(String, bool)> = db.roles_of_log(1).await.unwrap().into_iter().map(|x| (x.role, x.by_hand)).collect();
+        assert_eq!(r, vec![("off:heavy".into(), false), ("roamer".into(), true)]);
+        assert_eq!(db.roles_by_hand().await.unwrap(), vec![(1, 7, "roamer".to_string())]);
+        db.set_role_by_hand(1, 7, None).await.unwrap();
+        assert!(db.roles_by_hand().await.unwrap().is_empty());
     }
 
     #[tokio::test]

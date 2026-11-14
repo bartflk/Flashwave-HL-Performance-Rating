@@ -351,6 +351,7 @@ const realApi = {
   getSixesProfile: () => invoke<SixesProfile>("get_sixes_profile"),
   getSixesSample: () => invoke<SixesSampleStatus>("get_sixes_sample"),
   getSixesBoard: (role: string) => invoke<SixesBoardRow[]>("get_sixes_board", { role }),
+  setOwnRole: (logId: number, role: string | null) => invoke<StoredRole[]>("set_own_role", { logId, role }),
   getSixesHonours: (season: number) => invoke<SixesHonours[]>("get_sixes_honours", { season }),
   setSixesSample: (on: boolean) => invoke<SixesSampleStatus>("set_sixes_sample", { on }),
   getSixesRatings: (q: { logId?: number; accountId?: number }) =>

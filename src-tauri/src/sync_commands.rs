@@ -837,6 +837,20 @@ pub async fn get_sixes_honours(state: State<'_, AppState>, season: i64) -> CmdRe
     Ok(hl_ingest::sixes_rating::season_honours(&state.db, season).await?)
 }
 
+/// Set your own role in one of your 6v6 matches by hand, or (`null`) go back
+/// to the worked-out one (the 6v6 plan, question 18: own matches only).
+#[tauri::command]
+pub async fn set_own_role(state: State<'_, AppState>, log_id: i64, role: Option<String>) -> CmdResult<Vec<hl_db::StoredRole>> {
+    let me = state.db.get_me().await?.ok_or_else(|| anyhow::anyhow!("no owner set"))?;
+    let role = match role.as_deref() {
+        Some(r) => Some(hl_core::Role::parse(r).ok_or_else(|| anyhow::anyhow!("not a role: {r}"))?),
+        None => None,
+    };
+    hl_ingest::roles::set_own_role(&state.db, log_id, me.account_id(), role).await?;
+    // The preview follows the corrected role on the next rating pass.
+    Ok(state.db.roles_of_log(log_id).await?)
+}
+
 /// The 6v6 Players board for one role or off-class (the 6v6 plan, P7).
 #[tauri::command]
 pub async fn get_sixes_board(state: State<'_, AppState>, role: String) -> CmdResult<Vec<hl_ingest::sixes_rating::BoardRow>> {

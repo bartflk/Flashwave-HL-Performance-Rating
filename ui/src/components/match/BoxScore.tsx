@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { RatingValue } from "../RatingValue";
 import { createPortal } from "react-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { ClassStat, LogFlags, MatchDetail, PlayerPing, PlayerRow, Stint, StoredRole } from "../../api/types";
 import { clock, rating, teamLabel } from "../../lib/format";
@@ -280,7 +280,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
                     {p.name}
                   </span>
                   <DivTag divisions={divisions} accountId={p.accountId} />
-                  {d.format === "sixes" && <RoleTag role={roles.get(p.accountId)} />}
+                  {d.format === "sixes" && (p.isMe ? <OwnRole logId={d.logId} role={roles.get(p.accountId)} cls={p.mainClass} /> : <RoleTag role={roles.get(p.accountId)} />)}
                   {p.isMe && <span className="you-tag">{tr("you")}</span>}
                 </td>
                 <td className="sb-classes">
@@ -339,6 +339,37 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
  * Pyro, Heavy, Engineer, Sniper or Spy, each class in the tooltip (the 6v6
  * plan, P1). The rating will rate each off-class on its own (question 6).
  */
+/**
+ * Your own role in a 6v6 match, which you may correct (the 6v6 plan,
+ * question 18: own matches only): Pocket or Roamer as Soldier, Combo or
+ * Flank as Scout, or back to the one worked out from the Medic's heals.
+ */
+function OwnRole({ logId, role, cls }: { logId: number; role: StoredRole | undefined; cls: string | null }) {
+  const qc = useQueryClient();
+  const pair = cls === "soldier" ? ["pocket", "roamer"] : cls === "scout" ? ["pocket_scout", "flank_scout"] : null;
+  if (!pair) return <RoleTag role={role} />;
+  const set = async (r: string | null) => {
+    await api.setOwnRole(logId, r);
+    void qc.invalidateQueries({ queryKey: ["match_roles", logId] });
+  };
+  return (
+    <select
+      className="role-pick"
+      value={role?.byHand ? role.role : ""}
+      onChange={(e) => void set(e.target.value || null)}
+      title={tr("Your role in this match: correct it if the Medic's heals got it wrong")}
+      aria-label={tr("Your role in this match")}
+    >
+      <option value="">{role && roleLabel(role.role) ? tx("{0} (worked out)", { "0": roleLabel(role.role)!.short }) as string : tr("Worked out")}</option>
+      {pair.map((r) => (
+        <option key={r} value={r}>
+          {roleLabel(r)!.short}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 /** A 6v6 player's role beside their name (the 6v6 plan, P3), with how it
  *  was told: the Medic's heals, or set by hand. */
 function RoleTag({ role }: { role: StoredRole | undefined }) {

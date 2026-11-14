@@ -548,6 +548,11 @@ export interface SixesPlayerStats {
   forcesProposed?: number | null;
   backcapsProposed?: number | null;
   sniperComboDamage?: number | null;
+  /** Space created (question 17): share of the team's damage taken, Medic left out. */
+  damageTakenShare?: number | null;
+  /** Fights where they were their team's first to take damage, of the team's fights. */
+  firstIn?: number | null;
+  fights?: number | null;
 }
 
 export interface SixesMedicStats {

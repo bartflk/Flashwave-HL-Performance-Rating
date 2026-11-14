@@ -52,6 +52,7 @@ export function SixesStats({ d }: { d: MatchDetail }) {
               <th className="num" title={t("Airshots")}>{t("AS")}</th>
               <th className="num" title={t("Deaths, and their own Medic's deaths")}>{t("Deaths · Medic's")}</th>
               <th className="num" title={t("Enemy Medics killed")}>{t("Med picks")}</th>
+              <th className="num" title={t("Space created: the share of the team's damage taken, the Medic left out, and how often they took a fight's first damage")}>{t("Space")}</th>
               {hasPicks && <th className="num" title={t("First kills of a fight")}>{t("Picks")}</th>}
               {anySticky && <th className="num" title={t("Kills with stickies")}>{t("Stickies")}</th>}
               {anyReflect && <th className="num" title={t("Kills with reflected projectiles")}>{t("Reflects")}</th>}
@@ -139,6 +140,10 @@ function Row({
         <span className="muted">{p.medicDeaths !== null ? ` · ${p.medicDeaths}` : ""}</span>
       </td>
       <td className="num">{p.medicPicks ?? "–"}</td>
+      <td className="num">
+        {p.damageTakenShare != null ? `${Math.round(p.damageTakenShare * 100)}%` : "–"}
+        {p.firstIn != null && p.fights ? <span className="muted">{` · ${p.firstIn}/${p.fights}`}</span> : null}
+      </td>
       {cols[5] && <td className="num">{p.picks ?? "–"}</td>}
       {cols[0] && <td className="num">{p.stickyKills || ""}</td>}
       {cols[1] && <td className="num">{p.reflectKills || ""}</td>}

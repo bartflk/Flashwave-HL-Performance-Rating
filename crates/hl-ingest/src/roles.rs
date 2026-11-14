@@ -39,6 +39,20 @@ struct Player {
     classes: Vec<(TfClass, i64)>,
 }
 
+/// A player's main class from their class times (question 19, Flashy: "only
+/// if the player plays the class more than 50% of the game"): an off-class
+/// is someone's main class only above half their time; below, their main
+/// class is the one of the six they played most, and the off-class is a
+/// stint. `None` for no time at all.
+pub fn main_class(classes: &[(TfClass, i64)]) -> Option<(TfClass, i64)> {
+    let total: i64 = classes.iter().map(|(_, t)| *t).sum();
+    let &(top, secs) = classes.iter().max_by_key(|(_, t)| *t)?;
+    if Role::off_class(top).is_none() || secs * 2 > total {
+        return Some((top, secs));
+    }
+    classes.iter().filter(|(c, _)| Role::off_class(*c).is_none()).max_by_key(|(_, t)| *t).copied().or(Some((top, secs)))
+}
+
 /// Every role in a 6v6 log, from its logs.tf JSON.
 pub fn roles_of(json: &Value) -> Vec<RoleRow> {
     let Some(players) = json.get("players").and_then(Value::as_object) else { return Vec::new() };
@@ -54,7 +68,7 @@ pub fn roles_of(json: &Value) -> Vec<RoleRow> {
             .filter_map(|c| Some((TfClass::parse(c.get("type")?.as_str()?).ok()?, c.get("total_time")?.as_i64()?)))
             .filter(|(_, t)| *t > 0)
             .collect();
-        let Some(&(main, main_secs)) = classes.iter().max_by_key(|(_, t)| *t) else { continue };
+        let Some((main, main_secs)) = main_class(&classes) else { continue };
         ps.push(Player { account: id.account_id(), team, main, main_secs, classes });
     }
     // Heals by medic account, then target account.
@@ -257,18 +271,36 @@ pub async fn match_stints(db: &hl_db::Db, log_id: i64) -> anyhow::Result<Vec<Sti
         .flatten()
         .filter_map(|(sid, p)| {
             let id = SteamId::parse(sid).ok()?;
-            let main = p
+            let classes: Vec<(TfClass, i64)> = p
                 .get("class_stats")?
                 .as_array()?
                 .iter()
                 .filter_map(|c| Some((TfClass::parse(c.get("type")?.as_str()?).ok()?, c.get("total_time")?.as_i64()?)))
-                .max_by_key(|(_, t)| *t)?
-                .0;
-            Some((id.account_id(), main))
+                .collect();
+            Some((id.account_id(), main_class(&classes)?.0))
         })
         .collect();
     let raw = crate::rawlog::parse(&crate::rawlog::unzip(&zip)?);
     Ok(stints(&raw, &mains))
+}
+
+/// Set the owner's role in one of their 6v6 matches by hand, or (`None`)
+/// go back to the one worked out from the Medic's heals (question 18).
+pub async fn set_own_role(db: &hl_db::Db, log_id: i64, me: u32, role: Option<Role>) -> anyhow::Result<()> {
+    if let Some(r) = role {
+        anyhow::ensure!(matches!(r, Role::Pocket | Role::Roamer | Role::PocketScout | Role::FlankScout), "only a Soldier's or a Scout's role can be set");
+    }
+    db.set_role_by_hand(log_id, me, role.map(|r| r.key()).as_deref()).await?;
+    if role.is_none() {
+        // The worked-out roles again, the rest of the log's kept as they are.
+        if let Some((_, body)) = db.raw_jsons(&[log_id]).await?.into_iter().next() {
+            let v: Value = serde_json::from_str(&body)?;
+            let rows: Vec<(u32, String, &str, Option<f64>, i64)> =
+                roles_of(&v).into_iter().map(|r| (r.account_id, r.role.key(), r.method, r.confidence, r.seconds)).collect();
+            db.put_roles(log_id, &rows).await?;
+        }
+    }
+    Ok(())
 }
 
 /// Work out the roles of stored 6v6 logs that have none, up to `limit`
@@ -366,6 +398,14 @@ mod tests {
         let mains: HashMap<u32, TfClass> = [(10, TfClass::Soldier), (20, TfClass::Scout)].into_iter().collect();
         let s = stints(&raw, &mains);
         assert_eq!(s.iter().map(|x| (x.class, x.points_held)).collect::<Vec<_>>(), vec![(TfClass::Heavy, Some(1))]);
+    }
+
+    #[test]
+    fn an_off_class_is_a_main_class_only_above_half_the_game() {
+        assert_eq!(main_class(&[(TfClass::Sniper, 1100), (TfClass::Scout, 700)]), Some((TfClass::Sniper, 1100)), "61%: a Sniper main");
+        assert_eq!(main_class(&[(TfClass::Sniper, 800), (TfClass::Scout, 700), (TfClass::Soldier, 300)]), Some((TfClass::Scout, 700)), "44%: still a Scout with Sniper time");
+        assert_eq!(main_class(&[(TfClass::Heavy, 300)]), Some((TfClass::Heavy, 300)), "nothing else played");
+        assert_eq!(main_class(&[]), None);
     }
 
     #[test]

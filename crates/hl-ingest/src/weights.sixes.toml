@@ -7,7 +7,12 @@
 # rule as a Highlander component a log did not record:
 #   round_impact      until 6v6's round-win table is measured on the league
 #                     sample's raw logs (300 rounds): then it counts, by itself
-#   space, forces     need an agreed definition (questions 17 and the reviewers)
+#   space             Flashy's definition (question 17): going in first, high
+#                     ground and forward positions, taking most of the damage
+#                     and attention. Measured now as the share of the team's
+#                     damage taken (the Medic's left out); going in first and
+#                     positions join it later (raw logs, demos)
+#   forces            needs an agreed definition (the reviewers)
 #   opening           first kills of a fight: needs every log's raw log
 #   untraded_deaths   needs every log's raw log
 #   backcaps, saps, denies, protect, spychecks, building_life, build_speed,

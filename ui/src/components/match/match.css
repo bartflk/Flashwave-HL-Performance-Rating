@@ -912,6 +912,9 @@
 /* Proposed 6v6 stats, in no rating until the reviewers agree (P4). */
 .sx6-proposed { font-style: italic; }
 
+/* Your own role, correctable (the 6v6 plan, question 18). */
+.role-pick { margin-left: 6px; padding: 0 4px; height: 20px; font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; }
+
 /* A 6v6 player's role beside their name (the 6v6 plan, P3). */
 .role-tag {
   margin-left: 6px;

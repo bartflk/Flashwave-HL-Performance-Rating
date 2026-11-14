@@ -131,6 +131,12 @@ fn perfs_valued(log_id: i64, json: &Value, victims: Option<&BTreeMap<String, f64
                 if let Some(md) = st.medic_deaths {
                     v.insert("deaths_vs_medic", per10(st.deaths as f64 - md as f64));
                 }
+                // Space created (question 17): taking the team's damage and
+                // attention. The log measures the share taken; going in first
+                // and positions join it once every log's raw log and demos can.
+                if let Some(share) = st.damage_taken_share {
+                    v.insert("space", share);
+                }
             }
             if r.role == Role::Medic {
                 let mine = stats.medics.iter().find(|m| m.account_id == r.account_id);
@@ -249,6 +255,9 @@ fn rate(perfs: &[Perf]) -> Vec<SixesRating> {
 /// some (the 6v6 plan, P5): the owner's games are then read against the
 /// league, not only against the players in them.
 pub async fn rate_all(db: &hl_db::Db) -> Result<usize> {
+    // Roles set by hand on the owner's matches (question 18) stand over the
+    // worked-out ones.
+    let by_hand: HashMap<(i64, u32), String> = db.roles_by_hand().await?.into_iter().map(|(l, a, r)| ((l, a), r)).collect();
     // 6v6's round-win table, once measured on the league sample: each
     // performance then has its round impact, half of most roles' weight.
     let table: Option<crate::sixes_round_win::WinTable> =
@@ -258,6 +267,13 @@ pub async fn rate_all(db: &hl_db::Db) -> Result<usize> {
     for (log_id, body) in db.sixes_log_jsons().await?.into_iter().chain(db.sixes_league_jsons().await?) {
         let Ok(v) = serde_json::from_str::<Value>(&body) else { continue };
         let mut these = perfs_valued(log_id, &v, table.as_ref().map(|t| &t.victims));
+        for p in these.iter_mut() {
+            if let Some(r) = by_hand.get(&(log_id, p.account_id)) {
+                if !p.role.starts_with("off:") {
+                    p.role = r.clone();
+                }
+            }
+        }
         if let Some(t) = &table {
             let zip = match sample_raws.get(&log_id) {
                 Some(z) => Some(z.clone()),
@@ -541,7 +557,8 @@ mod tests {
         let mean = r.iter().map(|x| x.rating).sum::<f64>() / r.len() as f64;
         assert!((mean - 1.0).abs() < 0.05, "the scale centres on 1.00: {mean}");
         let p = pocket.iter().find(|x| x.log_id == 1).unwrap();
-        assert!(p.parts.iter().all(|(c, _, _)| c != "round_impact" && c != "space"), "unmeasured components left out");
+        assert!(p.parts.iter().all(|(c, _, _)| c != "round_impact" && c != "forces"), "unmeasured components left out");
+        assert!(p.parts.iter().any(|(c, _, _)| c == "space"), "space created is measured (question 17)");
         let shares: f64 = p.parts.iter().map(|(_, _, s)| s).sum();
         assert!((shares - 1.0).abs() < 0.01, "the rest scaled up to the whole: {shares}");
     }
