@@ -899,6 +899,8 @@
 /* A 6v6 match's numbers and the Medics side by side (the 6v6 plan, P4). */
 .sx6-stats { display: flex; flex-direction: column; gap: 10px; }
 .sx6-stats > .hint { margin: -4px 0 0; }
+/* One line a row: the table scrolls inside its frame rather than wrap a cell. */
+.sx6-stats th, .sx6-stats td { white-space: nowrap; }
 .sx6-duel { display: flex; flex-direction: column; gap: 8px; max-width: 560px; }
 .sx6-duel h3 { margin: 6px 0 0; font: 700 var(--fs-xs) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .sx6-duel-grid { display: grid; grid-template-columns: 1fr minmax(0, 1.6fr) 1fr; align-items: baseline; gap: 4px 14px; }
@@ -906,6 +908,9 @@
 .sx6-duel-label { text-align: center; font-size: var(--fs-small); }
 .sx6-duel-v { text-align: center; font-variant-numeric: tabular-nums; }
 .sx6-duel-v.on { font-weight: 700; color: var(--text); }
+
+/* Proposed 6v6 stats, in no rating until the reviewers agree (P4). */
+.sx6-proposed { font-style: italic; }
 
 /* A 6v6 player's role beside their name (the 6v6 plan, P3). */
 .role-tag {

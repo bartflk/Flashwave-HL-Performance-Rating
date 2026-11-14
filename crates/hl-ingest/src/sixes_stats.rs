@@ -47,6 +47,13 @@ pub struct SixesPlayerStats {
     /// Soldiers and Demomen killed as Heavy (boSe.: "denies on
     /// sollies/demo"); needs the raw log.
     pub denies: Option<i64>,
+    /// PROPOSED, shown for the reviewers and in no rating until they agree
+    /// (see [`add_proposed`]): enemy übers this player pressured out.
+    pub forces_proposed: Option<i64>,
+    /// PROPOSED: captures made without their own Medic on the point.
+    pub backcaps_proposed: Option<i64>,
+    /// PROPOSED: damage as Sniper on the enemy combo (Medic, Demoman, pocket).
+    pub sniper_combo_damage: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -137,6 +144,9 @@ pub fn match_stats(json: &Value) -> SixesMatchStats {
             picks: None,
             saps: None,
             denies: None,
+            forces_proposed: None,
+            backcaps_proposed: None,
+            sniper_combo_damage: None,
         });
         if main == Some(TfClass::Medic) {
             let ms = p.get("medicstats");
@@ -188,14 +198,78 @@ pub fn add_raw(s: &mut SixesMatchStats, raw: &crate::rawlog::RawLog) {
     }
 }
 
+/// How long before an enemy über a player's damage counts as forcing it.
+const FORCE_WINDOW_S: i64 = 4;
+/// Damage on the enemy team in that window that counts as pressure.
+const FORCE_MIN_DAMAGE: i64 = 50;
+
+/// Three PROPOSED stats for the reviewers (the 6v6 plan, P4: über forces,
+/// backcaps and Sniper pressure need a definition everyone agrees on). They
+/// are shown, marked as proposals, and the rating does not read them: their
+/// names are not in `weights.sixes.toml`.
+///
+/// - **Über forces**: when a Medic deploys an über, every enemy who dealt
+///   [`FORCE_MIN_DAMAGE`] or more to the Medic's team in the
+///   [`FORCE_WINDOW_S`] seconds before it gets one.
+/// - **Backcaps**: a capture whose cappers do not include their own team's
+///   Medic: the point was taken away from the combo.
+/// - **Sniper pressure**: damage dealt as Sniper to the enemy's Medic,
+///   Demoman and pocket Soldier.
+pub fn add_proposed(s: &mut SixesMatchStats, raw: &crate::rawlog::RawLog, roles: &[crate::roles::RoleRow]) {
+    use crate::rawlog::EventKind;
+    use hl_core::Role;
+    let role_of = |a: u32, want: &[Role]| roles.iter().any(|r| r.account_id == a && want.contains(&r.role));
+    let medics: std::collections::HashSet<u32> = roles.iter().filter(|r| r.role == Role::Medic).map(|r| r.account_id).collect();
+    let mut forces: std::collections::HashMap<u32, i64> = std::collections::HashMap::new();
+    let mut backcaps: std::collections::HashMap<u32, i64> = std::collections::HashMap::new();
+    let mut combo: std::collections::HashMap<u32, i64> = std::collections::HashMap::new();
+    for e in &raw.events {
+        match &e.kind {
+            EventKind::ChargeDeployed { medic, .. } => {
+                let Some(team) = medic.team else { continue };
+                let mut dealt: std::collections::HashMap<u32, i64> = std::collections::HashMap::new();
+                for d in raw.damage.iter().filter(|d| d.live && d.at <= e.at && d.at >= e.at - FORCE_WINDOW_S) {
+                    if d.victim.team == Some(team) && d.attacker.team.is_some_and(|t| t != team) {
+                        *dealt.entry(d.attacker.account).or_default() += d.amount.min(crate::rawlog::HIT_CAP);
+                    }
+                }
+                for (a, dmg) in dealt {
+                    if dmg >= FORCE_MIN_DAMAGE {
+                        *forces.entry(a).or_default() += 1;
+                    }
+                }
+            }
+            EventKind::PointCaptured { cappers, .. } if !cappers.is_empty() && !medics.is_empty() && !cappers.iter().any(|c| medics.contains(c)) => {
+                for c in cappers {
+                    *backcaps.entry(*c).or_default() += 1;
+                }
+            }
+            _ => {}
+        }
+    }
+    for d in raw.damage.iter().filter(|d| d.live && d.attacker.class == Some(TfClass::Sniper) && d.attacker.team != d.victim.team) {
+        if role_of(d.victim.account, &[Role::Medic, Role::Demoman, Role::Pocket]) {
+            *combo.entry(d.attacker.account).or_default() += d.amount.min(crate::rawlog::HIT_CAP);
+        }
+    }
+    for p in &mut s.players {
+        p.forces_proposed = Some(forces.get(&p.account_id).copied().unwrap_or(0));
+        p.backcaps_proposed = Some(backcaps.get(&p.account_id).copied().unwrap_or(0));
+        p.sniper_combo_damage = combo.get(&p.account_id).copied();
+    }
+}
+
 /// A stored log's 6v6 numbers; `None` when its JSON is not stored. With its
 /// raw log, saps and denies; with its fights read, picks.
 pub async fn of_log(db: &hl_db::Db, log_id: i64) -> anyhow::Result<Option<SixesMatchStats>> {
     let Some((_, body)) = db.raw_jsons(&[log_id]).await?.into_iter().next() else { return Ok(None) };
-    let mut s = match_stats(&serde_json::from_str(&body)?);
+    let json: Value = serde_json::from_str(&body)?;
+    let mut s = match_stats(&json);
     if let Some(zip) = db.rawlog(log_id).await? {
         if let Ok(text) = crate::rawlog::unzip(&zip) {
-            add_raw(&mut s, &crate::rawlog::parse(&text));
+            let raw = crate::rawlog::parse(&text);
+            add_raw(&mut s, &raw);
+            add_proposed(&mut s, &raw, &crate::roles::roles_of(&json));
         }
     }
     if let Some(rows) = db.fight_counts(Some(log_id)).await?.remove(&log_id) {
@@ -249,8 +323,40 @@ mod tests {
         let mut s = SixesMatchStats { players: [10, 20, 30].map(|a| SixesPlayerStats {
             account_id: a, team: String::new(), main_class: None, minutes: 1.0, dpm: None, dtm: None, damage_ratio: None, airshots: None,
             deaths: 0, medic_deaths: None, sticky_kills: 0, reflect_kills: 0, sentry_kills: 0, medic_picks: None, picks: None, saps: None, denies: None,
+            forces_proposed: None, backcaps_proposed: None, sniper_combo_damage: None,
         }).to_vec(), medics: Vec::new() };
         add_raw(&mut s, &crate::rawlog::parse(&text));
         assert_eq!(s.players.iter().map(|p| (p.saps, p.denies)).collect::<Vec<_>>(), vec![(Some(1), Some(0)), (Some(0), Some(1)), (Some(0), Some(0))]);
+    }
+
+    #[test]
+    fn the_proposed_forces_backcaps_and_sniper_pressure_follow_their_definitions() {
+        use crate::roles::RoleRow;
+        use hl_core::Role;
+        let text = [
+            r#"L 11/13/2026 - 20:00:00: World triggered "Round_Start""#,
+            r#"L 11/13/2026 - 20:00:01: "rsol<1><[U:1:10]><Red>" spawned as "soldier""#,
+            r#"L 11/13/2026 - 20:00:01: "rsnip<2><[U:1:11]><Red>" spawned as "sniper""#,
+            r#"L 11/13/2026 - 20:00:01: "rmed<3><[U:1:12]><Red>" spawned as "medic""#,
+            r#"L 11/13/2026 - 20:00:01: "bmed<4><[U:1:20]><Blue>" spawned as "medic""#,
+            r#"L 11/13/2026 - 20:00:01: "bpocket<5><[U:1:21]><Blue>" spawned as "soldier""#,
+            r#"L 11/13/2026 - 20:00:10: "rsol<1><[U:1:10]><Red>" triggered "damage" against "bpocket<5><[U:1:21]><Blue>" (damage "90") (weapon "quake_rl")"#,
+            r#"L 11/13/2026 - 20:00:11: "rsnip<2><[U:1:11]><Red>" triggered "damage" against "bpocket<5><[U:1:21]><Blue>" (damage "150") (weapon "sniperrifle")"#,
+            r#"L 11/13/2026 - 20:00:12: "bmed<4><[U:1:20]><Blue>" triggered "chargedeployed" (medigun "medigun")"#,
+            r#"L 11/13/2026 - 20:00:40: Team "Red" triggered "pointcaptured" (cp "2") (cpname "Mid") (numcappers "1") (player1 "rsol<1><[U:1:10]><Red>") (position1 "0 0 0")"#,
+            r#"L 11/13/2026 - 20:01:00: World triggered "Round_Win" (winner "Red")"#,
+        ]
+        .join("\n");
+        let blank = |a: u32| SixesPlayerStats {
+            account_id: a, team: String::new(), main_class: None, minutes: 1.0, dpm: None, dtm: None, damage_ratio: None, airshots: None,
+            deaths: 0, medic_deaths: None, sticky_kills: 0, reflect_kills: 0, sentry_kills: 0, medic_picks: None, picks: None, saps: None, denies: None,
+            forces_proposed: None, backcaps_proposed: None, sniper_combo_damage: None,
+        };
+        let mut s = SixesMatchStats { players: vec![blank(10), blank(11)], medics: Vec::new() };
+        let role = |a: u32, role: Role| RoleRow { account_id: a, role, method: "class", confidence: None, seconds: 60 };
+        let roles = [role(12, Role::Medic), role(20, Role::Medic), role(21, Role::Pocket)];
+        add_proposed(&mut s, &crate::rawlog::parse(&text), &roles);
+        let got: Vec<(Option<i64>, Option<i64>, Option<i64>)> = s.players.iter().map(|p| (p.forces_proposed, p.backcaps_proposed, p.sniper_combo_damage)).collect();
+        assert_eq!(got, vec![(Some(1), Some(1), None), (Some(1), Some(0), Some(150))], "both pressured the über out; the Soldier capped without the Medic; the Sniper hit the pocket");
     }
 }

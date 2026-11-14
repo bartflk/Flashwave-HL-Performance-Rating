@@ -53,7 +53,23 @@ players in your own stored 6v6 logs, and the components not measured yet
 (round impact above all) are left out and the rest scaled up. The 6v6 rating
 replaces it once fitted on the 6v6 league sample.
 
-## 3. Sources
+## 3. Proposed definitions, for the reviewers
+
+Three of boSe.'s numbers have no agreed definition. The app shows a
+proposal for each on the 6v6 numbers panel, marked with an asterisk, and
+the rating reads none of them until the reviewers agree (their names are
+not in `weights.sixes.toml`; `sixes_stats::add_proposed`).
+
+| Stat | Proposed definition | Open question |
+|---|---|---|
+| Über forces | When a Medic deploys an über, every enemy who dealt 50 damage or more to the Medic's team in the 4 seconds before gets one | A forced über is one used early, before the team wanted it: is pressure just before it enough, or must the über also be used without an advantage? |
+| Backcaps | A capture whose cappers do not include their own team's Medic | Should the middle point count, and should a cap the whole team made while the Medic was dead count? |
+| Sniper pressure | Damage as Sniper on the enemy Medic, Demoman and pocket Soldier | Is damage enough, or does time spent holding a sightline the combo must play around matter? |
+
+"Space created" (question 17) has no proposal yet: it needs positions every
+moment, from demos.
+
+## 4. Sources
 
 | Source | For 6v6 |
 |---|---|
