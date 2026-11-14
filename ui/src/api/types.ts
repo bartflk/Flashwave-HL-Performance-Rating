@@ -536,6 +536,14 @@ export interface SixesPlayerStats {
   stickyKills: number;
   reflectKills: number;
   sentryKills: number;
+  /** Enemy Medics killed. */
+  medicPicks: number | null;
+  /** First kills of a fight; null without the raw log. */
+  picks: number | null;
+  /** Buildings destroyed as Spy; null without the raw log. */
+  saps: number | null;
+  /** Soldiers and Demomen killed as Heavy; null without the raw log. */
+  denies: number | null;
 }
 
 export interface SixesMedicStats {

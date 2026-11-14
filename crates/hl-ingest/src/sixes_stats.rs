@@ -37,6 +37,16 @@ pub struct SixesPlayerStats {
     pub sticky_kills: i64,
     pub reflect_kills: i64,
     pub sentry_kills: i64,
+    /// Enemy Medics killed (the roamer's and flank Scout's "picks, Medic
+    /// especially"), from logs.tf's kills by victim class.
+    pub medic_picks: Option<i64>,
+    /// First kills of a fight, from the fights pass; needs the raw log.
+    pub picks: Option<i64>,
+    /// Buildings destroyed as Spy (sapped); needs the raw log.
+    pub saps: Option<i64>,
+    /// Soldiers and Demomen killed as Heavy (boSe.: "denies on
+    /// sollies/demo"); needs the raw log.
+    pub denies: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -123,6 +133,10 @@ pub fn match_stats(json: &Value) -> SixesMatchStats {
             sticky_kills: weapon_kills(p, |w| w == "tf_projectile_pipe_remote" || w == "sticky_resistance"),
             reflect_kills: weapon_kills(p, |w| w.starts_with("deflect_")),
             sentry_kills: weapon_kills(p, |w| w.starts_with("obj_sentrygun") || w == "obj_minisentry"),
+            medic_picks: json.get("classkills").and_then(|k| k.get(sid)).map(|k| n(k, "medic").unwrap_or(0)),
+            picks: None,
+            saps: None,
+            denies: None,
         });
         if main == Some(TfClass::Medic) {
             let ms = p.get("medicstats");
@@ -150,10 +164,47 @@ pub fn match_stats(json: &Value) -> SixesMatchStats {
     SixesMatchStats { players, medics }
 }
 
-/// A stored log's 6v6 numbers; `None` when its JSON is not stored.
+/// What only the raw log has: buildings destroyed as Spy, and Soldiers and
+/// Demomen killed as Heavy, by player.
+pub fn add_raw(s: &mut SixesMatchStats, raw: &crate::rawlog::RawLog) {
+    use crate::rawlog::EventKind;
+    let mut saps: std::collections::HashMap<u32, i64> = std::collections::HashMap::new();
+    let mut denies: std::collections::HashMap<u32, i64> = std::collections::HashMap::new();
+    for e in &raw.events {
+        if let EventKind::ObjectKilled { by, assist: false, .. } = &e.kind {
+            if by.class == Some(TfClass::Spy) {
+                *saps.entry(by.account).or_default() += 1;
+            }
+        }
+    }
+    for k in raw.kills.iter().filter(|k| k.counts() && k.killer.team != k.victim.team) {
+        if k.killer.class == Some(TfClass::Heavy) && matches!(k.victim.class, Some(TfClass::Soldier | TfClass::Demoman)) {
+            *denies.entry(k.killer.account).or_default() += 1;
+        }
+    }
+    for p in &mut s.players {
+        p.saps = Some(saps.get(&p.account_id).copied().unwrap_or(0));
+        p.denies = Some(denies.get(&p.account_id).copied().unwrap_or(0));
+    }
+}
+
+/// A stored log's 6v6 numbers; `None` when its JSON is not stored. With its
+/// raw log, saps and denies; with its fights read, picks.
 pub async fn of_log(db: &hl_db::Db, log_id: i64) -> anyhow::Result<Option<SixesMatchStats>> {
     let Some((_, body)) = db.raw_jsons(&[log_id]).await?.into_iter().next() else { return Ok(None) };
-    Ok(Some(match_stats(&serde_json::from_str(&body)?)))
+    let mut s = match_stats(&serde_json::from_str(&body)?);
+    if let Some(zip) = db.rawlog(log_id).await? {
+        if let Ok(text) = crate::rawlog::unzip(&zip) {
+            add_raw(&mut s, &crate::rawlog::parse(&text));
+        }
+    }
+    if let Some(rows) = db.fight_counts(Some(log_id)).await?.remove(&log_id) {
+        for p in &mut s.players {
+            // Opening kills are the first of the counts.
+            p.picks = rows.iter().find(|(a, _)| *a == p.account_id).map(|(_, c)| i64::from(c[0]));
+        }
+    }
+    Ok(Some(s))
 }
 
 #[cfg(test)]
@@ -179,5 +230,27 @@ mod tests {
         let demo = s.players.iter().find(|p| p.account_id == 41435165).unwrap();
         assert!(demo.sticky_kills > 0, "{demo:?}");
         assert!(s.players.iter().all(|p| p.reflect_kills == 0), "no Pyro in this log");
+        // Blue's pocket killed both Medics' worth: 2, from the kills by class.
+        assert_eq!(s.players.iter().find(|p| p.account_id == 209920373).unwrap().medic_picks, Some(2));
+    }
+
+    #[test]
+    fn saps_and_denies_come_from_the_raw_log() {
+        let text = [
+            r#"L 11/13/2026 - 20:00:00: World triggered "Round_Start""#,
+            r#"L 11/13/2026 - 20:00:01: "spy<1><[U:1:10]><Red>" spawned as "spy""#,
+            r#"L 11/13/2026 - 20:00:01: "hvy<2><[U:1:20]><Blue>" spawned as "heavyweapons""#,
+            r#"L 11/13/2026 - 20:00:01: "sol<3><[U:1:30]><Red>" spawned as "soldier""#,
+            r#"L 11/13/2026 - 20:00:30: "spy<1><[U:1:10]><Red>" triggered "killedobject" (object "OBJ_SENTRYGUN") (weapon "obj_attachment_sapper") (objectowner "eng<4><[U:1:40]><Blue>") (attacker_position "0 0 0")"#,
+            r#"L 11/13/2026 - 20:00:40: "hvy<2><[U:1:20]><Blue>" killed "sol<3><[U:1:30]><Red>" with "minigun" (attacker_position "0 0 0") (victim_position "1 1 1")"#,
+            r#"L 11/13/2026 - 20:01:00: World triggered "Round_Win" (winner "Blue")"#,
+        ]
+        .join("\n");
+        let mut s = SixesMatchStats { players: [10, 20, 30].map(|a| SixesPlayerStats {
+            account_id: a, team: String::new(), main_class: None, minutes: 1.0, dpm: None, dtm: None, damage_ratio: None, airshots: None,
+            deaths: 0, medic_deaths: None, sticky_kills: 0, reflect_kills: 0, sentry_kills: 0, medic_picks: None, picks: None, saps: None, denies: None,
+        }).to_vec(), medics: Vec::new() };
+        add_raw(&mut s, &crate::rawlog::parse(&text));
+        assert_eq!(s.players.iter().map(|p| (p.saps, p.denies)).collect::<Vec<_>>(), vec![(Some(1), Some(0)), (Some(0), Some(1)), (Some(0), Some(0))]);
     }
 }

@@ -25,6 +25,9 @@ export function SixesStats({ d }: { d: MatchDetail }) {
   const anySticky = s.players.some((p) => p.stickyKills > 0);
   const anyReflect = s.players.some((p) => p.reflectKills > 0);
   const anySentry = s.players.some((p) => p.sentryKills > 0);
+  const anySaps = s.players.some((p) => (p.saps ?? 0) > 0);
+  const anyDenies = s.players.some((p) => (p.denies ?? 0) > 0);
+  const hasPicks = s.players.some((p) => p.picks !== null);
   const f = (v: number | null, digits = 0) => (v === null ? "–" : v.toFixed(digits));
   return (
     <section className="panel sx6-stats">
@@ -41,14 +44,18 @@ export function SixesStats({ d }: { d: MatchDetail }) {
               <th className="num" title={t("Damage dealt over damage taken")}>{t("Ratio")}</th>
               <th className="num" title={t("Airshots")}>{t("AS")}</th>
               <th className="num" title={t("Deaths, and their own Medic's deaths")}>{t("Deaths · Medic's")}</th>
+              <th className="num" title={t("Enemy Medics killed")}>{t("Med picks")}</th>
+              {hasPicks && <th className="num" title={t("First kills of a fight")}>{t("Picks")}</th>}
               {anySticky && <th className="num" title={t("Kills with stickies")}>{t("Stickies")}</th>}
               {anyReflect && <th className="num" title={t("Kills with reflected projectiles")}>{t("Reflects")}</th>}
               {anySentry && <th className="num" title={t("Kills by the sentry")}>{t("Sentry")}</th>}
+              {anySaps && <th className="num" title={t("Buildings destroyed as Spy")}>{t("Saps")}</th>}
+              {anyDenies && <th className="num" title={t("Soldiers and Demomen killed as Heavy")}>{t("Denies")}</th>}
             </tr>
           </thead>
           <tbody>
             {players.map((p) => (
-              <Row key={p.accountId} p={p} name={names.get(p.accountId) ?? String(p.accountId)} role={roleOf(p.accountId)} cols={[anySticky, anyReflect, anySentry]} f={f} />
+              <Row key={p.accountId} p={p} name={names.get(p.accountId) ?? String(p.accountId)} role={roleOf(p.accountId)} cols={[anySticky, anyReflect, anySentry, anySaps, anyDenies, hasPicks]} f={f} />
             ))}
           </tbody>
         </table>
@@ -68,7 +75,7 @@ function Row({
   p: SixesPlayerStats;
   name: string;
   role: { short: string; long: string } | null;
-  cols: [boolean, boolean, boolean];
+  cols: [boolean, boolean, boolean, boolean, boolean, boolean];
   f: (v: number | null, digits?: number) => string;
 }) {
   return (
@@ -92,9 +99,13 @@ function Row({
         {p.deaths}
         <span className="muted">{p.medicDeaths !== null ? ` · ${p.medicDeaths}` : ""}</span>
       </td>
+      <td className="num">{p.medicPicks ?? "–"}</td>
+      {cols[5] && <td className="num">{p.picks ?? "–"}</td>}
       {cols[0] && <td className="num">{p.stickyKills || ""}</td>}
       {cols[1] && <td className="num">{p.reflectKills || ""}</td>}
       {cols[2] && <td className="num">{p.sentryKills || ""}</td>}
+      {cols[3] && <td className="num">{p.saps || ""}</td>}
+      {cols[4] && <td className="num">{p.denies || ""}</td>}
     </tr>
   );
 }

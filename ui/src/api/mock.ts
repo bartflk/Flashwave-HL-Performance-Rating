@@ -1576,6 +1576,10 @@ export const mockApi: Api = {
         stickyKills: p.mainClass === "demoman" ? 9 : 0,
         reflectKills: p.mainClass === "pyro" ? 2 : 0,
         sentryKills: p.mainClass === "engineer" ? 4 : 0,
+        medicPicks: p.accountId % 3,
+        picks: p.accountId % 5,
+        saps: p.mainClass === "spy" ? 2 : 0,
+        denies: p.mainClass === "heavy" ? 3 : 0,
       })),
       medics: medics.slice(0, 2).map((m, i) => ({
         accountId: m.accountId,
