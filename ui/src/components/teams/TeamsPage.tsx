@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ApiError } from "../ApiError";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { type Fixture, type LeagueRecord, type LeagueTableRow, type Podium, type SeasonTile, type Stay, type TeamEtf2l, type TeamHonours, type TeamInfo, type TeamTransfers, type TeamView } from "../../api/types";
+import { type Fixture, type LeagueRecord, type LeagueTableRow, type Podium, type SeasonTile, type StoredFormat, type Stay, type TeamEtf2l, type TeamHonours, type TeamInfo, type TeamTransfers, type TeamView } from "../../api/types";
 import { formatDate, formatMonth, formatStay, rating } from "../../lib/format";
 import { openLeagueMatch, openPlayer } from "../../lib/goto";
 import { openOnKey } from "../../lib/rows";
@@ -128,8 +128,8 @@ export function seasonTitle(s: { season: number; seasonName: string }): string {
 }
 
 /** The season's banner, shrunk once by the app: small for a tile, large for the header. */
-export function useBanner(s: { season: number; seasonName: string }, large = false) {
-  return useQuery({ queryKey: ["season_banner", s.season, large], queryFn: () => api.getSeasonBanner(s.season, s.seasonName, large), staleTime: Infinity }).data ?? null;
+export function useBanner(s: { season: number; seasonName: string }, large = false, format: StoredFormat = "highlander") {
+  return useQuery({ queryKey: ["season_banner", format, s.season, large], queryFn: () => api.getSeasonBanner(s.season, s.seasonName, large, format), staleTime: Infinity }).data ?? null;
 }
 
 /** RED for even seasons, BLU for odd: the cards without a banner alternate. */

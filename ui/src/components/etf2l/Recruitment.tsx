@@ -259,8 +259,8 @@ export function RecruitPostPage({ p, kind, onTeam }: { p: RecruitPost; kind: Kin
 }
 
 /** The newest few of each, for the Home page's rail. */
-export function RecruitPreview({ onAll, onOpen }: { onAll: () => void; onOpen: (p: RecruitPost, kind: Kind) => void }) {
-  const q = useRecruitment();
+export function RecruitPreview({ onAll, onOpen, format = "highlander" }: { onAll: () => void; onOpen: (p: RecruitPost, kind: Kind) => void; format?: StoredFormat }) {
+  const q = useRecruitment(format);
   const players = (q.data?.players ?? []).slice(0, 5);
   const teams = (q.data?.teams ?? []).slice(0, 3);
   if (players.length + teams.length === 0) return null;

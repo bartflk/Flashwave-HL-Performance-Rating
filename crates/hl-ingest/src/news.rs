@@ -17,6 +17,8 @@ const FRESH: i64 = 30 * 60;
 const HIGHLANDER: i64 = 18;
 /// ETF2L's "6v6" category (the 6v6 plan, P2).
 const SIXES: i64 = 22;
+/// ETF2L's 6v6 news category, for the 6v6 season banners.
+pub(crate) const SIXES_CATEGORY: i64 = SIXES;
 
 /// A format's category and where its list is kept.
 fn category(format: hl_core::GameFormat) -> (i64, &'static str) {

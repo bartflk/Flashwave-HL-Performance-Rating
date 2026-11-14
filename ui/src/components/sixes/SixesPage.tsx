@@ -17,6 +17,7 @@ import { SixesTeam, SixesTeamsList } from "./SixesTeams";
 import { SixesSeasons } from "./SixesSeasons";
 import { SixesSample } from "./SixesSample";
 import { SixesPlayers } from "./SixesPlayers";
+import { SixesHome } from "./SixesHome";
 import { NewsList, NewsReader } from "../etf2l/News";
 import { RecruitmentPage, RecruitPostPage, type Kind } from "../etf2l/Recruitment";
 import type { RecruitPost } from "../../api/types";
@@ -37,8 +38,10 @@ export function SixesPage() {
   const swiss = useMemo(() => (s?.divisions ?? []).filter((d) => d.system === "swiss"), [s]);
   // The sections built so far: the season's tables, and its matches by week
   // (the 6v6 plan, P2). The rest of the menu waits for its step.
-  type Section = "season" | "matches" | "teams" | "seasons" | "players" | "news" | "recruitment";
-  const [section, setSection] = useState<Section>("season");
+  type Section = "home" | "season" | "matches" | "teams" | "seasons" | "players" | "news" | "recruitment";
+  // Home first, as Highlander's (Flashy: "the etf2l 6's page doesnt have a
+  // home, please match this with the highlander").
+  const [section, setSection] = useState<Section>("home");
   // A page opened over the section: a team (from a table, a match or the
   // Teams list), a news post, or a recruitment post.
   const [teamId, setTeamIdRaw] = useState<number | null>(null);
@@ -67,6 +70,7 @@ export function SixesPage() {
             <Etf2lMark size={16} /> {t("ETF2L 6v6")}
           </span>
           <nav className="e2-menu" data-fit="" aria-label={t("ETF2L 6v6")}>
+            {tab("home", t("Home"))}
             {tab("season", t("Season"))}
             {tab("matches", t("Matches"))}
             {tab("teams", t("Teams"))}
@@ -87,6 +91,8 @@ export function SixesPage() {
         <Loading>{t("Reading ETF2L's 6v6 season…")}</Loading>
       ) : !s ? (
         <p className="hint">{t("ETF2L lists no 6v6 season.")}</p>
+      ) : section === "home" && teamId === null && postId === null && recruit === null ? (
+        <SixesHome s={s} onTeam={setTeamId} onPost={setPostId} onRecruit={(p, kind) => setRecruit({ p, kind })} go={(to) => open(to)} />
       ) : (
         <div className="e2-match-grid">
           <div className="e2-main">

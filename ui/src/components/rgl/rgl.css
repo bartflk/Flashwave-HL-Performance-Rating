@@ -361,3 +361,7 @@
 /* Lineups with a rating in the match, as ETF2L's: a column after the name. */
 .rgl-lineup.rated button { grid-template-columns: 22px minmax(0, 1fr) auto 44px; }
 .rgl-lineup .e2-lu-rating { text-align: right; }
+
+/* The RGL home's season strip (RglStrip): its divisions as chips on the
+   picture, where ETF2L's strip has division badges. */
+.rgl-strip-div { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--text); background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.18); }

@@ -2456,8 +2456,9 @@ pub async fn get_seasons_overview(state: State<'_, AppState>) -> CmdResult<Vec<h
 /// A season's banner from ETF2L's news, looked for once and kept.
 #[tauri::command]
 /// Shrunk to a small JPEG once; `large` for the season's own header.
-pub async fn get_season_banner(state: State<'_, AppState>, season: i64, season_name: String, large: Option<bool>) -> CmdResult<Option<String>> {
-    Ok(hl_ingest::catalogue::season_banner_image(&state.db, &state.sources, season, &season_name, large.unwrap_or(false)).await?)
+pub async fn get_season_banner(state: State<'_, AppState>, season: i64, season_name: String, large: Option<bool>, format: Option<String>) -> CmdResult<Option<String>> {
+    let sixes = format.as_deref() == Some("sixes");
+    Ok(hl_ingest::catalogue::season_banner_image_of(&state.db, &state.sources, season, &season_name, large.unwrap_or(false), sixes).await?)
 }
 
 /// A season's podiums, each division's medals and MVP.

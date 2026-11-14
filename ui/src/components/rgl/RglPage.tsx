@@ -20,6 +20,7 @@ import { TeamsLanding, TeamView } from "./Team";
 import { CompareView } from "./Compare";
 import { PlayersLanding, PlayerView, YourRgl } from "./Players";
 import { BansPage } from "./Bans";
+import { RglStrip } from "./RglStrip";
 
 /**
  * The RGL tab (PLAN §30), in the ETF2L tab's frame (Flashy: "i do want to
@@ -409,6 +410,7 @@ function Home(props: { steamid: string | null; onTeam: (id: number) => void; onP
   const latest = seasons.data?.[0]?.id ?? null;
   return (
     <div className="e2-home">
+      <RglStrip go={go} />
       <div className="e2-main">
         <LiveMatches onTeam={onTeam} onMatch={onMatch} go={go} />
         {seasons.error ? (
