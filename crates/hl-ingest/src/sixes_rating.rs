@@ -204,20 +204,41 @@ fn rate(perfs: &[Perf]) -> Vec<SixesRating> {
     let mut out = Vec::new();
     for (role, group) in by_role {
         let Some(weights) = table(role) else { continue };
+        let comps: Vec<(&String, f64)> = weights.iter().filter(|(_, s)| **s > 0.0).map(|(c, s)| (c, *s)).collect();
+        // Each component's values sorted, the role's and each player's own:
+        // a percentile is then two binary searches, not a pass over the pool
+        // (the logs.tf dump's pools run to millions).
+        let mut dist: HashMap<&str, (Vec<f64>, HashMap<u32, Vec<f64>>)> = HashMap::new();
+        for (c, _) in &comps {
+            let (mut all, mut own) = (Vec::new(), HashMap::<u32, Vec<f64>>::new());
+            for p in &group {
+                if let Some(&x) = p.values.get(c.as_str()).filter(|x| x.is_finite()) {
+                    all.push(x);
+                    own.entry(p.account_id).or_default().push(x);
+                }
+            }
+            all.sort_by(f64::total_cmp);
+            own.values_mut().for_each(|v| v.sort_by(f64::total_cmp));
+            dist.insert(c.as_str(), (all, own));
+        }
         let mut scored: Vec<(&Perf, f64, Vec<(String, f64, f64)>)> = Vec::new();
         for p in &group {
             let mut parts = Vec::new();
-            for (c, share) in weights.iter().filter(|(_, s)| **s > 0.0) {
-                let Some(&x) = p.values.get(c.as_str()) else { continue };
+            for (c, share) in &comps {
+                let Some(&x) = p.values.get(c.as_str()).filter(|x| x.is_finite()) else { continue };
                 // Against everyone else's in the role, never the player's own.
-                let others: Vec<f64> = group.iter().filter(|o| o.account_id != p.account_id).filter_map(|o| o.values.get(c.as_str()).copied()).collect();
-                if others.is_empty() {
+                let (all, own) = &dist[c.as_str()];
+                let mine: &[f64] = own.get(&p.account_id).map_or(&[], Vec::as_slice);
+                let others = all.len() - mine.len();
+                if others == 0 {
                     continue;
                 }
-                let below = others.iter().filter(|&&o| if higher_is_better(c) { o < x } else { o > x }).count() as f64;
-                let equal = others.iter().filter(|&&o| o == x).count() as f64;
-                let pct = (below + equal / 2.0) / others.len() as f64 * 100.0;
-                parts.push((c.clone(), (pct * 10.0).round() / 10.0, *share));
+                let lt = |v: &[f64]| v.partition_point(|o| *o < x);
+                let le = |v: &[f64]| v.partition_point(|o| *o <= x);
+                let equal = (le(all) - lt(all)) - (le(mine) - lt(mine));
+                let below = if higher_is_better(c) { lt(all) - lt(mine) } else { (all.len() - le(all)) - (mine.len() - le(mine)) };
+                let pct = (below as f64 + equal as f64 / 2.0) / others as f64 * 100.0;
+                parts.push(((*c).clone(), (pct * 10.0).round() / 10.0, *share));
             }
             let total: f64 = parts.iter().map(|(_, _, s)| s).sum();
             if total <= 0.0 {
@@ -385,6 +406,64 @@ impl std::fmt::Display for Validation {
         }
         Ok(())
     }
+}
+
+/// One performance as `hl logsdump-sixes` stores it, read back by
+/// [`validate_stored`].
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct StoredPerf {
+    pub account_id: u32,
+    /// "Red" or "Blue".
+    pub team: Option<String>,
+    pub role: String,
+    pub minutes: f64,
+    pub values: BTreeMap<String, f64>,
+}
+
+/// One logs.tf log's winning side and its rateable performances, kills
+/// unvalued (a dump has no raw logs to value them with).
+pub fn stored_perfs(log_id: i64, json: &Value) -> (Option<String>, Vec<StoredPerf>) {
+    let res = result_of(json);
+    let perfs = perfs_valued(log_id, json, None)
+        .into_iter()
+        .map(|p| StoredPerf {
+            account_id: p.account_id,
+            team: res.team.get(&p.account_id).cloned(),
+            role: p.role,
+            minutes: p.minutes,
+            values: p.values.into_iter().map(|(k, v)| (k.to_string(), (v * 1e4).round() / 1e4)).collect(),
+        })
+        .collect();
+    (res.winner, perfs)
+}
+
+/// A component's name as the `'static` key a [`Perf`] holds; the names are
+/// the weights file's few dozen, so keeping each once costs nothing.
+fn intern(s: &str) -> &'static str {
+    static SEEN: std::sync::Mutex<BTreeMap<String, &'static str>> = std::sync::Mutex::new(BTreeMap::new());
+    let mut seen = SEEN.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(k) = seen.get(s) {
+        return k;
+    }
+    let k: &'static str = Box::leak(s.to_string().into_boxed_str());
+    seen.insert(s.to_string(), k);
+    k
+}
+
+/// [`validate`] over stored performances: `(log, winner, performances)`.
+pub fn validate_stored(logs: impl IntoIterator<Item = (i64, Option<String>, Vec<StoredPerf>)>) -> Validation {
+    let (mut perfs, mut results) = (Vec::new(), HashMap::new());
+    for (log_id, winner, ps) in logs {
+        let mut res = LogResult { winner, team: HashMap::new() };
+        for p in ps {
+            if let Some(t) = p.team {
+                res.team.insert(p.account_id, t);
+            }
+            perfs.push(Perf { log_id, account_id: p.account_id, role: p.role, minutes: p.minutes, values: p.values.iter().map(|(k, v)| (intern(k), *v)).collect() });
+        }
+        results.insert(log_id, res);
+    }
+    validate_ratings(&rate(&perfs), &results)
 }
 
 /// Rate every stored 6v6 performance and measure who it picks to win.
@@ -688,6 +767,36 @@ mod tests {
         assert_eq!(v.team, Pick { pairs: 2, rate: 0.5 });
         assert_eq!(v.roles["pocket"], Pick { pairs: 2, rate: 0.5 });
         assert_eq!(v.components["pocket"]["dpm"], Pick { pairs: 2, rate: 0.75 }, "a tie is half");
+    }
+
+    #[test]
+    fn percentiles_leave_the_player_s_own_games_out_and_count_ties_half() {
+        let p = |log: i64, acc: u32, dpm: f64, deaths: f64| Perf {
+            log_id: log,
+            account_id: acc,
+            role: "pocket".into(),
+            minutes: 20.0,
+            values: [("dpm", dpm), ("deaths", deaths)].into_iter().collect(),
+        };
+        // Player 1 twice; against 2, 3 and 4 only.
+        let perfs = vec![p(1, 1, 300.0, 5.0), p(2, 1, 900.0, 1.0), p(3, 2, 200.0, 5.0), p(4, 3, 300.0, 6.0), p(5, 4, 400.0, 4.0)];
+        let r = rate(&perfs);
+        let part = |log: i64, c: &str| r.iter().find(|x| x.log_id == log).unwrap().parts.iter().find(|(k, _, _)| k == c).unwrap().1;
+        assert_eq!(part(1, "dpm"), 50.0, "above 200, level with 300, below 400; its own 900 left out");
+        assert_eq!(part(1, "deaths"), 50.0, "fewer than 6, level with 5, more than 4");
+        assert_eq!(part(3, "dpm"), 0.0, "below everyone else");
+    }
+
+    #[test]
+    fn stored_performances_validate_as_the_live_ones_do() {
+        let (winner, perfs) = stored_perfs(1, &fixture());
+        assert_eq!(winner.as_deref(), Some("Blue"));
+        assert!(perfs.iter().all(|p| p.team.is_some()));
+        let json = serde_json::to_string(&perfs).unwrap();
+        let back: Vec<StoredPerf> = serde_json::from_str(&json).unwrap();
+        let v = validate_stored([(1, winner, back)]);
+        assert_eq!(v.logs, 1);
+        assert_eq!(v.team.pairs, 1);
     }
 
     #[test]

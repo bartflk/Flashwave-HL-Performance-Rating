@@ -11,6 +11,7 @@ use std::path::PathBuf;
 
 mod logsdump;
 mod logsdump_scales;
+mod logsdump_sixes;
 mod logstf_summary;
 
 const USAGE: &str = "\
@@ -59,10 +60,15 @@ COMMANDS:
                            nine classes. Ends with a model proposed from the
                            fit and what it is worth cross-validated. --weights
                            takes a TOML file with a [model.CLASS] table; repeatable
-    sixes-validate [--json]
+    sixes-validate [--from SIXES.sqlite3 [--kinds official,pug,match] [--limit LOGS]] [--json]
                            How often the 6v6 rating, each role's and each
                            component, picks the side that won, over every stored
-                           6v6 log (own and league sample)
+                           6v6 log (own and league sample), or over the games
+                           `logsdump-sixes` wrote (officials unless --kinds)
+    logsdump-sixes <DUMP.sql> <INDEX.sqlite3> <OUT.sqlite3> [--limit ROWS]
+                           Every 6v6 official, scrim and pug in the dump (each
+                           game once, as the index decided): each player's role
+                           and the 6v6 rating's measurements, into a file of its own
     guide [--json]         Every class's model: its components, their share of
                            the rating and what each one means (the app's 'How
                            ratings work' page)
@@ -179,7 +185,8 @@ async fn run() -> Result<()> {
     // `snapshot --check` reads only the snapshot built into this binary.
     let touches_db = !matches!(command.first().copied(), None | Some("help") | Some("--help") | Some("-h"))
         && !(command.first() == Some(&"snapshot") && command.contains(&"--check"))
-        && !matches!(command.first().copied(), Some("logsdump" | "logsdump-summary"));
+        && !matches!(command.first().copied(), Some("logsdump" | "logsdump-summary" | "logsdump-sixes"))
+        && !(command.first() == Some(&"sixes-validate") && command.contains(&"--from"));
     if touches_db {
         hl_ingest::lock::require_free(&db_path, forced)?;
     }
@@ -208,6 +215,17 @@ async fn run() -> Result<()> {
                 _ => bail!("usage: hl logsdump-scales <logs.sql> <index.sqlite3> <out.json> [--limit <rows>]"),
             };
             logsdump_scales::run(std::path::Path::new(dump), std::path::Path::new(index), std::path::Path::new(out), limit).await
+        }
+
+        // Every 6v6 game in the dump, its performances by role (the 6v6
+        // plan, P5: the release waits on it).
+        ["logsdump-sixes", dump, index, out, rest @ ..] => {
+            let limit = match rest {
+                ["--limit", n] => Some(n.parse().context("--limit needs a number of rows")?),
+                [] => None,
+                _ => bail!("usage: hl logsdump-sixes <logs.sql> <index.sqlite3> <out.sqlite3> [--limit <rows>]"),
+            };
+            logsdump_sixes::run(std::path::Path::new(dump), std::path::Path::new(index), std::path::Path::new(out), limit).await
         }
 
         // The part of that index the app ships: names, careers, years.
@@ -442,8 +460,17 @@ async fn run() -> Result<()> {
         }
 
         ["sixes-validate", rest @ ..] => {
-            let db = Db::connect(&db_path).await?;
-            let v = hl_ingest::sixes_rating::validate(&db).await?;
+            let v = match flag_value::<String>(rest, "--from")? {
+                Some(file) => {
+                    let kinds = flag_value::<String>(rest, "--kinds")?.unwrap_or_else(|| "official".into());
+                    let limit = flag_value::<usize>(rest, "--limit")?;
+                    logsdump_sixes::validate(std::path::Path::new(&file), &kinds, limit).await?
+                }
+                None => {
+                    let db = Db::connect(&db_path).await?;
+                    hl_ingest::sixes_rating::validate(&db).await?
+                }
+            };
             if rest.contains(&"--json") {
                 println!("{}", serde_json::to_string(&v)?);
             } else {

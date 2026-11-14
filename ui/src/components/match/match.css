@@ -912,6 +912,11 @@
 /* Proposed 6v6 stats, in no rating until the reviewers agree (P4). */
 .sx6-proposed { font-style: italic; }
 
+/* What waits on 6v6 demos, greyed out (the 6v6 plan, question 25). */
+.sx6-soon { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.sx6-soon-label { font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--faint); }
+.sx6-soon-chip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border: 1px dashed var(--border); border-radius: 4px; color: var(--faint); font-size: var(--fs-small); cursor: help; user-select: none; }
+
 /* Your own role, correctable (the 6v6 plan, question 18). */
 .role-pick { margin-left: 6px; padding: 0 4px; height: 20px; font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; }
 
@@ -948,6 +953,7 @@
   font-weight: 700;
   letter-spacing: var(--ls-heading);
   text-transform: uppercase;
+  font-family: var(--font-display);
   padding: 0 5px;
   border-radius: 3px;
   border: 1px solid currentColor;

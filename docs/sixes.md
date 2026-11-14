@@ -60,6 +60,14 @@ of each main role head to head, and each role's components on their own
 the app closed. Its numbers mean little until the league
 sample has run; they are what the reviewers argue the weights with.
 
+**The logs.tf dump:** `hl logsdump-sixes <logs.sql> <index-v2.sqlite3> <out.sqlite3>`
+reads every 6v6 official, scrim and pug in the 119 GB logs.tf dump (each game
+once, as `hl logsdump`'s index decided; lobbies left out), about 1.5 million
+games: each player's role and the rating's measurements, from the JSON alone
+(the dump has no raw logs, so no round impact or valued kills). `hl
+sixes-validate --from <out.sqlite3>` checks the rating against who won on them.
+The release waits on it (question 15). The dump is a copy of logs.tf's database.
+
 ## 3. Proposed definitions, for the reviewers
 
 Three of boSe.'s numbers have no agreed definition. The app shows a

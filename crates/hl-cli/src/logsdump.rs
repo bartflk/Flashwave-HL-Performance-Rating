@@ -74,7 +74,7 @@ pub(crate) enum Kind {
 }
 
 impl Kind {
-    fn as_str(self) -> &'static str {
+    pub(crate) fn as_str(self) -> &'static str {
         match self {
             Kind::Lobby => "lobby",
             Kind::Pug => "pug",
@@ -214,7 +214,7 @@ fn class_ix(c: TfClass) -> usize {
 /// A COPY text field back to its bytes: `\\` is a backslash, `\n` a newline
 /// and so on. jsonb's own escapes arrive doubled and come out as JSON wrote
 /// them.
-fn unescape(field: &[u8]) -> Vec<u8> {
+pub(crate) fn unescape(field: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(field.len());
     let mut i = 0;
     while i < field.len() {

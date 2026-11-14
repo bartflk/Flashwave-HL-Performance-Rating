@@ -92,8 +92,31 @@ export function SixesStats({ d }: { d: MatchDetail }) {
         </table>
       </div>
       {hasProposed && <p className="hint">{t("* Proposed definitions for the reviewers to argue: shown here, counted in no rating until agreed.")}</p>}
+      <SoonWithDemos />
       {s.medics.length === 2 && <MedicDuel a={s.medics.find((m) => m.team === order[0]) ?? s.medics[0]} b={s.medics.find((m) => m.team === order[1]) ?? s.medics[1]} names={names} />}
     </section>
+  );
+}
+
+/**
+ * What 6v6 will measure from SourceTV demos, greyed out until it is built
+ * (the 6v6 plan, question 25: "gray out these features until I get to it").
+ */
+function SoonWithDemos() {
+  const soon = [
+    [t("Sticky traps"), t("Kills from stickies laid before the enemy arrived, not shot at them")],
+    [t("Spychecks"), t("Damage on a disguised or cloaked Spy before the Spy struck")],
+    [t("Space: high ground and forward positions"), t("Where the pocket and roamer stood ahead of their Medic")],
+  ];
+  return (
+    <div className="sx6-soon" aria-disabled="true">
+      <span className="sx6-soon-label">{t("Coming with 6v6 demos")}</span>
+      {soon.map(([name, why]) => (
+        <span key={name} className="sx6-soon-chip" title={why}>
+          {name}
+        </span>
+      ))}
+    </div>
   );
 }
 
