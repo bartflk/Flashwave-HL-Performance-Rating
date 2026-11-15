@@ -599,8 +599,11 @@ export interface SixesSampleStatus {
 
 /** The owner's 6v6 profile beyond ratings by role (the 6v6 plan, P7). */
 export interface SixesProfile {
+  /** The 6v6 seasons' top three the owner's teams finished in. */
+  medals: Array<{ season: number; seasonName: string; division: string; place: number; teamId: number; team: string }>;
   best: Array<{ logId: number; role: string; rating: number; map: string | null; playedAt: number | null }>;
-  seasons: Array<{ season: number; division: string; team: string; won: number; drawn: number; lost: number }>;
+  /** Newest season first. */
+  seasons: Array<{ season: number; seasonName: string; division: string; teamId: number; team: string; won: number; drawn: number; lost: number }>;
 }
 
 /** A 6v6 preview rating (the 6v6 plan, P6). */

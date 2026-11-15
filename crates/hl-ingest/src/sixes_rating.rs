@@ -732,7 +732,9 @@ pub struct BestGame {
 #[serde(rename_all = "camelCase")]
 pub struct SeasonLine {
     pub season: i64,
+    pub season_name: String,
     pub division: String,
+    pub team_id: i64,
     pub team: String,
     pub won: u32,
     pub drawn: u32,
@@ -742,9 +744,24 @@ pub struct SeasonLine {
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SixesProfile {
+    /// The 6v6 seasons' top three the owner's teams finished in: the 6v6
+    /// profile's header shows them where Highlander's shows its medals.
+    pub medals: Vec<SixesMedal>,
     pub best: Vec<BestGame>,
     /// Newest season first.
     pub seasons: Vec<SeasonLine>,
+}
+
+/// A 6v6 season's place in the top three, by one of the owner's teams.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SixesMedal {
+    pub season: i64,
+    pub season_name: String,
+    pub division: String,
+    pub place: u8,
+    pub team_id: i64,
+    pub team: String,
 }
 
 /// One row of the 6v6 Players board.
@@ -855,7 +872,7 @@ pub async fn profile(db: &hl_db::Db, me: u32) -> Result<SixesProfile> {
         .into_iter()
         .filter_map(|o| o.roster.get(&me).map(|t| (o.match_id, *t)))
         .collect();
-    let mut lines: BTreeMap<(i64, String, String), (u32, u32, u32)> = BTreeMap::new();
+    let mut lines: BTreeMap<(i64, String, i64, String), (u32, u32, u32)> = BTreeMap::new();
     for m in db.season_matches(None, None, hl_core::GameFormat::Sixes).await? {
         let Some(&team) = mine.get(&m.match_id) else { continue };
         let (Some(r1), Some(r2)) = (m.r1, m.r2) else { continue };
@@ -863,17 +880,38 @@ pub async fn profile(db: &hl_db::Db, me: u32) -> Result<SixesProfile> {
             continue;
         }
         let (us, them, name) = if team == m.clan1_id { (r1, r2, m.clan1_name.clone()) } else { (r2, r1, m.clan2_name.clone()) };
-        let e = lines.entry((m.season, m.division.clone(), name)).or_default();
+        let e = lines.entry((m.season, m.division.clone(), team, name)).or_default();
         match us.cmp(&them) {
             std::cmp::Ordering::Greater => e.0 += 1,
             std::cmp::Ordering::Equal => e.1 += 1,
             std::cmp::Ordering::Less => e.2 += 1,
         }
     }
-    let mut seasons: Vec<SeasonLine> =
-        lines.into_iter().map(|((season, division, team), (won, drawn, lost))| SeasonLine { season, division, team, won, drawn, lost }).collect();
+    let comps = db.competitions(hl_core::GameFormat::Sixes).await?;
+    let season_name = |s: i64| comps.iter().find(|c| c.season == s).map(|c| c.season_name.clone()).unwrap_or_default();
+    let mut seasons: Vec<SeasonLine> = lines
+        .into_iter()
+        .map(|((season, division, team_id, team), (won, drawn, lost))| SeasonLine { season, season_name: season_name(season), division, team_id, team, won, drawn, lost })
+        .collect();
     seasons.sort_by(|a, b| b.season.cmp(&a.season).then(a.division.cmp(&b.division)));
-    Ok(SixesProfile { best, seasons })
+    // Medals: the season tables' top three, where one of the owner's teams
+    // of that season is in it.
+    let by_comp: HashMap<i64, i64> = comps.iter().map(|c| (c.competition_id, c.season)).collect();
+    let mut medals = Vec::new();
+    for (competition, _, json) in db.etf2l_raw("tables").await? {
+        let Some(&season) = by_comp.get(&competition) else { continue };
+        for (division, place, team) in crate::catalogue::table_places(&json) {
+            if place > 3 {
+                continue;
+            }
+            if let Some(line) = seasons.iter().find(|l| l.season == season && l.team_id == team) {
+                medals.push(SixesMedal { season, season_name: line.season_name.clone(), division, place, team_id: team, team: line.team.clone() });
+            }
+        }
+    }
+    medals.sort_by(|a, b| b.season.cmp(&a.season).then(a.place.cmp(&b.place)));
+    medals.dedup_by(|a, b| a.season == b.season && a.team_id == b.team_id && a.division == b.division);
+    Ok(SixesProfile { medals, best, seasons })
 }
 
 #[cfg(test)]
@@ -918,6 +956,7 @@ mod tests {
             "INSERT INTO etf2l_team (team_id, name) VALUES (3, 'Six One'), (4, 'Six Two')",
             "INSERT INTO etf2l_season_match (match_id, competition_id, division, time, clan1_id, clan2_id, r1, r2) VALUES (20, 2, 'Division 3', 200, 3, 4, 3, 1), (21, 2, 'Division 3', 300, 4, 3, 4, 0), (22, 2, 'Division 3', 400, 4, 3, 2, 2)",
             "INSERT INTO etf2l_season_player (match_id, account_id, team_id, name) VALUES (20, 7, 3, 'seven'), (21, 7, 3, 'seven'), (22, 7, 3, 'seven')",
+            r#"INSERT INTO etf2l_raw (kind, id, fetched_at, json) VALUES ('tables', 2, 0, '{"tables":{"Division 3":[{"id":4,"ach":1},{"id":3,"ach":2}]}}')"#,
         ] {
             sqlx::query(sql).execute(db.pool()).await.unwrap();
         }
@@ -927,6 +966,7 @@ mod tests {
         let p = profile(&db, 7).await.unwrap();
         assert_eq!(p.seasons.iter().map(|l| (l.season, l.team.as_str(), l.won, l.drawn, l.lost)).collect::<Vec<_>>(), vec![(53, "Six One", 1, 1, 1)], "from their own side: a win, a loss and a draw");
         assert_eq!(p.best.iter().map(|b| b.log_id).collect::<Vec<_>>(), vec![1], "ten minutes in a main role; an off-class and a short game left out");
+        assert_eq!(p.medals.iter().map(|m| (m.season, m.place, m.team.as_str(), m.season_name.as_str())).collect::<Vec<_>>(), vec![(53, 2, "Six One", "Autumn 2026")], "their team's place, not the winner's");
     }
 
     #[test]

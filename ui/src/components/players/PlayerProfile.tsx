@@ -5,10 +5,11 @@ import { friendlyError } from "../../lib/apierror";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { type Career, type CatDivision, type Etf2lRoster, type Medal, type Mvp, type Official, type PlayerProfile as Profile } from "../../api/types";
+import { type Career, type CatDivision, type Etf2lRoster, type Medal, type Mvp, type Official, type PlayerProfile as Profile, type PlayerSeason } from "../../api/types";
 import { formatDate, formatMonth, formatStay } from "../../lib/format";
 import { openLeagueMatch, openTournament } from "../../lib/goto";
 import { ClassIcon } from "../ClassIcon";
+import { roleClass, unitLabel } from "../../lib/gameformat";
 import { classLabel } from "../analysis/common";
 import { locale, t, tx } from "../../lib/i18n";
 import { PlayerStatsCard, RankChip } from "./PlayerStats";
@@ -87,8 +88,23 @@ export function PlayerProfile({ accountId, yours }: { accountId: number; yours: 
  * right-hand column (your own profile puts your numbers there, above the
  * links), and `own` dresses it as yours: the main class behind the name.
  */
-export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.ReactNode; own?: boolean }) {
-  const titles = medalTitles(p.medals);
+/** What the header shows instead of Highlander's on a 6v6 page (Flashy
+ *  chose to show the 6v6 team and medals there). */
+export interface HeaderFormat {
+  current: PlayerSeason | null;
+  medals: Medal[];
+  /** 6v6 officials played, and in how many seasons. */
+  officials: number;
+  seasons: number;
+  /** The role played most, in place of the main class. */
+  role: string | null;
+}
+
+export function PlayerHeader({ p, aside, own, format }: { p: Profile; aside?: React.ReactNode; own?: boolean; format?: HeaderFormat }) {
+  const medals = format ? format.medals : p.medals;
+  const mvps = format ? [] : (p.mvps ?? []);
+  const current = format ? format.current : p.current;
+  const titles = medalTitles(medals);
   const played = p.mainClass;
   const declared = p.declaredClasses.map((c) => c.toLowerCase()).filter((c) => c !== played);
   // Every name they went by, as its own pill (Flashy: "the names need to
@@ -107,7 +123,7 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
           <div className="pp-name-row">
             <h2 className="pp-name">{p.name}</h2>
             <BookmarkButton b={{ kind: "player", id: p.accountId, label: p.name, sub: p.highest?.name ?? null }} />
-            {p.highest && <DivisionBadge d={p.highest} />}
+            {format ? current?.tier != null && <DivisionBadge d={{ name: current.division, tier: current.tier }} /> : p.highest && <DivisionBadge d={p.highest} />}
             {p.etf2lTitle && p.etf2lTitle !== "Player" && <span className="pp-role">{p.etf2lTitle}</span>}
             {banned ? (
               <span className="pp-banned" title={banned.reason ?? undefined}>
@@ -139,6 +155,17 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
                 <Country raw={p.country} />
               </span>
             )}
+            {format ? (
+              <span className="pp-chip" title={t("The 6v6 role played most")}>
+                {format.role ? (
+                  <>
+                    <ClassIcon cls={roleClass(format.role)} size={16} /> {unitLabel(format.role)}
+                  </>
+                ) : (
+                  <span className="muted">{t("Main role")} –</span>
+                )}
+              </span>
+            ) : (
             <span className="pp-chip" title={t("Most played in the logs held: your matches and the league sample")}>
               {played ? (
                 <>
@@ -153,20 +180,25 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
                 </span>
               )}
             </span>
-            {p.current ? (
-              <span className="pp-chip pp-chip-team" title={t("Current team")}>
-                <TeamAvatar src={p.current.team.avatar} />
-                <strong>{p.current.team.name}</strong>
+            )}
+            {current ? (
+              <span className="pp-chip pp-chip-team" title={format ? t("Current 6v6 team") : t("Current team")}>
+                <TeamAvatar src={current.team.avatar} />
+                <strong>{current.team.name}</strong>
                 <span className="muted">
-                  {p.current.division} · {seasonShort(p.current.season, p.current.seasonName)}
+                  {current.division} · {seasonShort(current.season, current.seasonName)}
                 </span>
               </span>
+            ) : format ? (
+              <span className="pp-chip muted">{t("No ETF2L 6v6 official in the seasons read")}</span>
             ) : (
               <span className="pp-chip muted">{t("No ETF2L official in the seasons read")}</span>
             )}
-            <span className="pp-chip" title={t("Officials")}>
+            <span className="pp-chip" title={format ? t("6v6 officials") : t("Officials")}>
               <Etf2lMark size={13} />
-              {tx("{0} in {1} season{2}", { "0": p.officials.length, "1": new Set(p.seasons.map((s) => s.season)).size, "2": new Set(p.seasons.map((s) => s.season)).size === 1 ? "" : "s" })}
+              {format
+                ? tx("{0} in {1} season{2}", { "0": format.officials, "1": format.seasons, "2": format.seasons === 1 ? "" : "s" })
+                : tx("{0} in {1} season{2}", { "0": p.officials.length, "1": new Set(p.seasons.map((s) => s.season)).size, "2": new Set(p.seasons.map((s) => s.season)).size === 1 ? "" : "s" })}
               {p.registered !== null && <span className="muted"> · {t("on ETF2L since {0}", { "0": monthYear(p.registered) })}</span>}
             </span>
           </div>
@@ -178,8 +210,8 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
               ))}
             </div>
           )}
-          <HeaderRanks accountId={p.accountId} />
-          {(titles.length > 0 || mvpTitles(p.mvps ?? []).length > 0) && (
+          {!format && <HeaderRanks accountId={p.accountId} />}
+          {(titles.length > 0 || mvpTitles(mvps).length > 0) && (
             <div className="pp-titles">
               {/* One explanation per kind, not one per badge (Flashy). */}
               {titles.length > 0 && (
@@ -194,10 +226,10 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
                   </span>
                 </StatTip>
               )}
-              {mvpTitles(p.mvps ?? []).length > 0 && (
+              {mvpTitles(mvps).length > 0 && (
                 <StatTip k="mvp">
                   <span className="pp-title-group">
-                    {mvpTitles(p.mvps ?? []).map(([label, n]) => (
+                    {mvpTitles(mvps).map(([label, n]) => (
                       <span key={label} className="pp-title pp-mvp">
                         <span className="pp-mvp-star" aria-hidden>★</span>
                         {n}× {label}
@@ -212,12 +244,12 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
         {aside && <div className="pp-side">{aside}</div>}
       </div>
       <div className="pp-foot">
-        {p.medals.length + (p.mvps?.length ?? 0) > 0 ? (
+        {medals.length + mvps.length > 0 ? (
           <div className="pp-trophies" aria-label={t("Medals")}>
-            {p.medals.map((m, i) => (
+            {medals.map((m, i) => (
               <MedalIcon key={i} m={m} />
             ))}
-            {(p.mvps ?? []).map((m, i) => (
+            {mvps.map((m, i) => (
               <MvpIcon key={`mvp-${i}`} m={m} />
             ))}
           </div>

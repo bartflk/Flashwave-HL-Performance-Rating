@@ -1682,9 +1682,10 @@ export const mockApi: Api = {
     const sixes = FAKE_MATCHES.filter((m) => m.format === "sixes").slice(0, 5);
     return delay<SixesProfile>({
       best: sixes.map((m, i) => ({ logId: m.logId, role: i % 2 ? "roamer" : "pocket", rating: Math.round((1.42 - i * 0.07) * 100) / 100, map: m.map, playedAt: m.playedAt })),
+      medals: [{ season: 52, seasonName: "Summer 2026", division: "Division 3", place: 2, teamId: 3, team: "DD14" }],
       seasons: [
-        { season: 53, division: "Division 3", team: "DD14", won: 3, drawn: 1, lost: 1 },
-        { season: 52, division: "Division 3", team: "DD14", won: 4, drawn: 0, lost: 3 },
+        { season: 53, seasonName: "Autumn 2026", division: "Division 3", teamId: 3, team: "DD14", won: 3, drawn: 1, lost: 1 },
+        { season: 52, seasonName: "Summer 2026", division: "Division 3", teamId: 3, team: "DD14", won: 4, drawn: 0, lost: 3 },
       ],
     });
   },

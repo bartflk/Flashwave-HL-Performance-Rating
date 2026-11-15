@@ -15,8 +15,9 @@ import {
   type OppositionBand, type DivisionBand,
   type PlayerProfile,
   type Profile,
+  type SixesProfile,
 } from "../../api/types";
-import { Achievements, DivisionBadge, PlayerHeader, RecentOfficials, RosterChip, SeasonsTable, TeamAvatar, TournamentsTable, TeamStays, TrendsCareer } from "../players/PlayerProfile";
+import { Achievements, DivisionBadge, type HeaderFormat, PlayerHeader, RecentOfficials, RosterChip, SeasonsTable, TeamAvatar, TournamentsTable, TeamStays, TrendsCareer } from "../players/PlayerProfile";
 import { Etf2lMark } from "../Etf2lMark";
 import { LogsTfCareer } from "../players/LogsTfCareer";
 import { openLeagueMatch } from "../../lib/goto";
@@ -37,6 +38,7 @@ import "./profile.css";
 import { t, tx, k } from "../../lib/i18n";
 import { roleClass, unitLabel, type GameFormat } from "../../lib/gameformat";
 import { SixesSeasonsPanel, SixesSoonPanel } from "../sixes/SixesSeasonsPanel";
+import { tierOf } from "../etf2l/Brackets";
 import { Help, ComponentTip, StatTip } from "../StatTip";
 import type { GlossaryKey } from "../../lib/glossary";
 import { SortTh, useSort } from "../../lib/sort";
@@ -92,13 +94,16 @@ export function ProfilePage({
   const theirs = useQuery({ queryKey: ["player_profile", accountId], queryFn: () => api.getPlayerProfile(accountId!), enabled: other, staleTime: PROFILE_KEEP_MS }).data ?? null;
   const me = other ? theirs : own;
   const ownAccount = other ? null : steamid ? accountOf(steamid) : null;
+  // Your own 6v6 page: the header's team and medals are your 6v6 ones.
+  const sixesOwn = useQuery({ queryKey: ["sixes_profile"], queryFn: api.getSixesProfile, enabled: sixes && !other }).data;
+  const sixesHeader: HeaderFormat | null = sixes && !other && sixesOwn ? headerOf(sixesOwn, q.data?.classes[0]?.[0] ?? null) : null;
 
   if (q.isPending) return <div className="profile-page"><Loading>{t("Loading profile…")}</Loading></div>;
   if (q.isError) return <div className="profile-page"><ApiError error={q.error} /></div>;
 
   const { classes, profile, fights } = q.data;
   const active = cls ?? profile?.class ?? classes[0]?.[0] ?? null;
-  const hero = me ? <PlayerHeader p={me} own={!other} aside={profile && <Signature p={profile} />} /> : null;
+  const hero = me ? <PlayerHeader p={me} own={!other} format={sixesHeader ?? undefined} aside={profile && <Signature p={profile} />} /> : null;
 
   if (classes.length === 0) {
     return (
@@ -260,6 +265,21 @@ export function ProfilePage({
       )}
     </div>
   );
+}
+
+/** Your 6v6 seasons and medals as the header shows them. */
+function headerOf(s: SixesProfile, role: string | null): HeaderFormat {
+  const tier = (division: string) => Math.floor(tierOf(division));
+  const newest = s.seasons[0] ?? null;
+  return {
+    current: newest
+      ? { season: newest.season, seasonName: newest.seasonName, division: newest.division, tier: tier(newest.division), team: { id: newest.teamId, name: newest.team, avatar: null }, played: newest.won + newest.drawn + newest.lost, won: newest.won, lost: newest.lost, place: null }
+      : null,
+    medals: s.medals.map((m) => ({ season: m.season, seasonName: m.seasonName, division: m.division, tier: tier(m.division), place: m.place, team: { id: m.teamId, name: m.team, avatar: null }, how: "" })),
+    officials: s.seasons.reduce((n, l) => n + l.won + l.drawn + l.lost, 0),
+    seasons: new Set(s.seasons.map((l) => l.season)).size,
+    role,
+  };
 }
 
 /** The profile's sections, as tabs: one page was ~8,000 px of panels. */
