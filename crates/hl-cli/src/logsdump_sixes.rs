@@ -199,6 +199,83 @@ pub async fn pool(file: &Path, out: &Path) -> Result<()> {
     Ok(())
 }
 
+/// `hl sixes-sample-fill`: the 6v6 league sample's logs.tf JSON from the
+/// dump instead of logs.tf (Flashy: "use the F:\logs.tf database when you
+/// need the mass data"). trends.tf lists which logs are ETF2L 6v6 officials;
+/// every listed log still without its JSON is looked for in one pass over
+/// the dump, and stored as from "logs.tf dump". The raw logs still come
+/// from drops.tf, by the app. The app must be closed (its database).
+pub async fn fill_sample(db: &hl_db::Db, dump: &Path) -> Result<()> {
+    let started = Instant::now();
+    let todo: HashSet<i64> = db.sixes_league_todo(10_000_000, i64::MAX).await?.into_iter().collect();
+    println!("{} sample logs without their JSON", todo.len());
+    if todo.is_empty() {
+        return Ok(());
+    }
+    let todo = Arc::new(todo);
+    let wanted = Arc::clone(&todo);
+    let handle = tokio::runtime::Handle::current();
+    let (mut found, mut failed) = (0usize, None::<anyhow::Error>);
+    let mut last_note = Instant::now();
+    tokio::task::block_in_place(|| {
+        stream(
+            dump,
+            None,
+            move |line| {
+                let id = row_id(line)?;
+                if !wanted.contains(&id) {
+                    return None;
+                }
+                let json = unescape(line.splitn(3, |b| *b == b'\t').nth(1)?);
+                let text = String::from_utf8(json).ok()?;
+                // A log logs.tf could not read says so; leave it to the app.
+                (!text.contains("\"success\":false") && !text.contains("\"success\": false")).then_some((id, text))
+            },
+            |batch| {
+                for (id, json) in batch {
+                    if failed.is_some() {
+                        return;
+                    }
+                    match handle.block_on(db.put_sixes_league_json(id, &json, "logs.tf dump")) {
+                        Ok(()) => found += 1,
+                        Err(e) => failed = Some(e),
+                    }
+                }
+                if last_note.elapsed().as_secs() >= 60 {
+                    last_note = Instant::now();
+                    println!("  {found} of {} found ({:.0} min in)", todo.len(), started.elapsed().as_secs_f64() / 60.0);
+                }
+            },
+        )
+    })?;
+    if let Some(e) = failed {
+        return Err(e.context("storing a log's JSON"));
+    }
+    println!("{found} of {} sample logs filled from the dump ({:.1} min); the app downloads the rest, and every raw log, from the next start", todo.len(), started.elapsed().as_secs_f64() / 60.0);
+    Ok(())
+}
+
+/// `hl sixes-fit`: each role's weights fitted to who won on the officials
+/// `run` wrote, against the weights now, on the newer 40% the fit never saw.
+pub async fn fit(file: &Path) -> Result<Vec<hl_ingest::sixes_rating::RoleFit>> {
+    let mut c = SqliteConnectOptions::new().filename(file).read_only(true).connect().await.with_context(|| format!("opening {}", file.display()))?;
+    let logs: Vec<(i64, Option<String>)> = sqlx::query_as("SELECT log_id, winner FROM log WHERE kind = 'official'").fetch_all(&mut c).await?;
+    let winners: HashMap<i64, Option<String>> = logs.into_iter().collect();
+    let rows = sqlx::query("SELECT p.log_id, p.account_id, p.team, p.role, p.minutes, p.vals FROM perf p JOIN log l ON l.log_id = p.log_id WHERE l.kind = 'official'").fetch_all(&mut c).await?;
+    let mut by_log: HashMap<i64, Vec<StoredPerf>> = HashMap::new();
+    for r in rows {
+        let vals: String = r.get(5);
+        by_log.entry(r.get(0)).or_default().push(StoredPerf {
+            account_id: r.get::<i64, _>(1) as u32,
+            team: r.get(2),
+            role: r.get(3),
+            minutes: r.get(4),
+            values: serde_json::from_str(&vals).unwrap_or_default(),
+        });
+    }
+    Ok(hl_ingest::sixes_rating::fit_stored(by_log.into_iter().map(|(id, ps)| (id, winners.get(&id).cloned().flatten(), ps)).collect(), 0.6))
+}
+
 /// `hl sixes-validate --from`: the 6v6 rating checked against who won on
 /// the games `run` wrote, of the kinds named (comma-separated).
 pub async fn validate(file: &Path, kinds: &str, limit: Option<usize>) -> Result<Validation> {

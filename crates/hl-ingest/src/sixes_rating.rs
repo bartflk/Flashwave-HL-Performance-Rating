@@ -486,6 +486,139 @@ pub fn validate_stored(logs: impl IntoIterator<Item = (i64, Option<String>, Vec<
     validate_ratings(&rate(&perfs), &results)
 }
 
+/// One role's weights fitted to who won (`hl sixes-fit`): the shares now
+/// and fitted, and how often each picks the winning side on the games the
+/// fit never saw.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RoleFit {
+    pub role: String,
+    pub train_pairs: usize,
+    pub test_pairs: usize,
+    /// Share of the rating, the components the logs measure (round impact,
+    /// which only raw logs give, keeps its share and is not in these).
+    pub now: BTreeMap<String, f64>,
+    pub fitted: BTreeMap<String, f64>,
+    pub now_test: f64,
+    pub fitted_test: f64,
+}
+
+/// Fit each role's weights to who won (Flashy chose "fit them from the
+/// data"): per decided log, the winning side's player in a role against the
+/// losing side's, each component's percentile difference; a logistic model
+/// with no intercept and weights kept at zero or more, fitted on the older
+/// `train` share of the logs (by log id, which rises with time) and scored
+/// with the weights now on the newer rest.
+pub fn fit_stored(logs: Vec<(i64, Option<String>, Vec<StoredPerf>)>, train: f64) -> Vec<RoleFit> {
+    let (mut perfs, mut results) = (Vec::new(), HashMap::new());
+    for (log_id, winner, ps) in logs {
+        let mut res = LogResult { winner, team: HashMap::new() };
+        for p in ps {
+            if let Some(t) = p.team {
+                res.team.insert(p.account_id, t);
+            }
+            perfs.push(Perf { log_id, account_id: p.account_id, role: p.role, minutes: p.minutes, values: p.values.iter().map(|(k, v)| (intern(k), *v)).collect() });
+        }
+        results.insert(log_id, res);
+    }
+    let ratings = rate(&perfs);
+    // Per role: (log, the winner's parts, the loser's parts).
+    let mut by_log: BTreeMap<i64, Vec<&SixesRating>> = BTreeMap::new();
+    for r in ratings.iter().filter(|r| !r.role.starts_with("off:")) {
+        by_log.entry(r.log_id).or_default().push(r);
+    }
+    let mut pairs: BTreeMap<String, Vec<(i64, HashMap<String, f64>)>> = BTreeMap::new();
+    for (log, rs) in by_log {
+        let Some(res) = results.get(&log) else { continue };
+        let Some(winner) = &res.winner else { continue };
+        let (won, lost): (Vec<&SixesRating>, Vec<&SixesRating>) =
+            rs.into_iter().filter(|r| res.team.contains_key(&r.account_id)).partition(|r| res.team.get(&r.account_id) == Some(winner));
+        for w in &won {
+            let theirs: Vec<_> = lost.iter().filter(|l| l.role == w.role).collect();
+            if theirs.len() != 1 || won.iter().filter(|m| m.role == w.role).count() != 1 {
+                continue;
+            }
+            let l = theirs[0];
+            let diff: HashMap<String, f64> = w
+                .parts
+                .iter()
+                .filter_map(|(c, pct, _, _)| l.parts.iter().find(|(lc, ..)| lc == c).map(|(_, other, _, _)| (c.clone(), (pct - other) / 100.0)))
+                .collect();
+            pairs.entry(w.role.clone()).or_default().push((log, diff));
+        }
+    }
+    let w = weights();
+    let mut out = Vec::new();
+    for (role, mut ps) in pairs {
+        let Some(table) = w.role.get(&role) else { continue };
+        let comps: Vec<String> = table.iter().filter(|(c, s)| **s > 0.0 && *c != "round_impact").map(|(c, _)| c.clone()).collect();
+        ps.sort_by_key(|(log, _)| *log);
+        let cut = ((ps.len() as f64) * train) as usize;
+        let x = |d: &HashMap<String, f64>| comps.iter().map(|c| d.get(c).copied().unwrap_or(0.0)).collect::<Vec<f64>>();
+        let train_x: Vec<Vec<f64>> = ps[..cut].iter().map(|(_, d)| x(d)).collect();
+        let test_x: Vec<Vec<f64>> = ps[cut..].iter().map(|(_, d)| x(d)).collect();
+        if train_x.len() < 200 || test_x.is_empty() {
+            continue;
+        }
+        let total_now: f64 = comps.iter().map(|c| table[c]).sum();
+        let now: Vec<f64> = comps.iter().map(|c| table[c] / total_now).collect();
+        let fitted = logistic_nonneg(&train_x, 400, 0.5, 1e-3);
+        let sum: f64 = fitted.iter().sum();
+        let fitted: Vec<f64> = if sum > 0.0 { fitted.iter().map(|v| v / sum).collect() } else { now.clone() };
+        let pick = |wts: &[f64], xs: &[Vec<f64>]| {
+            let hits: f64 = xs
+                .iter()
+                .map(|d| {
+                    let s: f64 = d.iter().zip(wts).map(|(a, b)| a * b).sum();
+                    if s > 0.0 {
+                        1.0
+                    } else if s == 0.0 {
+                        0.5
+                    } else {
+                        0.0
+                    }
+                })
+                .sum();
+            ((hits / xs.len() as f64) * 1000.0).round() / 1000.0
+        };
+        let round3 = |v: f64| (v * 1000.0).round() / 1000.0;
+        out.push(RoleFit {
+            role,
+            train_pairs: train_x.len(),
+            test_pairs: test_x.len(),
+            now_test: pick(&now, &test_x),
+            fitted_test: pick(&fitted, &test_x),
+            now: comps.iter().cloned().zip(now.iter().map(|v| round3(*v))).collect(),
+            fitted: comps.iter().cloned().zip(fitted.iter().map(|v| round3(*v))).collect(),
+        });
+    }
+    out
+}
+
+/// A logistic model on differences (winner minus loser, label always "the
+/// first won"), no intercept, weights held at zero or more: projected
+/// gradient descent with a little L2.
+fn logistic_nonneg(xs: &[Vec<f64>], iters: usize, lr: f64, l2: f64) -> Vec<f64> {
+    let k = xs.first().map_or(0, Vec::len);
+    let mut w = vec![1.0 / k.max(1) as f64; k];
+    let n = xs.len() as f64;
+    for _ in 0..iters {
+        let mut g = vec![0.0; k];
+        for x in xs {
+            let s: f64 = x.iter().zip(&w).map(|(a, b)| a * b).sum();
+            // d/dw of log(1 + e^-s) is -x * sigmoid(-s).
+            let f = 1.0 / (1.0 + s.exp());
+            for (gi, xi) in g.iter_mut().zip(x) {
+                *gi -= xi * f;
+            }
+        }
+        for (wi, gi) in w.iter_mut().zip(&g) {
+            *wi = (*wi - lr * (gi / n + l2 * *wi)).max(0.0);
+        }
+    }
+    w
+}
+
 /// The league pool from stored performances (`hl logsdump-sixes-pool`):
 /// per role, each component's value at every percentile, and the role's
 /// score average and spread, the performances rated against each other.
@@ -870,6 +1003,28 @@ mod tests {
         assert_eq!(pct(&alone, 1), 0.0, "against one other, the lower is bottom");
         assert!(pct(&pooled, 1) > 70.0, "against the field, 250 is high: {}", pct(&pooled, 1));
         assert!(pooled.iter().all(|x| x.rating > 1.0), "{pooled:?}");
+    }
+
+    #[test]
+    fn the_fit_finds_the_component_that_decides_games_and_drops_the_one_that_does_not() {
+        // Two components on the pocket: dpm always higher on the winning side,
+        // airshots a coin flip. The fit leans on dpm.
+        let mut logs = Vec::new();
+        for i in 0..600i64 {
+            let win = |acc: u32, team: &str, dpm: f64, air: f64| StoredPerf {
+                account_id: acc,
+                team: Some(team.into()),
+                role: "pocket".into(),
+                minutes: 30.0,
+                values: [("dpm".to_string(), dpm), ("airshots".to_string(), air)].into_iter().collect(),
+            };
+            let coin = if i % 2 == 0 { 1.0 } else { -1.0 };
+            logs.push((i, Some("Red".to_string()), vec![win(1 + 2 * i as u32, "Red", 300.0 + i as f64 % 50.0, 5.0 + coin), win(2 + 2 * i as u32, "Blue", 200.0 + i as f64 % 50.0, 5.0 - coin)]));
+        }
+        let fits = fit_stored(logs, 0.6);
+        let f = fits.iter().find(|f| f.role == "pocket").unwrap();
+        assert!(f.fitted["dpm"] > f.fitted["airshots"], "{f:?}");
+        assert!(f.fitted_test >= f.now_test, "{f:?}");
     }
 
     #[test]
