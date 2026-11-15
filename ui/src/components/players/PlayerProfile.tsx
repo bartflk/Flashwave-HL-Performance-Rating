@@ -23,6 +23,7 @@ import { SortTh, useSort } from "../../lib/sort";
 import { Loading } from "../Spinner";
 import { StatTip } from "../StatTip";
 import { Backdrop } from "../Backdrop";
+import { BanTag } from "../BanTag";
 
 /**
  * A player's profile, HLTV-style (Q35, Flashy; PLAN §26): who they are,
@@ -108,10 +109,13 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
             <BookmarkButton b={{ kind: "player", id: p.accountId, label: p.name, sub: p.highest?.name ?? null }} />
             {p.highest && <DivisionBadge d={p.highest} />}
             {p.etf2lTitle && p.etf2lTitle !== "Player" && <span className="pp-role">{p.etf2lTitle}</span>}
-            {banned && (
+            {banned ? (
               <span className="pp-banned" title={banned.reason ?? undefined}>
                 {banned.end ? t("Banned until {0}", { "0": formatDate(banned.end, true) }) : t("Banned")}
               </span>
+            ) : (
+              // ETF2L's list of every active ban, for a page read before it.
+              <BanTag accountId={p.accountId} />
             )}
           </div>
           {shownAliases.length > 0 && (
@@ -227,9 +231,16 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
 }
 
 function ProfileLinks({ p }: { p: Profile }) {
-  const id = p.steamid64;
+  return <ElsewhereLinks steamid64={p.steamid64} etf2lId={p.etf2lId} />;
+}
+
+/** A player on every site that has them: ETF2L when known, then trends.tf,
+ *  logs.tf, demos.tf, RGL, UGC and Steam. Every player page's header ends
+ *  with it (the RGL player page too). */
+export function ElsewhereLinks({ steamid64, etf2lId }: { steamid64: string; etf2lId: number | null }) {
+  const id = steamid64;
   const links: Array<[string, string, boolean]> = [
-    ...(p.etf2lId !== null ? [["ETF2L", `https://etf2l.org/forum/user/${p.etf2lId}/`, true] as [string, string, boolean]] : []),
+    ...(etf2lId !== null ? [["ETF2L", `https://etf2l.org/forum/user/${etf2lId}/`, true] as [string, string, boolean]] : []),
     ["trends.tf", `https://trends.tf/player/${id}/`, false],
     ["logs.tf", `https://logs.tf/profile/${id}`, false],
     ["demos.tf", `https://demos.tf/profiles/${id}`, false],
@@ -376,7 +387,9 @@ function shortDivision(d: string): string {
 
 export function DivisionBadge({ d }: { d: CatDivision }) {
   return (
-    <span className={`div-badge div-t${Math.min(d.tier, 4)}`} title={t("Highest division with three or more officials played")}>
+    // Fresh, 6v6's division for new teams, sits apart from the ladder
+    // (the 6v6 plan, question 10).
+    <span className={/^fresh/i.test(d.name) ? "div-badge div-fresh" : `div-badge div-t${Math.min(d.tier, 4)}`} title={t("Highest division with three or more officials played")}>
       {shortDivision(d.name)}
     </span>
   );

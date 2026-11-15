@@ -148,14 +148,14 @@ fn summarise(name: String, results: &[CupResult]) -> Tournament {
 
 /// Every tournament the league data holds, newest first.
 pub async fn list(db: &Db) -> Result<Vec<Tournament>> {
-    let mut out: Vec<Tournament> = group(db.cup_results().await?).into_iter().map(|(name, rs)| summarise(name, &rs)).collect();
+    let mut out: Vec<Tournament> = group(db.cup_results(hl_core::GameFormat::Highlander).await?).into_iter().map(|(name, rs)| summarise(name, &rs)).collect();
     out.sort_by(|a, b| b.last.cmp(&a.last).then(a.name.cmp(&b.name)));
     Ok(out)
 }
 
 /// One tournament by its name.
 pub async fn page(db: &Db, name: &str) -> Result<Option<TournamentPage>> {
-    Ok(group(db.cup_results().await?)
+    Ok(group(db.cup_results(hl_core::GameFormat::Highlander).await?)
         .into_iter()
         .find(|(n, _)| n == name)
         .map(|(n, results)| TournamentPage { head: summarise(n, &results), results }))

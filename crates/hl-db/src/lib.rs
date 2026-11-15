@@ -9,6 +9,26 @@ mod audit;
 #[cfg(test)]
 mod sync_audit_tests;
 
+/// SQL: `col` (a log id) is not a 6v6 log, neither the owner's nor the
+/// league sample's (the 6v6 plan, P1: formats are never mixed). Every
+/// Highlander-facing query over all stored logs carries it, so 6v6 logs,
+/// once downloaded, never reach a Highlander list, scale, total or pool.
+/// It keeps everything else a query kept before, unclassified logs included.
+/// The opposite of [`hl_only`]: only 6v6 logs, own or the league sample's.
+pub(crate) fn sixes_only(col: &str) -> String {
+    format!(
+        "{col} IN (SELECT log_id FROM log_index WHERE COALESCE(format_override, format) = 'sixes'
+                   UNION ALL SELECT log_id FROM league_log WHERE format = 'sixes')"
+    )
+}
+
+pub(crate) fn hl_only(col: &str) -> String {
+    format!(
+        "{col} NOT IN (SELECT log_id FROM log_index WHERE COALESCE(format_override, format) = 'sixes'
+                       UNION ALL SELECT log_id FROM league_log WHERE format = 'sixes')"
+    )
+}
+
 /// The logs the owner's own rating covers: their rated Highlander logs, and
 /// the per-map logs a rated combined log replaced. A league log among these
 /// is left to the owner's rating, so no game is in the pool twice; any
@@ -21,6 +41,11 @@ pub(crate) const OWNER_COVERED: &str = "SELECT i.log_id FROM log_index i JOIN lo
       SELECT i.log_id FROM log_index i JOIN log_raw x ON x.log_id = i.log_id
        WHERE i.superseded_by IS NULL AND COALESCE(i.format_override, i.format) = 'highlander')";
 mod context;
+mod roles;
+mod sixes_sample;
+mod sixes_profile;
+pub use roles::{SixesRatingRow, StoredRole};
+pub use sixes_sample::{SixesLeagueLogRow, SixesSampleCounts};
 mod demos;
 mod diagnostics;
 mod fights;
@@ -585,6 +610,10 @@ mod frozen_migrations {
         ("0044_rgl_match.sql", 0xab210f21f3748b38),
         ("0045_rgl_answer.sql", 0x9eb7f3f9e42ee692),
         ("0047_audit_sync.sql", 0xe1ca0035dedfc4e2),
+        ("0048_formats.sql", 0xf639046bf5a554b8),
+        ("0049_sixes_rating.sql", 0x95ee17c8470ff125),
+        ("0050_sixes_sample.sql", 0xfd439bd36b2c4402),
+        ("0051_sixes_sample_raw.sql", 0x2c85488106f7da6e),
     ];
 
     fn fnv1a(bytes: &[u8]) -> u64 {

@@ -106,6 +106,26 @@
   gap: 10px;
 }
 
+/* Setup's formats step: two equal choices side by side, a tick on each one
+   played (the 6v6 plan, P0). */
+.fmt-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.fmt-pick-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; text-align: left;
+}
+.fmt-pick-item.on { border-color: var(--accent-dim); }
+.fmt-pick-item:disabled { opacity: 1; cursor: default; }
+.fmt-pick-box {
+  flex: none; width: 18px; height: 18px; margin-top: 2px;
+  display: grid; place-items: center;
+  border: 1px solid var(--border); border-radius: 4px;
+  font-size: var(--fs-small); line-height: 1; color: var(--accent-text);
+}
+.fmt-pick-item.on .fmt-pick-box { border-color: var(--accent-dim); background: var(--sunken); }
+.fmt-pick-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.fmt-pick-text .hint { font-size: var(--fs-small); white-space: normal; }
+@media (max-width: 560px) { .fmt-pick { grid-template-columns: minmax(0, 1fr); } }
+
 .hint {
   color: var(--muted);
   font-size: var(--fs-ui);
@@ -331,6 +351,42 @@
   border-bottom-color: var(--accent);
   box-shadow: none;
 }
+
+/* A tab with more than one format (the 6v6 plan, P0): a chip for the format
+   it shows, and a menu of the formats played on hover or focus. The menu
+   hangs from the tab; its padding bridges the gap so the pointer can reach it. */
+.fmt-chip {
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font: 700 var(--fs-xs) var(--font-display);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+  vertical-align: 1px;
+}
+.fmt-chip.six { border-color: var(--accent-dim); color: var(--accent-text); }
+.tab-fmt { position: relative; display: flex; }
+.tab-fmt-menu {
+  position: absolute; left: 0; top: 100%; z-index: 60;
+  display: none; flex-direction: column; gap: 4px;
+  min-width: 170px; margin-top: 6px; padding: 6px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--panel); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+}
+.tab-fmt-menu::before { content: ""; position: absolute; inset: -8px 0 auto 0; height: 8px; }
+.tab-fmt:hover .tab-fmt-menu, .tab-fmt:focus-within .tab-fmt-menu { display: flex; }
+.tab-fmt-item {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 7px 10px; text-align: left; white-space: nowrap;
+  border: 1px solid transparent; border-radius: var(--ctl-radius);
+  background: none; box-shadow: none; color: var(--text);
+}
+.tab-fmt-item:hover:not(:disabled) { background: var(--panel-2); }
+.tab-fmt-item.on { border-color: var(--accent-dim); background: var(--sunken); }
+.tab-fmt-name { font-weight: 600; }
+.tab-fmt-size { font-size: var(--fs-small); color: var(--muted); }
 
 /* A filling bar. The demo panel uses it; so does the corner card. */
 .progress {
@@ -1442,6 +1498,10 @@ th.num {
   align-self: flex-start;
 }
 
+/* Two choices on one card (the 6v6 notice): side by side, wrapping together. */
+.dl-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.dl-actions .dl-go { align-self: auto; flex: 1 1 auto; }
+
 /* --- the match list's class filter --- */
 
 .class-filter {
@@ -2000,3 +2060,55 @@ button.mini {
 @media (max-width: 760px) {
   .wordmark > span:not(.beta-tag) { display: none; }
 }
+
+/* The sync card's waterfall (Flashy: "a waterfall 3/4 lines high that fades
+   out"): the newest lines of the activity feed, oldest on top and fading.
+   A click opens Settings › Activity log. */
+.act-fall {
+  display: flex; flex-direction: column; gap: 2px; width: 100%;
+  margin: 2px 0 0; padding: 6px 8px; text-align: left;
+  background: var(--sunken); border: 1px solid var(--border); border-radius: 6px;
+  font-family: var(--font-mono); font-size: var(--fs-xs); line-height: var(--lh-snug);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 40%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 40%);
+  cursor: pointer;
+}
+.act-fall:hover { border-color: var(--accent-dim); }
+.act-fall-line { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); animation: act-in 260ms ease-out; }
+.act-fall-line:last-child { color: var(--text); }
+.act-fall-src { color: var(--accent-text); }
+.act-fall-line.lvl-warn .act-fall-src { color: var(--warn); }
+.act-fall-line.lvl-error .act-fall-src { color: var(--bad); }
+@keyframes act-in { from { transform: translateY(6px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .act-fall-line { animation: none; } }
+
+/* Settings › Activity log. */
+.act-h { margin-top: 20px; }
+.act-h:first-of-type { margin-top: 12px; }
+.act-file { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }
+.act-path { flex: 1 1 320px; min-width: 0; overflow-wrap: anywhere; }
+.act-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.act-sites td.act-good { color: var(--ok); }
+.act-sites td.act-warn { color: var(--warn); }
+.act-sites td.act-bad { color: var(--bad); }
+.act-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.act-tools select, .act-tools input[type="search"] { height: 32px; }
+.act-tools input[type="search"] { flex: 1 1 200px; min-width: 0; }
+.act-verbose { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small); color: var(--muted); }
+.act-count { margin-left: auto; font-size: var(--fs-small); }
+.act-log {
+  margin-top: 10px; max-height: 420px; overflow: auto;
+  padding: 6px 0; background: var(--sunken); border: 1px solid var(--border); border-radius: 6px;
+  font-family: var(--font-mono); font-size: var(--fs-xs); line-height: var(--lh-snug);
+}
+.act-log > .hint { padding: 6px 10px; margin: 0; }
+.act-line { display: grid; grid-template-columns: 64px 44px 110px minmax(0, 1fr); gap: 8px; padding: 1px 10px; }
+.act-line:hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
+.act-time { color: var(--muted); }
+.act-lvl { text-transform: uppercase; color: var(--muted); } /* type-ok: a log level in the log's own monospace */
+.act-src { color: var(--accent-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.act-text { overflow-wrap: anywhere; }
+.act-line.lvl-warn .act-lvl { color: var(--warn); }
+.act-line.lvl-error .act-lvl, .act-line.lvl-error .act-text { color: var(--bad); }
+.act-line.lvl-debug { color: var(--muted); }
+.act-line.lvl-http .act-lvl { color: var(--ok); }

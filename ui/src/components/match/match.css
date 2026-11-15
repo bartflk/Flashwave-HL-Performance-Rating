@@ -142,6 +142,8 @@
   cursor: help;
 }
 
+.mu-table { max-width: 980px; margin: 0 auto; }
+
 .mu-cols,
 .mu-row {
   display: grid;
@@ -894,6 +896,70 @@
   font-size: var(--fs-small);
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* A 6v6 match's numbers and the Medics side by side (the 6v6 plan, P4). */
+.sx6-stats { display: flex; flex-direction: column; gap: 10px; }
+.sx6-stats > .hint { margin: -4px 0 0; }
+/* One line a row: the table scrolls inside its frame rather than wrap a cell. */
+.sx6-stats th, .sx6-stats td { white-space: nowrap; }
+.sx6-duel { display: flex; flex-direction: column; gap: 8px; max-width: 560px; margin: 0 auto; }
+.sx6-duel h3 { text-align: center; }
+.sx6-duel h3 { margin: 6px 0 0; font: 700 var(--fs-xs) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+.sx6-duel-grid { display: grid; grid-template-columns: 1fr minmax(0, 1.6fr) 1fr; align-items: baseline; gap: 4px 14px; }
+.sx6-duel-name { font-weight: 700; text-align: center; }
+.sx6-duel-label { text-align: center; font-size: var(--fs-small); }
+.sx6-duel-v { text-align: center; font-variant-numeric: tabular-nums; }
+.sx6-duel-v.on { font-weight: 700; color: var(--text); }
+
+/* Proposed 6v6 stats, in no rating until the reviewers agree (P4). */
+.sx6-proposed { font-style: italic; }
+
+/* What waits on 6v6 demos, greyed out (the 6v6 plan, question 25). */
+.sx6-soon { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.sx6-soon-label { font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--faint); }
+.sx6-soon-chip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border: 1px dashed var(--border); border-radius: 4px; color: var(--faint); font-size: var(--fs-small); cursor: help; user-select: none; }
+
+/* Your own role, correctable (the 6v6 plan, question 18). */
+.role-pick { margin-left: 6px; padding: 0 4px; height: 20px; font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; }
+
+/* A 6v6 player's role beside their name (the 6v6 plan, P3). */
+.role-tag {
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font: 700 var(--fs-micro) var(--font-display);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.role-tag.unsure { border-style: dashed; }
+
+/* 6v6's off-class time beside a player's class icons (the 6v6 plan, P1). */
+.sb-off {
+  margin-left: 6px;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 6v6 on 5CP: the midfight count under the rounds' heading, and the team
+   that won each round's midfight (the 6v6 plan, P1). */
+.mid-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin: 0 0 10px; font-size: var(--fs-ui); font-variant-numeric: tabular-nums; }
+.mid-line strong { font-family: var(--font-display); font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+.mid-line .team-red, .mid-line .team-blue { font-weight: 700; }
+.mid-chip {
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  letter-spacing: var(--ls-heading);
+  text-transform: uppercase;
+  font-family: var(--font-display);
+  padding: 0 5px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
 }
 
 .round-lanes {

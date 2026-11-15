@@ -1,0 +1,116 @@
+# 6v6 rating weights: the starting set (the 6v6 plan, "The weights,
+# explained"), one table a role and one an off-class. The numbers are each
+# component's share of the rating, as proposed for the reviewers to argue;
+# they are fitted against who won once the 6v6 league sample exists (P5, P6).
+#
+# Components not measured yet are left out and the rest scaled up, the same
+# rule as a Highlander component a log did not record:
+#   round_impact      until 6v6's round-win table is measured on the league
+#                     sample's raw logs (300 rounds): then it counts, by itself
+#   space             Flashy's definition (question 17): going in first, high
+#                     ground and forward positions, taking most of the damage
+#                     and attention. Measured now as the share of the team's
+#                     damage taken (the Medic's left out); going in first and
+#                     positions join it later (raw logs, demos)
+#   forces            needs an agreed definition (the reviewers)
+#   opening           first kills of a fight: needs every log's raw log
+#   untraded_deaths   needs every log's raw log
+#   backcaps, saps, denies, protect, spychecks, building_life, build_speed,
+#   caps_contested, survival
+# So until then the preview rates on the rest, against the other players in
+# your own stored 6v6 logs: a preview, not the 6v6 rating.
+
+model_version = "s0"
+
+[role.pocket]
+round_impact = 50
+impact_kills = 14
+space = 10
+dpm = 8
+airshots = 4
+forces = 4
+deaths = 6
+untraded_deaths = 4
+
+[role.roamer]
+round_impact = 50
+medic_picks = 12
+opening = 10
+impact_kills = 10
+airshots = 5
+forces = 5
+untraded_deaths = 8
+deaths = 0
+
+[role.flank_scout]
+round_impact = 50
+opening = 14
+forces = 10
+backcaps = 8
+medic_picks = 6
+impact_kills = 6
+untraded_deaths = 6
+deaths = 0
+
+[role.pocket_scout]
+round_impact = 50
+impact_kills = 12
+dpm = 8
+dmg_ratio = 10
+deaths_vs_medic = 12
+impact_assists = 8
+
+[role.demoman]
+round_impact = 50
+dpm = 12
+dmg_ratio = 10
+traps = 6
+impact_kills = 10
+deaths = 12
+
+[role.medic]
+round_impact = 30
+heal = 15
+ubers_vs = 12
+drops_vs = 12
+deaths_vs = 12
+adv_lost = 7
+impact_assists = 7
+caps_contested = 5
+
+[off.engineer]
+round_impact = 50
+sentry = 20
+eng_deaths = 14
+building_life = 8
+build_speed = 8
+
+[off.heavy]
+round_impact = 50
+survival = 14
+denies = 14
+caps_contested = 12
+deaths = 10
+
+[off.sniper]
+round_impact = 50
+opening = 18
+pressure = 14
+headshot_share = 6
+untraded_deaths = 12
+impact_kills = 0
+
+[off.pyro]
+round_impact = 50
+reflects = 18
+protect = 14
+spychecks = 8
+deaths = 10
+
+[off.spy]
+round_impact = 50
+backstabs = 16
+opening = 8
+saps = 10
+backcaps = 8
+untraded_deaths = 8

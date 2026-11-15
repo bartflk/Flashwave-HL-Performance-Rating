@@ -22,6 +22,11 @@
 //! played it: friends who pug together are each other's regulars, so their
 //! protfx games read as scrims (Flashy: "when its a protfx log, its always a
 //! pug"). A kind set by hand still wins over it.
+//!
+//! **6v6.** The same rules on the owner's 6v6 games alone, with numbers
+//! sized for five teammates instead of eight (the 6v6 plan, P1): a team game
+//! has three regulars, not five. Formats are classified apart, so a
+//! Highlander teammate is not a 6v6 regular.
 
 use serde::Serialize;
 use std::collections::HashMap;
@@ -33,7 +38,8 @@ const DAY: i64 = 24 * HOUR;
 const OFFICIAL_BEFORE: i64 = 4 * HOUR;
 /// ...and at most this long after (reschedules within the evening, long BO3s).
 const OFFICIAL_AFTER: i64 = 10 * HOUR;
-/// Players of the right roster needed on each side to call a log an official.
+/// Players of the right roster needed on each side to call a log an official
+/// (Highlander's; see [`Sizes`]).
 const ROSTER_SIDE_MIN: usize = 5;
 
 /// A teammate is a regular around a date when they were on the owner's team
@@ -52,8 +58,39 @@ const TEAM_NAME_MIN: usize = 4;
 const TEAM_GAME_ROSTER_MIN: usize = 5;
 
 /// What a pug server writes in its logs' titles ("protfx.com | HL pug #n",
-/// "hl.tf2pickup.eu #n", "hlpugs.tf eu #n"), lowercase.
-const PUG_SERVERS: [&str; 3] = ["protfx", "tf2pickup", "hlpugs"];
+/// "hl.tf2pickup.eu #n", "hlpugs.tf eu #n", "TF2Center #n"), lowercase.
+/// tf2pickup and TF2Center run 6v6 pugs too (the 6v6 plan, question 20).
+const PUG_SERVERS: [&str; 4] = ["protfx", "tf2pickup", "hlpugs", "tf2center"];
+
+/// The headcounts the rules use, per format: Highlander's are the constants
+/// above (eight teammates), 6v6's the same proportions of five.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Sizes {
+    pub roster_side_min: usize,
+    pub scrim_min_regulars: usize,
+    pub team_name_min: usize,
+    pub team_game_roster_min: usize,
+}
+
+impl Sizes {
+    pub const HIGHLANDER: Sizes = Sizes {
+        roster_side_min: ROSTER_SIDE_MIN,
+        scrim_min_regulars: SCRIM_MIN_REGULARS,
+        team_name_min: TEAM_NAME_MIN,
+        team_game_roster_min: TEAM_GAME_ROSTER_MIN,
+    };
+    /// Five teammates: four of a side on a roster for an official, three
+    /// regulars or three of the owner's roster for a team game, three of a
+    /// roster to name a team.
+    pub const SIXES: Sizes = Sizes { roster_side_min: 4, scrim_min_regulars: 3, team_name_min: 3, team_game_roster_min: 3 };
+
+    pub fn of(f: hl_core::GameFormat) -> Sizes {
+        match f {
+            hl_core::GameFormat::Highlander => Sizes::HIGHLANDER,
+            hl_core::GameFormat::Sixes => Sizes::SIXES,
+        }
+    }
+}
 
 /// Whether a log's title names a pug server.
 pub fn pug_server(title: Option<&str>) -> bool {
@@ -116,7 +153,14 @@ pub struct Context {
     pub regulars: usize,
 }
 
+/// Highlander's games, with Highlander's headcounts.
 pub fn classify(games: &[Game], officials: &[Official]) -> Vec<Context> {
+    classify_sized(games, officials, Sizes::HIGHLANDER)
+}
+
+/// One format's games, with that format's headcounts. `games` must all be
+/// of the one format: regulars are counted among them.
+pub fn classify_sized(games: &[Game], officials: &[Official], n: Sizes) -> Vec<Context> {
     let by_id: HashMap<i64, &Official> = officials.iter().map(|o| (o.match_id, o)).collect();
     let regulars = regular_counts(games);
 
@@ -140,7 +184,7 @@ pub fn classify(games: &[Game], officials: &[Official]) -> Vec<Context> {
             let linked = g
                 .trends_match
                 .map(|id| (id, "trends"))
-                .or_else(|| roster_match(g, officials).map(|id| (id, "roster")));
+                .or_else(|| roster_match(g, officials, n.roster_side_min).map(|id| (id, "roster")));
             match linked {
                 Some((id, method)) => {
                     let (team, opponent) = match by_id.get(&id) {
@@ -159,7 +203,7 @@ pub fn classify(games: &[Game], officials: &[Official]) -> Vec<Context> {
                 }
                 None => Context {
                     log_id: g.log_id,
-                    kind: if regulars >= SCRIM_MIN_REGULARS { Kind::Scrim } else { Kind::Pug },
+                    kind: if regulars >= n.scrim_min_regulars { Kind::Scrim } else { Kind::Pug },
                     etf2l_match_id: None,
                     link_method: None,
                     team: None,
@@ -184,8 +228,8 @@ pub fn classify(games: &[Game], officials: &[Official]) -> Vec<Context> {
         if c.kind == Kind::Official || pug_server(g.title.as_deref()) {
             continue;
         }
-        let team = best_team(&g.mates, g.played_at, own.iter().map(|(t, clan, o)| (*t, clan, *o)));
-        if c.kind == Kind::Pug && team.as_ref().is_some_and(|(n, _)| *n >= TEAM_GAME_ROSTER_MIN) {
+        let team = best_team(&g.mates, g.played_at, own.iter().map(|(t, clan, o)| (*t, clan, *o)), n.team_name_min);
+        if c.kind == Kind::Pug && team.as_ref().is_some_and(|(k, _)| *k >= n.team_game_roster_min) {
             c.kind = Kind::Scrim;
         }
         if c.kind != Kind::Scrim {
@@ -194,7 +238,7 @@ pub fn classify(games: &[Game], officials: &[Official]) -> Vec<Context> {
         c.team = team.map(|(_, clan)| clan);
         let mine = c.team.as_ref().map(|t| t.0);
         let all = officials.iter().flat_map(|o| [(o.time, &o.clan1, o), (o.time, &o.clan2, o)]);
-        c.opponent = best_team(&g.opponents, g.played_at, all.filter(|(_, clan, _)| Some(clan.0) != mine))
+        c.opponent = best_team(&g.opponents, g.played_at, all.filter(|(_, clan, _)| Some(clan.0) != mine), n.team_name_min)
             .map(|(_, clan)| clan);
     }
     out
@@ -229,15 +273,15 @@ fn regular_counts(games: &[Game]) -> Vec<usize> {
 
 /// The official this game was, judged by who was on each side. Closest to the
 /// scheduled time when more than one fits.
-fn roster_match(g: &Game, officials: &[Official]) -> Option<i64> {
+fn roster_match(g: &Game, officials: &[Official], side_min: usize) -> Option<i64> {
     officials
         .iter()
         .filter(|o| g.played_at >= o.time - OFFICIAL_BEFORE && g.played_at <= o.time + OFFICIAL_AFTER)
         .filter(|o| {
             let (a, b) = (o.clan1.0, o.clan2.0);
             let fits = |ours: i64, theirs: i64| {
-                on_roster(&g.mates, o, ours) >= ROSTER_SIDE_MIN
-                    && on_roster(&g.opponents, o, theirs) >= ROSTER_SIDE_MIN
+                on_roster(&g.mates, o, ours) >= side_min
+                    && on_roster(&g.opponents, o, theirs) >= side_min
             };
             fits(a, b) || fits(b, a)
         })
@@ -269,11 +313,12 @@ fn best_team<'a>(
     players: &[u32],
     at: i64,
     candidates: impl Iterator<Item = (i64, &'a (i64, String), &'a Official)>,
+    name_min: usize,
 ) -> Option<(usize, (i64, String))> {
     candidates
         .filter(|(t, _, _)| (at - t).abs() <= TEAM_WINDOW)
         .map(|(t, clan, o)| (on_roster(players, o, clan.0), -(at - t).abs(), clan))
-        .filter(|(n, _, _)| *n >= TEAM_NAME_MIN)
+        .filter(|(n, _, _)| *n >= name_min)
         .max_by_key(|(n, closeness, _)| (*n, *closeness))
         .map(|(n, _, clan)| (n, clan.clone()))
 }
@@ -301,6 +346,18 @@ mod tests {
     /// A season of team games: the same eight teammates every few days.
     fn season() -> Vec<Game> {
         (0..10).map(|i| game(100 + i, T0 + i * 3 * DAY, &US, &[40, 41, 42, 43, 44, 45, 46, 47, 48])).collect()
+    }
+
+    #[test]
+    fn three_regulars_make_a_6v6_scrim_but_not_a_highlander_one() {
+        // The 6v6 plan, P1: five teammates, so three regulars is a team.
+        let games: Vec<Game> = (0..8)
+            .map(|i| game(300 + i, T0 + i * 2 * DAY, &[1, 2, 3, 500 + i as u32, 600 + i as u32], &[40, 41, 42, 43, 44, 45]))
+            .collect();
+        let six = classify_sized(&games, &[], Sizes::SIXES);
+        assert!(six.iter().all(|c| c.kind == Kind::Scrim && c.regulars == 3), "{six:?}");
+        assert!(classify(&games, &[]).iter().all(|c| c.kind == Kind::Pug), "Highlander keeps its five");
+        assert!(pug_server(Some("TF2Center Lobby #1330950")));
     }
 
     #[test]

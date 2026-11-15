@@ -69,9 +69,18 @@ pub const BODY_MAX: usize = 50 << 20;
 /// answer from piling up behind it (a sync and a screen together).
 const IN_FLIGHT: usize = 2;
 
+/// The slowest a host is paced after pushing back: one request this often.
+const GAP_MAX: Duration = Duration::from_secs(30);
+
 pub struct Throttled {
     client: reqwest::Client,
+    /// The pace we keep to when the host is happy.
     gap: Duration,
+    /// The pace now, in ms: doubled each time the host answers 429 or 503,
+    /// eased back towards `gap` by a twentieth on each answer it gives
+    /// (14 Nov 2026: the 6v6 sample paged trends.tf at its 1 s pace and
+    /// had nearly every page refused once).
+    pace_ms: std::sync::atomic::AtomicU64,
     next_slot: Mutex<Instant>,
     in_flight: Semaphore,
     /// Until when this host is left alone after a 429 or 503.
@@ -91,6 +100,7 @@ impl Throttled {
         Ok(Throttled {
             client,
             gap,
+            pace_ms: std::sync::atomic::AtomicU64::new(gap.as_millis() as u64),
             next_slot: Mutex::new(Instant::now()),
             in_flight: Semaphore::new(IN_FLIGHT),
             rest_until: Default::default(),
@@ -106,7 +116,31 @@ impl Throttled {
         if *next > now {
             tokio::time::sleep_until(*next).await;
         }
-        *next = Instant::now() + self.gap;
+        *next = Instant::now() + self.pace();
+    }
+
+    /// The gap between requests now.
+    fn pace(&self) -> Duration {
+        Duration::from_millis(self.pace_ms.load(std::sync::atomic::Ordering::Relaxed)).max(self.gap)
+    }
+
+    /// The host pushed back: half the pace, up to [`GAP_MAX`].
+    fn slow_down(&self, url: &str) {
+        let now = self.pace();
+        let next = (now * 2).min(GAP_MAX);
+        self.pace_ms.store(next.as_millis() as u64, std::sync::atomic::Ordering::Relaxed);
+        if next > now {
+            tracing::info!(url, seconds = next.as_secs_f64(), "slowing down: one request every few seconds for this site");
+        }
+    }
+
+    /// The host answered: ease back a little towards the usual pace.
+    fn speed_up(&self) {
+        let now = self.pace();
+        if now > self.gap {
+            let next = (now - now / 20).max(self.gap);
+            self.pace_ms.store(next.as_millis() as u64, std::sync::atomic::Ordering::Relaxed);
+        }
     }
 
     /// GET a URL and return the body as text, retrying transient failures.
@@ -157,6 +191,8 @@ impl Throttled {
             *held = Some(until);
         }
         tracing::warn!(url, minutes = how_long.as_secs() / 60, "the server is refusing requests; leaving it alone");
+        let until_ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis() as i64) + how_long.as_millis() as i64;
+        crate::activity::resting(url, until_ms);
     }
 
     /// The request itself. `interactive` gives up at once on a connect error
@@ -212,10 +248,27 @@ impl Throttled {
             let _slot = self.in_flight.acquire().await.expect("the semaphore is never closed");
             self.wait_turn().await;
 
-            match request().send().await {
+            let started = Instant::now();
+            let sent = request().send().await;
+            let ms = started.elapsed().as_millis() as u64;
+            match &sent {
+                Ok(resp) => {
+                    let remaining = ["ratelimit-remaining", "x-ratelimit-remaining"]
+                        .iter()
+                        .find_map(|n| resp.headers().get(*n)?.to_str().ok()?.trim().parse::<u64>().ok());
+                    crate::activity::request(url, Some(resp.status().as_u16()), ms, remaining, None);
+                }
+                Err(e) => crate::activity::request(url, None, ms, None, Some(&e.to_string())),
+            }
+            match sent {
                 Ok(resp) => {
                     self.heed_limit(resp.headers()).await;
                     let status = resp.status();
+                    if status.as_u16() == 429 || status.as_u16() == 503 {
+                        self.slow_down(url);
+                    } else if status.is_success() || status == reqwest::StatusCode::NOT_MODIFIED {
+                        self.speed_up();
+                    }
                     if status == reqwest::StatusCode::NOT_MODIFIED {
                         if let Some(body) = self.revalidated(url) {
                             return Ok(Some(body));
@@ -407,7 +460,14 @@ pub async fn download_to(
 ) -> Result<u64> {
     use tokio::io::AsyncWriteExt;
 
-    let mut resp = client.get(url).send().await.with_context(|| format!("requesting {url}"))?;
+    let started = std::time::Instant::now();
+    let sent = client.get(url).send().await;
+    let ms = started.elapsed().as_millis() as u64;
+    match &sent {
+        Ok(r) => crate::activity::request(url, Some(r.status().as_u16()), ms, None, None),
+        Err(e) => crate::activity::request(url, None, ms, None, Some(&e.to_string())),
+    }
+    let mut resp = sent.with_context(|| format!("requesting {url}"))?;
     if !resp.status().is_success() {
         bail!("{url}: HTTP {}", resp.status());
     }
@@ -508,6 +568,22 @@ pub fn refused(e: &anyhow::Error) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_host_that_pushes_back_is_asked_more_slowly_and_eased_back() {
+        let t = Throttled::new(Duration::from_millis(1000)).unwrap();
+        t.slow_down("https://trends.tf/a");
+        t.slow_down("https://trends.tf/a");
+        assert_eq!(t.pace(), Duration::from_millis(4000));
+        for _ in 0..8 {
+            t.slow_down("https://trends.tf/a");
+        }
+        assert_eq!(t.pace(), GAP_MAX, "never slower than one every 30 s");
+        for _ in 0..200 {
+            t.speed_up();
+        }
+        assert_eq!(t.pace(), Duration::from_millis(1000), "back to the usual pace, never faster");
+    }
     use std::io::{Read, Write};
 
     #[test]

@@ -1,3 +1,4 @@
+mod activity_layer;
 mod applog;
 mod commands;
 mod error;
@@ -62,6 +63,7 @@ pub fn run() {
             .with(filter)
             .with(tracing_subscriber::fmt::layer())
             .with(tracing_subscriber::fmt::layer().with_ansi(false).with_writer(|| applog::FileWriter))
+            .with(activity_layer::ActivityLayer)
             .init();
     }
 
@@ -133,6 +135,18 @@ pub fn run() {
             sync_commands::export_calendar,
             sync_commands::get_rgl_match,
             sync_commands::get_rgl_match_more,
+            sync_commands::get_sixes_season,
+            sync_commands::get_sixes_matches,
+            sync_commands::get_match_roles,
+            sync_commands::get_match_stints,
+            sync_commands::get_sixes_match_stats,
+            sync_commands::get_sixes_ratings,
+            sync_commands::get_sixes_profile,
+            sync_commands::get_sixes_sample,
+            sync_commands::get_sixes_board,
+            sync_commands::get_sixes_honours,
+            sync_commands::set_own_role,
+            sync_commands::set_sixes_sample,
             sync_commands::get_rgl_match_stats,
             sync_commands::get_rgl_team,
             sync_commands::get_rgl_team_seasons,
@@ -175,6 +189,10 @@ pub fn run() {
             sync_commands::list_matches,
             sync_commands::get_match,
             sync_commands::get_profile,
+            sync_commands::get_profile_sixes,
+            sync_commands::get_activity,
+            sync_commands::get_etf2l_bans,
+            sync_commands::set_activity_verbose,
             sync_commands::list_seasons,
             sync_commands::get_owner,
             sync_commands::get_seasons,
@@ -195,6 +213,8 @@ pub fn run() {
             sync_commands::downloaded_demos,
             sync_commands::auto_delete_demos,
             sync_commands::set_auto_delete_demos,
+            sync_commands::formats_played,
+            sync_commands::set_formats_played,
             sync_commands::delete_downloaded_demos,
             sync_commands::all_history,
             sync_commands::set_all_history,
@@ -523,6 +543,7 @@ Look for its window in the taskbar, or close the other one and start again.".to_
     if cfg!(debug_assertions) {
         league::spawn(db.clone(), sources.clone(), busy.clone(), league_activity.clone(), db_path.with_file_name("weights.toml"));
         league::spawn_transfers(db.clone(), sources.clone());
+        league::spawn_sixes(db.clone(), sources.clone(), busy.clone());
     }
 
     app.manage(AppState {

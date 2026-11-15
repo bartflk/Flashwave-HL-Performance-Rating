@@ -35,7 +35,8 @@ import { ClassIcon } from "../ClassIcon";
 import { Fold } from "../Fold";
 import "./profile.css";
 import { t, tx, k } from "../../lib/i18n";
-import { classLabel } from "../analysis/common";
+import { roleClass, unitLabel, type GameFormat } from "../../lib/gameformat";
+import { SixesSeasonsPanel, SixesSoonPanel } from "../sixes/SixesSeasonsPanel";
 import { Help, ComponentTip, StatTip } from "../StatTip";
 import type { GlossaryKey } from "../../lib/glossary";
 import { SortTh, useSort } from "../../lib/sort";
@@ -44,12 +45,31 @@ import { Loading, Refreshing } from "../Spinner";
 /** Below this many rated games a profile is shown, but flagged as thin. */
 const THIN_SAMPLE = 20;
 
-export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; onOpenMatch: (logId: number) => void }) {
+/**
+ * The owner's profile: Highlander by class, or 6v6 by role (`format`), the
+ * same page either way (Flashy: "please bring them up to standard").
+ */
+export function ProfilePage({
+  steamid,
+  onOpenMatch,
+  format = "hl",
+  accountId = null,
+}: {
+  steamid: string | null;
+  onOpenMatch: (logId: number) => void;
+  format?: GameFormat;
+  /** Someone else's 6v6 profile (ETF2L › 6v6 › Players), not the owner's. */
+  accountId?: number | null;
+}) {
+  const sixes = format === "6s";
+  const other = sixes && accountId !== null;
   const [cls, setCls] = useState<string | null>(null);
   const [kind, setKind] = useState<ContextKind | null>(null);
   const period = usePeriod();
   const { from, to } = bounds(period);
-  const [tab, setTabState] = useState<PfTab>(readTab);
+  const [savedTab, setTabState] = useState<PfTab>(readTab);
+  // Someone else's page has Overview, Rating and Career only.
+  const tab: PfTab = other && savedTab !== "overview" && savedTab !== "rating" && savedTab !== "career" ? "overview" : savedTab;
   const setTab = (v: PfTab) => {
     setTabState(v);
     try {
@@ -59,8 +79,8 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
     }
   };
   const q = useQuery({
-    queryKey: ["profile", cls, kind, from, to],
-    queryFn: () => api.getProfile(cls, kind, from, to),
+    queryKey: ["profile", format, accountId, cls, kind, from, to],
+    queryFn: () => (sixes ? api.getProfileSixes(cls, kind, from, to, accountId) : api.getProfile(cls, kind, from, to)),
     placeholderData: keepPreviousData,
   });
   // The split is over every game, so the last one seen stays valid while a
@@ -68,15 +88,17 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
   const lastSplit = useRef<ContextSplit[]>([]);
   if (q.data?.profile) lastSplit.current = q.data.profile.contexts;
 
-  const me = useOwnProfile(steamid);
-  const ownAccount = steamid ? accountOf(steamid) : null;
+  const own = useOwnProfile(other ? null : steamid);
+  const theirs = useQuery({ queryKey: ["player_profile", accountId], queryFn: () => api.getPlayerProfile(accountId!), enabled: other, staleTime: PROFILE_KEEP_MS }).data ?? null;
+  const me = other ? theirs : own;
+  const ownAccount = other ? null : steamid ? accountOf(steamid) : null;
 
   if (q.isPending) return <div className="profile-page"><Loading>{t("Loading profile…")}</Loading></div>;
   if (q.isError) return <div className="profile-page"><ApiError error={q.error} /></div>;
 
   const { classes, profile, fights } = q.data;
   const active = cls ?? profile?.class ?? classes[0]?.[0] ?? null;
-  const hero = me ? <PlayerHeader p={me} own aside={profile && <Signature p={profile} />} /> : null;
+  const hero = me ? <PlayerHeader p={me} own={!other} aside={profile && <Signature p={profile} />} /> : null;
 
   if (classes.length === 0) {
     return (
@@ -84,7 +106,9 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
         {hero}
         <div className="panel">
           <h2>{t("No ratings yet")}</h2>
-          <p className="hint" style={{ marginTop: 6 }}>{t("Press Sync, or Rebuild in Settings.")}</p>
+          <p className="hint" style={{ marginTop: 6 }}>
+            {other ? t("No rated 6v6 game of theirs is stored yet: they fill in as the 6v6 league sample downloads.") : t("Press Sync, or Rebuild in Settings.")}
+          </p>
         </div>
       </div>
     );
@@ -100,7 +124,8 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
       {hero}
 
       <nav className="pf-tabs" role="tablist" aria-label={t("Profile sections")}>
-        {PF_TABS.filter(([id]) => id !== "career" || me).map(([id, label]) => (
+        {/* Someone else's: what is about them, not about your own logs. */}
+        {PF_TABS.filter(([id]) => (id !== "career" || me) && (!other || id === "overview" || id === "rating" || id === "career")).map(([id, label]) => (
           <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "pf-tab on" : "pf-tab"} onClick={() => setTab(id)}>
             {t(label)}
           </button>
@@ -121,7 +146,7 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
                 }}
                 title={n < THIN_SAMPLE ? t("Only {n} rated games — read with care", { n: n }) : undefined}
               >
-                <ClassIcon cls={c} size={20} /> {classLabel(c)} <span className="count">{n}</span>
+                <ClassIcon cls={roleClass(c)} size={20} /> {unitLabel(c)} <span className="count">{n}</span>
               </button>
             ))}
           </nav>
@@ -134,11 +159,11 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
 
       {classBound && !profile && (
         <div className="panel">
-          <p className="hint">{tx("No rated {active} {1}{2}.", { "1": kind ? t(KIND_PLURAL[kind]).toLowerCase() : t("games"), "2": period.kind !== "all" ? t(" in this period") : "", active: classLabel(active) })}</p>
+          <p className="hint">{tx("No rated {active} {1}{2}.", { "1": kind ? t(KIND_PLURAL[kind]).toLowerCase() : t("games"), "2": period.kind !== "all" ? t(" in this period") : "", active: unitLabel(active) })}</p>
         </div>
       )}
 
-      {tab === "overview" && profile && <Overview p={profile} me={me} headline={q.data.headline ?? null} onOpenMatch={onOpenMatch} onKind={setKind} onCareer={() => setTab("career")} />}
+      {tab === "overview" && profile && <Overview p={profile} me={me} headline={q.data.headline ?? null} onOpenMatch={onOpenMatch} onKind={setKind} onCareer={() => setTab("career")} sixes={sixes} />}
 
       {tab === "rating" && (
         <>
@@ -150,15 +175,31 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
               <Opposition bands={profile.opposition} byDivision={profile.byDivision ?? []} />
             </>
           )}
-          {active && (
-            <Fold id="profile-seasons">
-              <SeasonsPanel cls={active} />
-            </Fold>
+          {sixes ? (
+            !other && <SixesSeasonsPanel />
+          ) : (
+            active && (
+              <Fold id="profile-seasons">
+                <SeasonsPanel cls={active} />
+              </Fold>
+            )
           )}
         </>
       )}
 
-      {tab === "fights" && profile && (
+      {tab === "fights" && profile && sixes && (
+        <SixesSoonPanel
+          title={t("Fights & aim")}
+          why={t("Fights in context come from the raw server logs, aim and lives from STV demos. 6v6's are read once its demos are in.")}
+          items={[
+            [t("Fights in context"), t("Kills and deaths by who was alive, and whether they were traded")],
+            [t("Aim"), t("How far off the crosshair was before each kill, from the demo")],
+            [t("Lives"), t("How long each life lasted and where it ended")],
+          ]}
+        />
+      )}
+
+      {tab === "fights" && profile && !sixes && (
         <>
           {fights && (
             <Fold id="profile-fights">
@@ -180,9 +221,16 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
 
       {tab === "maps" && (
         <>
-          {profile && <Tendencies cls={profile.class} />}
+          {profile && <Tendencies cls={roleClass(profile.class)} sixes={sixes} />}
+          {sixes && (
+            <SixesSoonPanel
+              title={t("Lives on a map")}
+              why={t("Your routes and where each life ended, from STV demos.")}
+              items={[[t("Lives on a map"), t("Each life's route on the map, from the demo")]]}
+            />
+          )}
           {/* Q68 (Emiel): your own routes, without looking yourself up under Players. */}
-          {ownAccount !== null && (
+          {ownAccount !== null && !sixes && (
             <section className="panel">
               <h2>{t("Lives on a map")}</h2>
               <LivesOnMapTab accountId={ownAccount} name={me?.name ?? t("you")} />
@@ -191,13 +239,23 @@ export function ProfilePage({ steamid, onOpenMatch }: { steamid: string | null; 
         </>
       )}
 
-      {tab === "depth" && ownAccount !== null && <DeepPanels accountId={ownAccount} />}
+      {tab === "depth" && ownAccount !== null && !sixes && <DeepPanels accountId={ownAccount} />}
+      {tab === "depth" && sixes && (
+        <SixesSoonPanel
+          title={t("In depth")}
+          why={t("Season by season numbers against each division, from the league's own logs: 6v6's come with the 6v6 league sample.")}
+          items={[
+            [t("By season"), t("Your numbers each season against that division's")],
+            [t("By map"), t("Your numbers on each map against the league's")],
+          ]}
+        />
+      )}
 
       {tab === "career" && me && <Career me={me} />}
 
       {tab === "teammates" && (
         <section className="panel">
-          <TeammatesPanel />
+          <TeammatesPanel sixes={sixes} />
         </section>
       )}
     </div>
@@ -250,7 +308,7 @@ function Signature({ p }: { p: Profile }) {
   return (
     <div className="pp-sig">
       <span className="pp-sig-label">
-        <ClassIcon cls={p.class} size={18} /> {tx("{0} rating", { "0": classLabel(p.class) })}
+        <ClassIcon cls={roleClass(p.class)} size={18} /> {tx("{0} rating", { "0": unitLabel(p.class) })}
         {p.filter && <span className="muted"> · {t(KIND_PLURAL[p.filter]).toLowerCase()}</span>}
       </span>
       <span className="pp-sig-value">{rating(p.careerAvg)}</span>
@@ -407,8 +465,8 @@ function Opposition({ bands, byDivision }: { bands: OppositionBand[]; byDivision
  * exist, where you stood and how you moved. Zones read by your own side:
  * "Own Left" is your team's Left whichever colour you were.
  */
-function Tendencies({ cls }: { cls: string }) {
-  const q = useQuery({ queryKey: ["tendencies", cls], queryFn: () => api.getTendencies(cls), staleTime: 5 * 60_000 });
+function Tendencies({ cls, sixes = false }: { cls: string; sixes?: boolean }) {
+  const q = useQuery({ queryKey: ["tendencies", cls, sixes], queryFn: () => api.getTendencies(cls, sixes), staleTime: 5 * 60_000 });
   const maps = q.data ?? [];
   if (maps.length === 0) return null;
   return (
@@ -486,14 +544,15 @@ function Overview(props: {
   onOpenMatch: (logId: number) => void;
   onKind: (k: ContextKind | null) => void;
   onCareer: () => void;
+  sixes?: boolean;
 }) {
-  const { p, me, headline, onOpenMatch, onKind, onCareer } = props;
+  const { p, me, headline, onOpenMatch, onKind, onCareer, sixes = false } = props;
   const thin = p.games < THIN_SAMPLE;
   const scope = p.filter ? t(KIND_PLURAL[p.filter]).toLowerCase() : t("games");
   return (
     <>
       {thin && (
-        <p className="thin-note">{tx("Only {games} rated {1} {scope}. Treat these numbers as a rough sketch, not a verdict.", { "1": classLabel(p.class), games: p.games, scope: scope })}</p>
+        <p className="thin-note">{tx("Only {games} rated {1} {scope}. Treat these numbers as a rough sketch, not a verdict.", { "1": unitLabel(p.class), games: p.games, scope: scope })}</p>
       )}
       <Kpis p={p} winRate={!headline} />
       {headline && <HeadlineStrip h={headline} cls={p.class} />}
@@ -509,7 +568,16 @@ function Overview(props: {
         </div>
         <aside className="pf-side">
           <KindSplit split={p.contexts} active={p.filter} onKind={onKind} />
-          {me && (
+          {sixes ? (
+            <section className="panel pf-card">
+              <header className="pf-card-head">
+                <h2>
+                  <Etf2lMark size={14} /> {t("Recent officials")}
+                </h2>
+              </header>
+              <RecentSixesOfficials p={p} onOpenMatch={onOpenMatch} />
+            </section>
+          ) : me && (
             <section className="panel pf-card">
               <header className="pf-card-head">
                 <h2>
@@ -529,6 +597,44 @@ function Overview(props: {
 }
 
 /**
+ * The owner's latest 6v6 officials in this role, from the profile's own
+ * games: the Highlander card reads ETF2L's Highlander officials instead.
+ */
+function RecentSixesOfficials({ p, onOpenMatch }: { p: Profile; onOpenMatch: (logId: number) => void }) {
+  const recent = p.trend.filter((g) => g.kind === "official").slice(-5).reverse();
+  if (recent.length === 0) return <p className="hint">{t("No 6v6 official in this role yet.")}</p>;
+  return (
+    <ul className="pp-matches">
+      {recent.map((g) => {
+        const m = splitMap(g.map);
+        return (
+          <li
+            key={g.logId}
+            className={`pp-open${g.result === "W" ? " won" : g.result === "L" ? " lost" : ""}`}
+            role="link"
+            tabIndex={0}
+            onClick={() => onOpenMatch(g.logId)}
+            onKeyDown={(e) => e.key === "Enter" && onOpenMatch(g.logId)}
+            title={t("Open the match and its logs")}
+          >
+            <span className="pp-vs">
+              <strong>{m.name ?? t("Unknown map")}</strong>
+            </span>
+            <span className="muted pp-where">{g.playedAt ? formatDate(g.playedAt, true) : ""}</span>
+            <span className="pp-score">
+              <RatingValue v={g.score} />
+            </span>
+            <span className="pp-go" aria-hidden>
+              ›
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/**
  * The plain numbers beside the rating, as trends.tf leads with them (Flashy:
  * "damage per minute, accuracy, time played, wins and losses ... at a
  * glance"): over the same games as the rest of the page.
@@ -539,7 +645,7 @@ function HeadlineStrip({ h, cls }: { h: Headline; cls: string }) {
   const decided = h.won + h.lost;
   const kd = h.deaths > 0 ? h.kills / h.deaths : null;
   const tiles: Array<[GlossaryKey, string, React.ReactNode, React.ReactNode, string?]> = [
-    ["timePlayed", t("Time played"), tx("{0} h {1} m", { "0": hours, "1": minutes }), tx("{0} games as {1}", { "0": h.games, "1": classLabel(cls) })],
+    ["timePlayed", t("Time played"), tx("{0} h {1} m", { "0": hours, "1": minutes }), tx("{0} games as {1}", { "0": h.games, "1": unitLabel(cls) })],
     [
       "record",
       t("Record"),
@@ -759,7 +865,7 @@ function Components({ items, formWindow }: { items: ComponentSummary[]; formWind
         {items.map((c) => (
           <div className="comp-row" key={c.component}>
             <div className="comp-label">
-              <ComponentTip component={c.component} label={t(c.label)} weight={c.weight} />
+              <ComponentTip component={c.component} label={rustText(c.label)} weight={c.weight} />
               {c === weakest && <span className="tag weak">{t("weakest")}</span>}
               {c === strongest && <span className="tag strong">{t("strongest")}</span>}
             </div>
@@ -767,7 +873,7 @@ function Components({ items, formWindow }: { items: ComponentSummary[]; formWind
             <div
               className="comp-track"
               role="img"
-              aria-label={t("{label}: {1} recently, {2} career", { "1": c.formPct.toFixed(0), "2": c.careerPct.toFixed(0), label: t(c.label) })}
+              aria-label={t("{label}: {1} recently, {2} career", { "1": c.formPct.toFixed(0), "2": c.careerPct.toFixed(0), label: rustText(c.label) })}
             >
               <span className="comp-mid" />
               <span className="comp-fill" style={{ width: `${c.formPct}%` }} />
@@ -775,7 +881,7 @@ function Components({ items, formWindow }: { items: ComponentSummary[]; formWind
             </div>
             <span className="comp-value">{c.formPct.toFixed(0)}</span>
             <span className="comp-raw muted">
-              {fmtRaw(c)} <span className="unit">{t(c.unit)}</span>
+              {fmtRaw(c)} <span className="unit">{c.unit ? rustText(c.unit) : ""}</span>
             </span>
           </div>
         ))}
@@ -841,7 +947,7 @@ function GameList(props: { title: string; games: GameRef[]; onOpen: (logId: numb
 }
 
 function fmtRaw(c: ComponentSummary): string {
-  if (c.component === "headshot_share" || c.component === "untraded") return `${c.formRaw.toFixed(0)}%`;
+  if (c.component === "headshot_share" || c.component === "untraded" || c.component === "space") return `${c.formRaw.toFixed(0)}%`;
   if (c.component === "heal" || c.component === "dpm") return c.formRaw.toFixed(0);
   return c.formRaw.toFixed(2);
 }
@@ -851,14 +957,68 @@ function fmtRaw(c: ComponentSummary): string {
  * the text (rating.rs, career extras), so the few shapes it builds are
  * recognised here and translated whole. Anything else is looked up as is.
  */
+/**
+ * Text the 6v6 profile's Rust sends (sixes_profile.rs: component labels and
+ * units, career cards), each its own t() call so the translation script
+ * finds it.
+ */
+const RUST_TEXT: Record<string, () => string> = {
+  "Round impact": () => t("Round impact"),
+  "per 10 min": () => t("per 10 min"),
+  "Kills": () => t("Kills"),
+  "Assists": () => t("Assists"),
+  "Deaths": () => t("Deaths"),
+  "Damage per minute": () => t("Damage per minute"),
+  "dmg/min": () => t("dmg/min"),
+  "Pressure": () => t("Pressure"),
+  "Space created": () => t("Space created"),
+  "of the team's damage taken": () => t("of the team's damage taken"),
+  "Airshots": () => t("Airshots"),
+  "Damage ratio": () => t("Damage ratio"),
+  "dealt per taken": () => t("dealt per taken"),
+  "Medic picks": () => t("Medic picks"),
+  "Deaths beside the Medic": () => t("Deaths beside the Medic"),
+  "Sticky kills": () => t("Sticky kills"),
+  "Sentry kills": () => t("Sentry kills"),
+  "Reflect kills": () => t("Reflect kills"),
+  "Engineer deaths": () => t("Engineer deaths"),
+  "Headshot share": () => t("Headshot share"),
+  "of kills": () => t("of kills"),
+  "Backstabs": () => t("Backstabs"),
+  "Healing per minute": () => t("Healing per minute"),
+  "heal/min": () => t("heal/min"),
+  "Übers against theirs": () => t("Übers against theirs"),
+  "more": () => t("more"),
+  "Drops against theirs": () => t("Drops against theirs"),
+  "Deaths against theirs": () => t("Deaths against theirs"),
+  "Advantages lost": () => t("Advantages lost"),
+  "per game": () => t("per game"),
+  "Airshots, career": () => t("Airshots, career"),
+  "Kills, career": () => t("Kills, career"),
+  "Assists, career": () => t("Assists, career"),
+  "Healing per minute, career": () => t("Healing per minute, career"),
+  "Enemies you hit in the air, across every rated game in this role.": () => t("Enemies you hit in the air, across every rated game in this role."),
+  "Enemy Medics you killed, across every rated game in this role.": () => t("Enemy Medics you killed, across every rated game in this role."),
+  "Kills across every rated game in this role.": () => t("Kills across every rated game in this role."),
+  "Assists across every rated game in this role.": () => t("Assists across every rated game in this role."),
+  "Your healing per minute, averaged over every rated game as Medic.": () => t("Your healing per minute, averaged over every rated game as Medic."),
+};
+
+/** A label or unit from Rust in the user's language. */
+function rustText(s: string): string {
+  return RUST_TEXT[s]?.() ?? t(s);
+}
+
 function extraText(s: string): string {
   let m = /^([\d.]+) per game$/.exec(s);
   if (m) return t("{0} per game", { "0": m[1] });
   m = /^([+-]?\d+) net$/.exec(s);
   if (m) return t("{0} net", { "0": m[1] });
   m = /^vs enemy (\w+), career$/.exec(s);
-  if (m) return t("vs enemy {0}, career", { "0": classLabel(m[1]) });
+  if (m) return t("vs enemy {0}, career", { "0": unitLabel(m[1]) });
   m = /^Your kills on the enemy (\w+) against their kills on you, across every rated game as \w+\.$/.exec(s);
-  if (m) return t("Your kills on the enemy {0} against their kills on you, across every rated game as {0}.", { "0": classLabel(m[1]) });
-  return t(s);
+  if (m) return t("Your kills on the enemy {0} against their kills on you, across every rated game as {0}.", { "0": unitLabel(m[1]) });
+  m = /^over (\d+) games$/.exec(s);
+  if (m) return t("over {0} games", { "0": m[1] });
+  return rustText(s);
 }

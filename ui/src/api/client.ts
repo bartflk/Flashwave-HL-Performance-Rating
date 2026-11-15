@@ -5,6 +5,8 @@ import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { t } from "../lib/i18n";
 import type {
+  ActivityView,
+  EtfBan,
   Diagnostics,
   ModelShift,
   StvStage,
@@ -64,6 +66,18 @@ import type {
   RglBan,
   RglMatch,
   RglMatchMore,
+  SixesSeason,
+  FormatsPlayed,
+  SixesMatches,
+  StoredRole,
+  Stint,
+  SixesMatchStats,
+  SixesRatingRow,
+  SixesProfile,
+  SixesSampleStatus,
+  SixesBoardRow,
+  SixesHonours,
+  StoredFormat,
   RglMatchStats,
   RglPlayer,
   RglPlayerMore,
@@ -213,6 +227,11 @@ const realApi = {
   getDiagnostics: () => invoke<Diagnostics>("get_diagnostics"),
   /** The last lines of this run's log file. */
   recentLog: (lines?: number) => invoke<string>("recent_log", { lines: lines ?? null }),
+  /** The activity feed after line `since`, and every site's requests this run. */
+  getActivity: (since: number, limit?: number) => invoke<ActivityView>("get_activity", { since, limit: limit ?? null }),
+  setActivityVerbose: (on: boolean) => invoke<boolean>("set_activity_verbose", { on }),
+  /** Every active ETF2L ban, read from ETF2L once a day. */
+  getEtf2lBans: () => invoke<EtfBan[]>("get_etf2l_bans"),
   getModelShift: () => invoke<ModelShift | null>("get_model_shift"),
   /** The rating the app runs at startup for a new model: its progress, and its end. */
   onStartupRating: async (h: { onProgress: (p: Progress) => void; onDone: () => void }): Promise<UnlistenFn> => {
@@ -225,13 +244,16 @@ const realApi = {
   getMatch: (logId: number) => invoke<MatchDetail | null>("get_match", { logId }),
   getProfile: (cls: string | null, kind: ContextKind | null = null, from: number | null = null, to: number | null = null) =>
     invoke<ProfileResponse>("get_profile", { class: cls, kind, from, to }),
+  /** The same profile for 6v6, by role: `classes` holds the roles played (the 6v6 plan, P7). */
+  getProfileSixes: (role: string | null, kind: ContextKind | null = null, from: number | null = null, to: number | null = null, account: number | null = null) =>
+    invoke<ProfileResponse>("get_profile_sixes", { role, kind, from, to, account }),
   /** Your name and picture; null before a SteamID is set. */
   getOwner: () => invoke<Owner | null>("get_owner"),
   /** Seasons from your officials, newest first. */
   listSeasons: () => invoke<Season[]>("list_seasons"),
   getSeasons: (cls: string) => invoke<SeasonsView>("get_seasons", { class: cls }),
   /** `all` includes pugs; otherwise officials and scrims only. */
-  getTeammates: (all: boolean) => invoke<Teammates>("get_teammates", { all }),
+  getTeammates: (all: boolean, sixes = false) => invoke<Teammates>("get_teammates", { all, sixes }),
   contextCounts: () => invoke<ContextCounts>("context_counts"),
   myTournaments: () => invoke<Tournament[]>("my_tournaments"),
   rawlogStats: () => invoke<RawlogStats>("rawlog_stats"),
@@ -301,10 +323,11 @@ const realApi = {
   /** Null for a match with no cart to read (Q11). */
   getCart: (logId: number, map?: string) => invoke<CartView | null>("get_cart", { logId, map: map ?? null }),
   /** Q29: one season's division tables; the newest when no season is given. */
-  getLeagues: (season?: number) => invoke<LeagueView>("get_leagues", { season: season ?? null }),
+  getLeagues: (season?: number, format?: StoredFormat) => invoke<LeagueView>("get_leagues", { season: season ?? null, format: format ?? null }),
   getTeam: (teamId: number) => invoke<TeamView | null>("get_team", { teamId }),
   getSeasonsOverview: () => invoke<SeasonTile[]>("get_seasons_overview"),
-  getSeasonBanner: (season: number, seasonName: string, large = false) => invoke<string | null>("get_season_banner", { season, seasonName, large }),
+  getSeasonBanner: (season: number, seasonName: string, large = false, format: StoredFormat = "highlander") =>
+    invoke<string | null>("get_season_banner", { season, seasonName, large, format }),
   getSeasonPodiums: (season: number) => invoke<Podium[]>("get_season_podiums", { season }),
   getTeamHonours: (teamId: number) => invoke<TeamHonours>("get_team_honours", { teamId }),
   getMatchSides: (logId: number) => invoke<MatchSides | null>("get_match_sides", { logId }),
@@ -312,7 +335,7 @@ const realApi = {
   getTeamTransfers: (teamId: number) => invoke<TeamTransfers>("get_team_transfers", { teamId }),
   getTeamInfo: (teamId: number) => invoke<TeamInfo>("get_team_info", { teamId }),
   getFixtures: () => invoke<Fixture[]>("get_fixtures"),
-  getNews: () => invoke<NewsItem[]>("get_news"),
+  getNews: (format?: StoredFormat) => invoke<NewsItem[]>("get_news", { format: format ?? null }),
   getRglSeasons: () => invoke<RglSeasonItem[]>("get_rgl_seasons"),
   getRglSeason: (id: number) => invoke<RglSeason>("get_rgl_season", { id }),
   getRglSeasonMatches: (id: number) => invoke<RglMatch[]>("get_rgl_season_matches", { id }),
@@ -330,6 +353,22 @@ const realApi = {
   },
   getRglMatch: (id: number) => invoke<RglMatch | null>("get_rgl_match", { id }),
   getRglMatchMore: (id: number) => invoke<RglMatchMore | null>("get_rgl_match_more", { id }),
+  /** ETF2L 6v6's current season (prototype). */
+  getSixesSeason: () => invoke<SixesSeason | null>("get_sixes_season"),
+  getSixesMatches: () => invoke<SixesMatches | null>("get_sixes_matches"),
+  getMatchRoles: (logId: number) => invoke<StoredRole[]>("get_match_roles", { logId }),
+  getMatchStints: (logId: number) => invoke<Stint[]>("get_match_stints", { logId }),
+  getSixesMatchStats: (logId: number) => invoke<SixesMatchStats | null>("get_sixes_match_stats", { logId }),
+  getSixesProfile: () => invoke<SixesProfile>("get_sixes_profile"),
+  getSixesSample: () => invoke<SixesSampleStatus>("get_sixes_sample"),
+  getSixesBoard: (role: string) => invoke<SixesBoardRow[]>("get_sixes_board", { role }),
+  setOwnRole: (logId: number, role: string | null) => invoke<StoredRole[]>("set_own_role", { logId, role }),
+  getSixesHonours: (season: number) => invoke<SixesHonours[]>("get_sixes_honours", { season }),
+  setSixesSample: (on: boolean) => invoke<SixesSampleStatus>("set_sixes_sample", { on }),
+  getSixesRatings: (q: { logId?: number; accountId?: number }) =>
+    invoke<SixesRatingRow[]>("get_sixes_ratings", { logId: q.logId ?? null, accountId: q.accountId ?? null }),
+  formatsPlayed: () => invoke<FormatsPlayed>("formats_played"),
+  setFormatsPlayed: (formats: StoredFormat[]) => invoke<FormatsPlayed>("set_formats_played", { formats }),
   getRglMatchStats: (id: number) => invoke<RglMatchStats | null>("get_rgl_match_stats", { id }),
   getRglTeam: (id: number) => invoke<RglTeamPage | null>("get_rgl_team", { id }),
   getRglTeamSeasons: (ids: number[]) => invoke<RglTeamSeason[]>("get_rgl_team_seasons", { ids }),
@@ -348,9 +387,9 @@ const realApi = {
   searchTeams: (query: string) => invoke<TeamHit[]>("search_teams", { query }),
   getLeagueMatch: (matchId: number) => invoke<LeagueMatch | null>("get_league_match", { matchId }),
   getMatchPage: (matchId: number) => invoke<Etf2lMatchPage | null>("get_match_page", { matchId }),
-  getRecruitment: () => invoke<Recruitment>("get_recruitment"),
+  getRecruitment: (format?: StoredFormat) => invoke<Recruitment>("get_recruitment", { format: format ?? null }),
   getRecruitPost: (id: number) => invoke<RecruitDetail | null>("get_recruit_post", { id }),
-  getSeasonResults: (season: number) => invoke<ResultRow[]>("get_season_results", { season }),
+  getSeasonResults: (season: number, format?: StoredFormat) => invoke<ResultRow[]>("get_season_results", { season, format: format ?? null }),
   checkNewLogs: () => invoke<NewLogs | null>("check_new_logs"),
   getPlayerTeams: (accountId: number) => invoke<Stay[]>("get_player_teams", { accountId }),
   /** Q28: a map's callouts; the owner's copy wins over the built-in one. */
@@ -361,7 +400,7 @@ const realApi = {
   knownMaps: () => invoke<string[]>("known_maps"),
   setRoundMap: (logId: number, rounds: number[], map: string | null) => invoke<void>("set_round_map", { logId, rounds, map }),
   getPositions: (logId: number, map: string) => invoke<PositionsView | null>("get_positions", { logId, map }),
-  getTendencies: (cls: string) => invoke<MapTendencies[]>("get_tendencies", { class: cls }),
+  getTendencies: (cls: string, sixes = false) => invoke<MapTendencies[]>("get_tendencies", { class: cls, sixes }),
   /** Null when too few kills are stored on the map to draw it. */
   getMapView: (map: string) => invoke<MapView | null>("get_map_view", { map }),
   /** Null when no image for the map is saved in the app's overviews folder. */

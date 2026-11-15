@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ApiError } from "../ApiError";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { type Fixture, type LeagueRecord, type LeagueTableRow, type Podium, type SeasonTile, type Stay, type TeamEtf2l, type TeamHonours, type TeamInfo, type TeamTransfers, type TeamView } from "../../api/types";
+import { type Fixture, type LeagueRecord, type LeagueTableRow, type Podium, type SeasonTile, type StoredFormat, type Stay, type TeamEtf2l, type TeamHonours, type TeamInfo, type TeamTransfers, type TeamView } from "../../api/types";
 import { formatDate, formatMonth, formatStay, rating } from "../../lib/format";
 import { openLeagueMatch, openPlayer } from "../../lib/goto";
 import { openOnKey } from "../../lib/rows";
@@ -24,6 +24,7 @@ import { SortTh, useSort } from "../../lib/sort";
 import { FixtureStrength, RosterStrength } from "../match/OpponentStrength";
 import { Loading, Refreshing } from "../Spinner";
 import { Backdrop } from "../Backdrop";
+import { BanTag } from "../BanTag";
 
 /**
  * The league's screens (Q29, and Flashy's UX passes), shown inside the ETF2L
@@ -127,8 +128,8 @@ export function seasonTitle(s: { season: number; seasonName: string }): string {
 }
 
 /** The season's banner, shrunk once by the app: small for a tile, large for the header. */
-export function useBanner(s: { season: number; seasonName: string }, large = false) {
-  return useQuery({ queryKey: ["season_banner", s.season, large], queryFn: () => api.getSeasonBanner(s.season, s.seasonName, large), staleTime: Infinity }).data ?? null;
+export function useBanner(s: { season: number; seasonName: string }, large = false, format: StoredFormat = "highlander") {
+  return useQuery({ queryKey: ["season_banner", format, s.season, large], queryFn: () => api.getSeasonBanner(s.season, s.seasonName, large, format), staleTime: Infinity }).data ?? null;
 }
 
 /** RED for even seasons, BLU for odd: the cards without a banner alternate. */
@@ -669,6 +670,7 @@ function TeamOverview({
                 <button className="linkish ts-lineup-name" onClick={() => openPlayer(r.accountId)}>
                   {r.name}
                 </button>
+                <BanTag accountId={r.accountId} short />
                 <RoleChip role={roles.get(r.accountId)} />
               </span>
               <span className="muted">{tx("{0} officials", { "0": s!.officials })}</span>
@@ -769,7 +771,7 @@ function Lineup({ v, roles }: { v: TeamView; roles: Map<number, string> }) {
             {rows.map(({ r, officials, cls, rating: score }) => (
               <tr key={r.accountId} className="teams-row" onClick={() => openPlayer(r.accountId)} title={t("Open {0}'s profile", { "0": r.name })}>
                 <td className="nowrap">
-                  <strong>{r.name}</strong> <RoleChip role={roles.get(r.accountId)} />
+                  <strong>{r.name}</strong> <BanTag accountId={r.accountId} short /> <RoleChip role={roles.get(r.accountId)} />
                 </td>
                 <td className="nowrap">
                   {cls ? (

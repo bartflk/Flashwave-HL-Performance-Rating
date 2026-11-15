@@ -14,6 +14,7 @@ import { DivisionBadge, medalTitles, seasonShort } from "./PlayerProfile";
 import "./players.css";
 import { Etf2lMark } from "../Etf2lMark";
 import { Loading } from "../Spinner";
+import { BanTag } from "../BanTag";
 
 /**
  * A player card from the scoreboard (Q40, Flashy; PLAN §26): click a name
@@ -153,6 +154,7 @@ export function PlayerPopCard({ target, divisions, onClose }: { target: CardTarg
           <div className="pc-name-row">
             <strong>{p?.name ?? target.name}</strong>
             {target.isMe && <span className="you-tag">{t("you")}</span>}
+            <BanTag accountId={target.accountId} />
           </div>
           <div className="pc-divs">
             {then && (

@@ -3,6 +3,7 @@ import { ApiError } from "../ApiError";
 import { friendlyText } from "../../lib/apierror";
 import { ReflectPanel } from "./DemoStats";
 import { MatchTabs } from "./MatchTabs";
+import { SixesStats } from "./SixesStats";
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -140,6 +141,11 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
               }
             />
           </Fold>
+          {shown.format === "sixes" && (
+            <Fold id="sixes">
+              <SixesStats d={shown} />
+            </Fold>
+          )}
           <Fold id="matchups">
             <Matchups d={shown} />
           </Fold>

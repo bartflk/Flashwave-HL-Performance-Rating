@@ -11,6 +11,7 @@ use std::path::PathBuf;
 
 mod logsdump;
 mod logsdump_scales;
+mod logsdump_sixes;
 mod logstf_summary;
 
 const USAGE: &str = "\
@@ -59,6 +60,21 @@ COMMANDS:
                            nine classes. Ends with a model proposed from the
                            fit and what it is worth cross-validated. --weights
                            takes a TOML file with a [model.CLASS] table; repeatable
+    sixes-validate [--from SIXES.sqlite3 [--kinds official,pug,match] [--limit LOGS]] [--json]
+                           How often the 6v6 rating, each role's and each
+                           component, picks the side that won, over every stored
+                           6v6 log (own and league sample), or over the games
+                           `logsdump-sixes` wrote (officials unless --kinds)
+    sixes-sample [on|off|status]
+                           Switch the 6v6 league sample on or off while the app
+                           is closed; it downloads from the app's next start
+    logsdump-sixes-pool <SIXES.sqlite3> <OUT.json>
+                           The 6v6 rating's built-in league pool from the officials
+                           logsdump-sixes wrote: crates/hl-ingest/src/sixes_pool.json
+    logsdump-sixes <DUMP.sql> <INDEX.sqlite3> <OUT.sqlite3> [--limit ROWS]
+                           Every 6v6 official, scrim and pug in the dump (each
+                           game once, as the index decided): each player's role
+                           and the 6v6 rating's measurements, into a file of its own
     guide [--json]         Every class's model: its components, their share of
                            the rating and what each one means (the app's 'How
                            ratings work' page)
@@ -175,7 +191,8 @@ async fn run() -> Result<()> {
     // `snapshot --check` reads only the snapshot built into this binary.
     let touches_db = !matches!(command.first().copied(), None | Some("help") | Some("--help") | Some("-h"))
         && !(command.first() == Some(&"snapshot") && command.contains(&"--check"))
-        && !matches!(command.first().copied(), Some("logsdump" | "logsdump-summary"));
+        && !matches!(command.first().copied(), Some("logsdump" | "logsdump-summary" | "logsdump-sixes" | "logsdump-sixes-pool"))
+        && !(command.first() == Some(&"sixes-validate") && command.contains(&"--from"));
     if touches_db {
         hl_ingest::lock::require_free(&db_path, forced)?;
     }
@@ -205,6 +222,20 @@ async fn run() -> Result<()> {
             };
             logsdump_scales::run(std::path::Path::new(dump), std::path::Path::new(index), std::path::Path::new(out), limit).await
         }
+
+        // Every 6v6 game in the dump, its performances by role (the 6v6
+        // plan, P5: the release waits on it).
+        ["logsdump-sixes", dump, index, out, rest @ ..] => {
+            let limit = match rest {
+                ["--limit", n] => Some(n.parse().context("--limit needs a number of rows")?),
+                [] => None,
+                _ => bail!("usage: hl logsdump-sixes <logs.sql> <index.sqlite3> <out.sqlite3> [--limit <rows>]"),
+            };
+            logsdump_sixes::run(std::path::Path::new(dump), std::path::Path::new(index), std::path::Path::new(out), limit).await
+        }
+
+        // The 6v6 rating's built-in league pool, from those games' officials.
+        ["logsdump-sixes-pool", file, out] => logsdump_sixes::pool(std::path::Path::new(file), std::path::Path::new(out)).await,
 
         // The part of that index the app ships: names, careers, years.
         ["logsdump-summary", index, out] => logstf_summary::run(std::path::Path::new(index), std::path::Path::new(out)).await,
@@ -435,6 +466,42 @@ async fn run() -> Result<()> {
         ["rate"] => {
             let db = Db::connect(&db_path).await?;
             rate(&db, &db_path).await
+        }
+
+        // The 6v6 league sample's switch (the 6v6 plan, P5), for when the
+        // app is closed; the app's own Start does the same.
+        ["sixes-sample", rest @ ..] => {
+            let db = Db::connect(&db_path).await?;
+            match rest {
+                ["on"] => hl_ingest::sixes_sample::set_enabled(&db, true).await?,
+                ["off"] => hl_ingest::sixes_sample::set_enabled(&db, false).await?,
+                [] | ["status"] => {}
+                _ => bail!("usage: hl sixes-sample [on|off|status]"),
+            }
+            let s = hl_ingest::sixes_sample::status(&db).await?;
+            println!("6v6 league sample: {}, {} seasons back", if s.enabled { "on" } else { "off" }, s.seasons_back);
+            println!("{}", serde_json::to_string(&s.counts)?);
+            Ok(())
+        }
+
+        ["sixes-validate", rest @ ..] => {
+            let v = match flag_value::<String>(rest, "--from")? {
+                Some(file) => {
+                    let kinds = flag_value::<String>(rest, "--kinds")?.unwrap_or_else(|| "official".into());
+                    let limit = flag_value::<usize>(rest, "--limit")?;
+                    logsdump_sixes::validate(std::path::Path::new(&file), &kinds, limit).await?
+                }
+                None => {
+                    let db = Db::connect(&db_path).await?;
+                    hl_ingest::sixes_rating::validate(&db).await?
+                }
+            };
+            if rest.contains(&"--json") {
+                println!("{}", serde_json::to_string(&v)?);
+            } else {
+                print!("{v}");
+            }
+            Ok(())
         }
 
         ["snapshot", rest @ ..] => {
@@ -1276,7 +1343,7 @@ async fn run() -> Result<()> {
         ["leagues", rest @ ..] => {
             let db = Db::connect(&db_path).await?;
             let season = rest.first().and_then(|s| s.parse::<i64>().ok());
-            let v = hl_ingest::leagues::season(&db, season).await?;
+            let v = hl_ingest::leagues::season(&db, season, hl_core::GameFormat::Highlander).await?;
             if rest.contains(&"--json") {
                 println!("{}", serde_json::to_string(&v)?);
                 return Ok(());
@@ -2240,7 +2307,7 @@ async fn run() -> Result<()> {
             let me = db.get_me().await?.context("no owner set")?;
             let class = TfClass::parse(class)?;
             let data = db_path.parent().context("no data folder")?.to_path_buf();
-            for m in hl_ingest::callouts::tendencies(&db, &data, me.account_id(), class.as_str()).await? {
+            for m in hl_ingest::callouts::tendencies(&db, &data, me.account_id(), class.as_str(), false).await? {
                 println!("{}{} -- {} matches, {} STVs ({} min alive)", m.map, if m.draft { " (draft)" } else { "" }, m.matches, m.stvs, m.alive_s / 60);
                 let fights: u32 = m.fights.iter().map(|f| f.kills + f.deaths).sum::<u32>() + m.unzoned;
                 for f in m.fights.iter().take(8) {

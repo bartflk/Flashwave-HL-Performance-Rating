@@ -15,6 +15,18 @@ const KEY: &str = "etf2l_news";
 const FRESH: i64 = 30 * 60;
 /// ETF2L's "Highlander" category.
 const HIGHLANDER: i64 = 18;
+/// ETF2L's "6v6" category (the 6v6 plan, P2).
+const SIXES: i64 = 22;
+/// ETF2L's 6v6 news category, for the 6v6 season banners.
+pub(crate) const SIXES_CATEGORY: i64 = SIXES;
+
+/// A format's category and where its list is kept.
+fn category(format: hl_core::GameFormat) -> (i64, &'static str) {
+    match format {
+        hl_core::GameFormat::Highlander => (HIGHLANDER, KEY),
+        hl_core::GameFormat::Sixes => (SIXES, "etf2l_news_6v6"),
+    }
+}
 const PER_PAGE: usize = 12;
 
 fn now() -> i64 {
@@ -99,14 +111,15 @@ pub fn parse(body: &str) -> Option<Vec<(NewsItem, String)>> {
     Some(out)
 }
 
-async fn held(db: &Db) -> Result<Option<Held>> {
-    Ok(db.get_setting(KEY).await?.and_then(|v| serde_json::from_str(&v).ok()))
+async fn held(db: &Db, key: &str) -> Result<Option<Held>> {
+    Ok(db.get_setting(key).await?.and_then(|v| serde_json::from_str(&v).ok()))
 }
 
-/// The latest Highlander posts. Best effort: a failed read keeps the last
-/// list, and no list at all is an empty one.
-pub async fn latest(db: &Db, sources: &Sources) -> Result<Vec<NewsItem>> {
-    let held = held(db).await?;
+/// The latest posts of one format. Best effort: a failed read keeps the
+/// last list, and no list at all is an empty one.
+pub async fn latest(db: &Db, sources: &Sources, format: hl_core::GameFormat) -> Result<Vec<NewsItem>> {
+    let (cat, key) = category(format);
+    let held = held(db, key).await?;
     if let Some(h) = &held {
         if now() - h.at < FRESH {
             return Ok(h.items.clone());
@@ -115,7 +128,7 @@ pub async fn latest(db: &Db, sources: &Sources) -> Result<Vec<NewsItem>> {
     let url = crate::http::url(
         "https://etf2l.org/wp-json/wp/v2/posts",
         [
-            ("categories", HIGHLANDER.to_string().as_str()),
+            ("categories", cat.to_string().as_str()),
             ("per_page", PER_PAGE.to_string().as_str()),
             ("_fields", "id,date_gmt,title,link,excerpt,content"),
         ],
@@ -123,7 +136,7 @@ pub async fn latest(db: &Db, sources: &Sources) -> Result<Vec<NewsItem>> {
     match sources.fetch_text_interactive(&url).await.map(|b| b.as_deref().and_then(parse)) {
         Ok(Some(posts)) => {
             let fresh = Held { at: now(), items: posts.iter().map(|(n, _)| n.clone()).collect(), html: posts.into_iter().map(|(n, h)| (n.id, h)).collect() };
-            db.set_setting(KEY, &serde_json::to_string(&fresh)?).await?;
+            db.set_setting(key, &serde_json::to_string(&fresh)?).await?;
             Ok(fresh.items)
         }
         other => {
@@ -149,7 +162,7 @@ struct SeasonHeld {
 pub async fn season(db: &Db, sources: &Sources, season: i64, season_name: &str) -> Result<Vec<NewsItem>> {
     let key = format!("season_news:{season}");
     let held: Option<SeasonHeld> = db.get_setting(&key).await?.and_then(|v| serde_json::from_str(&v).ok());
-    let Some(span) = db.season_span(season).await? else { return Ok(held.map(|h| h.items).unwrap_or_default()) };
+    let Some(span) = db.season_span(season, hl_core::GameFormat::Highlander).await? else { return Ok(held.map(|h| h.items).unwrap_or_default()) };
     if let Some(h) = &held {
         let over = now() - span.1 > 30 * 86_400;
         if (over && h.at > span.1 + 30 * 86_400) || now() - h.at < 6 * 3600 {
@@ -179,9 +192,11 @@ pub async fn season(db: &Db, sources: &Sources, season: i64, season_name: &str) 
 /// One post, from the kept list when it is there, else asked for alone
 /// (an older post linked from somewhere).
 pub async fn post(db: &Db, sources: &Sources, id: i64) -> Result<Option<NewsPost>> {
-    if let Some(h) = held(db).await? {
-        if let (Some(item), Some((_, html))) = (h.items.iter().find(|n| n.id == id), h.html.iter().find(|(i, _)| *i == id)) {
-            return Ok(Some(NewsPost { item: item.clone(), html: html.clone() }));
+    for format in hl_core::GameFormat::ALL {
+        if let Some(h) = held(db, category(format).1).await? {
+            if let (Some(item), Some((_, html))) = (h.items.iter().find(|n| n.id == id), h.html.iter().find(|(i, _)| *i == id)) {
+                return Ok(Some(NewsPost { item: item.clone(), html: html.clone() }));
+            }
         }
     }
     let url = crate::http::url(

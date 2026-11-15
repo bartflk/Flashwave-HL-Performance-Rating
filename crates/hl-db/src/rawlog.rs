@@ -64,6 +64,9 @@ pub struct RawlogStats {
 /// Kept Highlander logs: the ones worth a raw log.
 const WANTED: &str = "SELECT i.log_id FROM log_index i JOIN log_raw r ON r.log_id = i.log_id
      WHERE i.superseded_by IS NULL AND COALESCE(i.format_override, i.format) = 'highlander'";
+/// [`WANTED`] for 6v6: the kept 6v6 logs with their raw log.
+const WANTED_SIXES: &str = "SELECT i.log_id FROM log_index i JOIN log_raw r ON r.log_id = i.log_id
+     WHERE i.superseded_by IS NULL AND COALESCE(i.format_override, i.format) = 'sixes'";
 
 impl Db {
     pub async fn store_rawlog(&self, log_id: i64, zip: &[u8]) -> Result<()> {
@@ -152,8 +155,17 @@ impl Db {
     /// Kept Highlander logs with no raw log yet, newest first. Logs marked
     /// missing are retried after a week, in case logs.tf was having a bad day.
     pub async fn rawlog_queue(&self) -> Result<Vec<i64>> {
+        // 6v6's too, for someone who plays it (the 6v6 plan, P3: when each
+        // off-class was played). Only the queue: every query over all raw
+        // logs -- kill maps, counts -- stays Highlander's.
+        let sixes = if self.formats_played().await?.contains(&hl_core::GameFormat::Sixes) {
+            " UNION SELECT i.log_id FROM log_index i JOIN log_raw r ON r.log_id = i.log_id
+               WHERE i.superseded_by IS NULL AND COALESCE(i.format_override, i.format) = 'sixes'"
+        } else {
+            ""
+        };
         Ok(sqlx::query_scalar(&format!(
-            "SELECT log_id FROM ({WANTED})
+            "SELECT log_id FROM ({WANTED}{sixes})
              WHERE log_id NOT IN (SELECT log_id FROM rawlog)
                -- A zip that would not open is more likely a cut-off download
                -- than a bad file: asked again within the hour, not the week
@@ -256,8 +268,14 @@ impl Db {
     /// Every map a round of a kept Highlander log was played on, including
     /// the maps inside combined logs.
     pub async fn kept_maps(&self) -> Result<Vec<String>> {
+        self.kept_maps_of(false).await
+    }
+
+    /// [`Db::kept_maps`] of Highlander's kept logs, or 6v6's (`sixes`).
+    pub async fn kept_maps_of(&self, sixes: bool) -> Result<Vec<String>> {
+        let wanted = if sixes { WANTED_SIXES } else { WANTED };
         Ok(sqlx::query_scalar(&format!(
-            "SELECT DISTINCT rm.map FROM round_map rm WHERE rm.map IS NOT NULL AND rm.log_id IN ({WANTED})"
+            "SELECT DISTINCT rm.map FROM round_map rm WHERE rm.map IS NOT NULL AND rm.log_id IN ({wanted})"
         ))
         .fetch_all(self.pool())
         .await?)
@@ -306,7 +324,8 @@ impl Db {
     /// One player's kills and deaths on these maps, with where they were:
     /// `(log_id, got_the_kill, their team, their class, x, y)` (Q28).
     #[allow(clippy::type_complexity)]
-    pub async fn player_kill_positions(&self, account: u32, maps: &[String]) -> Result<Vec<(i64, bool, String, String, i32, i32)>> {
+    pub async fn player_kill_positions(&self, account: u32, maps: &[String], sixes: bool) -> Result<Vec<(i64, bool, String, String, i32, i32)>> {
+        let wanted = if sixes { WANTED_SIXES } else { WANTED };
         if maps.is_empty() {
             return Ok(Vec::new());
         }
@@ -324,7 +343,7 @@ impl Db {
              WHERE rm.map IN ({marks}) AND k.live = 1 AND COALESCE(k.custom, '') != 'feign_death'
                AND (k.killer = ?1 OR k.victim = ?1) AND k.killer != k.victim
                AND k.kx IS NOT NULL AND k.vx IS NOT NULL
-               AND k.log_id IN ({WANTED})"
+               AND k.log_id IN ({wanted})"
         );
         let mut q = sqlx::query(&sql).bind(i64::from(account));
         for m in maps {
@@ -348,13 +367,15 @@ impl Db {
 
     /// Logs with a parsed STV timeline that this player is in (Q28).
     pub async fn player_stv_logs(&self, account: u32) -> Result<Vec<(i64, String)>> {
-        Ok(sqlx::query_as(
+        Ok(sqlx::query_as(&format!(
             "SELECT DISTINCT l.log_id, COALESCE(m.map, '') FROM demo_link l
              JOIN demo d ON d.demo_id = l.demo_id AND d.kind = 'stv'
              JOIN demo_timeline t ON t.demo_id = d.demo_id
              JOIN match m ON m.log_id = l.log_id
-             JOIN match_player p ON p.log_id = l.log_id AND p.account_id = ?1",
-        )
+             JOIN match_player p ON p.log_id = l.log_id AND p.account_id = ?1
+             WHERE {}",
+            crate::hl_only("l.log_id")
+        ))
         .bind(i64::from(account))
         .fetch_all(self.pool())
         .await?)

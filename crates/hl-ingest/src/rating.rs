@@ -535,10 +535,21 @@ pub struct Headline {
 }
 
 pub async fn headline(db: &Db, me: SteamId, class: TfClass, kind: Option<&str>, period: Option<(i64, i64)>) -> Result<Option<Headline>> {
-    let account = me.account_id();
-    let rows: Vec<_> = db
-        .rating_history(account, class.as_str(), MODEL_VERSION)
-        .await?
+    let rows = db.rating_history(me.account_id(), class.as_str(), MODEL_VERSION).await?;
+    headline_of(db, me.account_id(), class, rows, kind, period).await
+}
+
+/// [`headline`] over rated games already read: Highlander's on a class, or
+/// 6v6's in a role (on the role's class).
+pub async fn headline_of(
+    db: &Db,
+    account: u32,
+    class: TfClass,
+    rows: Vec<hl_db::HistoryDbRow>,
+    kind: Option<&str>,
+    period: Option<(i64, i64)>,
+) -> Result<Option<Headline>> {
+    let rows: Vec<_> = rows
         .into_iter()
         .filter(|r| kind.is_none_or(|k| r.kind.as_deref() == Some(k)))
         .filter(|r| period.is_none_or(|(from, to)| r.played_at.is_some_and(|t| t >= from && t <= to)))
@@ -584,7 +595,7 @@ pub async fn headline(db: &Db, me: SteamId, class: TfClass, kind: Option<&str>, 
 
 /// `account`'s shots and hits on `class` in one logs.tf log, from the weapon
 /// stats under `class_stats`; `None` where the log has none for them.
-fn weapon_accuracy(json: &str, account: u32, class: TfClass) -> Option<(i64, i64)> {
+pub(crate) fn weapon_accuracy(json: &str, account: u32, class: TfClass) -> Option<(i64, i64)> {
     let raw: serde_json::Value = serde_json::from_str(json).ok()?;
     let players = raw.get("players")?.as_object()?;
     let me = players.iter().find(|(k, _)| SteamId::parse(k).is_ok_and(|id| id.account_id() == account))?.1;

@@ -353,6 +353,34 @@ pub async fn sync_start(app: AppHandle, state: State<'_, AppState>, full: bool) 
                     report.problems.push(format!("ETF2L seasons: {e:#}"));
                 }
             }
+            // The same for 6v6, for someone who plays it (the 6v6 plan, P2):
+            // its seasons' teams, results and lineups, and the rosters that
+            // find a 6v6 official trends.tf did not link.
+            if db.formats_played().await.is_ok_and(|f| f.contains(&hl_core::GameFormat::Sixes)) {
+                // Each 6v6 log's roles (P3): from its own JSON, no request.
+                match hl_ingest::roles::refresh(&db, 2000).await {
+                    Ok(n) if n > 0 => tracing::info!(logs = n, "6v6 roles worked out"),
+                    Ok(_) => {}
+                    Err(e) => report.problems.push(format!("6v6 roles: {e:#}")),
+                }
+                // The 6v6 rating's preview (P6), on the stored 6v6 logs.
+                match hl_ingest::sixes_rating::rate_all(&db).await {
+                    Ok(n) => tracing::info!(ratings = n, "6v6 preview ratings"),
+                    Err(e) => report.problems.push(format!("6v6 ratings: {e:#}")),
+                }
+                stage("Reading ETF2L's 6v6 seasons");
+                match hl_ingest::leagues::fetch_sixes(&db, &sources, hl_ingest::leagues::SEASONS_BACK, hl_ingest::leagues::DETAILS_PER_SYNC / 2, |_, _| {}).await {
+                    Ok(s) => {
+                        tracing::info!(competitions = s.competitions, results = s.results, details = s.details, "ETF2L 6v6 seasons read");
+                        report.etf2l_results += s.results;
+                        report.etf2l_details += s.details;
+                    }
+                    Err(e) => {
+                        tracing::warn!(error = %format!("{e:#}"), "ETF2L 6v6 seasons could not be read");
+                        report.problems.push(format!("ETF2L 6v6 seasons: {e:#}"));
+                    }
+                }
+            }
 
             // The league's newest officials (Flashy): everyone's logs of the
             // officials played since the last sync, so the season tables,
@@ -763,6 +791,92 @@ pub async fn get_model_shift(state: State<'_, AppState>) -> CmdResult<Option<Mod
     Ok(Some(ModelShift { before: before.clone(), after: after.to_string(), classes, games }))
 }
 
+/// The current ETF2L 6v6 season's tables (prototype: hl_ingest::sixes).
+#[tauri::command]
+pub async fn get_sixes_season(state: State<'_, AppState>) -> CmdResult<Option<hl_ingest::sixes::SixesSeason>> {
+    Ok(hl_ingest::sixes::current_season(&state.sources).await?)
+}
+
+/// A 6v6 log's roles: pocket, roamer, flank and pocket Scout, off-class
+/// time (the 6v6 plan, P3).
+#[tauri::command]
+pub async fn get_match_roles(state: State<'_, AppState>, log_id: i64) -> CmdResult<Vec<hl_db::StoredRole>> {
+    Ok(state.db.roles_of_log(log_id).await?)
+}
+
+/// A 6v6 log's off-class stints: when, which round, with how many mates
+/// off-classing beside (the 6v6 plan, P3).
+#[tauri::command]
+pub async fn get_match_stints(state: State<'_, AppState>, log_id: i64) -> CmdResult<Vec<hl_ingest::roles::Stint>> {
+    Ok(hl_ingest::roles::match_stints(&state.db, log_id).await?)
+}
+
+/// A 6v6 log's own numbers by role and the Medics side by side (the 6v6
+/// plan, P4).
+#[tauri::command]
+pub async fn get_sixes_match_stats(state: State<'_, AppState>, log_id: i64) -> CmdResult<Option<hl_ingest::sixes_stats::SixesMatchStats>> {
+    Ok(hl_ingest::sixes_stats::of_log(&state.db, log_id).await?)
+}
+
+/// The 6v6 preview ratings of one log, or of one player (the 6v6 plan, P6).
+#[tauri::command]
+pub async fn get_sixes_ratings(state: State<'_, AppState>, log_id: Option<i64>, account_id: Option<u32>) -> CmdResult<Vec<hl_db::SixesRatingRow>> {
+    Ok(state.db.sixes_ratings(&hl_ingest::sixes_rating::model_version(), log_id, account_id).await?)
+}
+
+/// The owner's 6v6 profile: best games and officials by season (the 6v6 plan, P7).
+#[tauri::command]
+pub async fn get_sixes_profile(state: State<'_, AppState>) -> CmdResult<hl_ingest::sixes_rating::SixesProfile> {
+    let me = state.db.get_me().await?.ok_or_else(|| anyhow::anyhow!("no owner set"))?;
+    Ok(hl_ingest::sixes_rating::profile(&state.db, me.account_id()).await?)
+}
+
+/// One 6v6 season's medals and MVPs by division (the 6v6 plan, P7).
+#[tauri::command]
+pub async fn get_sixes_honours(state: State<'_, AppState>, season: i64) -> CmdResult<Vec<hl_ingest::sixes_rating::DivisionHonours>> {
+    Ok(hl_ingest::sixes_rating::season_honours(&state.db, season).await?)
+}
+
+/// Set your own role in one of your 6v6 matches by hand, or (`null`) go back
+/// to the worked-out one (the 6v6 plan, question 18: own matches only).
+#[tauri::command]
+pub async fn set_own_role(state: State<'_, AppState>, log_id: i64, role: Option<String>) -> CmdResult<Vec<hl_db::StoredRole>> {
+    let me = state.db.get_me().await?.ok_or_else(|| anyhow::anyhow!("no owner set"))?;
+    let role = match role.as_deref() {
+        Some(r) => Some(hl_core::Role::parse(r).ok_or_else(|| anyhow::anyhow!("not a role: {r}"))?),
+        None => None,
+    };
+    hl_ingest::roles::set_own_role(&state.db, log_id, me.account_id(), role).await?;
+    // The preview follows the corrected role on the next rating pass.
+    Ok(state.db.roles_of_log(log_id).await?)
+}
+
+/// The 6v6 Players board for one role or off-class (the 6v6 plan, P7).
+#[tauri::command]
+pub async fn get_sixes_board(state: State<'_, AppState>, role: String) -> CmdResult<Vec<hl_ingest::sixes_rating::BoardRow>> {
+    Ok(hl_ingest::sixes_rating::board(&state.db, &role).await?)
+}
+
+/// Where the 6v6 league sample stands (the 6v6 plan, P5).
+#[tauri::command]
+pub async fn get_sixes_sample(state: State<'_, AppState>) -> CmdResult<hl_ingest::sixes_sample::Status> {
+    Ok(hl_ingest::sixes_sample::status(&state.db).await?)
+}
+
+/// Start or pause the 6v6 league sample's background download.
+#[tauri::command]
+pub async fn set_sixes_sample(state: State<'_, AppState>, on: bool) -> CmdResult<hl_ingest::sixes_sample::Status> {
+    hl_ingest::sixes_sample::set_enabled(&state.db, on).await?;
+    tracing::info!(on, "6v6 league sample switched");
+    Ok(hl_ingest::sixes_sample::status(&state.db).await?)
+}
+
+/// The current ETF2L 6v6 season's officials by week (the 6v6 plan, P2).
+#[tauri::command]
+pub async fn get_sixes_matches(state: State<'_, AppState>) -> CmdResult<Option<hl_ingest::sixes::SixesMatches>> {
+    Ok(hl_ingest::sixes::season_matches(&state.sources).await?)
+}
+
 /// Every class's model as the rating uses it, for the "How ratings work"
 /// page: built from the live weights, so the page follows every retune.
 #[tauri::command]
@@ -1000,6 +1114,104 @@ pub async fn get_profile(
     })
 }
 
+/// [`ProfileResponse`] for 6v6 (Flashy: "please bring them up to
+/// standard"): `classes` holds the roles played, the profile is the same
+/// summary by role, and what needs 6v6 demos -- fights in context, aim,
+/// lives -- stays empty until they are read.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SixesProfileResponse {
+    pub classes: Vec<(String, i64)>,
+    pub profile: Option<serde_json::Value>,
+    pub fights: Option<()>,
+    pub aim: Option<()>,
+    pub life: Option<()>,
+    pub aim_all: Option<()>,
+    pub life_all: Option<()>,
+    pub headline: Option<hl_ingest::Headline>,
+}
+
+#[tauri::command]
+pub async fn get_profile_sixes(
+    state: State<'_, AppState>,
+    role: Option<String>,
+    kind: Option<String>,
+    from: Option<i64>,
+    to: Option<i64>,
+    account: Option<u32>,
+) -> CmdResult<SixesProfileResponse> {
+    let me = state
+        .db
+        .get_me()
+        .await?
+        .ok_or_else(|| CmdError::new("missing_config", "Set your SteamID first."))?;
+    // Someone else (ETF2L › 6v6 › Players): their games in your logs and in
+    // the 6v6 league sample.
+    let other = account.filter(|a| *a != me.account_id());
+    let roles = match other {
+        Some(a) => hl_ingest::sixes_profile::player_roles(&state.db, a).await?,
+        None => hl_ingest::sixes_profile::roles(&state.db, me).await?,
+    };
+    let period = match (from, to) {
+        (None, None) => None,
+        (f, t) => Some((f.unwrap_or(i64::MIN), t.unwrap_or(i64::MAX))),
+    };
+    let (profile, headline) = match (role.or_else(|| roles.first().map(|(r, _)| r.clone())), other) {
+        (Some(r), Some(a)) => hl_ingest::sixes_profile::load_player(&state.db, a, &r, kind.as_deref(), period).await?,
+        (Some(r), None) => hl_ingest::sixes_profile::load(&state.db, me, &r, kind.as_deref(), period).await?,
+        (None, _) => (None, None),
+    };
+    Ok(SixesProfileResponse { classes: roles, profile, fights: None, aim: None, life: None, aim_all: None, life_all: None, headline })
+}
+
+/// What the app is doing (Settings › Activity log, the sync card's
+/// waterfall): the feed's lines after `since`, every site's requests this
+/// run, and whether debug lines are in.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityView {
+    pub lines: Vec<hl_ingest::activity::Line>,
+    pub sites: Vec<hl_ingest::activity::Site>,
+    pub verbose: bool,
+}
+
+#[tauri::command]
+pub async fn get_activity(since: Option<u64>, limit: Option<usize>) -> CmdResult<ActivityView> {
+    Ok(ActivityView {
+        lines: hl_ingest::activity::since(since.unwrap_or(0), limit.unwrap_or(hl_ingest::activity::CAP)),
+        sites: hl_ingest::activity::sites(),
+        verbose: hl_ingest::activity::verbose(),
+    })
+}
+
+/// Every active ETF2L ban, for the "Banned" tag beside names (Flashy: "we
+/// need to add etf2l bans and have them applied if they have them active").
+/// Answers from what is stored at once; a list over a day old is read again
+/// in the background, one pass at a time.
+#[tauri::command]
+pub async fn get_etf2l_bans(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::bans::Ban>> {
+    static READING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    let (bans, stale) = hl_ingest::bans::active(&state.db).await?;
+    if stale && !READING.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        let (db, sources) = (state.db.clone(), state.sources.clone());
+        tauri::async_runtime::spawn(async move {
+            if let Err(e) = hl_ingest::bans::refresh(&db, &sources).await {
+                tracing::warn!(error = %e, "ETF2L bans could not be read");
+            }
+            READING.store(false, std::sync::atomic::Ordering::SeqCst);
+        });
+    }
+    Ok(bans)
+}
+
+/// Debug lines into the feed too, or not; for this run.
+#[tauri::command]
+pub async fn set_activity_verbose(on: bool) -> CmdResult<bool> {
+    hl_ingest::activity::set_verbose(on);
+    tracing::info!(on, "verbose activity log switched");
+    Ok(on)
+}
+
 /// The demos the app downloaded and still holds (PLAN Q23).
 #[tauri::command]
 pub async fn downloaded_demos(state: State<'_, AppState>) -> CmdResult<Vec<hl_db::DownloadedDemo>> {
@@ -1124,6 +1336,27 @@ pub async fn set_auto_delete_demos(state: State<'_, AppState>, on: bool) -> CmdR
     Ok(on)
 }
 
+/// The formats the owner plays, and whether this build has 6v6 at all (the
+/// 6v6 plan, P0: 6v6 stays hidden in release builds until its rating ships).
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FormatsPlayed {
+    pub formats: Vec<hl_core::GameFormat>,
+    pub sixes_enabled: bool,
+}
+
+#[tauri::command]
+pub async fn formats_played(state: State<'_, AppState>) -> CmdResult<FormatsPlayed> {
+    Ok(FormatsPlayed { formats: state.db.formats_played().await?, sixes_enabled: hl_core::format::SIXES_ENABLED })
+}
+
+#[tauri::command]
+pub async fn set_formats_played(state: State<'_, AppState>, formats: Vec<hl_core::GameFormat>) -> CmdResult<FormatsPlayed> {
+    let formats = state.db.set_formats_played(&formats).await?;
+    tracing::info!(?formats, "formats played changed");
+    Ok(FormatsPlayed { formats, sixes_enabled: hl_core::format::SIXES_ENABLED })
+}
+
 /// Delete every downloaded demo the pass has finished with.
 ///
 /// Shared by the sweep after a sync and by the Settings button, so "has
@@ -1201,14 +1434,14 @@ pub async fn get_seasons(state: State<'_, AppState>, class: String) -> CmdResult
 
 /// Your ETF2L teams and regular teammates. `all` includes pugs.
 #[tauri::command]
-pub async fn get_teammates(state: State<'_, AppState>, all: bool) -> CmdResult<hl_ingest::teammates::Teammates> {
+pub async fn get_teammates(state: State<'_, AppState>, all: bool, sixes: Option<bool>) -> CmdResult<hl_ingest::teammates::Teammates> {
     let me = state
         .db
         .get_me()
         .await?
         .ok_or_else(|| CmdError::new("missing_config", "Set your SteamID first."))?;
     let scope = if all { hl_ingest::teammates::Scope::All } else { hl_ingest::teammates::Scope::Team };
-    Ok(hl_ingest::teammates::load(&state.db, me, scope).await?)
+    Ok(hl_ingest::teammates::load_format(&state.db, me, scope, sixes.unwrap_or(false)).await?)
 }
 
 /// The analysis views for one match, built from its raw log. `None` without one.
@@ -1810,16 +2043,17 @@ pub async fn get_positions(state: State<'_, AppState>, log_id: i64, map: String)
 
 /// Q28: the owner's habits on a class, per map, over every match held.
 #[tauri::command]
-pub async fn get_tendencies(state: State<'_, AppState>, class: String) -> CmdResult<Vec<hl_ingest::callouts::MapTendencies>> {
+pub async fn get_tendencies(state: State<'_, AppState>, class: String, sixes: Option<bool>) -> CmdResult<Vec<hl_ingest::callouts::MapTendencies>> {
     let me = state.db.get_me().await?.ok_or_else(|| anyhow::anyhow!("no owner set"))?;
-    Ok(hl_ingest::callouts::tendencies(&state.db, &data_folder(&state), me.account_id(), &class).await?)
+    Ok(hl_ingest::callouts::tendencies(&state.db, &data_folder(&state), me.account_id(), &class, sixes.unwrap_or(false)).await?)
 }
 
 /// Q29: one ETF2L Highlander season's division tables; the newest when
 /// `season` is not given.
 #[tauri::command]
-pub async fn get_leagues(state: State<'_, AppState>, season: Option<i64>) -> CmdResult<hl_ingest::leagues::SeasonView> {
-    Ok(hl_ingest::leagues::season(&state.db, season).await?)
+pub async fn get_leagues(state: State<'_, AppState>, season: Option<i64>, format: Option<String>) -> CmdResult<hl_ingest::leagues::SeasonView> {
+    let format = format.as_deref().and_then(hl_core::GameFormat::parse).unwrap_or(hl_core::GameFormat::Highlander);
+    Ok(hl_ingest::leagues::season(&state.db, season, format).await?)
 }
 
 /// Q29: one team's page.
@@ -2230,8 +2464,9 @@ pub async fn get_seasons_overview(state: State<'_, AppState>) -> CmdResult<Vec<h
 /// A season's banner from ETF2L's news, looked for once and kept.
 #[tauri::command]
 /// Shrunk to a small JPEG once; `large` for the season's own header.
-pub async fn get_season_banner(state: State<'_, AppState>, season: i64, season_name: String, large: Option<bool>) -> CmdResult<Option<String>> {
-    Ok(hl_ingest::catalogue::season_banner_image(&state.db, &state.sources, season, &season_name, large.unwrap_or(false)).await?)
+pub async fn get_season_banner(state: State<'_, AppState>, season: i64, season_name: String, large: Option<bool>, format: Option<String>) -> CmdResult<Option<String>> {
+    let sixes = format.as_deref() == Some("sixes");
+    Ok(hl_ingest::catalogue::season_banner_image_of(&state.db, &state.sources, season, &season_name, large.unwrap_or(false), sixes).await?)
 }
 
 /// A season's podiums, each division's medals and MVP.
@@ -2375,8 +2610,9 @@ pub async fn get_rgl_player_more(state: State<'_, AppState>, input: String) -> C
 
 /// ETF2L's latest Highlander news (Q74), read at most every half hour.
 #[tauri::command]
-pub async fn get_news(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::news::NewsItem>> {
-    Ok(hl_ingest::news::latest(&state.db, &state.sources).await?)
+pub async fn get_news(state: State<'_, AppState>, format: Option<String>) -> CmdResult<Vec<hl_ingest::news::NewsItem>> {
+    let format = format.as_deref().and_then(hl_core::GameFormat::parse).unwrap_or(hl_core::GameFormat::Highlander);
+    Ok(hl_ingest::news::latest(&state.db, &state.sources, format).await?)
 }
 
 /// One ETF2L news post to read in the app (Q74).
@@ -2394,7 +2630,7 @@ pub async fn get_season_news(state: State<'_, AppState>, season: i64, season_nam
 /// The latest played officials of every team (Q74's results).
 #[tauri::command]
 pub async fn get_recent_results(state: State<'_, AppState>, limit: Option<i64>) -> CmdResult<Vec<hl_db::ResultRow>> {
-    Ok(state.db.recent_results(limit.unwrap_or(10).clamp(1, 300)).await?)
+    Ok(state.db.recent_results(limit.unwrap_or(10).clamp(1, 300), hl_core::GameFormat::Highlander).await?)
 }
 
 /// ETF2L's other Highlander tournaments, newest first: the one-night,
@@ -2412,8 +2648,9 @@ pub async fn get_tournament(state: State<'_, AppState>, name: String) -> CmdResu
 
 /// ETF2L's Highlander recruitment posts (Q74), read at most every half hour.
 #[tauri::command]
-pub async fn get_recruitment(state: State<'_, AppState>) -> CmdResult<hl_ingest::recruitment::Recruitment> {
-    Ok(hl_ingest::recruitment::latest(&state.db, &state.sources).await?)
+pub async fn get_recruitment(state: State<'_, AppState>, format: Option<String>) -> CmdResult<hl_ingest::recruitment::Recruitment> {
+    let format = format.as_deref().and_then(hl_core::GameFormat::parse).unwrap_or(hl_core::GameFormat::Highlander);
+    Ok(hl_ingest::recruitment::latest(&state.db, &state.sources, format).await?)
 }
 
 /// One recruitment post as its etf2l.org page has it: the message, when it
@@ -2425,8 +2662,9 @@ pub async fn get_recruit_post(state: State<'_, AppState>, id: i64) -> CmdResult<
 
 /// Every official of one season, played or to come (Q74's fixtures by week).
 #[tauri::command]
-pub async fn get_season_results(state: State<'_, AppState>, season: i64) -> CmdResult<Vec<hl_db::ResultRow>> {
-    Ok(state.db.season_results(season).await?)
+pub async fn get_season_results(state: State<'_, AppState>, season: i64, format: Option<String>) -> CmdResult<Vec<hl_db::ResultRow>> {
+    let format = format.as_deref().and_then(hl_core::GameFormat::parse).unwrap_or(hl_core::GameFormat::Highlander);
+    Ok(state.db.season_results(season, format).await?)
 }
 
 /// An official's own etf2l.org page: schedule, per-map results, demos and

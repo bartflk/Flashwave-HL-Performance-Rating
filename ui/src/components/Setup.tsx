@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useFormatsPlayed } from "../lib/gameformat";
 import { friendlyText } from "../lib/apierror";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, inTauri } from "../api/client";
@@ -6,6 +7,7 @@ import { type AppStatus, type TfPathInfo } from "../api/types";
 import { t, tx } from "../lib/i18n";
 import { Logo } from "./Logo";
 import { Backdrop } from "./Backdrop";
+import { FormatsPicker } from "./FormatsPicker";
 
 /**
  * First-run setup: who you are (required), where TF2 lives (optional, only
@@ -17,6 +19,10 @@ export function Setup(props: { status: AppStatus; onDone: () => void; onFinish: 
   const steamidDone = status.config.steamid !== null;
   const tfDone = status.config.tfPath !== null;
   const [tfSkipped, setTfSkipped] = useState(false);
+  // Which formats you play, once this build has more than Highlander (the
+  // 6v6 plan, P0; question 14: "ask in setup which formats you play").
+  const played = useFormatsPlayed();
+  const n = played.sixesEnabled ? 1 : 0;
 
   return (
     <div className="centered">
@@ -26,26 +32,33 @@ export function Setup(props: { status: AppStatus; onDone: () => void; onFinish: 
           <Logo className="setup-logo" />
           <div>
             <h1>{t("Welcome to Flashwave.tf")}</h1>
-            <p className="sub">{t("Ratings for your TF2 Highlander games, built from your logs.tf history. Everything is stored on this PC.")}</p>
+            {/* Format-neutral once the app has more than Highlander (question 16). */}
+            <p className="sub">
+              {played.sixesEnabled
+                ? t("Ratings for your competitive TF2 games, Highlander and 6v6, built from your logs.tf history. Everything is stored on this PC.")
+                : t("Ratings for your TF2 Highlander games, built from your logs.tf history. Everything is stored on this PC.")}
+            </p>
           </div>
         </div>
 
         <SteamIdStep done={steamidDone} current={status.config.steamid} onSaved={onDone} />
+        {played.sixesEnabled && <FormatsStep num={2} />}
         <TfPathStep
+          num={2 + n}
           done={tfDone}
           skipped={tfSkipped && !tfDone}
           current={status.config.tfPath}
           onSaved={onDone}
           onSkip={() => setTfSkipped(true)}
         />
-        <FirstSyncStep ready={steamidDone && (tfDone || tfSkipped || onClose !== undefined)} onFinish={onFinish} onClose={onClose} />
+        <FirstSyncStep num={3 + n} ready={steamidDone && (tfDone || tfSkipped || onClose !== undefined)} onFinish={onFinish} onClose={onClose} />
       </div>
     </div>
   );
 }
 
 /** Start the first sync and hand over to the app, where the sync strip shows progress. */
-function FirstSyncStep({ ready, onFinish, onClose }: { ready: boolean; onFinish: () => void; onClose?: () => void }) {
+function FirstSyncStep({ num, ready, onFinish, onClose }: { num: number; ready: boolean; onFinish: () => void; onClose?: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -64,7 +77,7 @@ function FirstSyncStep({ ready, onFinish, onClose }: { ready: boolean; onFinish:
 
   return (
     <section className={ready ? "step" : "step waiting"}>
-      <div className="step-num">3</div>
+      <div className="step-num">{num}</div>
       <div className="step-body">
         <h2>{t("Get your matches")}</h2>
         <p className="hint">{tx("The first sync finds every match you played on logs.tf and trends.tf, then fetches them one every 2 seconds to go easy on logs.tf. Detailed kill data comes 100 matches per sync, so a long history takes a few syncs: press {0} again later to fetch the rest. You can use the app while it runs.", { "0": <strong>{t("Sync")}</strong> })}</p>
@@ -147,12 +160,14 @@ function SteamIdStep({
 }
 
 function TfPathStep({
+  num,
   done,
   skipped,
   current,
   onSaved,
   onSkip,
 }: {
+  num: number;
   done: boolean;
   skipped: boolean;
   current: string | null;
@@ -217,7 +232,7 @@ function TfPathStep({
 
   return (
     <section className={done || skipped ? "step done" : "step"}>
-      <div className="step-num">2</div>
+      <div className="step-num">{num}</div>
       <div className="step-body">
         <h2>{tx("Your TF2 folder {0}", { "0": <span className="optional">{t("optional")}</span> })}
         </h2>
@@ -260,6 +275,20 @@ function TfPathStep({
           </>
         )}
         {error && <p className="error">{error}</p>}
+      </div>
+    </section>
+  );
+}
+
+/** Which formats you play; Settings › Formats you play has the same picker. */
+function FormatsStep({ num }: { num: number }) {
+  return (
+    <section className="step done">
+      <div className="step-num">{num}</div>
+      <div className="step-body">
+        <h2>{t("The formats you play")}</h2>
+        <p className="hint">{t("Each format keeps its own matches and ratings: nothing from one counts towards the other. Playing both adds a menu to the Matches, Profile and ETF2L tabs.")}</p>
+        <FormatsPicker />
       </div>
     </section>
   );

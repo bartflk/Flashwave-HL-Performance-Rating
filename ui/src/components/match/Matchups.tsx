@@ -8,6 +8,7 @@ import { goTo } from "../../lib/goto";
 import { DivTag, SideDivisions, useMatchDivisions } from "./Divisions";
 import { PlayerPopCard, nameProps, usePlayerCard } from "../players/PlayerPopCard";
 import { Help, ComponentTip, StatTip } from "../StatTip";
+import { BanTag } from "../BanTag";
 
 /**
  * The nine class matchups: the headline of the match page.
@@ -63,6 +64,10 @@ export function Matchups({ d }: { d: MatchDetail }) {
         </div>
       </header>
 
+      {/* Held to a readable width and centred (Flashy: "the class matchups
+          dont have to be spread that wide"): on a wide window the names sat
+          far from their bars. */}
+      <div className="mu-table">
       <div className="mu-cols" aria-hidden>
         <span />
         <span className={`team-${left.toLowerCase()} mu-col-l`}>
@@ -75,7 +80,9 @@ export function Matchups({ d }: { d: MatchDetail }) {
         <span />
       </div>
 
-      {d.matchups.map((m) => (
+      {/* A class nobody played on either side says nothing: a 6v6 match had
+          five rows of "nobody". */}
+      {d.matchups.filter((m) => m.left || m.right).map((m) => (
         <MatchupRow
           key={m.class}
           m={m}
@@ -89,6 +96,7 @@ export function Matchups({ d }: { d: MatchDetail }) {
           onName={(side, cls) => card.open({ accountId: side.accountId, name: side.name, cls, isMe: isMe(side.accountId) })}
         />
       ))}
+      </div>
       {card.target && <PlayerPopCard target={card.target} divisions={divisions} onClose={card.close} />}
 
       {d.weightsWarning && <p className="error mu-warn">{d.weightsWarning}</p>}
@@ -186,6 +194,7 @@ function SideCell({
   const name = (
     <span className="mu-name" title={side.subs.length ? t("Also played: {0}", { "0": side.subs.join(", ") }) : undefined}>
       {onName ? <span {...nameProps(onName)}>{side.name}</span> : side.name}
+      <BanTag accountId={side.accountId} short />
       <DivTag divisions={divisions} accountId={side.accountId} />
       {side.subs.length > 0 && <span className="sub-tag">+{side.subs.length}</span>}
     </span>

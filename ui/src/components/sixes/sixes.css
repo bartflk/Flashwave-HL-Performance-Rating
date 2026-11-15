@@ -1,0 +1,150 @@
+/* ETF2L 6v6 (prototype). Built on the ETF2L tab's panels; colours are the
+   theme's roles only (docs/design-principles.md). */
+
+.sx-proto {
+  font: 700 var(--fs-xs) var(--font-display);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--accent-text);
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  padding: 3px 10px;
+  align-self: center;
+}
+.e2-menu button:disabled { opacity: 0.45; cursor: default; }
+
+.sx-head { display: flex; flex-direction: column; gap: 10px; }
+.sx-title { margin: 0; font: 700 var(--fs-section) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.sx-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.sx-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--sunken);
+  min-width: 0;
+}
+.sx-fact-label { font: 700 var(--fs-xs) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+.sx-fact-value { font: 700 var(--fs-section) var(--font-display); font-variant-numeric: tabular-nums; }
+.sx-pool { display: flex; flex-wrap: wrap; gap: 6px; }
+.sx-map {
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.sx-map.sx-5cp { border-color: var(--line); color: var(--text); }
+.sx-map.sx-koth { border-color: var(--accent-dim); color: var(--accent-soft); }
+
+.sx-explain { margin: -4px 0 10px; }
+.sx-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; margin-bottom: 20px; }
+.sx-stack { display: flex; flex-direction: column; gap: 14px; }
+.sx-div-name { display: flex; align-items: center; gap: 8px; }
+.sx-table td, .sx-table th { white-space: nowrap; }
+.sx-table td.sx-team { white-space: normal; min-width: 140px; }
+.sx-team a { color: var(--text); text-decoration: none; }
+.sx-team a:hover { color: var(--accent-text); }
+.sx-pts { font-weight: 700; }
+.sx-dropped td { opacity: 0.5; }
+.sx-sort {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+.sx-sort.on { color: var(--accent-text); }
+.sx-more { margin-top: 8px; }
+
+.sx-rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.sx-rules li { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-ui); }
+
+/* Matches by week (the 6v6 plan, P2): the week tabs, the division picker
+   and the count on one row that wraps as a whole; one panel per division. */
+.sx-matches { display: flex; flex-direction: column; gap: 12px; }
+.sx-week-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.sx-week-bar .segmented { flex-wrap: wrap; }
+.sx-div-pick select { min-width: 170px; }
+.sx-week-count { margin-left: auto; font-variant-numeric: tabular-nums; }
+.sx-week-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.sx-fixtures { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.sx-fx {
+  display: grid;
+  grid-template-columns: 5.5em minmax(0, 1fr) 4.2em minmax(0, 1fr);
+  grid-template-areas: "when a score b" ". maps maps maps";
+  align-items: center;
+  gap: 2px 8px;
+  padding: 7px 0;
+  border-top: 1px solid var(--border);
+}
+.sx-fx:first-child { border-top: 0; }
+.sx-fx-when { grid-area: when; font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+.sx-fx > .sx-fx-team:nth-of-type(1) { grid-area: a; justify-content: flex-start; text-align: right; flex-direction: row-reverse; }
+.sx-fx > .sx-fx-team:nth-of-type(2) { grid-area: b; }
+.sx-fx-team { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--text); text-decoration: none; background: none; border: 0; box-shadow: none; padding: 0; font: inherit; cursor: pointer; }
+.sx-fx-team:hover .sx-fx-name { color: var(--accent-text); }
+.sx-fx-team img, .sx-fx-noav { width: 18px; height: 18px; border-radius: 3px; flex: none; object-fit: cover; background: var(--sunken); }
+.sx-fx-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sx-fx-won .sx-fx-name { font-weight: 700; }
+.sx-fx-lost .sx-fx-name { color: var(--muted); }
+.sx-fx-score { grid-area: score; text-align: center; font: 700 var(--fs-ui) var(--font-display); font-variant-numeric: tabular-nums; color: var(--text); text-decoration: none; }
+.sx-fx-score:hover { color: var(--accent-text); }
+.sx-fx-default { display: block; font: 600 var(--fs-micro) var(--font-body); color: var(--muted); }
+.sx-fx-maps { grid-area: maps; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.sx-fx-maps .sx-map { font-size: var(--fs-micro); padding: 0 6px; }
+/* Two panels a row only where both have room for full team names. */
+@media (max-width: 1280px) { .sx-week-groups { grid-template-columns: minmax(0, 1fr); } }
+
+/* The 6v6 profile: preview ratings by role, best games, seasons (P6, P7). */
+.sx-roles { max-width: 520px; }
+.sx-soon-panel .ts-section { margin: 8px 0 0; }
+.sx-best { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-width: 520px; }
+.sx-best-go { width: 100%; display: grid; grid-template-columns: 3.5em minmax(0, 1fr) 5em 6em; gap: 10px; align-items: baseline; padding: 5px 0; text-align: left; color: var(--text); font: inherit; }
+.sx-best-go:hover span:nth-child(2) { color: var(--accent-text); }
+.sx-best-rating { font-variant-numeric: tabular-nums; }
+
+/* A 6v6 season's medals and MVP (the 6v6 plan, P7). */
+.sx-medal { margin-left: 6px; padding: 0 5px; border-radius: 3px; border: 1px solid currentColor; font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.sx-medal-1 { color: #e3b341; }
+.sx-medal-2 { color: #b9c2cc; }
+.sx-medal-3 { color: #c98a55; }
+.sx-mvp { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 10px 0 0; font-size: var(--fs-ui); }
+
+/* The 6v6 league sample's panel (the 6v6 plan, P5). */
+.sx-sample-text { margin: 0 0 10px; font-size: var(--fs-ui); }
+
+/* Teams and team pages (the 6v6 plan, P2). */
+.sx-team-link { font: inherit; color: var(--text); text-align: left; padding: 0; }
+.sx-team-link:hover { color: var(--accent-text); }
+.sx-teams { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.sx-team-list { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: 16px; }
+.sx-team-list li { padding: 3px 0; break-inside: avoid; }
+.sx-team-page { display: flex; flex-direction: column; gap: 12px; }
+.sx-back { align-self: flex-start; }
+@media (max-width: 1280px) { .sx-teams { grid-template-columns: minmax(0, 1fr); } }
+
+/* Matches or Profile in 6v6 before their phase is built. */
+.sx-soon-panel { max-width: 720px; display: flex; flex-direction: column; gap: 10px; }
+.sx-soon-panel p { margin: 0; max-width: 68ch; }
+
+@media (max-width: 900px) {
+  .sx-grid { grid-template-columns: minmax(0, 1fr); }
+  .sx-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.sx-ext { color: var(--accent-text); align-self: flex-start; }
+.sx-ext:hover { color: var(--text); }
+
+/* The 6v6 home's officials: a column for the week's two maps, short names,
+   cut with an ellipsis rather than running out of the panel. */
+.e2-fx.with-round.sx-home-fx { grid-template-columns: 112px 100px 52px minmax(0, 1fr) 64px 96px; }
+.sx-home-maps { display: flex; flex-direction: column; gap: 1px; font-size: var(--fs-small); line-height: var(--lh-tight); }
+.sx-home-maps > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 720px) { .sx-home-maps { display: none; } }

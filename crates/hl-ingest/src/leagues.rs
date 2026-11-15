@@ -10,7 +10,7 @@
 use crate::sources::Sources;
 use anyhow::Result;
 use hl_core::maps::map_name;
-use hl_core::SteamId;
+use hl_core::{GameFormat, SteamId};
 use hl_db::{CompetitionRow, Db, SeasonMatchRow};
 use serde::Serialize;
 use serde_json::Value;
@@ -212,7 +212,7 @@ fn preseason_cup_name(name: &str) -> Option<String> {
 
 /// A competition's division and stage, whichever kind it is.
 pub fn division_and_stage(name: &str) -> Option<(String, String)> {
-    if let Some((_, _, division, stage)) = parse_name(name) {
+    if let Some((_, _, division, stage)) = parse_name(name).or_else(|| parse_sixes_name(name)) {
         return Some((division, stage));
     }
     let (cup, division) = parse_tournament(name);
@@ -322,11 +322,111 @@ pub async fn fetch_seasons(
         }
     }
 
-    fetch_competitions(db, sources, &found, newest, &mut out, &mut progress).await?;
+    fetch_competitions(db, sources, &found, newest, &mut out, &mut progress, GameFormat::Highlander).await?;
 
     // 3. Match pages: who played, and each map's score.
     let recent = newest.unwrap_or(0) - SEASONS_BACK;
-    for match_id in db.season_matches_without_detail(details, recent).await? {
+    for match_id in db.season_matches_without_detail(details, recent, hl_core::GameFormat::Highlander).await? {
+        if !fetch_match_detail(db, sources, match_id).await? {
+            out.failed += 1;
+            continue;
+        }
+        out.details += 1;
+    }
+    Ok(out)
+}
+
+/// A 6v6 season's competition name (the 6v6 plan, P2):
+/// - `"6v6 Season 53 (Autumn 2026)"` and `"...: Round Robin"` -> the
+///   regular season (since Season 53 one Swiss and one round-robin
+///   competition, each holding several divisions);
+/// - `"...: Premiership Playoffs"` -> `("Premiership", "Playoffs")`;
+/// - `"...: Fresh 3rd Place"` -> `("Fresh", "3rd Place")`;
+/// - older seasons, one competition a division: `"...: Division 2"`.
+///
+/// `(season, season name, division, stage)`, as [`parse_name`] gives.
+pub fn parse_sixes_name(name: &str) -> Option<(i64, String, String, String)> {
+    let rest = name.strip_prefix("6v6 Season ")?;
+    let digits = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len());
+    let season: i64 = rest[..digits].parse().ok()?;
+    let rest = rest[digits..].trim_start();
+    let (season_name, rest) = match rest.strip_prefix('(').and_then(|r| r.split_once(')')) {
+        Some((inside, after)) => (inside.trim().to_string(), after),
+        None => (format!("Season {season}"), rest),
+    };
+    let tail = rest.trim_start_matches(|c: char| c == ':' || c.is_whitespace()).trim();
+    let lower = tail.to_ascii_lowercase();
+    let cut = |words: &[&str]| -> String {
+        let mut d = tail.to_string();
+        for w in words {
+            if let Some(i) = d.to_ascii_lowercase().find(w) {
+                d.replace_range(i..i + w.len(), "");
+            }
+        }
+        d.trim().trim_end_matches(':').trim().to_string()
+    };
+    let (division, stage) = if tail.is_empty() || lower == "round robin" {
+        (String::new(), "regular")
+    } else if lower.contains("3rd place") || lower.contains("third place") {
+        (cut(&["3rd place match", "third place match", "3rd place", "third place"]), "3rd Place")
+    } else if lower.contains("playoff") {
+        (cut(&["playoffs", "playoff"]), "Playoffs")
+    } else if lower.contains("qualif") {
+        (cut(&["qualifiers", "qualifier"]), "Qualifiers")
+    } else {
+        (tail.to_string(), "regular")
+    };
+    Some((season, season_name, division, stage.to_string()))
+}
+
+/// Refresh the last year's 6v6 seasons, as [`fetch`] does Highlander's (the
+/// 6v6 plan, P2): the newest season and the two before it, their playoffs
+/// and the current Nations' Cup, with `details` match pages a pass. Run by a
+/// sync only for someone who plays 6v6.
+pub async fn fetch_sixes(db: &Db, sources: &Sources, seasons_back: i64, details: i64, mut progress: impl FnMut(usize, usize)) -> Result<FetchSummary> {
+    let mut out = FetchSummary::default();
+    let mut found: Vec<Found> = Vec::new();
+    let mut newest: Option<i64> = None;
+    for page in 1..=MAX_LIST_PAGES {
+        let Some(body) = sources.etf2l_page("/competition/list", page).await? else { break };
+        let Ok(v) = serde_json::from_str::<Value>(&body) else {
+            tracing::warn!(page, "ETF2L competition list page was not JSON; stopping there");
+            break;
+        };
+        let data = v.pointer("/competitions/data").and_then(Value::as_array).cloned().unwrap_or_default();
+        if data.is_empty() {
+            break;
+        }
+        let (mut wanted, mut older) = (false, false);
+        for c in &data {
+            let (Some(id), Some(name)) = (c.get("id").and_then(Value::as_i64), c.get("name").and_then(Value::as_str)) else { continue };
+            if c.get("type").and_then(Value::as_str) != Some("6v6") {
+                continue;
+            }
+            let archived = c.get("archived").and_then(Value::as_bool).unwrap_or(false);
+            match c.get("category").and_then(Value::as_str).unwrap_or("") {
+                "6v6 Season" => {
+                    let Some((season, ..)) = parse_sixes_name(name) else { continue };
+                    let top = *newest.get_or_insert(season);
+                    if season >= top - seasons_back {
+                        wanted = true;
+                        found.push((id, name.to_string(), archived, None));
+                    } else {
+                        older = true;
+                    }
+                }
+                // The Nations' Cup running now, kept with the newest season.
+                "Nations' Cup" if !archived => found.push((id, name.to_string(), archived, newest)),
+                _ => {}
+            }
+        }
+        if older && !wanted {
+            break;
+        }
+    }
+    fetch_competitions(db, sources, &found, newest, &mut out, &mut progress, GameFormat::Sixes).await?;
+    let recent = newest.unwrap_or(0) - SEASONS_BACK;
+    for match_id in db.season_matches_without_detail(details, recent, GameFormat::Sixes).await? {
         if !fetch_match_detail(db, sources, match_id).await? {
             out.failed += 1;
             continue;
@@ -342,12 +442,24 @@ type Found = (i64, String, bool, Option<i64>);
 
 /// Each competition's pool, results and (for a league) table, into the
 /// database. An archived one already held is settled and not asked for again.
-async fn fetch_competitions(db: &Db, sources: &Sources, found: &[Found], newest: Option<i64>, out: &mut FetchSummary, progress: &mut impl FnMut(usize, usize)) -> Result<()> {
-    let held: HashMap<i64, bool> = db.competitions().await?.into_iter().map(|c| (c.competition_id, c.archived)).collect();
+async fn fetch_competitions(
+    db: &Db,
+    sources: &Sources,
+    found: &[Found],
+    newest: Option<i64>,
+    out: &mut FetchSummary,
+    progress: &mut impl FnMut(usize, usize),
+    format: GameFormat,
+) -> Result<()> {
+    let parse = |name: &str| match format {
+        GameFormat::Highlander => parse_name(name),
+        GameFormat::Sixes => parse_sixes_name(name),
+    };
+    let held: HashMap<i64, bool> = db.competitions(format).await?.into_iter().map(|c| (c.competition_id, c.archived)).collect();
     let todo: Vec<&(i64, String, bool, Option<i64>)> = found.iter().filter(|(id, _, archived, _)| !(*archived && held.get(id) == Some(&true))).collect();
     for (i, (id, name, archived, cup_season)) in todo.iter().enumerate() {
         progress(i, todo.len());
-        let (season, season_name, division, stage) = match parse_name(name) {
+        let (season, season_name, division, stage) = match parse(name) {
             Some(x) => x,
             None => {
                 // A tournament: named after itself, kept with its season.
@@ -371,6 +483,7 @@ async fn fetch_competitions(db: &Db, sources: &Sources, found: &[Found], newest:
             name,
             archived: *archived,
             pool: pool.as_deref(),
+            format,
         })
         .await?;
         out.competitions += 1;
@@ -424,7 +537,7 @@ async fn fetch_competitions(db: &Db, sources: &Sources, found: &[Found], newest:
         }
         // Only the league itself has a table worth keeping: a cup's or a
         // playoff bracket's is a list of its rounds.
-        if parse_name(name).is_none_or(|(_, _, _, stage)| stage != "regular") {
+        if parse(name).is_none_or(|(_, _, _, stage)| stage != "regular") {
             continue;
         }
         match sources.etf2l_get(&format!("/competition/{id}/tables")).await {
@@ -484,8 +597,8 @@ pub async fn fetch_season(db: &Db, sources: &Sources, season: i64, mut progress:
         anyhow::bail!("ETF2L lists no competition for Highlander Season {season}");
     }
     let mut each = |done: usize, total: usize| progress(&format!("Reading results, competition {} of {total}", done + 1));
-    fetch_competitions(db, sources, &found, Some(season), &mut out, &mut each).await?;
-    let todo = db.season_matches_without_detail_in(season).await?;
+    fetch_competitions(db, sources, &found, Some(season), &mut out, &mut each, GameFormat::Highlander).await?;
+    let todo = db.season_matches_without_detail_in(season, hl_core::GameFormat::Highlander).await?;
     for (i, match_id) in todo.iter().enumerate() {
         progress(&format!("Reading who played, match {} of {}", i + 1, todo.len()));
         if fetch_match_detail(db, sources, *match_id).await? {
@@ -631,7 +744,7 @@ fn seasons_of(comps: &[hl_db::Competition]) -> Vec<SeasonInfo> {
     let mut by: BTreeMap<i64, SeasonInfo> = BTreeMap::new();
     // A tournament is kept with a season but is not one (its season name
     // is its own: "Highlander Experimental Cup #10").
-    for c in comps.iter().filter(|c| !(c.stage == "Cup" && c.season_name.contains("Highlander"))) {
+    for c in comps.iter().filter(|c| !(c.stage == "Cup" && (c.season_name.contains("Highlander") || c.season_name.contains("6v6")))) {
         let s = by.entry(season_order(c.season)).or_insert_with(|| SeasonInfo { season: c.season, name: c.season_name.clone(), divisions: Vec::new(), pool: Vec::new() });
         if s.pool.is_empty() {
             s.pool = c.pool.clone();
@@ -640,14 +753,15 @@ fn seasons_of(comps: &[hl_db::Competition]) -> Vec<SeasonInfo> {
     by.into_values().rev().collect()
 }
 
-/// One season's division tables, regular season only. `None` picks the newest.
-pub async fn season(db: &Db, season: Option<i64>) -> Result<SeasonView> {
-    let comps = db.competitions().await?;
+/// One season's division tables, regular season only. `None` picks the
+/// newest. Highlander's or 6v6's (the 6v6 plan, P2).
+pub async fn season(db: &Db, season: Option<i64>, format: GameFormat) -> Result<SeasonView> {
+    let comps = db.competitions(format).await?;
     let seasons = seasons_of(&comps);
     let Some(chosen) = season.and_then(|s| seasons.iter().find(|x| x.season == s)).or(seasons.first()).cloned() else {
         return Ok(SeasonView { seasons, season: None, divisions: Vec::new(), pending_details: 0 });
     };
-    let matches = db.season_matches(Some(chosen.season), None).await?;
+    let matches = db.season_matches(Some(chosen.season), None, format).await?;
     // Divisions from the matches, top tier first.
     let mut order: Vec<(i64, String)> = Vec::new();
     for m in matches.iter().filter(|m| m.stage == "regular" && !m.division.is_empty()) {
@@ -687,8 +801,12 @@ pub async fn season(db: &Db, season: Option<i64>) -> Result<SeasonView> {
         teams.sort_by(|a, b| (b.record.won, b.score_for - b.score_against).cmp(&(a.record.won, a.score_for - a.score_against)).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase())).then(a.team_id.cmp(&b.team_id)));
         divisions.push(DivisionTable { division: div.clone(), teams });
     }
-    let recent = db.newest_etf2l_season().await?.unwrap_or(0) - SEASONS_BACK;
-    let pending_details = db.count_season_matches_without_detail(recent).await?.max(0) as usize;
+    let newest = match format {
+        GameFormat::Highlander => db.newest_etf2l_season().await?,
+        GameFormat::Sixes => comps.iter().map(|c| c.season).filter(|s| *s < OFF_SEASON).max(),
+    };
+    let recent = newest.unwrap_or(0) - SEASONS_BACK;
+    let pending_details = db.count_season_matches_without_detail(recent, format).await?.max(0) as usize;
     Ok(SeasonView { seasons, season: Some(chosen), divisions, pending_details })
 }
 
@@ -752,6 +870,8 @@ pub struct TeamView {
     pub name: String,
     pub country: Option<String>,
     pub avatar: Option<String>,
+    /// The format the team plays: an ETF2L team plays one.
+    pub format: GameFormat,
     /// `(season, division)` played in, newest first.
     pub seasons: Vec<(i64, String)>,
     pub record: Record,
@@ -762,9 +882,19 @@ pub struct TeamView {
 
 pub async fn team(db: &Db, team_id: i64) -> Result<Option<TeamView>> {
     let Some((name, country, avatar)) = db.etf2l_team(team_id).await? else { return Ok(None) };
-    let comps = db.competitions().await?;
+    // An ETF2L team plays one format: its page is in that one's terms, the
+    // map pool its own (the 6v6 plan, P2).
+    let mut format = GameFormat::Highlander;
+    let mut matches = db.season_matches(None, Some(team_id), format).await?;
+    if matches.is_empty() {
+        let sixes = db.season_matches(None, Some(team_id), GameFormat::Sixes).await?;
+        if !sixes.is_empty() {
+            format = GameFormat::Sixes;
+            matches = sixes;
+        }
+    }
+    let comps = db.competitions(format).await?;
     let pool: Vec<String> = seasons_of(&comps).first().map(|s| s.pool.clone()).unwrap_or_default();
-    let matches = db.season_matches(None, Some(team_id)).await?;
     let map_rows = db.season_maps(Some(team_id)).await?;
     let mut by_match: HashMap<i64, Vec<&hl_db::SeasonMap>> = HashMap::new();
     for r in &map_rows {
@@ -885,7 +1015,7 @@ pub async fn team(db: &Db, team_id: i64) -> Result<Option<TeamView>> {
         roster.push(RosterRow { account_id, name, matches, last_played, class, games, rating, seasons });
     }
 
-    Ok(Some(TeamView { team_id, name, country, avatar, seasons, record, maps, results, roster }))
+    Ok(Some(TeamView { team_id, name, country, avatar, format, seasons, record, maps, results, roster }))
 }
 
 #[cfg(test)]
@@ -894,6 +1024,13 @@ mod tests {
 
     #[test]
     fn a_competition_name_is_its_season_division_and_stage() {
+        assert_eq!(parse_sixes_name("6v6 Season 53 (Autumn 2026): Round Robin"), Some((53, "Autumn 2026".into(), "".into(), "regular".into())));
+        assert_eq!(parse_sixes_name("6v6 Season 53 (Autumn 2026)"), Some((53, "Autumn 2026".into(), "".into(), "regular".into())));
+        assert_eq!(parse_sixes_name("6v6 Season 52 (Summer 2026): Premiership Playoffs"), Some((52, "Summer 2026".into(), "Premiership".into(), "Playoffs".into())));
+        assert_eq!(parse_sixes_name("6v6 Season 52 (Summer 2026): Fresh 3rd Place"), Some((52, "Summer 2026".into(), "Fresh".into(), "3rd Place".into())));
+        assert_eq!(parse_sixes_name("6v6 Season 40: Division 2"), Some((40, "Season 40".into(), "Division 2".into(), "regular".into())));
+        assert_eq!(parse_sixes_name("Highlander Season 36 (Autumn 2026): High"), None);
+        assert_eq!(division_and_stage("6v6 Season 52 (Summer 2026): Low Playoffs"), Some(("Low".into(), "Playoffs".into())));
         assert_eq!(parse_name("Highlander Season 36 (Autumn 2026): High"), Some((36, "Autumn 2026".into(), "High".into(), "regular".into())));
         assert_eq!(parse_name("Highlander Season 36 (Autumn 2026): Open Playoffs"), Some((36, "Autumn 2026".into(), "Open".into(), "Playoffs".into())));
         assert_eq!(parse_name("Highlander Season 36 (Autumn 2026): Low 3rd Place"), Some((36, "Autumn 2026".into(), "Low".into(), "3rd Place".into())));
@@ -988,7 +1125,7 @@ pub async fn league_sides(db: &Db, sources: &Sources, log_id: i64) -> Result<Opt
     let mut best: Option<(usize, i64, i64, i64)> = None; // (players placed, match, red team, blue team)
     // One failure to reach ETF2L ends the asking; the rosters stored are used.
     let mut asking = true;
-    for (match_id, c1, c2, fetched) in db.season_matches_before(at, LEAGUE_LOG_WINDOW_S).await? {
+    for (match_id, c1, c2, fetched) in db.season_matches_before(at, LEAGUE_LOG_WINDOW_S, hl_core::GameFormat::Highlander).await? {
         if !fetched && asking {
             asking = fetch_match_detail(db, sources, match_id).await.is_ok();
         }

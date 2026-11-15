@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { RatingValue } from "../RatingValue";
 import { createPortal } from "react-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { ClassStat, LogFlags, MatchDetail, PlayerPing, PlayerRow } from "../../api/types";
+import type { ClassStat, LogFlags, MatchDetail, PlayerPing, PlayerRow, Stint, StoredRole } from "../../api/types";
 import { clock, rating, teamLabel } from "../../lib/format";
 import { ClassIcon } from "../ClassIcon";
 import { t as tr, tx, k } from "../../lib/i18n";
@@ -16,6 +16,8 @@ import { tierOf, useStatScales } from "../../lib/tiers";
 import { TierPill } from "../TierPill";
 import { ColumnPicker, useColumns } from "../ColumnPicker";
 import { RankBySwitch, useRankBy } from "../RankBy";
+import { offClassTime, roleLabel } from "../../lib/gameformat";
+import { BanTag } from "../BanTag";
 
 const CLASS_ORDER = ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "medic", "sniper", "spy"];
 
@@ -188,6 +190,15 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
       (c.key !== "as" || flags.airshots),
   );
   const picker = useColumns("scoreboard", available);
+  // 6v6 off-class stints, from the raw log (the 6v6 plan, P3).
+  const stints = useQuery({ queryKey: ["match_stints", d.logId], queryFn: () => api.getMatchStints(d.logId), enabled: d.format === "sixes", staleTime: 5 * 60_000 }).data ?? [];
+  // 6v6 roles, by player (the 6v6 plan, P3).
+  const roleQ = useQuery({ queryKey: ["match_roles", d.logId], queryFn: () => api.getMatchRoles(d.logId), enabled: d.format === "sixes", staleTime: 5 * 60_000 });
+  const roles = useMemo(() => {
+    const m = new Map<number, StoredRole>();
+    for (const r of roleQ.data ?? []) if (roleLabel(r.role)) m.set(r.accountId, r);
+    return m;
+  }, [roleQ.data]);
   const cols = available.filter(picker.shown);
   const scales = useStatScales().data;
   const [sort, setSort] = useState<{ key: Key; desc: boolean }>({ key: "team", desc: false });
@@ -269,11 +280,14 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
                   <span {...nameProps(card.open({ accountId: p.accountId, name: p.name, cls: p.classes[0]?.[0] ?? null, isMe: p.isMe }))} title={tr("Their card")}>
                     {p.name}
                   </span>
+                  <BanTag accountId={p.accountId} short />
                   <DivTag divisions={divisions} accountId={p.accountId} />
+                  {d.format === "sixes" && (p.isMe ? <OwnRole logId={d.logId} role={roles.get(p.accountId)} cls={p.mainClass} /> : <RoleTag role={roles.get(p.accountId)} />)}
                   {p.isMe && <span className="you-tag">{tr("you")}</span>}
                 </td>
                 <td className="sb-classes">
                   <ClassCard p={p} flags={flags} />
+                  {d.format === "sixes" && <OffClass p={p} stints={stints.filter((s) => s.accountId === p.accountId)} />}
                 </td>
                 {cols.map((c) => {
                   const v = c.value(p, flags);
@@ -322,6 +336,83 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
  * per class, airshots beside Soldier and Demoman, backstabs beside Spy. The
  * scoreboard keeps one column fewer for each.
  */
+/**
+ * 6v6's off-class time, beside the class icons: how long a player spent on
+ * Pyro, Heavy, Engineer, Sniper or Spy, each class in the tooltip (the 6v6
+ * plan, P1). The rating will rate each off-class on its own (question 6).
+ */
+/**
+ * Your own role in a 6v6 match, which you may correct (the 6v6 plan,
+ * question 18: own matches only): Pocket or Roamer as Soldier, Combo or
+ * Flank as Scout, or back to the one worked out from the Medic's heals.
+ */
+function OwnRole({ logId, role, cls }: { logId: number; role: StoredRole | undefined; cls: string | null }) {
+  const qc = useQueryClient();
+  const pair = cls === "soldier" ? ["pocket", "roamer"] : cls === "scout" ? ["pocket_scout", "flank_scout"] : null;
+  if (!pair) return <RoleTag role={role} />;
+  const set = async (r: string | null) => {
+    await api.setOwnRole(logId, r);
+    void qc.invalidateQueries({ queryKey: ["match_roles", logId] });
+  };
+  return (
+    <select
+      className="role-pick"
+      value={role?.byHand ? role.role : ""}
+      onChange={(e) => void set(e.target.value || null)}
+      title={tr("Your role in this match: correct it if the Medic's heals got it wrong")}
+      aria-label={tr("Your role in this match")}
+    >
+      <option value="">{role && roleLabel(role.role) ? tx("{0} (worked out)", { "0": roleLabel(role.role)!.short }) as string : tr("Worked out")}</option>
+      {pair.map((r) => (
+        <option key={r} value={r}>
+          {roleLabel(r)!.short}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** A 6v6 player's role beside their name (the 6v6 plan, P3), with how it
+ *  was told: the Medic's heals, or set by hand. */
+function RoleTag({ role }: { role: StoredRole | undefined }) {
+  const l = role ? roleLabel(role.role) : null;
+  if (!role || !l) return null;
+  const how = role.byHand
+    ? tr("Set by hand")
+    : role.confidence !== null
+      ? tr("From the Medic's heals; {0}% clear", { "0": Math.round(role.confidence * 100) })
+      : "";
+  return (
+    <span className={role.confidence !== null && role.confidence < 0.1 && !role.byHand ? "role-tag unsure" : "role-tag"} title={[l.long, how].filter(Boolean).join("\n")}>
+      {l.short}
+    </span>
+  );
+}
+
+function OffClass({ p, stints }: { p: PlayerRow; stints: Stint[] }) {
+  const off = offClassTime(p.classes, p.mainClass);
+  if (off.length === 0) return null;
+  const total = off.reduce((a, [, s]) => a + s, 0);
+  // Each stretch when the raw log is stored: its class, round and time, and
+  // whether teammates were off-classing too (question 6); else the totals.
+  const lines = stints.length
+    ? stints.map((s) =>
+        [
+          tr("{0}, round {1}, {2}–{3}", { "0": classLabel(s.class), "1": s.round, "2": clock(s.startS), "3": clock(s.endS) }),
+          s.matesOff > 0 ? (s.matesOff === 1 ? tr("one teammate off-class too") : tr("{0} teammates off-class too", { "0": s.matesOff })) : "",
+          s.pointsHeld === 1 ? tr("holding their last") : s.pointsHeld === 4 ? tr("attacking the enemy's last") : "",
+        ]
+          .filter(Boolean)
+          .join(", "),
+      )
+    : off.map(([c, s]) => `${classLabel(c)} ${clock(s)}`);
+  return (
+    <span className="sb-off" title={lines.join("\n")}>
+      {tr("off {0}", { "0": clock(total) })}
+    </span>
+  );
+}
+
 function ClassCard({ p, flags }: { p: PlayerRow; flags: Flags }) {
   const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
   const box = useRef<HTMLSpanElement>(null);

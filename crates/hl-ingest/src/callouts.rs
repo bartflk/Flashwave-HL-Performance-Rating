@@ -542,8 +542,8 @@ pub struct MapTendencies {
 /// A player's tendencies on every map with drawn callouts, for one class:
 /// where their fights end (every match with a raw log) and where they stand
 /// and move (every match with an STV). Maps with too little are left out.
-pub async fn tendencies(db: &Db, data: &Path, account: u32, class: &str) -> Result<Vec<MapTendencies>> {
-    let kept = db.kept_maps().await?;
+pub async fn tendencies(db: &Db, data: &Path, account: u32, class: &str, sixes: bool) -> Result<Vec<MapTendencies>> {
+    let kept = db.kept_maps_of(sixes).await?;
     let stv_logs = db.player_stv_logs(account).await?;
     let mut bases: Vec<String> = kept.iter().map(|m| map_base(m)).collect();
     bases.sort();
@@ -560,7 +560,7 @@ pub async fn tendencies(db: &Db, data: &Path, account: u32, class: &str) -> Resu
         let mut fights: HashMap<String, ZoneFights> = HashMap::new();
         let mut unzoned = 0;
         let mut logs = std::collections::HashSet::new();
-        for (log_id, got, team, cls, x, y) in db.player_kill_positions(account, &maps).await? {
+        for (log_id, got, team, cls, x, y) in db.player_kill_positions(account, &maps, sixes).await? {
             if cls != class {
                 continue;
             }

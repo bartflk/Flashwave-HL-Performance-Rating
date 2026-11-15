@@ -9,11 +9,15 @@
 //! Additional map overview images and rectangular-map boundary data are from
 //! demos.tf.
 //!
+//! The attack/defend maps, Barnblitz and King are from maps.tf2.lol: its
+//! free medium renders (WebP, at most 2048 px) and the world bounds from
+//! its JSON world info (`MAPS_TF2_LOL`).
+//!
 //! The Maps section in Settings (Q31) lets a player put their own image in
 //! for any map, and line it up over the kills where the table below has no
 //! placement for it; both are kept beside the built-in ones and win.
 //!
-//! PNGs in the repository's `overviews/` folder are embedded at build time.
+//! Images in the repository's `overviews/` folder are embedded at build time.
 //! `BUILT_IN` maps their filenames to the canonical map bases used by the app.
 //!
 //! **Placement.** Square legacy images use more.tf's transform. New
@@ -82,7 +86,19 @@ const BOUNDARIES: &[(&str, f64, f64, f64, f64)] = &[
     ("clearcut", -4432.0, -1283.0, 4438.0, 1255.0),
     ("villa", -5988.0, -2466.0, 5988.0, 2466.0),
     ("gravelpit", -5359.0, -328.0, 1795.0, 5610.0),
+    // maps.tf2.lol's world info, `world.min` and `world.max`.
+    ("dustbowl", -3800.0, -3194.0, 3328.0, 3582.0),
+    ("egypt", -5536.4, -6924.0, 3231.6, 9120.0),
+    ("gorge", -7579.6, -336.0, -3815.6, 8512.0),
+    ("junction", -2508.0, -624.0, 1992.0, 5360.0),
+    ("mountainlab", -5730.0, -368.0, 1734.0, 4352.0),
+    ("barnblitz", -1368.0, -3505.3, 6896.0, 1302.7),
+    ("king", -2384.0, -3312.0, 2380.0, 3440.0),
 ];
+
+/// The built-in images that are maps.tf2.lol's renders, not more.tf's: the
+/// kill map credits them by name.
+const MAPS_TF2_LOL: &[&str] = &["barnblitz", "dustbowl", "egypt", "gorge", "junction", "king", "mountainlab"];
 
 /// Separate map identities that use another map's built-in image by default.
 const DEFAULT_IMAGE_FALLBACKS: &[(&str, &str)] = &[
@@ -100,7 +116,8 @@ fn default_image_base(base: &str) -> &str {
 }
 
 /// The built-in images, keyed by their canonical map base.
-/// Built-in images: original more.tf renders and additional images from demos.tf.
+/// Built-in images: original more.tf renders and additional images from
+/// demos.tf and maps.tf2.lol.
 const BUILT_IN: &[(&str, &[u8])] = &[
     ("aim_arena_reloaded", include_bytes!("../../../overviews/aim_arena_reloaded.png")),
     ("airfield", include_bytes!("../../../overviews/airfield.png")),
@@ -110,6 +127,7 @@ const BUILT_IN: &[(&str, &[u8])] = &[
     ("badwater", include_bytes!("../../../overviews/badwater.png")),
     ("bagel", include_bytes!("../../../overviews/bagel.png")),
     ("ballin_sky", include_bytes!("../../../overviews/ballin_sky.png")),
+    ("barnblitz", include_bytes!("../../../overviews/barnblitz.webp")),
     ("biohazard", include_bytes!("../../../overviews/biohazard.png")),
     ("borneo", include_bytes!("../../../overviews/borneo.png")),
     ("cardinal", include_bytes!("../../../overviews/cardinal.png")),
@@ -117,12 +135,17 @@ const BUILT_IN: &[(&str, &[u8])] = &[
     ("caverns", include_bytes!("../../../overviews/caverns.png")),
     ("clearcut", include_bytes!("../../../overviews/clearcut.png")),
     ("coalplant", include_bytes!("../../../overviews/coalplant.png")),
+    ("dustbowl", include_bytes!("../../../overviews/dustbowl.webp")),
+    ("egypt", include_bytes!("../../../overviews/egypt.webp")),
     ("ethic", include_bytes!("../../../overviews/ethic.png")),
+    ("gorge", include_bytes!("../../../overviews/gorge.webp")),
     ("granary", include_bytes!("../../../overviews/granary.png")),
     ("gravelpit", include_bytes!("../../../overviews/gravelpit.png")),
     ("gullywash", include_bytes!("../../../overviews/gullywash.png")),
+    ("junction", include_bytes!("../../../overviews/junction.webp")),
     ("kalinka", include_bytes!("../../../overviews/kalinka.png")),
     ("killbox_kbh_2p", include_bytes!("../../../overviews/killbox_kbh_2p.png")),
+    ("king", include_bytes!("../../../overviews/king.webp")),
     ("lakeside", include_bytes!("../../../overviews/lakeside.png")),
     ("lockdown", include_bytes!("../../../overviews/lockdown.png")),
     ("lostarena", include_bytes!("../../../overviews/lostarena.png")),
@@ -130,6 +153,7 @@ const BUILT_IN: &[(&str, &[u8])] = &[
     ("lostvillage_two", include_bytes!("../../../overviews/lostvillage_two.png")),
     ("metalworks", include_bytes!("../../../overviews/metalworks.png")),
     ("millstone", include_bytes!("../../../overviews/millstone.png")),
+    ("mountainlab", include_bytes!("../../../overviews/mountainlab.webp")),
     ("process", include_bytes!("../../../overviews/process.png")),
     ("product", include_bytes!("../../../overviews/product.png")),
     ("proot", include_bytes!("../../../overviews/proot.png")),
@@ -168,6 +192,9 @@ pub struct Overview {
     pub aspect: f64,
     /// The image itself, as a data URL the page can draw.
     pub image: String,
+    /// Whose image it is, for the line under the map: "yours",
+    /// "maps.tf2.lol" or "more.tf".
+    pub source: &'static str,
 }
 
 /// Where an image sits, in game units, as the player lines it up.
@@ -319,7 +346,14 @@ pub fn load(dir: &Path, map: &str) -> Result<Option<Overview>> {
     let base = map_base(map);
     let Some(Placement { min_x, max_y, size }) = placement_for(dir, &base) else { return Ok(None) };
     let Some((image, aspect)) = image(dir, &base)? else { return Ok(None) };
-    Ok(Some(Overview { map_base: base, min_x, max_y, size, aspect, image }))
+    let source = if user_image(dir, &base).is_some() {
+        "yours"
+    } else if MAPS_TF2_LOL.contains(&default_image_base(&base)) {
+        "maps.tf2.lol"
+    } else {
+        "more.tf"
+    };
+    Ok(Some(Overview { map_base: base, min_x, max_y, size, aspect, image, source }))
 }
 
 /// Where a map's image and placement come from: "yours", "built in" or
@@ -466,6 +500,20 @@ mod tests {
     }
 
     #[test]
+    fn maps_tf2_lol_images_load_with_their_bounds_and_credit() {
+        let empty = std::env::temp_dir().join(format!("hl-overviews-mapstf2-{}", std::process::id()));
+        for map in ["cp_dustbowl", "cp_egypt_final", "cp_gorge", "cp_junction_final", "cp_mountainlab", "pl_barnblitz", "koth_king", "pl_problitz_rc3"] {
+            let o = load(&empty, map).unwrap().unwrap_or_else(|| panic!("{map} ships an image"));
+            assert_eq!(o.source, "maps.tf2.lol", "{map}");
+            assert!(o.image.starts_with("data:image/webp;base64,"), "{map}");
+            // The render's pixels have the shape of its world bounds.
+            let bytes = BUILT_IN.iter().find(|i| i.0 == o.map_base).unwrap().1;
+            let (_, w, h) = image_info(bytes).unwrap();
+            assert!((f64::from(h) / f64::from(w) - o.aspect).abs() < 0.002, "{map}: {w}x{h} against {}", o.aspect);
+        }
+    }
+
+    #[test]
     fn built_in_images_are_valid_and_selected() {
         let empty = std::env::temp_dir().join(format!("hl-overviews-none-{}", std::process::id()));
         let o = load(&empty, "pl_vigil_rc10")
@@ -475,12 +523,11 @@ mod tests {
             o.image.starts_with("data:image/png;base64,iVBORw0KGgo"),
             "a PNG"
         );
+        assert_eq!(o.source, "more.tf");
+        // maps.tf2.lol's renders ship as the WebPs it serves; the rest are PNGs.
         for (base, bytes) in BUILT_IN {
-            assert_eq!(
-                image_info(bytes).map(|info| info.0),
-                Some("image/png"),
-                "{base}"
-            );
+            let mime = if MAPS_TF2_LOL.contains(base) { "image/webp" } else { "image/png" };
+            assert_eq!(image_info(bytes).map(|info| info.0), Some(mime), "{base}");
         }
         assert!(BUILT_IN.iter().any(|(base, _)| *base == "metalworks"));
         assert!(BUILT_IN.iter().any(|(base, _)| *base == "badwater"));

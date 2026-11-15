@@ -19,6 +19,10 @@ pub mod keys {
     /// has already read, and deleting them means a match can never be
     /// improved by a later pass without fetching the file again.
     pub const AUTO_DELETE_DEMOS: &str = "auto_delete_demos";
+    /// The formats the owner plays, chosen in setup: "highlander",
+    /// "sixes" or both, comma-separated (see `format::formats_played`).
+    /// Missing means Highlander alone, as before 6v6.
+    pub const FORMATS_PLAYED: &str = "formats_played";
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

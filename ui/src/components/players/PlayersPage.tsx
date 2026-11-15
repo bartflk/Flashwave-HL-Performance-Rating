@@ -13,6 +13,7 @@ import { TopPlayers } from "./PlayerStats";
 import { MedalGlyph } from "./MedalGlyph";
 import { onOpenPlayer, takePendingPlayer } from "../../lib/goto";
 import { Loading, Refreshing, Spinner } from "../Spinner";
+import { BanTag } from "../BanTag";
 
 /**
  * Look other people up (Q14).
@@ -139,6 +140,7 @@ function Results({
         >
           {h.mainClass ? <ClassIcon cls={h.mainClass} size={22} /> : <span style={{ width: 22 }} />}
           <span className="ph-name">{h.name}</span>
+          <BanTag accountId={h.accountId} short />
           {h.highest && <DivisionBadge d={h.highest} />}
           <span className="ph-medals" aria-label={t("Medals")}>
             {h.medals.map((n, i) =>

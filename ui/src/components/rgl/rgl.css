@@ -377,3 +377,10 @@
 .rgl-new-divs { list-style: none; margin: 0 0 12px; padding: 0; display: grid; grid-template-columns: 1fr; gap: 4px; }
 .rgl-new-divs li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel-2); }
 .rgl-new-divs .muted { font-size: var(--fs-small); }
+
+/* The RGL home's season strip (RglStrip): its divisions as chips on the
+   picture, where ETF2L's strip has division badges. */
+.rgl-strip-div { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--text); background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.18); }
+
+/* The RGL player header's medals along its foot, as the app's player header has them. */
+.pp-trophies .rgl-trophy { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 56px; font-size: var(--fs-xs); white-space: nowrap; cursor: help; }

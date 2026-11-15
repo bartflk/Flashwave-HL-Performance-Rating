@@ -2,7 +2,7 @@ import { Fragment, useMemo, type ReactNode } from "react";
 import { ApiError } from "../ApiError";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { NewsItem } from "../../api/types";
+import type { NewsItem, StoredFormat } from "../../api/types";
 import { formatDate } from "../../lib/format";
 import { openTeam } from "../../lib/goto";
 import { t } from "../../lib/i18n";
@@ -17,19 +17,20 @@ import { Loading } from "../Spinner";
  * as raw HTML, and nothing in it runs.
  */
 
-export function useNews() {
-  return useQuery({ queryKey: ["etf2l_news"], queryFn: api.getNews, staleTime: 10 * 60_000 });
+/** ETF2L's news of one format: Highlander's unless asked (the 6v6 plan, P2). */
+export function useNews(format: StoredFormat = "highlander") {
+  return useQuery({ queryKey: ["etf2l_news", format], queryFn: () => api.getNews(format), staleTime: 10 * 60_000 });
 }
 
 // ---- The list --------------------------------------------------------------
 
-export function NewsList({ onPost }: { onPost: (id: number) => void }) {
-  const q = useNews();
+export function NewsList({ onPost, format }: { onPost: (id: number) => void; format?: StoredFormat }) {
+  const q = useNews(format);
   const items = q.data ?? [];
   return (
     <>
       <header className="ts-pagehead">
-        <span className="ts-eyebrow">{t("ETF2L Highlander")}</span>
+        <span className="ts-eyebrow">{format === "sixes" ? t("ETF2L 6v6") : t("ETF2L Highlander")}</span>
         <h1>{t("News")}</h1>
       </header>
       {q.isPending && <Loading>{t("Loading the news…")}</Loading>}

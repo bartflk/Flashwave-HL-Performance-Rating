@@ -33,6 +33,9 @@ import { clearProblems, markProblemsSeen, report, useProblems } from "../lib/pro
 import { Spinner } from "./Spinner";
 import { ApiError } from "./ApiError";
 import { SortTh, useSort } from "../lib/sort";
+import { ActivityPanel } from "./settings/ActivityPanel";
+import { FormatsPicker } from "./FormatsPicker";
+import { useFormatsPlayed } from "../lib/gameformat";
 
 /** The groups of Settings, in order, for the side menu and the page. */
 type Group = { id: string; title: string; sections: { id: string; title: string; icon: IconName }[] };
@@ -76,6 +79,7 @@ export function Settings({
   const report = useCallback((id: string, m: boolean) => setMatched((x) => (x[id] === m ? x : { ...x, [id]: m })), []);
   const shared = useMemo(() => ({ query, foldAll, report, focus }), [query, foldAll, report, focus]);
 
+  const played = useFormatsPlayed();
   const groups: Group[] = [
     {
       id: "general",
@@ -88,12 +92,14 @@ export function Settings({
         { id: "scale", title: t("Interface size"), icon: "scale" },
         { id: "problems", title: t("Problems"), icon: "alert" },
         { id: "diagnostics", title: t("Diagnostics"), icon: "info" },
+        { id: "activity", title: t("Activity log"), icon: "list" },
       ],
     },
     {
       id: "matches",
       title: t("Matches and data"),
       sections: [
+        ...(played.sixesEnabled ? [{ id: "formats", title: t("Formats you play"), icon: "list" as const }] : []),
         { id: "history", title: t("How far back"), icon: "clock" },
         { id: "import", title: t("Logs that didn't import"), icon: "fileX" },
         { id: "etf2l", title: t("ETF2L and match types"), icon: "shield" },
@@ -215,8 +221,23 @@ export function Settings({
               info={t("Everything the app noticed while it worked is written to a log file in the data folder; the last three runs are kept. Copy diagnostics puts this page and the end of the log on the clipboard for Discord.")}>
               <DiagnosticsPanel />
             </SettingsSection>
+            <SettingsSection id="activity" icon="list" title={t("Activity log")} keywords="activity log live debug verbose api requests sites status rate limit copy file path waterfall"
+              summary={t("Everything the app does, live: every request and how each site answered")}
+              info={t("Each line the app writes and each request it makes, as it happens, with the log file's location and buttons to copy it. Verbose adds debug lines for tracking a problem down.")}>
+              <ActivityPanel />
+            </SettingsSection>
 
             {shows("matches") && <h2 className="settings-group">{t("Matches and data")}</h2>}
+            {played.sixesEnabled && (
+              <SettingsSection id="formats" icon="list" title={t("Formats you play")} keywords="6v6 6s sixes highlander hl format formats mode"
+                summary={t("Highlander, 6v6: which ones the app shows")}
+                info={t("Each format keeps its own matches and ratings: nothing from one counts towards the other. Playing both adds a menu to the Matches, Profile and ETF2L tabs.")}>
+                <div className="panel">
+                  <h2>{t("Formats you play")}</h2>
+                  <FormatsPicker />
+                </div>
+              </SettingsSection>
+            )}
             <SettingsSection id="history" icon="clock" title={t("How far back")} keywords="history years old scrims pugs"
               summary={t("Which of your older matches are downloaded")}
               info={t("Officials always count, however old. Older scrims and pugs are only listed: they cost nothing until you open one.")}>
@@ -239,7 +260,7 @@ export function Settings({
             </SettingsSection>
             <SettingsSection id="maps" icon="map" title={t("Maps")} keywords="maps images callouts overview"
               summary={t("Map images and callouts for the kill maps")} hideIntro
-              info={t("The default top-down images are more.tf's. Import your own for any map and line it up; callouts export as a file to share, and a .callouts.json dropped on the window imports.")}>
+              info={t("The default top-down images are more.tf's, demos.tf's and maps.tf2.lol's. Import your own for any map and line it up; callouts export as a file to share, and a .callouts.json dropped on the window imports.")}>
               <MapsPanel />
             </SettingsSection>
 

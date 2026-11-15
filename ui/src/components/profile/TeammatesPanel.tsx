@@ -31,12 +31,13 @@ const FIRST = 12;
 
 const winRate = (m: { wins: number; losses: number }) => (m.wins + m.losses === 0 ? null : (m.wins / (m.wins + m.losses)) * 100);
 
-export function TeammatesPanel() {
+/** Your regular teammates, in Highlander's games or 6v6's (`sixes`). */
+export function TeammatesPanel({ sixes = false }: { sixes?: boolean } = {}) {
   const [all, setAll] = useState(false);
   const [currentOnly, setCurrentOnly] = useState(false);
   const [sort, setSort] = useState<SortKey>("games");
   const [open, setOpen] = useState(false);
-  const q = useQuery({ queryKey: ["teammates", all], queryFn: () => api.getTeammates(all), placeholderData: keepPreviousData });
+  const q = useQuery({ queryKey: ["teammates", all, sixes], queryFn: () => api.getTeammates(all, sixes), placeholderData: keepPreviousData });
 
   const rows = useMemo(() => {
     const list = (q.data?.teammates ?? []).filter((m) => !currentOnly || m.current);

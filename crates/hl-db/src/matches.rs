@@ -65,8 +65,11 @@ pub struct IndexStats {
     pub other: i64,
     pub unclassified: i64,
     pub officials: i64,
+    /// Highlander logs downloaded (6v6 is counted in `sixes_fetched`).
     pub fetched: i64,
     pub normalized: i64,
+    /// 6v6 logs downloaded (the 6v6 plan, P1).
+    pub sixes_fetched: i64,
     pub pending: i64,
     pub failed: i64,
     /// Deleted on logs.tf, or out of tries: no longer asked for (Q77).
@@ -86,7 +89,8 @@ pub struct IndexInfo {
 
 #[derive(Debug, Clone, Default)]
 pub struct MatchFilter {
-    /// `None` means every format.
+    /// `None` means every format; "!sixes" every format but 6v6 (the
+    /// Highlander tab's "All formats", the 6v6 plan, P1).
     pub format: Option<String>,
     /// `official`, `scrim` or `pug`; `None` means every kind.
     pub kind: Option<String>,
@@ -123,6 +127,14 @@ pub struct MatchFilter {
 /// Every stat the match list can show has one (Flashy: "i want all the
 /// stats possible"): the owner's totals, per minute, per 30 minutes and the
 /// ratios.
+/// The owner's rating in a match: Highlander's by class, or, for a 6v6 log
+/// (which has none in `rating`), their 6v6 main role's from `sixes_rating`
+/// under its newest model -- off-class stints left out. Flashy, with Matches
+/// › 6v6 showing "–" in every Rating cell: "the ratings didn't calculate".
+const MY_RATING: &str = "COALESCE(r.score, (SELECT MAX(s.rating) FROM sixes_rating s
+     WHERE s.log_id = m.log_id AND s.account_id = p.account_id AND s.role NOT LIKE 'off:%'
+       AND s.model_version = (SELECT MAX(model_version) FROM sixes_rating)))";
+
 pub const SORTS: [(&str, &str); 35] = [
     ("date", "m.played_at"),
     ("kills", "p.kills"),
@@ -132,7 +144,7 @@ pub const SORTS: [(&str, &str); 35] = [
     ("dpm", "CASE WHEN COALESCE(p.time_s, 0) > 0 THEN p.dmg * 60.0 / p.time_s END"),
     ("kd", "CASE WHEN COALESCE(p.deaths, 0) > 0 THEN p.kills * 1.0 / p.deaths ELSE p.kills END"),
     ("kad", "CASE WHEN COALESCE(p.deaths, 0) > 0 THEN (p.kills + p.assists) * 1.0 / p.deaths ELSE p.kills + p.assists END"),
-    ("rating", "r.score"),
+    ("rating", MY_RATING),
     ("time", "p.time_s"),
     ("k30", "CASE WHEN COALESCE(p.time_s, 0) > 0 THEN p.kills * 1800.0 / p.time_s END"),
     ("a30", "CASE WHEN COALESCE(p.time_s, 0) > 0 THEN p.assists * 1800.0 / p.time_s END"),
@@ -322,6 +334,18 @@ const WORTH_FETCHING: &str = "( COALESCE(i.format_override, i.format) = 'highlan
        OR (COALESCE(i.format_override, i.format) IS NULL AND COALESCE(i.player_count, 0) >= 16)
        OR (i.format_override IS NULL AND i.format = 'other' AND i.player_count BETWEEN 16 AND 24) )";
 
+/// What is worth downloading for the formats the owner plays: Highlander's
+/// as above, and 6v6 logs once 6v6 is one of them (the 6v6 plan, P1). A 6v6
+/// log is only one trends.tf or the classifier called 6v6; an unclassified
+/// one of 12 players is left alone, as before.
+fn worth_fetching(formats: &[hl_core::GameFormat]) -> String {
+    if formats.contains(&hl_core::GameFormat::Sixes) {
+        format!("( {WORTH_FETCHING} OR COALESCE(i.format_override, i.format) = 'sixes' )")
+    } else {
+        WORTH_FETCHING.to_string()
+    }
+}
+
 fn in_window() -> String {
     format!(
         "(i.played_at IS NULL OR i.played_at >= unixepoch() - {KEEP_YEARS} * 365 * 86400
@@ -485,6 +509,7 @@ impl Db {
     /// twelve years of pugs.
     pub async fn fetch_queue(&self, max_attempts: i64) -> Result<Vec<i64>> {
         let window = if self.all_history().await? { "1 = 1".to_string() } else { in_window() };
+        let worth = worth_fetching(&self.formats_played().await?);
         let sql = format!(
             "SELECT i.log_id FROM log_index i
              LEFT JOIN log_raw r         ON r.log_id = i.log_id
@@ -496,7 +521,7 @@ impl Db {
              WHERE (r.log_id IS NULL OR i.log_id IN (SELECT log_id FROM log_stand_in)
                     OR NOT EXISTS (SELECT 1 FROM match m WHERE m.log_id = i.log_id))
                AND i.superseded_by IS NULL
-               AND {WORTH_FETCHING}
+               AND {worth}
                -- A log the sources did not have is asked for again after a
                -- day, then a week, then a month (audit API-3).
                AND i.log_id NOT IN (SELECT log_id FROM log_source_miss
@@ -532,16 +557,30 @@ impl Db {
         self.set_setting(keys::AUTO_DELETE_DEMOS, if on { "1" } else { "0" }).await
     }
 
+    /// The formats the owner plays, chosen in setup (the 6v6 plan, P0).
+    /// Highlander alone until they choose, and in a build with 6v6 off.
+    pub async fn formats_played(&self) -> Result<Vec<hl_core::GameFormat>> {
+        Ok(hl_core::format::formats_played(self.get_setting(keys::FORMATS_PLAYED).await?.as_deref()))
+    }
+
+    /// Store the formats played; an empty list is stored as Highlander.
+    pub async fn set_formats_played(&self, formats: &[hl_core::GameFormat]) -> Result<Vec<hl_core::GameFormat>> {
+        let stored = hl_core::format::formats_stored(formats);
+        self.set_setting(keys::FORMATS_PLAYED, &stored).await?;
+        self.formats_played().await
+    }
+
     /// Logs the window is holding back: old, not officials, never downloaded.
     /// What Settings offers to fetch, and what it costs.
     pub async fn outside_window(&self) -> Result<i64> {
         let window = in_window();
+        let worth = worth_fetching(&self.formats_played().await?);
         Ok(sqlx::query_scalar(&format!(
             "SELECT COUNT(*) FROM log_index i
              LEFT JOIN log_raw r ON r.log_id = i.log_id
              WHERE r.log_id IS NULL
                AND i.superseded_by IS NULL
-               AND {WORTH_FETCHING}
+               AND {worth}
                AND NOT {window}"
         ))
         .fetch_one(self.pool())
@@ -997,7 +1036,8 @@ impl Db {
             let (kind, from, to) = (fmt + 1, fmt + 2, fmt + 3);
             format!(
                 "WHERE i.superseded_by IS NULL
-                   AND (?{fmt} IS NULL OR {EFFECTIVE_FORMAT} = ?{fmt})
+                   AND (?{fmt} IS NULL OR {EFFECTIVE_FORMAT} = ?{fmt}
+                        OR (substr(?{fmt}, 1, 1) = '!' AND COALESCE({EFFECTIVE_FORMAT}, '') <> substr(?{fmt}, 2)))
                    AND (?{kind} IS NULL OR c.kind = ?{kind})
                    AND (?{from} IS NULL OR m.played_at >= ?{from})
                    AND (?{to} IS NULL OR m.played_at <= ?{to})
@@ -1040,7 +1080,7 @@ impl Db {
                     ) AS segment_maps,
                     p.team, p.main_class, p.kills, p.deaths, p.assists, p.dmg, p.time_s,
                     p.dt, p.hr, p.heal, p.ubers, p.drops, p.headshots, p.headshots_hit, p.backstabs, p.airshots, p.medkits, p.medkits_hp, p.sentries, p.cpc, p.ic, p.lks, p.suicides,
-                    r.score AS my_rating,
+                    {MY_RATING} AS my_rating,
                     (SELECT SUM(ls.sentry_kills) FROM log_stat ls WHERE ls.log_id = m.log_id AND ls.account_id = p.account_id) AS my_sentries,
                     (SELECT CAST(SUM(w.hits) AS REAL) / SUM(w.shots) FROM log_weapon w WHERE w.log_id = m.log_id AND w.account_id = p.account_id AND w.class = p.main_class HAVING SUM(w.shots) >= 30) AS my_accuracy,
                     {CONTEXT_COLUMNS}
@@ -1165,7 +1205,8 @@ impl Db {
         // class counts leave out the class, and the map counts the map.
         let shared = format!(
             "i.superseded_by IS NULL
-               AND (?2 IS NULL OR {EFFECTIVE_FORMAT} = ?2)
+               AND (?2 IS NULL OR {EFFECTIVE_FORMAT} = ?2
+                    OR (substr(?2, 1, 1) = '!' AND COALESCE({EFFECTIVE_FORMAT}, '') <> substr(?2, 2)))
                AND (?3 IS NULL OR c.kind = ?3)
                AND (?4 IS NULL OR m.played_at >= ?4)
                AND (?5 IS NULL OR m.played_at <= ?5) {}",
@@ -1294,10 +1335,12 @@ impl Db {
             sixes: q(format!("SELECT COUNT(*) FROM log_index i WHERE {kept} AND {EFFECTIVE_FORMAT} = 'sixes'")).await?,
             other: q(format!("SELECT COUNT(*) FROM log_index i WHERE {kept} AND {EFFECTIVE_FORMAT} NOT IN ('highlander','sixes')")).await?,
             unclassified: q(format!("SELECT COUNT(*) FROM log_index i WHERE {kept} AND {EFFECTIVE_FORMAT} IS NULL")).await?,
-            // Officials the owner played, counted once per log like the match list.
-            officials: q("SELECT COUNT(*) FROM match_context WHERE kind = 'official'".into()).await?,
-            fetched: q("SELECT COUNT(*) FROM log_raw".into()).await?,
-            normalized: q("SELECT COUNT(*) FROM match".into()).await?,
+            // Officials the owner played, counted once per log like the match
+            // list; these three are Highlander's (6v6 is counted apart, P1).
+            officials: q(format!("SELECT COUNT(*) FROM match_context WHERE kind = 'official' AND {}", crate::hl_only("log_id"))).await?,
+            fetched: q(format!("SELECT COUNT(*) FROM log_raw WHERE {}", crate::hl_only("log_id"))).await?,
+            normalized: q(format!("SELECT COUNT(*) FROM match WHERE {}", crate::hl_only("log_id"))).await?,
+            sixes_fetched: q(format!("SELECT COUNT(*) FROM log_raw r JOIN log_index i ON i.log_id = r.log_id WHERE {EFFECTIVE_FORMAT} = 'sixes'")).await?,
             pending: self.fetch_queue(3).await?.len() as i64,
             // Failing and still being tried; the given-up are counted apart
             // and no longer called failures (Q77).
@@ -1341,7 +1384,7 @@ mod tests {
     #[test]
     fn every_sort_is_a_known_column_and_anything_else_falls_back_to_the_date() {
         assert!(order_by(&filter(Some("dpm"), false)).contains("p.dmg * 60.0 / p.time_s"));
-        assert!(order_by(&filter(Some("rating"), true)).contains("r.score) ASC"));
+        assert!(order_by(&filter(Some("rating"), true)).contains("COALESCE(r.score, (SELECT MAX(s.rating) FROM sixes_rating s"));
         // Sentries built and sentries destroyed are two columns with two keys.
         assert!(order_by(&filter(Some("sentries"), false)).contains("p.sentries"));
         assert!(order_by(&filter(Some("sentry_kills"), false)).contains("ls.sentry_kills"));
@@ -1377,6 +1420,51 @@ mod tests {
         }])
         .await
         .unwrap();
+    }
+
+    #[tokio::test]
+    async fn sixes_logs_are_fetched_for_a_sixes_player_and_kept_out_of_highlander_numbers() {
+        // The 6v6 plan, P1: 6v6 logs come down once 6v6 is played, and never
+        // reach a Highlander list, scale or count.
+        use hl_core::GameFormat::{Highlander, Sixes};
+        let db = Db::connect_in_memory().await.unwrap();
+        index(&db, 1, 0.01).await;
+        index(&db, 2, 0.01).await;
+        sqlx::query("UPDATE log_index SET format = 'highlander' WHERE log_id = 1").execute(db.pool()).await.unwrap();
+        sqlx::query("UPDATE log_index SET format = 'sixes', player_count = 12 WHERE log_id = 2").execute(db.pool()).await.unwrap();
+        assert_eq!(db.fetch_queue(3).await.unwrap(), vec![1], "a Highlander player gets no 6v6 logs");
+        db.set_formats_played(&[Highlander, Sixes]).await.unwrap();
+        let queue = db.fetch_queue(3).await.unwrap();
+        if hl_core::format::SIXES_ENABLED {
+            assert!(queue.contains(&1) && queue.contains(&2), "{queue:?}");
+        } else {
+            assert_eq!(queue, vec![1], "a release build downloads no 6v6");
+        }
+
+        // Both stored with a stat line each: only the Highlander one counts.
+        let line = |log_id: i64| crate::LogStat { log_id, account_id: 7, class: "soldier".into(), main: true, time_s: 1200, dmg: 9000, ..Default::default() };
+        for id in [1, 2] {
+            db.put_log_stats(id, &[line(id)], &[]).await.unwrap();
+        }
+        let logs = |rows: Vec<crate::LogStat>| rows.into_iter().map(|r| r.log_id).collect::<Vec<_>>();
+        assert_eq!(logs(db.log_stats(Some(7)).await.unwrap()), vec![1]);
+        assert_eq!(logs(db.log_stats_of_class("soldier").await.unwrap()), vec![1]);
+        assert_eq!(db.dpm_sample().await.unwrap().len(), 1);
+        assert_eq!(db.own_stat_lines(7).await.unwrap().iter().map(|r| r.0).collect::<Vec<_>>(), vec![1]);
+        // One log asked for by id is whatever format it is.
+        assert_eq!(logs(db.log_stats_of(2).await.unwrap()), vec![2]);
+    }
+
+    #[tokio::test]
+    async fn formats_played_starts_as_highlander_and_keeps_what_setup_chose() {
+        use hl_core::GameFormat::{Highlander, Sixes};
+        let db = Db::connect_in_memory().await.unwrap();
+        assert_eq!(db.formats_played().await.unwrap(), [Highlander]);
+        let both = db.set_formats_played(&[Sixes, Highlander]).await.unwrap();
+        let expect: &[hl_core::GameFormat] = if hl_core::format::SIXES_ENABLED { &[Highlander, Sixes] } else { &[Highlander] };
+        assert_eq!(both, expect);
+        assert_eq!(db.formats_played().await.unwrap(), expect);
+        assert_eq!(db.set_formats_played(&[]).await.unwrap(), [Highlander], "never none");
     }
 
     #[tokio::test]
@@ -1554,7 +1642,7 @@ mod tests {
         // And the list itself, with the STV filter (Q56) and a class sort (Q61).
         let stv = MatchFilter { stv_only: true, ..filter(None, false) };
         assert_eq!(db.list_matches(Some(1), &stv).await.unwrap().total, 0);
-        for key in ["killed:soldier", "diedto:heavyweapons"] {
+        for key in ["killed:soldier", "diedto:heavyweapons", "rating"] {
             db.list_matches(Some(1), &filter(Some(key), false)).await.unwrap();
         }
     }

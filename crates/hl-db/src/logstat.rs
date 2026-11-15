@@ -240,10 +240,13 @@ impl Db {
     /// opponent)`.
     pub async fn opposite_numbers(&self, account: u32) -> Result<Vec<(i64, String, i64)>> {
         Ok(sqlx::query_as(
-            "SELECT s.log_id, s.class, o.account_id FROM log_stat s
-             JOIN log_stat o ON o.log_id = s.log_id AND o.class = s.class AND o.account_id <> s.account_id AND o.main
-             WHERE s.account_id = ?1 AND s.main
-             ORDER BY s.log_id, o.time_s DESC",
+            &format!(
+                "SELECT s.log_id, s.class, o.account_id FROM log_stat s
+                 JOIN log_stat o ON o.log_id = s.log_id AND o.class = s.class AND o.account_id <> s.account_id AND o.main
+                 WHERE s.account_id = ?1 AND s.main AND {}
+                 ORDER BY s.log_id, o.time_s DESC",
+                crate::hl_only("s.log_id")
+            ),
         )
         .bind(i64::from(account))
         .fetch_all(self.pool())
@@ -260,8 +263,9 @@ impl Db {
     /// Every row, or one account's.
     pub async fn log_stats(&self, account: Option<u32>) -> Result<Vec<LogStat>> {
         Ok(sqlx::query_as::<_, LogStat>(&format!(
-            "SELECT {} FROM log_stat WHERE ?1 IS NULL OR account_id = ?1",
-            LOG_STAT_COLUMNS.join(", ")
+            "SELECT {} FROM log_stat WHERE (?1 IS NULL OR account_id = ?1) AND {}",
+            LOG_STAT_COLUMNS.join(", "),
+            crate::hl_only("log_id")
         ))
         .bind(account.map(i64::from))
         .fetch_all(self.pool())
@@ -271,9 +275,12 @@ impl Db {
     /// Each player's round impact per log, from the main-class rows:
     /// `log -> account -> impact`. One log, or every log.
     pub async fn round_impacts(&self, log: Option<i64>) -> Result<std::collections::HashMap<i64, std::collections::HashMap<u32, f64>>> {
-        let rows: Vec<(i64, i64, f64)> = sqlx::query_as(
-            "SELECT log_id, account_id, impact FROM log_stat WHERE main = 1 AND impact IS NOT NULL AND (?1 IS NULL OR log_id = ?1)",
-        )
+        // One log is whatever format it is; every log means the Highlander ones.
+        let rows: Vec<(i64, i64, f64)> = sqlx::query_as(&format!(
+            "SELECT log_id, account_id, impact FROM log_stat WHERE main = 1 AND impact IS NOT NULL
+               AND (log_id = ?1 OR (?1 IS NULL AND {}))",
+            crate::hl_only("log_id")
+        ))
         .bind(log)
         .fetch_all(self.pool())
         .await?;
@@ -289,7 +296,7 @@ impl Db {
     /// (Flashy: "take the DPM from scrims and pugs less serious"). The map
     /// is the log's own, or none for a combined log or one over several maps.
     pub async fn dpm_sample(&self) -> Result<Vec<(String, i64, i64, f64, Option<String>, i64)>> {
-        Ok(sqlx::query_as(
+        Ok(sqlx::query_as(&format!(
             "SELECT s.class, s.dmg, s.time_s, CASE WHEN EXISTS (SELECT 1 FROM league_log l WHERE l.log_id = s.log_id) THEN 1.0
                   ELSE COALESCE((SELECT CASE c.kind WHEN 'official' THEN 1.0 WHEN 'scrim' THEN 0.5 ELSE 0.25 END
                                  FROM match_context c WHERE c.log_id = s.log_id), 0.5) END,
@@ -298,8 +305,9 @@ impl Db {
               WHERE NOT EXISTS (SELECT 1 FROM log_index pi WHERE pi.superseded_by = s.log_id)
                 AND (SELECT COUNT(DISTINCT g.map) FROM log_segment g WHERE g.log_id = s.log_id) <= 1),
                     s.account_id
-             FROM log_stat s WHERE s.main AND s.time_s >= 300",
-        )
+             FROM log_stat s WHERE s.main AND s.time_s >= 300 AND {}",
+            crate::hl_only("s.log_id")
+        ))
         .fetch_all(&self.pool)
         .await?)
     }
@@ -308,7 +316,7 @@ impl Db {
     /// on the stat scales: `(log, class, damage, seconds, shots, hits, map)`,
     /// shots and hits where the log recorded 30 shots or more.
     pub async fn own_stat_lines(&self, account: u32) -> Result<Vec<(i64, String, i64, i64, Option<i64>, Option<i64>, Option<String>)>> {
-        Ok(sqlx::query_as(
+        Ok(sqlx::query_as(&format!(
             "SELECT s.log_id, s.class, s.dmg, s.time_s, a.shots, a.hits,
                     (SELECT COALESCE((SELECT l.map FROM league_log l WHERE l.log_id = s.log_id),
                               (SELECT m.map FROM match m WHERE m.log_id = s.log_id))
@@ -318,8 +326,9 @@ impl Db {
              LEFT JOIN (SELECT w.log_id, w.class, SUM(w.shots) AS shots, SUM(w.hits) AS hits FROM log_weapon w
                         WHERE w.account_id = ?1 GROUP BY w.log_id, w.class HAVING SUM(w.shots) >= 30) a
                ON a.log_id = s.log_id AND a.class = s.class
-             WHERE s.account_id = ?1 AND s.main AND s.time_s >= 300",
-        )
+             WHERE s.account_id = ?1 AND s.main AND s.time_s >= 300 AND {}",
+            crate::hl_only("s.log_id")
+        ))
         .bind(i64::from(account))
         .fetch_all(&self.pool)
         .await?)
@@ -328,7 +337,7 @@ impl Db {
     /// The same games' accuracy where the log recorded it, 30 shots or
     /// more: `(class, shots, hits, weight, map, account)`.
     pub async fn accuracy_sample(&self) -> Result<Vec<(String, i64, i64, f64, Option<String>, i64)>> {
-        Ok(sqlx::query_as(
+        Ok(sqlx::query_as(&format!(
             "SELECT s.class, SUM(w.shots), SUM(w.hits), CASE WHEN EXISTS (SELECT 1 FROM league_log l WHERE l.log_id = s.log_id) THEN 1.0
                   ELSE COALESCE((SELECT CASE c.kind WHEN 'official' THEN 1.0 WHEN 'scrim' THEN 0.5 ELSE 0.25 END
                                  FROM match_context c WHERE c.log_id = s.log_id), 0.5) END,
@@ -338,9 +347,10 @@ impl Db {
                 AND (SELECT COUNT(DISTINCT g.map) FROM log_segment g WHERE g.log_id = s.log_id) <= 1),
                     s.account_id
              FROM log_stat s JOIN log_weapon w ON w.log_id = s.log_id AND w.account_id = s.account_id AND w.class = s.class
-             WHERE s.main AND s.time_s >= 300
+             WHERE s.main AND s.time_s >= 300 AND {}
              GROUP BY s.log_id, s.account_id, s.class HAVING SUM(w.shots) >= 30",
-        )
+            crate::hl_only("s.log_id")
+        ))
         .fetch_all(&self.pool)
         .await?)
     }
@@ -348,7 +358,9 @@ impl Db {
     /// Every log's kills, damage and seconds by player and class:
     /// `(log, account, class, kills, dmg, secs)`.
     pub async fn log_output(&self) -> Result<Vec<(i64, i64, String, i64, i64, i64)>> {
-        Ok(sqlx::query_as("SELECT log_id, account_id, class, kills, dmg, time_s FROM log_stat").fetch_all(&self.pool).await?)
+        Ok(sqlx::query_as(&format!("SELECT log_id, account_id, class, kills, dmg, time_s FROM log_stat WHERE {}", crate::hl_only("log_id")))
+            .fetch_all(&self.pool)
+            .await?)
     }
 
     /// The rows of the given logs.
@@ -366,7 +378,11 @@ impl Db {
     /// Every row on one class: the population a player's numbers on it are
     /// placed against.
     pub async fn log_stats_of_class(&self, class: &str) -> Result<Vec<LogStat>> {
-        Ok(sqlx::query_as::<_, LogStat>(&format!("SELECT {} FROM log_stat WHERE class = ?1", LOG_STAT_COLUMNS.join(", ")))
+        Ok(sqlx::query_as::<_, LogStat>(&format!(
+            "SELECT {} FROM log_stat WHERE class = ?1 AND {}",
+            LOG_STAT_COLUMNS.join(", "),
+            crate::hl_only("log_id")
+        ))
             .bind(class)
             .fetch_all(self.pool())
             .await?)
@@ -382,9 +398,10 @@ impl Db {
 
     /// One account's weapon rows.
     pub async fn log_weapons(&self, account: u32) -> Result<Vec<LogWeapon>> {
-        Ok(sqlx::query_as::<_, LogWeapon>(
-            "SELECT log_id, account_id, class, weapon, kills, dmg, shots, hits FROM log_weapon WHERE account_id = ?1",
-        )
+        Ok(sqlx::query_as::<_, LogWeapon>(&format!(
+            "SELECT log_id, account_id, class, weapon, kills, dmg, shots, hits FROM log_weapon WHERE account_id = ?1 AND {}",
+            crate::hl_only("log_id")
+        ))
         .bind(i64::from(account))
         .fetch_all(self.pool())
         .await?)

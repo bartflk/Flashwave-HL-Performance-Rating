@@ -34,6 +34,9 @@ import "./components/match/match.css";
 import { Etf2lMark } from "./components/Etf2lMark";
 import { RglMark } from "./components/RglMark";
 import { Logo } from "./components/Logo";
+import { SixesPage } from "./components/sixes/SixesPage";
+import { FORMAT_TABS, useFormatsPlayed, useTabFormats, type FormatTab as FormatTabId } from "./lib/gameformat";
+import { FormatTab } from "./components/FormatTab";
 
 type Tab = "matches" | "profile" | "etf2l" | "rgl" | "settings" | "rating";
 
@@ -52,6 +55,9 @@ export default function App() {
   // Subscribed here, once: nothing below is memoised, so a language change
   // re-renders the whole tree and every `t()` in it reads the new table.
   useLanguage();
+  // Highlander or 6v6 on each tab that has both (the 6v6 plan, P0).
+  const played = useFormatsPlayed();
+  const fmt = useTabFormats();
   // Set when the user chooses to revisit setup after it is already complete.
   const [forceSetup, setForceSetup] = useState(false);
   // A first run keeps the setup screen up until its last step, even once the
@@ -217,13 +223,25 @@ export default function App() {
             <span className="beta-tag" title={tr("Early build: expect rough edges, and please report them")}>{tr("beta")}</span>
           </h1>
           <nav className="tabs">
-            {TABS.map(([id, label]) => (
-              <button key={id} className={tab === id ? "tab active" : "tab"} onClick={() => go(id)}>
-                {id === "etf2l" && <Etf2lMark size={15} />}
-                {id === "rgl" && <RglMark size={15} />}
-                {t(label)}
-              </button>
-            ))}
+            {TABS.map(([id, label]) =>
+              (FORMAT_TABS as readonly string[]).includes(id) ? (
+                <FormatTab
+                  key={id}
+                  id={id as FormatTabId}
+                  label={t(label)}
+                  icon={id === "etf2l" ? <Etf2lMark size={15} /> : undefined}
+                  active={tab === id}
+                  fmt={fmt[id as FormatTabId]}
+                  played={played}
+                  onOpen={() => go(id)}
+                />
+              ) : (
+                <button key={id} className={tab === id ? "tab active" : "tab"} onClick={() => go(id)}>
+                  {id === "rgl" && <RglMark size={15} />}
+                  {t(label)}
+                </button>
+              ),
+            )}
           </nav>
         </div>
         <div className="topbar-right">
@@ -243,16 +261,18 @@ export default function App() {
       </header>
 
       <div hidden={tab !== "matches" || openLog !== null}>
-        <ErrorBoundary what="The match list"><Matches onOpen={setOpenLog} /></ErrorBoundary>
+        <ErrorBoundary what="The match list"><Matches key={fmt.matches} format={fmt.matches} onOpen={setOpenLog} /></ErrorBoundary>
       </div>
       {visited.has("profile") && (
         <div hidden={tab !== "profile" || openLog !== null}>
-          <ErrorBoundary what="The profile"><ProfilePage steamid={data.config.steamid} onOpenMatch={setOpenLog} /></ErrorBoundary>
+          <ErrorBoundary what="The profile"><ProfilePage key={fmt.profile} format={fmt.profile} steamid={data.config.steamid} onOpenMatch={setOpenLog} /></ErrorBoundary>
         </div>
       )}
       {visited.has("etf2l") && (
         <div hidden={tab !== "etf2l" || openLog !== null}>
-          <ErrorBoundary what="ETF2L"><Etf2lPage active={tab === "etf2l" && openLog === null} onOpenMatch={setOpenLog} /></ErrorBoundary>
+          <ErrorBoundary what="ETF2L">
+            {fmt.etf2l === "6s" ? <SixesPage onOpenMatch={setOpenLog} /> : <Etf2lPage active={tab === "etf2l" && openLog === null} onOpenMatch={setOpenLog} />}
+          </ErrorBoundary>
         </div>
       )}
       {visited.has("rgl") && (

@@ -638,7 +638,7 @@ impl Catalogue {
             final_colours.entry(m).or_default().entry(log).or_default().push((account, colour));
         }
         // ETF2L's own placings, per season and division.
-        let seasons: HashMap<i64, i64> = db.competitions().await?.into_iter().map(|c| (c.competition_id, c.season)).collect();
+        let seasons: HashMap<i64, i64> = db.competitions(hl_core::GameFormat::Highlander).await?.into_iter().map(|c| (c.competition_id, c.season)).collect();
         let mut official_places: HashMap<(i64, String), Vec<(u8, i64)>> = HashMap::new();
         for (competition, _, json) in db.etf2l_raw("tables").await? {
             let Some(&season) = seasons.get(&competition) else { continue };
@@ -2826,7 +2826,7 @@ pub async fn season_banner(db: &Db, sources: &Sources, season: i64, season_name:
     // posts of S36 and S24 to S27 had none (Flashy, 31 Oct 2026). The search
     // after, unless those weeks gave a picture naming the season; the better
     // picture kept.
-    if let Some(span) = db.season_span(season).await? {
+    if let Some(span) = db.season_span(season, hl_core::GameFormat::Highlander).await? {
         let url = season_posts_url(span, "title,content");
         if let Ok(Some(body)) = sources.fetch_text_interactive(&url).await {
             found = banner_in(&body, title_number(season), season_name);
@@ -2853,17 +2853,59 @@ pub async fn season_banner(db: &Db, sources: &Sources, season: i64, season_name:
     Ok(found)
 }
 
+/// [`season_banner`] for an ETF2L 6v6 season (Flashy: the 6v6 tab's home
+/// "with a picture in there just like the etf2l highlander"): the 6v6 news
+/// posts of the season's own weeks, then ETF2L's search for "6v6 Season N",
+/// a picture in a post whose title says 6v6 and names the season.
+pub async fn sixes_season_banner(db: &Db, sources: &Sources, season: i64, season_name: &str) -> Result<Option<String>> {
+    let key = format!("sixes_season_banner:{season}");
+    if let Some(v) = db.get_setting(&key).await? {
+        let (url, at) = v.split_once('|').unwrap_or((v.as_str(), "0"));
+        let fresh = now() - at.parse::<i64>().unwrap_or(0) < 7 * 24 * 3600;
+        if url != "-" || fresh {
+            return Ok((url != "-").then(|| url.to_string()));
+        }
+    }
+    let mut found: Option<(u8, String)> = None;
+    if let Some(span) = db.season_span(season, hl_core::GameFormat::Sixes).await? {
+        let url = season_posts_url_in(span, "title,content", crate::news::SIXES_CATEGORY);
+        if let Ok(Some(body)) = sources.fetch_text_interactive(&url).await {
+            found = banner_in_format(&body, title_number(season), season_name, true);
+        }
+    }
+    if found.as_ref().is_none_or(|(score, _)| *score < NAMES_SEASON) {
+        let q = format!("6v6 Season {season}");
+        let url = crate::http::url("https://etf2l.org/wp-json/wp/v2/posts", [("search", q.as_str()), ("per_page", "50"), ("_fields", "title,content")]);
+        if let Ok(Some(body)) = sources.fetch_text_interactive(&url).await {
+            if let Some(b) = banner_in_format(&body, title_number(season), season_name, true) {
+                if found.as_ref().is_none_or(|f| b.0 > f.0) {
+                    found = Some(b);
+                }
+            }
+        }
+    }
+    let found = found.map(|(_, url)| url);
+    db.set_setting(&key, &format!("{}|{}", found.as_deref().unwrap_or("-"), now())).await?;
+    Ok(found)
+}
+
 /// A season's banner as a small JPEG, made once from ETF2L's picture and
 /// kept: 640 px wide for a tile, 1280 for the season's own header. ETF2L's
 /// banners are up to 1.9 MB of PNG each; a grid of them made the page slow.
 /// When the picture cannot be read, its link is returned as it is.
 pub async fn season_banner_image(db: &Db, sources: &Sources, season: i64, season_name: &str, large: bool) -> Result<Option<String>> {
+    season_banner_image_of(db, sources, season, season_name, large, false).await
+}
+
+/// [`season_banner_image`] for Highlander's season, or 6v6's (`sixes`).
+pub async fn season_banner_image_of(db: &Db, sources: &Sources, season: i64, season_name: &str, large: bool, sixes: bool) -> Result<Option<String>> {
     let width = if large { 1280 } else { 640 };
-    let key = format!("season_banner_img:{season}:{width}");
+    let key = if sixes { format!("sixes_season_banner_img:{season}:{width}") } else { format!("season_banner_img:{season}:{width}") };
     if let Some(v) = db.get_setting(&key).await? {
         return Ok(Some(v));
     }
-    let Some(url) = season_banner(db, sources, season, season_name).await? else { return Ok(None) };
+    let url = if sixes { sixes_season_banner(db, sources, season, season_name).await? } else { season_banner(db, sources, season, season_name).await? };
+    let Some(url) = url else { return Ok(None) };
     let Some(bytes) = sources.fetch_bytes(&url).await? else { return Ok(Some(url)) };
     match tokio::task::spawn_blocking(move || shrink_to_jpeg(&bytes, width)).await? {
         Ok(jpeg) => {
@@ -2933,13 +2975,19 @@ fn banner_score(src: &str, number: Option<i64>, name: &str) -> u8 {
 /// ETF2L's Highlander posts of a season's weeks, oldest first: from six
 /// weeks before its first match (the announcement, the preseason cup) to a
 /// month after its last (the awards show, the wrap-up).
-pub(crate) fn season_posts_url((first, last): (i64, i64), fields: &str) -> String {
+pub(crate) fn season_posts_url(span: (i64, i64), fields: &str) -> String {
+    season_posts_url_in(span, fields, 18)
+}
+
+/// [`season_posts_url`] in one news category: Highlander's 18, 6v6's 22.
+pub(crate) fn season_posts_url_in((first, last): (i64, i64), fields: &str, category: i64) -> String {
+    let category = category.to_string();
     let day = |t: i64| chrono::DateTime::from_timestamp(t, 0).map(|d| d.format("%Y-%m-%dT00:00:00").to_string()).unwrap_or_default();
     let (after, before) = (day(first - 45 * 86_400), day(last + 30 * 86_400));
     crate::http::url(
         "https://etf2l.org/wp-json/wp/v2/posts",
         [
-            ("categories", "18"),
+            ("categories", category.as_str()),
             ("after", after.as_str()),
             ("before", before.as_str()),
             ("order", "asc"),
@@ -2977,19 +3025,37 @@ pub(crate) fn title_names_season(title: &str, number: Option<i64>, name: &str) -
     by_number || (!name.is_empty() && !name.starts_with("season") && name.split_whitespace().all(|w| title.contains(w)))
 }
 
+/// Whether a 6v6 post's title (lower case) is about this season: "Season
+/// 53" (not 530), or each word of its name.
+fn sixes_title_names_season(title: &str, number: Option<i64>, name: &str) -> bool {
+    let by_number = number.is_some_and(|n| {
+        let w = format!("season {n}");
+        title.match_indices(&w).any(|(i, _)| !title[i + w.len()..].starts_with(|c: char| c.is_ascii_digit()))
+    });
+    by_number || (!name.is_empty() && !name.starts_with("season") && name.split_whitespace().all(|w| title.contains(w)))
+}
+
 /// The best picture in the posts about this Highlander season, the first of
 /// the best: a post's title says "Highlander" and "Season 34" (not 340) or
 /// the season's name. With its [`banner_score`].
 fn banner_in(body: &str, number: Option<i64>, name: &str) -> Option<(u8, String)> {
+    banner_in_format(body, number, name, false)
+}
+
+/// [`banner_in`] for Highlander's posts, or 6v6's (`sixes`): a title that
+/// says 6v6 and names the season by number or by its name's words.
+fn banner_in_format(body: &str, number: Option<i64>, name: &str, sixes: bool) -> Option<(u8, String)> {
     let posts: Vec<Value> = serde_json::from_str(body).ok()?;
     let name = name.to_ascii_lowercase();
     let mut best: Option<(u8, String)> = None;
     for p in posts {
         let title = p.pointer("/title/rendered").and_then(Value::as_str).unwrap_or("").to_ascii_lowercase();
-        if !title.contains("highlander") {
-            continue;
-        }
-        if !title_names_season(&title, number, &name) {
+        let about = if sixes {
+            (title.contains("6v6") || title.contains("6s ")) && sixes_title_names_season(&title, number, &name)
+        } else {
+            title.contains("highlander") && title_names_season(&title, number, &name)
+        };
+        if !about {
             continue;
         }
         let content = p.pointer("/content/rendered").and_then(Value::as_str).unwrap_or("");
@@ -3437,6 +3503,17 @@ mod tests {
         assert!(!seasons[0].merc, "a player of the team, not a merc");
         let (_, won, _) = c.player(501, &medals);
         assert!(won.is_empty(), "a merc who never joined");
+    }
+
+    #[test]
+    fn a_6v6_banner_is_from_a_6v6_post_naming_the_season() {
+        let body = r#"[
+            {"title":{"rendered":"Highlander Season 53 announced"},"content":{"rendered":"<img src=\"https://etf2l.org/wp-content/uploads/hl53.png\">"}},
+            {"title":{"rendered":"6v6 Season 530 teams"},"content":{"rendered":"<img src=\"https://etf2l.org/wp-content/uploads/x530.png\">"}},
+            {"title":{"rendered":"ETF2L 6v6 Season 53 is here"},"content":{"rendered":"<img src=\"https://etf2l.org/wp-content/uploads/6v6s53.png\">"}}
+        ]"#;
+        assert_eq!(banner_in_format(body, Some(53), "Autumn 2026", true).map(|b| b.1).as_deref(), Some("https://etf2l.org/wp-content/uploads/6v6s53.png"));
+        assert_eq!(banner_in_format(body, Some(53), "Autumn 2026", false).map(|b| b.1).as_deref(), Some("https://etf2l.org/wp-content/uploads/hl53.png"), "Highlander's own stays its own");
     }
 
     #[test]

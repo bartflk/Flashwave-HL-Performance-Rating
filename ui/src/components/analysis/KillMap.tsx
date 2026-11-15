@@ -607,7 +607,9 @@ export function KillMap({ a, player, slice, stv }: { a: Analysis; player: number
                 ? tr("Which map these rounds were on is not known, so only this match's positions are drawn.")
                 : tr("Which map these rounds were on is not known: the log does not say. Download or drop this match's STV demo and the map is read from it.")
               : overview
-              ? tr("Map image from more.tf.")
+              ? overview.source === "maps.tf2.lol"
+                ? tr("Map image from maps.tf2.lol.")
+                : tr("Map image from more.tf.")
               : view
                 ? tr("Map drawn from {0} positions in {games} stored {2} matches; brighter is busier.", { "0": view.points.toLocaleString(), "2": shortMap ?? "", games: view.games })
                 : tr("Too few matches on this map to draw it; only this match's positions are shown.")}

@@ -395,6 +395,39 @@ impl Db {
     // ---- the context pass ----------------------------------------------------
 
     /// Highlander officials with both clans known, and their registered players.
+    /// One format's officials the owner played in, from the stored season
+    /// lineups (the 6v6 plan, P2): what finds a 6v6 official trends.tf did
+    /// not link, as `official_rows` does Highlander's from ETF2L's own list.
+    pub async fn season_officials_of(&self, me: u32, format: hl_core::GameFormat) -> Result<Vec<OfficialRow>> {
+        let matches = sqlx::query(
+            "SELECT m.match_id, m.time, m.clan1_id, COALESCE(t1.name, '') AS clan1_name, m.clan2_id, COALESCE(t2.name, '') AS clan2_name
+             FROM etf2l_season_match m
+             JOIN etf2l_competition c ON c.competition_id = m.competition_id
+             LEFT JOIN etf2l_team t1 ON t1.team_id = m.clan1_id
+             LEFT JOIN etf2l_team t2 ON t2.team_id = m.clan2_id
+             WHERE c.format = ?2 AND m.time IS NOT NULL AND m.default_win = 0
+               AND m.match_id IN (SELECT match_id FROM etf2l_season_player WHERE account_id = ?1)",
+        )
+        .bind(i64::from(me))
+        .bind(format.as_str())
+        .fetch_all(self.pool())
+        .await?;
+        let mut out = Vec::new();
+        for r in matches {
+            let id: i64 = r.get("match_id");
+            let roster: Vec<(i64, Option<i64>)> =
+                sqlx::query_as("SELECT account_id, team_id FROM etf2l_season_player WHERE match_id = ?1").bind(id).fetch_all(self.pool()).await?;
+            out.push(OfficialRow {
+                match_id: id,
+                time: r.get("time"),
+                clan1: (r.get("clan1_id"), r.get("clan1_name")),
+                clan2: (r.get("clan2_id"), r.get("clan2_name")),
+                roster: roster.into_iter().filter_map(|(a, t)| Some((a as u32, t?))).collect(),
+            });
+        }
+        Ok(out)
+    }
+
     pub async fn official_rows(&self) -> Result<Vec<OfficialRow>> {
         let matches = sqlx::query(
             "SELECT match_id, time, clan1_id, clan1_name, clan2_id, clan2_name FROM etf2l_match
@@ -428,18 +461,19 @@ impl Db {
             .collect())
     }
 
-    /// Every kept Highlander match the owner played, oldest first.
-    pub async fn context_games(&self, me: u32) -> Result<Vec<ContextGameRow>> {
+    /// Every kept match of one format the owner played, oldest first.
+    pub async fn context_games(&self, me: u32, format: hl_core::GameFormat) -> Result<Vec<ContextGameRow>> {
         let games = sqlx::query(
             "SELECT m.log_id, COALESCE(m.played_at, 0) AS played_at, i.etf2l_match_id,
                     COALESCE(m.title, i.title) AS title
              FROM match m
              JOIN log_index i    ON i.log_id = m.log_id
              JOIN match_player p ON p.log_id = m.log_id AND p.account_id = ?1
-             WHERE i.superseded_by IS NULL AND COALESCE(i.format_override, i.format) = 'highlander'
+             WHERE i.superseded_by IS NULL AND COALESCE(i.format_override, i.format) = ?2
              ORDER BY m.played_at, m.log_id",
         )
         .bind(me as i64)
+        .bind(format.as_str())
         .fetch_all(self.pool())
         .await?;
         let players = sqlx::query(
@@ -613,7 +647,7 @@ impl Db {
     }
 
     pub async fn context_counts(&self, etf2l_player_key: &str) -> Result<ContextCounts> {
-        let r = sqlx::query(
+        let r = sqlx::query(&format!(
             "SELECT
                 COALESCE(SUM(kind = 'official'), 0) AS officials,
                 COALESCE(SUM(kind = 'scrim'), 0) AS scrims,
@@ -621,8 +655,9 @@ impl Db {
                 COALESCE(SUM(link_method = 'roster'), 0) AS roster_officials,
                 (SELECT COUNT(*) FROM etf2l_match) AS etf2l_matches,
                 (SELECT MAX(fetched_at) FROM etf2l_raw) AS last_fetch
-             FROM match_context",
-        )
+             FROM match_context WHERE {}",
+            crate::hl_only("log_id")
+        ))
         .fetch_one(self.pool())
         .await?;
         Ok(ContextCounts {
@@ -645,7 +680,9 @@ impl Db {
              JOIN match m        ON m.log_id = c.log_id
              JOIN match_player p ON p.log_id = c.log_id AND p.account_id = ?1
              LEFT JOIN rating r  ON r.log_id = c.log_id AND r.account_id = ?1 AND r.model_version = ?2
-             ORDER BY m.played_at, c.log_id"
+             WHERE {}
+             ORDER BY m.played_at, c.log_id",
+            crate::hl_only("c.log_id")
         ))
         .bind(me as i64)
         .bind(version)
@@ -667,12 +704,19 @@ impl Db {
 
     /// Everyone who was on the owner's side in a classified game.
     pub async fn mate_rows(&self, me: u32) -> Result<Vec<MateRow>> {
-        let rows = sqlx::query(
+        self.mate_rows_of(me, false).await
+    }
+
+    /// [`Db::mate_rows`] in Highlander's games, or 6v6's (`sixes`).
+    pub async fn mate_rows_of(&self, me: u32, sixes: bool) -> Result<Vec<MateRow>> {
+        let rows = sqlx::query(&format!(
             "SELECT q.log_id, q.account_id, q.name, q.main_class, q.time_s
              FROM match_context c
              JOIN match_player p ON p.log_id = c.log_id AND p.account_id = ?1
-             JOIN match_player q ON q.log_id = c.log_id AND q.team = p.team AND q.account_id != ?1",
-        )
+             JOIN match_player q ON q.log_id = c.log_id AND q.team = p.team AND q.account_id != ?1
+             WHERE {}",
+            if sixes { crate::sixes_only("c.log_id") } else { crate::hl_only("c.log_id") }
+        ))
         .bind(me as i64)
         .fetch_all(self.pool())
         .await?;

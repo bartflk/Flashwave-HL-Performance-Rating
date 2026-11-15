@@ -160,8 +160,11 @@ export interface IndexStats {
   other: number;
   unclassified: number;
   officials: number;
+  /** Highlander logs downloaded. */
   fetched: number;
   normalized: number;
+  /** 6v6 logs downloaded (the 6v6 plan, P1). */
+  sixesFetched: number;
   pending: number;
   failed: number;
   /** Deleted on logs.tf, or out of tries: no longer asked for. */
@@ -451,6 +454,195 @@ export interface RglMatchMore {
   logs: { logId: number; title: string; map: string; playedAt: number; stored: boolean }[];
   /** Why there are no logs, when they were not looked for. */
   logsWhy: "notPlayed" | "forfeit" | "tooSoon" | "resting" | "unavailable" | "noRoster" | null;
+}
+
+/** ETF2L 6v6's current season (prototype). */
+export interface SixesRow {
+  id: number;
+  name: string;
+  country: string | null;
+  mapsPlayed: number;
+  mapsWon: number;
+  mapsLost: number;
+  gcWon: number;
+  gcLost: number;
+  penalty: number;
+  score: number;
+  byes: number;
+  seededPoints: number;
+  dropped: boolean;
+}
+export interface SixesDivision {
+  name: string;
+  system: "roundRobin" | "swiss";
+  competitionId: number;
+  teams: SixesRow[];
+}
+export interface SixesTeam {
+  id: number;
+  name: string;
+  avatar: string | null;
+}
+
+/** One official of the current 6v6 season, played or to come (the 6v6 plan, P2). */
+export interface SixesMatch {
+  id: number;
+  competitionId: number;
+  system: "roundRobin" | "swiss";
+  division: string | null;
+  tier: number | null;
+  week: number | null;
+  round: string | null;
+  time: number | null;
+  clan1: SixesTeam;
+  clan2: SixesTeam;
+  /** ETF2L's score: league points over the two maps (a map won 2, drawn 1). */
+  r1: number | null;
+  r2: number | null;
+  defaultWin: boolean;
+  maps: string[];
+  played: boolean;
+}
+
+export interface SixesMatches {
+  season: string;
+  matches: SixesMatch[];
+}
+
+/** One player's role in a 6v6 log (the 6v6 plan, P3). */
+export interface StoredRole {
+  accountId: number;
+  /** "pocket", "roamer", "pocket_scout", "flank_scout", "demoman", "medic" or "off:<class>". */
+  role: string;
+  /** "healspread", "class" or "hand". */
+  method: string;
+  confidence: number | null;
+  seconds: number | null;
+  byHand: boolean;
+}
+
+/** A 6v6 match's numbers (the 6v6 plan, P4). */
+export interface SixesPlayerStats {
+  accountId: number;
+  team: string;
+  mainClass: string | null;
+  minutes: number;
+  dpm: number | null;
+  dtm: number | null;
+  damageRatio: number | null;
+  airshots: number | null;
+  deaths: number;
+  medicDeaths: number | null;
+  stickyKills: number;
+  reflectKills: number;
+  sentryKills: number;
+  /** Enemy Medics killed. */
+  medicPicks: number | null;
+  /** First kills of a fight; null without the raw log. */
+  picks: number | null;
+  /** Buildings destroyed as Spy; null without the raw log. */
+  saps: number | null;
+  /** Soldiers and Demomen killed as Heavy; null without the raw log. */
+  denies: number | null;
+  /** PROPOSED definitions for the reviewers, in no rating: übers pressured out, caps without the Medic, Sniper damage on the combo. */
+  forcesProposed?: number | null;
+  backcapsProposed?: number | null;
+  sniperComboDamage?: number | null;
+  /** Space created (question 17): share of the team's damage taken, Medic left out. */
+  damageTakenShare?: number | null;
+  /** Fights where they were their team's first to take damage, of the team's fights. */
+  firstIn?: number | null;
+  fights?: number | null;
+}
+
+export interface SixesMedicStats {
+  accountId: number;
+  team: string;
+  ubers: number;
+  drops: number;
+  deaths: number;
+  healPerMin: number | null;
+  advantagesLost: number | null;
+  deathsAfterUber: number | null;
+  avgBuildS: number | null;
+}
+
+export interface SixesMatchStats {
+  players: SixesPlayerStats[];
+  medics: SixesMedicStats[];
+}
+
+/** A 6v6 season's honours in one division (the 6v6 plan, P7). */
+export interface SixesHonours {
+  division: string;
+  /** [place, teamId, name], ETF2L's own placings. */
+  medals: Array<[number, number, string]>;
+  mvp: { accountId: number; name: string | null; role: string; games: number; average: number } | null;
+}
+
+/** One row of the 6v6 Players board (the 6v6 plan, P7). */
+export interface SixesBoardRow {
+  accountId: number;
+  name: string | null;
+  games: number;
+  average: number;
+  best: number;
+}
+
+/** Where the 6v6 league sample stands (the 6v6 plan, P5). */
+export interface SixesSampleStatus {
+  enabled: boolean;
+  seasonsBack: number;
+  counts: { listed: number; downloaded: number; missing: number; oldest: number | null; newest: number | null };
+  discoveredAt: number | null;
+}
+
+/** The owner's 6v6 profile beyond ratings by role (the 6v6 plan, P7). */
+export interface SixesProfile {
+  best: Array<{ logId: number; role: string; rating: number; map: string | null; playedAt: number | null }>;
+  seasons: Array<{ season: number; division: string; team: string; won: number; drawn: number; lost: number }>;
+}
+
+/** A 6v6 preview rating (the 6v6 plan, P6). */
+export interface SixesRatingRow {
+  logId: number;
+  accountId: number;
+  role: string;
+  rating: number;
+  score: number;
+  minutes: number;
+  /** JSON: [component, percentile, share]. */
+  parts: string;
+}
+
+/** One stretch on an off-class (the 6v6 plan, P3). */
+export interface Stint {
+  accountId: number;
+  class: string;
+  /** Seconds from the first round's start. */
+  startS: number;
+  endS: number;
+  round: number;
+  /** Teammates on an off-class at some moment of it. */
+  matesOff: number;
+  /** On 5CP, the points the team held when it began: 1 is defending their last, 4 attacking the enemy's. */
+  pointsHeld?: number | null;
+}
+
+/** A format as the backend stores it (the 6v6 plan, P0). */
+export type StoredFormat = "highlander" | "sixes";
+
+export interface FormatsPlayed {
+  formats: StoredFormat[];
+  /** False in a build with 6v6 switched off (release builds until its rating ships). */
+  sixesEnabled: boolean;
+}
+
+export interface SixesSeason {
+  name: string;
+  competitions: { id: number; name: string; system: "roundRobin" | "swiss" }[];
+  pool: string[];
+  divisions: SixesDivision[];
 }
 
 /** One of RGL's bans. */
@@ -2098,6 +2290,8 @@ export interface Overview {
   aspect: number;
   /** A data URL (or, in the browser mock, a plain URL). */
   image: string;
+  /** Whose image it is, for the line under the map. */
+  source: "yours" | "maps.tf2.lol" | "more.tf";
 }
 
 /** Where an overview image sits, in game units (Q31). */
@@ -2685,6 +2879,8 @@ export interface TeamView {
   name: string;
   country: string | null;
   avatar: string | null;
+  /** The format the team plays (the 6v6 plan, P2); missing from older builds. */
+  format?: "highlander" | "sixes";
   /** [season, division], newest first. */
   seasons: Array<[number, string]>;
   record: LeagueRecord;
@@ -3299,4 +3495,47 @@ export interface RglAwards {
   medicMvp: RglAward | null;
   topFragger: RglAward | null;
   mostHeadshots: RglAward | null;
+}
+
+/** One line of the activity feed (hl_ingest::activity): what the app is doing. */
+export interface ActivityLine {
+  seq: number;
+  /** Unix time in milliseconds. */
+  at: number;
+  level: "error" | "warn" | "info" | "debug" | "http";
+  /** A site for a request, else the part of the app. */
+  source: string;
+  text: string;
+}
+
+/** How one site's requests have gone this run. */
+export interface ActivitySite {
+  host: string;
+  requests: number;
+  ok: number;
+  notModified: number;
+  notFound: number;
+  failed: number;
+  lastStatus: string | null;
+  lastAt: number | null;
+  lastPath: string | null;
+  avgMs: number;
+  rateRemaining: number | null;
+  restingUntil: number | null;
+  lastError: string | null;
+}
+
+export interface ActivityView {
+  lines: ActivityLine[];
+  sites: ActivitySite[];
+  verbose: boolean;
+}
+
+/** An active ETF2L ban (hl_ingest::bans). */
+export interface EtfBan {
+  accountId: number;
+  start: number | null;
+  /** null for a permanent ban. */
+  end: number | null;
+  reason: string | null;
 }

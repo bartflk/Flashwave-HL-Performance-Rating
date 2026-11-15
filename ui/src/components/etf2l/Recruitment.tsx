@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ApiError } from "../ApiError";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { EtfComment, RecruitPost } from "../../api/types";
+import type { EtfComment, RecruitPost, StoredFormat } from "../../api/types";
 import { formatDate } from "../../lib/format";
 import { openPlayer } from "../../lib/goto";
 import { t, tx } from "../../lib/i18n";
@@ -21,8 +21,9 @@ import { balanceWrap } from "../../lib/balance";
  * profile in the app, a team its page; the post itself is on etf2l.org.
  */
 
-export function useRecruitment() {
-  return useQuery({ queryKey: ["etf2l_recruitment"], queryFn: api.getRecruitment, staleTime: 10 * 60_000 });
+/** ETF2L's recruitment of one format: Highlander's unless asked (the 6v6 plan, P2). */
+export function useRecruitment(format: StoredFormat = "highlander") {
+  return useQuery({ queryKey: ["etf2l_recruitment", format], queryFn: () => api.getRecruitment(format), staleTime: 10 * 60_000 });
 }
 
 /** ETF2L's class names ("Demoman", "Heavy") as the app's keys. */
@@ -42,8 +43,8 @@ const skillRank = (s: string | null) => {
 
 export type Kind = "players" | "teams";
 
-export function RecruitmentPage({ onOpen }: { onOpen: (p: RecruitPost, kind: Kind) => void }) {
-  const q = useRecruitment();
+export function RecruitmentPage({ onOpen, format }: { onOpen: (p: RecruitPost, kind: Kind) => void; format?: StoredFormat }) {
+  const q = useRecruitment(format);
   const [kind, setKind] = useState<Kind>("players");
   const [cls, setCls] = useState<string | null>(null);
   const [skill, setSkill] = useState("");
@@ -53,7 +54,7 @@ export function RecruitmentPage({ onOpen }: { onOpen: (p: RecruitPost, kind: Kin
   return (
     <>
       <header className="ts-pagehead">
-        <span className="ts-eyebrow">{t("ETF2L Highlander")}</span>
+        <span className="ts-eyebrow">{format === "sixes" ? t("ETF2L 6v6") : t("ETF2L Highlander")}</span>
         <h1>{t("Recruitment")}</h1>
         <p className="hint">{t("The newest posts on ETF2L: players looking for a team, and teams looking for players.")}</p>
       </header>
@@ -258,8 +259,8 @@ export function RecruitPostPage({ p, kind, onTeam }: { p: RecruitPost; kind: Kin
 }
 
 /** The newest few of each, for the Home page's rail. */
-export function RecruitPreview({ onAll, onOpen }: { onAll: () => void; onOpen: (p: RecruitPost, kind: Kind) => void }) {
-  const q = useRecruitment();
+export function RecruitPreview({ onAll, onOpen, format = "highlander" }: { onAll: () => void; onOpen: (p: RecruitPost, kind: Kind) => void; format?: StoredFormat }) {
+  const q = useRecruitment(format);
   const players = (q.data?.players ?? []).slice(0, 5);
   const teams = (q.data?.teams ?? []).slice(0, 3);
   if (players.length + teams.length === 0) return null;

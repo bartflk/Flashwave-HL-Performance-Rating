@@ -18,12 +18,12 @@ use sqlx::Row;
 const DIVISION_SQL: &str = "COALESCE(m.division, NULLIF(c.division, ''),
       (SELECT m3.division FROM etf2l_season_match m3
          JOIN etf2l_competition c3 ON c3.competition_id = m3.competition_id
-        WHERE c3.season = c.season AND m3.division IS NOT NULL AND m3.division != ''
+        WHERE c3.season = c.season AND c3.format = c.format AND m3.division IS NOT NULL AND m3.division != ''
           AND (m3.clan1_id IN (m.clan1_id, m.clan2_id) OR m3.clan2_id IN (m.clan1_id, m.clan2_id))
         LIMIT 1))";
 const TIER_SQL: &str = "COALESCE(m.tier, (SELECT m2.tier FROM etf2l_season_match m2
       JOIN etf2l_competition c2 ON c2.competition_id = m2.competition_id
-      WHERE c2.season = c.season AND m2.division = c.division AND m2.tier IS NOT NULL LIMIT 1))";
+      WHERE c2.season = c.season AND c2.format = c.format AND m2.division = c.division AND m2.tier IS NOT NULL LIMIT 1))";
 
 /// One ETF2L Highlander log as trends.tf lists it.
 pub struct LeagueLogRow<'a> {
@@ -126,7 +126,8 @@ impl Db {
                FROM league_log l
                JOIN etf2l_season_match m ON m.match_id = l.etf2l_match_id
                JOIN etf2l_competition c ON c.competition_id = m.competition_id
-               WHERE m.default_win = 0)
+               -- Highlander's sample; 6v6's comes with its own (the 6v6 plan, P5).
+               WHERE m.default_win = 0 AND c.format = 'highlander')
              WHERE division IS NOT NULL AND division != ''"
         ))
         .fetch_all(self.pool())
@@ -313,9 +314,10 @@ impl Db {
                FROM league_log l
                JOIN etf2l_season_match m ON m.match_id = l.etf2l_match_id
                JOIN etf2l_competition c ON c.competition_id = m.competition_id
-               WHERE l.picked = 1)
+               WHERE l.picked = 1 AND c.format = 'highlander')
              SELECT p.tier,
-                    (SELECT m2.division FROM etf2l_season_match m2 WHERE m2.tier = p.tier AND m2.division IS NOT NULL
+                    (SELECT m2.division FROM etf2l_season_match m2 JOIN etf2l_competition c2 ON c2.competition_id = m2.competition_id
+                      WHERE m2.tier = p.tier AND c2.format = 'highlander' AND m2.division IS NOT NULL
                        ORDER BY m2.time DESC LIMIT 1) AS division,
                     COUNT(DISTINCT p.etf2l_match_id) AS matches,
                     COUNT(*) AS logs,
@@ -389,7 +391,7 @@ impl Db {
              JOIN etf2l_season_match m ON m.competition_id = c.competition_id
              LEFT JOIN league_log l ON l.etf2l_match_id = m.match_id
              LEFT JOIN league_rating r ON r.log_id = l.log_id AND r.model_version = ?1
-             WHERE c.stage <> 'Cup'
+             WHERE c.stage <> 'Cup' AND c.format = 'highlander'
              GROUP BY c.season ORDER BY c.season",
         )
         .bind(version)
@@ -517,6 +519,6 @@ impl Db {
     /// The newest numbered Highlander season ETF2L has listed (one between
     /// two, kept at 100 and up, is not newer).
     pub async fn newest_etf2l_season(&self) -> Result<Option<i64>> {
-        Ok(sqlx::query_scalar("SELECT MAX(season) FROM etf2l_competition WHERE season < 100").fetch_one(self.pool()).await?)
+        Ok(sqlx::query_scalar("SELECT MAX(season) FROM etf2l_competition WHERE season < 100 AND format = 'highlander'").fetch_one(self.pool()).await?)
     }
 }

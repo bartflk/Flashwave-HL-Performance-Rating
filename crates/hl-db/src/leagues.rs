@@ -17,6 +17,8 @@ pub struct CompetitionRow<'a> {
     pub name: &'a str,
     pub archived: bool,
     pub pool: Option<&'a str>,
+    /// Highlander or 6v6 (the 6v6 plan, P2).
+    pub format: hl_core::GameFormat,
 }
 
 pub struct SeasonMatchRow<'a> {
@@ -85,11 +87,11 @@ pub struct SeasonMap {
 impl Db {
     pub async fn upsert_competition(&self, c: &CompetitionRow<'_>) -> Result<()> {
         sqlx::query(
-            "INSERT INTO etf2l_competition (competition_id, season, season_name, division, stage, name, archived, pool, fetched_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, unixepoch())
+            "INSERT INTO etf2l_competition (competition_id, season, season_name, division, stage, name, archived, pool, fetched_at, format)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, unixepoch(), ?9)
              ON CONFLICT(competition_id) DO UPDATE SET
                 season = excluded.season, season_name = excluded.season_name, division = excluded.division,
-                stage = excluded.stage, name = excluded.name, archived = excluded.archived,
+                stage = excluded.stage, name = excluded.name, archived = excluded.archived, format = excluded.format,
                 pool = COALESCE(excluded.pool, etf2l_competition.pool), fetched_at = excluded.fetched_at",
         )
         .bind(c.competition_id)
@@ -100,6 +102,7 @@ impl Db {
         .bind(c.name)
         .bind(c.archived)
         .bind(c.pool)
+        .bind(c.format.as_str())
         .execute(self.pool())
         .await?;
         Ok(())
@@ -166,13 +169,15 @@ impl Db {
 
     /// Season officials scheduled in the `window` seconds up to `at`, not
     /// forfeited: `(match, clan1, clan2, page read)`.
-    pub async fn season_matches_before(&self, at: i64, window: i64) -> Result<Vec<(i64, i64, i64, bool)>> {
+    pub async fn season_matches_before(&self, at: i64, window: i64, format: hl_core::GameFormat) -> Result<Vec<(i64, i64, i64, bool)>> {
         Ok(sqlx::query_as(
-            "SELECT match_id, clan1_id, clan2_id, detail_fetched FROM etf2l_season_match
-              WHERE time IS NOT NULL AND time <= ?1 AND time >= ?1 - ?2 AND default_win = 0",
+            "SELECT m.match_id, m.clan1_id, m.clan2_id, m.detail_fetched FROM etf2l_season_match m
+               JOIN etf2l_competition c ON c.competition_id = m.competition_id
+              WHERE m.time IS NOT NULL AND m.time <= ?1 AND m.time >= ?1 - ?2 AND m.default_win = 0 AND c.format = ?3",
         )
         .bind(at)
         .bind(window)
+        .bind(format.as_str())
         .fetch_all(self.pool())
         .await?)
     }
@@ -200,12 +205,15 @@ impl Db {
         Ok(sqlx::query_as("SELECT name, country, avatar FROM etf2l_team WHERE team_id = ?1").bind(team_id).fetch_optional(self.pool()).await?)
     }
 
-    pub async fn competitions(&self) -> Result<Vec<Competition>> {
+    /// One format's competitions: a season number is only a season within
+    /// its format (Highlander's 36, 6v6's 53; the 6v6 plan, P2).
+    pub async fn competitions(&self, format: hl_core::GameFormat) -> Result<Vec<Competition>> {
         let rows = sqlx::query(
             "SELECT competition_id, season, season_name, division, stage, archived, pool, fetched_at
-             FROM etf2l_competition
+             FROM etf2l_competition WHERE format = ?1
              ORDER BY CASE WHEN season >= 100 THEN (season - 100) * 2 + 1 ELSE season * 2 END DESC, competition_id",
         )
+        .bind(format.as_str())
         .fetch_all(self.pool())
         .await?;
         Ok(rows
@@ -270,43 +278,46 @@ impl Db {
     /// Played matches whose own page has not been read yet, newest first,
     /// from `min_season` on: the league sample (0033) holds years of older
     /// seasons whose pages it reads itself, and a sync should not.
-    pub async fn season_matches_without_detail(&self, limit: i64, min_season: i64) -> Result<Vec<i64>> {
+    pub async fn season_matches_without_detail(&self, limit: i64, min_season: i64, format: hl_core::GameFormat) -> Result<Vec<i64>> {
         Ok(sqlx::query_scalar(
             "SELECT m.match_id FROM etf2l_season_match m JOIN etf2l_competition c ON c.competition_id = m.competition_id
-             WHERE m.detail_fetched = 0 AND m.default_win = 0 AND c.season >= ?2
+             WHERE m.detail_fetched = 0 AND m.default_win = 0 AND c.season >= ?2 AND c.format = ?3
              ORDER BY m.time DESC, m.match_id DESC LIMIT ?1",
         )
         .bind(limit)
         .bind(min_season)
+        .bind(format.as_str())
         .fetch_all(self.pool())
         .await?)
     }
 
     /// One season's played matches whose page is not read yet: all of them,
     /// for an old season's import.
-    pub async fn season_matches_without_detail_in(&self, season: i64) -> Result<Vec<i64>> {
+    pub async fn season_matches_without_detail_in(&self, season: i64, format: hl_core::GameFormat) -> Result<Vec<i64>> {
         Ok(sqlx::query_scalar(
             "SELECT m.match_id FROM etf2l_season_match m JOIN etf2l_competition c ON c.competition_id = m.competition_id
-             WHERE m.default_win = 0 AND c.season = ?1 AND COALESCE(m.r1, 0) + COALESCE(m.r2, 0) > 0
+             WHERE m.default_win = 0 AND c.season = ?1 AND c.format = ?2 AND COALESCE(m.r1, 0) + COALESCE(m.r2, 0) > 0
                -- Read, but with nobody in it: seasons 19 to 21's pages, before
                -- their players' Steam IDs were looked up.
                AND (m.detail_fetched = 0 OR NOT EXISTS (SELECT 1 FROM etf2l_season_player p WHERE p.match_id = m.match_id))
              ORDER BY m.time",
         )
         .bind(season)
+        .bind(format.as_str())
         .fetch_all(self.pool())
         .await?)
     }
 
     /// A season's first and last match times, its cups and qualifiers in it
     /// (they open it): where ETF2L's news of it is found.
-    pub async fn season_span(&self, season: i64) -> Result<Option<(i64, i64)>> {
+    pub async fn season_span(&self, season: i64, format: hl_core::GameFormat) -> Result<Option<(i64, i64)>> {
         let row: (Option<i64>, Option<i64>) = sqlx::query_as(
             "SELECT MIN(m.time), MAX(m.time) FROM etf2l_season_match m
              JOIN etf2l_competition c ON c.competition_id = m.competition_id
-             WHERE c.season = ?1 AND m.time > 0",
+             WHERE c.season = ?1 AND c.format = ?2 AND m.time > 0",
         )
         .bind(season)
+        .bind(format.as_str())
         .fetch_one(self.pool())
         .await?;
         Ok(row.0.zip(row.1))
@@ -331,14 +342,15 @@ impl Db {
     }
 
     /// Who played each of a season's matches, by team: `(match, account, team)`.
-    pub async fn season_lineups(&self, season: i64) -> Result<Vec<(i64, i64, Option<i64>)>> {
+    pub async fn season_lineups(&self, season: i64, format: hl_core::GameFormat) -> Result<Vec<(i64, i64, Option<i64>)>> {
         Ok(sqlx::query_as(
             "SELECT p.match_id, p.account_id, p.team_id FROM etf2l_season_player p
              JOIN etf2l_season_match m ON m.match_id = p.match_id
              JOIN etf2l_competition c ON c.competition_id = m.competition_id
-             WHERE c.season = ?1",
+             WHERE c.season = ?1 AND c.format = ?2",
         )
         .bind(season)
+        .bind(format.as_str())
         .fetch_all(self.pool())
         .await?)
     }
@@ -379,7 +391,7 @@ impl Db {
     }
 
     /// Every stored official, with names; `season` narrows to one.
-    pub async fn season_matches(&self, season: Option<i64>, team: Option<i64>) -> Result<Vec<SeasonMatch>> {
+    pub async fn season_matches(&self, season: Option<i64>, team: Option<i64>, format: hl_core::GameFormat) -> Result<Vec<SeasonMatch>> {
         let rows = sqlx::query(
             "SELECT m.match_id, m.competition_id, c.season, COALESCE(NULLIF(m.division, ''), c.division) AS division, m.tier, c.stage, m.week, m.round, m.time,
                     m.clan1_id, COALESCE(t1.name, '') AS clan1_name, m.clan2_id, COALESCE(t2.name, '') AS clan2_name,
@@ -388,11 +400,12 @@ impl Db {
              JOIN etf2l_competition c ON c.competition_id = m.competition_id
              LEFT JOIN etf2l_team t1 ON t1.team_id = m.clan1_id
              LEFT JOIN etf2l_team t2 ON t2.team_id = m.clan2_id
-             WHERE (?1 IS NULL OR c.season = ?1) AND (?2 IS NULL OR m.clan1_id = ?2 OR m.clan2_id = ?2)
+             WHERE (?1 IS NULL OR c.season = ?1) AND (?2 IS NULL OR m.clan1_id = ?2 OR m.clan2_id = ?2) AND c.format = ?3
              ORDER BY m.time DESC, m.match_id DESC",
         )
         .bind(season)
         .bind(team)
+        .bind(format.as_str())
         .fetch_all(self.pool())
         .await?;
         Ok(rows
@@ -724,14 +737,15 @@ fn result_row(r: &sqlx::sqlite::SqliteRow) -> ResultRow {
 impl Db {
     /// The latest played officials of every team, newest first: a score in,
     /// or a default win.
-    pub async fn recent_results(&self, limit: i64) -> Result<Vec<ResultRow>> {
+    pub async fn recent_results(&self, limit: i64, format: hl_core::GameFormat) -> Result<Vec<ResultRow>> {
         let rows = sqlx::query(&format!(
             "{RESULT_SELECT}
-              WHERE m.time IS NOT NULL AND (m.r1 IS NOT NULL OR m.default_win <> 0)
+              WHERE m.time IS NOT NULL AND (m.r1 IS NOT NULL OR m.default_win <> 0) AND c.format = ?2
               ORDER BY m.time DESC, m.match_id DESC
               LIMIT ?1"
         ))
         .bind(limit)
+        .bind(format.as_str())
         .fetch_all(self.pool())
         .await?;
         Ok(rows.iter().map(result_row).collect())
@@ -739,8 +753,9 @@ impl Db {
 
     /// Every official of ETF2L's other Highlander tournaments (stage `Cup`:
     /// the one-night, Experimental, Nations' and preseason cups), by time.
-    pub async fn cup_results(&self) -> Result<Vec<ResultRow>> {
-        let rows = sqlx::query(&format!("{RESULT_SELECT} WHERE c.stage = 'Cup' ORDER BY m.time IS NULL, m.time, m.match_id"))
+    pub async fn cup_results(&self, format: hl_core::GameFormat) -> Result<Vec<ResultRow>> {
+        let rows = sqlx::query(&format!("{RESULT_SELECT} WHERE c.stage = 'Cup' AND c.format = ?1 ORDER BY m.time IS NULL, m.time, m.match_id"))
+            .bind(format.as_str())
             .fetch_all(self.pool())
             .await?;
         Ok(rows.iter().map(result_row).collect())
@@ -748,9 +763,10 @@ impl Db {
 
     /// Every official of one season, played or still to come, by time; the
     /// ones not yet given a date last.
-    pub async fn season_results(&self, season: i64) -> Result<Vec<ResultRow>> {
-        let rows = sqlx::query(&format!("{RESULT_SELECT} WHERE c.season = ?1 ORDER BY m.time IS NULL, m.time, m.match_id"))
+    pub async fn season_results(&self, season: i64, format: hl_core::GameFormat) -> Result<Vec<ResultRow>> {
+        let rows = sqlx::query(&format!("{RESULT_SELECT} WHERE c.season = ?1 AND c.format = ?2 ORDER BY m.time IS NULL, m.time, m.match_id"))
             .bind(season)
+            .bind(format.as_str())
             .fetch_all(self.pool())
             .await?;
         Ok(rows.iter().map(result_row).collect())
@@ -794,20 +810,21 @@ impl Db {
 
     /// The first team `account` played an official for after `after`, as a
     /// rostered player, not a merc; `prefer`'s first if they ever did.
-    pub async fn later_team(&self, account: u32, after: i64, prefer: Option<i64>) -> Result<Option<LaterTeam>> {
+    pub async fn later_team(&self, account: u32, after: i64, prefer: Option<i64>, format: hl_core::GameFormat) -> Result<Option<LaterTeam>> {
         let row = sqlx::query(
             "SELECT p.team_id, t.name, m.match_id, m.time, c.season
                FROM etf2l_season_player p
                JOIN etf2l_season_match m ON m.match_id = p.match_id
                JOIN etf2l_competition c ON c.competition_id = m.competition_id
                JOIN etf2l_team t ON t.team_id = p.team_id
-              WHERE p.account_id = ?1 AND p.team_id IS NOT NULL AND m.time > ?2
+              WHERE p.account_id = ?1 AND p.team_id IS NOT NULL AND m.time > ?2 AND c.format = ?4
               ORDER BY p.team_id IS ?3 DESC, m.time, m.match_id
               LIMIT 1",
         )
         .bind(i64::from(account))
         .bind(after)
         .bind(prefer)
+        .bind(format.as_str())
         .fetch_optional(self.pool())
         .await?;
         Ok(row.map(|r| LaterTeam { team_id: r.get("team_id"), name: r.get("name"), match_id: r.get("match_id"), time: r.get("time"), season: r.get("season") }))
@@ -860,7 +877,7 @@ impl Db {
             "SELECT t.team_id, t.name, t.country, t.avatar,
                     (SELECT COUNT(*) FROM etf2l_season_match m WHERE m.clan1_id = t.team_id OR m.clan2_id = t.team_id) AS officials,
                     (SELECT MAX(c.season) FROM etf2l_season_match m JOIN etf2l_competition c ON c.competition_id = m.competition_id
-                      WHERE (m.clan1_id = t.team_id OR m.clan2_id = t.team_id) AND c.season < 100) AS last_season,
+                      WHERE (m.clan1_id = t.team_id OR m.clan2_id = t.team_id) AND c.season < 100 AND c.format = 'highlander') AS last_season,
                     (SELECT MAX(m.time) FROM etf2l_season_match m WHERE m.clan1_id = t.team_id OR m.clan2_id = t.team_id) AS last_played
                FROM etf2l_team t
               WHERE t.team_id IN (SELECT value FROM json_each(?1))",
@@ -887,12 +904,13 @@ impl Db {
 
     /// How many played matches (from `min_season` on) have not had their own
     /// page read: a count, not the rows (LG-8).
-    pub async fn count_season_matches_without_detail(&self, min_season: i64) -> Result<i64> {
+    pub async fn count_season_matches_without_detail(&self, min_season: i64, format: hl_core::GameFormat) -> Result<i64> {
         Ok(sqlx::query_scalar(
             "SELECT COUNT(*) FROM etf2l_season_match m JOIN etf2l_competition c ON c.competition_id = m.competition_id
-             WHERE m.detail_fetched = 0 AND m.default_win = 0 AND c.season >= ?1",
+             WHERE m.detail_fetched = 0 AND m.default_win = 0 AND c.season >= ?1 AND c.format = ?2",
         )
         .bind(min_season)
+        .bind(format.as_str())
         .fetch_one(self.pool())
         .await?)
     }
@@ -929,7 +947,7 @@ mod tests {
         ] {
             sqlx::query(sql).execute(db.pool()).await.unwrap();
         }
-        let r = db.recent_results(10).await.unwrap();
+        let r = db.recent_results(10, hl_core::GameFormat::Highlander).await.unwrap();
         assert_eq!(r.iter().map(|x| x.match_id).collect::<Vec<_>>(), vec![11, 10], "the unplayed one is left out");
         assert_eq!((r[0].clan1.name.as_str(), r[0].r2), ("Chaos Theory", Some(3)));
         let t = db.search_teams("chaos", 10).await.unwrap();
@@ -943,8 +961,39 @@ mod tests {
         let playoff = db.league_match(13).await.unwrap().unwrap();
         assert_eq!((playoff.division.as_deref(), playoff.stage.as_str()), (Some("Low"), "Playoffs"), "the competition's division");
         sqlx::query("DELETE FROM etf2l_season_match WHERE match_id = 13").execute(db.pool()).await.unwrap();
-        let s = db.season_results(36).await.unwrap();
+        let s = db.season_results(36, hl_core::GameFormat::Highlander).await.unwrap();
         assert_eq!(s.iter().map(|x| x.match_id).collect::<Vec<_>>(), vec![10, 11, 12], "the whole season, the unplayed one too");
-        assert!(db.season_results(35).await.unwrap().is_empty());
+        assert!(db.season_results(35, hl_core::GameFormat::Highlander).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_stored_6v6_season_never_reaches_a_highlander_reader() {
+        // The 6v6 plan, P2: season numbers are per format (Highlander's 36,
+        // 6v6's 53), so every whole-season reader says which it wants.
+        use hl_core::GameFormat::{Highlander, Sixes};
+        let db = Db::connect_in_memory().await.unwrap();
+        for sql in [
+            "INSERT INTO etf2l_competition (competition_id, season, season_name, division, stage, name, fetched_at) VALUES (1, 36, 'Autumn 2026', 'High', 'regular', 'HL 36', 0)",
+            "INSERT INTO etf2l_competition (competition_id, season, season_name, division, stage, name, fetched_at, format) VALUES (2, 53, 'Autumn 2026', '', 'regular', '6v6 Season 53', 0, 'sixes')",
+            "INSERT INTO etf2l_team (team_id, name) VALUES (1, 'HL One'), (2, 'HL Two'), (3, 'Six One'), (4, 'Six Two')",
+            "INSERT INTO etf2l_season_match (match_id, competition_id, time, clan1_id, clan2_id, r1, r2) VALUES (10, 1, 100, 1, 2, 4, 0), (20, 2, 200, 3, 4, 3, 1)",
+            "INSERT INTO etf2l_season_player (match_id, account_id, team_id, name) VALUES (10, 7, 1, 'seven'), (20, 7, 3, 'seven')",
+        ] {
+            sqlx::query(sql).execute(db.pool()).await.unwrap();
+        }
+        let ids = |r: Vec<super::ResultRow>| r.into_iter().map(|x| x.match_id).collect::<Vec<_>>();
+        assert_eq!(db.competitions(Highlander).await.unwrap().iter().map(|c| c.season).collect::<Vec<_>>(), vec![36]);
+        assert_eq!(db.competitions(Sixes).await.unwrap().iter().map(|c| c.season).collect::<Vec<_>>(), vec![53]);
+        assert_eq!(ids(db.recent_results(10, Highlander).await.unwrap()), vec![10]);
+        assert_eq!(ids(db.recent_results(10, Sixes).await.unwrap()), vec![20]);
+        assert!(db.season_results(53, Highlander).await.unwrap().is_empty());
+        assert_eq!(db.season_matches(None, None, Highlander).await.unwrap().len(), 1);
+        assert_eq!(db.season_lineups(53, Highlander).await.unwrap().len(), 0);
+        assert_eq!(db.later_team(7, 0, None, Highlander).await.unwrap().map(|t| t.team_id), Some(1), "the 6v6 team is not a Highlander move");
+        assert_eq!(db.newest_etf2l_season().await.unwrap(), Some(36), "the newest Highlander season, not 6v6's 53");
+        // The owner's 6v6 officials, with their rosters, find a 6v6 log's match.
+        let six = db.season_officials_of(7, Sixes).await.unwrap();
+        assert_eq!((six.len(), six[0].match_id, six[0].roster.get(&7)), (1, 20, Some(&3)));
+        assert_eq!(db.season_officials_of(7, Highlander).await.unwrap().iter().map(|o| o.match_id).collect::<Vec<_>>(), vec![10]);
     }
 }

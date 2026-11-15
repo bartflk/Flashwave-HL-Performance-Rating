@@ -1,4 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useFormatsPlayed } from "../lib/gameformat";
+import { dismissSixesNotice, useSixesNoticeDismissed } from "../lib/sixesnotice";
+import { friendlyText } from "../lib/apierror";
+import { saveFormats } from "./FormatsPicker";
+import { ActivityWaterfall } from "./ActivityWaterfall";
 import { dismissDownload, useDownloads, type Download } from "../lib/downloads";
 import { cancelSync, dismissSync, fractionOf, labelOf, matchOf, phaseOf, useSyncStatus } from "../lib/sync";
 import { dismissDemoSeen, useDemoSeen } from "../lib/demowatch";
@@ -44,12 +50,16 @@ export function Notifications({ onOpenMatch }: { onOpenMatch: (logId: number) =>
   const update = useUpdate();
   const etf2l = useEtf2lCheck();
   const storage = useStorageNotice();
+  const played = useFormatsPlayed();
+  const sixesDismissed = useSixesNoticeDismissed();
+  const sixes = played.sixesEnabled && !sixesDismissed;
   const quiet = update.state === "idle" || update.state === "checking" || update.state === "current";
-  if (downloads.length === 0 && sync.state === "idle" && !demo && !fresh && !etf2l && !storage && quiet) return null;
+  if (downloads.length === 0 && sync.state === "idle" && !demo && !fresh && !etf2l && !storage && !sixes && quiet) return null;
 
   return (
     <div className="downloads" role="status" aria-live="polite">
       <UpdateCard />
+      {sixes && <SixesCard />}
       <NewLogsCard />
       <Etf2lCheckCard />
       <StorageCard />
@@ -121,6 +131,71 @@ function StorageCard() {
       >
         {t("Open Backups")}
       </button>
+    </div>
+  );
+}
+
+/**
+ * 6v6 has arrived (Flashy: "a notification after the new update and an easy
+ * way to change to 6's, or show people where to change this setting"): turn
+ * it on from the card, or open the setting. Shown once, until dismissed.
+ */
+function SixesCard() {
+  const played = useFormatsPlayed();
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const on = played.formats.includes("6s");
+
+  async function turnOn() {
+    setBusy(true);
+    setError(null);
+    try {
+      await saveFormats(qc, [...played.formats, "6s"]);
+    } catch (e) {
+      setError(friendlyText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="dl dl-running">
+      <div className="dl-head">
+        <span className="dl-title">{on ? t("6v6 is on") : t("New: 6v6")}</span>
+        <button className="dl-close" onClick={() => dismissSixesNotice()} title={t("Dismiss")}>
+          ×
+        </button>
+      </div>
+      {on ? (
+        <>
+          <p className="dl-label">{t("Hover Matches, Profile or ETF2L and choose 6v6.")}</p>
+          <p className="dl-sub">{t("Settings › Formats you play turns it off again.")}</p>
+          <button className="dl-go" onClick={() => dismissSixesNotice()}>
+            {t("Got it")}
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="dl-label">{t("Your 6v6 games get their own match list, ETF2L 6v6 pages and a rating, kept apart from Highlander.")}</p>
+          <p className="dl-sub">{t("Change it any time in Settings › Formats you play.")}</p>
+          {error && <p className="dl-sub dl-error">{error}</p>}
+          <div className="dl-actions">
+            <button className="dl-go primary" disabled={busy} onClick={() => void turnOn()}>
+              {t("Turn on 6v6")}
+            </button>
+            <button
+              className="dl-go"
+              onClick={() => {
+                openSettingsSection("formats");
+                dismissSixesNotice();
+              }}
+            >
+              {t("Show me the setting")}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -336,6 +411,7 @@ function SyncCard() {
           )}
           <p className="dl-label">{labelOf(sync.progress)}</p>
           {matchOf(sync.progress) && <p className="dl-sub dl-match">{matchOf(sync.progress)}</p>}
+          <ActivityWaterfall />
           {/* A rebuild stops like a sync: what it has rewritten stays, and
               the backup taken before it is there if that matters. */}
           {/* The rating pass is never stopped half-way (its four writes

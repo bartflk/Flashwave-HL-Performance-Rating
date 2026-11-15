@@ -5,6 +5,8 @@
 // this file is never used.
 
 import type { Api, StvHandlers, SyncHandlers } from "./client";
+/** The mock activity feed's position, and its verbose switch. */
+const mockActivity = { seq: 0, verbose: false };
 import match4109131 from "./fixtures/match_4109131.json";
 import match4114301 from "./fixtures/match_4114301.json";
 import match4111116 from "./fixtures/match_4111116.json";
@@ -16,6 +18,8 @@ import seasonTable34 from "./fixtures/season_table_34_open_demoman.json";
 import playerDeepFlashy from "./fixtures/player_deep_flashy.json";
 import dataAudit31 from "./fixtures/data_audit_31_low.json";
 import headToHeadS33 from "./fixtures/head_to_head_s33_final.json";
+import sixesSeason53 from "./fixtures/sixes_season_53.json";
+import sixesMatches53 from "./fixtures/sixes_matches_53.json";
 import seasonBreakdown33 from "./fixtures/season_breakdown_flashy_33.json";
 import statScales from "./fixtures/stat_scales.json";
 import teamHonours35600 from "./fixtures/team_honours_35600.json";
@@ -82,7 +86,7 @@ import type {
   RglSeasonCard,
   RglTeamHit,
   RglSeason,
-  RglSeasonItem, RglBan, RglMatch, RglMatchMore, RglMatchStats, RglAward, RglSideTotals,
+  RglSeasonItem, RglBan, RglMatch, RglMatchMore, SixesSeason, SixesMatches, StoredRole, Stint, SixesMatchStats, SixesRatingRow, SixesProfile, SixesSampleStatus, SixesBoardRow, SixesHonours, FormatsPlayed, StoredFormat, RglMatchStats, RglAward, RglSideTotals,
   RglTeamPage,
   RglTeamSeason,
   RglTeamHistory,
@@ -136,7 +140,7 @@ import type {
   Teammates,
   TfPathInfo,
   FightsCard,
-  SeasonsView, StvStage, RatingGuide, LeagueSample, LeagueActivity, CatalogueHit, PlayerProfile, PlayerStats, Rankings, LeagueCup, LeagueCupPage, CupResult, MatchDivisions, CareerView, SeasonTile, Podium, TeamHonours, TeamEtf2l } from "./types";
+  SeasonsView, StvStage, RatingGuide, LeagueSample, LeagueActivity, CatalogueHit, PlayerProfile, PlayerStats, Rankings, LeagueCup, LeagueCupPage, CupResult, MatchDivisions, CareerView, SeasonTile, Podium, TeamHonours, TeamEtf2l, ActivityLine, ActivitySite, EtfBan } from "./types";
 
 // Starts configured, since setup is not what you are usually iterating on.
 // Append `?setup` to the URL to start from the first-run screen instead.
@@ -505,8 +509,99 @@ const FAKE_MATCHES: MatchSummary[] = (() => {
       },
     });
   }
-  return [...FIXTURE_ROWS, ...out].sort((a, b) => (b.playedAt ?? 0) - (a.playedAt ?? 0));
+  return [...FIXTURE_ROWS, ...out, ...fakeSixes()].sort((a, b) => (b.playedAt ?? 0) - (a.playedAt ?? 0));
 })();
+
+/** Season 53's tables from its real results, as a stored 6v6 season. */
+function sixesLeague(): LeagueView {
+  const ms = (sixesMatches53 as unknown as SixesMatches).matches.filter((m) => m.played && m.r1 !== null && m.r2 !== null);
+  const by = new Map<string, Map<number, LeagueView["divisions"][number]["teams"][number]>>();
+  for (const m of ms) {
+    const d = m.division ?? "";
+    const t = by.get(d) ?? new Map();
+    by.set(d, t);
+    for (const [c, us, them] of [[m.clan1, m.r1!, m.r2!], [m.clan2, m.r2!, m.r1!]] as const) {
+      const row = t.get(c.id) ?? { teamId: c.id, name: c.name, avatar: c.avatar, record: { played: 0, won: 0, lost: 0, drawn: 0 }, scoreFor: 0, scoreAgainst: 0 };
+      row.record.played += 1;
+      if (us > them) row.record.won += 1;
+      else if (us < them) row.record.lost += 1;
+      else row.record.drawn += 1;
+      row.scoreFor += us;
+      row.scoreAgainst += them;
+      t.set(c.id, row);
+    }
+  }
+  const divisions = [...by.entries()].map(([division, t]) => ({
+    division,
+    teams: [...t.values()].sort((a, b) => b.record.won - a.record.won || b.scoreFor - b.scoreAgainst - (a.scoreFor - a.scoreAgainst)),
+  }));
+  const season = { season: 53, name: "Autumn 2026", divisions: divisions.map((d) => d.division), pool: [] };
+  return { seasons: [season], season, divisions, pendingDetails: 0 };
+}
+
+/** Made-up 6v6 matches for the browser build's 6v6 list (the 6v6 plan, P1):
+ *  6v6's maps and classes, tf2pickup and TF2Center pugs, no rating yet. */
+function fakeSixes(): MatchSummary[] {
+  const r = rng(66);
+  const pick = <T,>(xs: T[]) => xs[Math.floor(r() * xs.length)];
+  const maps = ["cp_process_f12", "cp_sunshine", "cp_gullywash_f9", "cp_metalworks_f7", "cp_granary_pro_rc17a3", "koth_product_final", "koth_bagel_rc13"];
+  const out: MatchSummary[] = [];
+  let t = 1_789_600_000;
+  for (let i = 0; i < 36; i++) {
+    t -= Math.floor(3_600 * (6 + r() * 70));
+    const official = r() < 0.12;
+    const kind: ContextKind = official ? "official" : r() < 0.5 ? "scrim" : "pug";
+    const map = pick(maps);
+    const koth = map.startsWith("koth_");
+    const dur = Math.floor(900 + r() * 1_100);
+    const [red, blue] = koth ? (r() < 0.5 ? [3, Math.floor(r() * 3)] : [Math.floor(r() * 3), 3]) : [Math.floor(r() * 6), Math.floor(r() * 6)];
+    const team: "Red" | "Blue" = r() < 0.5 ? "Red" : "Blue";
+    const [mine, theirs] = team === "Red" ? [red, blue] : [blue, red];
+    const kills = Math.floor(6 + r() * 30);
+    out.push({
+      logId: 4_100_000 - i * 23,
+      playedAt: t,
+      map,
+      title: official
+        ? `ETF2L 6v6 S52 Div 3 - DD14 vs ${pick(["Kebab", "fuzzy", "Pandemonium"])}`
+        : kind === "pug"
+          ? pick(["tf2pickup.eu #48211", "TF2Center Lobby #1330950", "tf2pickup.eu #48302"])
+          : "serveme.tf #1570021 RED vs BLU",
+      durationS: dur,
+      parts: 0,
+      rating: null,
+      classCount: null,
+      format: "sixes",
+      league: official ? "etf2l" : null,
+      etf2lMatchId: official ? 91_200 - i : null,
+      demosTfId: r() < 0.6 ? 1_506_000 - i : null,
+      redScore: red,
+      blueScore: blue,
+      hasDemo: false,
+      maps: [],
+      context: {
+        kind,
+        etf2lMatchId: official ? 91_200 - i : null,
+        linkMethod: official ? "trends" : null,
+        teamName: null,
+        oppName: null,
+        regulars: kind === "pug" ? Math.floor(r() * 2) : 3 + Math.floor(r() * 3),
+        official: null,
+      },
+      me: {
+        team,
+        mainClass: pick(["soldier", "soldier", "scout", "demoman", "medic"]),
+        kills,
+        deaths: Math.floor(5 + r() * 22),
+        assists: Math.floor(r() * 14),
+        dmg: Math.floor(kills * (220 + r() * 240)),
+        timeS: dur,
+        result: mine > theirs ? "W" : mine < theirs ? "L" : "T",
+      },
+    });
+  }
+  return out;
+}
 
 const fakeStats = (pending: number): IndexStats => ({
   indexed: 1494,
@@ -518,6 +613,7 @@ const fakeStats = (pending: number): IndexStats => ({
   officials: 58,
   fetched: 759 - pending,
   normalized: 759 - pending,
+  sixesFetched: 117,
   pending,
   failed: 0,
   outsideWindow: allHistory ? 0 : 282,
@@ -526,6 +622,13 @@ const fakeStats = (pending: number): IndexStats => ({
 // The full-history setting, for the Settings panel's dialog.
 let allHistory = false;
 let autoDelete = false;
+let mockFormats: StoredFormat[] = ["highlander", "sixes"];
+let mockSixesSample: SixesSampleStatus = {
+  enabled: false,
+  seasonsBack: 12,
+  counts: { listed: 9412, downloaded: 3180, missing: 41, oldest: 1_605_000_000, newest: 1_794_590_000 },
+  discoveredAt: 1_794_600_000,
+};
 
 let handlers: SyncHandlers | null = null;
 let stvHandlers: StvHandlers | null = null;
@@ -712,7 +815,7 @@ export const mockApi: Api = {
   listMatches: (q: MatchQuery): Promise<MatchPage> => {
     const filtered = FAKE_MATCHES.filter(
       (m) =>
-        (q.format === null || m.format === q.format) &&
+        (q.format === null || m.format === q.format || (q.format.startsWith("!") && m.format !== q.format.slice(1))) &&
         (q.kind === null || m.context?.kind === q.kind) &&
         (q.from === null || (m.playedAt ?? 0) >= q.from) &&
         (q.to === null || (m.playedAt ?? 0) <= q.to) &&
@@ -732,7 +835,23 @@ export const mockApi: Api = {
   getMatch: (logId: number) => {
     const exact = FIXTURES.find((f) => f.logId === logId);
     // The list's second match was stored from more.tf, so its banner can be seen.
-    const d = exact ?? { ...FIXTURES[0], logId, standIn: logId === FAKE_MATCHES[1]?.logId ? "more.tf" : null };
+    const row = FAKE_MATCHES.find((m) => m.logId === logId);
+    const base = exact ?? { ...FIXTURES[0], logId, standIn: logId === FAKE_MATCHES[1]?.logId ? "more.tf" : null };
+    // A made-up 6v6 row opens as 6v6 on its own map, with midfights (P1).
+    const d = !exact && row?.format === "sixes"
+      ? {
+          ...base,
+          format: "sixes",
+          map: row.map,
+          title: row.title,
+          rounds: base.rounds.map((r, i) => ({ ...r, firstcap: (i * 7 + logId) % 3 === 0 ? ("Blue" as const) : ("Red" as const) })),
+          // Two players brought out an off-class for a moment.
+          players: base.players.map((p, i) =>
+            i === 1 ? { ...p, mainClass: "soldier", classes: [["soldier", 1500], ["engineer", 140], ["heavy", 95]] as Array<[string, number]> }
+            : i === 4 ? { ...p, mainClass: "scout", classes: [["scout", 1610], ["sniper", 75]] as Array<[string, number]> }
+            : p),
+        }
+      : base;
     // Fixtures stored before accuracy was read carry none: a spread from
     // the player's id, so the column and its colours can be seen.
     return delay({ ...d, players: d.players.map((p) => (p.accuracy !== undefined ? p : { ...p, accuracy: p.mainClass === "heavy" || p.mainClass === "pyro" ? null : 0.2 + ((p.accountId % 37) / 37) * 0.45 })) });
@@ -772,6 +891,46 @@ export const mockApi: Api = {
     return delay({
       ...hit,
       profile: trend.length === 0 ? null : { ...p, filter: kind, games: trend.length, trend, best: only(p.best), worst: only(p.worst) },
+    });
+  },
+
+  // 6v6 by role: the Sniper fixture's history standing in for a pocket's,
+  // with 6v6's own breakdown; what needs 6v6 demos is empty.
+  getProfileSixes: (role: string | null, kind: ContextKind | null = null, _from: number | null = null, _to: number | null = null, _account: number | null = null) => {
+    const base = profileSniper as unknown as ProfileResponse;
+    const r = role ?? "pocket";
+    if (!base.profile || !["pocket", "roamer", "off:sniper"].includes(r)) return delay({ classes: [], profile: null, fights: null, aim: null, life: null, aimAll: null, lifeAll: null });
+    const comp = (component: string, label: string, unit: string, weight: number, formPct: number, careerPct: number, formRaw: number) => ({ component, label, unit, weight, formPct, careerPct, formRaw });
+    const p = base.profile;
+    const trend = kind ? p.trend.filter((x) => x.kind === kind) : p.trend;
+    return delay({
+      classes: [["pocket", 142], ["roamer", 38], ["off:sniper", 6]] as Array<[string, number]>,
+      profile: {
+        ...p,
+        class: r,
+        filter: kind,
+        trend,
+        games: trend.length,
+        extras: [
+          { label: "Airshots, career", value: "312", detail: "2.20 per game", hint: "Enemies you hit in the air, across every rated game in this role." },
+          { label: "Medic picks, career", value: "171", detail: "1.20 per game", hint: "Enemy Medics you killed, across every rated game in this role." },
+        ],
+        byDivision: [],
+        components: [
+          comp("impact_kills", "Kills", "per 10 min", 0.28, 61, 55, 7.4),
+          comp("space", "Space created", "of the team's damage taken", 0.2, 72, 64, 31.5),
+          comp("dpm", "Damage per minute", "dmg/min", 0.16, 58, 52, 262),
+          comp("deaths", "Deaths", "per 10 min", 0.12, 44, 47, 5.1),
+          comp("airshots", "Airshots", "per 10 min", 0.08, 39, 41, 0.8),
+          comp("medic_picks", "Medic picks", "per 10 min", 0.16, 51, 50, 0.6),
+        ],
+      },
+      fights: null,
+      aim: null,
+      life: null,
+      aimAll: null,
+      lifeAll: null,
+      headline: { games: 142, seconds: 290_000, won: 81, lost: 55, tied: 6, kills: 2_410, deaths: 1_620, assists: 1_050, damage: 1_266_000, dpm: 262.0, accuracy: null, accuracyGames: 0 },
     });
   },
 
@@ -885,10 +1044,17 @@ export const mockApi: Api = {
     );
   },
 
-  playedFilters: (q?: { kind?: string | null; class?: string | null; map?: string | null }) => {
+  playedFilters: (q?: { format?: string | null; kind?: string | null; class?: string | null; map?: string | null }) => {
     // Narrower filters, smaller counts: enough to see them follow.
     const share = (q?.kind ? 0.3 : 1) * (q?.map ? 0.2 : 1);
     const scale = (rows: Array<[string, number]>, by: number) => rows.map(([n, c]) => [n, Math.max(1, Math.round(c * by))] as [string, number]);
+    // The 6v6 list's own classes and maps (the 6v6 plan, P1).
+    if (q?.format === "sixes") {
+      return delay({
+        classes: scale([["soldier", 14], ["scout", 8], ["demoman", 8], ["medic", 6]], share),
+        maps: scale([["process", 7], ["sunshine", 6], ["product", 6], ["gullywash", 5], ["metalworks", 5], ["bagel", 4], ["granary", 3]], (q?.kind ? 0.3 : 1) * (q?.class ? 0.5 : 1)),
+      });
+    }
     return delay({
       classes: scale([
         ["sniper", 646],
@@ -1349,7 +1515,9 @@ export const mockApi: Api = {
     ),
 
   // From `hl leagues --json` and `hl team 37805 --json` on a real fetch.
-  getLeagues: (_season?: number) => delay(leagues as unknown as LeagueView),
+  // 6v6's stored season, worked out from Season 53's real results the way
+  // the backend works out a stored season's tables.
+  getLeagues: (_season?: number, format?: StoredFormat) => delay(format === "sixes" ? sixesLeague() : (leagues as unknown as LeagueView)),
   // From a copy of the database, 3 October 2026: the tiles, S33's podiums
   // and SBQRRA's honours; the banners ETF2L's news had.
   getSeasonsOverview: () => delay(seasonsOverview as unknown as SeasonTile[]),
@@ -1460,6 +1628,147 @@ export const mockApi: Api = {
   // A round robin of an Invite, and some of the league's bans.
   getRglSeasonMatches: (id: number) => delay<RglMatch[]>(mockRglMatches(id)),
   getRglMatch: (id: number) => delay<RglMatch | null>([...mockRglMatches(198), ...mockRglMatches(193)].find((m) => m.matchId === id) ?? null),
+  getSixesSeason: () => delay(sixesSeason53 as unknown as SixesSeason),
+  // The mock plays both, so the tab menus can be seen without setup.
+  getSixesMatches: () => delay(sixesMatches53 as unknown as SixesMatches),
+  // Season 53 is still running: no medals yet; an MVP per division.
+  getSixesHonours: (_season: number) =>
+    delay<SixesHonours[]>(
+      sixesLeague().divisions.map((d, i) => ({
+        division: d.division,
+        medals: [],
+        mvp: { accountId: 1000 + i, name: FIXTURES[0].players[i % FIXTURES[0].players.length].name, role: ["pocket", "medic", "demoman", "roamer"][i % 4], games: 4 + i, average: Math.round((1.48 - i * 0.03) * 100) / 100 },
+      })),
+    ),
+  setOwnRole: (_logId: number, role: string | null) =>
+    delay<StoredRole[]>(role ? [{ accountId: FIXTURES[0].players.find((p) => p.isMe)?.accountId ?? 0, role, method: "hand", confidence: null, seconds: null, byHand: true }] : []),
+  // A 6v6 board from the mock 6v6 match's players, ratings spread around 1.00.
+  getSixesBoard: (role: string) =>
+    delay<SixesBoardRow[]>(
+      FIXTURES[0].players
+        .map((p, i) => ({ accountId: p.accountId, name: p.name, games: 3 + ((p.accountId + role.length) % 12), average: Math.round((1.35 - i * 0.04) * 100) / 100, best: Math.round((1.7 - i * 0.03) * 100) / 100 }))
+        .slice(0, 12),
+    ),
+  // The 6v6 league sample, part way through, off until started.
+  getSixesSample: () => delay<SixesSampleStatus>({ ...mockSixesSample }),
+  setSixesSample: (on: boolean) => {
+    mockSixesSample = { ...mockSixesSample, enabled: on };
+    return delay<SixesSampleStatus>({ ...mockSixesSample });
+  },
+  // The owner's 6v6 profile: their best mock 6v6 games and a season line.
+  getSixesProfile: () => {
+    const sixes = FAKE_MATCHES.filter((m) => m.format === "sixes").slice(0, 5);
+    return delay<SixesProfile>({
+      best: sixes.map((m, i) => ({ logId: m.logId, role: i % 2 ? "roamer" : "pocket", rating: Math.round((1.42 - i * 0.07) * 100) / 100, map: m.map, playedAt: m.playedAt })),
+      seasons: [
+        { season: 53, division: "Division 3", team: "DD14", won: 3, drawn: 1, lost: 1 },
+        { season: 52, division: "Division 3", team: "DD14", won: 4, drawn: 0, lost: 3 },
+      ],
+    });
+  },
+  // Preview ratings: a spread around 1.00 for the mock 6v6 match, and the
+  // owner's by role for the 6v6 profile.
+  getSixesRatings: (q: { logId?: number; accountId?: number }) => {
+    const roles = ["pocket", "roamer", "pocket_scout", "flank_scout", "demoman", "medic"];
+    if (q.logId !== undefined) {
+      const row = FAKE_MATCHES.find((m) => m.logId === q.logId);
+      if (row?.format !== "sixes") return delay<SixesRatingRow[]>([]);
+      return delay<SixesRatingRow[]>(
+        FIXTURES[0].players.map((p, i) => ({
+          logId: q.logId!,
+          accountId: p.accountId,
+          role: roles[i % 6],
+          rating: Math.round((0.7 + ((p.accountId * 7) % 60) / 100) * 100) / 100,
+          score: 50,
+          minutes: p.timeS / 60,
+          parts: JSON.stringify([["dpm", 62, 0.4], ["deaths", 48, 0.3], ["airshots", 71, 0.3]]),
+        })),
+      );
+    }
+    const sixes = FAKE_MATCHES.filter((m) => m.format === "sixes");
+    return delay<SixesRatingRow[]>(
+      sixes.map((m, i) => ({ logId: m.logId, accountId: q.accountId ?? 0, role: i % 3 === 0 ? "roamer" : "pocket", rating: Math.round((0.85 + (i % 7) * 0.06) * 100) / 100, score: 50, minutes: 25, parts: "[]" })),
+    );
+  },
+  // The mock 6v6 match's numbers, from its players (see getMatch).
+  getSixesMatchStats: (logId: number) => {
+    const row = FAKE_MATCHES.find((m) => m.logId === logId);
+    if (row?.format !== "sixes") return delay<SixesMatchStats | null>(null);
+    const ps = FIXTURES[0].players;
+    const medics = ps.filter((p) => p.mainClass === "medic");
+    const deathsOf = (team: string) => medics.find((m) => m.team === team)?.deaths ?? null;
+    return delay<SixesMatchStats>({
+      players: ps.map((p) => ({
+        accountId: p.accountId,
+        team: p.team,
+        mainClass: p.mainClass,
+        minutes: p.timeS / 60,
+        dpm: Math.round((p.dmg * 60) / p.timeS),
+        dtm: Math.round((p.dmg * 0.9 * 60) / p.timeS),
+        damageRatio: 1.11,
+        airshots: p.mainClass === "soldier" || p.mainClass === "demoman" ? 3 : 0,
+        deaths: p.deaths,
+        medicDeaths: p.mainClass === "medic" ? null : deathsOf(p.team),
+        stickyKills: p.mainClass === "demoman" ? 9 : 0,
+        reflectKills: p.mainClass === "pyro" ? 2 : 0,
+        sentryKills: p.mainClass === "engineer" ? 4 : 0,
+        medicPicks: p.accountId % 3,
+        picks: p.accountId % 5,
+        saps: p.mainClass === "spy" ? 2 : 0,
+        denies: p.mainClass === "heavy" ? 3 : 0,
+        damageTakenShare: p.mainClass === "medic" ? null : Math.round((0.12 + (p.accountId % 9) / 60) * 1000) / 1000,
+        firstIn: p.accountId % 7,
+        fights: 24,
+        forcesProposed: p.accountId % 4,
+        backcapsProposed: p.mainClass === "scout" ? 1 : 0,
+        sniperComboDamage: p.mainClass === "sniper" ? 1840 : null,
+      })),
+      medics: medics.slice(0, 2).map((m, i) => ({
+        accountId: m.accountId,
+        team: m.team,
+        ubers: 9 - i,
+        drops: i,
+        deaths: m.deaths,
+        healPerMin: 1180 + i * 40,
+        advantagesLost: i,
+        deathsAfterUber: 1 + i,
+        avgBuildS: 66.4 + i * 3,
+      })),
+    });
+  },
+  // The mock 6v6 match's two off-classers (see getMatch): when, and beside whom.
+  getMatchStints: (logId: number) => {
+    const row = FAKE_MATCHES.find((m) => m.logId === logId);
+    if (row?.format !== "sixes") return delay<Stint[]>([]);
+    const ps = FIXTURES[0].players;
+    return delay<Stint[]>([
+      { accountId: ps[1].accountId, class: "engineer", startS: 512, endS: 652, round: 3, matesOff: 1, pointsHeld: 1 },
+      { accountId: ps[1].accountId, class: "heavy", startS: 1180, endS: 1275, round: 5, matesOff: 0 },
+      { accountId: ps[4].accountId, class: "sniper", startS: 530, endS: 605, round: 3, matesOff: 1 },
+    ]);
+  },
+  // A 6v6 match's roles, in the shape the pass stores them: per team, the
+  // first Soldier and Scout healed most.
+  getMatchRoles: (logId: number) => {
+    const row = FAKE_MATCHES.find((m) => m.logId === logId);
+    if (row?.format !== "sixes") return delay<StoredRole[]>([]);
+    const players = FIXTURES[0].players;
+    const roles: StoredRole[] = [];
+    for (const team of ["Red", "Blue"]) {
+      const side = players.filter((p) => p.team === team);
+      side.forEach((p, i) => {
+        const role = ["pocket", "roamer", "pocket_scout", "flank_scout", "demoman", "medic"][i];
+        if (role) roles.push({ accountId: p.accountId, role, method: i < 4 ? "healspread" : "class", confidence: i < 4 ? 0.31 : null, seconds: p.timeS, byHand: false });
+      });
+    }
+    return delay(roles);
+  },
+  formatsPlayed: () => delay<FormatsPlayed>({ formats: [...mockFormats], sixesEnabled: true }),
+  setFormatsPlayed: (formats: StoredFormat[]) => {
+    const kept = (["highlander", "sixes"] as const).filter((f) => formats.includes(f));
+    mockFormats = kept.length ? kept : ["highlander"];
+    return delay<FormatsPlayed>({ formats: [...mockFormats], sixesEnabled: true });
+  },
   getRglMatchMore: (id: number) => {
     const all = [...mockRglMatches(198), ...mockRglMatches(193)];
     const m = all.find((x) => x.matchId === id);
@@ -1854,7 +2163,9 @@ export const mockApi: Api = {
   // elimination, Low and Open an eight-team single elimination and a 3rd
   // place match. The higher seed wins, except where a score says otherwise;
   // the last round is still to come.
-  getSeasonResults: (season: number) => {
+  getSeasonResults: (season: number, format?: StoredFormat) => {
+    // The stored 6v6 season has no playoffs yet in the browser build.
+    if (format === "sixes") return delay<ResultRow[]>([]);
     const v = leagues as unknown as LeagueView;
     const now = Math.floor(Date.now() / 1000);
     const rows: ResultRow[] = [];
@@ -2092,7 +2403,7 @@ export const mockApi: Api = {
     if (!base) return null;
     const url = OVERVIEW_URLS[`../../../overviews/${base}.png`];
     if (!url) return null;
-    return { mapBase: base, ...mockPlacement(base)!, aspect: 1, image: url };
+    return { mapBase: base, ...mockPlacement(base)!, aspect: 1, image: url, source: "more.tf" };
   },
 
   mapsOverview: () =>
@@ -2483,6 +2794,53 @@ export const mockApi: Api = {
         { kind: "reprocess", at: 1789461000, seconds: 412, fetched: 0, failed: 0, error: "database is locked", problems: [] },
       ],
     }),
+
+  // A made-up feed: a line or two each call, as a sync reading ETF2L and logs.tf would.
+  getActivity: (since: number) => {
+    const now = Date.now();
+    const samples: Array<[ActivityLine["level"], string, string]> = [
+      ["http", "etf2l.org", "/competition/812/matches?page · 200 · 312 ms"],
+      ["info", "league", "6v6 season 52: Division 3 results read matches=48"],
+      ["http", "logs.tf", "/api/v1/log/4115969 · 200 · 188 ms"],
+      ["http", "trends.tf", "/api/v1/matches?player · 304 · 96 ms"],
+      ["info", "sixes_sample", "6v6 league sample: log stored log_id=4115969"],
+      ["http", "drops.tf", "/raw/4115969 · 200 · 441 ms"],
+      ["warn", "http", "transient HTTP failure url=demos.tf/api/demos status=503 attempt=0"],
+      ["info", "rating", "6v6 ratings rebuilt rated=1342"],
+    ];
+    mockActivity.seq = Math.max(mockActivity.seq, since);
+    const n = 1 + (now % 2);
+    const lines: ActivityLine[] = Array.from({ length: n }, () => {
+      const [level, source, text] = samples[mockActivity.seq % samples.length];
+      mockActivity.seq += 1;
+      return { seq: mockActivity.seq, at: now, level, source, text };
+    });
+    const site = (host: string, requests: number, ok: number, notModified: number, failed: number, avgMs: number, rateRemaining: number | null, restingUntil: number | null = null, lastError: string | null = null): ActivitySite => ({
+      host, requests, ok, notModified, notFound: 0, failed, lastStatus: failed && lastError ? "503" : "200", lastAt: now - 2000, lastPath: "/", avgMs, rateRemaining, restingUntil, lastError,
+    });
+    return delay({
+      lines,
+      sites: [
+        site("etf2l.org", 412, 401, 9, 2, 286, 54),
+        site("logs.tf", 1288, 1280, 0, 8, 174, null),
+        site("trends.tf", 96, 41, 55, 0, 102, null),
+        site("drops.tf", 640, 640, 0, 0, 390, null),
+        site("demos.tf", 31, 22, 0, 9, 1210, null, now + 9 * 60_000, "HTTP 503 Service Unavailable"),
+        site("rgl.gg", 18, 18, 0, 0, 240, 4),
+      ],
+      verbose: mockActivity.verbose,
+    });
+  },
+  // Two of the fixtures' players banned, to see the tag: one until a date, one for good.
+  getEtf2lBans: () =>
+    delay<EtfBan[]>([
+      { accountId: 198698486, start: 1790000000, end: 1800000000, reason: "Toxicity" },
+      { accountId: 90819112, start: 1790000000, end: null, reason: "Cheating" },
+    ]),
+  setActivityVerbose: (on: boolean) => {
+    mockActivity.verbose = on;
+    return delay(on);
+  },
 
   recentLog: () =>
     delay(

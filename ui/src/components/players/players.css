@@ -232,6 +232,7 @@
 .div-t2 { color: #3fb8a0; }
 .div-t3 { color: #6aa3e8; }
 .div-t4 { color: #a8998b; }
+.div-fresh { color: #79b874; }
 /* A cup's bracket (Vampires, Werewolves): not a tier, so no tier colour. */
 .div-badge.div-cup { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); border-style: dashed; }
 .div-cup-tag { font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--accent); }
@@ -741,3 +742,8 @@ button.pp-alias-more:hover { border-color: var(--accent-dim); background: rgba(v
 .pp-cup-reached { display: inline-flex; align-items: center; gap: 6px; }
 .pp-cups .w { color: #8fc27a; }
 .pp-cups .l { color: #d98a80; }
+
+/* An active ETF2L ban beside a name, everywhere one is drawn (BanTag): the
+   header's .pp-banned, smaller. */
+.ban-tag { display: inline-flex; align-items: center; margin-left: 6px; padding: 0 6px; height: 18px; border-radius: 999px; vertical-align: middle; font: 700 var(--fs-micro) var(--font-display); letter-spacing: var(--ls-caps); text-transform: uppercase; white-space: nowrap; background: rgba(var(--bad-rgb), 0.14); border: 1px solid rgba(var(--bad-rgb), 0.5); color: var(--bad); cursor: help; }
+.pp-name-row .ban-tag { height: auto; padding: 2px 8px; font-size: var(--fs-xs); margin-left: 0; }

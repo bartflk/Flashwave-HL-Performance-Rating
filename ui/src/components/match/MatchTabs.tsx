@@ -5,6 +5,7 @@ import { openFold } from "../Fold";
 /** The match page's sections, in page order, by their Fold ids. */
 const SECTIONS: Array<[string, string]> = [
   ["scoreboard", k("Scoreboard")],
+  ["sixes", k("6v6 numbers")],
   ["matchups", k("Matchups")],
   ["h2h", k("Head to head")],
   ["demos", k("Demos")],
