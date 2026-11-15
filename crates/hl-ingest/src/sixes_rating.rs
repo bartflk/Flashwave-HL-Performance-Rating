@@ -407,9 +407,22 @@ async fn collect(db: &hl_db::Db) -> Result<(Vec<Perf>, HashMap<i64, LogResult>)>
 fn raw_measures(perfs: &mut [Perf], raw: &crate::rawlog::RawLog, map: &str) {
     let roles: HashMap<u32, String> = perfs.iter().filter(|p| !p.role.starts_with("off:")).map(|p| (p.account_id, p.role.clone())).collect();
     let m = crate::sixes_raw::measure(raw, &roles, map);
-    for p in perfs.iter_mut().filter(|p| !p.role.starts_with("off:")) {
+    for p in perfs.iter_mut() {
         let per10 = |n: u32| n as f64 / p.minutes.max(1.0) * 10.0;
         let n = |h: &HashMap<u32, u32>| h.get(&p.account_id).copied().unwrap_or(0);
+        // s3, boSe.: "All 3 should stay". Forces for every main role, and
+        // backcaps for them and the Spy; the Sniper's pressure is now his
+        // damage on the combo, per minute, in place of all his damage.
+        if !p.role.starts_with("off:") {
+            p.values.insert("forces", per10(n(&m.forces)));
+        }
+        if !p.role.starts_with("off:") || p.role == "off:spy" {
+            p.values.insert("backcaps", per10(n(&m.backcaps)));
+        }
+        if p.role == "off:sniper" {
+            let dmg = m.sniper_combo_damage.get(&p.account_id).copied().unwrap_or(0);
+            p.values.insert("pressure", dmg as f64 / p.minutes.max(1.0));
+        }
         match p.role.as_str() {
             "roamer" | "flank_scout" if m.flanks_measured => {
                 p.values.insert("double_flank_deaths", per10(n(&m.flank_double_deaths)));
@@ -1362,7 +1375,7 @@ mod tests {
     #[test]
     fn the_weights_read_and_every_role_and_off_class_has_a_table() {
         let w = weights();
-        assert_eq!(w.model_version, "s2");
+        assert_eq!(w.model_version, "s3");
         for r in Role::MAIN {
             assert!(w.role.contains_key(&r.key()), "{}", r.key());
         }

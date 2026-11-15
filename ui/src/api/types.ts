@@ -584,7 +584,7 @@ export interface SixesPlayerStats {
   saps: number | null;
   /** Soldiers and Demomen killed as Heavy; null without the raw log. */
   denies: number | null;
-  /** PROPOSED definitions for the reviewers, in no rating: übers pressured out, caps without the Medic, Sniper damage on the combo. */
+  /** Übers pressured out, caps without the Medic, Sniper damage on the combo: proposed in P4, agreed by boSe. and rated from s3. */
   forcesProposed?: number | null;
   backcapsProposed?: number | null;
   sniperComboDamage?: number | null;

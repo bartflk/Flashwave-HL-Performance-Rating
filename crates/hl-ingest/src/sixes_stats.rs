@@ -259,10 +259,9 @@ const FORCE_WINDOW_S: i64 = 4;
 /// Damage on the enemy team in that window that counts as pressure.
 const FORCE_MIN_DAMAGE: i64 = 50;
 
-/// Three PROPOSED stats for the reviewers (the 6v6 plan, P4: über forces,
-/// backcaps and Sniper pressure need a definition everyone agrees on). They
-/// are shown, marked as proposals, and the rating does not read them: their
-/// names are not in `weights.sixes.toml`.
+/// Three stats first proposed to the reviewers (the 6v6 plan, P4), shown on
+/// the 6v6 numbers panel. boSe. agreed them (model s3); the rating measures
+/// them the same way in `sixes_raw`.
 ///
 /// - **Über forces**: when a Medic deploys an über, every enemy who dealt
 ///   [`FORCE_MIN_DAMAGE`] or more to the Medic's team in the

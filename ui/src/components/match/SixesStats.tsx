@@ -32,7 +32,7 @@ export function SixesStats({ d }: { d: MatchDetail }) {
   const anySaps = s.players.some((p) => (p.saps ?? 0) > 0);
   const anyDenies = s.players.some((p) => (p.denies ?? 0) > 0);
   const hasPicks = s.players.some((p) => p.picks !== null);
-  // Proposed definitions for the reviewers, in no rating (the 6v6 plan, P4).
+  // First proposed to the reviewers (the 6v6 plan, P4); agreed by boSe. and rated from s3.
   const hasProposed = s.players.some((p) => p.forcesProposed != null);
   const anySniper = s.players.some((p) => (p.sniperComboDamage ?? 0) > 0);
   const f = (v: number | null, digits = 0) => (v === null ? "–" : v.toFixed(digits));
@@ -67,18 +67,18 @@ export function SixesStats({ d }: { d: MatchDetail }) {
               {anySaps && <th className="num" title={t("Buildings destroyed as Spy")}>{t("Saps")}</th>}
               {anyDenies && <th className="num" title={t("Soldiers and Demomen killed as Heavy")}>{t("Denies")}</th>}
               {hasProposed && (
-                <th className="num sx6-proposed" title={t("Proposed for the reviewers, in no rating: enemy übers used after this player dealt 50 damage or more to that Medic's team in the 4 seconds before")}>
-                  {t("Forces*")}
+                <th className="num" title={t("Über forces: enemy übers used after this player dealt 50 damage or more to that Medic's team in the 4 seconds before")}>
+                  {t("Forces")}
                 </th>
               )}
               {hasProposed && (
-                <th className="num sx6-proposed" title={t("Proposed for the reviewers, in no rating: captures made without their own Medic on the point")}>
-                  {t("Backcaps*")}
+                <th className="num" title={t("Backcaps: captures made without their own Medic on the point")}>
+                  {t("Backcaps")}
                 </th>
               )}
               {anySniper && (
-                <th className="num sx6-proposed" title={t("Proposed for the reviewers, in no rating: damage as Sniper on the enemy Medic, Demoman and pocket")}>
-                  {t("Combo dmg*")}
+                <th className="num" title={t("Sniper pressure: damage as Sniper on the enemy Medic, Demoman and pocket")}>
+                  {t("Combo dmg")}
                 </th>
               )}
             </tr>
@@ -98,7 +98,7 @@ export function SixesStats({ d }: { d: MatchDetail }) {
           </tbody>
         </table>
       </div>
-      {hasProposed && <p className="hint">{t("* Proposed definitions for the reviewers to argue: shown here, counted in no rating until agreed.")}</p>}
+
       <SoonWithDemos />
       {s.medics.length === 2 && <MedicDuel a={s.medics.find((m) => m.team === order[0]) ?? s.medics[0]} b={s.medics.find((m) => m.team === order[1]) ?? s.medics[1]} names={names} />}
     </section>
@@ -180,9 +180,9 @@ function Row({
       {cols[2] && <td className="num">{p.sentryKills || ""}</td>}
       {cols[3] && <td className="num">{p.saps || ""}</td>}
       {cols[4] && <td className="num">{p.denies || ""}</td>}
-      {cols[6] && <td className="num sx6-proposed">{p.forcesProposed || ""}</td>}
-      {cols[6] && <td className="num sx6-proposed">{p.backcapsProposed || ""}</td>}
-      {cols[7] && <td className="num sx6-proposed">{p.sniperComboDamage ?? ""}</td>}
+      {cols[6] && <td className="num">{p.forcesProposed || ""}</td>}
+      {cols[6] && <td className="num">{p.backcapsProposed || ""}</td>}
+      {cols[7] && <td className="num">{p.sniperComboDamage ?? ""}</td>}
     </tr>
   );
 }

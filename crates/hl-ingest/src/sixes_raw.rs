@@ -15,6 +15,13 @@
 //! - **Caps contested** for the Medic: "only ... if he's under ubercharge or
 //!   he's the last one alive, else it shouldn't count since he should never
 //!   be on point". A capture or block of his counts only then.
+//! - **Über forces, backcaps and Sniper pressure**, as proposed on the 6v6
+//!   numbers panel (`sixes_stats::add_proposed`); boSe.: "All 3 should stay"
+//!   (model s3). Forces: an enemy über deployed after this player dealt
+//!   [`FORCE_MIN_DAMAGE`] or more to the Medic's team in the
+//!   [`FORCE_WINDOW_S`] seconds before. Backcaps: a capture without the
+//!   capping team's Medic on the point. Sniper pressure: damage as Sniper on
+//!   the enemy Medic, Demoman and pocket.
 
 use crate::rawlog::{EventKind, RawLog};
 use hl_core::matchdata::Team;
@@ -26,6 +33,10 @@ pub const FLANK_WINDOW_S: i64 = 10;
 pub const TARGET_WINDOW_S: i64 = 2;
 /// An über with no `chargeended` line is taken to last this long.
 pub const UBER_S: i64 = 8;
+/// How long before an enemy über a player's damage counts as forcing it.
+pub const FORCE_WINDOW_S: i64 = 4;
+/// Damage on the Medic's team in that window that counts as a force.
+pub const FORCE_MIN_DAMAGE: i64 = 50;
 
 /// Counts per account, for one log.
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -37,6 +48,10 @@ pub struct RawParts {
     pub ubers_taken: HashMap<u32, u32>,
     pub uber_picks: HashMap<u32, u32>,
     pub caps_contested: HashMap<u32, u32>,
+    pub forces: HashMap<u32, u32>,
+    pub backcaps: HashMap<u32, u32>,
+    /// Damage as Sniper on the enemy Medic, Demoman and pocket.
+    pub sniper_combo_damage: HashMap<u32, i64>,
 }
 
 /// Where both flanks dying counts: 5CP after the round's first capture
@@ -110,6 +125,30 @@ pub fn measure(raw: &RawLog, roles: &HashMap<u32, String>, map: &str) -> RawPart
     }
     let ubered = |medic: u32, at: i64| charges.iter().any(|c| c.medic == medic && at >= c.start && at <= c.end);
 
+    // Über forces: who pressured the Medic's team just before each über.
+    for e in &raw.events {
+        let EventKind::ChargeDeployed { medic, .. } = &e.kind else { continue };
+        let Some(team) = medic.team else { continue };
+        let mut dealt: HashMap<u32, i64> = HashMap::new();
+        for d in raw.damage.iter().filter(|d| d.live && d.at <= e.at && d.at >= e.at - FORCE_WINDOW_S) {
+            if d.victim.team == Some(team) && d.attacker.team.is_some_and(|t| t != team) {
+                *dealt.entry(d.attacker.account).or_default() += d.amount.min(crate::rawlog::HIT_CAP);
+            }
+        }
+        for (a, dmg) in dealt {
+            if dmg >= FORCE_MIN_DAMAGE {
+                *out.forces.entry(a).or_default() += 1;
+            }
+        }
+    }
+    // Sniper pressure: damage on the combo.
+    for d in raw.damage.iter().filter(|d| d.live && d.attacker.class == Some(hl_core::TfClass::Sniper) && d.attacker.team != d.victim.team) {
+        if matches!(role(d.victim.account), Some("medic" | "demoman" | "pocket")) {
+            *out.sniper_combo_damage.entry(d.attacker.account).or_default() += d.amount.min(crate::rawlog::HIT_CAP);
+        }
+    }
+    let medics: HashSet<u32> = roles.iter().filter(|(_, r)| r.as_str() == "medic").map(|(a, _)| *a).collect();
+
     // The walk: kills and events in time order, with who is alive and
     // whether the round's first point has gone.
     let mut alive: HashMap<Team, HashSet<u32>> = HashMap::new();
@@ -152,6 +191,12 @@ pub fn measure(raw: &RawLog, roles: &HashMap<u32, String>, map: &str) -> RawPart
                     for &m in cappers {
                         if medic_counts(m, *team, alive) {
                             *out.caps_contested.entry(m).or_default() += 1;
+                        }
+                    }
+                    // A backcap: taken without the team's Medic on the point.
+                    if !cappers.is_empty() && !medics.is_empty() && !cappers.iter().any(|c| medics.contains(c)) {
+                        for &c in cappers {
+                            *out.backcaps.entry(c).or_default() += 1;
                         }
                     }
                     *capped = true;
@@ -266,6 +311,28 @@ mod tests {
         l.push(kill(30, 3, "Red", 11, "Blue"));
         let m = measure(&crate::rawlog::parse(&l.join("\n")), &roles(), "cp_gullywash_f9");
         assert_eq!((m.ubers_taken.get(&3), m.uber_picks.get(&3)), (Some(&1), Some(&2)), "the kill after it ended is not counted");
+    }
+
+    #[test]
+    fn forces_backcaps_and_sniper_pressure_are_counted_as_bose_agreed() {
+        let mut l = start();
+        let dmg = |sec: u32, a: u32, at: &str, v: u32, vt: &str, n: u32| line(sec, &format!("{} triggered \"damage\" against {} (damage \"{n}\")", p("a", a, at), p("v", v, vt)));
+        // Blue's roamer 11 deals 60 to Red, then Red's Medic übers: a force.
+        // Blue's 12 deals 30: not enough. Damage 10 s before: too early.
+        l.push(dmg(10, 12, "Blue", 1, "Red", 200));
+        l.push(dmg(18, 11, "Blue", 1, "Red", 60));
+        l.push(dmg(19, 12, "Blue", 3, "Red", 30));
+        l.push(line(20, &format!("{} triggered \"chargedeployed\" (medigun \"medigun\")", p("m", 4, "Red"))));
+        // A capture by Red's flank Scout without the Medic: a backcap.
+        l.push(line(25, &format!("Team \"Red\" triggered \"pointcaptured\" (cp \"3\") (cpname \"second\") (numcappers \"1\") (player1 {}) (position1 \"0 0 0\")", p("c", 2, "Red"))));
+        // Blue's 13 as Sniper on Red's Medic: pressure; on the flank Scout: not.
+        l.push(line(26, &format!("{} spawned as \"sniper\"", p("x", 13, "Blue"))));
+        l.push(dmg(30, 13, "Blue", 4, "Red", 150));
+        l.push(dmg(31, 13, "Blue", 2, "Red", 150));
+        let m = measure(&crate::rawlog::parse(&l.join("\n")), &roles(), "cp_process_f12");
+        assert_eq!((m.forces.get(&11), m.forces.get(&12)), (Some(&1), None));
+        assert_eq!(m.backcaps.get(&2), Some(&1));
+        assert_eq!(m.sniper_combo_damage.get(&13), Some(&150));
     }
 
     #[test]

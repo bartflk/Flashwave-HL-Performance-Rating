@@ -18,8 +18,8 @@ use std::collections::BTreeMap;
 /// Every component the 6v6 rating can fill from a log today
 /// (`sixes_rating::perfs_valued`); round impact joins once the round-win
 /// table is measured. A test holds this to what the rating fills. The last
-/// three are read from the raw log (`sixes_raw`), for model s2.
-pub const MEASURED: [&str; 25] = [
+/// five are read from the raw log (`sixes_raw`), for models s2 and s3.
+pub const MEASURED: [&str; 27] = [
     "impact_kills",
     "impact_assists",
     "deaths",
@@ -45,6 +45,8 @@ pub const MEASURED: [&str; 25] = [
     "double_flank_deaths",
     "uber_picks",
     "caps_contested",
+    "forces",
+    "backcaps",
 ];
 
 /// The main roles in the order a team sheet lists them.

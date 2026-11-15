@@ -35,7 +35,7 @@ export function sixesComponent(key: string): SixesComponentText {
     case "dpm":
       return c(t("Damage per minute"), t("dmg/min"), "fragging", t("Damage dealt per minute."));
     case "pressure":
-      return c(t("Pressure"), t("dmg/min"), "fragging", t("Damage per minute on the off-class: how much the other team had to respect it."));
+      return c(t("Pressure"), t("dmg/min"), "fragging", t("Damage per minute as Sniper on the enemy Medic, Demoman and pocket: how much the combo had to respect him."));
     case "dmg_ratio":
       return c(t("Damage ratio"), t("dealt per taken"), "fragging", t("Damage dealt for every point of damage taken."));
     case "medic_picks":
@@ -45,11 +45,11 @@ export function sixesComponent(key: string): SixesComponentText {
     case "space":
       return c(t("Space created"), t("of the team's damage taken"), "teamplay", t("The share of your team's damage you took, the Medic left out: going in first and drawing fire so others can play."));
     case "forces":
-      return c(t("Forces"), per10, "teamplay", t("Making the other team use their Über or fall back. How to count it is still being agreed with the reviewers."));
+      return c(t("Forces"), per10, "teamplay", t("Making the other team use their Über: an enemy über used after this player dealt 50 damage or more to that Medic's team in the 4 seconds before."));
     case "protect":
       return c(t("Protecting the Medic"), per10, "teamplay", t("Staying close to your Medic and killing the players who go for them."));
     case "backcaps":
-      return c(t("Backcaps"), per10, "objective", t("Points taken behind the other team while they push."));
+      return c(t("Backcaps"), per10, "objective", t("Points taken without your own Medic on them: behind the other team while they push."));
     case "caps_contested":
       return c(t("Caps contested"), per10, "objective", t("Capping or blocking a point, counted for the Medic only while he is übered or the last one alive: otherwise he should never be on it."));
     case "double_flank_deaths":

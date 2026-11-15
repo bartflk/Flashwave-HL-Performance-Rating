@@ -43,7 +43,12 @@
 #   Medic: caps contested only while übered or last alive (sixes_raw), now
 #     measured at s1's 5.
 # The Demoman and the off-classes keep s1's.
-model_version = "s2"
+#
+# s3 (15 Nov 2026): boSe. on the three proposals, "All 3 should stay": über
+# forces, backcaps and Sniper pressure are measured as proposed on the 6v6
+# numbers panel (sixes_raw) and count at the shares above; Sniper pressure is
+# his damage on the enemy Medic, Demoman and pocket per minute.
+model_version = "s3"
 
 [role.pocket]
 round_impact = 50
