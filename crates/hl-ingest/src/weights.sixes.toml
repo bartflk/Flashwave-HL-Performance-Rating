@@ -20,24 +20,30 @@
 # So until then the preview rates on the rest, against the other players in
 # your own stored 6v6 logs: a preview, not the 6v6 rating.
 
-model_version = "s0"
+# s1 (15 Nov 2026, Flashy chose option A): the role tables' measured components
+# fitted to who won on the logs.tf database's 63,959 6v6 officials (hl sixes-fit),
+# with guard rails -- round impact and the components logs cannot measure yet
+# keep their weight, and a death measure is capped at a quarter of the fitted
+# block (the losing side dies more; uncapped it rated the result, not the
+# play). Against who won: team 88.8% -> 89.9%, every role up (docs/sixes.md).
+model_version = "s1"
 
 [role.pocket]
 round_impact = 50
-impact_kills = 14
-space = 10
-dpm = 8
-airshots = 4
+impact_kills = 23.7
+space = 6.1
+dpm = 1.7
+airshots = 0
 forces = 4
-deaths = 6
+deaths = 10.5
 untraded_deaths = 4
 
 [role.roamer]
 round_impact = 50
-medic_picks = 12
+medic_picks = 7.9
 opening = 10
-impact_kills = 10
-airshots = 5
+impact_kills = 19.1
+airshots = 0
 forces = 5
 untraded_deaths = 8
 deaths = 0
@@ -47,35 +53,35 @@ round_impact = 50
 opening = 14
 forces = 10
 backcaps = 8
-medic_picks = 6
-impact_kills = 6
+medic_picks = 2.2
+impact_kills = 9.8
 untraded_deaths = 6
 deaths = 0
 
 [role.pocket_scout]
 round_impact = 50
-impact_kills = 12
-dpm = 8
-dmg_ratio = 10
-deaths_vs_medic = 12
-impact_assists = 8
+impact_kills = 13.2
+dpm = 0
+dmg_ratio = 17.3
+deaths_vs_medic = 0
+impact_assists = 19.4
 
 [role.demoman]
 round_impact = 50
-dpm = 12
-dmg_ratio = 10
-traps = 6
-impact_kills = 10
-deaths = 12
+dpm = 0
+dmg_ratio = 19.5
+traps = 0.1
+impact_kills = 17.9
+deaths = 12.5
 
 [role.medic]
 round_impact = 30
-heal = 15
-ubers_vs = 12
-drops_vs = 12
-deaths_vs = 12
-adv_lost = 7
-impact_assists = 7
+heal = 16.2
+ubers_vs = 8
+drops_vs = 0
+deaths_vs = 16.2
+adv_lost = 2.5
+impact_assists = 22.1
 caps_contested = 5
 
 [off.engineer]

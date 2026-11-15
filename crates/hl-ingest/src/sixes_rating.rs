@@ -1008,7 +1008,7 @@ mod tests {
     #[test]
     fn the_fit_finds_the_component_that_decides_games_and_drops_the_one_that_does_not() {
         // Two components on the pocket: dpm always higher on the winning side,
-        // airshots a coin flip. The fit leans on dpm.
+        // space a coin flip. The fit leans on dpm.
         let mut logs = Vec::new();
         for i in 0..600i64 {
             let win = |acc: u32, team: &str, dpm: f64, air: f64| StoredPerf {
@@ -1016,14 +1016,14 @@ mod tests {
                 team: Some(team.into()),
                 role: "pocket".into(),
                 minutes: 30.0,
-                values: [("dpm".to_string(), dpm), ("airshots".to_string(), air)].into_iter().collect(),
+                values: [("dpm".to_string(), dpm), ("space".to_string(), air)].into_iter().collect(),
             };
             let coin = if i % 2 == 0 { 1.0 } else { -1.0 };
             logs.push((i, Some("Red".to_string()), vec![win(1 + 2 * i as u32, "Red", 300.0 + i as f64 % 50.0, 5.0 + coin), win(2 + 2 * i as u32, "Blue", 200.0 + i as f64 % 50.0, 5.0 - coin)]));
         }
         let fits = fit_stored(logs, 0.6);
         let f = fits.iter().find(|f| f.role == "pocket").unwrap();
-        assert!(f.fitted["dpm"] > f.fitted["airshots"], "{f:?}");
+        assert!(f.fitted["dpm"] > f.fitted["space"], "{f:?}");
         assert!(f.fitted_test >= f.now_test, "{f:?}");
     }
 
@@ -1060,7 +1060,7 @@ mod tests {
     #[test]
     fn the_weights_read_and_every_role_and_off_class_has_a_table() {
         let w = weights();
-        assert_eq!(w.model_version, "s0");
+        assert_eq!(w.model_version, "s1");
         for r in Role::MAIN {
             assert!(w.role.contains_key(&r.key()), "{}", r.key());
         }

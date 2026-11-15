@@ -75,6 +75,15 @@ value at every percentile per component, and its score average and spread:
 it is against the whole competitive field from the first sync; round impact and
 kills valued by victim, which the dump cannot give, stay against the stored pool.
 
+**The weights, model s1:** `hl sixes-fit <sixes.sqlite3>` fits each role's measured
+components to who won (a logistic model on the two sides' players in a role, fitted
+on the older 60% of the officials and scored on the newer 40%). Option A took it
+with guard rails: round impact and the not-yet-measured components keep their
+weight, and a death measure is capped at 25% of the fitted block. On the dump's
+officials the higher-rated side won 89.9% (s0: 88.8%); by role, Medic 83.9%
+(80.4%), Pocket Scout 78.5% (73.9%), Demoman 77.6% (76.4%), Pocket 76.1% (72.6%),
+Flank Scout 70.4% (68.8%), Roamer 69.8% (68.2%).
+
 ## 3. Proposed definitions, for the reviewers
 
 Three of boSe.'s numbers have no agreed definition. The app shows a
