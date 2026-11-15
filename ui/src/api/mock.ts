@@ -2600,6 +2600,9 @@ export const mockApi: Api = {
   syncBusy: () => delay(busy),
   getRatingGuide: () => delay(ratingGuide as unknown as RatingGuide),
   getSixesRatingGuide: () => delay(sixesGuideJson as unknown as SixesGuide),
+  // The browser build: a 6v6 average for every other player, on the role asked.
+  sixesLineup: (players: Array<{ accountId: number; class: string | null }>) =>
+    delay(players.map((p, i) => ({ accountId: p.accountId, class: p.class, rating: i % 3 === 2 ? null : 0.94 + ((p.accountId * 7) % 23) / 100, games: i % 3 === 2 ? 0 : 6 + (p.accountId % 9), onClass: true }))),
   // The browser build: two 6v6 players, found by any part of their name.
   searchSixesPlayers: (term: string) =>
     delay(

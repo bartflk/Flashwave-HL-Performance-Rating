@@ -2559,6 +2559,11 @@ pub async fn match_divisions(db: &Db, log_id: i64) -> Result<MatchDivisions> {
     let Some((played_at, accounts)) = db.match_accounts(log_id).await? else {
         return Ok(MatchDivisions { players: HashMap::new(), tier_names: BTreeMap::new() });
     };
+    // A 6v6 match shows where its players play 6v6 (audit P3): Highlander's
+    // divisions said nothing about it.
+    if db.index_info(log_id).await?.and_then(|i| i.format).as_deref() == Some("sixes") {
+        return sixes_divisions(db, played_at, &accounts).await;
+    }
     let cat = Catalogue::shared(db).await?;
     let windows = cat.season_windows();
     let divisions = cat.divisions();
@@ -2572,6 +2577,40 @@ pub async fn match_divisions(db: &Db, log_id: i64) -> Result<MatchDivisions> {
     // Every tier by today's name: "High", not the older "Division 1".
     let tier_names: BTreeMap<i64, String> = crate::leagues::TIER_NAMES.iter().enumerate().map(|(t, n)| (t as i64, n.to_string())).collect();
     Ok(MatchDivisions { players, tier_names })
+}
+
+/// A 6v6 division's place on the ladder: 0 for the Premiership, then its
+/// number ("Division 3" is 3); one with no number goes last.
+fn sixes_tier(division: &str) -> i64 {
+    if division.eq_ignore_ascii_case("premiership") {
+        return 0;
+    }
+    division.split_whitespace().find_map(|w| w.parse::<i64>().ok()).unwrap_or(9)
+}
+
+/// Each player's 6v6 division when a match was played: the season it fell
+/// in (a week either side of its officials), else their nearest season
+/// within a year, marked as not exact. The tier names are 6v6's own.
+async fn sixes_divisions(db: &Db, played_at: i64, accounts: &[u32]) -> Result<MatchDivisions> {
+    const WEEK: i64 = 7 * 86_400;
+    const YEAR: i64 = 365 * 86_400;
+    let mut best: HashMap<u32, (i64, PlayerDivision)> = HashMap::new();
+    let mut tier_names = BTreeMap::new();
+    for (a, season, season_name, division, tier, t0, t1) in db.sixes_player_seasons(accounts).await? {
+        let tier = tier.unwrap_or_else(|| sixes_tier(&division));
+        tier_names.entry(tier).or_insert_with(|| division.clone());
+        let exact = played_at >= t0 - WEEK && played_at <= t1 + WEEK;
+        let distance = if exact { 0 } else { (t0 - played_at).abs().min((t1 - played_at).abs()) };
+        if distance > YEAR {
+            continue;
+        }
+        // The nearest season wins; on a tie (two divisions in one season), the higher one.
+        let better = best.get(&a).is_none_or(|(d, p)| distance < *d || (distance == *d && tier < p.tier));
+        if better {
+            best.insert(a, (distance, PlayerDivision { tier, division, season, season_name, exact }));
+        }
+    }
+    Ok(MatchDivisions { players: best.into_iter().map(|(a, (_, p))| (a, p)).collect(), tier_names })
 }
 
 // ---- Seasons and teams, for the Teams tab (Flashy's UX pass) ----------
@@ -3227,6 +3266,36 @@ mod tests {
     }
 
     use super::*;
+
+    #[tokio::test]
+    async fn a_6v6_match_s_division_tags_are_6v6_divisions() {
+        let db = Db::connect_in_memory().await.unwrap();
+        const DAY: i64 = 86_400;
+        for sql in [
+            "INSERT INTO etf2l_competition (competition_id, season, season_name, division, stage, name, fetched_at, format) VALUES (2, 52, 'Summer 2026', '', 'regular', '6v6 S52', 0, 'sixes'), (3, 50, 'Winter 2026', '', 'regular', '6v6 S50', 0, 'sixes')",
+            "INSERT INTO etf2l_competition (competition_id, season, season_name, division, stage, name, fetched_at) VALUES (5, 36, 'x', 'High', 'regular', 'HL 36', 0)",
+            "INSERT INTO etf2l_team (team_id, name) VALUES (3, 'Six'), (4, 'Nine')",
+        ] {
+            sqlx::query(sql).execute(db.pool()).await.unwrap();
+        }
+        for (id, comp, div, time) in [(20, 2, "Division 3", 100 * DAY), (21, 2, "Division 3", 120 * DAY), (22, 3, "Division 5", -300 * DAY), (30, 5, "High", 110 * DAY)] {
+            sqlx::query("INSERT INTO etf2l_season_match (match_id, competition_id, division, time, clan1_id, clan2_id, r1, r2) VALUES (?1, ?2, ?3, ?4, 3, 3, 3, 1)")
+                .bind(id).bind(comp).bind(div).bind(time)
+                .execute(db.pool()).await.unwrap();
+        }
+        for (m, a) in [(20, 7), (21, 7), (22, 8), (30, 9)] {
+            sqlx::query("INSERT INTO etf2l_season_player (match_id, account_id, team_id, name) VALUES (?1, ?2, 3, 'x')").bind(m).bind(a).execute(db.pool()).await.unwrap();
+        }
+        let d = sixes_divisions(&db, 110 * DAY, &[7, 8, 9]).await.unwrap();
+        let seven = &d.players[&7];
+        assert_eq!((seven.division.as_str(), seven.tier, seven.season, seven.exact), ("Division 3", 3, 52, true));
+        assert!(!d.players.contains_key(&8), "a season over a year away is not shown");
+        assert!(!d.players.contains_key(&9), "a Highlander division is not a 6v6 one");
+        let near = sixes_divisions(&db, 200 * DAY, &[7]).await.unwrap();
+        assert!(!near.players[&7].exact, "the nearest season, faded");
+        assert_eq!(sixes_tier("Premiership"), 0);
+        assert_eq!(sixes_tier("Open"), 9);
+    }
 
     #[test]
     fn mvps_come_from_the_final_and_the_event_goes_to_the_winners() {

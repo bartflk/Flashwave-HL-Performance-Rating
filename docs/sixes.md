@@ -74,6 +74,12 @@ value at every percentile per component, and its score average and spread:
 76 KB, built into the app. The 6v6 rating reads a game's percentiles from it, so
 it is against the whole competitive field from the first sync; round impact and
 kills valued by victim, which the dump cannot give, stay against the stored pool.
+A game whose score has such a part is also scaled against the role's stored
+games, not the pool's score spread, which was measured without them (audit F3).
+The pool's officials are 6v6 league games of every league whose logs are titled
+as officials, ETF2L's, RGL's and others', not ETF2L's alone: only 844 of them
+carry an ETF2L title (audit F4). One pool per league needs each log tagged with
+its league from the ETF2L and RGL match pages' log links.
 
 **The weights, model s1:** `hl sixes-fit <sixes.sqlite3>` fits each role's measured
 components to who won (a logistic model on the two sides' players in a role, fitted

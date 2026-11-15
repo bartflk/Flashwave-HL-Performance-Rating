@@ -27,7 +27,13 @@ type Key =
   | "sg" | "bld";
 
 /** The log's flags, and whether anyone's caps cost their team a respawn. */
-type Flags = LogFlags & { spawn: boolean; ping: Map<number, PlayerPing> | null; impact: Map<number, number> | null };
+type Flags = LogFlags & {
+  spawn: boolean;
+  ping: Map<number, PlayerPing> | null;
+  impact: Map<number, number> | null;
+  /** A 6v6 match's ratings by account, main role only (audit P2). */
+  sixes: Map<number, number> | null;
+};
 
 type Col = {
   key: Key;
@@ -125,7 +131,8 @@ const COLS: Col[] = [
     name: k("Rating"),
     group: k("Match"),
     title: k("Rating on the main class against the players you face: 1.00 is an average game. Not rated under 5 minutes."),
-    value: (p) => p.rating?.score ?? null,
+    // A 6v6 log has no Highlander rating: its 6v6 role's (audit P2).
+    value: (p, f) => (f.sixes ? (f.sixes.get(p.accountId) ?? null) : (p.rating?.score ?? null)),
     fmt: (v) => rating(v),
   },
   {
@@ -164,15 +171,19 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
   const demo = useQuery({ queryKey: ["demostats", d.logId], queryFn: () => api.getDemoStats(d.logId) });
   const pings = demo.data?.pings;
   // Impact from the server log, where there is one (the MVP research).
-  const impact = useQuery({ queryKey: ["match_impact", d.logId], queryFn: () => api.getMatchImpact(d.logId) });
+  // Not on 6v6: it is measured with Highlander's round-win table (audit P2).
+  const sixes = d.format === "sixes";
+  const impact = useQuery({ queryKey: ["match_impact", d.logId], queryFn: () => api.getMatchImpact(d.logId), enabled: !sixes });
+  const sixesQ = useQuery({ queryKey: ["sixes_ratings", d.logId], queryFn: () => api.getSixesRatings({ logId: d.logId }), enabled: sixes, staleTime: 5 * 60_000 });
   const flags: Flags = useMemo(
     () => ({
       ...d.flags,
       spawn: d.players.some((p) => (p.spawnDelayS ?? 0) > 0),
       ping: pings && pings.length > 0 ? new Map(pings.map((x) => [x.accountId, x])) : null,
-      impact: impact.data && Object.keys(impact.data).length > 0 ? new Map(Object.entries(impact.data).map(([a, v]) => [Number(a), v])) : null,
+      impact: !sixes && impact.data && Object.keys(impact.data).length > 0 ? new Map(Object.entries(impact.data).map(([a, v]) => [Number(a), v])) : null,
+      sixes: sixes ? new Map((sixesQ.data ?? []).filter((r) => !r.role.startsWith("off:")).map((r) => [r.accountId, r.rating])) : null,
     }),
-    [d.flags, d.players, pings, impact.data],
+    [d.flags, d.players, pings, impact.data, sixes, sixesQ.data],
   );
   const hasAcc = d.players.some((p) => p.accuracy != null);
   // What this log has, then what the viewer picked of it.

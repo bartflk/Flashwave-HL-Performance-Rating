@@ -3,11 +3,13 @@ import { ErrorBoundary } from "./ErrorBoundary";
 
 const KEY = (id: string) => `hl.fold.${id}`;
 
-function stored(id: string): boolean {
+/** Whether the section is folded: as last left, else `fallback`. */
+function stored(id: string, fallback = false): boolean {
   try {
-    return localStorage.getItem(KEY(id)) === "1";
+    const v = localStorage.getItem(KEY(id));
+    return v === null ? fallback : v === "1";
   } catch {
-    return false;
+    return fallback;
   }
 }
 
@@ -22,8 +24,8 @@ export function openFold(id: string) {
  * `h2`) folds everything below the panel's first child, its header. The
  * choice is remembered per section across matches and restarts.
  */
-export function Fold({ id, children }: { id: string; children: ReactNode }) {
-  const [closed, setClosed] = useState(() => stored(id));
+export function Fold({ id, children, closedByDefault = false }: { id: string; children: ReactNode; closedByDefault?: boolean }) {
+  const [closed, setClosed] = useState(() => stored(id, closedByDefault));
   const box = useRef<HTMLDivElement>(null);
 
   const toggle = () =>

@@ -222,6 +222,44 @@ impl Db {
         Ok(rows.into_iter().map(|(a, r, g, v)| (a as u32, r, g, v)).collect())
     }
 
+    /// Each of these accounts' 6v6 seasons: `(account, season, season name,
+    /// division, tier, first official, last official)`, one row a division
+    /// they played in a season, for a 6v6 match's division tags.
+    pub async fn sixes_player_seasons(&self, accounts: &[u32]) -> Result<Vec<(u32, i64, String, String, Option<i64>, i64, i64)>> {
+        let ids = serde_json::to_string(accounts)?;
+        let rows: Vec<(i64, i64, String, String, Option<i64>, i64, i64)> = sqlx::query_as(
+            "SELECT p.account_id, c.season, c.season_name, COALESCE(m.division, c.division, ''), MIN(m.tier), MIN(m.time), MAX(m.time)
+             FROM etf2l_season_player p
+             JOIN etf2l_season_match m ON m.match_id = p.match_id
+             JOIN etf2l_competition c ON c.competition_id = m.competition_id
+             WHERE c.format = 'sixes' AND m.time IS NOT NULL AND p.account_id IN (SELECT value FROM json_each(?1))
+             GROUP BY p.account_id, c.season, COALESCE(m.division, c.division, '')",
+        )
+        .bind(ids)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows.into_iter().map(|(a, s, n, d, t, t0, t1)| (a as u32, s, n, d, t, t0, t1)).collect())
+    }
+
+    /// These accounts' 6v6 main-role ratings from games played before
+    /// `before`: `(account, role, rating)`, the owner's logs and the league
+    /// sample's, for a lineup's 6v6 strength.
+    pub async fn sixes_ratings_before(&self, accounts: &[u32], before: i64) -> Result<Vec<(u32, String, f64)>> {
+        let ids = serde_json::to_string(accounts)?;
+        let rows: Vec<(i64, String, f64)> = sqlx::query_as(
+            "SELECT s.account_id, s.role, s.rating FROM sixes_rating s
+             LEFT JOIN match m ON m.log_id = s.log_id
+             LEFT JOIN sixes_league_log l ON l.log_id = s.log_id
+             WHERE s.account_id IN (SELECT value FROM json_each(?1)) AND s.role NOT LIKE 'off:%'
+               AND COALESCE(m.played_at, l.played_at) < ?2",
+        )
+        .bind(ids)
+        .bind(before)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows.into_iter().map(|(a, r, v)| (a as u32, r, v)).collect())
+    }
+
     /// Everyone on an ETF2L 6v6 lineup the app holds.
     pub async fn sixes_roster_accounts(&self) -> Result<Vec<u32>> {
         let rows: Vec<i64> = sqlx::query_scalar(

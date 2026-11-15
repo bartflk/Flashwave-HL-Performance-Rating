@@ -34,6 +34,11 @@ export function HeadToHead({ d }: { d: MatchDetail }) {
   });
   const name = (id: number | null) => players.find((p) => p.accountId === id)?.name ?? "?";
   const h = q.data;
+  // 6v6 (audit P5): the per-log ratings, impact and kill values here are
+  // Highlander's. The cards show each player's 6v6 rating for the match,
+  // and the rest is left to plain kills.
+  const sixes = d.format === "sixes";
+  const sixesQ = useQuery({ queryKey: ["sixes_ratings", d.logId], queryFn: () => api.getSixesRatings({ logId: d.logId }), enabled: sixes, staleTime: 5 * 60_000 });
 
   const totals = useMemo(() => {
     if (!h) return null;
@@ -45,8 +50,8 @@ export function HeadToHead({ d }: { d: MatchDetail }) {
       const victims = new Map<string, [number, number]>();
       for (const s of sides) for (const [c, n, v] of s.victims) victims.set(c, [(victims.get(c)?.[0] ?? 0) + n, v]);
       return {
-        rating: rmins > 0 ? rated.reduce((n, s) => n + s.rating! * s.minutes, 0) / rmins : null,
-        impact: sides.some((s) => s.impact !== null) ? sides.reduce((n, s) => n + (s.impact ?? 0), 0) : null,
+        rating: sixes ? (sixesQ.data?.find((r) => r.accountId === h.accounts[i] && !r.role.startsWith("off:"))?.rating ?? null) : rmins > 0 ? rated.reduce((n, s) => n + s.rating! * s.minutes, 0) / rmins : null,
+        impact: !sixes && sides.some((s) => s.impact !== null) ? sides.reduce((n, s) => n + (s.impact ?? 0), 0) : null,
         kills: sides.reduce((n, s) => n + s.kills, 0),
         deaths: sides.reduce((n, s) => n + s.deaths, 0),
         assists: sides.reduce((n, s) => n + s.assists, 0),
@@ -57,7 +62,7 @@ export function HeadToHead({ d }: { d: MatchDetail }) {
         value: [...victims.values()].reduce((n, [k, v]) => n + k * v, 0),
       };
     });
-  }, [h]);
+  }, [h, sixes, sixesQ.data]);
 
   const picker = (value: number | null, set: (v: number) => void, label: string) => (
     <select value={value ?? ""} onChange={(e) => set(Number(e.target.value))} aria-label={label}>
@@ -96,10 +101,12 @@ export function HeadToHead({ d }: { d: MatchDetail }) {
                     as tiles of one size. */}
                 <header className="hh-card-head">
                   <strong className="hh-name">{name(h.accounts[i])}</strong>
-                  <span className="hh-worth" title={t("Kills by the class that died, and what a kill of that class is worth in the rating")}>
-                    <span className="hh-worth-label">{t("Kill value")}</span>
-                    <strong>{totals[i].value.toFixed(1)}</strong>
-                  </span>
+                  {!sixes && (
+                    <span className="hh-worth" title={t("Kills by the class that died, and what a kill of that class is worth in the rating")}>
+                      <span className="hh-worth-label">{t("Kill value")}</span>
+                      <strong>{totals[i].value.toFixed(1)}</strong>
+                    </span>
+                  )}
                 </header>
                 <dl className="hh-stats">
                   <div>
@@ -146,7 +153,7 @@ export function HeadToHead({ d }: { d: MatchDetail }) {
                       <span key={c} className="hh-victim" title={`${n} × ${v}`}>
                         <ClassIcon cls={c} size={15} />
                         <strong>{n}</strong>
-                        <span className="muted">×{v}</span>
+                        {!sixes && <span className="muted">×{v}</span>}
                       </span>
                     ))}
                   </div>
@@ -155,18 +162,19 @@ export function HeadToHead({ d }: { d: MatchDetail }) {
             ))}
           </div>
 
+          {sixes && <p className="hint">{t("6v6: the rating is each player's 6v6 rating for the whole match. Ratings by log and the value of each kill come once 6v6's round-win table is measured.")}</p>}
           <table className="match-table hh-table">
             <thead>
               <tr>
                 <th>{t("Log")}</th>
-                <th className="num">{name(h.accounts[0])}</th>
-                <th className="num">{t("Impact")}</th>
-                <th className="num">{t("K–D")}</th>
+                {!sixes && <th className="num">{name(h.accounts[0])}</th>}
+                {!sixes && <th className="num">{t("Impact")}</th>}
+                <th className="num">{sixes ? `${name(h.accounts[0])} ${t("K–D")}` : t("K–D")}</th>
                 <th className="num">{t("Duel")}</th>
-                <th className="num">{t("K–D")}</th>
-                <th className="num">{t("Impact")}</th>
-                <th className="num">{name(h.accounts[1])}</th>
-                <th />
+                <th className="num">{sixes ? `${t("K–D")} ${name(h.accounts[1])}` : t("K–D")}</th>
+                {!sixes && <th className="num">{t("Impact")}</th>}
+                {!sixes && <th className="num">{name(h.accounts[1])}</th>}
+                {!sixes && <th />}
               </tr>
             </thead>
             <tbody>
@@ -175,23 +183,23 @@ export function HeadToHead({ d }: { d: MatchDetail }) {
                 const better = x?.rating != null && y?.rating != null ? (x.rating > y.rating ? 0 : x.rating < y.rating ? 1 : -1) : -1;
                 const isOpen = open === l.logId;
                 return [
-                  <tr key={l.logId} className="hh-row" onClick={() => setOpen(isOpen ? null : l.logId)}>
+                  <tr key={l.logId} className={sixes ? undefined : "hh-row"} onClick={sixes ? undefined : () => setOpen(isOpen ? null : l.logId)}>
                     <td>
                       <code>{(l.map ?? "?").replace(/_(final|rc|b)\w*$/i, "")}</code> <span className="muted">{Math.round(l.minutes)} min</span>
                       {x && l.winner && <span className={`hh-won ${l.winner === x.team ? "a" : "b"}`}>{l.winner === x.team ? "◀" : "▶"}</span>}
                     </td>
-                    <td className={`num strong${better === 0 ? " hh-best" : ""}`}>{x?.rating != null ? <RatingValue v={x.rating} /> : "–"}</td>
-                    <td className="num">{x?.impact != null ? (x.impact >= 0 ? "+" : "") + x.impact.toFixed(2) : "–"}</td>
+                    {!sixes && <td className={`num strong${better === 0 ? " hh-best" : ""}`}>{x?.rating != null ? <RatingValue v={x.rating} /> : "–"}</td>}
+                    {!sixes && <td className="num">{x?.impact != null ? (x.impact >= 0 ? "+" : "") + x.impact.toFixed(2) : "–"}</td>}
                     <td className="num">{x ? `${x.kills}–${x.deaths}` : "–"}</td>
                     <td className="num hh-duel">
                       {x?.onOther ?? 0}–{y?.onOther ?? 0}
                     </td>
                     <td className="num">{y ? `${y.kills}–${y.deaths}` : "–"}</td>
-                    <td className="num">{y?.impact != null ? (y.impact >= 0 ? "+" : "") + y.impact.toFixed(2) : "–"}</td>
-                    <td className={`num strong${better === 1 ? " hh-best" : ""}`}>{y?.rating != null ? <RatingValue v={y.rating} /> : "–"}</td>
-                    <td className="hh-caret">{isOpen ? "▴" : "▾"}</td>
+                    {!sixes && <td className="num">{y?.impact != null ? (y.impact >= 0 ? "+" : "") + y.impact.toFixed(2) : "–"}</td>}
+                    {!sixes && <td className={`num strong${better === 1 ? " hh-best" : ""}`}>{y?.rating != null ? <RatingValue v={y.rating} /> : "–"}</td>}
+                    {!sixes && <td className="hh-caret">{isOpen ? "▴" : "▾"}</td>}
                   </tr>,
-                  isOpen && (
+                  !sixes && isOpen && (
                     <tr key={`${l.logId}-parts`} className="hh-parts-row">
                       <td colSpan={9}>
                         <div className="hh-parts">

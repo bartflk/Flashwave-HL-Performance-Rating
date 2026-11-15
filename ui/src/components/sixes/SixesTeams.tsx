@@ -56,7 +56,7 @@ export function SixesTeam({ teamId, onTeam, onBack }: { teamId: number; onTeam: 
       {q.isPending ? (
         <Loading>{t("Loading team…")}</Loading>
       ) : q.data ? (
-        <TeamScreen teamId={teamId} onTeam={onTeam} />
+        <TeamScreen teamId={teamId} onTeam={onTeam} sixes />
       ) : (
         <section className="panel sx-soon-panel">
           <p>{t("This team's 6v6 seasons are not read yet. They are read by a sync once setup has 6v6 ticked.")}</p>

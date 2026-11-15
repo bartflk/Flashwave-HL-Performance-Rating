@@ -56,7 +56,7 @@ export function SixesGuideSections() {
 function Pipeline({ g }: { g: SixesGuide }) {
   const steps: [string, string][] = [
     [t("Measure"), t("Each player is rated on their 6v6 role, the pocket and the roamer, the two Scouts, the Demoman and the Medic, told apart by how they played. A main role needs {0} minutes on the class; an off-class stint needs {1}.", { "0": g.minMinutes, "1": g.offMinMinutes })],
-    [t("Compare"), t("Each number becomes a percentile against the same role in 6v6 league games: the pool built from every 6v6 official in the logs.tf database. Where fewer is better, it is flipped, so a high percentile is always good.")],
+    [t("Compare"), t("Each number becomes a percentile against the same role in 6v6 league games: the pool built from every 6v6 official in the logs.tf database, ETF2L's, RGL's and other leagues' alike. Where fewer is better, it is flipped, so a high percentile is always good.")],
     [t("Weigh"), t("The role's model adds the percentiles up by their share. A part the game does not have is left out, and the others take up its share.")],
     [t("Scale"), t("The result is placed against the pool so that 1.00 is a typical game for the role and one standard deviation is 0.25, the same scale as Highlander's.")],
   ];

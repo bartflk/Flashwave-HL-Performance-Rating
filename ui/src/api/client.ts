@@ -208,6 +208,8 @@ const realApi = {
   logstfSearch: (query: string) => invoke<LogsTfPlayer[]>("logstf_search", { query }),
   logstfCareer: (accountId: number) => invoke<LogsTfCareer | null>("logstf_career", { accountId }),
   logstfLineup: (players: Array<{ accountId: number; class: string | null }>) => invoke<LineupRating[]>("logstf_lineup", { players }),
+  /** 6v6 strength before `before` (Unix seconds); `class` is the role asked for. */
+  sixesLineup: (players: Array<{ accountId: number; class: string | null }>, before: number) => invoke<LineupRating[]>("sixes_lineup", { players, before }),
   getPlayerProfile: (accountId: number) => invoke<PlayerProfile>("get_player_profile", { accountId }),
   getPlayerStats: (accountId: number) => invoke<PlayerStats>("get_player_stats", { accountId }),
   getTrendsCareer: (accountId: number) => invoke<CareerView>("get_trends_career", { accountId }),

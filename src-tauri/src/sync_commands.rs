@@ -2491,6 +2491,14 @@ pub struct LineupAsk {
     pub class: Option<String>,
 }
 
+/// Each player's 6v6 strength before `before` (Unix seconds), for a 6v6
+/// lineup's strength (audit P1); `class` is the role asked for.
+#[tauri::command]
+pub async fn sixes_lineup(state: State<'_, AppState>, players: Vec<LineupAsk>, before: i64) -> CmdResult<Vec<hl_ingest::sixes_rating::SixesLineupRating>> {
+    let asks: Vec<(u32, Option<String>)> = players.into_iter().map(|p| (p.account_id, p.class)).collect();
+    Ok(hl_ingest::sixes_rating::lineup(&state.db, &asks, before).await?)
+}
+
 /// Each player's logs.tf career rating, for a lineup's strength (Q78).
 #[tauri::command]
 pub async fn logstf_lineup(players: Vec<LineupAsk>) -> CmdResult<Vec<hl_ingest::logstf::LineupRating>> {

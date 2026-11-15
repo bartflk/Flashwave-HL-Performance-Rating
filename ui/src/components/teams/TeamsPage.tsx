@@ -400,7 +400,8 @@ function PodiumCard({ p, onTeam }: { p: Podium; onTeam: (id: number) => void }) 
 
 type TeamTab = "overview" | "lineup" | "seasons" | "history" | "results";
 
-export function TeamScreen({ teamId, onTeam }: { teamId: number; onTeam: (id: number) => void }) {
+/** `sixes`: a 6v6 team's page (audit P4), its strength from 6v6 ratings. */
+export function TeamScreen({ teamId, onTeam, sixes = false }: { teamId: number; onTeam: (id: number) => void; sixes?: boolean }) {
   const q = useQuery({ queryKey: ["team", teamId], queryFn: () => api.getTeam(teamId) });
   const h = useQuery({ queryKey: ["team_honours", teamId], queryFn: () => api.getTeamHonours(teamId) });
   const e = useQuery({ queryKey: ["team_etf2l", teamId], queryFn: () => api.getTeamEtf2l(teamId), staleTime: 60 * 60_000 });
@@ -437,7 +438,7 @@ export function TeamScreen({ teamId, onTeam }: { teamId: number; onTeam: (id: nu
                 </button>
               ))}
             </nav>
-            {tab === "overview" && <TeamOverview v={q.data} etf2l={e.data} roles={roles} onTeam={onTeam} onLineup={() => setTab("lineup")} onResults={() => setTab("results")} />}
+            {tab === "overview" && <TeamOverview v={q.data} etf2l={e.data} roles={roles} sixes={sixes} onTeam={onTeam} onLineup={() => setTab("lineup")} onResults={() => setTab("results")} />}
             {tab === "lineup" && <Lineup v={q.data} roles={roles} />}
             {tab === "seasons" && <Seasons honours={h.data} etf2l={e.data} info={info.data} />}
             {tab === "history" && <RosterHistory teamId={teamId} etf2lUrl={e.data?.url} roles={roles} />}
@@ -564,6 +565,7 @@ function TeamOverview({
   v,
   etf2l,
   roles,
+  sixes,
   onTeam,
   onLineup,
   onResults,
@@ -571,6 +573,7 @@ function TeamOverview({
   v: TeamView;
   etf2l: TeamEtf2l | undefined;
   roles: Map<number, string>;
+  sixes: boolean;
   onTeam: (id: number) => void;
   onLineup: () => void;
   onResults: () => void;
@@ -600,12 +603,13 @@ function TeamOverview({
             </div>
             {/* Who comes in stronger, from both latest lineups (Q78). */}
             <FixtureStrength
+              sixes={sixes}
               us={{ name: v.name, roster: v.roster }}
               them={next[0].clan1.id === v.teamId ? { id: next[0].clan2.id, name: next[0].clan2.name } : { id: next[0].clan1.id, name: next[0].clan1.name }}
             />
           </>
         )}
-        <RosterStrength roster={v.roster} onPlayer={openPlayer} />
+        <RosterStrength roster={v.roster} onPlayer={openPlayer} sixes={sixes} />
         {etf2l?.description && (
           <>
             <h3>{t("About")}</h3>

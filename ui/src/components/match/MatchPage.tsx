@@ -25,6 +25,7 @@ import { RoundTimeline } from "./RoundTimeline";
 import { t, tx } from "../../lib/i18n";
 import { Loading, Spinner } from "../Spinner";
 import { OpponentStrength, type Side } from "./OpponentStrength";
+import { SixesMatchups } from "./SixesMatchups";
 
 export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void }) {
   const q = useQuery({ queryKey: ["match", logId], queryFn: () => api.getMatch(logId) });
@@ -57,6 +58,26 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
   // A deleted STV still counts: what was read from it is kept.
   const hasStv = q.data?.demos.some((x) => x.kind === "stv") ?? false;
   const isPayload = /^pl_/i.test(shown?.map ?? "");
+  const sixesMatch = shown?.format === "sixes";
+  // The STV-only panels: blurred, with the reason and the download, where
+  // there is no STV rather than missing without a word. Reflects: any demo
+  // with a timeline, STV or the owner's own; nothing at all without one.
+  // Ping is a scoreboard column (Q83). Folded by default on 6v6 (audit P7).
+  const offClassPanels = q.data ? (
+    <>
+      <Fold id="spychecks" closedByDefault={sixesMatch}>
+        {hasStv ? <Spychecks d={q.data} /> : <StvLocked d={q.data} kind="spychecks" />}
+      </Fold>
+      <Fold id="reflects" closedByDefault={sixesMatch}>
+        <ReflectPanel d={q.data} />
+      </Fold>
+      {(hasStv || isPayload) && (
+        <Fold id="cart" closedByDefault={sixesMatch}>
+          {hasStv ? <CartPanel d={q.data} /> : <StvLocked d={q.data} kind="cart" />}
+        </Fold>
+      )}
+    </>
+  ) : null;
 
   // Which pick is the latest: two parts chosen quickly each fetch, and the
   // first one failing must not reset the part the second one chose, nor clear
@@ -147,7 +168,8 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
             </Fold>
           )}
           <Fold id="matchups">
-            <Matchups d={shown} />
+            {/* 6v6: role against role on the 6v6 rating (audit P2). */}
+            {shown.format === "sixes" ? <SixesMatchups d={shown} /> : <Matchups d={shown} />}
           </Fold>
           <Fold id="h2h">
             <HeadToHead d={q.data} />
@@ -157,27 +179,16 @@ export function MatchPage({ logId, onBack }: { logId: number; onBack: () => void
             <StvPrompt d={q.data} />
             <StvPartsPrompt logId={q.data.logId} label={matchLabel(q.data.map, q.data.logId)} />
           </Fold>
-          {/* The STV-only panels: blurred, with the reason and the download,
-              where there is no STV rather than missing without a word. */}
-          <Fold id="spychecks">
-            {hasStv ? <Spychecks d={q.data} /> : <StvLocked d={q.data} kind="spychecks" />}
-          </Fold>
-          {/* Reflects: any demo with a timeline, STV or the owner's own;
-              nothing at all without one. Ping is a scoreboard column (Q83). */}
-          <Fold id="reflects">
-            <ReflectPanel d={q.data} />
-          </Fold>
-          {(hasStv || isPayload) && (
-            <Fold id="cart">
-              {hasStv ? <CartPanel d={q.data} /> : <StvLocked d={q.data} kind="cart" />}
-            </Fold>
-          )}
+          {!sixesMatch && offClassPanels}
           <Fold id="positions">
             {hasStv ? <PositionsPanel d={shown} /> : <StvLocked d={q.data} kind="positions" />}
           </Fold>
           <Fold id="rounds">
             <RoundTimeline d={shown} />
           </Fold>
+          {/* 6v6 (audit P7): Spy, Pyro and the cart are off-class moments
+              there, so they come after the rounds, folded until opened. */}
+          {sixesMatch && offClassPanels}
           <Fold id="analysis">
             <AnalysisPanel d={q.data} onlyRounds={onlyRounds} />
           </Fold>
@@ -354,12 +365,24 @@ function PartPicker(props: {
 
 /** Opponent strength, your side first as the hero has it (Q78). */
 function StrengthOf({ d }: { d: MatchDetail }) {
+  // 6v6 (audit P1): each player's 6v6 strength on the role they played here.
+  const sixes = d.format === "sixes";
+  const [now] = useState(() => Math.floor(Date.now() / 1000));
+  const roles = useQuery({ queryKey: ["match_roles", d.logId], queryFn: () => api.getMatchRoles(d.logId), enabled: sixes, staleTime: 5 * 60_000 });
+  if (sixes && roles.isPending) return null;
+  const roleOf = (id: number) => roles.data?.find((r) => r.accountId === id && !r.role.startsWith("off:"))?.role ?? null;
   const side = (team: "Red" | "Blue"): Side => ({
     label: team === "Red" ? t("RED") : t("BLU"),
     tone: team === "Red" ? "red" : "blu",
-    players: d.players.filter((p) => p.team === team).map((p) => ({ accountId: p.accountId, class: p.mainClass })),
+    players: d.players.filter((p) => p.team === team).map((p) => ({ accountId: p.accountId, class: sixes ? roleOf(p.accountId) : p.mainClass })),
   });
   const blueFirst = d.myTeam === "Blue";
   const sides: [Side, Side] = blueFirst ? [side("Blue"), side("Red")] : [side("Red"), side("Blue")];
-  return <OpponentStrength sides={sides} score={blueFirst ? [d.blueScore, d.redScore] : [d.redScore, d.blueScore]} />;
+  return (
+    <OpponentStrength
+      sides={sides}
+      score={blueFirst ? [d.blueScore, d.redScore] : [d.redScore, d.blueScore]}
+      of={sixes ? { format: "sixes", before: d.playedAt ?? now } : undefined}
+    />
+  );
 }

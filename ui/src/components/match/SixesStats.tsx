@@ -5,6 +5,7 @@ import type { MatchDetail, SixesMedicStats, SixesPlayerStats, SixesRatingRow } f
 import { t } from "../../lib/i18n";
 import { teamLabel } from "../../lib/format";
 import { roleLabel } from "../../lib/gameformat";
+import { openRatingGuide } from "../../lib/sixesguide";
 import { ClassIcon } from "../ClassIcon";
 
 /**
@@ -38,14 +39,20 @@ export function SixesStats({ d }: { d: MatchDetail }) {
   return (
     <section className="panel sx6-stats">
       <h2>{t("6v6 numbers")}</h2>
-      <p className="hint">{t("What each 6v6 role is judged on that the log records. The rating is a preview: weighed by role against the other players in your stored 6v6 logs, without round impact yet.")}</p>
+      {/* Since s1 the rating is against the league pool, fitted to who won (audit P6). */}
+      <p className="hint">
+        {t("What each 6v6 role is judged on that the log records. The rating is by role, against 6v6 league officials from the logs.tf database (ETF2L's, RGL's and other leagues' alike), with weights fitted to who won; round impact joins once it is measured.")}{" "}
+        <button className="linkish" onClick={() => openRatingGuide("6s")}>
+          {t("How ratings work →")}
+        </button>
+      </p>
       <div className="table-wrap">
         <table className="match-table">
           <thead>
             <tr>
               <th>{t("Team")}</th>
               <th>{t("Player")}</th>
-              {ratings.length > 0 && <th className="num" title={t("The 6v6 rating's preview: 1.00 is an average game in the role")}>{t("Rating")}</th>}
+              {ratings.length > 0 && <th className="num" title={t("The 6v6 rating: 1.00 is an average game in the role")}>{t("Rating")}</th>}
               <th className="num" title={t("Damage per minute")}>{t("DPM")}</th>
               <th className="num" title={t("Damage taken per minute")}>{t("DTM")}</th>
               <th className="num" title={t("Damage dealt over damage taken")}>{t("Ratio")}</th>

@@ -43,6 +43,11 @@ pub fn model_version() -> String {
     weights().model_version
 }
 
+/// Marks a performance whose kills are valued by victim: their percentile
+/// is then read against the stored games, not the built-in pool, whose
+/// kills are plain counts (audit F3). Never a weighted component.
+const VALUED_KILLS: &str = "impact_kills_valued";
+
 /// Whether a component is better high (true) or low.
 pub(crate) fn higher_is_better(c: &str) -> bool {
     !matches!(c, "deaths" | "deaths_vs_medic" | "drops_vs" | "deaths_vs" | "adv_lost" | "eng_deaths" | "untraded_deaths")
@@ -166,6 +171,8 @@ fn perfs_valued(log_id: i64, json: &Value, victims: Option<&BTreeMap<String, f64
                     })
                     .sum();
                 v.insert("impact_kills", per10(valued));
+                // Not the pool's measure: it holds kills uncounted by victim.
+                v.insert(VALUED_KILLS, 1.0);
             }
         }
         out.push(Perf { log_id, account_id: r.account_id, role: r.role.key(), minutes: (min * 10.0).round() / 10.0, values: v });
@@ -231,16 +238,21 @@ fn rate_with(perfs: &[Perf], pool: Option<&crate::sixes_pool::SixesPool>) -> Vec
             own.values_mut().for_each(|v| v.sort_by(f64::total_cmp));
             dist.insert(c.as_str(), (all, own));
         }
-        let mut scored: Vec<(&Perf, f64, Vec<(String, f64, f64, f64)>)> = Vec::new();
+        // Each game's score, its parts, and whether every part was read from
+        // the pool -- only then does the pool's scale fit it.
+        let mut scored: Vec<(&Perf, f64, Vec<(String, f64, f64, f64)>, bool)> = Vec::new();
         for p in &group {
             let mut parts = Vec::new();
+            let mut all_pooled = league.is_some();
             for (c, share) in &comps {
                 let Some(&x) = p.values.get(c.as_str()).filter(|x| x.is_finite()) else { continue };
-                if let Some(q) = league.and_then(|l| l.components.get(c.as_str())) {
+                let same_measure = !(c.as_str() == "impact_kills" && p.values.contains_key(VALUED_KILLS));
+                if let Some(q) = league.and_then(|l| l.components.get(c.as_str())).filter(|_| same_measure) {
                     let pct = crate::sixes_pool::percentile(q, x, higher_is_better(c));
                     parts.push(((*c).clone(), (pct * 10.0).round() / 10.0, *share, x));
                     continue;
                 }
+                all_pooled = false;
                 // Against everyone else's in the role, never the player's own.
                 let (all, own) = &dist[c.as_str()];
                 let mine: &[f64] = own.get(&p.account_id).map_or(&[], Vec::as_slice);
@@ -262,19 +274,25 @@ fn rate_with(perfs: &[Perf], pool: Option<&crate::sixes_pool::SixesPool>) -> Vec
             let score = parts.iter().map(|(_, pct, s, _)| pct * s).sum::<f64>() / total;
             // Shares as the rating actually used them, after leaving out the unmeasured.
             let parts = parts.into_iter().map(|(c, pct, s, raw)| (c, pct, ((s / total) * 1000.0).round() / 1000.0, (raw * 1000.0).round() / 1000.0)).collect();
-            scored.push((p, score, parts));
+            scored.push((p, score, parts, all_pooled));
         }
         if scored.is_empty() {
             continue;
         }
-        let (mean, sd) = match league {
-            Some(l) if l.score_sd > 0.0 => (l.score_mean, l.score_sd),
-            _ => {
-                let mean = scored.iter().map(|(_, s, _)| s).sum::<f64>() / scored.len() as f64;
-                (mean, (scored.iter().map(|(_, s, _)| (s - mean).powi(2)).sum::<f64>() / scored.len() as f64).sqrt())
-            }
+        // The pool's scale was measured on scores of its own components only
+        // (no round impact, kills uncounted by victim). A game whose score
+        // has any other part is scaled against the role's stored games, so a
+        // measured round impact cannot move everyone's rating (audit F3).
+        let local = {
+            let mean = scored.iter().map(|(_, s, _, _)| s).sum::<f64>() / scored.len() as f64;
+            (mean, (scored.iter().map(|(_, s, _, _)| (s - mean).powi(2)).sum::<f64>() / scored.len() as f64).sqrt())
         };
-        for (p, score, parts) in scored {
+        let pooled = league.filter(|l| l.score_sd > 0.0).map(|l| (l.score_mean, l.score_sd));
+        for (p, score, parts, all_pooled) in scored {
+            let (mean, sd) = match pooled {
+                Some(s) if all_pooled => s,
+                _ => local,
+            };
             let z = if sd > 0.0 { (score - mean) / sd } else { 0.0 };
             out.push(SixesRating {
                 log_id: p.log_id,
@@ -798,6 +816,50 @@ pub async fn board(db: &hl_db::Db, role: &str) -> Result<Vec<BoardRow>> {
         .collect())
 }
 
+/// Games in a role, before a match, for a 6v6 lineup strength to count it.
+pub const STRENGTH_MIN_GAMES: usize = 5;
+
+/// One player's 6v6 strength coming into a match: the shape of
+/// [`crate::logstf::LineupRating`], with a role where it has a class.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SixesLineupRating {
+    pub account_id: u32,
+    /// The role the average is on: the one asked for, else their most played.
+    pub class: Option<String>,
+    pub rating: Option<f64>,
+    pub games: u32,
+    /// On the role they played here, not their usual one.
+    pub on_class: bool,
+}
+
+/// Each player's 6v6 strength before a match (audit P1: a 6v6 match's
+/// opponent strength was the players' Highlander careers): their average 6v6
+/// rating on the role asked for, with [`STRENGTH_MIN_GAMES`] games or more
+/// before `before`; else on their most played role; else none.
+pub async fn lineup(db: &hl_db::Db, asks: &[(u32, Option<String>)], before: i64) -> Result<Vec<SixesLineupRating>> {
+    let accounts: Vec<u32> = asks.iter().map(|a| a.0).collect();
+    let mut by: HashMap<(u32, String), Vec<f64>> = HashMap::new();
+    for (a, role, r) in db.sixes_ratings_before(&accounts, before).await? {
+        by.entry((a, role)).or_default().push(r);
+    }
+    let avg = |v: &Vec<f64>| (v.iter().sum::<f64>() / v.len() as f64 * 100.0).round() / 100.0;
+    Ok(asks
+        .iter()
+        .map(|(a, asked)| {
+            let on = asked.as_ref().and_then(|r| by.get(&(*a, r.clone()))).filter(|v| v.len() >= STRENGTH_MIN_GAMES);
+            if let (Some(v), Some(r)) = (on, asked) {
+                return SixesLineupRating { account_id: *a, class: Some(r.clone()), rating: Some(avg(v)), games: v.len() as u32, on_class: true };
+            }
+            let most = by.iter().filter(|((x, _), v)| x == a && v.len() >= STRENGTH_MIN_GAMES).max_by_key(|(_, v)| v.len());
+            match most {
+                Some(((_, r), v)) => SixesLineupRating { account_id: *a, class: Some(r.clone()), rating: Some(avg(v)), games: v.len() as u32, on_class: false },
+                None => SixesLineupRating { account_id: *a, class: asked.clone(), rating: None, games: 0, on_class: false },
+            }
+        })
+        .collect())
+}
+
 /// One answer of the 6v6 player search.
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -993,6 +1055,30 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_lineup_s_6v6_strength_counts_only_games_before_the_match() {
+        let db = hl_db::Db::connect_in_memory().await.unwrap();
+        let mut rows = Vec::new();
+        for log in 1..=8i64 {
+            sqlx::query("INSERT INTO sixes_league_log (log_id, etf2l_match_id, map, played_at, json) VALUES (?1, 1, 'cp_x', ?2, '{}')")
+                .bind(log)
+                .bind(log * 100)
+                .execute(db.pool())
+                .await
+                .unwrap();
+            // Seven: Medic in every log, 1.0 before the match and 3.0 after it.
+            rows.push((log, 7, "medic".to_string(), if log <= 6 { 1.0 } else { 3.0 }, 50.0, 20.0, "[]".to_string()));
+        }
+        // Eight: two pocket games only.
+        rows.push((1, 8, "pocket".to_string(), 1.4, 50.0, 20.0, "[]".to_string()));
+        rows.push((2, 8, "pocket".to_string(), 1.4, 50.0, 20.0, "[]".to_string()));
+        db.replace_sixes_ratings(&model_version(), &rows).await.unwrap();
+        let l = lineup(&db, &[(7, Some("medic".into())), (7, Some("roamer".into())), (8, Some("pocket".into()))], 650).await.unwrap();
+        assert_eq!((l[0].rating, l[0].games, l[0].on_class), (Some(1.0), 6, true), "the games after the match left out");
+        assert_eq!((l[1].class.as_deref(), l[1].on_class), (Some("medic"), false), "no roamer games: their most played role");
+        assert_eq!(l[2].rating, None, "two games are too few");
+    }
+
+    #[tokio::test]
     async fn the_6v6_search_finds_6v6_only_players_and_not_highlander_only_ones() {
         let db = hl_db::Db::connect_in_memory().await.unwrap();
         for sql in [
@@ -1132,6 +1218,38 @@ mod tests {
         assert_eq!(pct(&alone, 1), 0.0, "against one other, the lower is bottom");
         assert!(pct(&pooled, 1) > 70.0, "against the field, 250 is high: {}", pct(&pooled, 1));
         assert!(pooled.iter().all(|x| x.rating > 1.0), "{pooled:?}");
+    }
+
+    #[test]
+    fn parts_the_pool_does_not_hold_are_read_and_scaled_against_the_stored_games() {
+        // The field: pockets of 100 to 300 DPM and 10 to 30 kills, uncounted by victim.
+        let field: Vec<StoredPerf> = (0..200)
+            .map(|i| StoredPerf {
+                account_id: 1000 + i,
+                team: None,
+                role: "pocket".into(),
+                minutes: 30.0,
+                values: [("dpm".to_string(), 100.0 + i as f64), ("impact_kills".to_string(), 10.0 + i as f64 / 10.0)].into_iter().collect(),
+            })
+            .collect();
+        let pool = pool_from_stored(field, "test", 200);
+        let p = |acc: u32, dpm: f64, extra: &[(&'static str, f64)]| Perf {
+            log_id: acc as i64,
+            account_id: acc,
+            role: "pocket".into(),
+            minutes: 30.0,
+            values: [("dpm", dpm)].into_iter().chain(extra.iter().copied()).collect(),
+        };
+        // Valued kills: 40 is past the whole field, but here it is the lower of two.
+        let valued = vec![p(1, 250.0, &[("impact_kills", 40.0), (VALUED_KILLS, 1.0)]), p(2, 250.0, &[("impact_kills", 50.0), (VALUED_KILLS, 1.0)])];
+        let r = rate_with(&valued, Some(&pool));
+        let kills = |acc: u32| r.iter().find(|x| x.account_id == acc).unwrap().parts.iter().find(|x| x.0 == "impact_kills").unwrap().1;
+        assert_eq!(kills(1), 0.0, "valued kills against the stored games, not the pool's plain counts");
+        // Round impact, which the pool lacks: these games are scaled among themselves.
+        let with_round = vec![p(1, 250.0, &[("round_impact", 1.0)]), p(2, 260.0, &[("round_impact", 2.0)])];
+        let r = rate_with(&with_round, Some(&pool));
+        let mean = r.iter().map(|x| x.rating).sum::<f64>() / r.len() as f64;
+        assert!((mean - 1.0).abs() < 0.01, "scaled on the stored games' own spread: {r:?}");
     }
 
     #[test]
