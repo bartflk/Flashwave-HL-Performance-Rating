@@ -65,6 +65,7 @@ pub mod sixes_pool;
 pub mod sixes_profile;
 pub mod sixes_rating;
 pub mod sixes_guide;
+pub mod sixes_raw;
 pub mod sixes_round_win;
 pub mod sixes_sample;
 pub mod sixes_stats;

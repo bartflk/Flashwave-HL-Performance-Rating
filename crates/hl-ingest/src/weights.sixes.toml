@@ -26,45 +26,62 @@
 # keep their weight, and a death measure is capped at a quarter of the fitted
 # block (the losing side dies more; uncapped it rated the result, not the
 # play). Against who won: team 88.8% -> 89.9%, every role up (docs/sixes.md).
-model_version = "s1"
+#
+# s2 (15 Nov 2026): boSe.'s review, taken as he wrote it (Flashy: "these are
+# points from b0se, implement them"), on the plan's proposed tables:
+#   pocket: "rated less on their kills and more on their DPM ... penalized
+#     less for dying, since they will probably be the first one dying in case
+#     of a repush" -- kills 14 -> 10, DPM 8 -> 12, über forces 4 -> 6,
+#     deaths 6 -> 4; space 10 and airshots 4 as proposed.
+#   flanks: "It's okay to die in flank, as long as your other flank is still
+#     alive" -- roamer forces 5 -> 8, untraded deaths 8 -> 5; flank Scout
+#     Medic picks 6 -> 8, untraded deaths 6 -> 4; and both flanks down
+#     (double_flank_deaths, sixes_raw: 5CP after mids, and Product) 6 each.
+#   pocket Scout: kills in an über he took (uber_picks) and deaths against
+#     his Medic's outside 1 to 8 more per 30 minutes (deaths_band); s1's
+#     fitted block scaled to make room.
+#   Medic: caps contested only while übered or last alive (sixes_raw), now
+#     measured at s1's 5.
+# The Demoman and the off-classes keep s1's.
+model_version = "s2"
 
 [role.pocket]
 round_impact = 50
-impact_kills = 23.7
-space = 6.1
-dpm = 1.7
-airshots = 0
-forces = 4
-deaths = 10.5
+impact_kills = 10
+space = 10
+dpm = 12
+airshots = 4
+forces = 6
+deaths = 4
 untraded_deaths = 4
 
 [role.roamer]
 round_impact = 50
-medic_picks = 7.9
+medic_picks = 12
 opening = 10
-impact_kills = 19.1
-airshots = 0
-forces = 5
-untraded_deaths = 8
-deaths = 0
+impact_kills = 10
+airshots = 5
+forces = 8
+untraded_deaths = 5
+double_flank_deaths = 6
 
 [role.flank_scout]
 round_impact = 50
 opening = 14
 forces = 10
 backcaps = 8
-medic_picks = 2.2
-impact_kills = 9.8
-untraded_deaths = 6
-deaths = 0
+medic_picks = 8
+impact_kills = 6
+untraded_deaths = 4
+double_flank_deaths = 6
 
 [role.pocket_scout]
 round_impact = 50
-impact_kills = 13.2
-dpm = 0
-dmg_ratio = 17.3
-deaths_vs_medic = 0
-impact_assists = 19.4
+impact_assists = 14
+dmg_ratio = 12.5
+impact_kills = 9.5
+uber_picks = 8
+deaths_band = 6
 
 [role.demoman]
 round_impact = 50

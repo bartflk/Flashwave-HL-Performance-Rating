@@ -50,7 +50,7 @@ const VALUED_KILLS: &str = "impact_kills_valued";
 
 /// Whether a component is better high (true) or low.
 pub(crate) fn higher_is_better(c: &str) -> bool {
-    !matches!(c, "deaths" | "deaths_vs_medic" | "drops_vs" | "deaths_vs" | "adv_lost" | "eng_deaths" | "untraded_deaths")
+    !matches!(c, "deaths" | "deaths_vs_medic" | "drops_vs" | "deaths_vs" | "adv_lost" | "eng_deaths" | "untraded_deaths" | "double_flank_deaths" | "deaths_band")
 }
 
 /// One rated performance's measurements, by component.
@@ -141,6 +141,12 @@ fn perfs_valued(log_id: i64, json: &Value, victims: Option<&BTreeMap<String, f64
                 // and positions join it once every log's raw log and demos can.
                 if let Some(share) = st.damage_taken_share {
                     v.insert("space", share);
+                }
+            }
+            if r.role == Role::PocketScout {
+                let mine = stats.medics.iter().find(|m| Some(m.team.as_str()) == st.map(|s| s.team.as_str()));
+                if let Some(m) = mine {
+                    v.insert("deaths_band", deaths_band(deaths, m.deaths as f64, min));
                 }
             }
             if r.role == Role::Medic {
@@ -358,7 +364,9 @@ async fn collect(db: &hl_db::Db) -> Result<(Vec<Perf>, HashMap<i64, LogResult>)>
     // performance then has its round impact, half of most roles' weight.
     let table: Option<crate::sixes_round_win::WinTable> =
         db.get_setting(crate::sixes_round_win::SETTING).await?.and_then(|s| serde_json::from_str(&s).ok());
-    let sample_raws: HashMap<i64, Vec<u8>> = if table.is_some() { db.sixes_league_raws().await?.into_iter().collect() } else { HashMap::new() };
+    // Every raw log: round impact needs the table, but s2's flank, über and
+    // cap measures (sixes_raw) need only the log.
+    let sample_raws: HashMap<i64, Vec<u8>> = db.sixes_league_raws().await?.into_iter().collect();
     let mut perfs = Vec::new();
     let mut results = HashMap::new();
     for (log_id, body) in db.sixes_log_jsons().await?.into_iter().chain(db.sixes_league_jsons().await?) {
@@ -372,12 +380,12 @@ async fn collect(db: &hl_db::Db) -> Result<(Vec<Perf>, HashMap<i64, LogResult>)>
                 }
             }
         }
-        if let Some(t) = &table {
-            let zip = match sample_raws.get(&log_id) {
-                Some(z) => Some(z.clone()),
-                None => db.rawlog(log_id).await?,
-            };
-            if let Some(raw) = zip.and_then(|z| crate::rawlog::unzip(&z).ok()).map(|t| crate::rawlog::parse(&t)) {
+        let zip = match sample_raws.get(&log_id) {
+            Some(z) => Some(z.clone()),
+            None => db.rawlog(log_id).await?,
+        };
+        if let Some(raw) = zip.and_then(|z| crate::rawlog::unzip(&z).ok()).map(|t| crate::rawlog::parse(&t)) {
+            if let Some(t) = &table {
                 let impact = crate::sixes_round_win::impacts(&raw, t);
                 for p in these.iter_mut().filter(|p| !p.role.starts_with("off:")) {
                     if let Some(x) = impact.get(&p.account_id) {
@@ -385,11 +393,49 @@ async fn collect(db: &hl_db::Db) -> Result<(Vec<Perf>, HashMap<i64, LogResult>)>
                     }
                 }
             }
+            raw_measures(&mut these, &raw, v.pointer("/info/map").and_then(Value::as_str).unwrap_or(""));
         }
         perfs.extend(these);
     }
     Ok((perfs, results))
 }
+
+/// boSe.'s raw-log measures (model s2, `sixes_raw`) onto each main role
+/// they belong to, per 10 minutes: both flanks down for the roamer and the
+/// flank Scout where the map counts it, kills in an über for the pocket
+/// Scout, caps contested while übered or last alive for the Medic.
+fn raw_measures(perfs: &mut [Perf], raw: &crate::rawlog::RawLog, map: &str) {
+    let roles: HashMap<u32, String> = perfs.iter().filter(|p| !p.role.starts_with("off:")).map(|p| (p.account_id, p.role.clone())).collect();
+    let m = crate::sixes_raw::measure(raw, &roles, map);
+    for p in perfs.iter_mut().filter(|p| !p.role.starts_with("off:")) {
+        let per10 = |n: u32| n as f64 / p.minutes.max(1.0) * 10.0;
+        let n = |h: &HashMap<u32, u32>| h.get(&p.account_id).copied().unwrap_or(0);
+        match p.role.as_str() {
+            "roamer" | "flank_scout" if m.flanks_measured => {
+                p.values.insert("double_flank_deaths", per10(n(&m.flank_double_deaths)));
+            }
+            "pocket_scout" => {
+                p.values.insert("uber_picks", per10(n(&m.uber_picks)));
+            }
+            "medic" => {
+                p.values.insert("caps_contested", per10(n(&m.caps_contested)));
+            }
+            _ => {}
+        }
+    }
+}
+
+/// The pocket Scout's deaths against his Medic's (boSe., s2): "we always have
+/// around 1 to ~8 deaths more than our med's ... being under the med's
+/// deaths or way above the med's death should be where it starts to be
+/// penalized". How far outside that band, per 30 minutes; 0 inside it.
+pub(crate) fn deaths_band(own: f64, medic: f64, minutes: f64) -> f64 {
+    let d = (own - medic) / minutes.max(1.0) * 30.0;
+    (DEATHS_BAND.0 - d).max(0.0) + (d - DEATHS_BAND.1).max(0.0)
+}
+
+/// More deaths than the Medic's, per 30 minutes, that a pocket Scout is expected to have.
+pub(crate) const DEATHS_BAND: (f64, f64) = (1.0, 8.0);
 
 /// How often something picked the side that won: ties count half.
 #[derive(Debug, Clone, Default, Serialize, PartialEq)]
@@ -1305,9 +1351,18 @@ mod tests {
     }
 
     #[test]
+    fn a_pocket_scout_is_marked_down_only_outside_one_to_eight_more_deaths_than_his_medic() {
+        // Per 30 minutes: 4 more than the Medic is inside the band.
+        assert_eq!(deaths_band(14.0, 10.0, 30.0), 0.0);
+        assert_eq!(deaths_band(9.0, 10.0, 30.0), 2.0, "one fewer than the Medic: two under the band");
+        assert_eq!(deaths_band(21.0, 10.0, 30.0), 3.0, "eleven more: three over");
+        assert_eq!(deaths_band(11.0, 10.0, 15.0), 0.0, "one more in 15 minutes is two per 30: inside");
+    }
+
+    #[test]
     fn the_weights_read_and_every_role_and_off_class_has_a_table() {
         let w = weights();
-        assert_eq!(w.model_version, "s1");
+        assert_eq!(w.model_version, "s2");
         for r in Role::MAIN {
             assert!(w.role.contains_key(&r.key()), "{}", r.key());
         }

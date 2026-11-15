@@ -90,6 +90,23 @@ officials the higher-rated side won 89.9% (s0: 88.8%); by role, Medic 83.9%
 (80.4%), Pocket Scout 78.5% (73.9%), Demoman 77.6% (76.4%), Pocket 76.1% (72.6%),
 Flank Scout 70.4% (68.8%), Roamer 69.8% (68.2%).
 
+**The weights, model s2 (boSe.'s review, 15 Nov):** the pocket rated less on kills
+and more on DPM and dying less (kills 10, DPM 12, über forces 6, deaths 4); the
+flanks marked down less for dying alone and more for dying together (roamer
+forces 8, untraded deaths 5; flank Scout Medic picks 8, untraded deaths 4; both
+flanks down 6 each); the pocket Scout's kills in an über he took (8) and his
+deaths against his Medic's outside 1 to 8 more per 30 minutes (6); the Medic's
+caps contested only while übered or last alive. The new measures are read from
+the raw log (`sixes_raw.rs`): an über's target is whoever its Medic healed most
+in its first 2 seconds; both flanks down means the other flank died within 10 s,
+on 5CP after the round's first capture and on Product only. On the league
+sample's 12,635 decided officials, with round impact: team 92.2% (s1 92.2%);
+flank Scout 77.1% (76.1%), roamer 77.0% (76.2%), pocket Scout 80.5% (80.5%),
+Demoman 79.6% (79.6%), Medic 84.3% (84.4%), pocket 76.9% (77.7%). Both flanks
+down picks the winner 75.5% (flank Scout) and 72.4% (roamer) by itself; kills in
+an über 60.1%; the deaths band 55.5%; the Medic's caps 50.4%, as he is rarely
+on the point übered or last alive.
+
 ## 3. Proposed definitions, for the reviewers
 
 Three of boSe.'s numbers have no agreed definition. The app shows a

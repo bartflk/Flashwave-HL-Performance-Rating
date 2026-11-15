@@ -51,7 +51,13 @@ export function sixesComponent(key: string): SixesComponentText {
     case "backcaps":
       return c(t("Backcaps"), per10, "objective", t("Points taken behind the other team while they push."));
     case "caps_contested":
-      return c(t("Caps contested"), per10, "objective", t("Standing on a point while it is being fought over."));
+      return c(t("Caps contested"), per10, "objective", t("Capping or blocking a point, counted for the Medic only while he is übered or the last one alive: otherwise he should never be on it."));
+    case "double_flank_deaths":
+      return c(t("Both flanks down"), per10, "survival", t("Deaths with the team's other flank dying within 10 seconds. One flank down is fine while the other holds and gives the combo vision; both at once leaves the side open. Counted on 5CP after the middle point and on Product."));
+    case "uber_picks":
+      return c(t("Kills in an über"), per10, "speciality", t("Kills made during an über the pocket Scout took, the Medic's charge on him: picks and flashes."));
+    case "deaths_band":
+      return c(t("Deaths against the Medic's"), t("outside 1 to 8 more"), "survival", t("A pocket Scout dies more than his Medic, often saving him: 1 to 8 more deaths per 30 minutes is normal. Fewer, or far more, is marked down."));
     case "denies":
       return c(t("Denies"), per10, "objective", t("Kills that stopped the other team taking a point."));
     case "heal":

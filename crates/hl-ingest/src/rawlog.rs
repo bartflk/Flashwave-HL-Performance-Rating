@@ -73,6 +73,9 @@ pub enum EventKind {
     Left(u32),
     ChargeReady(Actor),
     ChargeDeployed { medic: Actor, medigun: String },
+    /// `healed against`: who a Medic healed and by how much. An über's
+    /// target is whoever its Medic healed most as it began.
+    Healed { medic: Actor, target: u32, amount: i64 },
     ChargeEnded(Actor),
     /// `medic_death_ex`: the charge the Medic held when they died, 0-100.
     MedicDied { medic: Actor, pct: u8 },
@@ -373,6 +376,10 @@ fn state_event(me: Actor, r: &str) -> Option<EventKind> {
         "chargeready" => EventKind::ChargeReady(me),
         "chargedeployed" => EventKind::ChargeDeployed { medic: me, medigun: prop(tail, "medigun").unwrap_or("medigun").to_string() },
         "chargeended" => EventKind::ChargeEnded(me),
+        "healed" => {
+            let (target, rest) = actor(tail.strip_prefix(" against ")?)?;
+            EventKind::Healed { medic: me, target: target.account, amount: prop(rest, "healing")?.parse().ok()? }
+        }
         "medic_death_ex" => {
             let pct = prop(tail, "uberpct")?.parse::<f64>().ok()?;
             EventKind::MedicDied { medic: me, pct: pct.clamp(0.0, 100.0) as u8 }

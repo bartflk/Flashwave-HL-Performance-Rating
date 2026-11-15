@@ -477,6 +477,8 @@ impl Builder {
                 self.end_life(*account, at, LifeEnd::Left);
                 self.end_sentry(*account, at, SentryEnd::Cleared);
             }
+            // Heals say who an über went on (sixes_raw); the state has no use for them.
+            EventKind::Healed { .. } => {}
             EventKind::FirstHeal(m) => {
                 // Charge builds from the first heal, not from the spawn: the
                 // wait before it holds at 0.

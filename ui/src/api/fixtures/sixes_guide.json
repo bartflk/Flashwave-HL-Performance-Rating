@@ -1,5 +1,5 @@
 {
- "modelVersion": "s1",
+ "modelVersion": "s2",
  "minMinutes": 5,
  "offMinMinutes": 1,
  "roundWin": false,
@@ -17,32 +17,46 @@
      "higherIsBetter": true
     },
     {
-     "key": "impact_kills",
-     "share": 0.237,
-     "counts": 0.564286,
+     "key": "dpm",
+     "share": 0.12,
+     "counts": 0.3,
      "measured": true,
      "higherIsBetter": true
     },
     {
-     "key": "deaths",
-     "share": 0.105,
+     "key": "impact_kills",
+     "share": 0.1,
      "counts": 0.25,
      "measured": true,
-     "higherIsBetter": false
+     "higherIsBetter": true
     },
     {
      "key": "space",
-     "share": 0.061,
-     "counts": 0.145238,
+     "share": 0.1,
+     "counts": 0.25,
      "measured": true,
      "higherIsBetter": true
     },
     {
      "key": "forces",
-     "share": 0.04,
+     "share": 0.06,
      "counts": 0,
      "measured": false,
      "higherIsBetter": true
+    },
+    {
+     "key": "airshots",
+     "share": 0.04,
+     "counts": 0.1,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "deaths",
+     "share": 0.04,
+     "counts": 0.1,
+     "measured": true,
+     "higherIsBetter": false
     },
     {
      "key": "untraded_deaths",
@@ -50,13 +64,6 @@
      "counts": 0,
      "measured": false,
      "higherIsBetter": false
-    },
-    {
-     "key": "dpm",
-     "share": 0.017,
-     "counts": 0.040476,
-     "measured": true,
-     "higherIsBetter": true
     }
    ]
   },
@@ -66,45 +73,59 @@
    "components": [
     {
      "key": "round_impact",
-     "share": 0.5,
+     "share": 0.471698,
      "counts": 0,
      "measured": false,
      "higherIsBetter": true
     },
     {
+     "key": "medic_picks",
+     "share": 0.113208,
+     "counts": 0.363636,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
      "key": "impact_kills",
-     "share": 0.191,
-     "counts": 0.707407,
+     "share": 0.09434,
+     "counts": 0.30303,
      "measured": true,
      "higherIsBetter": true
     },
     {
      "key": "opening",
-     "share": 0.1,
+     "share": 0.09434,
      "counts": 0,
      "measured": false,
-     "higherIsBetter": true
-    },
-    {
-     "key": "untraded_deaths",
-     "share": 0.08,
-     "counts": 0,
-     "measured": false,
-     "higherIsBetter": false
-    },
-    {
-     "key": "medic_picks",
-     "share": 0.079,
-     "counts": 0.292593,
-     "measured": true,
      "higherIsBetter": true
     },
     {
      "key": "forces",
-     "share": 0.05,
+     "share": 0.075472,
      "counts": 0,
      "measured": false,
      "higherIsBetter": true
+    },
+    {
+     "key": "double_flank_deaths",
+     "share": 0.056604,
+     "counts": 0.181818,
+     "measured": true,
+     "higherIsBetter": false
+    },
+    {
+     "key": "airshots",
+     "share": 0.04717,
+     "counts": 0.151515,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "untraded_deaths",
+     "share": 0.04717,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": false
     }
    ]
   },
@@ -114,52 +135,59 @@
    "components": [
     {
      "key": "round_impact",
-     "share": 0.5,
+     "share": 0.471698,
      "counts": 0,
      "measured": false,
      "higherIsBetter": true
     },
     {
      "key": "opening",
-     "share": 0.14,
+     "share": 0.132075,
      "counts": 0,
      "measured": false,
      "higherIsBetter": true
     },
     {
      "key": "forces",
-     "share": 0.1,
+     "share": 0.09434,
      "counts": 0,
      "measured": false,
-     "higherIsBetter": true
-    },
-    {
-     "key": "impact_kills",
-     "share": 0.098,
-     "counts": 0.816667,
-     "measured": true,
      "higherIsBetter": true
     },
     {
      "key": "backcaps",
-     "share": 0.08,
+     "share": 0.075472,
      "counts": 0,
      "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "medic_picks",
+     "share": 0.075472,
+     "counts": 0.4,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "double_flank_deaths",
+     "share": 0.056604,
+     "counts": 0.3,
+     "measured": true,
+     "higherIsBetter": false
+    },
+    {
+     "key": "impact_kills",
+     "share": 0.056604,
+     "counts": 0.3,
+     "measured": true,
      "higherIsBetter": true
     },
     {
      "key": "untraded_deaths",
-     "share": 0.06,
+     "share": 0.037736,
      "counts": 0,
      "measured": false,
      "higherIsBetter": false
-    },
-    {
-     "key": "medic_picks",
-     "share": 0.022,
-     "counts": 0.183333,
-     "measured": true,
-     "higherIsBetter": true
     }
    ]
   },
@@ -169,31 +197,45 @@
    "components": [
     {
      "key": "round_impact",
-     "share": 0.500501,
+     "share": 0.5,
      "counts": 0,
      "measured": false,
      "higherIsBetter": true
     },
     {
      "key": "impact_assists",
-     "share": 0.194194,
-     "counts": 0.388778,
+     "share": 0.14,
+     "counts": 0.28,
      "measured": true,
      "higherIsBetter": true
     },
     {
      "key": "dmg_ratio",
-     "share": 0.173173,
-     "counts": 0.346693,
+     "share": 0.125,
+     "counts": 0.25,
      "measured": true,
      "higherIsBetter": true
     },
     {
      "key": "impact_kills",
-     "share": 0.132132,
-     "counts": 0.264529,
+     "share": 0.095,
+     "counts": 0.19,
      "measured": true,
      "higherIsBetter": true
+    },
+    {
+     "key": "uber_picks",
+     "share": 0.08,
+     "counts": 0.16,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "deaths_band",
+     "share": 0.06,
+     "counts": 0.12,
+     "measured": true,
+     "higherIsBetter": false
     }
    ]
   },
@@ -252,42 +294,42 @@
     {
      "key": "impact_assists",
      "share": 0.221,
-     "counts": 0.34,
+     "counts": 0.315714,
      "measured": true,
      "higherIsBetter": true
     },
     {
      "key": "deaths_vs",
      "share": 0.162,
-     "counts": 0.249231,
+     "counts": 0.231429,
      "measured": true,
      "higherIsBetter": false
     },
     {
      "key": "heal",
      "share": 0.162,
-     "counts": 0.249231,
+     "counts": 0.231429,
      "measured": true,
      "higherIsBetter": true
     },
     {
      "key": "ubers_vs",
      "share": 0.08,
-     "counts": 0.123077,
+     "counts": 0.114286,
      "measured": true,
      "higherIsBetter": true
     },
     {
      "key": "caps_contested",
      "share": 0.05,
-     "counts": 0,
-     "measured": false,
+     "counts": 0.071429,
+     "measured": true,
      "higherIsBetter": true
     },
     {
      "key": "adv_lost",
      "share": 0.025,
-     "counts": 0.038462,
+     "counts": 0.035714,
      "measured": true,
      "higherIsBetter": false
     }
@@ -362,14 +404,14 @@
     {
      "key": "caps_contested",
      "share": 0.12,
-     "counts": 0,
-     "measured": false,
+     "counts": 0.545455,
+     "measured": true,
      "higherIsBetter": true
     },
     {
      "key": "deaths",
      "share": 0.1,
-     "counts": 1.0,
+     "counts": 0.454545,
      "measured": true,
      "higherIsBetter": false
     }

@@ -43,6 +43,10 @@ pub fn component_label(c: &str) -> (&'static str, &'static str) {
         "drops_vs" => ("Drops against theirs", "more"),
         "deaths_vs" => ("Deaths against theirs", "more"),
         "adv_lost" => ("Advantages lost", "per game"),
+        "deaths_band" => ("Deaths against the Medic's", "outside 1 to 8 more"),
+        "double_flank_deaths" => ("Both flanks down", "per 10 min"),
+        "uber_picks" => ("Kills in an über", "per 10 min"),
+        "caps_contested" => ("Caps contested", "per 10 min"),
         _ => ("", ""),
     }
 }
