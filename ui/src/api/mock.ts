@@ -896,7 +896,7 @@ export const mockApi: Api = {
 
   // 6v6 by role: the Sniper fixture's history standing in for a pocket's,
   // with 6v6's own breakdown; what needs 6v6 demos is empty.
-  getProfileSixes: (role: string | null, kind: ContextKind | null = null) => {
+  getProfileSixes: (role: string | null, kind: ContextKind | null = null, _from: number | null = null, _to: number | null = null, _account: number | null = null) => {
     const base = profileSniper as unknown as ProfileResponse;
     const r = role ?? "pocket";
     if (!base.profile || !["pocket", "roamer", "off:sniper"].includes(r)) return delay({ classes: [], profile: null, fights: null, aim: null, life: null, aimAll: null, lifeAll: null });

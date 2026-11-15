@@ -134,12 +134,34 @@ pub async fn load(
     kind: Option<&str>,
     period: Option<(i64, i64)>,
 ) -> Result<(Option<Value>, Option<Headline>)> {
+    load_for(db, me.account_id(), role, kind, period, false).await
+}
+
+/// [`load`] for any player (ETF2L › 6v6 › Players): their games in the
+/// owner's logs and in the 6v6 league sample, the headline numbers read
+/// from each game's logs.tf JSON (the sample's logs have no stored lines).
+pub async fn load_player(db: &hl_db::Db, account: u32, role: &str, kind: Option<&str>, period: Option<(i64, i64)>) -> Result<(Option<Value>, Option<Headline>)> {
+    load_for(db, account, role, kind, period, true).await
+}
+
+async fn load_for(
+    db: &hl_db::Db,
+    account: u32,
+    role: &str,
+    kind: Option<&str>,
+    period: Option<(i64, i64)>,
+    league: bool,
+) -> Result<(Option<Value>, Option<Headline>)> {
     let Some(parsed) = Role::parse(role) else { return Ok((None, None)) };
     let class = parsed.class();
-    let account = me.account_id();
     let version = model_version();
-    let db_rows = db.sixes_rating_history(account, role, &version).await?;
-    let headline = headline_of(db, account, class, db_rows.iter().map(clone_row).collect(), kind, period).await?;
+    let mut db_rows = db.sixes_rating_history(account, role, &version).await?;
+    let headline = if league {
+        db_rows.extend(db.sixes_league_history(account, role, &version).await?);
+        headline_from_jsons(db, account, class, &db_rows, kind, period).await?
+    } else {
+        headline_of(db, account, class, db_rows.iter().map(clone_row).collect(), kind, period).await?
+    };
 
     let parts: HashMap<i64, Vec<(String, f64, f64, Option<f64>)>> = db_rows.iter().map(|r| (r.log_id, parts_of(&r.parts_json))).collect();
     let career: Vec<(f64, Vec<(String, f64, f64, Option<f64>)>)> = db_rows.iter().map(|r| (r.minutes, parts_of(&r.parts_json))).collect();
@@ -264,6 +286,82 @@ fn clone_row(r: &hl_db::HistoryDbRow) -> hl_db::HistoryDbRow {
     }
 }
 
+/// The headline numbers over these games from their logs.tf JSON: time
+/// played, record, kills, deaths, assists, damage and accuracy on `class`.
+async fn headline_from_jsons(
+    db: &hl_db::Db,
+    account: u32,
+    class: hl_core::TfClass,
+    rows: &[hl_db::HistoryDbRow],
+    kind: Option<&str>,
+    period: Option<(i64, i64)>,
+) -> Result<Option<Headline>> {
+    let rows: Vec<&hl_db::HistoryDbRow> = rows
+        .iter()
+        .filter(|r| kind.is_none_or(|k| r.kind.as_deref() == Some(k)))
+        .filter(|r| period.is_none_or(|(from, to)| r.played_at.is_some_and(|t| t >= from && t <= to)))
+        .collect();
+    if rows.is_empty() {
+        return Ok(None);
+    }
+    let (mut won, mut lost, mut tied) = (0, 0, 0);
+    for r in &rows {
+        let (us, them) = if r.team == "Red" { (r.red_score, r.blue_score) } else { (r.blue_score, r.red_score) };
+        match (us, them) {
+            (Some(a), Some(b)) if a > b => won += 1,
+            (Some(a), Some(b)) if a < b => lost += 1,
+            (Some(_), Some(_)) => tied += 1,
+            _ => {}
+        }
+    }
+    let ids: Vec<i64> = rows.iter().map(|r| r.log_id).collect();
+    let (mut seconds, mut kills, mut deaths, mut assists, mut damage) = (0i64, 0i64, 0i64, 0i64, 0i64);
+    let (mut shots, mut hits, mut accuracy_games) = (0i64, 0i64, 0usize);
+    for (_, json) in db.sixes_jsons_of(&ids).await? {
+        if let Some(t) = class_line(&json, account, class) {
+            seconds += t.0;
+            kills += t.1;
+            deaths += t.2;
+            assists += t.3;
+            damage += t.4;
+        }
+        if let Some((s, h)) = crate::rating::weapon_accuracy(&json, account, class) {
+            shots += s;
+            hits += h;
+            accuracy_games += 1;
+        }
+    }
+    Ok(Some(Headline {
+        games: rows.len(),
+        seconds,
+        won,
+        lost,
+        tied,
+        kills,
+        deaths,
+        assists,
+        damage,
+        dpm: (seconds > 0).then(|| damage as f64 * 60.0 / seconds as f64),
+        accuracy: (shots > 0).then(|| hits as f64 / shots as f64),
+        accuracy_games,
+    }))
+}
+
+/// One player's line on one class in a logs.tf log: (seconds, kills,
+/// deaths, assists, damage).
+fn class_line(json: &str, account: u32, class: hl_core::TfClass) -> Option<(i64, i64, i64, i64, i64)> {
+    let raw: Value = serde_json::from_str(json).ok()?;
+    let me = raw.get("players")?.as_object()?.iter().find(|(k, _)| SteamId::parse(k).is_ok_and(|id| id.account_id() == account))?.1;
+    let cs = me.get("class_stats")?.as_array()?.iter().find(|c| c.get("type").and_then(Value::as_str).and_then(|t| hl_core::TfClass::parse(t).ok()) == Some(class))?;
+    let n = |k: &str| cs.get(k).and_then(Value::as_i64).unwrap_or(0);
+    Some((n("total_time"), n("kills"), n("deaths"), n("assists"), n("dmg")))
+}
+
+/// Any player's 6v6 roles, the owner's logs and the league sample's.
+pub async fn player_roles(db: &hl_db::Db, account: u32) -> Result<Vec<(String, i64)>> {
+    db.sixes_player_roles(account, &model_version()).await
+}
+
 /// The roles the owner has rated 6v6 games in, most played first.
 pub async fn roles(db: &hl_db::Db, me: SteamId) -> Result<Vec<(String, i64)>> {
     db.sixes_rated_roles(me.account_id(), &model_version()).await
@@ -272,6 +370,16 @@ pub async fn roles(db: &hl_db::Db, me: SteamId) -> Result<Vec<(String, i64)>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_class_line_is_read_from_the_log_s_class_stats() {
+        let json = r#"{"players":{"[U:1:42]":{"class_stats":[
+            {"type":"soldier","total_time":1200,"kills":20,"deaths":10,"assists":5,"dmg":6000},
+            {"type":"heavyweapons","total_time":60,"kills":1,"deaths":1,"assists":0,"dmg":300}]}}}"#;
+        assert_eq!(class_line(json, 42, hl_core::TfClass::Soldier), Some((1200, 20, 10, 5, 6000)));
+        assert_eq!(class_line(json, 42, hl_core::TfClass::Heavy), Some((60, 1, 1, 0, 300)));
+        assert_eq!(class_line(json, 7, hl_core::TfClass::Soldier), None, "not in the log");
+    }
 
     #[test]
     fn career_cards_count_back_from_per_ten_minutes() {

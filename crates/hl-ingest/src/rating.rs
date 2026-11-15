@@ -595,7 +595,7 @@ pub async fn headline_of(
 
 /// `account`'s shots and hits on `class` in one logs.tf log, from the weapon
 /// stats under `class_stats`; `None` where the log has none for them.
-fn weapon_accuracy(json: &str, account: u32, class: TfClass) -> Option<(i64, i64)> {
+pub(crate) fn weapon_accuracy(json: &str, account: u32, class: TfClass) -> Option<(i64, i64)> {
     let raw: serde_json::Value = serde_json::from_str(json).ok()?;
     let players = raw.get("players")?.as_object()?;
     let me = players.iter().find(|(k, _)| SteamId::parse(k).is_ok_and(|id| id.account_id() == account))?.1;

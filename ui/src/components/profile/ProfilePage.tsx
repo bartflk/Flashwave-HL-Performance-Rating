@@ -49,13 +49,27 @@ const THIN_SAMPLE = 20;
  * The owner's profile: Highlander by class, or 6v6 by role (`format`), the
  * same page either way (Flashy: "please bring them up to standard").
  */
-export function ProfilePage({ steamid, onOpenMatch, format = "hl" }: { steamid: string | null; onOpenMatch: (logId: number) => void; format?: GameFormat }) {
+export function ProfilePage({
+  steamid,
+  onOpenMatch,
+  format = "hl",
+  accountId = null,
+}: {
+  steamid: string | null;
+  onOpenMatch: (logId: number) => void;
+  format?: GameFormat;
+  /** Someone else's 6v6 profile (ETF2L › 6v6 › Players), not the owner's. */
+  accountId?: number | null;
+}) {
   const sixes = format === "6s";
+  const other = sixes && accountId !== null;
   const [cls, setCls] = useState<string | null>(null);
   const [kind, setKind] = useState<ContextKind | null>(null);
   const period = usePeriod();
   const { from, to } = bounds(period);
-  const [tab, setTabState] = useState<PfTab>(readTab);
+  const [savedTab, setTabState] = useState<PfTab>(readTab);
+  // Someone else's page has Overview, Rating and Career only.
+  const tab: PfTab = other && savedTab !== "overview" && savedTab !== "rating" && savedTab !== "career" ? "overview" : savedTab;
   const setTab = (v: PfTab) => {
     setTabState(v);
     try {
@@ -65,8 +79,8 @@ export function ProfilePage({ steamid, onOpenMatch, format = "hl" }: { steamid: 
     }
   };
   const q = useQuery({
-    queryKey: ["profile", format, cls, kind, from, to],
-    queryFn: () => (sixes ? api.getProfileSixes(cls, kind, from, to) : api.getProfile(cls, kind, from, to)),
+    queryKey: ["profile", format, accountId, cls, kind, from, to],
+    queryFn: () => (sixes ? api.getProfileSixes(cls, kind, from, to, accountId) : api.getProfile(cls, kind, from, to)),
     placeholderData: keepPreviousData,
   });
   // The split is over every game, so the last one seen stays valid while a
@@ -74,15 +88,17 @@ export function ProfilePage({ steamid, onOpenMatch, format = "hl" }: { steamid: 
   const lastSplit = useRef<ContextSplit[]>([]);
   if (q.data?.profile) lastSplit.current = q.data.profile.contexts;
 
-  const me = useOwnProfile(steamid);
-  const ownAccount = steamid ? accountOf(steamid) : null;
+  const own = useOwnProfile(other ? null : steamid);
+  const theirs = useQuery({ queryKey: ["player_profile", accountId], queryFn: () => api.getPlayerProfile(accountId!), enabled: other, staleTime: PROFILE_KEEP_MS }).data ?? null;
+  const me = other ? theirs : own;
+  const ownAccount = other ? null : steamid ? accountOf(steamid) : null;
 
   if (q.isPending) return <div className="profile-page"><Loading>{t("Loading profile…")}</Loading></div>;
   if (q.isError) return <div className="profile-page"><ApiError error={q.error} /></div>;
 
   const { classes, profile, fights } = q.data;
   const active = cls ?? profile?.class ?? classes[0]?.[0] ?? null;
-  const hero = me ? <PlayerHeader p={me} own aside={profile && <Signature p={profile} />} /> : null;
+  const hero = me ? <PlayerHeader p={me} own={!other} aside={profile && <Signature p={profile} />} /> : null;
 
   if (classes.length === 0) {
     return (
@@ -90,7 +106,9 @@ export function ProfilePage({ steamid, onOpenMatch, format = "hl" }: { steamid: 
         {hero}
         <div className="panel">
           <h2>{t("No ratings yet")}</h2>
-          <p className="hint" style={{ marginTop: 6 }}>{t("Press Sync, or Rebuild in Settings.")}</p>
+          <p className="hint" style={{ marginTop: 6 }}>
+            {other ? t("No rated 6v6 game of theirs is stored yet: they fill in as the 6v6 league sample downloads.") : t("Press Sync, or Rebuild in Settings.")}
+          </p>
         </div>
       </div>
     );
@@ -106,7 +124,8 @@ export function ProfilePage({ steamid, onOpenMatch, format = "hl" }: { steamid: 
       {hero}
 
       <nav className="pf-tabs" role="tablist" aria-label={t("Profile sections")}>
-        {PF_TABS.filter(([id]) => id !== "career" || me).map(([id, label]) => (
+        {/* Someone else's: what is about them, not about your own logs. */}
+        {PF_TABS.filter(([id]) => (id !== "career" || me) && (!other || id === "overview" || id === "rating" || id === "career")).map(([id, label]) => (
           <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "pf-tab on" : "pf-tab"} onClick={() => setTab(id)}>
             {t(label)}
           </button>
@@ -157,7 +176,7 @@ export function ProfilePage({ steamid, onOpenMatch, format = "hl" }: { steamid: 
             </>
           )}
           {sixes ? (
-            <SixesSeasonsPanel />
+            !other && <SixesSeasonsPanel />
           ) : (
             active && (
               <Fold id="profile-seasons">

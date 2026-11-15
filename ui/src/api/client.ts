@@ -245,8 +245,8 @@ const realApi = {
   getProfile: (cls: string | null, kind: ContextKind | null = null, from: number | null = null, to: number | null = null) =>
     invoke<ProfileResponse>("get_profile", { class: cls, kind, from, to }),
   /** The same profile for 6v6, by role: `classes` holds the roles played (the 6v6 plan, P7). */
-  getProfileSixes: (role: string | null, kind: ContextKind | null = null, from: number | null = null, to: number | null = null) =>
-    invoke<ProfileResponse>("get_profile_sixes", { role, kind, from, to }),
+  getProfileSixes: (role: string | null, kind: ContextKind | null = null, from: number | null = null, to: number | null = null, account: number | null = null) =>
+    invoke<ProfileResponse>("get_profile_sixes", { role, kind, from, to, account }),
   /** Your name and picture; null before a SteamID is set. */
   getOwner: () => invoke<Owner | null>("get_owner"),
   /** Seasons from your officials, newest first. */

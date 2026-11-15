@@ -1138,20 +1138,28 @@ pub async fn get_profile_sixes(
     kind: Option<String>,
     from: Option<i64>,
     to: Option<i64>,
+    account: Option<u32>,
 ) -> CmdResult<SixesProfileResponse> {
     let me = state
         .db
         .get_me()
         .await?
         .ok_or_else(|| CmdError::new("missing_config", "Set your SteamID first."))?;
-    let roles = hl_ingest::sixes_profile::roles(&state.db, me).await?;
+    // Someone else (ETF2L › 6v6 › Players): their games in your logs and in
+    // the 6v6 league sample.
+    let other = account.filter(|a| *a != me.account_id());
+    let roles = match other {
+        Some(a) => hl_ingest::sixes_profile::player_roles(&state.db, a).await?,
+        None => hl_ingest::sixes_profile::roles(&state.db, me).await?,
+    };
     let period = match (from, to) {
         (None, None) => None,
         (f, t) => Some((f.unwrap_or(i64::MIN), t.unwrap_or(i64::MAX))),
     };
-    let (profile, headline) = match role.or_else(|| roles.first().map(|(r, _)| r.clone())) {
-        Some(r) => hl_ingest::sixes_profile::load(&state.db, me, &r, kind.as_deref(), period).await?,
-        None => (None, None),
+    let (profile, headline) = match (role.or_else(|| roles.first().map(|(r, _)| r.clone())), other) {
+        (Some(r), Some(a)) => hl_ingest::sixes_profile::load_player(&state.db, a, &r, kind.as_deref(), period).await?,
+        (Some(r), None) => hl_ingest::sixes_profile::load(&state.db, me, &r, kind.as_deref(), period).await?,
+        (None, _) => (None, None),
     };
     Ok(SixesProfileResponse { classes: roles, profile, fights: None, aim: None, life: None, aim_all: None, life_all: None, headline })
 }

@@ -271,7 +271,7 @@ export default function App() {
       {visited.has("etf2l") && (
         <div hidden={tab !== "etf2l" || openLog !== null}>
           <ErrorBoundary what="ETF2L">
-            {fmt.etf2l === "6s" ? <SixesPage /> : <Etf2lPage active={tab === "etf2l" && openLog === null} onOpenMatch={setOpenLog} />}
+            {fmt.etf2l === "6s" ? <SixesPage onOpenMatch={setOpenLog} /> : <Etf2lPage active={tab === "etf2l" && openLog === null} onOpenMatch={setOpenLog} />}
           </ErrorBoundary>
         </div>
       )}

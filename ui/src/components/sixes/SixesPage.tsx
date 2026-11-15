@@ -31,7 +31,7 @@ import type { RecruitPost } from "../../api/types";
  * can be drawn, golden caps); its matches by week, its teams, ETF2L's 6v6
  * news and recruitment. What is still to come is listed in the rail.
  */
-export function SixesPage() {
+export function SixesPage({ onOpenMatch }: { onOpenMatch: (logId: number) => void }) {
   const q = useQuery({ queryKey: ["sixes_season"], queryFn: api.getSixesSeason, staleTime: 30 * 60_000, retry: false });
   const s = q.data;
   const groups = useMemo(() => (s?.divisions ?? []).filter((d) => d.system === "roundRobin"), [s]);
@@ -91,6 +91,9 @@ export function SixesPage() {
         <Loading>{t("Reading ETF2L's 6v6 season…")}</Loading>
       ) : !s ? (
         <p className="hint">{t("ETF2L lists no 6v6 season.")}</p>
+      ) : section === "players" && teamId === null ? (
+        // Full width, as Highlander's Players tab: a player's page is the profile.
+        <SixesPlayers onOpenMatch={onOpenMatch} />
       ) : section === "home" && teamId === null && postId === null && recruit === null ? (
         <SixesHome s={s} onTeam={setTeamId} onPost={setPostId} onRecruit={(p, kind) => setRecruit({ p, kind })} go={(to) => open(to)} />
       ) : (
@@ -121,7 +124,7 @@ export function SixesPage() {
                 <RecruitmentPage format="sixes" onOpen={(p, kind) => setRecruit({ p, kind })} />
               </>
             ) : section === "players" ? (
-              <SixesPlayers />
+              <SixesPlayers onOpenMatch={onOpenMatch} />
             ) : section === "seasons" ? (
               <SixesSeasons onTeam={setTeamId} />
             ) : section === "teams" ? (

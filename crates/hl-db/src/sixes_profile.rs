@@ -137,4 +137,97 @@ impl Db {
             })
             .collect())
     }
+
+    /// The roles any player has rated 6v6 games in, the owner's logs and the
+    /// league sample's together, most played first (ETF2L › 6v6 › Players).
+    pub async fn sixes_player_roles(&self, account_id: u32, version: &str) -> Result<Vec<(String, i64)>> {
+        let rows = sqlx::query(
+            "SELECT r.role, COUNT(DISTINCT r.log_id) AS n
+             FROM sixes_rating r
+             WHERE r.account_id = ?1 AND r.model_version = ?2
+               AND (r.log_id IN (SELECT log_id FROM match) OR r.log_id IN (SELECT log_id FROM sixes_league_log WHERE json IS NOT NULL))
+             GROUP BY r.role ORDER BY n DESC, r.role",
+        )
+        .bind(account_id as i64)
+        .bind(version)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows.into_iter().map(|r| (r.get("role"), r.get("n"))).collect())
+    }
+
+    /// [`Db::sixes_rating_history`] for the league sample's logs (those not
+    /// also the owner's): the side and the score read from the log's JSON,
+    /// every one an official.
+    pub async fn sixes_league_history(&self, account_id: u32, role: &str, version: &str) -> Result<Vec<HistoryDbRow>> {
+        let rows = sqlx::query(
+            "SELECT r.log_id, l.played_at, l.map, l.title,
+                    COALESCE(json_extract(l.json, '$.players.\"[U:1:' || ?1 || ']\".team'), '') AS team,
+                    json_extract(l.json, '$.teams.Red.score') AS red_score,
+                    json_extract(l.json, '$.teams.Blue.score') AS blue_score,
+                    r.rating AS score, r.minutes, r.parts
+             FROM sixes_rating r
+             JOIN sixes_league_log l ON l.log_id = r.log_id
+             WHERE r.account_id = ?1 AND r.role = ?2 AND r.model_version = ?3
+               AND l.json IS NOT NULL AND r.log_id NOT IN (SELECT log_id FROM match)",
+        )
+        .bind(account_id as i64)
+        .bind(role)
+        .bind(version)
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| HistoryDbRow {
+                log_id: r.get("log_id"),
+                played_at: r.get("played_at"),
+                map: r.get("map"),
+                title: r.get("title"),
+                league: Some("etf2l".to_string()),
+                team: r.get("team"),
+                kind: Some("official".to_string()),
+                red_score: r.get("red_score"),
+                blue_score: r.get("blue_score"),
+                score: r.get("score"),
+                minutes: r.get("minutes"),
+                parts_json: r.get("parts"),
+            })
+            .collect())
+    }
+
+    /// The logs.tf JSON of these 6v6 logs, the owner's and the league
+    /// sample's: a player's headline numbers are read from it.
+    pub async fn sixes_jsons_of(&self, logs: &[i64]) -> Result<Vec<(i64, String)>> {
+        let ids = serde_json::to_string(logs)?;
+        Ok(sqlx::query_as(
+            "SELECT log_id, json FROM log_raw WHERE log_id IN (SELECT value FROM json_each(?1))
+             UNION ALL
+             SELECT log_id, json FROM sixes_league_log WHERE json IS NOT NULL AND log_id IN (SELECT value FROM json_each(?1))
+               AND log_id NOT IN (SELECT log_id FROM log_raw)",
+        )
+        .bind(ids)
+        .fetch_all(self.pool())
+        .await?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Db;
+
+    #[tokio::test]
+    async fn a_league_game_s_side_and_score_come_from_its_json() {
+        let db = Db::connect_in_memory().await.unwrap();
+        let json = r#"{"teams":{"Red":{"score":4},"Blue":{"score":2}},"players":{"[U:1:42]":{"team":"Red"}}}"#;
+        sqlx::query("INSERT INTO sixes_league_log (log_id, etf2l_match_id, map, played_at, json) VALUES (9, 1, 'cp_process_f12', 100, ?1)")
+            .bind(json)
+            .execute(db.pool())
+            .await
+            .unwrap();
+        db.replace_sixes_ratings("s0", &[(9, 42, "pocket".to_string(), 1.2, 60.0, 20.0, "[]".to_string())]).await.unwrap();
+        let rows = db.sixes_league_history(42, "pocket", "s0").await.unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!((rows[0].team.as_str(), rows[0].red_score, rows[0].blue_score, rows[0].kind.as_deref()), ("Red", Some(4), Some(2), Some("official")));
+        assert_eq!(db.sixes_player_roles(42, "s0").await.unwrap(), vec![("pocket".to_string(), 1)]);
+        assert_eq!(db.sixes_jsons_of(&[9]).await.unwrap().len(), 1);
+    }
 }
