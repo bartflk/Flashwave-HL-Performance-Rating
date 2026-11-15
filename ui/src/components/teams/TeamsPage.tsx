@@ -497,7 +497,7 @@ function TeamHeader({ v, honours, info }: { v: TeamView; honours: TeamHonours | 
                 <dt>{t("Formerly")}</dt>
                 <dd>
                   {info.formerNames.map((n, i) => (
-                    <span key={i} className="ts-former" title={tx("Renamed {0}", { "0": formatDate(n.time, true) }) as string}>
+                    <span key={i} className="ts-former" title={t("Renamed {0}", { "0": formatDate(n.time, true) })}>
                       {i > 0 && " · "}
                       {n.from} <span className="muted">({tx("until {0}", { "0": formatMonth(n.time) })})</span>
                     </span>

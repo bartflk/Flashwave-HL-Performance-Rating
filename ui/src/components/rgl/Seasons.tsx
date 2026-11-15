@@ -1,3 +1,4 @@
+import { divisionRows } from "../../lib/rglseeds";
 import { useMemo, useState } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -106,7 +107,8 @@ export function SeasonCard({ s, onOpen }: { s: RglSeasonItem; onOpen: () => void
           {c && c.totalTeams !== null && c.totalTeams > 0 ? (
             <span className="ts-stat" title={t("Teams across every division")}>
               {c.totalTeams === 1 ? t("1 team") : tx("{0} teams", { "0": c.totalTeams })}
-              {c.divisions > 1 && ` · ${tx("{0} divisions", { "0": c.divisions })}`}
+              {/* t, not tx: tx gives an element, and in a string it read "[object Object]" (0.14.1 audit). */}
+              {c.divisions > 1 && ` · ${t("{0} divisions", { "0": c.divisions })}`}
             </span>
           ) : (
             c && c.teams > 0 && (
@@ -271,13 +273,13 @@ export function SeasonView({ id, onTeam, more }: { id: number; onTeam: (id: numb
                   <p className="hint">{t("No teams.")}</p>
                 ) : (
                   <ol className="rgl-teams">
-                    {d.teams.map((tm) => {
-                      const out = tm.finalRank === 99 || tm.teamStatus === "Dead";
+                    {/* Seeds over the teams still playing; dropped teams and the free-agent slot after them (0.14.1). */}
+                    {divisionRows(d.teams).map(({ team: tm, seed, out }) => {
                       return (
                         <li key={tm.id}>
                           <button className={out ? "rgl-team out" : "rgl-team"} onClick={() => onTeam(tm.id)}>
                             <span className="rgl-rank">
-                              {out ? "" : tm.finalRank !== null && tm.finalRank <= 3 ? <MedalGlyph size={16} place={tm.finalRank} /> : placing(tm.finalRank, tm.seeding)}
+                              {out ? "" : tm.finalRank !== null && tm.finalRank <= 3 ? <MedalGlyph size={16} place={tm.finalRank} /> : placing(tm.finalRank, seed)}
                             </span>
                             <span className="rgl-name" title={tm.name}>{tm.name}</span>
                             {tm.tag && <span className="rgl-tag">{tm.tag}</span>}
