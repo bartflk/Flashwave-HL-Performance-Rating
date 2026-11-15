@@ -2499,6 +2499,13 @@ pub async fn get_rgl_seasons(state: State<'_, AppState>) -> CmdResult<Vec<hl_ing
     Ok(hl_ingest::rgl::seasons(&state.sources).await?)
 }
 
+/// The RGL Highlander power ranking, from the matches the app already has;
+/// `read` names one older season to read first (the "Include Season N" button).
+#[tauri::command]
+pub async fn get_rgl_ranking(state: State<'_, AppState>, read: Option<i64>) -> CmdResult<hl_ingest::rgl_rank::RglRanking> {
+    Ok(hl_ingest::rgl_rank::ranking(&state.db, &state.sources, read).await?)
+}
+
 /// Every match of an RGL season, for its standings and results.
 #[tauri::command]
 pub async fn get_rgl_season_matches(state: State<'_, AppState>, id: i64) -> CmdResult<Vec<hl_ingest::rgl::RglMatch>> {

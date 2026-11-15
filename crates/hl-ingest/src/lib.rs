@@ -54,6 +54,7 @@ pub mod maps;
 pub mod combined;
 pub mod etf2l;
 pub mod rgl;
+pub mod rgl_rank;
 pub mod rgl_stats;
 pub mod roles;
 pub mod sixes;

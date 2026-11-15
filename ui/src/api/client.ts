@@ -82,6 +82,7 @@ import type {
   RglPlayer,
   RglPlayerMore,
   RglPlayerHit,
+  RglRanking,
   RglSeasonCard,
   RglTeamHit,
   RglSeason,
@@ -337,6 +338,8 @@ const realApi = {
   getFixtures: () => invoke<Fixture[]>("get_fixtures"),
   getNews: (format?: StoredFormat) => invoke<NewsItem[]>("get_news", { format: format ?? null }),
   getRglSeasons: () => invoke<RglSeasonItem[]>("get_rgl_seasons"),
+  /** The power ranking from the matches already held; `read` reads one older season first (asked for by a button). */
+  getRglRanking: (read: number | null = null) => invoke<RglRanking>("get_rgl_ranking", { read }),
   getRglSeason: (id: number) => invoke<RglSeason>("get_rgl_season", { id }),
   getRglSeasonMatches: (id: number) => invoke<RglMatch[]>("get_rgl_season_matches", { id }),
   getRglBans: (skip: number) => invoke<RglBan[]>("get_rgl_bans", { skip }),

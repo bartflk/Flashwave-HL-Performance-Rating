@@ -3539,3 +3539,33 @@ export interface EtfBan {
   end: number | null;
   reason: string | null;
 }
+
+export interface RglRankRow {
+  rank: number;
+  /** The team's id in the live season. */
+  id: number;
+  /** Every id RGL gave the team across the seasons counted. */
+  ids: number[];
+  name: string;
+  tag: string | null;
+  division: string | null;
+  tier: string | null;
+  points: number;
+  /** Places gained since a week ago; null when it had played nothing then. */
+  change: number | null;
+  pointsChange: number;
+  matches: number;
+  /** Current roster, only where the team's page is already kept. */
+  players: string[];
+}
+
+export interface RglRanking {
+  season: RglSeasonItem | null;
+  /** The seasons counted, newest first. */
+  used: RglSeasonItem[];
+  /** The next season that could be included, if one is left. */
+  offer: RglSeasonItem | null;
+  /** Unix seconds of the newest match counted. */
+  updated: number | null;
+  rows: RglRankRow[];
+}

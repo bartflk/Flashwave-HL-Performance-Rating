@@ -129,6 +129,7 @@ pub fn run() {
             sync_commands::get_fixtures,
             sync_commands::get_news,
             sync_commands::get_rgl_seasons,
+            sync_commands::get_rgl_ranking,
             sync_commands::get_rgl_season,
             sync_commands::get_rgl_season_matches,
             sync_commands::get_rgl_bans,

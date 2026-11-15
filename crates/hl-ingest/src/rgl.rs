@@ -53,7 +53,7 @@ const MISSING: &str = "\u{0}missing";
 /// How long a missing page is remembered.
 const KEEP_MISSING: Duration = Duration::from_secs(5 * 60);
 
-fn held(key: &str) -> Option<String> {
+pub(crate) fn held(key: &str) -> Option<String> {
     let mut held = HELD.lock().unwrap();
     let map = held.get_or_insert_with(HashMap::new);
     match map.get(key) {
@@ -253,14 +253,14 @@ pub async fn seasons(sources: &Sources) -> Result<Vec<RglSeasonItem>> {
 /// with their order (Admin Placement and Dead Teams at 0), and its matches.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct SeasonHead {
+pub(crate) struct SeasonHead {
     name: String,
     #[serde(default)]
     maps: Vec<String>,
     #[serde(default)]
     division_sorting: HashMap<String, i64>,
     #[serde(default)]
-    matches_played_during_season: Vec<i64>,
+    pub(crate) matches_played_during_season: Vec<i64>,
 }
 
 impl SeasonHead {
@@ -618,10 +618,10 @@ pub struct RglTeamPage {
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TeamRaw {
-    team_id: i64,
-    name: String,
+    pub(crate) team_id: i64,
+    pub(crate) name: String,
     #[serde(default)]
-    tag: Option<String>,
+    pub(crate) tag: Option<String>,
     season_id: i64,
     #[serde(default)]
     division_name: Option<String>,
@@ -632,7 +632,7 @@ pub(crate) struct TeamRaw {
     #[serde(default)]
     pub(crate) players: Vec<RglMember>,
     #[serde(default)]
-    linked_teams: Vec<i64>,
+    pub(crate) linked_teams: Vec<i64>,
     #[serde(default)]
     match_ids: Vec<i64>,
 }
@@ -1130,7 +1130,22 @@ pub async fn season_matches(db: &Db, sources: &Sources, id: i64) -> Result<Vec<R
     let (head, _) = season_head(db, sources, id).await?;
     let mut out = read_matches(db, sources, &head.matches_played_during_season).await?;
     out.sort_by(|a, b| a.match_date.cmp(&b.match_date).then(a.match_id.cmp(&b.match_id)));
+    // Held for the ranking, which reads the live season's matches from here
+    // rather than asking again (it must cost RGL nothing beyond Home's read).
+    if let Ok(json) = serde_json::to_string(&out) {
+        hold(&season_matches_key(id), &json, KEEP);
+    }
     Ok(out)
+}
+
+fn season_matches_key(id: i64) -> String {
+    format!("/internal/season-matches/{id}")
+}
+
+/// A season's matches as `season_matches` last read them, while they are
+/// held in memory; `None` when they were not read lately. Asks nobody.
+pub(crate) fn held_season_matches(id: i64) -> Option<Vec<RglMatch>> {
+    serde_json::from_str(&held(&season_matches_key(id))?).ok()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
