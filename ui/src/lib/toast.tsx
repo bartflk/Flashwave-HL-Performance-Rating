@@ -11,6 +11,9 @@ import { t as tr } from "./i18n";
 
 type Toast = { id: number; text: string; detail?: string; kind: "ok" | "error" };
 
+/** How long a toast stays: an error longer, so its report can be copied. */
+const SHOW_MS = { ok: 4000, error: 12000 };
+
 let listeners: Array<(t: Toast) => void> = [];
 let nextId = 1;
 
@@ -28,7 +31,10 @@ export function toastError(e: unknown) {
 export async function copy(text: string, what: string) {
   try {
     await api.copyText(text);
-    toast(tr("Copied {0}", { "0": what }), text);
+    // A path or a command is read back; a log or a report is only counted.
+    const lines = text.split("\n").length;
+    const short = lines === 1 && text.length <= 160;
+    toast(tr("Copied {0}", { "0": what }), short ? text : tr("{0} lines", { "0": lines.toLocaleString() }));
   } catch (e) {
     toast(tr("Could not copy to the clipboard"), String(e), "error");
   }
@@ -47,7 +53,7 @@ export function ToastHost() {
 
   useEffect(() => {
     if (!current) return;
-    const timer = setTimeout(() => setCurrent(null), 4000);
+    const timer = setTimeout(() => setCurrent(null), SHOW_MS[current.kind]);
     return () => clearTimeout(timer);
   }, [current]);
 
@@ -56,6 +62,20 @@ export function ToastHost() {
     <div className={`toast toast-${current.kind}`} role="status" aria-live="polite">
       <span className="toast-text">{current.text}</span>
       {current.detail && <code className="toast-detail">{current.detail}</code>}
+      {current.kind === "error" && (
+        <button
+          className="toast-report"
+          title={tr("The error, the app's details and the log's last lines, ready to paste")}
+          onClick={() => {
+            const failure = { what: current.text, message: current.detail };
+            setCurrent(null);
+            // Loaded on use: the report copies through this module.
+            void import("./report").then((m) => m.copyReport(failure));
+          }}
+        >
+          {tr("Copy report")}
+        </button>
+      )}
     </div>
   );
 }

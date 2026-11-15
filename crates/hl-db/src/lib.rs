@@ -188,7 +188,11 @@ impl Db {
             .create_if_missing(true)
             .journal_mode(SqliteJournalMode::Wal)
             .synchronous(SqliteSynchronous::Normal)
-            .foreign_keys(true);
+            .foreign_keys(true)
+            // A write waits this long for another to finish before giving
+            // up. The default 5 s lost a sync to the background 6v6 rebuild,
+            // whose one write ran 5.5 s: "database is locked".
+            .busy_timeout(std::time::Duration::from_secs(30));
 
         let pool = SqlitePoolOptions::new()
             .max_connections(8)

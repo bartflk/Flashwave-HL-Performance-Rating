@@ -1286,6 +1286,13 @@ th.num {
   color: var(--bad);
 }
 
+/* A failed sync's report: the Cancel button's quiet look, in the accent on hover. */
+.dl-report-btn:hover:not(:disabled) {
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.5);
+  color: var(--accent);
+}
+
 /* Step 8's match: "Official vs Kebab · pl_upward · 14 Sept". */
 .dl-match {
   color: var(--text);

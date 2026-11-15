@@ -24,6 +24,8 @@ let state: Activity = { lines: [], sites: [], verbose: false };
 let last = 0;
 let paused = false;
 let timer: number | null = null;
+/** A poll still waiting: the next tick skips rather than asking twice. */
+let inFlight = false;
 const listeners = new Set<() => void>();
 
 function set(next: Activity) {
@@ -32,17 +34,30 @@ function set(next: Activity) {
 }
 
 async function poll() {
+  // Two polls with the same `last` both added the same lines: the log showed
+  // every line twice whenever an answer took longer than a tick.
+  if (inFlight) return;
+  inFlight = true;
   try {
     const v = await api.getActivity(last);
-    if (v.lines.length > 0) last = v.lines[v.lines.length - 1].seq;
+    if (v.lines.length > 0) last = Math.max(last, v.lines[v.lines.length - 1].seq);
     if (paused) {
       set({ ...state, sites: v.sites, verbose: v.verbose });
     } else {
-      set({ lines: [...state.lines, ...v.lines].slice(-KEEP), sites: v.sites, verbose: v.verbose });
+      set({ lines: appendNew(state.lines, v.lines).slice(-KEEP), sites: v.sites, verbose: v.verbose });
     }
   } catch {
     // Quiet: the next tick asks again.
+  } finally {
+    inFlight = false;
   }
+}
+
+/** `more` after `have`, leaving out any line `have` already holds. */
+export function appendNew(have: ActivityLine[], more: ActivityLine[]): ActivityLine[] {
+  const top = have.length > 0 ? have[have.length - 1].seq : 0;
+  const fresh = more.filter((l) => l.seq > top);
+  return fresh.length === 0 ? have : [...have, ...fresh];
 }
 
 function subscribe(l: () => void) {

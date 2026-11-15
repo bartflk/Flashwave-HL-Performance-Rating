@@ -680,6 +680,27 @@
 
 .toast-detail {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* An error toast's report: small, beside the message. */
+.toast-report {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.toast-report:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* --- M5: what kind of game --- */

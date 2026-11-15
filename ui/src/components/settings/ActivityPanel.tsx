@@ -5,6 +5,7 @@ import type { ActivityLine, ActivitySite } from "../../api/types";
 import { activityPaused, clearActivity, lineText, setActivityPaused, setVerbose, useActivity } from "../../lib/activity";
 import { logTail } from "../../lib/diagnostics";
 import { copy } from "../../lib/toast";
+import { copyReport } from "../../lib/report";
 import { t, tx } from "../../lib/i18n";
 
 type Level = ActivityLine["level"];
@@ -117,6 +118,9 @@ export function ActivityPanel() {
         </button>
         <button onClick={() => void copy(matching.map(lineText).join("\n"), t("{0} lines", { "0": matching.length }))} disabled={matching.length === 0}>
           {t("Copy log")}
+        </button>
+        <button onClick={() => void copyReport(null)} title={t("The app's details, every warning and error this run and the log's last lines, ready to paste")}>
+          {t("Copy report")}
         </button>
         <button className="linkish" onClick={() => clearActivity()}>
           {t("Clear the view")}

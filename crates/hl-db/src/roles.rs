@@ -135,20 +135,17 @@ impl Db {
     pub async fn replace_sixes_ratings(&self, version: &str, rows: &[(i64, u32, String, f64, f64, f64, String)]) -> Result<()> {
         let mut tx = self.pool().begin().await?;
         sqlx::query("DELETE FROM sixes_rating").execute(&mut *tx).await?;
-        for (log, account, role, rating, score, minutes, parts) in rows {
-            sqlx::query(
-                "INSERT INTO sixes_rating (log_id, account_id, role, model_version, rating, score, minutes, parts) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            )
-            .bind(log)
-            .bind(i64::from(*account))
-            .bind(role)
-            .bind(version)
-            .bind(rating)
-            .bind(score)
-            .bind(minutes)
-            .bind(parts)
-            .execute(&mut *tx)
-            .await?;
+        // Many rows a statement: one at a time, the league sample's 224,502
+        // held the database for 5.5 s and a sync's write gave up on it.
+        const ROWS: usize = 500;
+        for chunk in rows.chunks(ROWS) {
+            let values = vec!["(?, ?, ?, ?, ?, ?, ?, ?)"; chunk.len()].join(", ");
+            let sql = format!("INSERT INTO sixes_rating (log_id, account_id, role, model_version, rating, score, minutes, parts) VALUES {values}");
+            let mut q = sqlx::query(&sql);
+            for (log, account, role, rating, score, minutes, parts) in chunk {
+                q = q.bind(log).bind(i64::from(*account)).bind(role).bind(version).bind(rating).bind(score).bind(minutes).bind(parts);
+            }
+            q.execute(&mut *tx).await?;
         }
         tx.commit().await?;
         Ok(())
@@ -236,6 +233,18 @@ mod tests {
         let b = db.sixes_board("s0", "pocket", 2, 10).await.unwrap();
         assert_eq!(b.iter().map(|x| (x.0, x.1)).collect::<Vec<_>>(), vec![(7, 2), (9, 2)], "8 has one game; the roamer game is another role");
         assert!((b[0].2 - 1.1).abs() < 1e-9 && (b[0].3 - 1.2).abs() < 1e-9);
+    }
+
+    #[tokio::test]
+    async fn a_rewrite_past_one_statement_keeps_every_row_and_drops_the_old() {
+        let db = Db::connect_in_memory().await.unwrap();
+        let rows = |n: i64, v: f64| (1..=n).map(|log| (log, 7, "pocket".to_string(), v, 50.0, 20.0, "[]".to_string())).collect::<Vec<_>>();
+        db.replace_sixes_ratings("s0", &rows(1_203, 1.0)).await.unwrap();
+        db.replace_sixes_ratings("s1", &rows(1_001, 1.5)).await.unwrap();
+        let (n, sum): (i64, f64) = sqlx::query_as("SELECT COUNT(*), SUM(rating) FROM sixes_rating WHERE model_version = 's1'").fetch_one(db.pool()).await.unwrap();
+        let all: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sixes_rating").fetch_one(db.pool()).await.unwrap();
+        assert_eq!((n, all), (1_001, 1_001), "three statements' worth, and s0 gone");
+        assert!((sum - 1_501.5).abs() < 1e-9);
     }
 
     #[tokio::test]

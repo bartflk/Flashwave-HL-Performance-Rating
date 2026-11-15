@@ -5,6 +5,7 @@ import { dismissSixesNotice, useSixesNoticeDismissed } from "../lib/sixesnotice"
 import { friendlyText } from "../lib/apierror";
 import { saveFormats } from "./FormatsPicker";
 import { ActivityWaterfall } from "./ActivityWaterfall";
+import { copyReport } from "../lib/report";
 import { dismissDownload, useDownloads, type Download } from "../lib/downloads";
 import { cancelSync, dismissSync, fractionOf, labelOf, matchOf, phaseOf, useSyncStatus } from "../lib/sync";
 import { dismissDemoSeen, useDemoSeen } from "../lib/demowatch";
@@ -474,6 +475,15 @@ function SyncCard() {
         ))}
 
       {failed && <p className="dl-sub dl-error">{sync.message}</p>}
+      {failed && (
+        <button
+          className="dl-cancel dl-report-btn"
+          title={t("The error, the app's details and the log's last lines, ready to paste")}
+          onClick={() => void copyReport({ what: t("Sync failed"), message: sync.message })}
+        >
+          {t("Copy report")}
+        </button>
+      )}
     </div>
   );
 }
