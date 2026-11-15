@@ -68,6 +68,12 @@ COMMANDS:
     sixes-sample [on|off|status]
                            Switch the 6v6 league sample on or off while the app
                            is closed; it downloads from the app's next start
+    sixes-sample-fill <DUMP.sql>
+                           Fill the 6v6 league sample's logs from the logs.tf dump
+                           instead of downloading them (the app closed)
+    sixes-fit <SIXES.sqlite3> [--json]
+                           Each 6v6 role's weights fitted to who won on the dump's
+                           officials, against the weights now
     logsdump-sixes-pool <SIXES.sqlite3> <OUT.json>
                            The 6v6 rating's built-in league pool from the officials
                            logsdump-sixes wrote: crates/hl-ingest/src/sixes_pool.json
@@ -191,7 +197,7 @@ async fn run() -> Result<()> {
     // `snapshot --check` reads only the snapshot built into this binary.
     let touches_db = !matches!(command.first().copied(), None | Some("help") | Some("--help") | Some("-h"))
         && !(command.first() == Some(&"snapshot") && command.contains(&"--check"))
-        && !matches!(command.first().copied(), Some("logsdump" | "logsdump-summary" | "logsdump-sixes" | "logsdump-sixes-pool"))
+        && !matches!(command.first().copied(), Some("logsdump" | "logsdump-summary" | "logsdump-sixes" | "logsdump-sixes-pool" | "sixes-fit"))
         && !(command.first() == Some(&"sixes-validate") && command.contains(&"--from"));
     if touches_db {
         hl_ingest::lock::require_free(&db_path, forced)?;
@@ -232,6 +238,28 @@ async fn run() -> Result<()> {
                 _ => bail!("usage: hl logsdump-sixes <logs.sql> <index.sqlite3> <out.sqlite3> [--limit <rows>]"),
             };
             logsdump_sixes::run(std::path::Path::new(dump), std::path::Path::new(index), std::path::Path::new(out), limit).await
+        }
+
+        // The 6v6 league sample's JSON from the logs.tf dump; the app closed.
+        ["sixes-sample-fill", dump] => {
+            let db = Db::connect(&db_path).await?;
+            logsdump_sixes::fill_sample(&db, std::path::Path::new(dump)).await
+        }
+
+        // Each 6v6 role's weights fitted to who won, against the weights now.
+        ["sixes-fit", file, rest @ ..] => {
+            let fits = logsdump_sixes::fit(std::path::Path::new(file)).await?;
+            if rest.contains(&"--json") {
+                println!("{}", serde_json::to_string(&fits)?);
+            } else {
+                for f in &fits {
+                    println!("\n{}: now {:.1}%  fitted {:.1}%  ({} pairs fitted, {} scored)", f.role, f.now_test * 100.0, f.fitted_test * 100.0, f.train_pairs, f.test_pairs);
+                    for (c, now) in &f.now {
+                        println!("  {c:<18} {:>5.1}%  ->  {:>5.1}%", now * 100.0, f.fitted[c] * 100.0);
+                    }
+                }
+            }
+            Ok(())
         }
 
         // The 6v6 rating's built-in league pool, from those games' officials.
