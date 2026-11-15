@@ -12,13 +12,11 @@ use crate::tfclass::TfClass;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// Whether 6v6 is switched on in this build. 6v6 ships only once its rating
-/// is ready (question 15), so until then a release build hides every 6v6
-/// entry; a debug build (`tauri dev`) shows them to build against. A release
-/// build made with `HL_SIXES=1` in its environment has them too: a preview of
-/// the release as it will ship (Flashy: "build it so i can see all the changes
-/// on the actual app how it will be").
-pub const SIXES_ENABLED: bool = cfg!(debug_assertions) || option_env!("HL_SIXES").is_some();
+/// Whether 6v6 is switched on in this build. 6v6 shipped once its rating was
+/// ready (question 15): on in every build from 0.14.0. Still a constant, so a
+/// build can switch it off again in one place; a player who does not tick 6v6
+/// in setup sees no 6v6 either way.
+pub const SIXES_ENABLED: bool = true;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
