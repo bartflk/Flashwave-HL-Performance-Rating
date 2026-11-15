@@ -260,6 +260,21 @@ impl Db {
         Ok(rows.into_iter().map(|(a, r, v)| (a as u32, r, v)).collect())
     }
 
+    /// How many 6v6 ratings are stored under this model version.
+    pub async fn sixes_rating_count(&self, version: &str) -> Result<i64> {
+        Ok(sqlx::query_scalar("SELECT COUNT(*) FROM sixes_rating WHERE model_version = ?1").bind(version).fetch_one(self.pool()).await?)
+    }
+
+    /// Whether any 6v6 log is stored, the owner's or the league sample's.
+    pub async fn has_sixes_logs(&self) -> Result<bool> {
+        Ok(sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM log_index i WHERE COALESCE(i.format_override, i.format) = 'sixes')
+                 OR EXISTS (SELECT 1 FROM sixes_league_log WHERE json IS NOT NULL)",
+        )
+        .fetch_one(self.pool())
+        .await?)
+    }
+
     /// Everyone on an ETF2L 6v6 lineup the app holds.
     pub async fn sixes_roster_accounts(&self) -> Result<Vec<u32>> {
         let rows: Vec<i64> = sqlx::query_scalar(

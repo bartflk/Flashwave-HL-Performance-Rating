@@ -74,8 +74,21 @@ pub async fn refresh(db: &hl_db::Db, sources: &Sources) -> Result<usize> {
     let at = now();
     let mut all: Vec<Ban> = Vec::new();
     let mut page = 1;
+    // ETF2L answered page 2 with a 500 on 15 Nov 2026, and the `?` threw away
+    // page 1 with it: no Banned tag anywhere, and the next try from scratch.
+    // A later page failing keeps what was read, merged with the last list.
+    let mut partial = false;
     loop {
-        let Some(body) = sources.etf2l_page("/bans?status=active", page).await? else { break };
+        let body = match sources.etf2l_page("/bans?status=active", page).await {
+            Ok(Some(b)) => b,
+            Ok(None) => break,
+            Err(e) if page > 1 => {
+                tracing::warn!(page, error = %format!("{e:#}"), "ETF2L bans: a page failed; keeping what was read");
+                partial = true;
+                break;
+            }
+            Err(e) => return Err(e),
+        };
         let (bans, last) = parse_page(&body, at);
         all.extend(bans);
         if page >= last || page >= MAX_PAGES || sources.etf2l_resting() {
@@ -83,10 +96,18 @@ pub async fn refresh(db: &hl_db::Db, sources: &Sources) -> Result<usize> {
         }
         page += 1;
     }
+    let before: Stored = db.get_setting(SETTING).await?.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+    let fetched_at = if partial {
+        // The pages not read keep last time's bans, and the list stays due.
+        all.extend(before.bans.iter().cloned());
+        before.fetched_at
+    } else {
+        at
+    };
     all.sort_by_key(|b| b.account_id);
     all.dedup_by(|a, b| a.account_id == b.account_id && a.end == b.end);
-    db.set_setting(SETTING, &serde_json::to_string(&Stored { fetched_at: at, bans: all.clone() })?).await?;
-    tracing::info!(bans = all.len(), pages = page, "ETF2L bans read");
+    db.set_setting(SETTING, &serde_json::to_string(&Stored { fetched_at, bans: all.clone() })?).await?;
+    tracing::info!(bans = all.len(), pages = page, partial, "ETF2L bans read");
     Ok(all.len())
 }
 

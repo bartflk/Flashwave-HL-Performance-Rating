@@ -504,6 +504,16 @@ Look for its window in the taskbar, or close the other one and start again.".to_
                 }
                 let _ = tauri::Emitter::emit(&handle, "startup://rated", ());
             }
+            // The same for 6v6 (0.14.1 audit): a new 6v6 model (s1 -> s3 in
+            // 0.14.0) left the 6v6 profile empty until the next sync.
+            let sixes_version = hl_ingest::sixes_rating::model_version();
+            if db.sixes_rating_count(&sixes_version).await.unwrap_or(1) == 0 && db.has_sixes_logs().await.unwrap_or(false) {
+                match hl_ingest::sixes_rating::rate_all(&db).await {
+                    Ok(n) => tracing::info!(ratings = n, model = %sixes_version, "6v6 rated for a new model"),
+                    Err(e) => tracing::warn!(error = %format!("{e:#}"), "6v6 rating pass failed"),
+                }
+                let _ = tauri::Emitter::emit(&handle, "startup://rated", ());
+            }
         });
     }
 

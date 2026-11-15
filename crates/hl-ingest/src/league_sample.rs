@@ -352,6 +352,40 @@ async fn log_step(db: &Db, sources: &Sources, resting: bool, doing: &mut (impl F
     Ok(None)
 }
 
+/// Download every picked official's log and server log from drops.tf, and
+/// nothing else: no listing, no lineups, no logs.tf searches, which a step
+/// does first and which kept 0.14.0's snapshot from Seasons 12 to 23 (3,348
+/// officials released when the model moved to v14, newest first behind
+/// every search). For the release snapshot and `hl league-sample fetch`.
+pub async fn fetch_picked(db: &Db, sources: &Sources, max_s: u64, mut progress: impl FnMut(&str) + Send) -> Result<CatchUp> {
+    let started = std::time::Instant::now();
+    let mut out = CatchUp::default();
+    let mut failing = 0;
+    while started.elapsed().as_secs() < max_s {
+        let mut what = String::new();
+        let Some(step) = log_step(db, sources, sources.logstf_resting(), &mut |w: &str| what = w.to_string()).await? else {
+            out.done = true;
+            break;
+        };
+        progress(&what);
+        match step {
+            Step::Json { .. } => out.logs += 1,
+            Step::Raw { found, .. } => out.raw += usize::from(found),
+            // drops.tf not answering: a few in a row and it is left for later.
+            Step::Failed { .. } => {
+                failing += 1;
+                if failing >= 20 {
+                    break;
+                }
+                continue;
+            }
+            _ => {}
+        }
+        failing = 0;
+    }
+    Ok(out)
+}
+
 /// Do one unit of work. The caller waits between calls: this is the pace.
 /// `doing` is told what each request is before it is made, so a window can
 /// say what the job is doing rather than only what it has done.

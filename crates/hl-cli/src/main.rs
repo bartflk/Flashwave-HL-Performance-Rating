@@ -84,7 +84,7 @@ COMMANDS:
     guide [--json]         Every class's model: its components, their share of
                            the rating and what each one means (the app's 'How
                            ratings work' page)
-    league-sample [status|discover|run N]
+    league-sample [status|discover|run N|fetch [SECS]]
                            The ETF2L sample from every division: where it
                            stands, list and choose the matches, or run N
                            download steps (one request each, 5 s apart)
@@ -1460,6 +1460,32 @@ async fn run() -> Result<()> {
                         "{} logs, {} server logs, {} match pages, {} searched, {} rated{} in {:.0}s",
                         c.logs, c.raw, c.rosters, c.searched, c.rated, if c.done { ", caught up" } else { "" }, started.elapsed().as_secs_f64()
                     );
+                }
+                ["fetch", rest @ ..] => {
+                    // Only the picked officials' logs, from drops.tf, then rated:
+                    // what the release snapshot needs (0.14.1).
+                    let secs: u64 = rest.first().and_then(|s| s.parse().ok()).unwrap_or(4 * 3600);
+                    let (weights, _) = hl_rating::Weights::load(&db_path.with_file_name("weights.toml"));
+                    let started = std::time::Instant::now();
+                    let mut n = 0usize;
+                    let c = hl_ingest::league_sample::fetch_picked(&db, &sources, secs, |what| {
+                        n += 1;
+                        if n.is_multiple_of(250) {
+                            eprintln!("  {n} steps: {what}");
+                        }
+                    })
+                    .await?;
+                    let mut tried = std::collections::HashSet::new();
+                    let mut rated = 0;
+                    loop {
+                        let r = hl_ingest::league_rating::rate_new(&db, &weights, &mut tried, 200).await?;
+                        if r == 0 {
+                            break;
+                        }
+                        rated += r;
+                    }
+                    hl_ingest::catalogue::index_league_players(&db, 100_000).await?;
+                    println!("{} logs, {} server logs, {} rated{} in {:.0}s", c.logs, c.raw, rated, if c.done { ", all fetched" } else { "" }, started.elapsed().as_secs_f64());
                 }
                 ["select"] => {
                     // Choose the sample again from what is listed, no requests.
