@@ -129,10 +129,12 @@ impl Db {
         .await?)
     }
 
-    /// Replace a model version's 6v6 ratings: `(log, account, role, rating, score, minutes, parts)`.
+    /// Replace the 6v6 ratings with this model version's: `(log, account,
+    /// role, rating, score, minutes, parts)`. Every other version's go too:
+    /// the table is rebuilt whole by each pass, and nothing reads an old model.
     pub async fn replace_sixes_ratings(&self, version: &str, rows: &[(i64, u32, String, f64, f64, f64, String)]) -> Result<()> {
         let mut tx = self.pool().begin().await?;
-        sqlx::query("DELETE FROM sixes_rating WHERE model_version = ?1").bind(version).execute(&mut *tx).await?;
+        sqlx::query("DELETE FROM sixes_rating").execute(&mut *tx).await?;
         for (log, account, role, rating, score, minutes, parts) in rows {
             sqlx::query(
                 "INSERT INTO sixes_rating (log_id, account_id, role, model_version, rating, score, minutes, parts) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
