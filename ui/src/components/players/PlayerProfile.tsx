@@ -231,9 +231,16 @@ export function PlayerHeader({ p, aside, own }: { p: Profile; aside?: React.Reac
 }
 
 function ProfileLinks({ p }: { p: Profile }) {
-  const id = p.steamid64;
+  return <ElsewhereLinks steamid64={p.steamid64} etf2lId={p.etf2lId} />;
+}
+
+/** A player on every site that has them: ETF2L when known, then trends.tf,
+ *  logs.tf, demos.tf, RGL, UGC and Steam. Every player page's header ends
+ *  with it (the RGL player page too). */
+export function ElsewhereLinks({ steamid64, etf2lId }: { steamid64: string; etf2lId: number | null }) {
+  const id = steamid64;
   const links: Array<[string, string, boolean]> = [
-    ...(p.etf2lId !== null ? [["ETF2L", `https://etf2l.org/forum/user/${p.etf2lId}/`, true] as [string, string, boolean]] : []),
+    ...(etf2lId !== null ? [["ETF2L", `https://etf2l.org/forum/user/${etf2lId}/`, true] as [string, string, boolean]] : []),
     ["trends.tf", `https://trends.tf/player/${id}/`, false],
     ["logs.tf", `https://logs.tf/profile/${id}`, false],
     ["demos.tf", `https://demos.tf/profiles/${id}`, false],

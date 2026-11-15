@@ -1,8 +1,15 @@
 import { useState, type ReactNode } from "react";
+import { Backdrop } from "../Backdrop";
+import { ClassIcon } from "../ClassIcon";
+import { classLabel } from "../analysis/common";
+import { BanTag } from "../BanTag";
+import { ElsewhereLinks } from "../players/PlayerProfile";
+import { LogsTfCareer } from "../players/LogsTfCareer";
+import { rating } from "../../lib/format";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { RglFormMatch, RglMedal, RglPlayer } from "../../api/types";
-import { t } from "../../lib/i18n";
+import { t, tx } from "../../lib/i18n";
 import { openOnKey } from "../../lib/rows";
 import { byYear, career, formLine, medalCounts, resultFor } from "../../lib/rglplayer";
 import { ApiError } from "../ApiError";
@@ -12,7 +19,7 @@ import { fullDate } from "../etf2l/Countdown";
 import { MedalGlyph } from "../players/MedalGlyph";
 import { PlayerStatsCard } from "../players/PlayerStats";
 import { KEEP, SEARCH_FROM, useNameSearch, usePlayer, day, looksLikeSteamId, secs } from "./data";
-import { OnRgl, SearchHits } from "./bits";
+import { SearchHits } from "./bits";
 
 /** You on RGL, from the app's SteamID: your last season and team. */
 export function YourRgl({ steamid, onTeam, onPlayer }: { steamid: string; onTeam: (id: number) => void; onPlayer: (s: string) => void }) {
@@ -115,23 +122,6 @@ const accountOf = (steamId: string): number | null => {
 const PLACE_LABEL: Record<number, string> = { 1: "Champion", 2: "Runner-up", 3: "Third" };
 
 /** How many of each medal they won, beside the name. */
-function MedalBadges({ medals }: { medals: RglMedal[] }) {
-  const counts = medalCounts(medals);
-  return (
-    <>
-      {counts.map(
-        (n, i) =>
-          n > 0 && (
-            <span key={i} className="badge rgl-medal" title={t("{0} × {1}", { "0": n, "1": t(PLACE_LABEL[i + 1]) })}>
-              <MedalGlyph size={15} place={i + 1} />
-              {n}
-            </span>
-          ),
-      )}
-    </>
-  );
-}
-
 function Kpi({ label, value, sub, title }: { label: string; value: ReactNode; sub?: ReactNode; title?: string }) {
   return (
     <div className="kpi" title={title}>
@@ -341,45 +331,207 @@ function AppRating({ steamId }: { steamId: string }) {
   );
 }
 
+type RglTab = "overview" | "career" | "app";
+
+/**
+ * An RGL player's page, laid out as the app's own player pages (Flashy:
+ * "do that for rgl as well later, i want to keep consistency on the UI"):
+ * the same header -- backdrop, names they went by, class, team and seasons,
+ * medals, every site that has them, a rating card -- and the same tabs.
+ */
 export function PlayerView({ steamId, onTeam, onMatch }: { steamId: string; onTeam: (id: number) => void; onMatch: (id: number) => void }) {
   const q = usePlayer(steamId);
   const p: RglPlayer | null | undefined = q.data;
   const more = useMore(steamId);
+  const [tab, setTab] = useState<RglTab>("overview");
   if (q.error) return <ApiError error={q.error} />;
   if (q.isPending) return <Loading>{t("Loading the player…")}</Loading>;
   if (!p) return <p className="hint">{t("No RGL profile for this SteamID.")}</p>;
-  const wins = p.seasons.reduce((n, s) => n + s.wins, 0);
-  const losses = p.seasons.reduce((n, s) => n + s.losses, 0);
+  const tabs: Array<[RglTab, string]> = [
+    ["overview", t("Overview")],
+    ["career", t("Career")],
+    ["app", t("In the app")],
+  ];
   return (
     <>
-      <div className="panel pp-head">
-        <div className="pp-top">
-          <div className="pp-avatar">{p.avatar ? <img src={p.avatar} alt="" /> : <span>{p.name.slice(0, 1).toUpperCase()}</span>}</div>
-          <div className="pp-who">
-            <div className="pp-name-row">
-              <h2 className="pp-name">{p.name}</h2>
-              {more.data && <MedalBadges medals={more.data.medals} />}
-              {p.banned && <span className="badge rgl-banned">{t("Banned")}</span>}
-              {p.probation && <span className="badge">{t("On probation")}</span>}
+      <RglPlayerHeader p={p} medals={more.data?.medals ?? []} />
+      <nav className="pf-tabs" role="tablist" aria-label={t("Profile sections")}>
+        {tabs.map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "pf-tab on" : "pf-tab"} onClick={() => setTab(id)}>
+            {label}
+          </button>
+        ))}
+      </nav>
+      {tab === "overview" && (
+        <>
+          <Headline p={p} more={more} />
+          <Results more={more} onTeam={onTeam} onMatch={onMatch} />
+        </>
+      )}
+      {tab === "career" && (
+        <div className="rgl-cols">
+          <div className="rgl-col">
+            <Timeline p={p} medals={more.data?.medals ?? []} onTeam={onTeam} />
+            <LogsTfCareerPanel steamId={p.steamId} />
+          </div>
+          <div className="rgl-col">
+            <Cabinet more={more} onTeam={onTeam} />
+          </div>
+        </div>
+      )}
+      {tab === "app" && <AppRating steamId={p.steamId} />}
+    </>
+  );
+}
+
+/** Their logs.tf career, from the summary built into the app. */
+function LogsTfCareerPanel({ steamId }: { steamId: string }) {
+  const id = accountOf(steamId);
+  if (id === null) return null;
+  return (
+    <section className="panel e2-panel">
+      <div className="e2-panel-head">
+        <h2>{t("logs.tf career")}</h2>
+      </div>
+      <LogsTfCareer accountId={id} />
+    </section>
+  );
+}
+
+/**
+ * The header of the app's player pages, for an RGL player: what RGL says
+ * (seasons, record, team, medals, a ban or probation), what the logs.tf
+ * summary adds (the names they went by, their main class) and a rating
+ * card -- the app's own when it holds their games, else their logs.tf career.
+ */
+function RglPlayerHeader({ p, medals }: { p: RglPlayer; medals: RglMedal[] }) {
+  const id = accountOf(p.steamId);
+  const lt = useQuery({ queryKey: ["logstf_career", id], queryFn: () => api.logstfCareer(id!), enabled: id !== null, staleTime: Infinity }).data ?? null;
+  const [allAliases, setAllAliases] = useState(false);
+  const aliases = (lt?.player.aliases ?? []).filter((a) => a !== p.name);
+  const shown = allAliases ? aliases : aliases.slice(0, 8);
+  const wins = p.seasons.reduce((n, s) => n + s.wins, 0);
+  const losses = p.seasons.reduce((n, s) => n + s.losses, 0);
+  const current = p.seasons[0] ?? null;
+  const main = lt?.player.mainClass ?? null;
+  const counts = medalCounts(medals);
+  return (
+    <div className="panel pp-head has-backdrop">
+      <Backdrop />
+      <div className="pp-top">
+        <div className="pp-avatar">{p.avatar ? <img src={p.avatar} alt="" /> : <span>{p.name.slice(0, 1).toUpperCase()}</span>}</div>
+        <div className="pp-who">
+          <div className="pp-name-row">
+            <h2 className="pp-name">{p.name}</h2>
+            {p.banned && <span className="pp-banned">{t("Banned on RGL")}</span>}
+            {p.probation && <span className="pp-role">{t("On probation")}</span>}
+            <BanTag accountId={id} />
+          </div>
+          {shown.length > 0 && (
+            <div className="pp-aka">
+              <span className="pp-aka-label">{t("Also known as")}</span>
+              {shown.map((a, i) => (
+                <span key={`${a}-${i}`} className={`pp-alias pp-alias-${i % 5}`}>
+                  {a}
+                </span>
+              ))}
+              {aliases.length > shown.length && (
+                <button className="pp-alias pp-alias-more" onClick={() => setAllAliases(true)}>
+                  {t("+{0} more", { "0": aliases.length - shown.length })}
+                </button>
+              )}
             </div>
-            <span className="muted">
-              {p.seasons.length === 1 ? t("1 NA Highlander season") : t("{0} NA Highlander seasons", { "0": p.seasons.length })} · {wins}-{losses}
+          )}
+          <div className="pp-meta">
+            <span className="pp-chip" title={t("Most played on logs.tf")}>
+              {main ? (
+                <>
+                  <ClassIcon cls={main} size={16} /> {classLabel(main)}
+                </>
+              ) : (
+                <span className="muted">{t("Main class")} –</span>
+              )}
+            </span>
+            {current ? (
+              <span className="pp-chip pp-chip-team" title={t("Current team")}>
+                <strong>{current.teamName}</strong>
+                <span className="muted">
+                  {[current.division, current.seasonName].filter(Boolean).join(" · ")}
+                </span>
+              </span>
+            ) : (
+              <span className="pp-chip muted">{t("No RGL team yet")}</span>
+            )}
+            <span className="pp-chip" title={t("RGL seasons")}>
+              <RglMark size={13} />
+              {p.seasons.length === 1 ? t("1 NA Highlander season") : t("{0} NA Highlander seasons", { "0": p.seasons.length })}
+              <span className="muted"> · {wins}–{losses}</span>
             </span>
           </div>
-          <OnRgl href={`https://rgl.gg/Public/PlayerProfile?p=${p.steamId}`} />
+          {counts.some((n) => n > 0) && (
+            <div className="pp-titles">
+              <span className="pp-title-group">
+                {counts.map(
+                  (n, i) =>
+                    n > 0 && (
+                      <span key={i} className={`pp-title pp-${["gold", "silver", "bronze"][i]}`}>
+                        <MedalGlyph size={18} place={i + 1} />
+                        {n}× {t(PLACE_LABEL[i + 1])}
+                      </span>
+                    ),
+                )}
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="pp-side">
+          <RatingCard accountId={id} career={lt} />
         </div>
       </div>
-      <Headline p={p} more={more} />
-      <div className="rgl-cols">
-        <div className="rgl-col">
-          <Results more={more} onTeam={onTeam} onMatch={onMatch} />
-          <Timeline p={p} medals={more.data?.medals ?? []} onTeam={onTeam} />
-        </div>
-        <div className="rgl-col">
-          <AppRating steamId={p.steamId} />
-          <Cabinet more={more} onTeam={onTeam} />
-        </div>
+      <div className="pp-foot">
+        {medals.length > 0 ? (
+          <div className="pp-trophies" aria-label={t("Medals")}>
+            {medals.map((m, i) => (
+              <span key={i} className="rgl-trophy" title={`${m.seasonName}${m.division ? ` · ${m.division}` : ""} · ${m.teamName}`}>
+                <MedalGlyph size={30} place={m.place} />
+                <span className="muted">{m.seasonName.replace(/^HL\s*/i, "")}</span>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span />
+        )}
+        <ElsewhereLinks steamid64={p.steamId} etf2lId={null} />
       </div>
-    </>
+    </div>
+  );
+}
+
+/** The header's rating card: the app's own on their main class when it holds
+ *  their games, else their logs.tf career's, the same card the profile has. */
+function RatingCard({ accountId, career }: { accountId: number | null; career: import("../../api/types").LogsTfCareer | null }) {
+  const stats = useQuery({ queryKey: ["player_stats", accountId], queryFn: () => api.getPlayerStats(accountId!), enabled: accountId !== null }).data;
+  const own = stats?.classes.slice().sort((a, b) => b.games - a.games)[0] ?? null;
+  const lt = career?.classes.filter((c) => c.pool === "competitive").sort((a, b) => b.games - a.games)[0] ?? null;
+  if (!own && !lt) return null;
+  const cls = own?.class ?? lt!.class;
+  return (
+    <div className="pp-sig">
+      <span className="pp-sig-label">
+        <ClassIcon cls={cls} size={18} /> {tx("{0} rating", { "0": classLabel(cls) })}
+      </span>
+      <span className="pp-sig-value">{rating(own ? own.career : lt!.rating)}</span>
+      {own ? (
+        <>
+          {own.recent !== null && <span className="pp-sig-sub">{tx("form {0}", { "0": rating(own.recent) })}</span>}
+          <span className="pp-sig-sub muted">{tx("{0} rated games", { "0": own.games })}</span>
+        </>
+      ) : (
+        <>
+          <span className="pp-sig-sub">{tx("form {0}", { "0": rating(lt!.form) })}</span>
+          <span className="pp-sig-sub muted">{tx("{0} games on logs.tf", { "0": lt!.games })}</span>
+        </>
+      )}
+    </div>
   );
 }
