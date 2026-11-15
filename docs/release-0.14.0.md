@@ -106,7 +106,8 @@ Valve's, from the Official TF2 Wiki.
 **SHA-256**
 
 ```
-(filled in at release)
+1c09e476762b7e038bb7156ebc69e6a25abf9363b96159c50a4486150db08747  Flashwave.tf_0.14.0_x64-setup.exe
+41fae133872490eb9a554fb270bbf5586aa8f0fd3ad5384210d013aada36c957  Flashwave.tf_0.14.0_x64_en-US.msi
 ```
 
 The Linux files are built on GitHub; their hashes are on the release page
