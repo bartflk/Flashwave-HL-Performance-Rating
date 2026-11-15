@@ -107,6 +107,13 @@ down picks the winner 75.5% (flank Scout) and 72.4% (roamer) by itself; kills in
 an über 60.1%; the deaths band 55.5%; the Medic's caps 50.4%, as he is rarely
 on the point übered or last alive.
 
+**Model s3 (boSe.: "All 3 should stay"):** über forces, backcaps and Sniper
+pressure are measured as proposed (`sixes_raw.rs`) and count at s2's shares.
+On the same officials: team 92.2%; flank Scout 77.7%, roamer 76.8%, pocket
+76.6%, the rest unchanged. Backcaps alone pick the winner 76.1%; über forces
+45%, under a coin in every role: the side forcing more übers is mostly the
+side under pressure. Kept, as agreed, for boSe. to look at again.
+
 ## 3. Proposed definitions, for the reviewers
 
 Three of boSe.'s numbers have no agreed definition. The app shows a

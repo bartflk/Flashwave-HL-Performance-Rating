@@ -40,11 +40,14 @@ are re-rated on model v14 at the first start.
   you can correct your own.
 - **Against the whole 6v6 field from the first sync**: each game is compared
   with every 6v6 official in the logs.tf database (63,959 games of ETF2L, RGL
-  and other leagues), and the weights were fitted to who won them. The
-  higher-rated side won 89.9% of those officials.
-- **How ratings work** has a 6v6 page: each role's parts, their share, and
-  which are not measured yet (round impact joins once it is). It is in the
-  new **?** menu in the top bar.
+  and other leagues), with weights fitted to who won them and then reviewed
+  by boSe.: the pocket rated on damage more than kills, the flanks marked
+  down for dying together rather than alone, the pocket Scout's kills in an
+  über, über forces, backcaps and Sniper pressure on the combo, and the
+  Medic on the point only when übered or last alive. Round impact counts
+  too. The higher-rated team won 92.2% of 12,635 decided league officials.
+- **How ratings work** has a 6v6 page: each role's parts, their share and
+  what each one means. It is in the new **?** menu in the top bar.
 - **The match page in 6v6**: role matchups, 6v6 numbers (damage taken,
   airshots, Medic picks, space created, sticky, reflect and sentry kills),
   Medic against Medic, off-class stints, opponent strength from 6v6 ratings,
