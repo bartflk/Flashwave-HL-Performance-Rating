@@ -437,6 +437,26 @@ fn season_span_key(id: i64) -> String {
 
 /// A season's span: from disk once the season is over, else from its two
 /// end matches. A failure costs the dates, not the card.
+/// A season's dates if they were kept (a finished season whose page was
+/// opened once): no request.
+async fn season_span_known(db: &Db, id: i64) -> SeasonSpan {
+    let key = season_span_key(id);
+    db.rgl_answers(std::slice::from_ref(&key))
+        .await
+        .ok()
+        .and_then(|mut kept| kept.remove(&key))
+        .and_then(|(body, _)| serde_json::from_str::<SeasonSpan>(&body).ok())
+        .unwrap_or_default()
+}
+
+/// An answer already in memory or on disk, without asking RGL.
+async fn known(db: &Db, path: &str) -> Option<String> {
+    if let Some(body) = held(path).filter(|b| b != MISSING) {
+        return Some(body);
+    }
+    db.rgl_answers(&[path.to_string()]).await.ok()?.remove(path).map(|(body, _)| body)
+}
+
 async fn season_span(db: &Db, sources: &Sources, id: i64, ids: &[i64], over: bool) -> SeasonSpan {
     let key = season_span_key(id);
     if over {
@@ -467,10 +487,19 @@ async fn season_span(db: &Db, sources: &Sources, id: i64, ids: &[i64], over: boo
     span
 }
 
-pub async fn season_card(db: &Db, sources: &Sources, id: i64) -> Result<RglSeasonCard> {
+/// A season's card. `full` is the season's own page: it reads the two end
+/// matches for the dates and every division's teams for the count, and keeps
+/// them. The seasons list asks with `full` off, for every season at once, so
+/// it costs only what it cost before (the season and its top division):
+/// the dates and the full count show where they are already known, from
+/// disk or memory, and nothing more is asked. On a cold start that would
+/// otherwise have been two matches and four or five team lists for each of
+/// some twenty-five seasons (Flashy: "make sure to properly use the api to
+/// not overburden them. I wanna make this very critical").
+pub async fn season_card(db: &Db, sources: &Sources, id: i64, full: bool) -> Result<RglSeasonCard> {
     let (head, over) = season_head(db, sources, id).await?;
     let groups = head.groups();
-    let span = season_span(db, sources, id, &head.matches_played_during_season, over).await;
+    let span = if full { season_span(db, sources, id, &head.matches_played_during_season, over).await } else { season_span_known(db, id).await };
     let mut card = RglSeasonCard {
         id,
         maps: head.maps.len(),
@@ -495,7 +524,9 @@ pub async fn season_card(db: &Db, sources: &Sources, id: i64) -> Result<RglSeaso
     // has them on disk already, one still played asks for each once.
     let mut total = Some(teams.len());
     for g in &groups[1..] {
-        match kept(db, sources, &format!("/groups/{g}/teams"), decided_division).await.ok().and_then(|b| teams_of(&b).ok()) {
+        let path = format!("/groups/{g}/teams");
+        let body = if full { kept(db, sources, &path, decided_division).await.ok() } else { known(db, &path).await };
+        match body.and_then(|b| teams_of(&b).ok()) {
             Some(t) => total = total.map(|n| n + t.iter().filter(|t| !t.name.starts_with("Bye Week")).count()),
             None => total = None,
         }

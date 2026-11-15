@@ -16,7 +16,10 @@ import { Reading, WeekLine } from "./bits";
 import { StatCard } from "./Team";
 
 /** A season's card, read once and kept for half an hour (and on disk for good once the season is over). */
-const cardQuery = (id: number) => ({ queryKey: ["rgl_season_card", id], queryFn: () => api.getRglSeasonCard(id), staleTime: KEEP, retry: false });
+/** `full`: the season's own page, which reads its dates and every division
+ *  (and keeps them); the list asks without, so a cold list costs no more than
+ *  it did (hl_ingest::rgl::season_card). */
+const cardQuery = (id: number, full = false) => ({ queryKey: ["rgl_season_card", id, full], queryFn: () => api.getRglSeasonCard(id, full), staleTime: KEEP, retry: false });
 
 /** A date from unix seconds, as the tab shows dates. */
 const dayOf = (secs: number) => day(new Date(secs * 1000).toISOString());
@@ -174,7 +177,7 @@ export function SeasonView({ id, onTeam, more }: { id: number; onTeam: (id: numb
   const q = useSeason(id);
   const s = q.data;
   const [shown] = useShowResults();
-  const card = useQuery(cardQuery(id)).data;
+  const card = useQuery(cardQuery(id, true)).data;
   // The matches only if the season's page below has read them: this header
   // never asks for them (Home shows it without them).
   const read = useQuery({ queryKey: ["rgl_season_matches", id], queryFn: () => api.getRglSeasonMatches(id), enabled: false, staleTime: KEEP }).data;

@@ -2344,8 +2344,8 @@ pub async fn get_rgl_team_history(state: State<'_, AppState>, id: i64, all: Opti
 
 /// An RGL season's card: its best division's top three.
 #[tauri::command]
-pub async fn get_rgl_season_card(state: State<'_, AppState>, id: i64) -> CmdResult<hl_ingest::rgl::RglSeasonCard> {
-    Ok(hl_ingest::rgl::season_card(&state.db, &state.sources, id).await?)
+pub async fn get_rgl_season_card(state: State<'_, AppState>, id: i64, full: Option<bool>) -> CmdResult<hl_ingest::rgl::RglSeasonCard> {
+    Ok(hl_ingest::rgl::season_card(&state.db, &state.sources, id, full.unwrap_or(false)).await?)
 }
 
 /// RGL players whose name holds `q`.

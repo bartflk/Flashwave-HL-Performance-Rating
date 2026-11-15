@@ -1580,7 +1580,7 @@ export const mockApi: Api = {
             { steamId: "76561198000000001", alias: "oldtimer", createdAt: "2026-03-01T00:00:00.000Z", expiresAt: "2026-04-01T00:00:00.000Z", reason: "Toxicity" },
           ],
     ),
-  getRglSeasonCard: (id: number) =>
+  getRglSeasonCard: (id: number, _full = false) =>
     delay<RglSeasonCard>({
       id,
       maps: 6,
