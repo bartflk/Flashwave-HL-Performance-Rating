@@ -798,6 +798,67 @@ pub async fn board(db: &hl_db::Db, role: &str) -> Result<Vec<BoardRow>> {
         .collect())
 }
 
+/// One answer of the 6v6 player search.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SixesHit {
+    pub account_id: u32,
+    pub name: String,
+    /// The main role with the most rated games.
+    pub role: Option<String>,
+    pub games: i64,
+    pub average: Option<f64>,
+}
+
+/// The 6v6 player search (audit F1): it used Highlander's catalogue, so a
+/// player who only plays 6v6 could not be found. Everyone rated in 6v6 and
+/// everyone on a 6v6 lineup, by any name ETF2L or a log gave them, or by a
+/// SteamID; most rated games first.
+pub async fn search(db: &hl_db::Db, term: &str) -> Result<Vec<SixesHit>> {
+    let term = term.trim();
+    if term.chars().count() < 2 {
+        return Ok(Vec::new());
+    }
+    let mut rated: HashMap<u32, (Option<String>, i64, i64, f64)> = HashMap::new();
+    for (a, role, games, avg) in db.sixes_rated_players().await? {
+        let e = rated.entry(a).or_insert((None, 0, 0, 0.0));
+        if games > e.1 {
+            e.0 = Some(role);
+            e.1 = games;
+        }
+        e.2 += games;
+        e.3 += avg * games as f64;
+    }
+    let mut accounts: std::collections::BTreeSet<u32> = rated.keys().copied().collect();
+    accounts.extend(db.sixes_roster_accounts().await?);
+    let etf2l = db.etf2l_names().await?;
+    let logs = db.log_names().await?;
+    let id = SteamId::parse(term).ok().map(|s| s.account_id());
+    let needle = term.to_lowercase();
+    let mut hits: Vec<SixesHit> = accounts
+        .into_iter()
+        .filter_map(|a| {
+            let names: Vec<&String> = etf2l.get(&a).into_iter().chain(logs.get(&a).into_iter().flatten()).collect();
+            let found = id == Some(a) || names.iter().any(|n| n.to_lowercase().contains(&needle));
+            if !found {
+                return None;
+            }
+            let name = names.first().map(|n| n.to_string()).unwrap_or_else(|| format!("[U:1:{a}]"));
+            let r = rated.get(&a);
+            Some(SixesHit {
+                account_id: a,
+                name,
+                role: r.and_then(|r| r.0.clone()),
+                games: r.map_or(0, |r| r.2),
+                average: r.filter(|r| r.2 > 0).map(|r| (r.3 / r.2 as f64 * 100.0).round() / 100.0),
+            })
+        })
+        .collect();
+    hits.sort_by(|a, b| b.games.cmp(&a.games).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase())));
+    hits.truncate(20);
+    Ok(hits)
+}
+
 /// A 6v6 season's honours in one division (the 6v6 plan, P7).
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -929,6 +990,26 @@ mod tests {
         let missing: Vec<&&str> = filled.iter().filter(|c| !crate::sixes_guide::MEASURED.contains(c)).collect();
         assert!(missing.is_empty(), "the 6v6 guide would call these not measured: {missing:?}");
         assert!(filled.len() >= 10, "the fixture fills most of them: {filled:?}");
+    }
+
+    #[tokio::test]
+    async fn the_6v6_search_finds_6v6_only_players_and_not_highlander_only_ones() {
+        let db = hl_db::Db::connect_in_memory().await.unwrap();
+        for sql in [
+            "INSERT INTO etf2l_competition (competition_id, season, season_name, division, stage, name, fetched_at, format) VALUES (2, 52, 'Summer 2026', '', 'regular', '6v6 Season 52', 0, 'sixes')",
+            "INSERT INTO etf2l_competition (competition_id, season, season_name, division, stage, name, fetched_at) VALUES (5, 36, 'x', 'High', 'regular', 'HL 36', 0)",
+            "INSERT INTO etf2l_team (team_id, name) VALUES (3, 'Six One'), (4, 'Nine')",
+            "INSERT INTO etf2l_season_match (match_id, competition_id, division, time, clan1_id, clan2_id, r1, r2) VALUES (20, 2, 'Division 3', 200, 3, 3, 3, 1), (30, 5, 'High', 200, 4, 4, 3, 1)",
+            "INSERT INTO etf2l_season_player (match_id, account_id, team_id, name) VALUES (20, 7, 3, 'SixOnly'), (30, 8, 4, 'SixHighlander')",
+        ] {
+            sqlx::query(sql).execute(db.pool()).await.unwrap();
+        }
+        db.replace_sixes_ratings(&model_version(), &[(1, 7, "medic".into(), 1.2, 70.0, 20.0, "[]".into()), (2, 7, "medic".into(), 1.0, 60.0, 20.0, "[]".into())]).await.unwrap();
+        let hits = search(&db, "six").await.unwrap();
+        assert_eq!(hits.iter().map(|h| h.account_id).collect::<Vec<_>>(), vec![7], "the Highlander lineup's player is not a 6v6 hit");
+        assert_eq!((hits[0].name.as_str(), hits[0].role.as_deref(), hits[0].games, hits[0].average), ("SixOnly", Some("medic"), 2, Some(1.1)));
+        assert_eq!(search(&db, "[U:1:7]").await.unwrap().len(), 1, "by SteamID");
+        assert!(search(&db, "s").await.unwrap().is_empty(), "two letters at least");
     }
 
     #[tokio::test]

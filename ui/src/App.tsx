@@ -79,6 +79,12 @@ export default function App() {
     void checkForUpdate();
   }, []);
   useEffect(() => watchSync(qc), [qc]);
+  // A list answered from storage and read again in the background (ETF2L's
+  // bans, your RGL matches): show the new one now, not at its next refetch.
+  useEffect(() => {
+    const off = api.onDataRefreshed((what) => void qc.invalidateQueries({ queryKey: [what] }));
+    return () => void off.then((f) => f());
+  }, [qc]);
   // "How ratings work", asked for from inside a match page.
   const goRef = useRef(nav.go);
   goRef.current = nav.go;

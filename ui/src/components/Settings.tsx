@@ -393,6 +393,7 @@ function SourcesPanel() {
     ["drops.tf", "https://drops.tf/about", t("By Icewind. logs.tf's logs and raw server logs, asked first: fast and with no rate limit, about an hour behind logs.tf.")],
     ["logs.tf", "https://logs.tf", t("Every log, and the raw server log behind it, for what drops.tf has not got yet: a game just played, or a log it lost.")],
     ["logs.tf history", "https://logs.tf", t("The logs.tf career on every profile and the search over all of logs.tf: a summary of every Highlander log since 2012, built into the app from a logs.tf database.")],
+    ["logs.tf 6v6 history", "https://logs.tf", t("The 6v6 rating's league pool and its fitted weights: every 6v6 official in the same logs.tf database, summed up into a small file built into the app.")],
     ["trends.tf", "https://trends.tf", t("Which matches you played, which logs belong together, and each player's ETF2L career.")],
     ["ETF2L", "https://etf2l.org", t("Officials, divisions, rosters, transfers, seasons and fixtures, and its news: each season's posts and banner.")],
     ["demos.tf", "https://demos.tf", t("SourceTV demos, downloaded only when you ask. Its files go back to 14 October 2019; older demos are listed but gone.")],

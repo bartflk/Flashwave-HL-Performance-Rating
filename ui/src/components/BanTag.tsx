@@ -9,10 +9,13 @@ import { t } from "../lib/i18n";
  * a quarter of an hour: the backend reads ETF2L's list once a day.
  */
 export function useBans(): Map<number, EtfBan> {
-  const q = useQuery({ queryKey: ["etf2l_bans"], queryFn: api.getEtf2lBans, staleTime: 15 * 60_000 });
-  const m = new Map<number, EtfBan>();
-  for (const b of q.data ?? []) m.set(b.accountId, b);
-  return m;
+  // Built once per answer (audit M4): every name on a page asks for it.
+  return useQuery({ queryKey: ["etf2l_bans"], queryFn: api.getEtf2lBans, staleTime: 15 * 60_000, select: byAccount }).data ?? NONE;
+}
+
+const NONE = new Map<number, EtfBan>();
+function byAccount(rows: EtfBan[]): Map<number, EtfBan> {
+  return new Map(rows.map((b) => [b.accountId, b]));
 }
 
 /**

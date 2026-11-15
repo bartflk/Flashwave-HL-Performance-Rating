@@ -129,11 +129,12 @@ pub struct MatchFilter {
 /// ratios.
 /// The owner's rating in a match: Highlander's by class, or, for a 6v6 log
 /// (which has none in `rating`), their 6v6 main role's from `sixes_rating`
-/// under its newest model -- off-class stints left out. Flashy, with Matches
-/// › 6v6 showing "–" in every Rating cell: "the ratings didn't calculate".
+/// -- off-class stints left out. Flashy, with Matches › 6v6 showing "–" in
+/// every Rating cell: "the ratings didn't calculate". The table holds one
+/// model only (a rewrite drops the others), so no version is picked: a text
+/// MAX would have put "s10" below "s9" (audit M1).
 const MY_RATING: &str = "COALESCE(r.score, (SELECT MAX(s.rating) FROM sixes_rating s
-     WHERE s.log_id = m.log_id AND s.account_id = p.account_id AND s.role NOT LIKE 'off:%'
-       AND s.model_version = (SELECT MAX(model_version) FROM sixes_rating)))";
+     WHERE s.log_id = m.log_id AND s.account_id = p.account_id AND s.role NOT LIKE 'off:%'))";
 
 pub const SORTS: [(&str, &str); 35] = [
     ("date", "m.played_at"),

@@ -282,6 +282,16 @@ export interface RatingGuide {
   glossary: ComponentGuide[];
 }
 
+/** One answer of the 6v6 player search (hl_ingest::sixes_rating::search). */
+export interface SixesHit {
+  accountId: number;
+  name: string;
+  /** The main role with the most rated games. */
+  role: string | null;
+  games: number;
+  average: number | null;
+}
+
 /** One part of a 6v6 role's model (hl_ingest::sixes_guide). */
 export interface SixesGuideComponent {
   key: string;

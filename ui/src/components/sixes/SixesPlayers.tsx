@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { t } from "../../lib/i18n";
-import { roleLabel } from "../../lib/gameformat";
+import { t, tx } from "../../lib/i18n";
+import { roleClass, roleLabel, unitLabel } from "../../lib/gameformat";
 import { classLabel } from "../analysis/common";
 import { ClassIcon } from "../ClassIcon";
 import { Loading } from "../Spinner";
 import { BanTag } from "../BanTag";
 import { ProfilePage } from "../profile/ProfilePage";
-import { DivisionBadge } from "../players/PlayerProfile";
 
 const ROLES = ["pocket", "roamer", "pocket_scout", "flank_scout", "demoman", "medic", "off:engineer", "off:heavy", "off:sniper", "off:pyro", "off:spy"];
 const CLASS: Record<string, string> = { pocket: "soldier", roamer: "soldier", pocket_scout: "scout", flank_scout: "scout", demoman: "demoman", medic: "medic" };
@@ -29,7 +28,8 @@ export function SixesPlayers({ onOpenMatch }: { onOpenMatch: (logId: number) => 
   const [query, setQuery] = useState("");
   const term = query.trim();
   const q = useQuery({ queryKey: ["sixes_board", role], queryFn: () => api.getSixesBoard(role), staleTime: 5 * 60_000 });
-  const hits = useQuery({ queryKey: ["search_catalogue", term], queryFn: () => api.searchCatalogue(term), enabled: term.length >= 2, placeholderData: keepPreviousData });
+  // 6v6's own search (audit F1): Highlander's catalogue missed 6v6-only players.
+  const hits = useQuery({ queryKey: ["search_sixes", term], queryFn: () => api.searchSixesPlayers(term), enabled: term.length >= 2, placeholderData: keepPreviousData });
   if (player !== null) {
     return (
       <div className="sx-team-page">
@@ -52,10 +52,11 @@ export function SixesPlayers({ onOpenMatch }: { onOpenMatch: (logId: number) => 
             ) : (
               (hits.data ?? []).slice(0, 12).map((h) => (
                 <button key={h.accountId} className="player-hit" onClick={() => setPlayer(h.accountId)}>
-                  {h.mainClass ? <ClassIcon cls={h.mainClass} size={22} /> : <span style={{ width: 22 }} />}
+                  {h.role ? <ClassIcon cls={roleClass(h.role)} size={22} /> : <span style={{ width: 22 }} />}
                   <span className="ph-name">{h.name}</span>
                   <BanTag accountId={h.accountId} short />
-                  {h.highest && <DivisionBadge d={h.highest} />}
+                  {h.role && <span className="muted ph-role">{unitLabel(h.role)}</span>}
+                  <span className="muted ph-games">{h.games > 0 ? tx("{0} rated · {1}", { "0": h.games, "1": h.average?.toFixed(2) ?? "–" }) : t("on a 6v6 lineup")}</span>
                 </button>
               ))
             )}

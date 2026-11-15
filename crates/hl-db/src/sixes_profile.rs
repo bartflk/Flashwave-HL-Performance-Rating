@@ -161,7 +161,9 @@ impl Db {
     pub async fn sixes_league_history(&self, account_id: u32, role: &str, version: &str) -> Result<Vec<HistoryDbRow>> {
         let rows = sqlx::query(
             "SELECT r.log_id, l.played_at, l.map, l.title,
-                    COALESCE(json_extract(l.json, '$.players.\"[U:1:' || ?1 || ']\".team'), '') AS team,
+                    -- Older logs key players by STEAM_0:X:Y, not [U:1:N] (audit M2).
+                    COALESCE(json_extract(l.json, '$.players.\"[U:1:' || ?1 || ']\".team'),
+                             json_extract(l.json, '$.players.\"STEAM_0:' || (?1 % 2) || ':' || (?1 / 2) || '\".team'), '') AS team,
                     json_extract(l.json, '$.teams.Red.score') AS red_score,
                     json_extract(l.json, '$.teams.Blue.score') AS blue_score,
                     r.rating AS score, r.minutes, r.parts
@@ -208,6 +210,30 @@ impl Db {
         .fetch_all(self.pool())
         .await?)
     }
+
+    /// Every 6v6-rated player's main-role games: `(account, role, games,
+    /// average)`, for the 6v6 player search.
+    pub async fn sixes_rated_players(&self) -> Result<Vec<(u32, String, i64, f64)>> {
+        let rows: Vec<(i64, String, i64, f64)> = sqlx::query_as(
+            "SELECT account_id, role, COUNT(*), AVG(rating) FROM sixes_rating WHERE role NOT LIKE 'off:%' GROUP BY account_id, role",
+        )
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows.into_iter().map(|(a, r, g, v)| (a as u32, r, g, v)).collect())
+    }
+
+    /// Everyone on an ETF2L 6v6 lineup the app holds.
+    pub async fn sixes_roster_accounts(&self) -> Result<Vec<u32>> {
+        let rows: Vec<i64> = sqlx::query_scalar(
+            "SELECT DISTINCT p.account_id FROM etf2l_season_player p
+             JOIN etf2l_season_match m ON m.match_id = p.match_id
+             JOIN etf2l_competition c ON c.competition_id = m.competition_id
+             WHERE c.format = 'sixes'",
+        )
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows.into_iter().map(|a| a as u32).collect())
+    }
 }
 
 #[cfg(test)]
@@ -229,5 +255,20 @@ mod tests {
         assert_eq!((rows[0].team.as_str(), rows[0].red_score, rows[0].blue_score, rows[0].kind.as_deref()), ("Red", Some(4), Some(2), Some("official")));
         assert_eq!(db.sixes_player_roles(42, "s0").await.unwrap(), vec![("pocket".to_string(), 1)]);
         assert_eq!(db.sixes_jsons_of(&[9]).await.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn an_older_log_s_steam_0_key_still_gives_the_side() {
+        let db = Db::connect_in_memory().await.unwrap();
+        // Account 43 is STEAM_0:1:21.
+        let json = r#"{"teams":{"Red":{"score":1},"Blue":{"score":3}},"players":{"STEAM_0:1:21":{"team":"Blue"}}}"#;
+        sqlx::query("INSERT INTO sixes_league_log (log_id, etf2l_match_id, map, played_at, json) VALUES (9, 1, 'cp_badlands', 100, ?1)")
+            .bind(json)
+            .execute(db.pool())
+            .await
+            .unwrap();
+        db.replace_sixes_ratings("s1", &[(9, 43, "medic".to_string(), 1.0, 50.0, 20.0, "[]".to_string())]).await.unwrap();
+        let rows = db.sixes_league_history(43, "medic", "s1").await.unwrap();
+        assert_eq!(rows[0].team, "Blue");
     }
 }

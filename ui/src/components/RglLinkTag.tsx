@@ -7,10 +7,12 @@ import { RglMark } from "./RglMark";
 
 /** Your matches that were RGL matches (hl_ingest::rgl_own), by log. */
 export function useRglLinks(): Map<number, RglLink> {
-  const q = useQuery({ queryKey: ["rgl_own_links"], queryFn: api.getRglOwnLinks, staleTime: 30 * 60_000 });
-  const m = new Map<number, RglLink>();
-  for (const l of q.data ?? []) m.set(l.logId, l);
-  return m;
+  return useQuery({ queryKey: ["rgl_own_links"], queryFn: api.getRglOwnLinks, staleTime: 30 * 60_000, select: byLog }).data ?? NONE;
+}
+
+const NONE = new Map<number, RglLink>();
+function byLog(rows: RglLink[]): Map<number, RglLink> {
+  return new Map(rows.map((l) => [l.logId, l]));
 }
 
 function about(l: RglLink): string {

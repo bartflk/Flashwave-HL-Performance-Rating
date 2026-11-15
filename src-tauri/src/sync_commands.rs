@@ -760,7 +760,9 @@ pub async fn get_diagnostics(state: State<'_, AppState>) -> CmdResult<Diagnostic
 #[tauri::command]
 pub async fn recent_log(lines: Option<usize>) -> CmdResult<String> {
     let lines = lines.unwrap_or(200).min(2000);
-    Ok(tauri::async_runtime::spawn_blocking(move || crate::applog::recent(lines)).await.unwrap_or_default())
+    // Copied to be pasted somewhere: no key or SteamID from a URL's query.
+    let text = tauri::async_runtime::spawn_blocking(move || crate::applog::recent(lines)).await.unwrap_or_default();
+    Ok(text.lines().map(hl_ingest::activity::scrub).collect::<Vec<_>>().join("\n"))
 }
 
 /// How the owner's ratings moved from one model to another.
@@ -855,6 +857,12 @@ pub async fn set_own_role(state: State<'_, AppState>, log_id: i64, role: Option<
 #[tauri::command]
 pub async fn get_sixes_board(state: State<'_, AppState>, role: String) -> CmdResult<Vec<hl_ingest::sixes_rating::BoardRow>> {
     Ok(hl_ingest::sixes_rating::board(&state.db, &role).await?)
+}
+
+/// The 6v6 player search: everyone rated in 6v6 or on a 6v6 lineup (audit F1).
+#[tauri::command]
+pub async fn search_sixes_players(state: State<'_, AppState>, term: String) -> CmdResult<Vec<hl_ingest::sixes_rating::SixesHit>> {
+    Ok(hl_ingest::sixes_rating::search(&state.db, &term).await?)
 }
 
 /// Where the 6v6 league sample stands (the 6v6 plan, P5).
@@ -1196,14 +1204,17 @@ pub async fn get_activity(since: Option<u64>, limit: Option<usize>) -> CmdResult
 /// Answers from what is stored at once; a list over a day old is read again
 /// in the background, one pass at a time.
 #[tauri::command]
-pub async fn get_etf2l_bans(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::bans::Ban>> {
+pub async fn get_etf2l_bans(app: AppHandle, state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::bans::Ban>> {
     static READING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     let (bans, stale) = hl_ingest::bans::active(&state.db).await?;
     if stale && !READING.swap(true, std::sync::atomic::Ordering::SeqCst) {
         let (db, sources) = (state.db.clone(), state.sources.clone());
         tauri::async_runtime::spawn(async move {
-            if let Err(e) = hl_ingest::bans::refresh(&db, &sources).await {
-                tracing::warn!(error = %e, "ETF2L bans could not be read");
+            match hl_ingest::bans::refresh(&db, &sources).await {
+                // The first answer on a new install was empty and the UI kept
+                // it for a quarter of an hour (audit F5): it asks again now.
+                Ok(_) => refreshed(&app, "etf2l_bans"),
+                Err(e) => tracing::warn!(error = %e, "ETF2L bans could not be read"),
             }
             READING.store(false, std::sync::atomic::Ordering::SeqCst);
         });
@@ -1211,20 +1222,29 @@ pub async fn get_etf2l_bans(state: State<'_, AppState>) -> CmdResult<Vec<hl_inge
     Ok(bans)
 }
 
+/// Data a command answered from storage was read again in the background:
+/// the UI drops its copy of `what` (a query key) and asks again.
+pub const EV_REFRESHED: &str = "data://refreshed";
+
+fn refreshed(app: &AppHandle, what: &str) {
+    let _ = app.emit(EV_REFRESHED, what);
+}
+
 /// Which of your matches were RGL matches, for their RGL context (Flashy
 /// chose "B now": context, not officials). Answers from what is stored at
 /// once; over a day old, worked out again in the background, one pass at a
 /// time, as gently as every RGL read.
 #[tauri::command]
-pub async fn get_rgl_own_links(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::rgl_own::RglLink>> {
+pub async fn get_rgl_own_links(app: AppHandle, state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::rgl_own::RglLink>> {
     static READING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     let (links, stale) = hl_ingest::rgl_own::stored(&state.db).await?;
     if stale && !READING.swap(true, std::sync::atomic::Ordering::SeqCst) {
         if let Some(me) = state.db.get_me().await? {
             let (db, sources) = (state.db.clone(), state.sources.clone());
             tauri::async_runtime::spawn(async move {
-                if let Err(e) = hl_ingest::rgl_own::refresh(&db, &sources, me).await {
-                    tracing::warn!(error = %e, "RGL matches among your logs could not be worked out");
+                match hl_ingest::rgl_own::refresh(&db, &sources, me).await {
+                    Ok(_) => refreshed(&app, "rgl_own_links"),
+                    Err(e) => tracing::warn!(error = %e, "RGL matches among your logs could not be worked out"),
                 }
                 READING.store(false, std::sync::atomic::Ordering::SeqCst);
             });

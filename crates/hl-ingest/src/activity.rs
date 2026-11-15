@@ -87,12 +87,13 @@ fn now_ms() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)
 }
 
-/// Add a line to the feed.
+/// Add a line to the feed, with any URL's query values taken out.
 pub fn push(level: &str, source: &str, text: impl Into<String>) {
+    let text = scrub(&text.into());
     let mut s = state().lock().unwrap_or_else(|p| p.into_inner());
     let seq = s.next;
     s.next += 1;
-    s.lines.push_back(Line { seq, at: now_ms(), level: level.to_string(), source: source.to_string(), text: text.into() });
+    s.lines.push_back(Line { seq, at: now_ms(), level: level.to_string(), source: source.to_string(), text });
     while s.lines.len() > CAP {
         s.lines.pop_front();
     }
@@ -110,6 +111,34 @@ pub fn since(since: u64, limit: usize) -> Vec<Line> {
 pub fn sites() -> Vec<Site> {
     let s = state().lock().unwrap_or_else(|p| p.into_inner());
     s.sites.values().cloned().collect()
+}
+
+/// Every URL in a line with its query's values taken out (audit M3): a
+/// warning or an error carries the whole URL, and a key or a SteamID in it
+/// would go wherever the copied log is pasted. Request lines were already
+/// cut down to their path by [`host_path`].
+pub fn scrub(text: &str) -> String {
+    if !text.contains("://") || !text.contains('?') {
+        return text.to_string();
+    }
+    text.split(' ')
+        .map(|word| {
+            let start = word.find("http://").or_else(|| word.find("https://"));
+            let Some(start) = start else { return word.to_string() };
+            let end = word[start..].find(['"', '\'', ')', '>', ',', ';', '`']).map_or(word.len(), |e| start + e);
+            let url = word[start..end].trim_end_matches(['.', ':']);
+            match reqwest::Url::parse(url) {
+                Ok(u) if u.query().is_some() => {
+                    let keys: Vec<String> = u.query_pairs().map(|(k, _)| k.into_owned()).collect();
+                    let mut bare = u.clone();
+                    bare.set_query(None);
+                    word.replacen(url, &format!("{bare}?{}", keys.join("&")), 1)
+                }
+                _ => word.to_string(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// A request's host and path, without the query string's values: what the
@@ -178,6 +207,16 @@ mod tests {
     fn a_request_line_names_the_site_and_path_but_not_the_query_s_values() {
         assert_eq!(host_path("https://api.etf2l.org/player/123?steamid=7656119&limit=5"), ("etf2l.org".into(), "/player/123?steamid&limit".into()));
         assert_eq!(host_path("https://logs.tf/api/v1/log/42"), ("logs.tf".into(), "/api/v1/log/42".into()));
+    }
+
+    #[test]
+    fn a_url_anywhere_in_a_line_loses_its_query_values() {
+        let line = "error sending request for url (https://api.steampowered.com/x/?key=SECRET&steamids=76561198000000001): timed out";
+        let s = scrub(line);
+        assert!(!s.contains("SECRET") && !s.contains("76561198000000001"), "{s}");
+        assert!(s.contains("https://api.steampowered.com/x/?key&steamids): timed out"), "{s}");
+        assert_eq!(scrub("https://logs.tf/api/v1/log/42: HTTP 404"), "https://logs.tf/api/v1/log/42: HTTP 404", "no query, no change");
+        assert_eq!(scrub("plain words? none"), "plain words? none");
     }
 
     #[test]

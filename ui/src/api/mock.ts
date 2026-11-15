@@ -142,7 +142,7 @@ import type {
   Teammates,
   TfPathInfo,
   FightsCard,
-  SeasonsView, StvStage, RatingGuide, SixesGuide, LeagueSample, LeagueActivity, CatalogueHit, PlayerProfile, PlayerStats, Rankings, LeagueCup, LeagueCupPage, CupResult, MatchDivisions, CareerView, SeasonTile, Podium, TeamHonours, TeamEtf2l, ActivityLine, ActivitySite, EtfBan, RglLink } from "./types";
+  SeasonsView, StvStage, RatingGuide, SixesGuide, SixesHit, LeagueSample, LeagueActivity, CatalogueHit, PlayerProfile, PlayerStats, Rankings, LeagueCup, LeagueCupPage, CupResult, MatchDivisions, CareerView, SeasonTile, Podium, TeamHonours, TeamEtf2l, ActivityLine, ActivitySite, EtfBan, RglLink } from "./types";
 
 // Starts configured, since setup is not what you are usually iterating on.
 // Append `?setup` to the URL to start from the first-run screen instead.
@@ -2600,6 +2600,14 @@ export const mockApi: Api = {
   syncBusy: () => delay(busy),
   getRatingGuide: () => delay(ratingGuide as unknown as RatingGuide),
   getSixesRatingGuide: () => delay(sixesGuideJson as unknown as SixesGuide),
+  // The browser build: two 6v6 players, found by any part of their name.
+  searchSixesPlayers: (term: string) =>
+    delay(
+      ([
+        { accountId: 4401, name: "SchmitShot", role: "pocket", games: 14, average: 1.08 },
+        { accountId: 4402, name: "Sossok", role: "medic", games: 9, average: 1.02 },
+      ] as SixesHit[]).filter((h) => h.name.toLowerCase().includes(term.trim().toLowerCase())),
+    ),
   // The browser build: the numbers from the first discovery run.
   getLeagueSample: () => delay(leagueSample),
   // The browser build: a job partway through, alternating working and waiting.
@@ -2726,6 +2734,7 @@ export const mockApi: Api = {
     );
   },
   onDeepProgress: async (_cb: (p: { accountId: number; what: string; done: number; total: number }) => void) => () => {},
+  onDataRefreshed: async (_cb: (what: string) => void) => () => {},
   // From `hl data-audit 31 3 --json` on a copy, 22 October 2026.
   // From `hl head-to-head` on the S33 Low Grand Final, 24 October 2026:
   // every pair answers with it, relabelled.

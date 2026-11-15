@@ -143,6 +143,7 @@ import type {
   NewestLog,
   RatingGuide,
   SixesGuide,
+  SixesHit,
   LeagueSample,
   LeagueActivity,
   CatalogueHit,
@@ -199,6 +200,7 @@ const realApi = {
   newestLog: () => invoke<NewestLog | null>("newest_log"),
   getRatingGuide: () => invoke<RatingGuide>("get_rating_guide"),
   getSixesRatingGuide: () => invoke<SixesGuide>("get_sixes_rating_guide"),
+  searchSixesPlayers: (term: string) => invoke<SixesHit[]>("search_sixes_players", { term }),
   getLeagueSample: () => invoke<LeagueSample>("get_league_sample"),
   setLeagueSample: (on: boolean) => invoke<void>("set_league_sample", { on }),
   getLeagueActivity: () => invoke<LeagueActivity>("get_league_activity"),
@@ -216,6 +218,8 @@ const realApi = {
   getPlayerDeep: (accountId: number, officialsOnly = true, refresh = false) =>
     invoke<PlayerDeep>("get_player_deep", { accountId, officialsOnly, refresh }),
   onDeepProgress: (cb: (p: DeepProgress) => void): Promise<UnlistenFn> => listen<DeepProgress>("deep://progress", (e) => cb(e.payload)),
+  /** Data read again in the background: `what` is the query key to drop. */
+  onDataRefreshed: (cb: (what: string) => void): Promise<UnlistenFn> => listen<string>("data://refreshed", (e) => cb(e.payload)),
   getMatchImpact: (logId: number) => invoke<Record<string, number>>("get_match_impact", { logId }),
   getDataAudit: (season: number, tier: number | null) => invoke<DataReport>("get_data_audit", { season, tier }),
   getHeadToHead: (logId: number, a: number, b: number) => invoke<HeadToHead>("get_head_to_head", { logId, a, b }),

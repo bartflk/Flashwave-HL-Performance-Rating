@@ -12,18 +12,8 @@ import { tierOf } from "../etf2l/Brackets";
 import { Countdown, clockTime, fullDate } from "../etf2l/Countdown";
 import { NewsCard, useNews } from "../etf2l/News";
 import { RecruitPreview, type Kind } from "../etf2l/Recruitment";
+import { firstWhen, fixturesFor, leaderOf, type When } from "../../lib/sixeshome";
 import type { RecruitPost } from "../../api/types";
-
-type When = "today" | "tomorrow" | "week";
-
-/** The day a time falls on, in local time, counted from today. */
-function dayOffset(time: number): number {
-  const d = new Date(time * 1000);
-  const today = new Date();
-  const a = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const b = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-  return Math.round((a - b) / 86_400_000);
-}
 
 export type SixesGo = "season" | "matches" | "seasons" | "news" | "recruitment";
 
@@ -47,11 +37,8 @@ export function SixesHome(props: {
   const upcoming = matches.filter((m) => !m.played && m.time !== null).sort((a, b) => a.time! - b.time!);
   const played = matches.filter((m) => m.played).sort((a, b) => (b.time ?? 0) - (a.time ?? 0));
   const [picked, setWhen] = useState<When | null>(null);
-  const when: When = picked ?? (upcoming.some((m) => dayOffset(m.time!) <= 0) ? "today" : "week");
-  const shown = upcoming.filter((m) => {
-    const d = dayOffset(m.time!);
-    return when === "today" ? d <= 0 : when === "tomorrow" ? d === 1 : d <= 7;
-  });
+  const when: When = picked ?? firstWhen(upcoming);
+  const { shown, overdue } = fixturesFor(upcoming, when);
   return (
     <div className="e2-home">
       <SixesStrip s={s} matches={matches} upcoming={upcoming.length} go={go} />
@@ -89,6 +76,17 @@ export function SixesHome(props: {
                 <Fixture key={m.id} m={m} onTeam={onTeam} showDay={when === "week"} />
               ))}
             </ol>
+          )}
+          {/* Due on an earlier day and not reported yet: kept apart from today's. */}
+          {!matchesQ.isPending && when === "today" && overdue.length > 0 && (
+            <details className="e2-overdue">
+              <summary className="hint">{tx("{0} from earlier days not played yet", { "0": overdue.length })}</summary>
+              <ol className="e2-fixtures">
+                {overdue.slice(0, 10).map((m) => (
+                  <Fixture key={m.id} m={m} onTeam={onTeam} showDay />
+                ))}
+              </ol>
+            </details>
           )}
         </section>
         <LatestNews onPost={onPost} onAll={() => go("news")} />
@@ -260,7 +258,8 @@ function Leaders({ s, avatars, onTeam, onAll }: { s: SixesSeason; avatars: Map<n
       </div>
       <ul className="e2-leaders">
         {rows.map((d) => {
-          const top = [...d.teams].sort((a, b) => b.score - a.score)[0];
+          const top = leaderOf(d.teams);
+          if (!top) return null;
           return (
             <li key={d.name}>
               <DivisionBadge d={{ name: d.name, tier: Math.floor(tierOf(d.name)) }} />

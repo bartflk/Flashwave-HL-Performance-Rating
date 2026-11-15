@@ -9,7 +9,7 @@ use anyhow::{bail, Context, Result};
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::time::Duration;
-use tokio::sync::{Mutex, Semaphore};
+use tokio::sync::Semaphore;
 use tokio::time::Instant;
 
 /// Who is asking, and where to find out more: a server admin seeing these
@@ -74,19 +74,29 @@ const GAP_MAX: Duration = Duration::from_secs(30);
 
 pub struct Throttled {
     client: reqwest::Client,
-    /// The pace we keep to when the host is happy.
+    /// The pace we keep to when a host is happy.
     gap: Duration,
-    /// The pace now, in ms: doubled each time the host answers 429 or 503,
-    /// eased back towards `gap` by a twentieth on each answer it gives
-    /// (14 Nov 2026: the 6v6 sample paged trends.tf at its 1 s pace and
-    /// had nearly every page refused once).
-    pace_ms: std::sync::atomic::AtomicU64,
-    next_slot: Mutex<Instant>,
+    /// Each host's pace, next slot and rest (audit F6): one client can serve
+    /// several hosts (the "web" one does), and one host's 429 slowed them all.
+    hosts: std::sync::Mutex<HashMap<String, Host>>,
     in_flight: Semaphore,
-    /// Until when this host is left alone after a 429 or 503.
-    rest_until: std::sync::Mutex<Option<Instant>>,
     /// By URL, for this run only.
     validated: std::sync::Mutex<(HashMap<String, Validated>, u64)>,
+}
+
+/// One host's pace, next free slot and rest.
+#[derive(Debug, Clone, Copy)]
+struct Host {
+    pace_ms: u64,
+    next: Instant,
+    /// Until when this host is left alone after a 429 or 503.
+    rest_until: Option<Instant>,
+}
+
+impl Host {
+    fn pace(&self, gap: Duration) -> Duration {
+        Duration::from_millis(self.pace_ms).max(gap)
+    }
 }
 
 impl Throttled {
@@ -100,47 +110,67 @@ impl Throttled {
         Ok(Throttled {
             client,
             gap,
-            pace_ms: std::sync::atomic::AtomicU64::new(gap.as_millis() as u64),
-            next_slot: Mutex::new(Instant::now()),
+            hosts: Default::default(),
             in_flight: Semaphore::new(IN_FLIGHT),
-            rest_until: Default::default(),
             validated: Default::default(),
         })
     }
 
-    /// Wait for our slot. Holding the lock while sleeping serializes callers,
-    /// which is the point.
-    async fn wait_turn(&self) {
-        let mut next = self.next_slot.lock().await;
-        let now = Instant::now();
-        if *next > now {
-            tokio::time::sleep_until(*next).await;
-        }
-        *next = Instant::now() + self.pace();
+    /// This URL's host's state, made on first use.
+    fn host<R>(&self, url: &str, f: impl FnOnce(&mut Host) -> R) -> R {
+        let key = reqwest::Url::parse(url).ok().and_then(|u| u.host_str().map(str::to_string)).unwrap_or_default();
+        let mut hosts = self.hosts.lock().unwrap();
+        let h = hosts.entry(key).or_insert_with(|| Host { pace_ms: self.gap.as_millis() as u64, next: Instant::now(), rest_until: None });
+        f(h)
     }
 
-    /// The gap between requests now.
-    fn pace(&self) -> Duration {
-        Duration::from_millis(self.pace_ms.load(std::sync::atomic::Ordering::Relaxed)).max(self.gap)
+    /// Wait for our slot with this host: each caller takes the next free
+    /// one and the one after it moves on by the pace, so callers to one
+    /// host go one at a time and other hosts are not held up.
+    async fn wait_turn(&self, url: &str) {
+        let gap = self.gap;
+        let at = self.host(url, |h| {
+            let at = h.next.max(Instant::now());
+            h.next = at + h.pace(gap);
+            at
+        });
+        tokio::time::sleep_until(at).await;
     }
 
-    /// The host pushed back: half the pace, up to [`GAP_MAX`].
+    /// The gap between requests to this URL's host now.
+    #[cfg(test)]
+    fn pace(&self, url: &str) -> Duration {
+        let gap = self.gap;
+        self.host(url, |h| h.pace(gap))
+    }
+
+    /// The host pushed back: half the pace, up to [`GAP_MAX`]. The pace now,
+    /// in ms, doubles each time the host answers 429 or 503 and eases back
+    /// towards `gap` by a twentieth on each answer it gives (14 Nov 2026: the
+    /// 6v6 sample paged trends.tf at its 1 s pace and had nearly every page
+    /// refused once).
     fn slow_down(&self, url: &str) {
-        let now = self.pace();
-        let next = (now * 2).min(GAP_MAX);
-        self.pace_ms.store(next.as_millis() as u64, std::sync::atomic::Ordering::Relaxed);
+        let gap = self.gap;
+        let (now, next) = self.host(url, |h| {
+            let now = h.pace(gap);
+            let next = (now * 2).min(GAP_MAX);
+            h.pace_ms = next.as_millis() as u64;
+            (now, next)
+        });
         if next > now {
             tracing::info!(url, seconds = next.as_secs_f64(), "slowing down: one request every few seconds for this site");
         }
     }
 
     /// The host answered: ease back a little towards the usual pace.
-    fn speed_up(&self) {
-        let now = self.pace();
-        if now > self.gap {
-            let next = (now - now / 20).max(self.gap);
-            self.pace_ms.store(next.as_millis() as u64, std::sync::atomic::Ordering::Relaxed);
-        }
+    fn speed_up(&self, url: &str) {
+        let gap = self.gap;
+        self.host(url, |h| {
+            let now = h.pace(gap);
+            if now > gap {
+                h.pace_ms = (now - now / 20).max(gap).as_millis() as u64;
+            }
+        });
     }
 
     /// GET a URL and return the body as text, retrying transient failures.
@@ -176,20 +206,28 @@ impl Throttled {
         self.send(url, false, true, max, || self.conditional(url)).await
     }
 
-    /// How long this host still rests after a refusal, if it does.
+    /// How long the host this client asks still rests after a refusal, if
+    /// it does; the longest, for a client that serves several hosts.
     pub fn rest_left(&self) -> Option<Duration> {
-        let until = (*self.rest_until.lock().unwrap())?;
-        until.checked_duration_since(Instant::now())
+        let now = Instant::now();
+        self.hosts.lock().unwrap().values().filter_map(|h| h.rest_until?.checked_duration_since(now)).max()
+    }
+
+    /// How long this URL's host still rests, if it does.
+    fn rest_left_for(&self, url: &str) -> Option<Duration> {
+        let now = Instant::now();
+        self.host(url, |h| h.rest_until?.checked_duration_since(now))
     }
 
     /// Leave this host alone for `how_long` (never shortening a rest already
     /// running), and say so.
     fn rest_for(&self, url: &str, how_long: Duration) {
         let until = Instant::now() + how_long;
-        let mut held = self.rest_until.lock().unwrap();
-        if held.is_none_or(|h| h < until) {
-            *held = Some(until);
-        }
+        self.host(url, |h| {
+            if h.rest_until.is_none_or(|r| r < until) {
+                h.rest_until = Some(until);
+            }
+        });
         tracing::warn!(url, minutes = how_long.as_secs() / 60, "the server is refusing requests; leaving it alone");
         let until_ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis() as i64) + how_long.as_millis() as i64;
         crate::activity::resting(url, until_ms);
@@ -215,7 +253,7 @@ impl Throttled {
     /// A server's own count of what is left (`RateLimit-Remaining`, the IETF
     /// draft RGL sends, or the older `X-RateLimit-*`): when it says none,
     /// the next request waits for its window to reset, whatever our pace.
-    async fn heed_limit(&self, headers: &reqwest::header::HeaderMap) {
+    fn heed_limit(&self, url: &str, headers: &reqwest::header::HeaderMap) {
         let num = |names: [&str; 2]| names.iter().find_map(|n| headers.get(*n)?.to_str().ok()?.trim().parse::<u64>().ok());
         if num(["ratelimit-remaining", "x-ratelimit-remaining"]) != Some(0) {
             return;
@@ -228,8 +266,8 @@ impl Throttled {
         } else {
             reset
         };
-        let mut next = self.next_slot.lock().await;
-        *next = (*next).max(Instant::now() + Duration::from_secs(reset.clamp(1, 90)));
+        let until = Instant::now() + Duration::from_secs(reset.clamp(1, 90));
+        self.host(url, |h| h.next = h.next.max(until));
     }
 
     async fn send(&self, url: &str, interactive: bool, validate: bool, max_body: usize, request: impl Fn() -> reqwest::RequestBuilder) -> Result<Option<Vec<u8>>> {
@@ -241,12 +279,12 @@ impl Throttled {
             }
             // A host that said "not now" is not asked again until it is over,
             // by anything: a sync, a screen, a second pass.
-            if let Some(left) = self.rest_left() {
+            if let Some(left) = self.rest_left_for(url) {
                 return Err(anyhow::Error::new(Refused { status: reqwest::StatusCode::TOO_MANY_REQUESTS })
                     .context(format!("{url}: the server asked us to wait; {} more minutes", left.as_secs() / 60 + 1)));
             }
             let _slot = self.in_flight.acquire().await.expect("the semaphore is never closed");
-            self.wait_turn().await;
+            self.wait_turn(url).await;
 
             let started = Instant::now();
             let sent = request().send().await;
@@ -262,12 +300,12 @@ impl Throttled {
             }
             match sent {
                 Ok(resp) => {
-                    self.heed_limit(resp.headers()).await;
+                    self.heed_limit(url, resp.headers());
                     let status = resp.status();
                     if status.as_u16() == 429 || status.as_u16() == 503 {
                         self.slow_down(url);
                     } else if status.is_success() || status == reqwest::StatusCode::NOT_MODIFIED {
-                        self.speed_up();
+                        self.speed_up(url);
                     }
                     if status == reqwest::StatusCode::NOT_MODIFIED {
                         if let Some(body) = self.revalidated(url) {
@@ -572,17 +610,28 @@ mod tests {
     #[test]
     fn a_host_that_pushes_back_is_asked_more_slowly_and_eased_back() {
         let t = Throttled::new(Duration::from_millis(1000)).unwrap();
-        t.slow_down("https://trends.tf/a");
-        t.slow_down("https://trends.tf/a");
-        assert_eq!(t.pace(), Duration::from_millis(4000));
+        let a = "https://trends.tf/a";
+        t.slow_down(a);
+        t.slow_down(a);
+        assert_eq!(t.pace(a), Duration::from_millis(4000));
+        assert_eq!(t.pace("https://steamcommunity.com/x"), Duration::from_millis(1000), "another host on the same client keeps its pace");
         for _ in 0..8 {
-            t.slow_down("https://trends.tf/a");
+            t.slow_down(a);
         }
-        assert_eq!(t.pace(), GAP_MAX, "never slower than one every 30 s");
+        assert_eq!(t.pace(a), GAP_MAX, "never slower than one every 30 s");
         for _ in 0..200 {
-            t.speed_up();
+            t.speed_up(a);
         }
-        assert_eq!(t.pace(), Duration::from_millis(1000), "back to the usual pace, never faster");
+        assert_eq!(t.pace(a), Duration::from_millis(1000), "back to the usual pace, never faster");
+    }
+
+    #[test]
+    fn one_host_resting_leaves_the_others_on_the_same_client_alone() {
+        let t = Throttled::new(Duration::ZERO).unwrap();
+        t.rest_for("https://a.example/x", Duration::from_secs(600));
+        assert!(t.rest_left_for("https://a.example/y").is_some());
+        assert!(t.rest_left_for("https://b.example/y").is_none());
+        assert!(t.rest_left().is_some(), "the client as a whole says one of its hosts rests");
     }
     use std::io::{Read, Write};
 

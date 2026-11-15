@@ -110,6 +110,7 @@ pub fn run() {
             sync_commands::newest_log,
             sync_commands::get_rating_guide,
             sync_commands::get_sixes_rating_guide,
+            sync_commands::search_sixes_players,
             sync_commands::get_league_sample,
             sync_commands::set_league_sample,
             sync_commands::get_league_activity,

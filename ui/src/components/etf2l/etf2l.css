@@ -272,6 +272,9 @@
 
 /* The week's officials, one per line. */
 .e2-fixtures { list-style: none; margin: 0 -8px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+/* 6v6 Home: officials due on an earlier day, not reported yet, folded under today's. */
+.e2-overdue { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--rule); }
+.e2-overdue > summary { cursor: pointer; margin-bottom: 6px; }
 .e2-fx {
   display: grid;
   grid-template-columns: 112px 100px 52px minmax(0, 1fr) 44px;
