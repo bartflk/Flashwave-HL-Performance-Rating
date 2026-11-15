@@ -2813,7 +2813,7 @@ export const mockApi: Api = {
 
   getDiagnostics: () =>
     delay<Diagnostics>({
-      version: "0.14.0-mock beta",
+      version: "0.14.1-mock beta",
       model: "v14",
       dataDir: "C:/Users/you/AppData/Roaming/tf.flashwave.app",
       logFile: "C:/Users/you/AppData/Roaming/tf.flashwave.app/logs/flashwave.log",
@@ -2885,7 +2885,7 @@ export const mockApi: Api = {
   recentLog: () =>
     delay(
       [
-        "2026-11-12T08:31:02.114Z  INFO hl_app_lib: Flashwave.tf starting version=\"0.14.0 beta\" model=\"v14\"",
+        "2026-11-12T08:31:02.114Z  INFO hl_app_lib: Flashwave.tf starting version=\"0.14.1 beta\" model=\"v14\"",
         "2026-11-12T08:31:02.180Z  INFO hl_db: database ready",
         "2026-11-12T08:31:40.502Z  WARN hl_ingest::sync: trends.tf index failed error=operation timed out",
         "2026-11-12T08:32:11.007Z  WARN hl_app_lib::sync_commands: sync step failed; carrying on error=operation timed out step=\"demos.tf\"",
