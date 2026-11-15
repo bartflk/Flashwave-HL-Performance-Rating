@@ -18,6 +18,7 @@ import { startSync, useSyncStatus } from "../lib/sync";
 import { bounds, setPeriod, usePeriod } from "../lib/period";
 import { toastError } from "../lib/toast";
 import { KindPicker } from "./ContextBadge";
+import { RglLinkTag } from "./RglLinkTag";
 import { ClassIcon } from "./ClassIcon";
 import { PeriodPicker } from "./PeriodPicker";
 import { t, k, locale } from "../lib/i18n";
@@ -722,6 +723,7 @@ function MatchRow({ m, onOpen, classCol, cols, scales }: { m: MatchSummary; onOp
         );
       })}
       <td className="title-cell">
+        <RglLinkTag logId={m.logId} />
         {m.context ? (
           <KindPicker logId={m.logId} c={m.context} />
         ) : (

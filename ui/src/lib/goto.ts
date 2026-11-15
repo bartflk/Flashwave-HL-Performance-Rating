@@ -139,7 +139,7 @@ export function onOpenSeason(open: (season: number) => void): () => void {
 }
 
 const RGL_EVENT = "hl:rgl";
-export type RglPlace = { kind: "team" | "season"; id: number };
+export type RglPlace = { kind: "team" | "season" | "match"; id: number };
 let pendingRgl: RglPlace | null = null;
 
 /** The RGL tab, on one team's or season's page (from a bookmark). */

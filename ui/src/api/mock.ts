@@ -141,7 +141,7 @@ import type {
   Teammates,
   TfPathInfo,
   FightsCard,
-  SeasonsView, StvStage, RatingGuide, LeagueSample, LeagueActivity, CatalogueHit, PlayerProfile, PlayerStats, Rankings, LeagueCup, LeagueCupPage, CupResult, MatchDivisions, CareerView, SeasonTile, Podium, TeamHonours, TeamEtf2l, ActivityLine, ActivitySite, EtfBan } from "./types";
+  SeasonsView, StvStage, RatingGuide, LeagueSample, LeagueActivity, CatalogueHit, PlayerProfile, PlayerStats, Rankings, LeagueCup, LeagueCupPage, CupResult, MatchDivisions, CareerView, SeasonTile, Podium, TeamHonours, TeamEtf2l, ActivityLine, ActivitySite, EtfBan, RglLink } from "./types";
 
 // Starts configured, since setup is not what you are usually iterating on.
 // Append `?setup` to the URL to start from the first-run screen instead.
@@ -2854,6 +2854,9 @@ export const mockApi: Api = {
     });
   },
   // Two of the fixtures' players banned, to see the tag: one until a date, one for good.
+  // One of the fixtures' matches played as an RGL match, to see its context.
+  getRglOwnLinks: () =>
+    delay<RglLink[]>([{ logId: 4109131, matchId: 12345, seasonName: "HL Season 25", division: "Advanced", week: "Week 3 - Product", team: "DD14", opponent: "The Amiable Duds", won: true }]),
   getEtf2lBans: () =>
     delay<EtfBan[]>([
       { accountId: 198698486, start: 1790000000, end: 1800000000, reason: "Toxicity" },

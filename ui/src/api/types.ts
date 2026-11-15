@@ -3569,3 +3569,16 @@ export interface RglRanking {
   updated: number | null;
   rows: RglRankRow[];
 }
+
+/** One of your matches that was an RGL match (hl_ingest::rgl_own). */
+export interface RglLink {
+  logId: number;
+  matchId: number;
+  seasonName: string | null;
+  division: string | null;
+  /** "Week 1 - Vigil". */
+  week: string | null;
+  team: string;
+  opponent: string;
+  won: boolean | null;
+}

@@ -7,6 +7,7 @@ import { t } from "../lib/i18n";
 import type {
   ActivityView,
   EtfBan,
+  RglLink,
   Diagnostics,
   ModelShift,
   StvStage,
@@ -233,6 +234,8 @@ const realApi = {
   setActivityVerbose: (on: boolean) => invoke<boolean>("set_activity_verbose", { on }),
   /** Every active ETF2L ban, read from ETF2L once a day. */
   getEtf2lBans: () => invoke<EtfBan[]>("get_etf2l_bans"),
+  /** Your matches that were RGL matches, worked out from RGL once a day. */
+  getRglOwnLinks: () => invoke<RglLink[]>("get_rgl_own_links"),
   getModelShift: () => invoke<ModelShift | null>("get_model_shift"),
   /** The rating the app runs at startup for a new model: its progress, and its end. */
   onStartupRating: async (h: { onProgress: (p: Progress) => void; onDone: () => void }): Promise<UnlistenFn> => {

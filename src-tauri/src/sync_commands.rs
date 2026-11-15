@@ -1204,6 +1204,30 @@ pub async fn get_etf2l_bans(state: State<'_, AppState>) -> CmdResult<Vec<hl_inge
     Ok(bans)
 }
 
+/// Which of your matches were RGL matches, for their RGL context (Flashy
+/// chose "B now": context, not officials). Answers from what is stored at
+/// once; over a day old, worked out again in the background, one pass at a
+/// time, as gently as every RGL read.
+#[tauri::command]
+pub async fn get_rgl_own_links(state: State<'_, AppState>) -> CmdResult<Vec<hl_ingest::rgl_own::RglLink>> {
+    static READING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    let (links, stale) = hl_ingest::rgl_own::stored(&state.db).await?;
+    if stale && !READING.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        if let Some(me) = state.db.get_me().await? {
+            let (db, sources) = (state.db.clone(), state.sources.clone());
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = hl_ingest::rgl_own::refresh(&db, &sources, me).await {
+                    tracing::warn!(error = %e, "RGL matches among your logs could not be worked out");
+                }
+                READING.store(false, std::sync::atomic::Ordering::SeqCst);
+            });
+        } else {
+            READING.store(false, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+    Ok(links)
+}
+
 /// Debug lines into the feed too, or not; for this run.
 #[tauri::command]
 pub async fn set_activity_verbose(on: bool) -> CmdResult<bool> {

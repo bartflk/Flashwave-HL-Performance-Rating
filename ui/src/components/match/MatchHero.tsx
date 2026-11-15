@@ -10,6 +10,7 @@ import { Country } from "../Country";
 import { MedalGlyph } from "../players/MedalGlyph";
 import { DivisionBadge, seasonLong, seasonShort } from "../players/PlayerProfile";
 import { Backdrop } from "../Backdrop";
+import { RglLinkLine } from "../RglLinkTag";
 
 /**
  * The top of a match page, in the Teams tab's language: the two teams face
@@ -72,6 +73,7 @@ export function MatchHero({ d, ledger }: { d: MatchDetail; ledger?: Ledger | nul
           <span className="ts-eyebrow">
             {league ? [league.division, league.round, league.seasonName].filter(Boolean).join(" · ") : eyebrow(c, sides)}
           </span>
+          <RglLinkLine logId={d.logId} />
         </div>
         <div className="mx-badges">
           <BookmarkButton

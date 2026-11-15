@@ -155,9 +155,14 @@ export function RglPage({ active, steamid, onOpenMatch }: { active: boolean; ste
   };
 
   // A bookmark's team or season, asked for before or while the tab is shown.
-  const goRef = useRef<(to: { kind: "team" | "season"; id: number }) => void>(() => {});
+  const goRef = useRef<(to: { kind: "team" | "season" | "match"; id: number }) => void>(() => {});
   useEffect(() => {
-    goRef.current = (to) => (to.kind === "team" ? setStack((s) => [...s, { at: "team", id: to.id, from: { at: "home" } }]) : go({ at: "season", id: to.id }));
+    goRef.current = (to) =>
+      to.kind === "team"
+        ? setStack((s) => [...s, { at: "team", id: to.id, from: { at: "home" } }])
+        : to.kind === "match"
+          ? setStack((s) => [...s, { at: "match", id: to.id, from: { at: "home" } }])
+          : go({ at: "season", id: to.id });
   });
   useEffect(() => {
     const pending = takePendingRgl();
