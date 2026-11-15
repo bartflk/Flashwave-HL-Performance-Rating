@@ -4,7 +4,7 @@ import { rating, RATING_GAP_FULL, teamLabel } from "../../lib/format";
 import { ClassIcon } from "../ClassIcon";
 import { t, tx } from "../../lib/i18n";
 import { classLabel } from "../analysis/common";
-import { goTo } from "../../lib/goto";
+import { openRatingGuide } from "../../lib/sixesguide";
 import { DivTag, SideDivisions, useMatchDivisions } from "./Divisions";
 import { PlayerPopCard, nameProps, usePlayerCard } from "../players/PlayerPopCard";
 import { Help, ComponentTip, StatTip } from "../StatTip";
@@ -60,7 +60,7 @@ export function Matchups({ d }: { d: MatchDetail }) {
           <span className="model-tag">
             <StatTip k="rating">{tx("model {modelVersion} · one model per class", { modelVersion: d.modelVersion })}</StatTip>
           </span>
-          <button className="km-chip mu-guide-link" onClick={() => goTo("rating")}>{t("How ratings work →")}</button>
+          <button className="km-chip mu-guide-link" onClick={() => openRatingGuide(d.format === "sixes" ? "6s" : "hl")}>{t("How ratings work →")}</button>
         </div>
       </header>
 

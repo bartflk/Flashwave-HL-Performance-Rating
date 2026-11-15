@@ -1,0 +1,509 @@
+{
+ "modelVersion": "s1",
+ "minMinutes": 5,
+ "offMinMinutes": 1,
+ "roundWin": false,
+ "victimValues": [],
+ "roles": [
+  {
+   "role": "pocket",
+   "off": false,
+   "components": [
+    {
+     "key": "round_impact",
+     "share": 0.5,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "impact_kills",
+     "share": 0.237,
+     "counts": 0.564286,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "deaths",
+     "share": 0.105,
+     "counts": 0.25,
+     "measured": true,
+     "higherIsBetter": false
+    },
+    {
+     "key": "space",
+     "share": 0.061,
+     "counts": 0.145238,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "forces",
+     "share": 0.04,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "untraded_deaths",
+     "share": 0.04,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": false
+    },
+    {
+     "key": "dpm",
+     "share": 0.017,
+     "counts": 0.040476,
+     "measured": true,
+     "higherIsBetter": true
+    }
+   ]
+  },
+  {
+   "role": "roamer",
+   "off": false,
+   "components": [
+    {
+     "key": "round_impact",
+     "share": 0.5,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "impact_kills",
+     "share": 0.191,
+     "counts": 0.707407,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "opening",
+     "share": 0.1,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "untraded_deaths",
+     "share": 0.08,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": false
+    },
+    {
+     "key": "medic_picks",
+     "share": 0.079,
+     "counts": 0.292593,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "forces",
+     "share": 0.05,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    }
+   ]
+  },
+  {
+   "role": "flank_scout",
+   "off": false,
+   "components": [
+    {
+     "key": "round_impact",
+     "share": 0.5,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "opening",
+     "share": 0.14,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "forces",
+     "share": 0.1,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "impact_kills",
+     "share": 0.098,
+     "counts": 0.816667,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "backcaps",
+     "share": 0.08,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "untraded_deaths",
+     "share": 0.06,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": false
+    },
+    {
+     "key": "medic_picks",
+     "share": 0.022,
+     "counts": 0.183333,
+     "measured": true,
+     "higherIsBetter": true
+    }
+   ]
+  },
+  {
+   "role": "pocket_scout",
+   "off": false,
+   "components": [
+    {
+     "key": "round_impact",
+     "share": 0.500501,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "impact_assists",
+     "share": 0.194194,
+     "counts": 0.388778,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "dmg_ratio",
+     "share": 0.173173,
+     "counts": 0.346693,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "impact_kills",
+     "share": 0.132132,
+     "counts": 0.264529,
+     "measured": true,
+     "higherIsBetter": true
+    }
+   ]
+  },
+  {
+   "role": "demoman",
+   "off": false,
+   "components": [
+    {
+     "key": "round_impact",
+     "share": 0.5,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "dmg_ratio",
+     "share": 0.195,
+     "counts": 0.39,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "impact_kills",
+     "share": 0.179,
+     "counts": 0.358,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "deaths",
+     "share": 0.125,
+     "counts": 0.25,
+     "measured": true,
+     "higherIsBetter": false
+    },
+    {
+     "key": "traps",
+     "share": 0.001,
+     "counts": 0.002,
+     "measured": true,
+     "higherIsBetter": true
+    }
+   ]
+  },
+  {
+   "role": "medic",
+   "off": false,
+   "components": [
+    {
+     "key": "round_impact",
+     "share": 0.3,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "impact_assists",
+     "share": 0.221,
+     "counts": 0.34,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "deaths_vs",
+     "share": 0.162,
+     "counts": 0.249231,
+     "measured": true,
+     "higherIsBetter": false
+    },
+    {
+     "key": "heal",
+     "share": 0.162,
+     "counts": 0.249231,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "ubers_vs",
+     "share": 0.08,
+     "counts": 0.123077,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "caps_contested",
+     "share": 0.05,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "adv_lost",
+     "share": 0.025,
+     "counts": 0.038462,
+     "measured": true,
+     "higherIsBetter": false
+    }
+   ]
+  },
+  {
+   "role": "off:engineer",
+   "off": true,
+   "components": [
+    {
+     "key": "round_impact",
+     "share": 0.5,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "sentry",
+     "share": 0.2,
+     "counts": 0.588235,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "eng_deaths",
+     "share": 0.14,
+     "counts": 0.411765,
+     "measured": true,
+     "higherIsBetter": false
+    },
+    {
+     "key": "build_speed",
+     "share": 0.08,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "building_life",
+     "share": 0.08,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    }
+   ]
+  },
+  {
+   "role": "off:heavy",
+   "off": true,
+   "components": [
+    {
+     "key": "round_impact",
+     "share": 0.5,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "denies",
+     "share": 0.14,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "survival",
+     "share": 0.14,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "caps_contested",
+     "share": 0.12,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "deaths",
+     "share": 0.1,
+     "counts": 1.0,
+     "measured": true,
+     "higherIsBetter": false
+    }
+   ]
+  },
+  {
+   "role": "off:pyro",
+   "off": true,
+   "components": [
+    {
+     "key": "round_impact",
+     "share": 0.5,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "reflects",
+     "share": 0.18,
+     "counts": 0.642857,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "protect",
+     "share": 0.14,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "deaths",
+     "share": 0.1,
+     "counts": 0.357143,
+     "measured": true,
+     "higherIsBetter": false
+    },
+    {
+     "key": "spychecks",
+     "share": 0.08,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    }
+   ]
+  },
+  {
+   "role": "off:sniper",
+   "off": true,
+   "components": [
+    {
+     "key": "round_impact",
+     "share": 0.5,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "opening",
+     "share": 0.18,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "pressure",
+     "share": 0.14,
+     "counts": 0.7,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "untraded_deaths",
+     "share": 0.12,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": false
+    },
+    {
+     "key": "headshot_share",
+     "share": 0.06,
+     "counts": 0.3,
+     "measured": true,
+     "higherIsBetter": true
+    }
+   ]
+  },
+  {
+   "role": "off:spy",
+   "off": true,
+   "components": [
+    {
+     "key": "round_impact",
+     "share": 0.5,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "backstabs",
+     "share": 0.16,
+     "counts": 1.0,
+     "measured": true,
+     "higherIsBetter": true
+    },
+    {
+     "key": "saps",
+     "share": 0.1,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "backcaps",
+     "share": 0.08,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "opening",
+     "share": 0.08,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": true
+    },
+    {
+     "key": "untraded_deaths",
+     "share": 0.08,
+     "counts": 0,
+     "measured": false,
+     "higherIsBetter": false
+    }
+   ]
+  }
+ ]
+}

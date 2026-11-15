@@ -12,6 +12,17 @@
 
 .rg-page { max-width: var(--page-w, 1180px); margin: 0 auto; padding: 16px var(--gutter, 16px) 48px; display: flex; flex-direction: column; gap: 16px; }
 .rg-head h1 { margin: 6px 0 4px; font-family: var(--font-display); letter-spacing: var(--ls-heading); }
+/* The title and the format switch on one line; together under it when narrow. */
+.rg-head-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+.rg-model { margin: 0 0 14px; }
+
+/* 6v6: the off-classes' picker, and parts not measured yet. */
+.rg-picker-off { align-items: center; }
+.rg-picker-label { font-family: var(--font-display); font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: var(--ls-caps); color: var(--muted); margin-right: 4px; }
+.rg-seg-off { opacity: 0.35; background-image: repeating-linear-gradient(135deg, transparent 0 4px, rgba(0, 0, 0, 0.35) 4px 7px); }
+.rg-row-off .rg-row-label, .rg-row-off .rg-row-desc { opacity: 0.6; }
+.rg-row-off .rg-row-bar i { opacity: 0.4; }
+.rg-pending h2 { margin-top: 0; }
 .rg-page section.panel { padding: 18px 20px; }
 .rg-page h2 { margin: 0 0 10px; }
 

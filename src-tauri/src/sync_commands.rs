@@ -885,6 +885,13 @@ pub async fn get_rating_guide(state: State<'_, AppState>) -> CmdResult<hl_rating
     Ok(hl_rating::guide::guide(&weights))
 }
 
+/// "How ratings work" for 6v6: each role's model from the 6v6 weights, and
+/// which of its parts are measured yet.
+#[tauri::command]
+pub async fn get_sixes_rating_guide(state: State<'_, AppState>) -> CmdResult<hl_ingest::sixes_guide::SixesGuide> {
+    Ok(hl_ingest::sixes_guide::guide(&state.db).await?)
+}
+
 /// Where the league sample stands (Settings).
 #[tauri::command]
 pub async fn get_league_sample(state: State<'_, AppState>) -> CmdResult<hl_ingest::league_sample::Status> {

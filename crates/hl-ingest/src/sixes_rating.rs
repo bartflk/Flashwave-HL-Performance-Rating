@@ -23,18 +23,18 @@ use std::collections::{BTreeMap, HashMap};
 
 const WEIGHTS: &str = include_str!("weights.sixes.toml");
 /// Performances shorter than this on a main role are not rated.
-const MIN_MAIN_S: i64 = 5 * 60;
+pub(crate) const MIN_MAIN_S: i64 = 5 * 60;
 /// An off-class stint is short by nature: a minute is enough to say something.
-const MIN_OFF_S: i64 = 60;
+pub(crate) const MIN_OFF_S: i64 = 60;
 
 #[derive(Debug, Deserialize)]
-struct Weights {
-    model_version: String,
-    role: BTreeMap<String, BTreeMap<String, f64>>,
-    off: BTreeMap<String, BTreeMap<String, f64>>,
+pub(crate) struct Weights {
+    pub(crate) model_version: String,
+    pub(crate) role: BTreeMap<String, BTreeMap<String, f64>>,
+    pub(crate) off: BTreeMap<String, BTreeMap<String, f64>>,
 }
 
-fn weights() -> Weights {
+pub(crate) fn weights() -> Weights {
     toml::from_str(WEIGHTS).expect("weights.sixes.toml reads")
 }
 
@@ -44,8 +44,8 @@ pub fn model_version() -> String {
 }
 
 /// Whether a component is better high (true) or low.
-fn higher_is_better(c: &str) -> bool {
-    !matches!(c, "deaths" | "deaths_vs_medic" | "drops_vs" | "deaths_vs" | "adv_lost" | "eng_deaths")
+pub(crate) fn higher_is_better(c: &str) -> bool {
+    !matches!(c, "deaths" | "deaths_vs_medic" | "drops_vs" | "deaths_vs" | "adv_lost" | "eng_deaths" | "untraded_deaths")
 }
 
 /// One rated performance's measurements, by component.
@@ -921,6 +921,14 @@ mod tests {
     fn fixture() -> Value {
         let body = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/sixes_4115969.json")).unwrap();
         serde_json::from_str(&body).unwrap()
+    }
+
+    #[test]
+    fn the_guide_calls_measured_every_component_a_log_fills() {
+        let filled: std::collections::BTreeSet<&str> = perfs_of(1, &fixture()).iter().flat_map(|p| p.values.keys().copied()).collect();
+        let missing: Vec<&&str> = filled.iter().filter(|c| !crate::sixes_guide::MEASURED.contains(c)).collect();
+        assert!(missing.is_empty(), "the 6v6 guide would call these not measured: {missing:?}");
+        assert!(filled.len() >= 10, "the fixture fills most of them: {filled:?}");
     }
 
     #[tokio::test]

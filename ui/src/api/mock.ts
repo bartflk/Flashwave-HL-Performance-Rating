@@ -12,6 +12,7 @@ import match4114301 from "./fixtures/match_4114301.json";
 import match4111116 from "./fixtures/match_4111116.json";
 // `hl guide --json`: the live models, as the built app serves them.
 import ratingGuide from "./fixtures/rating_guide.json";
+import sixesGuideJson from "./fixtures/sixes_guide.json";
 import seasonsOverview from "./fixtures/seasons_overview.json";
 import seasonPodiums33 from "./fixtures/season_podiums_33.json";
 import seasonTable34 from "./fixtures/season_table_34_open_demoman.json";
@@ -141,7 +142,7 @@ import type {
   Teammates,
   TfPathInfo,
   FightsCard,
-  SeasonsView, StvStage, RatingGuide, LeagueSample, LeagueActivity, CatalogueHit, PlayerProfile, PlayerStats, Rankings, LeagueCup, LeagueCupPage, CupResult, MatchDivisions, CareerView, SeasonTile, Podium, TeamHonours, TeamEtf2l, ActivityLine, ActivitySite, EtfBan, RglLink } from "./types";
+  SeasonsView, StvStage, RatingGuide, SixesGuide, LeagueSample, LeagueActivity, CatalogueHit, PlayerProfile, PlayerStats, Rankings, LeagueCup, LeagueCupPage, CupResult, MatchDivisions, CareerView, SeasonTile, Podium, TeamHonours, TeamEtf2l, ActivityLine, ActivitySite, EtfBan, RglLink } from "./types";
 
 // Starts configured, since setup is not what you are usually iterating on.
 // Append `?setup` to the URL to start from the first-run screen instead.
@@ -2598,6 +2599,7 @@ export const mockApi: Api = {
   indexStats: () => delay(fakeStats(pending)),
   syncBusy: () => delay(busy),
   getRatingGuide: () => delay(ratingGuide as unknown as RatingGuide),
+  getSixesRatingGuide: () => delay(sixesGuideJson as unknown as SixesGuide),
   // The browser build: the numbers from the first discovery run.
   getLeagueSample: () => delay(leagueSample),
   // The browser build: a job partway through, alternating working and waiting.

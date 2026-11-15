@@ -282,6 +282,36 @@ export interface RatingGuide {
   glossary: ComponentGuide[];
 }
 
+/** One part of a 6v6 role's model (hl_ingest::sixes_guide). */
+export interface SixesGuideComponent {
+  key: string;
+  /** Its share of the role's model, 0 to 1. */
+  share: number;
+  /** What it counts for in a rating today; 0 while not measured. */
+  counts: number;
+  measured: boolean;
+  higherIsBetter: boolean;
+}
+
+export interface SixesGuideRole {
+  /** "pocket", or "off:heavy" for an off-class. */
+  role: string;
+  off: boolean;
+  /** Biggest share first. */
+  components: SixesGuideComponent[];
+}
+
+/** "How ratings work" for 6v6: each role's model from the 6v6 weights. */
+export interface SixesGuide {
+  modelVersion: string;
+  minMinutes: number;
+  offMinMinutes: number;
+  /** The round-win table is measured: round impact counts, kills valued by who died. */
+  roundWin: boolean;
+  victimValues: [string, number][];
+  roles: SixesGuideRole[];
+}
+
 /** One ETF2L division's part of the league sample. */
 export interface LeagueTier {
   tier: number;

@@ -9,6 +9,9 @@ import { t, tx } from "../../lib/i18n";
 import "./rating.css";
 import { Loading } from "../Spinner";
 import { HowDecided } from "./HowDecided";
+import { SixesGuideSections } from "./SixesGuide";
+import { useFormatsPlayed } from "../../lib/gameformat";
+import { setGuideFormat, useGuideFormat } from "../../lib/sixesguide";
 
 /**
  * How ratings work (Flashy): every class, what its rating is made of, and
@@ -38,24 +41,40 @@ const GROUP_LABEL: Record<Group, string> = {
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 export function RatingGuidePage({ onBack }: { onBack: () => void }) {
-  const q = useQuery({ queryKey: ["rating_guide"], queryFn: api.getRatingGuide, staleTime: Infinity });
+  const { sixesEnabled } = useFormatsPlayed();
+  const asked = useGuideFormat();
+  const format = sixesEnabled ? asked : "hl";
+  const q = useQuery({ queryKey: ["rating_guide"], queryFn: api.getRatingGuide, staleTime: Infinity, enabled: format === "hl" });
   const [picked, setPicked] = useState("demoman");
 
   return (
     <div className="rg-page">
       <button className="linkish back" onClick={onBack}>{t("← Back")}</button>
       <header className="rg-head">
-        <h1>{t("How ratings work")}</h1>
-        {q.data && (
+        <div className="rg-head-row">
+          <h1>{t("How ratings work")}</h1>
+          {sixesEnabled && (
+            <div className="segmented" role="tablist" aria-label={t("Format")}>
+              <button role="tab" aria-selected={format === "hl"} className={format === "hl" ? "seg active" : "seg"} onClick={() => setGuideFormat("hl")}>
+                {t("Highlander")}
+              </button>
+              <button role="tab" aria-selected={format === "6s"} className={format === "6s" ? "seg active" : "seg"} onClick={() => setGuideFormat("6s")}>
+                {t("6v6")}
+              </button>
+            </div>
+          )}
+        </div>
+        {format === "hl" && q.data && (
           <p className="hint">
             {tx("Drawn from the live model ({0}): every weight on this page is the one rating your games right now, and changes when the model does.", { "0": q.data.modelVersion })}
           </p>
         )}
       </header>
 
-      {q.isPending && <Loading>{t("Loading…")}</Loading>}
-      {q.isError && <ApiError error={q.error} />}
-      {q.data && (
+      {format === "6s" && <SixesGuideSections />}
+      {format === "hl" && q.isPending && <Loading>{t("Loading…")}</Loading>}
+      {format === "hl" && q.isError && <ApiError error={q.error} />}
+      {format === "hl" && q.data && (
         <>
           <Pipeline g={q.data} />
           <ClassSection g={q.data} picked={picked} onPick={setPicked} />
@@ -64,7 +83,7 @@ export function RatingGuidePage({ onBack }: { onBack: () => void }) {
           <Unused g={q.data} />
         </>
       )}
-      <HowDecided />
+      {format === "hl" && <HowDecided />}
     </div>
   );
 }

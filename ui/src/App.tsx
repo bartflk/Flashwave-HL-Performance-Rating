@@ -29,6 +29,7 @@ import { RatingGuidePage } from "./components/rating/RatingGuide";
 import { OwnerBadge } from "./components/OwnerBadge";
 import { RestoreBanner } from "./components/RestoreBanner";
 import { BookmarksMenu } from "./components/Bookmarks";
+import { HelpMenu } from "./components/HelpMenu";
 import "./App.css";
 import "./components/match/match.css";
 import { Etf2lMark } from "./components/Etf2lMark";
@@ -246,6 +247,7 @@ export default function App() {
         </div>
         <div className="topbar-right">
           <SyncSummary />
+          <HelpMenu />
           <BookmarksMenu onOpenMatch={setOpenLog} />
           <OwnerBadge steamid={data.config.steamid} />
           <button
