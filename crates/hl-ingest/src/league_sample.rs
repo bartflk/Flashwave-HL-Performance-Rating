@@ -411,6 +411,17 @@ pub async fn step(db: &Db, sources: &Sources, mut doing: impl FnMut(&str) + Send
         }
     }
 
+    // Officials already picked but not downloaded go first (0.14.1 audit,
+    // B1): released by a model change, Seasons 12 to 23 waited behind a
+    // lineup page and a logs.tf search every step, newest first, and the
+    // older seasons' player stats stayed empty for hours. Only the logs jump
+    // the queue; their server logs come in turn with the rest.
+    if !db.league_json_todo(1, false, MAX_JSON_ATTEMPTS).await?.is_empty() {
+        if let Some(step) = log_step(db, sources, sources.logstf_resting(), &mut doing).await? {
+            return Ok(step);
+        }
+    }
+
     // ETF2L is another host: one match page each step, beside the logs.
     let roster = db.league_matches_without_roster(1, now() - MAX_YEARS * YEAR_S).await?.first().copied();
     if let Some(match_id) = roster {
