@@ -141,3 +141,10 @@
 }
 .sx-ext { color: var(--accent-text); align-self: flex-start; }
 .sx-ext:hover { color: var(--text); }
+
+/* The 6v6 home's officials: a column for the week's two maps, short names,
+   cut with an ellipsis rather than running out of the panel. */
+.e2-fx.with-round.sx-home-fx { grid-template-columns: 112px 100px 52px minmax(0, 1fr) 64px 96px; }
+.sx-home-maps { display: flex; flex-direction: column; gap: 1px; font-size: var(--fs-small); line-height: var(--lh-tight); }
+.sx-home-maps > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 720px) { .sx-home-maps { display: none; } }

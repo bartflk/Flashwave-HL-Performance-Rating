@@ -94,7 +94,7 @@ export function SixesHome(props: {
         <LatestNews onPost={onPost} onAll={() => go("news")} />
       </div>
       <aside className="e2-rail">
-        <Leaders s={s} onTeam={onTeam} onAll={() => go("season")} />
+        <Leaders s={s} avatars={avatarsOf(matches)} onTeam={onTeam} onAll={() => go("season")} />
         <Results rows={played.slice(0, 8)} waiting={matchesQ.isPending} onTeam={onTeam} onAll={() => go("matches")} />
         <RecruitPreview format="sixes" onAll={() => go("recruitment")} onOpen={onRecruit} />
       </aside>
@@ -183,7 +183,7 @@ function TeamButton({ x, onTeam }: { x: SixesTeam; onTeam: (id: number) => void 
 
 function Fixture({ m, onTeam, showDay }: { m: SixesMatch; onTeam: (id: number) => void; showDay: boolean }) {
   return (
-    <li className="e2-fx with-round">
+    <li className="e2-fx with-round sx-home-fx">
       <span className="e2-fx-time" title={fullDate(m.time!)}>
         {showDay && <span className="muted">{formatDate(m.time!)} </span>}
         {clockTime(m.time!)}
@@ -196,9 +196,22 @@ function Fixture({ m, onTeam, showDay }: { m: SixesMatch; onTeam: (id: number) =
         <TeamButton x={m.clan2} onTeam={onTeam} />
       </span>
       <span className="e2-fx-round muted">{m.week !== null ? t("Week {0}", { "0": m.week }) : (m.round ?? "")}</span>
-      <span className="e2-fx-h2h muted">{m.maps.join(" · ")}</span>
+      {/* The week's maps one under the other, beside the week (Flashy: "put
+          the maps in a column, 1 below each other next to the week"). */}
+      <span className="sx-home-maps muted">
+        {m.maps.map((x) => (
+          <span key={x} title={x}>
+            {shortMap(x)}
+          </span>
+        ))}
+      </span>
     </li>
   );
+}
+
+/** "cp_granary_pro" -> "granary": the map without its mode or version, for a narrow column. */
+function shortMap(map: string): string {
+  return map.replace(/^(cp|koth|pl|ctf|plr|arena|tc)_/i, "").split("_")[0];
 }
 
 function LatestNews({ onPost, onAll }: { onPost: (id: number) => void; onAll: () => void }) {
@@ -224,7 +237,17 @@ function LatestNews({ onPost, onAll }: { onPost: (id: number) => void; onAll: ()
 }
 
 /** Each division's leader, as Highlander's rail: the top of its table. */
-function Leaders({ s, onTeam, onAll }: { s: SixesSeason; onTeam: (id: number) => void; onAll: () => void }) {
+/** Each team's avatar from the season's matches: the tables carry none. */
+function avatarsOf(matches: SixesMatch[]): Map<number, string | null> {
+  const m = new Map<number, string | null>();
+  for (const x of matches) {
+    m.set(x.clan1.id, x.clan1.avatar);
+    m.set(x.clan2.id, x.clan2.avatar);
+  }
+  return m;
+}
+
+function Leaders({ s, avatars, onTeam, onAll }: { s: SixesSeason; avatars: Map<number, string | null>; onTeam: (id: number) => void; onAll: () => void }) {
   const rows = s.divisions.filter((d) => d.teams.length > 0);
   if (rows.length === 0) return null;
   return (
@@ -241,7 +264,7 @@ function Leaders({ s, onTeam, onAll }: { s: SixesSeason; onTeam: (id: number) =>
           return (
             <li key={d.name}>
               <DivisionBadge d={{ name: d.name, tier: Math.floor(tierOf(d.name)) }} />
-              <TeamButton x={{ id: top.id, name: top.name, avatar: null }} onTeam={onTeam} />
+              <TeamButton x={{ id: top.id, name: top.name, avatar: avatars.get(top.id) ?? null }} onTeam={onTeam} />
               <span className="e2-leader-wl" title={t("Leading so far")}>
                 {tx("{0} pts", { "0": top.score })}
               </span>
