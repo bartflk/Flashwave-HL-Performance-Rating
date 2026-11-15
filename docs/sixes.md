@@ -68,6 +68,13 @@ games: each player's role and the rating's measurements, from the JSON alone
 sixes-validate --from <out.sqlite3>` checks the rating against who won on them.
 The release waits on it (question 15). The dump is a copy of logs.tf's database.
 
+**The built-in league pool:** `hl logsdump-sixes-pool <sixes.sqlite3> crates/hl-ingest/src/sixes_pool.json`
+turns that file's officials (63,959 games, 908,430 performances) into each role's
+value at every percentile per component, and its score average and spread:
+76 KB, built into the app. The 6v6 rating reads a game's percentiles from it, so
+it is against the whole competitive field from the first sync; round impact and
+kills valued by victim, which the dump cannot give, stay against the stored pool.
+
 ## 3. Proposed definitions, for the reviewers
 
 Three of boSe.'s numbers have no agreed definition. The app shows a

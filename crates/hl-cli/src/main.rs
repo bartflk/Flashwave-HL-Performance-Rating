@@ -68,6 +68,9 @@ COMMANDS:
     sixes-sample [on|off|status]
                            Switch the 6v6 league sample on or off while the app
                            is closed; it downloads from the app's next start
+    logsdump-sixes-pool <SIXES.sqlite3> <OUT.json>
+                           The 6v6 rating's built-in league pool from the officials
+                           logsdump-sixes wrote: crates/hl-ingest/src/sixes_pool.json
     logsdump-sixes <DUMP.sql> <INDEX.sqlite3> <OUT.sqlite3> [--limit ROWS]
                            Every 6v6 official, scrim and pug in the dump (each
                            game once, as the index decided): each player's role
@@ -188,7 +191,7 @@ async fn run() -> Result<()> {
     // `snapshot --check` reads only the snapshot built into this binary.
     let touches_db = !matches!(command.first().copied(), None | Some("help") | Some("--help") | Some("-h"))
         && !(command.first() == Some(&"snapshot") && command.contains(&"--check"))
-        && !matches!(command.first().copied(), Some("logsdump" | "logsdump-summary" | "logsdump-sixes"))
+        && !matches!(command.first().copied(), Some("logsdump" | "logsdump-summary" | "logsdump-sixes" | "logsdump-sixes-pool"))
         && !(command.first() == Some(&"sixes-validate") && command.contains(&"--from"));
     if touches_db {
         hl_ingest::lock::require_free(&db_path, forced)?;
@@ -230,6 +233,9 @@ async fn run() -> Result<()> {
             };
             logsdump_sixes::run(std::path::Path::new(dump), std::path::Path::new(index), std::path::Path::new(out), limit).await
         }
+
+        // The 6v6 rating's built-in league pool, from those games' officials.
+        ["logsdump-sixes-pool", file, out] => logsdump_sixes::pool(std::path::Path::new(file), std::path::Path::new(out)).await,
 
         // The part of that index the app ships: names, careers, years.
         ["logsdump-summary", index, out] => logstf_summary::run(std::path::Path::new(index), std::path::Path::new(out)).await,

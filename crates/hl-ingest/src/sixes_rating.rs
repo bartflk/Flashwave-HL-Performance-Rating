@@ -191,6 +191,14 @@ pub struct SixesRating {
 
 /// Rate every performance against the others in its role.
 fn rate(perfs: &[Perf]) -> Vec<SixesRating> {
+    rate_with(perfs, None)
+}
+
+/// [`rate`], each component's percentile read from the league `pool` where
+/// it has the role and the component (the built-in pool from the logs.tf
+/// database), else against the performances here; the role's scale is the
+/// pool's where it has one.
+fn rate_with(perfs: &[Perf], pool: Option<&crate::sixes_pool::SixesPool>) -> Vec<SixesRating> {
     let w = weights();
     let table = |role: &str| -> Option<&BTreeMap<String, f64>> {
         match role.strip_prefix("off:") {
@@ -205,6 +213,7 @@ fn rate(perfs: &[Perf]) -> Vec<SixesRating> {
     let mut out = Vec::new();
     for (role, group) in by_role {
         let Some(weights) = table(role) else { continue };
+        let league = pool.and_then(|p| p.roles.get(role));
         let comps: Vec<(&String, f64)> = weights.iter().filter(|(_, s)| **s > 0.0).map(|(c, s)| (c, *s)).collect();
         // Each component's values sorted, the role's and each player's own:
         // a percentile is then two binary searches, not a pass over the pool
@@ -227,6 +236,11 @@ fn rate(perfs: &[Perf]) -> Vec<SixesRating> {
             let mut parts = Vec::new();
             for (c, share) in &comps {
                 let Some(&x) = p.values.get(c.as_str()).filter(|x| x.is_finite()) else { continue };
+                if let Some(q) = league.and_then(|l| l.components.get(c.as_str())) {
+                    let pct = crate::sixes_pool::percentile(q, x, higher_is_better(c));
+                    parts.push(((*c).clone(), (pct * 10.0).round() / 10.0, *share, x));
+                    continue;
+                }
                 // Against everyone else's in the role, never the player's own.
                 let (all, own) = &dist[c.as_str()];
                 let mine: &[f64] = own.get(&p.account_id).map_or(&[], Vec::as_slice);
@@ -253,8 +267,13 @@ fn rate(perfs: &[Perf]) -> Vec<SixesRating> {
         if scored.is_empty() {
             continue;
         }
-        let mean = scored.iter().map(|(_, s, _)| s).sum::<f64>() / scored.len() as f64;
-        let sd = (scored.iter().map(|(_, s, _)| (s - mean).powi(2)).sum::<f64>() / scored.len() as f64).sqrt();
+        let (mean, sd) = match league {
+            Some(l) if l.score_sd > 0.0 => (l.score_mean, l.score_sd),
+            _ => {
+                let mean = scored.iter().map(|(_, s, _)| s).sum::<f64>() / scored.len() as f64;
+                (mean, (scored.iter().map(|(_, s, _)| (s - mean).powi(2)).sum::<f64>() / scored.len() as f64).sqrt())
+            }
+        };
         for (p, score, parts) in scored {
             let z = if sd > 0.0 { (score - mean) / sd } else { 0.0 };
             out.push(SixesRating {
@@ -278,7 +297,7 @@ fn rate(perfs: &[Perf]) -> Vec<SixesRating> {
 /// league, not only against the players in them.
 pub async fn rate_all(db: &hl_db::Db) -> Result<usize> {
     let (perfs, _) = collect(db).await?;
-    let ratings = rate(&perfs);
+    let ratings = rate_with(&perfs, crate::sixes_pool::built_in());
     let rows: Vec<(i64, u32, String, f64, f64, f64, String)> = ratings
         .iter()
         .map(|r| (r.log_id, r.account_id, r.role.clone(), r.rating, r.score, r.minutes, serde_json::to_string(&r.parts).unwrap_or_else(|_| "[]".into())))
@@ -467,10 +486,54 @@ pub fn validate_stored(logs: impl IntoIterator<Item = (i64, Option<String>, Vec<
     validate_ratings(&rate(&perfs), &results)
 }
 
+/// The league pool from stored performances (`hl logsdump-sixes-pool`):
+/// per role, each component's value at every percentile, and the role's
+/// score average and spread, the performances rated against each other.
+pub fn pool_from_stored(perfs: Vec<StoredPerf>, source: &str, logs: usize) -> crate::sixes_pool::SixesPool {
+    let perfs: Vec<Perf> = perfs
+        .into_iter()
+        .enumerate()
+        .map(|(i, p)| Perf { log_id: i as i64, account_id: p.account_id, role: p.role, minutes: p.minutes, values: p.values.iter().map(|(k, v)| (intern(k), *v)).collect() })
+        .collect();
+    let ratings = rate(&perfs);
+    let mut roles: BTreeMap<String, crate::sixes_pool::RolePool> = BTreeMap::new();
+    let mut scores: HashMap<String, Vec<f64>> = HashMap::new();
+    for r in &ratings {
+        scores.entry(r.role.clone()).or_default().push(r.score);
+    }
+    let mut values: HashMap<(String, &'static str), Vec<f64>> = HashMap::new();
+    for p in &perfs {
+        for (c, v) in &p.values {
+            values.entry((p.role.clone(), *c)).or_default().push(*v);
+        }
+    }
+    for (role, s) in scores {
+        let mean = s.iter().sum::<f64>() / s.len() as f64;
+        let sd = (s.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / s.len() as f64).sqrt();
+        roles.insert(
+            role.clone(),
+            crate::sixes_pool::RolePool {
+                games: s.len(),
+                score_mean: (mean * 1000.0).round() / 1000.0,
+                score_sd: (sd * 1000.0).round() / 1000.0,
+                components: BTreeMap::new(),
+            },
+        );
+    }
+    for ((role, c), v) in values {
+        if let Some(r) = roles.get_mut(&role) {
+            if v.len() >= 50 {
+                r.components.insert(c.to_string(), crate::sixes_pool::quantiles(v));
+            }
+        }
+    }
+    crate::sixes_pool::SixesPool { source: source.to_string(), logs, roles }
+}
+
 /// Rate every stored 6v6 performance and measure who it picks to win.
 pub async fn validate(db: &hl_db::Db) -> Result<Validation> {
     let (perfs, results) = collect(db).await?;
-    Ok(validate_ratings(&rate(&perfs), &results))
+    Ok(validate_ratings(&rate_with(&perfs, crate::sixes_pool::built_in()), &results))
 }
 
 fn validate_ratings(ratings: &[SixesRating], results: &HashMap<i64, LogResult>) -> Validation {
@@ -786,6 +849,27 @@ mod tests {
         assert_eq!(part(1, "dpm"), 50.0, "above 200, level with 300, below 400; its own 900 left out");
         assert_eq!(part(1, "deaths"), 50.0, "fewer than 6, level with 5, more than 4");
         assert_eq!(part(3, "dpm"), 0.0, "below everyone else");
+    }
+
+    #[test]
+    fn a_league_pool_rates_a_game_against_the_field_not_the_players_beside_it() {
+        // The field: pockets of 100 to 300 DPM. Two players here, 250 and 260:
+        // against each other one is bottom; against the field both are good.
+        let field: Vec<StoredPerf> = (0..200)
+            .map(|i| StoredPerf { account_id: 1000 + i, team: None, role: "pocket".into(), minutes: 30.0, values: [("dpm".to_string(), 100.0 + i as f64)].into_iter().collect() })
+            .collect();
+        let pool = pool_from_stored(field, "test", 200);
+        let r = &pool.roles["pocket"];
+        assert_eq!(r.components["dpm"].len(), 101);
+        assert!(r.score_sd > 0.0);
+        let p = |acc: u32, dpm: f64| Perf { log_id: acc as i64, account_id: acc, role: "pocket".into(), minutes: 30.0, values: [("dpm", dpm)].into_iter().collect() };
+        let here = vec![p(1, 250.0), p(2, 260.0)];
+        let alone = rate(&here);
+        let pooled = rate_with(&here, Some(&pool));
+        let pct = |rs: &[SixesRating], acc: u32| rs.iter().find(|x| x.account_id == acc).unwrap().parts[0].1;
+        assert_eq!(pct(&alone, 1), 0.0, "against one other, the lower is bottom");
+        assert!(pct(&pooled, 1) > 70.0, "against the field, 250 is high: {}", pct(&pooled, 1));
+        assert!(pooled.iter().all(|x| x.rating > 1.0), "{pooled:?}");
     }
 
     #[test]

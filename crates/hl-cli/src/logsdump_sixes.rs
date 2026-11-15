@@ -176,6 +176,29 @@ pub async fn run(dump: &Path, index: &Path, out: &Path, limit: Option<usize>) ->
     Ok(())
 }
 
+/// `hl logsdump-sixes-pool`: the built-in 6v6 league pool from the games
+/// `run` wrote, officials only, as JSON for `hl-ingest/src/sixes_pool.json`.
+pub async fn pool(file: &Path, out: &Path) -> Result<()> {
+    let mut c = SqliteConnectOptions::new().filename(file).read_only(true).connect().await.with_context(|| format!("opening {}", file.display()))?;
+    let (logs,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM log WHERE kind = 'official'").fetch_one(&mut c).await?;
+    let rows = sqlx::query("SELECT p.account_id, p.role, p.minutes, p.vals FROM perf p JOIN log l ON l.log_id = p.log_id WHERE l.kind = 'official'").fetch_all(&mut c).await?;
+    let perfs: Vec<StoredPerf> = rows
+        .into_iter()
+        .map(|r| {
+            let vals: String = r.get(3);
+            StoredPerf { account_id: r.get::<i64, _>(0) as u32, team: None, role: r.get(1), minutes: r.get(2), values: serde_json::from_str(&vals).unwrap_or_default() }
+        })
+        .collect();
+    println!("{} performances in {logs} officials", perfs.len());
+    let pool = hl_ingest::sixes_rating::pool_from_stored(perfs, "logs.tf database, every 6v6 official", logs as usize);
+    for (role, r) in &pool.roles {
+        println!("  {role:<14} {:>7} games, score {:.1} ± {:.1}, {} components", r.games, r.score_mean, r.score_sd, r.components.len());
+    }
+    std::fs::write(out, serde_json::to_string(&pool)?).with_context(|| format!("writing {}", out.display()))?;
+    println!("{}", out.display());
+    Ok(())
+}
+
 /// `hl sixes-validate --from`: the 6v6 rating checked against who won on
 /// the games `run` wrote, of the kinds named (comma-separated).
 pub async fn validate(file: &Path, kinds: &str, limit: Option<usize>) -> Result<Validation> {
