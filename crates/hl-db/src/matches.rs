@@ -133,8 +133,11 @@ pub struct MatchFilter {
 /// every Rating cell: "the ratings didn't calculate". The table holds one
 /// model only (a rewrite drops the others), so no version is picked: a text
 /// MAX would have put "s10" below "s9" (audit M1).
+// A player who played an off-class the whole match (a Sniper main) has only
+// that off-class's rating: it stands in, the longest one (0.14.1).
 const MY_RATING: &str = "COALESCE(r.score, (SELECT MAX(s.rating) FROM sixes_rating s
-     WHERE s.log_id = m.log_id AND s.account_id = p.account_id AND s.role NOT LIKE 'off:%'))";
+     WHERE s.log_id = m.log_id AND s.account_id = p.account_id AND s.role NOT LIKE 'off:%'),
+     (SELECT s.rating FROM sixes_rating s WHERE s.log_id = m.log_id AND s.account_id = p.account_id ORDER BY s.minutes DESC LIMIT 1))";
 
 pub const SORTS: [(&str, &str); 35] = [
     ("date", "m.played_at"),

@@ -1,3 +1,4 @@
+import { mainSixesRating } from "../../lib/sixesmatchups";
 import { useMemo, useState } from "react";
 import { ApiError } from "../ApiError";
 import { RatingValue } from "../RatingValue";
@@ -50,7 +51,7 @@ export function HeadToHead({ d }: { d: MatchDetail }) {
       const victims = new Map<string, [number, number]>();
       for (const s of sides) for (const [c, n, v] of s.victims) victims.set(c, [(victims.get(c)?.[0] ?? 0) + n, v]);
       return {
-        rating: sixes ? (sixesQ.data?.find((r) => r.accountId === h.accounts[i] && !r.role.startsWith("off:"))?.rating ?? null) : rmins > 0 ? rated.reduce((n, s) => n + s.rating! * s.minutes, 0) / rmins : null,
+        rating: sixes ? (mainSixesRating(sixesQ.data ?? [], h.accounts[i], players.find((p) => p.accountId === h.accounts[i])?.timeS ?? 0)?.rating ?? null) : rmins > 0 ? rated.reduce((n, s) => n + s.rating! * s.minutes, 0) / rmins : null,
         impact: !sixes && sides.some((s) => s.impact !== null) ? sides.reduce((n, s) => n + (s.impact ?? 0), 0) : null,
         kills: sides.reduce((n, s) => n + s.kills, 0),
         deaths: sides.reduce((n, s) => n + s.deaths, 0),

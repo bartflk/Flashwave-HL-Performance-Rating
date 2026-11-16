@@ -32,3 +32,12 @@ test("a role with a rating missing on one side has no winner", () => {
   const rows = roleRows(d, roles, [r(1, "medic", 1.2)]);
   assert.equal(rows.find((x) => x.role === "medic")?.winner, null);
 });
+
+test("a Sniper main shows his Sniper rating; a short off-class stint never stands in", async () => {
+  const { mainSixesRating } = await import("../src/lib/sixesmatchups.ts");
+  const row = (accountId: number, role: string, rating: number, minutes: number) => ({ logId: 1, accountId, role, rating, score: 50, minutes, parts: "[]" });
+  const rows = [row(1, "off:sniper", 1.3, 28), row(2, "pocket", 1.1, 25), row(2, "off:heavy", 0.7, 3), row(3, "off:heavy", 0.9, 2)];
+  assert.equal(mainSixesRating(rows, 1, 30 * 60)?.rating, 1.3, "the Sniper played all match");
+  assert.equal(mainSixesRating(rows, 2, 30 * 60)?.rating, 1.1, "the main role wins over a stint");
+  assert.equal(mainSixesRating(rows, 3, 30 * 60), null, "two minutes of Heavy is not a game's rating");
+});

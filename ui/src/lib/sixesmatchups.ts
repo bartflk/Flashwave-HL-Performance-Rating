@@ -54,3 +54,18 @@ export function roleRows(d: MatchDetail, roles: StoredRole[], ratings: SixesRati
   return rows.filter((x) => x.left || x.right);
 }
 
+
+/**
+ * The rating a 6v6 player is shown by: their main role's, or -- for a player
+ * who played an off-class most of the match, a Sniper main (question 19) --
+ * that off-class's (0.14.1: serveme #1572231's Sniper showed "–"). A short
+ * off-class stint never stands in for a whole game: it counts only from half
+ * the player's `totalS` seconds.
+ */
+export function mainSixesRating(rows: SixesRatingRow[], accountId: number, totalS: number): SixesRatingRow | null {
+  const mine = rows.filter((r) => r.accountId === accountId);
+  const main = mine.find((r) => !r.role.startsWith("off:"));
+  if (main) return main;
+  const off = [...mine].sort((a, b) => b.minutes - a.minutes)[0];
+  return off && off.minutes * 60 * 2 >= totalS ? off : null;
+}

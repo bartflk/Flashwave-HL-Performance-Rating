@@ -1,3 +1,4 @@
+import { mainSixesRating } from "../../lib/sixesmatchups";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -19,7 +20,7 @@ export function SixesStats({ d }: { d: MatchDetail }) {
   const roles = useQuery({ queryKey: ["match_roles", d.logId], queryFn: () => api.getMatchRoles(d.logId), staleTime: 5 * 60_000 }).data ?? [];
   // The preview rating of each player's main role (the 6v6 plan, P6).
   const ratings = useQuery({ queryKey: ["sixes_ratings", d.logId], queryFn: () => api.getSixesRatings({ logId: d.logId }), staleTime: 5 * 60_000 }).data ?? [];
-  const ratingOf = (id: number) => ratings.find((r) => r.accountId === id && !r.role.startsWith("off:")) ?? null;
+  const ratingOf = (id: number) => mainSixesRating(ratings, id, d.players.find((p) => p.accountId === id)?.timeS ?? 0);
   const names = useMemo(() => new Map(d.players.map((p) => [p.accountId, p.name])), [d.players]);
   const roleOf = (id: number) => roles.map((r) => (r.accountId === id ? roleLabel(r.role) : null)).find(Boolean) ?? null;
   const s = q.data;

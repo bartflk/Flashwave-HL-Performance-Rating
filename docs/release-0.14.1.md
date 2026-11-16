@@ -37,6 +37,12 @@ at its first start, with nothing to download.
   at all. The pages that were read are kept.
 - **6v6 after an update**: a new 6v6 model left the 6v6 profile empty until
   the next sync. The app now rates 6v6 at startup, as it does Highlander.
+- **6v6 ratings missing on some players**: a team with only one Soldier
+  (a Sniper in the roamer's place) left that Soldier without a role and so
+  without a rating; a team's only Soldier is now its pocket. And a player
+  who played an off-class most of the match, a Sniper main, now shows his
+  Sniper rating on the scoreboard, the 6v6 numbers, head to head and the
+  match list instead of "–".
 - **RGL divisions**: teams that dropped out no longer take a seed; the seeds
   are numbered over the teams still playing, and the free-agent slot comes
   last.

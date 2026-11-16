@@ -91,6 +91,12 @@ impl Db {
 
     /// Stored 6v6 logs with no roles worked out yet, newest first, with
     /// their logs.tf JSON.
+    /// Forget every worked-out role, so the rules work them out again; roles
+    /// set by hand stay.
+    pub async fn clear_worked_out_roles(&self) -> Result<u64> {
+        Ok(sqlx::query("DELETE FROM player_role WHERE by_hand = 0").execute(self.pool()).await?.rows_affected())
+    }
+
     pub async fn sixes_logs_without_roles(&self, limit: i64) -> Result<Vec<(i64, String)>> {
         Ok(sqlx::query_as(
             "SELECT r.log_id, r.json FROM log_raw r JOIN log_index i ON i.log_id = r.log_id

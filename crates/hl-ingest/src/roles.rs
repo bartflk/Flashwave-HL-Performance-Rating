@@ -96,6 +96,14 @@ pub fn roles_of(json: &Value) -> Vec<RoleRow> {
         let healed = |a: u32| medic.and_then(|m| heals.get(&m)).and_then(|h| h.get(&a)).copied();
         for (class, more, less) in [(TfClass::Soldier, Role::Pocket, Role::Roamer), (TfClass::Scout, Role::PocketScout, Role::FlankScout)] {
             let pair: Vec<&&Player> = side.iter().filter(|p| p.main == class).collect();
+            // A team's only Soldier is the one with the Medic: the pocket.
+            // Flashy, serveme #1572231: RED ran a Sniper in place of the
+            // roamer, its Soldier had no role and so no rating. A lone Scout
+            // could be either, and is left out as before.
+            if pair.len() == 1 && class == TfClass::Soldier {
+                out.push(RoleRow { account_id: pair[0].account, role: more, method: "lone", confidence: None, seconds: pair[0].main_secs });
+                continue;
+            }
             if pair.len() != 2 {
                 continue;
             }
@@ -305,7 +313,26 @@ pub async fn set_own_role(db: &hl_db::Db, log_id: i64, me: u32, role: Option<Rol
 
 /// Work out the roles of stored 6v6 logs that have none, up to `limit`
 /// logs; how many were done. A log whose JSON does not read is skipped.
+/// The rules that work roles out. Raised when they change, so the stored
+/// worked-out roles are worked out again: 2 (0.14.1) makes a team's only
+/// Soldier its pocket.
+pub const RULES: &str = "2";
+const RULES_KEY: &str = "roles_rules";
+
+/// Whether the role rules changed since the stored roles were worked out;
+/// when they did, the worked-out ones are forgotten (hand-set ones stay) for
+/// [`refresh`] to work out again.
+pub async fn new_rules(db: &hl_db::Db) -> anyhow::Result<bool> {
+    if db.get_setting(RULES_KEY).await?.as_deref() == Some(RULES) {
+        return Ok(false);
+    }
+    db.clear_worked_out_roles().await?;
+    db.set_setting(RULES_KEY, RULES).await?;
+    Ok(true)
+}
+
 pub async fn refresh(db: &hl_db::Db, limit: i64) -> anyhow::Result<usize> {
+    new_rules(db).await?;
     let mut done = 0;
     for (log_id, body) in db.sixes_logs_without_roles(limit).await? {
         let Ok(v) = serde_json::from_str::<Value>(&body) else { continue };
@@ -406,6 +433,29 @@ mod tests {
         assert_eq!(main_class(&[(TfClass::Sniper, 800), (TfClass::Scout, 700), (TfClass::Soldier, 300)]), Some((TfClass::Scout, 700)), "44%: still a Scout with Sniper time");
         assert_eq!(main_class(&[(TfClass::Heavy, 300)]), Some((TfClass::Heavy, 300)), "nothing else played");
         assert_eq!(main_class(&[]), None);
+    }
+
+    #[test]
+    fn a_team_s_only_soldier_is_its_pocket() {
+        // One Red Soldier plays Sniper all match (serveme #1572231): the other is Red's pocket.
+        let mut v = fixture();
+        let players = v["players"].as_object().unwrap().clone();
+        let soldiers: Vec<String> = players
+            .iter()
+            .filter(|(_, p)| p["team"] == "Red" && p["class_stats"].as_array().is_some_and(|c| c.first().is_some_and(|c| c["type"] == "soldier")))
+            .map(|(k, _)| k.clone())
+            .collect();
+        assert_eq!(soldiers.len(), 2, "the fixture has two Red Soldiers");
+        for c in v["players"][&soldiers[0]]["class_stats"].as_array_mut().unwrap() {
+            if c["type"] == "soldier" {
+                c["type"] = "sniper".into();
+            }
+        }
+        let lone = SteamId::parse(&soldiers[1]).unwrap().account_id();
+        let rows = roles_of(&v);
+        let r = rows.iter().find(|r| r.account_id == lone && !matches!(r.role, Role::OffClass(_))).unwrap();
+        assert_eq!((r.role, r.method), (Role::Pocket, "lone"));
+        assert!(!rows.iter().any(|r| r.role == Role::Roamer && SteamId::parse(&soldiers[0]).unwrap().account_id() == r.account_id));
     }
 
     #[test]

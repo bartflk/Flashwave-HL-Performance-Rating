@@ -1,3 +1,4 @@
+import { mainSixesRating } from "../../lib/sixesmatchups";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { RatingValue } from "../RatingValue";
 import { createPortal } from "react-dom";
@@ -181,7 +182,7 @@ export function BoxScore({ d, reading }: { d: MatchDetail; reading?: ReactNode }
       spawn: d.players.some((p) => (p.spawnDelayS ?? 0) > 0),
       ping: pings && pings.length > 0 ? new Map(pings.map((x) => [x.accountId, x])) : null,
       impact: !sixes && impact.data && Object.keys(impact.data).length > 0 ? new Map(Object.entries(impact.data).map(([a, v]) => [Number(a), v])) : null,
-      sixes: sixes ? new Map((sixesQ.data ?? []).filter((r) => !r.role.startsWith("off:")).map((r) => [r.accountId, r.rating])) : null,
+      sixes: sixes ? new Map(d.players.map((p) => [p.accountId, mainSixesRating(sixesQ.data ?? [], p.accountId, p.timeS)?.rating ?? null] as const).filter((x): x is [number, number] => x[1] !== null)) : null,
     }),
     [d.flags, d.players, pings, impact.data, sixes, sixesQ.data],
   );
