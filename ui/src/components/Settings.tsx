@@ -355,7 +355,7 @@ export function Settings({
             </SettingsSection>
 
             {shows("about") && <h2 className="settings-group">{t("About")}</h2>}
-            <SettingsSection id="sources" icon="globe" title={t("Data sources")} keywords="sources credits drops.tf logs.tf trends.tf etf2l demos.tf more.tf icewind"
+            <SettingsSection id="sources" icon="globe" title={t("Data sources")} keywords="sources credits drops.tf logs.tf trends.tf etf2l rgl demos.tf more.tf maps.tf2.lol wiki steam flagcdn tf2esports icewind emiel"
               summary={t("Where every match, log and demo comes from")}>
               <SourcesPanel />
             </SettingsSection>
@@ -396,25 +396,38 @@ function SourcesPanel() {
     ["logs.tf 6v6 history", "https://logs.tf", t("The 6v6 rating's league pool and its fitted weights: every 6v6 official in the same logs.tf database, summed up into a small file built into the app.")],
     ["trends.tf", "https://trends.tf", t("Which matches you played, which logs belong together, and each player's ETF2L career.")],
     ["ETF2L", "https://etf2l.org", t("Officials, divisions, rosters, transfers, seasons and fixtures, and its news: each season's posts and banner.")],
-    ["demos.tf", "https://demos.tf", t("SourceTV demos, downloaded only when you ask. Its files go back to 14 October 2019; older demos are listed but gone.")],
+    ["RGL", "https://rgl.gg", t("NA Highlander's seasons, divisions, teams, results and player careers, read from its public API.")],
+    ["demos.tf", "https://demos.tf", t("By Icewind. SourceTV demos, downloaded only when you ask. Its files go back to 14 October 2019; older demos are listed but gone. Also the top-down images for 38 more maps under the kill map, added by Emiel.")],
     ["more.tf", "https://more.tf", t("The top-down map images under the kill map, and logs while logs.tf is resting.")],
+    ["maps.tf2.lol", "https://maps.tf2.lol", t("The top-down images for 7 more maps under the kill map (Dustbowl, Egypt, Gorge, Junction, Mountain Lab, Barnblitz, King), made with tf2-map-render.")],
+    ["TF2 Wiki", "https://wiki.teamfortress.com", t("The ETF2L Highlander medal, the kill map's building and skull icons, and the map screenshots behind the map themes.")],
+    ["Steam", "https://steamcommunity.com", t("Your own name and avatar, from your public Steam profile.")],
+    ["flagcdn", "https://flagcdn.com", t("Country flags on profiles, player cards and team pages (public domain, built into the app).")],
   ];
+  const ideas: [string, string, string][] = [
+    ["tf2esports.com", "https://tf2esports.com", t("Many of the RGL tab's features follow its lead: the power ranking, the spoiler switch, the live strip, team Compare, seasons as events, the match stats layout and the newcomers card; and much of the app's look.")],
+  ];
+  const list = (items: [string, string, string][]) => (
+    <dl className="kv sources-list">
+      {items.map(([name, href, what]) => (
+        <Fragment key={name}>
+          <dt>
+            <button className="linkish" onClick={() => void api.openExternal(href)}>
+              {name} ↗
+            </button>
+          </dt>
+          <dd>{what}</dd>
+        </Fragment>
+      ))}
+    </dl>
+  );
   return (
     <div className="panel">
       <h2>{t("Data sources")}</h2>
-      <dl className="kv sources-list">
-        {rows.map(([name, href, what]) => (
-          <Fragment key={name}>
-            <dt>
-              <button className="linkish" onClick={() => void api.openExternal(href)}>
-                {name} ↗
-              </button>
-            </dt>
-            <dd>{what}</dd>
-          </Fragment>
-        ))}
-      </dl>
+      {list(rows)}
       <p className="hint" style={{ marginTop: 10 }}>{t("Your own demos are read on your PC and never uploaded.")}</p>
+      <h3 style={{ marginTop: 18 }}>{t("Ideas from")}</h3>
+      {list(ideas)}
     </div>
   );
 }

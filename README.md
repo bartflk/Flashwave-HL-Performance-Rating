@@ -167,11 +167,20 @@ has the whole of it, including what to do if one does break.
 | [maps.tf2.lol](https://maps.tf2.lol) | The top-down images and world bounds for 7 more maps under the kill map: the attack/defend maps (Dustbowl, Egypt, Gorge, Junction, Mountain Lab), Barnblitz and King. Its free medium renders, made with tf2-map-render, bundled as they come (WebP) |
 | [Official TF2 Wiki](https://wiki.teamfortress.com/wiki/Tournament_Medal_-_ETF2L_Highlander) | The ETF2L Highlander medal icon on player profiles (Valve's in-game item art, Season 17 design); the kill map's sentry, dispenser and teleporter icons (cut from its picture of the Engineer's building HUD) and the death skull (the kill feed's); the map screenshots behind the headers and pages of the map themes (Gravel Pit, Dustbowl, Coldfront, Swiftwater, Badlands, Upward and Process, from each map's page) |
 | [flagcdn](https://flagcdn.com) | Country flags on player profiles, player cards and team pages (public domain, bundled with the app) |
+| [Steam](https://steamcommunity.com) | Your own name and avatar, from your public Steam profile (`?xml=1`) |
 | Your own `.dem` files | Aim, deaths and movement: read on your PC, never uploaded |
 
 Every rating comes from logs alone — the raw logs.tf log covers all 18 players
 back to 2014 — so the app works fully without a single demo. Demos add the aim
 and movement views, and only for the person who recorded them.
+
+### Ideas from
+
+[tf2esports.com](https://tf2esports.com) gives the app no data, but many of the RGL tab's
+features follow its lead: the power ranking, the spoiler switch, the live strip of tonight's
+matches, team Compare, seasons shown as events, the match stats layout (team comparison,
+awards, player table) and the "New to RGL" card; and much of the app's look, with dense,
+aligned rows and section headers.
 
 ## Your data
 
